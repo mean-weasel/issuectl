@@ -25,9 +25,11 @@ export {
   updateLinkedPR,
 } from "./db/deployments.js";
 export {
+  getCacheTtl,
   getCached,
   setCached,
   isFresh,
+  clearCacheKey,
   clearCache,
 } from "./db/cache.js";
 
@@ -43,20 +45,10 @@ export type {
 export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit } from "./github/client.js";
 export {
-  listIssues,
-  getIssue,
   createIssue,
   updateIssue,
   closeIssue,
-  getComments,
-  addComment,
 } from "./github/issues.js";
-export {
-  listPulls,
-  getPull,
-  getPullChecks,
-  findLinkedPRs,
-} from "./github/pulls.js";
 export {
   LIFECYCLE_LABEL,
   listLabels,
@@ -64,3 +56,18 @@ export {
   addLabel,
   removeLabel,
 } from "./github/labels.js";
+
+// Cached data layer (SWR)
+export {
+  getIssues,
+  getIssueDetail,
+} from "./data/issues.js";
+export {
+  getPulls,
+  getPullDetail,
+} from "./data/pulls.js";
+export { getDashboardData } from "./data/repos.js";
+export {
+  getComments,
+  addComment,
+} from "./data/comments.js";
