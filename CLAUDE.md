@@ -1,0 +1,99 @@
+# issuectl
+
+Cross-repo GitHub issue command center with Claude Code launch integration.
+
+## Project overview
+
+- **Monorepo:** pnpm workspaces + Turborepo
+  - `packages/core` — shared business logic (SQLite, Octokit, launch flow)
+  - `packages/cli` — CLI entry point (`issuectl init`, `issuectl web`, `issuectl repo`)
+  - `packages/web` — Next.js App Router dashboard (Server Components + Server Actions)
+- **Spec:** `docs/specs/2026-04-06-issuectl-design.md`
+- **Implementation plan:** `docs/specs/2026-04-06-implementation-plan.md`
+- **Mockups:** `docs/mockups/web.html` (primary reference), `docs/mockups/index.html` (gallery)
+
+## Key technology
+
+| Layer | Choice |
+|---|---|
+| Package manager | pnpm (workspaces) |
+| Build orchestration | Turborepo |
+| Bundler (core/cli) | tsup (ESM, DTS) |
+| Web framework | Next.js App Router |
+| Data mutations | Server Actions |
+| GitHub API | Octokit (`@octokit/rest`) |
+| Auth | `gh auth token` (no separate login) |
+| Database | SQLite via `better-sqlite3` at `~/.issuectl/issuectl.db` |
+| Terminal | Ghostty (hard-coded for v1) |
+| Styling | CSS Modules + global design tokens (no Tailwind) |
+
+## Code conventions
+
+- **ESM everywhere.** All packages use `"type": "module"`. No CJS.
+- **Strict TypeScript.** `strict: true` in all tsconfig files.
+- **No classes.** Use plain functions and objects. The codebase is functional.
+- **Explicit DB parameter.** Core DB functions accept a `Database` argument — no global/singleton DB access inside core. The caller (CLI or web server) creates the connection and passes it in.
+- **Octokit as parameter.** GitHub functions accept an `Octokit` instance — no global Octokit. Same pattern as the DB.
+- **Server Actions for all mutations.** The web app never calls core functions directly from Client Components. All writes go through Server Actions in `packages/web/lib/actions/`.
+- **Server Components for reads.** Pages are Server Components that call core data functions directly.
+- **CSS Modules for component styles.** One `.module.css` file per component. Global tokens in `app/globals.css`. Match the design tokens from the mockup HTML files.
+
+## Build and run
+
+```bash
+pnpm install                    # Install all dependencies
+pnpm turbo build                # Build all packages (core first, then cli/web)
+pnpm turbo typecheck            # Type-check all packages
+pnpm turbo dev                  # Dev mode (core watch + web dev server)
+issuectl init                   # First-time setup (creates DB)
+issuectl web                    # Start dashboard (localhost:3847)
+```
+
+## Quality gates
+
+### After writing code — ALWAYS run these
+
+1. **`/simplify`** — Run after completing any logical chunk of code (a new file, a feature, a bug fix). This catches unnecessary complexity, redundant abstractions, and style drift before they accumulate. Do not skip this.
+
+2. **Type-check:** `pnpm turbo typecheck` — Run after any code change. The project uses strict TypeScript; type errors must be fixed before moving on.
+
+### After completing a logical step within a phase
+
+3. **`code-reviewer` agent** — Run the code-reviewer agent after completing each logical step of work (e.g., finished a new module, wired up a page, implemented a server action). Don't wait until the whole phase is done. Review early, review often. This catches bugs, logic errors, security issues, and drift from project conventions while the code is still fresh.
+
+### After completing a phase or major feature
+
+4. **`/review-pr`** — Run a comprehensive PR review before considering any phase complete. This is the final gate. It reviews all changes holistically — cross-file issues, missed edge cases, convention violations across the full diff. Use the full review, not a quick scan.
+
+5. **Validate the plugin/project structure** as needed — if you've added new packages, changed the monorepo structure, or modified build config, verify that `pnpm turbo build` still succeeds and all packages resolve correctly.
+
+### When uncertain — ASK
+
+5. **Use the `AskUserQuestion` tool liberally.** This project has specific design decisions documented in the spec and plan. When you encounter ambiguity, a judgment call, or a situation not covered by the docs:
+   - **ASK** rather than guess. A 30-second question avoids a 30-minute rework.
+   - Offer concrete options with trade-offs, not open-ended "what should I do?"
+   - Common situations where you should ask:
+     - The spec/plan doesn't cover a specific UI behavior or edge case
+     - You're choosing between two reasonable implementation approaches
+     - A technical risk from the plan (Ghostty CLI, better-sqlite3 bindings, etc.) materializes and needs a decision
+     - You're about to deviate from the plan (different file structure, different API shape, etc.)
+     - A dependency has an unexpected API or limitation
+   - **Do not ask** about things you can verify yourself (does a function exist, does a type match, does a build pass).
+
+## File reference patterns
+
+When the spec or plan references a file, check if it exists before assuming its contents. The plan describes intended files — they may not exist yet or may have evolved during implementation.
+
+## Testing
+
+No test framework is set up yet. When it's time to add tests:
+- Use Vitest (fast, ESM-native, workspace-aware)
+- Core package gets unit tests for all DB operations, GitHub client functions, and launch flow
+- Web package gets integration tests for Server Actions
+- Test files live next to the code they test (`foo.test.ts` alongside `foo.ts`)
+
+## Git
+
+- Branch naming: `phase-{N}-{short-description}` for implementation work
+- Commit messages: concise, imperative, focused on the "why"
+- One commit per logical change, not one commit per file

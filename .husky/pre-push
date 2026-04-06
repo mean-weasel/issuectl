@@ -1,0 +1,6 @@
+# Skip build for docs-only changes
+changed_files=$(git diff --name-only HEAD @{push} 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+
+if echo "$changed_files" | grep -qvE '\.(md|html|txt|json|yaml|yml)$|^docs/|^\.husky/|^\.github/|CLAUDE\.md|LICENSE'; then
+  pnpm turbo build
+fi
