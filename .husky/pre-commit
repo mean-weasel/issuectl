@@ -1,0 +1,7 @@
+# Skip CI for docs-only changes
+changed_files=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if echo "$changed_files" | grep -qvE '\.(md|html|txt|json|yaml|yml)$|^docs/|^\.husky/|^\.github/|CLAUDE\.md|LICENSE'; then
+  pnpm turbo typecheck
+  pnpm turbo lint
+fi
