@@ -41,7 +41,7 @@ export type {
   GitHubCheck,
 } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
-export { getOctokit } from "./github/client.js";
+export { getOctokit, resetOctokit } from "./github/client.js";
 export {
   listIssues,
   getIssue,

@@ -9,3 +9,7 @@ export async function getOctokit(): Promise<Octokit> {
   instance = new Octokit({ auth: token });
   return instance;
 }
+
+export function resetOctokit(): void {
+  instance = null;
+}

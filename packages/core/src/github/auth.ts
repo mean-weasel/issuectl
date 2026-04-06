@@ -4,13 +4,9 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 export async function getGhToken(): Promise<string> {
+  let stdout: string;
   try {
-    const { stdout } = await execFileAsync("gh", ["auth", "token"]);
-    const token = stdout.trim();
-    if (!token) {
-      throw new Error("gh auth token returned empty output");
-    }
-    return token;
+    ({ stdout } = await execFileAsync("gh", ["auth", "token"]));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Unknown error";
@@ -20,6 +16,15 @@ export async function getGhToken(): Promise<string> {
       { cause: err },
     );
   }
+
+  const token = stdout.trim();
+  if (!token) {
+    throw new Error(
+      "gh auth token succeeded but returned an empty token. " +
+        "Try running 'gh auth login' to re-authenticate.",
+    );
+  }
+  return token;
 }
 
 export async function checkGhAuth(): Promise<{
@@ -41,6 +46,18 @@ export async function checkGhAuth(): Promise<{
       username: match?.[1],
     };
   } catch (err) {
+    // Distinguish missing gh binary from auth failure
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      (err as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
+      return {
+        ok: false,
+        error:
+          "GitHub CLI (gh) is not installed. Install it from https://cli.github.com/",
+      };
+    }
     return {
       ok: false,
       error:
