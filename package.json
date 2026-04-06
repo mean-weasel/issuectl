@@ -11,6 +11,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "turbo": "^2.9.4"
   }
 }
