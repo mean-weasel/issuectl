@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>issuectl — TUI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; font-family: system-ui, sans-serif; }
+
+  .view-switcher { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; max-width: 1180px; width: 100%; }
+  .view-btn {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid #333; background: #1a1d24;
+    color: #8b8fa0; font-size: 12px; font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all 0.15s;
+  }
+  .view-btn:hover { border-color: #555; color: #e4e4ea; }
+  .view-btn.active { background: rgba(232,113,37,0.12); border-color: rgba(232,113,37,0.3); color: #e87125; }
+  .view-section { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #444a5c; padding: 6px 8px; align-self: center; }
+
+  .terminal-window {
+    width: 100%; max-width: 1180px; background: #0c0e12; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 25px 80px rgba(0,0,0,0.6);
+  }
+  .terminal-titlebar {
+    height: 38px; background: #1a1d24; display: flex; align-items: center; padding: 0 14px; gap: 8px;
+    border-bottom: 1px solid #252830; user-select: none;
+  }
+  .terminal-btn { width: 12px; height: 12px; border-radius: 50%; }
+  .terminal-btn.close { background: #ff5f57; }
+  .terminal-btn.minimize { background: #febc2e; }
+  .terminal-btn.maximize { background: #28c840; }
+  .terminal-titlebar-text { flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #6b7084; }
+
+  .term {
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.45;
+    color: #b0b4c0; display: none; flex-direction: column; height: 640px; overflow: hidden; position: relative;
+  }
+  .term.active { display: flex; }
+  .term::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(transparent 0px, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  }
+
+  .term-line { white-space: pre; height: 18px; line-height: 18px; padding: 0 1ch; flex-shrink: 0; overflow: hidden; }
+  .term-main { flex: 1; display: flex; overflow: hidden; }
+  .term-col { display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .term-col.repos { width: 250px; }
+  .term-col.issues { flex: 1; min-width: 0; }
+  .term-col.detail { width: 380px; }
+  .term-col-inner { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .term-header { height: 20px; line-height: 20px; padding: 0 1ch; white-space: pre; flex-shrink: 0; background: #12151a; border-bottom: 1px solid #1e2230; }
+  .term-bar { height: 22px; line-height: 22px; background: #161920; border-top: 1px solid #252830; padding: 0 1ch; white-space: pre; flex-shrink: 0; display: flex; }
+  .term-bar-right { margin-left: auto; }
+  .term-hsep { height: 1px; background: #252830; flex-shrink: 0; }
+  .term-launch { height: 24px; line-height: 24px; padding: 0 1ch; white-space: pre; flex-shrink: 0; background: linear-gradient(90deg, #1f1510 0%, #12151a 100%); border-top: 1px solid #3d2510; }
+
+  .dim { color: #444a5c; } .fg { color: #b0b4c0; } .bright { color: #e4e4ea; } .white { color: #fff; }
+  .accent { color: #e87125; } .green { color: #3fb950; } .red { color: #f85149; } .blue { color: #58a6ff; }
+  .purple { color: #bc8cff; } .yellow { color: #d29922; } .cyan { color: #39d0d6; } .bold { font-weight: 600; }
+  .inv { background: #e87125; color: #0c0e12; padding: 0 0.5ch; font-weight: 600; }
+  .inv-dim { background: #1a1e27; color: #b0b4c0; padding: 0 0.5ch; }
+  .inv-green { background: #3fb950; color: #0c0e12; padding: 0 0.5ch; font-weight: 600; }
+  .bg-bar { background: #12151a; }
+  .sel-row { background: #1a1e27; border-left: 2px solid #e87125; padding-left: calc(1ch - 2px); }
+  .sel-row-issue { background: #161a22; border-left: 2px solid #39d0d6; padding-left: calc(1ch - 2px); }
+  .label-bug { color: #f85149; } .label-enh { color: #bc8cff; } .label-deployed { color: #d29922; }
+  .label-pr { color: #58a6ff; } .label-done { color: #3fb950; }
+  .dot-pulse { display: inline-block; width: 1ch; color: #3fb950; animation: dotpulse 2s ease-in-out infinite; }
+  @keyframes dotpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .cursor-block { display: inline-block; width: 1ch; height: 14px; background: #e87125; vertical-align: middle; animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .filter-input { background: #1a1e27; border-bottom: 1px solid #e87125; padding: 0 1ch; }
+  .form-field { background: #12151a; border: 1px solid #252830; padding: 0 1ch; }
+  .form-active { border-color: #e87125; background: #161a22; }
+  .cli-output { padding: 16px 2ch; flex: 1; overflow-y: auto; }
+  .cli-output .term-line { padding: 0; }
+</style>
+</head>
+<body>
+
+<div class="view-switcher">
+  <span class="view-section">TUI</span>
+  <button class="view-btn active" onclick="showTerm('main', this)">Main View</button>
+  <button class="view-btn" onclick="showTerm('filter', this)">Filter (/)</button>
+  <button class="view-btn" onclick="showTerm('create', this)">Create (c)</button>
+  <button class="view-btn" onclick="showTerm('pr-view', this)">PR View</button>
+  <button class="view-btn" onclick="showTerm('relaunch', this)">Re-launch</button>
+  <span class="view-section">CLI</span>
+  <button class="view-btn" onclick="showTerm('cli-list', this)">issuectl list</button>
+  <button class="view-btn" onclick="showTerm('cli-show', this)">issuectl show</button>
+  <button class="view-btn" onclick="showTerm('cli-launch', this)">issuectl launch</button>
+</div>
+
+<div class="terminal-window">
+  <div class="terminal-titlebar">
+    <div class="terminal-btn close"></div>
+    <div class="terminal-btn minimize"></div>
+    <div class="terminal-btn maximize"></div>
+    <div class="terminal-titlebar-text" id="titlebar-text">issuectl &mdash; ghostty</div>
+  </div>
+
+  <!-- ═══ STATE 1: MAIN VIEW ═══ -->
+  <div class="term active" id="term-main">
+    <div class="term-line bg-bar"><span class="accent bold">issuectl</span> <span class="dim">v0.1.0</span> <span class="dim">│</span> <span class="dot-pulse">&#9679;</span><span class="green"> gh auth</span> <span class="dim">│</span> <span class="dim">49 issues · 12 PRs · 7 repos</span> <span class="dim">│</span> <span class="dim">cached 2m ago</span></div>
+    <div class="term-hsep"></div>
+    <div class="term-main">
+      <div class="term-col repos" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="dim bold"> REPOSITORIES</span><span class="dim" style="float:right">7 </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row"><span class="accent bold"> seatify</span><span class="dim" style="float:right"><span class="accent">17</span> </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> bugdrop</span><span class="dim" style="float:right">6 </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> mybody-scans-app</span><span class="dim" style="float:right">6 </span></div>
+          <div class="term-line"><span class="dim">   iterative-industries</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> ytgify</span><span class="dim" style="float:right">3 </span></div>
+          <div class="term-line"><span class="dim">   neonwatty</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> deckchecker</span><span class="dim" style="float:right">2 </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> qa-skills</span><span class="dim" style="float:right">1 </span></div>
+          <div class="term-line"><span class="dim">   neonwatty</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> meme-search</span><span class="dim" style="float:right">1 </span></div>
+          <div class="term-line"><span class="dim">   neonwatty</span></div>
+        </div>
+      </div>
+      <div class="term-col issues" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="bright bold"> Issues</span> <span class="dim">17</span><span class="dim">  │  PRs 3</span><span class="dim" style="float:right"><span class="inv-dim">all</span> bug enh deployed </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#517</span> <span class="fg">Rethink the canvas: simplify for most u</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span> <span class="label-deployed">deployed</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#516</span> <span class="fg">Support semantic table types (wedding pa</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row-issue"> <span class="label-enh">+</span> <span class="cyan">#515</span> <span class="white bold">End-to-end guest data pipeline: RSVP qui</span><span class="dim">  8d</span></div>
+          <div class="term-line sel-row-issue">   <span class="label-enh">enhancement</span> <span class="label-pr">pr-open</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-bug">!</span> <span class="dim">#512</span> <span class="fg">RSVP preview panes being cut off — insuf</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-bug">bug</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#511</span> <span class="fg">Support custom fields in the seating opti</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#510</span> <span class="fg">Personality archetype quiz: "What kind of</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-bug">!</span> <span class="dim">#505</span> <span class="fg">Drag-and-drop of setup elements onto canv</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-bug">bug</span> <span class="label-deployed">deployed</span></div>
+        </div>
+      </div>
+      <div class="term-col detail">
+        <div class="term-header"><span class="dim bold"> DETAIL</span><span class="dim" style="float:right">mean-weasel/seatify </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">#515</span> <span class="label-enh">enhancement</span> <span class="label-pr">pr-open</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="white bold">End-to-end guest data pipeline:</span></div>
+          <div class="term-line"> <span class="white bold">RSVP quizzes, planner input, and</span></div>
+          <div class="term-line"> <span class="white bold">optimization integration</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">opened 8d ago · 3 comments · PR #522</span></div>
+          <div class="term-line"><span class="dim"> ─────────────────────────────────────</span></div>
+          <div class="term-line"> <span class="fg">Build a complete pipeline connecting</span></div>
+          <div class="term-line"> <span class="fg">guest RSVP responses to the seating</span></div>
+          <div class="term-line"> <span class="fg">optimization engine.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="fg">1. Guest fills out RSVP quiz</span></div>
+          <div class="term-line"> <span class="fg">2. Planner reviews guest data</span></div>
+          <div class="term-line"> <span class="fg">3. Optimization engine ingests data</span></div>
+          <div class="term-line"> <span class="fg">4. Results feed into canvas view</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">Key files:</span></div>
+          <div class="term-line"> <span class="cyan">  src/lib/optimization/engine.ts</span></div>
+          <div class="term-line"> <span class="cyan">  src/components/rsvp/QuizForm.tsx</span></div>
+          <div class="term-line"> <span class="cyan">  src/app/api/guests/route.ts</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="dim"> ─── DEPLOYMENT HISTORY ─────────────</span></div>
+          <div class="term-line"> <span class="yellow">●</span> <span class="cyan">issue-515-guest-data-pipeline</span></div>
+          <div class="term-line">   <span class="blue">PR #522 open</span> <span class="dim">· Apr 2</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="dim"> ─── COMMENTS (3) ───────────────────</span></div>
+          <div class="term-line"> <span class="bright bold">neonwatty</span> <span class="dim">6d ago</span></div>
+          <div class="term-line"> <span class="dim">Quiz builder should reuse the RSVP</span></div>
+          <div class="term-line"> <span class="dim">preview component pattern.</span></div>
+        </div>
+        <div class="term-launch">  <span class="inv">Enter</span> <span class="accent bold">Re-launch to Claude Code</span> <span class="dim">│</span> <span class="dim">branch:</span> <span class="cyan">issue-515-*</span></div>
+      </div>
+    </div>
+    <div class="term-bar">
+      <span><span class="inv">Enter</span> <span class="dim">Launch</span>  <span class="inv-dim">c</span> <span class="dim">Create</span>  <span class="inv-dim">e</span> <span class="dim">Edit</span>  <span class="inv-dim">l</span> <span class="dim">Label</span>  <span class="inv-dim">x</span> <span class="dim">Close</span>  <span class="inv-dim">/</span> <span class="dim">Filter</span>  <span class="inv-dim">?</span> <span class="dim">Help</span></span>
+      <span class="term-bar-right"><span class="dim">j/k navigate · tab panel · q quit</span></span>
+    </div>
+  </div>
+
+  <!-- ═══ STATE 2: FILTER MODE ═══ -->
+  <div class="term" id="term-filter">
+    <div class="term-line bg-bar"><span class="accent bold">issuectl</span> <span class="dim">v0.1.0</span> <span class="dim">│</span> <span class="dot-pulse">&#9679;</span><span class="green"> gh auth</span> <span class="dim">│</span> <span class="dim">49 issues · 12 PRs · 7 repos</span> <span class="dim">│</span> <span class="dim">cached 2m ago</span></div>
+    <div class="term-hsep"></div>
+    <div class="term-main">
+      <div class="term-col repos" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="dim bold"> REPOSITORIES</span><span class="dim" style="float:right">7 </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row"><span class="accent bold"> seatify</span><span class="dim" style="float:right"><span class="accent">17</span> </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> bugdrop</span><span class="dim" style="float:right">6 </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+        </div>
+      </div>
+      <div class="term-col issues" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="bright bold"> Issues</span> <span class="dim">17</span><span class="dim">  │  PRs 3</span><span class="dim" style="float:right"><span class="inv-dim">all</span> bug enh deployed </span></div>
+        <div class="term-line filter-input"><span class="accent">/</span> <span class="bright">drag<span class="cursor-block"></span></span><span class="dim" style="float:right">2 matches </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row-issue"> <span class="label-bug">!</span> <span class="cyan">#505</span> <span class="white bold">Drag-and-drop of setup elements onto canv</span><span class="dim">  8d</span></div>
+          <div class="term-line sel-row-issue">   <span class="label-bug">bug</span> <span class="label-deployed">deployed</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#508</span> <span class="fg">Design engaging RSVP data collection for</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span></div>
+          <div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div>
+        </div>
+      </div>
+      <div class="term-col detail">
+        <div class="term-header"><span class="dim bold"> DETAIL</span><span class="dim" style="float:right">mean-weasel/seatify </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">#505</span> <span class="label-bug">bug</span> <span class="label-deployed">deployed</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="white bold">Drag-and-drop of setup elements</span></div>
+          <div class="term-line"> <span class="white bold">onto canvas not saving properly</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">opened 8d ago · 1 comment</span></div>
+          <div class="term-line"><span class="dim"> ─────────────────────────────────────</span></div>
+          <div class="term-line"> <span class="fg">When dragging setup elements (tables,</span></div>
+          <div class="term-line"> <span class="fg">chairs, stage) onto the canvas, the</span></div>
+          <div class="term-line"> <span class="fg">positions are not persisted after</span></div>
+          <div class="term-line"> <span class="fg">page refresh. The state appears to</span></div>
+          <div class="term-line"> <span class="fg">save in memory but the API call to</span></div>
+          <div class="term-line"> <span class="fg">persist layout is not firing.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">Key files:</span></div>
+          <div class="term-line"> <span class="cyan">  src/components/canvas/Canvas.tsx</span></div>
+          <div class="term-line"> <span class="cyan">  src/app/api/layouts/route.ts</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="dim"> ─── DEPLOYMENT HISTORY ─────────────</span></div>
+          <div class="term-line"> <span class="yellow">●</span> <span class="cyan">issue-505-fix-drag-drop</span></div>
+          <div class="term-line">   <span class="blue">PR #521 open</span> <span class="dim">· Apr 1</span></div>
+        </div>
+        <div class="term-launch">  <span class="inv">Enter</span> <span class="accent bold">Re-launch to Claude Code</span> <span class="dim">│</span> <span class="dim">branch:</span> <span class="cyan">issue-505-*</span></div>
+      </div>
+    </div>
+    <div class="term-bar">
+      <span><span class="accent bold">FILTER</span>  <span class="inv-dim">Esc</span> <span class="dim">Clear</span>  <span class="inv-dim">Enter</span> <span class="dim">Select</span>  <span class="inv-dim">↑↓</span> <span class="dim">Navigate</span></span>
+      <span class="term-bar-right"><span class="dim">type to filter · Esc to cancel</span></span>
+    </div>
+  </div>
+
+  <!-- ═══ STATE 3: CREATE ISSUE ═══ -->
+  <div class="term" id="term-create">
+    <div class="term-line bg-bar"><span class="accent bold">issuectl</span> <span class="dim">v0.1.0</span> <span class="dim">│</span> <span class="dot-pulse">&#9679;</span><span class="green"> gh auth</span> <span class="dim">│</span> <span class="dim">49 issues · 12 PRs · 7 repos</span> <span class="dim">│</span> <span class="dim">cached 2m ago</span></div>
+    <div class="term-hsep"></div>
+    <div class="term-main">
+      <div class="term-col repos" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="dim bold"> REPOSITORIES</span><span class="dim" style="float:right">7 </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row"><span class="accent bold"> seatify</span><span class="dim" style="float:right"><span class="accent">17</span> </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> bugdrop</span><span class="dim" style="float:right">6 </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+        </div>
+      </div>
+      <div class="term-col issues" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="bright bold"> Issues</span> <span class="dim">17</span><span class="dim">  │  PRs 3</span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#517</span> <span class="fg">Rethink the canvas: simplify for most u</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span> <span class="label-deployed">deployed</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#516</span> <span class="fg">Support semantic table types (wedding pa</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="label-enh">+</span> <span class="dim">#515</span> <span class="fg">End-to-end guest data pipeline: RSVP qui</span><span class="dim">  8d</span></div>
+          <div class="term-line">   <span class="label-enh">enhancement</span> <span class="label-pr">pr-open</span></div>
+        </div>
+      </div>
+      <div class="term-col detail">
+        <div class="term-header"><span class="accent bold"> NEW ISSUE</span><span class="dim" style="float:right">mean-weasel/seatify </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">Title</span></div>
+          <div class="term-line form-field form-active"> <span class="bright">Add multi-select to guest list<span class="cursor-block"></span></span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">Body</span> <span class="dim">(markdown)</span></div>
+          <div class="term-line form-field"> <span class="fg">Allow planners to select multiple</span></div>
+          <div class="term-line form-field"> <span class="fg">guests at once for bulk actions</span></div>
+          <div class="term-line form-field"> <span class="fg">like assigning tables, adding</span></div>
+          <div class="term-line form-field"> <span class="fg">tags, or sending invites.</span></div>
+          <div class="term-line form-field"> <span class="fg"></span></div>
+          <div class="term-line form-field"> <span class="fg">Currently every action requires</span></div>
+          <div class="term-line form-field"> <span class="fg">selecting guests one at a time.</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">Labels</span> <span class="dim">(space to toggle)</span></div>
+          <div class="term-line"> <span class="green">[x]</span> <span class="label-enh">enhancement</span></div>
+          <div class="term-line"> <span class="dim">[ ]</span> <span class="label-bug">bug</span></div>
+          <div class="term-line"> <span class="dim">[ ]</span> <span class="dim">documentation</span></div>
+          <div class="term-line"> <span class="dim">[ ]</span> <span class="dim">good first issue</span></div>
+          <div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div>
+        </div>
+        <div class="term-launch">  <span class="inv-green">Ctrl+S</span> <span class="green bold">Submit</span> <span class="dim">│</span> <span class="inv-dim">Tab</span> <span class="dim">Next field</span> <span class="dim">│</span> <span class="inv-dim">Esc</span> <span class="dim">Cancel</span></div>
+      </div>
+    </div>
+    <div class="term-bar">
+      <span><span class="accent bold">CREATE ISSUE</span>  <span class="dim">for</span> <span class="bright">mean-weasel/seatify</span></span>
+      <span class="term-bar-right"><span class="dim">Tab between fields · Ctrl+S submit · Esc cancel</span></span>
+    </div>
+  </div>
+
+  <!-- ═══ STATE 4: PR VIEW ═══ -->
+  <div class="term" id="term-pr-view">
+    <div class="term-line bg-bar"><span class="accent bold">issuectl</span> <span class="dim">v0.1.0</span> <span class="dim">│</span> <span class="dot-pulse">&#9679;</span><span class="green"> gh auth</span> <span class="dim">│</span> <span class="dim">49 issues · 12 PRs · 7 repos</span> <span class="dim">│</span> <span class="dim">cached 2m ago</span></div>
+    <div class="term-hsep"></div>
+    <div class="term-main">
+      <div class="term-col repos" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="dim bold"> REPOSITORIES</span><span class="dim" style="float:right">7 </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row"><span class="accent bold"> seatify</span><span class="dim" style="float:right"><span class="accent">17</span> </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="fg"> bugdrop</span><span class="dim" style="float:right">6 </span></div>
+          <div class="term-line"><span class="dim">   mean-weasel</span></div>
+        </div>
+      </div>
+      <div class="term-col issues" style="border-right:1px solid #252830">
+        <div class="term-header"><span class="dim"> Issues 17  │ </span><span class="bright bold"> PRs</span> <span class="bright">3</span><span class="dim" style="float:right"><span class="inv-dim">all</span> open merged </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line sel-row-issue"> <span class="green">○</span> <span class="cyan">#522</span> <span class="white bold">feat: implement guest data pipeline</span><span class="dim">  4d</span></div>
+          <div class="term-line sel-row-issue">   <span class="green">open</span> <span class="dim">←</span> <span class="blue">#515</span> <span class="dim">+847 -124</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="green">○</span> <span class="dim">#521</span> <span class="fg">fix: resolve canvas drag-and-drop save</span><span class="dim">  5d</span></div>
+          <div class="term-line">   <span class="green">open</span> <span class="dim">←</span> <span class="blue">#505</span> <span class="dim">+53 -17</span> <span class="yellow">review</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="purple">●</span> <span class="dim">#519</span> <span class="dim">feat: add room diagram underlay support</span><span class="dim">  6d</span></div>
+          <div class="term-line">   <span class="purple">merged</span> <span class="dim">←</span> <span class="blue">#507</span> <span class="dim">+312 -28</span></div>
+          <div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div>
+        </div>
+      </div>
+      <div class="term-col detail">
+        <div class="term-header"><span class="dim bold"> PR DETAIL</span><span class="dim" style="float:right">mean-weasel/seatify </span></div>
+        <div class="term-col-inner">
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="green bold">● OPEN</span>  <span class="dim">#522</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="white bold">feat: implement guest data pipeline</span></div>
+          <div class="term-line"> <span class="white bold">with RSVP quiz and planner table</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="dim">by claude-code-bot · 4d ago</span></div>
+          <div class="term-line"> <span class="dim">base: main ← issue-515-guest-data-pipe</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"> <span class="green">+847</span> <span class="red">-124</span> <span class="dim">12 files changed</span></div>
+          <div class="term-line"><span class="dim"> ─────────────────────────────────────</span></div>
+          <div class="term-line"> <span class="dim">Linked: Closes</span> <span class="blue">#515</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="dim"> ─── CI CHECKS ──────────────────────</span></div>
+          <div class="term-line"> <span class="green">✓</span> <span class="fg">Build</span>          <span class="dim">1m 23s</span></div>
+          <div class="term-line"> <span class="green">✓</span> <span class="fg">Lint</span>           <span class="dim">0m 18s</span></div>
+          <div class="term-line"> <span class="green">✓</span> <span class="fg">Unit Tests</span>     <span class="dim">2m 41s</span></div>
+          <div class="term-line"> <span class="red">✗</span> <span class="fg">E2E Tests</span>      <span class="dim">4m 02s</span></div>
+          <div class="term-line">&nbsp;</div>
+          <div class="term-line"><span class="dim"> ─── FILES ──────────────────────────</span></div>
+          <div class="term-line"> <span class="green">+</span> <span class="cyan">src/components/rsvp/QuizForm.tsx</span></div>
+          <div class="term-line"> <span class="green">+</span> <span class="cyan">src/components/planner/TableEd..</span></div>
+          <div class="term-line"> <span class="yellow">~</span> <span class="cyan">src/lib/optimization/engine.ts</span></div>
+          <div class="term-line"> <span class="green">+</span> <span class="cyan">src/app/api/guests/route.ts</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="term-bar">
+      <span><span class="inv-dim">Enter</span> <span class="dim">Open in GitHub</span>  <span class="inv-dim">i</span> <span class="dim">Go to issue</span>  <span class="inv-dim">d</span> <span class="dim">View diff</span></span>
+      <span class="term-bar-right"><span class="dim">j/k navigate · tab panel · q quit</span></span>
+    </div>
+  </div>
+
+  <!-- ═══ STATE 5: RE-LAUNCH CONFIRMATION ═══ -->
+  <div class="term" id="term-relaunch">
+    <div class="term-line bg-bar"><span class="accent bold">issuectl</span> <span class="dim">v0.1.0</span> <span class="dim">│</span> <span class="dot-pulse">&#9679;</span><span class="green"> gh auth</span> <span class="dim">│</span> <span class="dim">49 issues · 12 PRs · 7 repos</span> <span class="dim">│</span> <span class="dim">cached 2m ago</span></div>
+    <div class="term-hsep"></div>
+    <div class="term-main">
+      <div class="term-col" style="flex:1;padding:2ch;">
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line"> <span class="accent bold">  ╔══════════════════════════════════════════════════════════════╗</span></div>
+        <div class="term-line"> <span class="accent bold">  ║</span> <span class="accent bold">  RE-LAUNCH TO CLAUDE CODE                                  </span><span class="accent bold">║</span></div>
+        <div class="term-line"> <span class="accent bold">  ╚══════════════════════════════════════════════════════════════╝</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="dim">Issue:</span>  <span class="white bold">#515 End-to-end guest data pipeline</span></div>
+        <div class="term-line">   <span class="dim">Repo:</span>   <span class="fg">mean-weasel/seatify</span></div>
+        <div class="term-line">   <span class="dim">Branch:</span> <span class="cyan">issue-515-guest-data-pipeline</span> <span class="dim">(exists)</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="yellow bold">⚠ This issue was previously deployed</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="dim">─── PREVIOUS DEPLOYMENT ────────────────────────────────────</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="yellow">●</span> <span class="bright">Launched</span>    <span class="dim">Apr 2, 2026</span></div>
+        <div class="term-line">     <span class="dim">Branch:</span> <span class="cyan">issue-515-guest-data-pipeline</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="blue">●</span> <span class="bright">PR #522</span>     <span class="green">open</span> <span class="dim">· created Apr 3</span></div>
+        <div class="term-line">     <span class="dim">Title:</span>  <span class="fg">feat: implement guest data pipeline</span></div>
+        <div class="term-line">     <span class="dim">Status:</span> <span class="green">+847</span> <span class="red">-124</span> <span class="dim">· 12 files · E2E failing</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="dim">─── REVIEW COMMENTS ────────────────────────────────────────</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="bright">neonwatty</span> <span class="dim">2d ago:</span></div>
+        <div class="term-line">   <span class="dim">Planner table needs inline editing, not modal popups.</span></div>
+        <div class="term-line">   <span class="dim">Also handle declined RSVPs in planner view.</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="dim">─── CONTEXT ────────────────────────────────────────────────</span></div>
+        <div class="term-line">&nbsp;</div>
+        <div class="term-line">   <span class="dim">Will send:</span> <span class="fg">issue + 3 comments + 3 files</span></div>
+        <div class="term-line">   <span class="dim">Terminal:</span> <span class="fg">new Ghostty window at ~/Desktop/seatify</span></div>
+        <div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div><div class="term-line">&nbsp;</div>
+      </div>
+    </div>
+    <div class="term-bar">
+      <span><span class="inv">Enter</span> <span class="accent bold">Confirm re-launch</span>  <span class="inv-dim">Esc</span> <span class="dim">Cancel</span>  <span class="inv-dim">p</span> <span class="dim">View PR in browser</span></span>
+      <span class="term-bar-right"><span class="dim">review history before re-launching</span></span>
+    </div>
+  </div>
+
+  <!-- ═══ CLI: issuectl list ═══ -->
+  <div class="term" id="term-cli-list">
+    <div class="cli-output">
+      <div class="term-line"><span class="dim">$</span> <span class="bright">issuectl list</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="accent bold">mean-weasel/seatify</span> <span class="dim">(17 issues)</span></div>
+      <div class="term-line">  <span class="dim">#517</span>  <span class="fg">Rethink the canvas: simplify for most users    </span> <span class="label-enh">enhancement</span>  <span class="yellow">● deployed</span>  <span class="dim"> 8d</span></div>
+      <div class="term-line">  <span class="dim">#516</span>  <span class="fg">Support semantic table types (wedding party)    </span> <span class="label-enh">enhancement</span>               <span class="dim"> 8d</span></div>
+      <div class="term-line">  <span class="dim">#515</span>  <span class="fg">End-to-end guest data pipeline: RSVP quizzes    </span> <span class="label-enh">enhancement</span>  <span class="blue">● pr-open</span>   <span class="dim"> 8d</span></div>
+      <div class="term-line">  <span class="dim">#512</span>  <span class="fg">RSVP preview panes being cut off                </span> <span class="label-bug">bug</span>                       <span class="dim"> 8d</span></div>
+      <div class="term-line">  <span class="dim">#505</span>  <span class="fg">Drag-and-drop of setup elements not saving      </span> <span class="label-bug">bug</span>          <span class="yellow">● deployed</span>  <span class="dim"> 8d</span></div>
+      <div class="term-line">  <span class="dim">#504</span>  <span class="fg">Guest tab should be leftmost when drilling in   </span> <span class="label-bug">bug</span>                       <span class="dim"> 8d</span></div>
+      <div class="term-line">  <span class="dim"> ...</span> <span class="dim">and 11 more</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="accent bold">mean-weasel/bugdrop</span> <span class="dim">(6 issues)</span></div>
+      <div class="term-line">  <span class="dim">#63</span>   <span class="fg">Optimize CI — break E2E into more shards        </span>               <span class="dim">               2d</span></div>
+      <div class="term-line">  <span class="dim">#61</span>   <span class="fg">Remove version number from all screens           </span>               <span class="dim">               2d</span></div>
+      <div class="term-line">  <span class="dim">#60</span>   <span class="fg">Add animation to the welcome screen              </span>               <span class="dim">               2d</span></div>
+      <div class="term-line">  <span class="dim">#59</span>   <span class="fg">Add custom screenshot with drag-and-drop control </span>               <span class="dim">               2d</span></div>
+      <div class="term-line">  <span class="dim">#58</span>   <span class="fg">Add ability to re-take a screenshot              </span>               <span class="dim">               2d</span></div>
+      <div class="term-line">  <span class="dim">#54</span>   <span class="fg">Optimize CI: reduce E2E test overhead            </span>               <span class="dim">               3d</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="accent bold">iterative-industries/mybody-scans-app</span> <span class="dim">(6 issues)</span></div>
+      <div class="term-line">  <span class="dim">#187</span>  <span class="fg">Add "start with your most recent scan" language  </span>               <span class="dim">             332d</span></div>
+      <div class="term-line">  <span class="dim">#186</span>  <span class="fg">Include history data to charts and stats         </span>               <span class="dim">             332d</span></div>
+      <div class="term-line">  <span class="dim"> ...</span> <span class="dim">and 4 more</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">49 issues across 7 repos · cached 2m ago</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ CLI: issuectl show ═══ -->
+  <div class="term" id="term-cli-show">
+    <div class="cli-output">
+      <div class="term-line"><span class="dim">$</span> <span class="bright">issuectl show 515 --repo seatify</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="white bold">#515 End-to-end guest data pipeline: RSVP quizzes, planner input,</span></div>
+      <div class="term-line"><span class="white bold">     and optimization integration</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">Repo:</span>      <span class="fg">mean-weasel/seatify</span></div>
+      <div class="term-line"><span class="dim">State:</span>     <span class="green">open</span></div>
+      <div class="term-line"><span class="dim">Labels:</span>    <span class="label-enh">enhancement</span></div>
+      <div class="term-line"><span class="dim">Author:</span>    <span class="fg">neonwatty</span></div>
+      <div class="term-line"><span class="dim">Opened:</span>    <span class="fg">Mar 28, 2026 (8 days ago)</span></div>
+      <div class="term-line"><span class="dim">Lifecycle:</span> <span class="yellow">● deployed</span> <span class="blue">● pr-open</span> <span class="dim">(PR #522)</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">───────────────────────────────────────────────────────────────</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="fg">Build a complete pipeline connecting guest RSVP responses to the</span></div>
+      <div class="term-line"><span class="fg">seating optimization engine.</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="fg">The flow should be:</span></div>
+      <div class="term-line"><span class="fg">1. Guest fills out RSVP quiz (dietary prefs, plus-one info)</span></div>
+      <div class="term-line"><span class="fg">2. Planner reviews and augments guest data</span></div>
+      <div class="term-line"><span class="fg">3. Optimization engine ingests enriched guest data</span></div>
+      <div class="term-line"><span class="fg">4. Results feed back into the canvas view</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="fg">Key files:</span></div>
+      <div class="term-line"><span class="cyan">  src/lib/optimization/engine.ts</span></div>
+      <div class="term-line"><span class="cyan">  src/components/rsvp/QuizForm.tsx</span></div>
+      <div class="term-line"><span class="cyan">  src/app/api/guests/route.ts</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">─── DEPLOYMENT HISTORY ────────────────────────────────────────</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line">  <span class="yellow">●</span> <span class="bright">Launched Apr 2</span> <span class="dim">→</span> <span class="cyan">issue-515-guest-data-pipeline</span></div>
+      <div class="term-line">  <span class="blue">●</span> <span class="bright">PR #522</span> <span class="green">open</span> <span class="dim">· +847 -124 · 12 files · E2E failing</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">─── COMMENTS (3) ──────────────────────────────────────────────</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line">  <span class="bright bold">neonwatty</span> <span class="dim">· 6 days ago</span></div>
+      <div class="term-line">  <span class="dim">Quiz builder should reuse the RSVP preview component pattern.</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line">  <span class="bright bold">neonwatty</span> <span class="dim">· 4 days ago</span></div>
+      <div class="term-line">  <span class="dim">PR #522 close — planner table needs inline editing, not modals.</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line">  <span class="bright bold">neonwatty</span> <span class="dim">· 2 days ago</span></div>
+      <div class="term-line">  <span class="dim">Handle declined RSVPs — still show in planner view as declined.</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ CLI: issuectl launch ═══ -->
+  <div class="term" id="term-cli-launch">
+    <div class="cli-output">
+      <div class="term-line"><span class="dim">$</span> <span class="bright">issuectl launch 515 --repo seatify</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="accent bold">Launching #515 to Claude Code</span></div>
+      <div class="term-line"><span class="fg">End-to-end guest data pipeline: RSVP quizzes, planner input</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="green">✓</span> <span class="fg">Assembled context</span>     <span class="dim">issue + 3 comments + 3 files</span></div>
+      <div class="term-line"><span class="green">✓</span> <span class="fg">Checked history</span>       <span class="yellow">previously deployed</span> <span class="dim">· PR #522 open</span></div>
+      <div class="term-line"><span class="green">✓</span> <span class="fg">Checked out branch</span>    <span class="cyan">issue-515-guest-data-pipeline</span> <span class="dim">(existing)</span></div>
+      <div class="term-line"><span class="green">✓</span> <span class="fg">Applied label</span>         <span class="yellow">issuectl:deployed</span></div>
+      <div class="term-line"><span class="green">✓</span> <span class="fg">Opened Ghostty</span>        <span class="dim">~/Desktop/seatify</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="green bold">Claude Code session started.</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">  repo:    mean-weasel/seatify</span></div>
+      <div class="term-line"><span class="dim">  branch:  </span><span class="cyan">issue-515-guest-data-pipeline</span></div>
+      <div class="term-line"><span class="dim">  context: issue body + 3 comments + 3 referenced files</span></div>
+      <div class="term-line"><span class="dim">  path:    ~/Desktop/seatify</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="dim">$</span> <span class="cursor-block"></span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTerm(id, btn) {
+  document.querySelectorAll('.term').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('term-' + id).classList.add('active');
+  document.querySelectorAll('.view-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var titles = {
+    'main': 'issuectl \u2014 ghostty',
+    'filter': 'issuectl (filter) \u2014 ghostty',
+    'create': 'issuectl (new issue) \u2014 ghostty',
+    'pr-view': 'issuectl (pull requests) \u2014 ghostty',
+    'relaunch': 'issuectl (launch) \u2014 ghostty',
+    'cli-list': 'ghostty',
+    'cli-show': 'ghostty',
+    'cli-launch': 'ghostty'
+  };
+  document.getElementById('titlebar-text').textContent = titles[id] || 'ghostty';
+}
+</script>
+</body>
+</html>

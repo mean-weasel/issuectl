@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>issuectl — Web Dashboard Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Karla:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0b0d10;
+    --bg-surface: #111318;
+    --bg-elevated: #161920;
+    --bg-hover: #1b1f28;
+    --bg-active: #21252f;
+    --border: #222630;
+    --border-subtle: #1a1e26;
+    --border-accent: #333844;
+    --text-primary: #e4e4ea;
+    --text-secondary: #8b8fa0;
+    --text-tertiary: #565b6e;
+    --text-inverse: #0b0d10;
+    --accent: #e87125;
+    --accent-hover: #f07e35;
+    --accent-surface: rgba(232, 113, 37, 0.08);
+    --accent-border: rgba(232, 113, 37, 0.2);
+    --green: #3fb950;
+    --green-surface: rgba(63, 185, 80, 0.08);
+    --green-border: rgba(63, 185, 80, 0.2);
+    --yellow: #d29922;
+    --yellow-surface: rgba(210, 153, 34, 0.08);
+    --yellow-border: rgba(210, 153, 34, 0.2);
+    --red: #f85149;
+    --red-surface: rgba(248, 81, 73, 0.08);
+    --blue: #58a6ff;
+    --blue-surface: rgba(88, 166, 255, 0.08);
+    --blue-border: rgba(88, 166, 255, 0.2);
+    --purple: #bc8cff;
+    --purple-surface: rgba(188, 140, 255, 0.08);
+    --cyan: #39d0d6;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Karla', system-ui, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* ═══ SIDEBAR ═══ */
+  .sidebar {
+    width: 260px; min-width: 260px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .sidebar-logo {
+    padding: 20px 20px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .logo-mark {
+    width: 28px; height: 28px; background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Source Code Pro', monospace; font-weight: 700; font-size: 14px;
+    color: var(--text-inverse); letter-spacing: -1px;
+  }
+  .sidebar-logo .logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+  .sidebar-logo .logo-version { font-size: 10px; color: var(--text-tertiary); font-family: 'Source Code Pro', monospace; background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; margin-left: auto; }
+  .sidebar-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: var(--radius-md);
+    font-size: 13.5px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item.active { background: var(--accent-surface); color: var(--accent); }
+  .nav-item .nav-icon { width: 18px; text-align: center; font-size: 14px; opacity: 0.7; }
+  .nav-item.active .nav-icon { opacity: 1; }
+  .nav-item .nav-badge { margin-left: auto; font-size: 11px; font-weight: 600; font-family: 'Source Code Pro', monospace; min-width: 22px; text-align: center; }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 8px 10px; }
+  .sidebar-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-tertiary); padding: 12px 14px 6px; }
+  .sidebar-repos { flex: 1; overflow-y: auto; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 1px; }
+  .sidebar-repo {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: var(--radius-md);
+    font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+  }
+  .sidebar-repo:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .sidebar-repo.active { background: var(--bg-active); color: var(--text-primary); }
+  .sidebar-repo .repo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sidebar-repo .repo-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-repo .repo-count { font-size: 11px; font-weight: 600; font-family: 'Source Code Pro', monospace; color: var(--text-tertiary); }
+  .sidebar-repo.active .repo-count { color: var(--text-secondary); }
+  .sidebar-footer { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-tertiary); }
+  .sidebar-footer .auth-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+  /* ═══ CONTENT ═══ */
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .view { display: none; flex-direction: column; flex: 1; }
+  .view.active { display: flex; }
+
+  /* ═══ COMMON UI ═══ */
+  .page-header { padding: 24px 32px 0; display: flex; flex-direction: column; gap: 16px; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); }
+  .breadcrumb a { color: var(--text-secondary); text-decoration: none; cursor: pointer; }
+  .breadcrumb a:hover { color: var(--text-primary); }
+  .page-title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-title .accent { color: var(--accent); }
+  .page-actions { display: flex; gap: 8px; }
+  .btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--radius-md);
+    font-size: 13px; font-weight: 500; font-family: 'Karla', sans-serif;
+    cursor: pointer; transition: all 0.15s; border: 1px solid transparent; white-space: nowrap;
+  }
+  .btn-secondary { background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-accent); }
+  .btn-primary { background: var(--accent); color: var(--text-inverse); border: none; font-weight: 600; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-launch {
+    background: linear-gradient(135deg, var(--accent) 0%, #d05e18 100%);
+    color: var(--text-inverse); border: none; font-weight: 600;
+    box-shadow: 0 0 20px rgba(232, 113, 37, 0.15); padding: 8px 18px;
+  }
+  .btn-launch:hover { box-shadow: 0 0 28px rgba(232, 113, 37, 0.25); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .tabs-bar { display: flex; gap: 0; padding: 0 32px; margin-top: 20px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 16px; font-size: 13.5px; font-weight: 500; color: var(--text-tertiary);
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text-secondary); }
+  .tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+  .tab .tab-badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    font-family: 'Source Code Pro', monospace; background: var(--bg-elevated);
+    padding: 1px 7px; border-radius: 10px; margin-left: 6px; color: var(--text-tertiary); vertical-align: 1px;
+  }
+  .tab.active .tab-badge { background: var(--accent-surface); color: var(--accent); }
+
+  .table-container { flex: 1; padding: 0 32px 32px; overflow-y: auto; }
+  .table-toolbar {
+    display: flex; align-items: center; gap: 10px; padding: 16px 0;
+    position: sticky; top: 0; background: var(--bg-base); z-index: 10;
+  }
+  .search-wrap { position: relative; flex: 1; max-width: 320px; }
+  .search-wrap::before { content: '\2315'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; color: var(--text-tertiary); pointer-events: none; z-index: 1; }
+  .search-input {
+    width: 100%; padding: 8px 12px 8px 36px; background: var(--bg-elevated);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    color: var(--text-primary); font-size: 13px; font-family: 'Karla', sans-serif; outline: none;
+  }
+  .search-input:focus { border-color: var(--accent-border); }
+  .search-input::placeholder { color: var(--text-tertiary); }
+  .filter-chip {
+    display: flex; align-items: center; gap: 5px; padding: 7px 12px;
+    background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md);
+    font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--border-accent); color: var(--text-primary); }
+  .filter-chip.active { border-color: var(--accent-border); background: var(--accent-surface); color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border); position: sticky; top: 52px; background: var(--bg-base); z-index: 5;
+  }
+  tbody tr { cursor: pointer; transition: background 0.1s; border-bottom: 1px solid var(--border-subtle); }
+  tbody tr:hover { background: var(--bg-hover); }
+  tbody td { padding: 12px 12px; font-size: 13.5px; vertical-align: middle; }
+
+  .issue-cell { display: flex; align-items: flex-start; gap: 10px; }
+  .issue-state-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .issue-state-dot.open { background: var(--green); }
+  .issue-state-dot.merged { background: var(--purple); }
+  .issue-state-dot.closed { background: var(--red); }
+  .issue-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .issue-title-text { font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
+  .issue-subtitle { font-size: 12px; color: var(--text-tertiary); display: flex; align-items: center; gap: 6px; }
+  .issue-subtitle .num { font-family: 'Source Code Pro', monospace; font-weight: 500; color: var(--text-secondary); }
+
+  .label-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; }
+  .label-badge.bug { background: var(--red-surface); color: var(--red); }
+  .label-badge.enhancement { background: var(--purple-surface); color: var(--purple); }
+  .label-badge.deployed { background: var(--yellow-surface); color: var(--yellow); border: 1px solid var(--yellow-border); }
+  .label-badge.pr-open { background: var(--blue-surface); color: var(--blue); border: 1px solid var(--blue-border); }
+  .label-badge.done { background: var(--green-surface); color: var(--green); border: 1px solid var(--green-border); }
+  .label-badge.review { background: var(--yellow-surface); color: var(--yellow); border: 1px solid var(--yellow-border); }
+  .labels-cell { display: flex; gap: 4px; flex-wrap: wrap; }
+  .age-cell { font-size: 12px; font-family: 'Source Code Pro', monospace; color: var(--text-tertiary); white-space: nowrap; }
+
+  .lifecycle-cell { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+  .lifecycle-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lifecycle-indicator.idle { background: var(--text-tertiary); }
+  .lifecycle-indicator.deployed { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .lifecycle-indicator.pr { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
+  .lifecycle-indicator.done { background: var(--green); }
+  .lifecycle-text { color: var(--text-secondary); }
+
+  .action-cell { display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; }
+  tbody tr:hover .action-cell { opacity: 1; }
+  .action-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--radius-sm);
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.15s;
+  }
+  .action-btn:hover { border-color: var(--border-accent); color: var(--text-primary); }
+  .action-btn.launch {
+    background: var(--accent-surface); border-color: var(--accent-border); color: var(--accent);
+    width: auto; padding: 0 10px; font-size: 11px; font-weight: 600; gap: 4px;
+  }
+  .action-btn.launch:hover { background: var(--accent); color: var(--text-inverse); }
+
+  .cache-bar {
+    padding: 8px 32px; font-size: 11px; color: var(--text-tertiary);
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid var(--border-subtle); font-family: 'Source Code Pro', monospace;
+  }
+  .cache-bar .cache-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .cache-bar .refresh-link { color: var(--accent); cursor: pointer; margin-left: auto; font-family: 'Karla', sans-serif; }
+
+  /* ═══ REPO CARDS ═══ */
+  .repo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; padding: 20px 32px 32px; }
+  .repo-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 20px; cursor: pointer; transition: all 0.2s;
+    display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden;
+  }
+  .repo-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); opacity: 0; transition: opacity 0.2s; }
+  .repo-card:hover { border-color: var(--border-accent); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .repo-card:hover::before { opacity: 1; }
+  .repo-card-header { display: flex; align-items: center; gap: 10px; }
+  .repo-card-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .repo-card-name { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 16px; letter-spacing: -0.3px; }
+  .repo-card-org { font-size: 12px; color: var(--text-tertiary); margin-left: auto; font-family: 'Source Code Pro', monospace; }
+  .repo-card-stats { display: flex; gap: 16px; }
+  .repo-stat { display: flex; flex-direction: column; gap: 2px; }
+  .repo-stat-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -1px; }
+  .repo-stat-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
+  .repo-card-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; gap: 2px; }
+  .repo-card-bar .bar-bugs { background: var(--red); height: 100%; border-radius: 2px; }
+  .repo-card-bar .bar-enh { background: var(--purple); height: 100%; border-radius: 2px; }
+  .repo-card-bar .bar-other { background: var(--text-tertiary); height: 100%; border-radius: 2px; }
+  .repo-card-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .repo-card-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg-elevated); color: var(--text-tertiary); border: 1px solid var(--border); }
+
+  /* ═══ DETAIL LAYOUT ═══ */
+  .detail-view { padding: 0 32px 32px; display: flex; gap: 24px; flex: 1; }
+  .detail-main { flex: 1; min-width: 0; }
+  .detail-sidebar { width: 280px; min-width: 280px; display: flex; flex-direction: column; gap: 16px; padding-top: 20px; }
+  .detail-sidebar-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .detail-sidebar-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-tertiary); }
+  .detail-sidebar-value { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .detail-sidebar-value a { color: var(--blue); text-decoration: none; }
+  .detail-issue-body {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 24px; margin-top: 20px; font-size: 14px; color: var(--text-secondary); line-height: 1.8;
+  }
+  .detail-issue-body code {
+    font-family: 'Source Code Pro', monospace; background: var(--bg-elevated);
+    padding: 2px 7px; border-radius: 4px; font-size: 12px; color: var(--cyan); border: 1px solid var(--border);
+  }
+  .detail-issue-body ol { padding-left: 20px; margin: 12px 0; }
+  .detail-issue-body li { margin-bottom: 6px; }
+  .detail-issue-body p { margin-bottom: 12px; }
+  .detail-comments { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .detail-comments-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .comment-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .comment-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+  .comment-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text-secondary); border: 1px solid var(--border); }
+  .comment-author { font-weight: 600; color: var(--text-primary); }
+  .comment-date { color: var(--text-tertiary); }
+  .comment-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  .launch-card {
+    background: linear-gradient(135deg, rgba(232, 113, 37, 0.06) 0%, var(--bg-surface) 60%);
+    border: 1px solid var(--accent-border); border-radius: var(--radius-lg);
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .launch-card .launch-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+  .launch-card .launch-meta { font-size: 12px; color: var(--text-tertiary); font-family: 'Source Code Pro', monospace; }
+  .launch-card .launch-meta span { color: var(--cyan); }
+
+  .deployment-timeline { display: flex; flex-direction: column; gap: 0; }
+  .timeline-entry { display: flex; gap: 10px; padding: 8px 0; position: relative; }
+  .timeline-entry:not(:last-child)::after { content: ''; position: absolute; left: 11px; top: 28px; bottom: -2px; width: 1px; background: var(--border); }
+  .timeline-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; border: 2px solid; }
+  .timeline-dot.deployed { border-color: var(--yellow); background: var(--yellow-surface); }
+  .timeline-dot.pr { border-color: var(--blue); background: var(--blue-surface); }
+  .timeline-dot.launched { border-color: var(--accent); background: var(--accent-surface); }
+  .timeline-content { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+  .timeline-label { color: var(--text-secondary); }
+  .timeline-date { color: var(--text-tertiary); font-size: 11px; }
+  .timeline-ref { color: var(--blue); font-family: 'Source Code Pro', monospace; font-size: 11px; }
+
+  /* ═══ MODAL OVERLAY ═══ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); width: 560px; max-height: 90vh;
+    overflow-y: auto; box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+  }
+  .modal-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .modal-close { color: var(--text-tertiary); cursor: pointer; font-size: 18px; background: none; border: none; padding: 4px 8px; border-radius: 4px; }
+  .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ═══ LAUNCH MODAL SPECIFICS ═══ */
+  .launch-step {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+  }
+  .launch-step:last-child { border-bottom: none; }
+  .launch-step-num {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; font-family: 'Source Code Pro', monospace;
+  }
+  .launch-step-num.pending { background: var(--bg-elevated); color: var(--text-tertiary); border: 1px solid var(--border); }
+  .launch-step-num.active { background: var(--accent); color: var(--text-inverse); }
+  .launch-step-num.done { background: var(--green-surface); color: var(--green); border: 1px solid var(--green-border); }
+  .launch-step-content { flex: 1; }
+  .launch-step-label { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+  .launch-step-label.dim { color: var(--text-tertiary); }
+  .launch-step-detail { font-size: 12px; color: var(--text-tertiary); font-family: 'Source Code Pro', monospace; }
+  .launch-step-detail .hl { color: var(--cyan); }
+
+  .launch-context-preview {
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 14px; margin-top: 16px;
+    font-family: 'Source Code Pro', monospace; font-size: 11.5px;
+    color: var(--text-secondary); line-height: 1.6; max-height: 180px; overflow-y: auto;
+  }
+  .launch-context-preview .ctx-section { color: var(--accent); font-weight: 600; }
+  .launch-context-preview .ctx-file { color: var(--cyan); }
+  .launch-context-preview .ctx-dim { color: var(--text-tertiary); }
+
+  /* ═══ LAUNCH ACTIVE STATE ═══ */
+  .launch-active-banner {
+    margin: 20px 32px 0; padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(232, 113, 37, 0.08) 0%, rgba(232, 113, 37, 0.02) 100%);
+    border: 1px solid var(--accent-border); border-radius: var(--radius-lg);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .launch-spinner {
+    width: 20px; height: 20px; border: 2px solid var(--accent-border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .launch-active-text { flex: 1; }
+  .launch-active-title { font-size: 14px; font-weight: 600; color: var(--accent); }
+  .launch-active-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* ═══ PR-SPECIFIC ═══ */
+  .pr-status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+  }
+  .pr-status-badge.open { background: var(--green-surface); color: var(--green); border: 1px solid var(--green-border); }
+  .pr-status-badge.merged { background: var(--purple-surface); color: var(--purple); border: 1px solid rgba(188,140,255,0.2); }
+  .pr-status-badge.draft { background: var(--bg-elevated); color: var(--text-tertiary); border: 1px solid var(--border); }
+
+  .pr-stat-row { display: flex; gap: 16px; margin-top: 12px; }
+  .pr-stat { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .pr-stat .plus { color: var(--green); font-weight: 600; font-family: 'Source Code Pro', monospace; }
+  .pr-stat .minus { color: var(--red); font-weight: 600; font-family: 'Source Code Pro', monospace; }
+  .pr-stat .files { color: var(--text-secondary); }
+
+  .ci-checks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .ci-check { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 10px; background: var(--bg-elevated); border-radius: var(--radius-sm); }
+  .ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ci-dot.pass { background: var(--green); }
+  .ci-dot.fail { background: var(--red); }
+  .ci-dot.running { background: var(--yellow); animation: spin 1s linear infinite; }
+  .ci-name { color: var(--text-secondary); flex: 1; }
+  .ci-time { color: var(--text-tertiary); font-family: 'Source Code Pro', monospace; font-size: 11px; }
+
+  /* ═══ SETTINGS ═══ */
+  .settings-content { padding: 20px 32px 32px; max-width: 720px; }
+  .settings-section { margin-bottom: 32px; }
+  .settings-section-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+  .settings-repo-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    margin-bottom: 8px;
+  }
+  .settings-repo-name { font-weight: 500; flex: 1; }
+  .settings-repo-path { font-size: 12px; font-family: 'Source Code Pro', monospace; color: var(--text-tertiary); flex: 1; }
+  .settings-repo-actions { display: flex; gap: 6px; }
+  .settings-input-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .settings-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .settings-input {
+    width: 100%; padding: 8px 12px; background: var(--bg-elevated);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    color: var(--text-primary); font-size: 13px; font-family: 'Karla', sans-serif; outline: none;
+  }
+  .settings-input:focus { border-color: var(--accent-border); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-accent); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ═══ SIDEBAR ═══ -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">ic</div>
+      <span class="logo-text">issuectl</span>
+      <span class="logo-version">v0.1.0</span>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" id="nav-dashboard" onclick="go('dashboard')">
+        <span class="nav-icon">&bull;</span> Dashboard
+      </div>
+      <div class="nav-item" id="nav-issues" onclick="go('repo-detail')">
+        <span class="nav-icon">&rarr;</span> Issues <span class="nav-badge">49</span>
+      </div>
+      <div class="nav-item" id="nav-prs" onclick="go('prs')">
+        <span class="nav-icon">&uarr;</span> Pull Requests <span class="nav-badge">12</span>
+      </div>
+      <div class="nav-item" id="nav-settings" onclick="go('settings')">
+        <span class="nav-icon">&#9881;</span> Settings
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-nav" style="padding-top:0">
+      <div class="sidebar-section-title" style="padding:4px 14px 6px">Edge States</div>
+      <div class="nav-item" id="nav-onboarding" onclick="go('onboarding')" style="font-size:12px;">
+        <span class="nav-icon" style="font-size:12px;">+</span> First Run
+      </div>
+      <div class="nav-item" id="nav-auth-error" onclick="go('auth-error')" style="font-size:12px;">
+        <span class="nav-icon" style="font-size:12px;color:var(--red);">!</span> Auth Error
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-title">Repositories</div>
+    <div class="sidebar-repos">
+      <div class="sidebar-repo active" onclick="go('repo-detail')"><span class="repo-dot" style="background:#f85149"></span><span class="repo-label">seatify</span><span class="repo-count">17</span></div>
+      <div class="sidebar-repo" onclick="go('repo-detail')"><span class="repo-dot" style="background:#58a6ff"></span><span class="repo-label">bugdrop</span><span class="repo-count">6</span></div>
+      <div class="sidebar-repo"><span class="repo-dot" style="background:#3fb950"></span><span class="repo-label">mybody-scans-app</span><span class="repo-count">6</span></div>
+      <div class="sidebar-repo"><span class="repo-dot" style="background:#bc8cff"></span><span class="repo-label">ytgify</span><span class="repo-count">3</span></div>
+      <div class="sidebar-repo"><span class="repo-dot" style="background:#d29922"></span><span class="repo-label">deckchecker</span><span class="repo-count">2</span></div>
+      <div class="sidebar-repo"><span class="repo-dot" style="background:#39d0d6"></span><span class="repo-label">qa-skills</span><span class="repo-count">1</span></div>
+      <div class="sidebar-repo"><span class="repo-dot" style="background:#e87125"></span><span class="repo-label">meme-search</span><span class="repo-count">1</span></div>
+    </div>
+    <div class="sidebar-footer"><span class="auth-dot"></span><span>neonwatty via gh auth</span></div>
+  </div>
+
+  <!-- ═══ CONTENT ═══ -->
+  <div class="content">
+
+    <!-- ── VIEW: DASHBOARD ── -->
+    <div class="view active" id="view-dashboard">
+      <div class="page-header">
+        <div class="page-title-row">
+          <h1 class="page-title"><span class="accent">7</span> Repositories</h1>
+          <div class="page-actions">
+            <button class="btn btn-secondary">Refresh</button>
+            <button class="btn btn-primary">+ Add Repo</button>
+          </div>
+        </div>
+      </div>
+      <div class="cache-bar"><span class="cache-dot"></span><span>cached 2 minutes ago &middot; 49 issues &middot; 12 PRs</span><span class="refresh-link">refresh now</span></div>
+      <div class="repo-grid">
+        <div class="repo-card" onclick="go('repo-detail')">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#f85149"></span><span class="repo-card-name">seatify</span><span class="repo-card-org">mean-weasel</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">17</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">3</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--yellow)">2</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-bugs" style="flex:4"></span><span class="bar-enh" style="flex:11"></span><span class="bar-other" style="flex:2"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">4 bugs</span><span class="repo-card-tag">11 enhancements</span><span class="repo-card-tag">oldest: 14d</span></div>
+        </div>
+        <div class="repo-card">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#58a6ff"></span><span class="repo-card-name">bugdrop</span><span class="repo-card-org">mean-weasel</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">6</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">1</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--text-tertiary)">0</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-other" style="flex:6"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">6 unlabeled</span><span class="repo-card-tag">oldest: 3d</span></div>
+        </div>
+        <div class="repo-card">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#3fb950"></span><span class="repo-card-name">mybody-scans-app</span><span class="repo-card-org">iterative-industries</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">6</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">0</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--text-tertiary)">0</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-other" style="flex:6"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">6 unlabeled</span><span class="repo-card-tag">oldest: 332d</span></div>
+        </div>
+        <div class="repo-card">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#bc8cff"></span><span class="repo-card-name">ytgify</span><span class="repo-card-org">neonwatty</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">3</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">0</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--text-tertiary)">0</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-enh" style="flex:3"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">3 enhancements</span><span class="repo-card-tag">oldest: 190d</span></div>
+        </div>
+        <div class="repo-card">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#d29922"></span><span class="repo-card-name">deckchecker</span><span class="repo-card-org">mean-weasel</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">2</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">2</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--text-tertiary)">0</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-other" style="flex:2"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">2 unlabeled</span><span class="repo-card-tag">oldest: 9d</span></div>
+        </div>
+        <div class="repo-card">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#39d0d6"></span><span class="repo-card-name">qa-skills</span><span class="repo-card-org">neonwatty</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">1</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">3</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--text-tertiary)">0</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-other" style="flex:1"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">documentation</span><span class="repo-card-tag">oldest: 1d</span></div>
+        </div>
+        <div class="repo-card">
+          <div class="repo-card-header"><span class="repo-card-dot" style="background:#e87125"></span><span class="repo-card-name">meme-search</span><span class="repo-card-org">neonwatty</span></div>
+          <div class="repo-card-stats"><div class="repo-stat"><span class="repo-stat-value">1</span><span class="repo-stat-label">Issues</span></div><div class="repo-stat"><span class="repo-stat-value">0</span><span class="repo-stat-label">PRs</span></div><div class="repo-stat"><span class="repo-stat-value" style="color:var(--text-tertiary)">0</span><span class="repo-stat-label">Deployed</span></div></div>
+          <div class="repo-card-bar"><span class="bar-other" style="flex:1"></span></div>
+          <div class="repo-card-tags"><span class="repo-card-tag">1 unlabeled</span><span class="repo-card-tag">oldest: 86d</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: REPO DETAIL (Issues + PRs tabs) ── -->
+    <div class="view" id="view-repo-detail">
+      <div class="page-header">
+        <div class="breadcrumb"><a onclick="go('dashboard')">Dashboard</a><span>/</span><span>mean-weasel/seatify</span></div>
+        <div class="page-title-row">
+          <h1 class="page-title">seatify</h1>
+          <div class="page-actions">
+            <button class="btn btn-secondary">Label</button>
+            <button class="btn btn-secondary">Close</button>
+            <button class="btn btn-primary" onclick="openModal('create')">+ New Issue</button>
+          </div>
+        </div>
+      </div>
+      <div class="tabs-bar">
+        <div class="tab active" onclick="showRepoTab('issues')">Issues <span class="tab-badge">17</span></div>
+        <div class="tab" onclick="showRepoTab('prs')">Pull Requests <span class="tab-badge">3</span></div>
+      </div>
+
+      <!-- Issues tab -->
+      <div class="table-container" id="repo-tab-issues">
+        <div class="table-toolbar">
+          <div class="search-wrap"><input type="text" class="search-input" placeholder="Filter issues..."></div>
+          <div class="filter-chip active">All</div><div class="filter-chip">bug</div><div class="filter-chip">enhancement</div><div class="filter-chip">deployed</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-tertiary);font-family:'Source Code Pro',monospace;">
+            <span>cached 2m ago</span>
+            <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;gap:4px;"><span style="font-size:13px;">&#8635;</span> Refresh</button>
+          </div>
+        </div>
+        <table><thead><tr>
+          <th style="width:50%">Issue</th><th>Labels</th><th>Lifecycle</th><th>Age</th><th style="width:120px"></th>
+        </tr></thead><tbody>
+          <tr onclick="go('issue-detail')"><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">End-to-end guest data pipeline: RSVP quizzes, planner input, and optimization</span><span class="issue-subtitle"><span class="num">#515</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge enhancement">enhancement</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator pr"></span><span class="lifecycle-text">PR #522 open</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Launch</button><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">Rethink the canvas: simplify for most users, preserve advanced mode</span><span class="issue-subtitle"><span class="num">#517</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge enhancement">enhancement</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator deployed"></span><span class="lifecycle-text">Deployed</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Re-launch</button><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">Support semantic table types (wedding party, kids, head table, VIP)</span><span class="issue-subtitle"><span class="num">#516</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge enhancement">enhancement</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator idle"></span><span class="lifecycle-text">New</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Launch</button><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">RSVP preview panes being cut off — insufficient height</span><span class="issue-subtitle"><span class="num">#512</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge bug">bug</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator idle"></span><span class="lifecycle-text">New</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Launch</button><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">Drag-and-drop of setup elements onto canvas not saving properly</span><span class="issue-subtitle"><span class="num">#505</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge bug">bug</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator deployed"></span><span class="lifecycle-text">Deployed</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Re-launch</button><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">Guest tab should be the leftmost tab when drilling into an event</span><span class="issue-subtitle"><span class="num">#504</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge bug">bug</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator idle"></span><span class="lifecycle-text">New</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Launch</button><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">Support uploading a room diagram as a transparent canvas underlay</span><span class="issue-subtitle"><span class="num">#507</span> &middot; opened 8 days ago</span></div></div></td><td><div class="labels-cell"><span class="label-badge enhancement">enhancement</span></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator done"></span><span class="lifecycle-text">Done</span></div></td><td><span class="age-cell">8d</span></td><td><div class="action-cell"><button class="action-btn">...</button></div></td></tr>
+          <tr><td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">Demo now out of sync functionally and style-istically from full stack</span><span class="issue-subtitle"><span class="num">#474</span> &middot; opened 12 days ago</span></div></div></td><td><div class="labels-cell"></div></td><td><div class="lifecycle-cell"><span class="lifecycle-indicator idle"></span><span class="lifecycle-text">New</span></div></td><td><span class="age-cell">12d</span></td><td><div class="action-cell"><button class="action-btn launch" onclick="event.stopPropagation();openModal('launch')">Launch</button><button class="action-btn">...</button></div></td></tr>
+        </tbody></table>
+      </div>
+
+      <!-- PRs tab (hidden by default) -->
+      <div class="table-container" id="repo-tab-prs" style="display:none">
+        <div class="table-toolbar">
+          <div class="search-wrap"><input type="text" class="search-input" placeholder="Filter pull requests..."></div>
+          <div class="filter-chip active">All</div><div class="filter-chip">Open</div><div class="filter-chip">Merged</div><div class="filter-chip">Review</div>
+        </div>
+        <table><thead><tr>
+          <th style="width:45%">Pull Request</th><th>Status</th><th>Linked Issue</th><th>Changes</th><th>Age</th>
+        </tr></thead><tbody>
+          <tr onclick="go('pr-detail')">
+            <td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">feat: implement guest data pipeline with RSVP quiz and planner table</span><span class="issue-subtitle"><span class="num">#522</span> &middot; by claude-code-bot</span></div></div></td>
+            <td><span class="pr-status-badge open">Open</span></td>
+            <td><span style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--blue)">Closes #515</span></td>
+            <td><span class="pr-stat"><span class="plus">+847</span> <span class="minus">-124</span> <span class="files">12 files</span></span></td>
+            <td><span class="age-cell">4d</span></td>
+          </tr>
+          <tr>
+            <td><div class="issue-cell"><span class="issue-state-dot merged"></span><div class="issue-info"><span class="issue-title-text">feat: add room diagram underlay support to canvas</span><span class="issue-subtitle"><span class="num">#519</span> &middot; by claude-code-bot</span></div></div></td>
+            <td><span class="pr-status-badge merged">Merged</span></td>
+            <td><span style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--blue)">Closes #507</span></td>
+            <td><span class="pr-stat"><span class="plus">+312</span> <span class="minus">-28</span> <span class="files">6 files</span></span></td>
+            <td><span class="age-cell">6d</span></td>
+          </tr>
+          <tr>
+            <td><div class="issue-cell"><span class="issue-state-dot open"></span><div class="issue-info"><span class="issue-title-text">fix: resolve canvas drag-and-drop save regression</span><span class="issue-subtitle"><span class="num">#521</span> &middot; by claude-code-bot</span></div></div></td>
+            <td><div style="display:flex;align-items:center;gap:6px"><span class="pr-status-badge open">Open</span><span class="label-badge review">Review requested</span></div></td>
+            <td><span style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--blue)">Closes #505</span></td>
+            <td><span class="pr-stat"><span class="plus">+53</span> <span class="minus">-17</span> <span class="files">3 files</span></span></td>
+            <td><span class="age-cell">5d</span></td>
+          </tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- ── VIEW: ISSUE DETAIL ── -->
+    <div class="view" id="view-issue-detail">
+      <div class="page-header">
+        <div class="breadcrumb"><a onclick="go('dashboard')">Dashboard</a><span>/</span><a onclick="go('repo-detail')">seatify</a><span>/</span><span>#515</span></div>
+        <div class="page-title-row">
+          <h1 class="page-title" style="font-size:22px;">End-to-end guest data pipeline: RSVP quizzes, planner input, and optimization integration</h1>
+          <div class="page-actions">
+            <button class="btn btn-secondary">Edit</button>
+            <button class="btn btn-secondary">Close</button>
+            <button class="btn btn-launch" onclick="openModal('launch')">Launch to Claude Code</button>
+          </div>
+        </div>
+      </div>
+      <div class="detail-view">
+        <div class="detail-main">
+          <div class="detail-issue-body">
+            <p>Build a complete pipeline connecting guest RSVP responses to the seating optimization engine.</p>
+            <p>The flow should be:</p>
+            <ol><li>Guest fills out RSVP quiz (dietary prefs, plus-one info, table preferences, relationship tags)</li><li>Planner reviews and augments guest data (add notes, override prefs, flag VIPs)</li><li>Optimization engine ingests the enriched guest data alongside table constraints</li><li>Results feed back into the canvas view</li></ol>
+            <p>Key files:<br><code>src/lib/optimization/engine.ts</code><br><code>src/components/rsvp/QuizForm.tsx</code><br><code>src/app/api/guests/route.ts</code></p>
+            <p>The quiz should support custom questions per event. Planner input should be a spreadsheet-like table editor, not a form.</p>
+          </div>
+          <div class="detail-comments">
+            <span class="detail-comments-title">3 Comments</span>
+            <div class="comment-card"><div class="comment-card-header"><span class="comment-avatar">JW</span><span class="comment-author">neonwatty</span><span class="comment-date">&middot; 6 days ago</span></div><div class="comment-body">The quiz builder should reuse the same component pattern as the RSVP preview — don't build a separate form system.</div></div>
+            <div class="comment-card"><div class="comment-card-header"><span class="comment-avatar">JW</span><span class="comment-author">neonwatty</span><span class="comment-date">&middot; 4 days ago</span></div><div class="comment-body">PR #522 is close but the planner table editor needs inline editing, not modal popups. Re-launching to iterate.</div></div>
+            <div class="comment-card"><div class="comment-card-header"><span class="comment-avatar">JW</span><span class="comment-author">neonwatty</span><span class="comment-date">&middot; 2 days ago</span></div><div class="comment-body">Also need to handle the case where a guest RSVPs "no" — should still appear in the planner view as declined.</div></div>
+          </div>
+        </div>
+        <div class="detail-sidebar">
+          <div class="launch-card">
+            <div class="launch-title">Launch to Claude Code</div>
+            <div class="launch-meta">branch: <span>issue-515-guest-data-pipeline</span></div>
+            <div class="launch-meta">context: issue + 3 comments + 3 files</div>
+            <button class="btn btn-launch" style="width:100%;justify-content:center;" onclick="openModal('launch')">Re-launch</button>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Lifecycle</span>
+            <div class="labels-cell" style="gap:6px"><span class="label-badge enhancement">enhancement</span><span class="label-badge deployed">deployed</span><span class="label-badge pr-open">pr-open</span></div>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Deployment History</span>
+            <div class="deployment-timeline">
+              <div class="timeline-entry"><span class="timeline-dot pr"></span><div class="timeline-content"><span class="timeline-label">PR #522 opened</span><span class="timeline-ref">issue-515-guest-data-pipeline</span><span class="timeline-date">Apr 3, 2026</span></div></div>
+              <div class="timeline-entry"><span class="timeline-dot deployed"></span><div class="timeline-content"><span class="timeline-label">Launched to Claude Code</span><span class="timeline-ref">issue-515-guest-data-pipeline</span><span class="timeline-date">Apr 2, 2026</span></div></div>
+            </div>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Referenced Files</span>
+            <div style="font-family:'Source Code Pro',monospace;font-size:12px;display:flex;flex-direction:column;gap:4px;color:var(--cyan)"><span>src/lib/optimization/engine.ts</span><span>src/components/rsvp/QuizForm.tsx</span><span>src/app/api/guests/route.ts</span></div>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Details</span>
+            <div style="font-size:13px;color:var(--text-secondary)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text-tertiary)">Repo</span><span>mean-weasel/seatify</span></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text-tertiary)">Opened</span><span>Mar 28, 2026</span></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text-tertiary)">Author</span><span>neonwatty</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--text-tertiary)">Linked PR</span><span style="color:var(--blue)">#522</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: PR DETAIL ── -->
+    <div class="view" id="view-pr-detail">
+      <div class="page-header">
+        <div class="breadcrumb"><a onclick="go('dashboard')">Dashboard</a><span>/</span><a onclick="go('repo-detail')">seatify</a><span>/</span><span>PR #522</span></div>
+        <div class="page-title-row">
+          <h1 class="page-title" style="font-size:22px;">feat: implement guest data pipeline with RSVP quiz and planner table</h1>
+          <div class="page-actions">
+            <span class="pr-status-badge open" style="font-size:13px;padding:6px 14px;">Open</span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-view">
+        <div class="detail-main">
+          <div class="pr-stat-row">
+            <div class="pr-stat"><span class="plus">+847</span></div>
+            <div class="pr-stat"><span class="minus">-124</span></div>
+            <div class="pr-stat"><span class="files">12 files changed</span></div>
+            <div class="pr-stat"><span style="color:var(--text-tertiary)">base: main &larr; issue-515-guest-data-pipeline</span></div>
+          </div>
+          <div class="detail-issue-body">
+            <p><strong>Summary</strong></p>
+            <p>Implements the full guest data pipeline connecting RSVP quiz responses to the seating optimization engine, as described in #515.</p>
+            <p><strong>Changes</strong></p>
+            <ol>
+              <li><strong>RSVP Quiz Form</strong> — New <code>QuizForm.tsx</code> component supporting custom questions per event. Uses the existing RSVP preview component pattern.</li>
+              <li><strong>Planner Table Editor</strong> — Spreadsheet-style inline editing for guest data augmentation. Supports notes, preference overrides, VIP flags.</li>
+              <li><strong>Optimization Integration</strong> — Updated <code>engine.ts</code> to accept enriched guest data alongside table constraints. Added dietary and relationship-tag scoring.</li>
+              <li><strong>API Routes</strong> — New <code>/api/guests</code> endpoints for CRUD operations on guest data with RSVP quiz submission handling.</li>
+            </ol>
+            <p>Closes #515</p>
+          </div>
+          <div class="detail-comments">
+            <span class="detail-comments-title">Review</span>
+            <div class="comment-card">
+              <div class="comment-card-header"><span class="comment-avatar">JW</span><span class="comment-author">neonwatty</span><span class="comment-date">&middot; 2 days ago</span></div>
+              <div class="comment-body">Planner table editor needs inline editing — modal popups don't work for this flow. Also need declined-RSVP guests visible in the planner. Re-launching Claude Code to iterate on these.</div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-sidebar">
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">CI Checks</span>
+            <div class="ci-checks">
+              <div class="ci-check"><span class="ci-dot pass"></span><span class="ci-name">Build</span><span class="ci-time">1m 23s</span></div>
+              <div class="ci-check"><span class="ci-dot pass"></span><span class="ci-name">Lint</span><span class="ci-time">0m 18s</span></div>
+              <div class="ci-check"><span class="ci-dot pass"></span><span class="ci-name">Unit Tests</span><span class="ci-time">2m 41s</span></div>
+              <div class="ci-check"><span class="ci-dot fail"></span><span class="ci-name">E2E Tests</span><span class="ci-time">4m 02s</span></div>
+            </div>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Linked Issue</span>
+            <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="go('issue-detail')">
+              <span class="issue-state-dot open" style="width:8px;height:8px"></span>
+              <span style="font-size:13px;color:var(--blue)">#515</span>
+              <span style="font-size:12px;color:var(--text-secondary)">End-to-end guest data pipeline</span>
+            </div>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Branch</span>
+            <div style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--cyan)">issue-515-guest-data-pipeline</div>
+          </div>
+          <div class="detail-sidebar-card">
+            <span class="detail-sidebar-title">Files Changed (12)</span>
+            <div style="font-family:'Source Code Pro',monospace;font-size:11px;display:flex;flex-direction:column;gap:3px;color:var(--text-secondary);max-height:160px;overflow-y:auto">
+              <span><span class="plus">+</span> src/components/rsvp/QuizForm.tsx</span>
+              <span><span class="plus">+</span> src/components/planner/TableEditor.tsx</span>
+              <span><span style="color:var(--yellow)">~</span> src/lib/optimization/engine.ts</span>
+              <span><span class="plus">+</span> src/app/api/guests/route.ts</span>
+              <span><span style="color:var(--yellow)">~</span> src/lib/optimization/types.ts</span>
+              <span><span class="plus">+</span> src/components/rsvp/QuizBuilder.tsx</span>
+              <span><span style="color:var(--yellow)">~</span> src/components/canvas/CanvasView.tsx</span>
+              <span><span class="plus">+</span> src/lib/guests/schema.ts</span>
+              <span><span style="color:var(--yellow)">~</span> src/app/events/[id]/page.tsx</span>
+              <span><span class="plus">+</span> tests/rsvp-quiz.test.ts</span>
+              <span><span class="plus">+</span> tests/planner-table.test.ts</span>
+              <span><span style="color:var(--yellow)">~</span> tests/optimization.test.ts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: SETTINGS ── -->
+    <div class="view" id="view-settings">
+      <div class="page-header">
+        <div class="page-title-row">
+          <h1 class="page-title">Settings</h1>
+        </div>
+      </div>
+      <div class="settings-content">
+        <div class="settings-section">
+          <div class="settings-section-title">Tracked Repositories <button class="btn btn-secondary" style="font-size:12px;padding:4px 10px">+ Add Repo</button></div>
+          <div class="settings-repo-row">
+            <span class="repo-dot" style="width:8px;height:8px;border-radius:50;background:#f85149;flex-shrink:0"></span>
+            <span class="settings-repo-name">mean-weasel/seatify</span>
+            <span class="settings-repo-path">~/Desktop/seatify</span>
+            <div class="settings-repo-actions"><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px">Edit</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)">Remove</button></div>
+          </div>
+          <div class="settings-repo-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#58a6ff;flex-shrink:0"></span>
+            <span class="settings-repo-name">mean-weasel/bugdrop</span>
+            <span class="settings-repo-path">~/Desktop/bugdrop</span>
+            <div class="settings-repo-actions"><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px">Edit</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)">Remove</button></div>
+          </div>
+          <div class="settings-repo-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0"></span>
+            <span class="settings-repo-name">iterative-industries/mybody-scans-app</span>
+            <span class="settings-repo-path">~/Desktop/mybody-scans-app</span>
+            <div class="settings-repo-actions"><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px">Edit</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)">Remove</button></div>
+          </div>
+          <div class="settings-repo-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#bc8cff;flex-shrink:0"></span>
+            <span class="settings-repo-name">neonwatty/ytgify</span>
+            <span class="settings-repo-path">~/Desktop/ytgify</span>
+            <div class="settings-repo-actions"><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px">Edit</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)">Remove</button></div>
+          </div>
+          <div class="settings-repo-row" style="border-style:dashed">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--text-tertiary);flex-shrink:0"></span>
+            <span class="settings-repo-name" style="color:var(--text-tertiary)">joshuayoes/ios-simulator-mcp</span>
+            <span class="settings-repo-path" style="color:var(--yellow)">no local path — will prompt to clone</span>
+            <div class="settings-repo-actions"><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px">Set path</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red)">Remove</button></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Defaults</div>
+          <div class="settings-input-row">
+            <div style="flex:1"><div class="settings-label">Branch Pattern</div><input class="settings-input" value="issue-{number}-{slug}"></div>
+            <div style="flex:1"><div class="settings-label">Cache TTL (seconds)</div><input class="settings-input" value="300"></div>
+          </div>
+          <div><div class="settings-label">Terminal</div><input class="settings-input" value="ghostty" style="max-width:240px"></div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Authentication</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md)">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--green)"></span>
+            <span style="font-size:13px;color:var(--text-secondary)">Authenticated as <strong style="color:var(--text-primary)">neonwatty</strong> via <code style="font-family:'Source Code Pro',monospace;font-size:12px;color:var(--cyan);background:var(--bg-elevated);padding:2px 6px;border-radius:3px">gh auth</code></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: LAUNCH ACTIVE (post-launch) ── -->
+    <div class="view" id="view-launch-active">
+      <div class="page-header">
+        <div class="breadcrumb"><a onclick="go('dashboard')">Dashboard</a><span>/</span><a onclick="go('repo-detail')">seatify</a><span>/</span><a onclick="go('issue-detail')">#515</a><span>/</span><span>Launching</span></div>
+        <div class="page-title-row">
+          <h1 class="page-title" style="font-size:22px;">Launching <span class="accent">#515</span> to Claude Code</h1>
+        </div>
+      </div>
+      <div style="padding:0 32px 32px;max-width:640px">
+        <div class="launch-active-banner" style="margin:20px 0 0">
+          <div class="launch-spinner"></div>
+          <div class="launch-active-text">
+            <div class="launch-active-title">Claude Code session active</div>
+            <div class="launch-active-sub">Opened in Ghostty &middot; branch: issue-515-guest-data-pipeline</div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px">
+          <div class="launch-step">
+            <div class="launch-step-num done">&#10003;</div>
+            <div class="launch-step-content"><div class="launch-step-label">Assembled issue context</div><div class="launch-step-detail">issue + 3 comments + 3 referenced files</div></div>
+          </div>
+          <div class="launch-step">
+            <div class="launch-step-num done">&#10003;</div>
+            <div class="launch-step-content"><div class="launch-step-label">Checked deployment history</div><div class="launch-step-detail">Previous: PR #522 open &middot; Apr 2</div></div>
+          </div>
+          <div class="launch-step">
+            <div class="launch-step-num done">&#10003;</div>
+            <div class="launch-step-content"><div class="launch-step-label">Checked out branch</div><div class="launch-step-detail"><span class="hl">issue-515-guest-data-pipeline</span> (existing)</div></div>
+          </div>
+          <div class="launch-step">
+            <div class="launch-step-num done">&#10003;</div>
+            <div class="launch-step-content"><div class="launch-step-label">Applied lifecycle label</div><div class="launch-step-detail">issuectl:deployed</div></div>
+          </div>
+          <div class="launch-step">
+            <div class="launch-step-num active" style="animation:spin 0.8s linear infinite;border:2px solid var(--accent-border);border-top-color:var(--accent);background:transparent;color:transparent">.</div>
+            <div class="launch-step-content"><div class="launch-step-label" style="color:var(--accent)">Claude Code running</div><div class="launch-step-detail">Session opened in Ghostty at <span class="hl">~/Desktop/seatify</span></div></div>
+          </div>
+        </div>
+
+        <div class="launch-context-preview" style="margin-top:24px">
+<span class="ctx-section">## Issue #515: End-to-end guest data pipeline</span>
+
+Build a complete pipeline connecting guest RSVP
+responses to the seating optimization engine.
+
+<span class="ctx-dim">--- 3 comments ---</span>
+<span class="ctx-dim">[neonwatty] Quiz builder should reuse RSVP preview...</span>
+<span class="ctx-dim">[neonwatty] Planner table needs inline editing...</span>
+<span class="ctx-dim">[neonwatty] Handle declined RSVPs in planner view...</span>
+
+<span class="ctx-section">## Referenced Files</span>
+<span class="ctx-file">src/lib/optimization/engine.ts</span> <span class="ctx-dim">(247 lines)</span>
+<span class="ctx-file">src/components/rsvp/QuizForm.tsx</span> <span class="ctx-dim">(183 lines)</span>
+<span class="ctx-file">src/app/api/guests/route.ts</span> <span class="ctx-dim">(94 lines)</span>
+
+<span class="ctx-dim">Include "Closes #515" in any PR created.</span>
+        </div>
+
+        <div style="margin-top:20px;display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="go('issue-detail')">Back to issue</button>
+          <button class="btn btn-secondary" onclick="go('repo-detail')">Back to seatify</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ VIEW: FIRST RUN / ONBOARDING ═══ -->
+    <div class="view" id="view-onboarding">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+        <div style="max-width:480px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px;">
+          <div style="width:56px;height:56px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Source Code Pro',monospace;font-weight:700;font-size:24px;color:var(--text-inverse);letter-spacing:-1px;">ic</div>
+          <h1 style="font-family:'Syne',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.5px;">Welcome to <span style="color:var(--accent)">issuectl</span></h1>
+          <p style="color:var(--text-secondary);font-size:14px;line-height:1.7;">Manage GitHub issues and PRs across all your repos from one place. Launch any issue directly into Claude Code with a single click.</p>
+          <div style="width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;text-align:left;display:flex;flex-direction:column;gap:16px;">
+            <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:600;">Add your first repository</div>
+            <div>
+              <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Repository</div>
+              <input class="settings-input" placeholder="owner/repo (e.g., mean-weasel/seatify)" style="width:100%">
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Local path (optional)</div>
+              <input class="settings-input" placeholder="~/Desktop/seatify" style="width:100%">
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="go('dashboard')">Add Repository</button>
+          </div>
+          <p style="font-size:12px;color:var(--text-tertiary);">Or run <code style="font-family:'Source Code Pro',monospace;background:var(--bg-elevated);padding:2px 7px;border-radius:4px;font-size:11px;color:var(--cyan);border:1px solid var(--border)">issuectl repo add owner/repo</code> from the CLI</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: AUTH FAILURE ═══ -->
+    <div class="view" id="view-auth-error">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+        <div style="max-width:480px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px;">
+          <div style="width:56px;height:56px;background:var(--red-surface);border:1px solid rgba(248,81,73,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--red);">!</div>
+          <h1 style="font-family:'Syne',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;">GitHub authentication required</h1>
+          <p style="color:var(--text-secondary);font-size:14px;line-height:1.7;">issuectl uses the GitHub CLI for authentication. It looks like <code style="font-family:'Source Code Pro',monospace;background:var(--bg-elevated);padding:2px 7px;border-radius:4px;font-size:12px;color:var(--cyan);border:1px solid var(--border)">gh</code> is not authenticated.</p>
+          <div style="width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;text-align:left;display:flex;flex-direction:column;gap:16px;">
+            <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:600;">To fix this:</div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <span style="width:24px;height:24px;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Source Code Pro',monospace;color:var(--text-secondary);flex-shrink:0;">1</span>
+              <div><div style="font-size:13px;font-weight:500;">Install the GitHub CLI</div><div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;font-family:'Source Code Pro',monospace;">brew install gh</div></div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <span style="width:24px;height:24px;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Source Code Pro',monospace;color:var(--text-secondary);flex-shrink:0;">2</span>
+              <div><div style="font-size:13px;font-weight:500;">Authenticate</div><div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;font-family:'Source Code Pro',monospace;">gh auth login</div></div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <span style="width:24px;height:24px;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'Source Code Pro',monospace;color:var(--text-secondary);flex-shrink:0;">3</span>
+              <div><div style="font-size:13px;font-weight:500;">Restart issuectl</div><div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">Refresh this page or restart the CLI</div></div>
+            </div>
+          </div>
+          <button class="btn btn-secondary" onclick="go('dashboard')">Try again</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ CREATE ISSUE MODAL ═══ -->
+<div class="modal-overlay" id="modal-create">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header">
+      <span class="modal-title">Create Issue</span>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Repository</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);">
+          <span style="width:8px;height:8px;border-radius:50%;background:#f85149;flex-shrink:0;"></span>
+          <span style="font-size:13px;font-weight:500;">mean-weasel/seatify</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-tertiary);cursor:pointer;">change</span>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Title</div>
+        <input class="settings-input" placeholder="Issue title" value="Add multi-select to guest list" style="width:100%">
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Description <span style="text-transform:none;font-weight:400;">(markdown)</span></div>
+        <textarea style="width:100%;height:120px;padding:10px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-family:'Karla',sans-serif;outline:none;resize:vertical;">Allow planners to select multiple guests at once for bulk actions like assigning tables, adding tags, or sending invites.
+
+Currently every action requires selecting guests one at a time.</textarea>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Labels</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;background:var(--purple-surface);color:var(--purple);border:1px solid rgba(188,140,255,0.3);">enhancement</span>
+          <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg-elevated);color:var(--text-tertiary);border:1px solid var(--border);">bug</span>
+          <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg-elevated);color:var(--text-tertiary);border:1px solid var(--border);">documentation</span>
+          <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg-elevated);color:var(--text-tertiary);border:1px solid var(--border);">good first issue</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal()">Create Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CLONE PROMPT MODAL ═══ -->
+<div class="modal-overlay" id="modal-clone">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header">
+      <span class="modal-title">Repository not cloned</span>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px;background:var(--yellow-surface);border:1px solid var(--yellow-border);border-radius:var(--radius-md);">
+        <span style="color:var(--yellow);font-size:18px;font-weight:700;">!</span>
+        <div style="font-size:13px;color:var(--text-secondary);"><strong style="color:var(--text-primary)">joshuayoes/ios-simulator-mcp</strong> has no local path configured. To launch Claude Code, the repo needs to be cloned locally.</div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Clone to</div>
+        <input class="settings-input" value="~/Desktop/ios-simulator-mcp" style="width:100%">
+      </div>
+      <div style="font-size:12px;color:var(--text-tertiary);line-height:1.5;">
+        This will run <code style="font-family:'Source Code Pro',monospace;background:var(--bg-elevated);padding:2px 6px;border-radius:3px;font-size:11px;color:var(--cyan);border:1px solid var(--border);">git clone</code> and update your config with the local path.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal()">Clone &amp; Launch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LAUNCH CONFIRMATION MODAL ═══ -->
+<div class="modal-overlay" id="modal-launch">
+  <div class="modal" style="width:620px;">
+    <div class="modal-header">
+      <span class="modal-title">Launch to Claude Code</span>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Issue summary -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);border:1px solid var(--border)">
+        <span class="issue-state-dot open"></span>
+        <div><div style="font-weight:500">#515 &middot; End-to-end guest data pipeline</div><div style="font-size:12px;color:var(--text-tertiary)">mean-weasel/seatify</div></div>
+      </div>
+
+      <!-- Branch name (editable) -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Branch</div>
+        <input class="settings-input" value="issue-515-guest-data-pipeline" style="width:100%">
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">Existing branch will be checked out</div>
+      </div>
+
+      <!-- Workspace mode -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Workspace</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--accent-surface);border:1px solid var(--accent-border);border-radius:var(--radius-md);cursor:pointer;">
+            <input type="radio" name="workspace" checked style="margin-top:2px;accent-color:var(--accent);">
+            <div><div style="font-size:13px;font-weight:500;color:var(--text-primary);">Existing repo</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:1px;">~/Desktop/seatify</div></div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;">
+            <input type="radio" name="workspace" style="margin-top:2px;accent-color:var(--accent);">
+            <div><div style="font-size:13px;font-weight:500;color:var(--text-primary);">Git worktree</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:1px;">~/.issuectl/worktrees/seatify-515/ &middot; isolated, fast, shared history</div></div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;">
+            <input type="radio" name="workspace" style="margin-top:2px;accent-color:var(--accent);">
+            <div><div style="font-size:13px;font-weight:500;color:var(--text-primary);">Fresh clone</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:1px;">/tmp/issuectl-seatify-515/ &middot; fully isolated, slower</div></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Context toggles -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Context</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Issue body</span> <span style="color:var(--text-tertiary);margin-left:auto;">always included</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Comment: neonwatty (6d ago) — quiz builder pattern</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Comment: neonwatty (4d ago) — inline editing</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Comment: neonwatty (2d ago) — declined RSVPs</span>
+          </label>
+          <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span style="font-family:'Source Code Pro',monospace;color:var(--cyan);font-size:11px;">src/lib/optimization/engine.ts</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span style="font-family:'Source Code Pro',monospace;color:var(--cyan);font-size:11px;">src/components/rsvp/QuizForm.tsx</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span style="font-family:'Source Code Pro',monospace;color:var(--cyan);font-size:11px;">src/app/api/guests/route.ts</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Custom preamble -->
+      <div>
+        <div style="font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Custom preamble <span style="text-transform:none;font-weight:400;">(optional)</span></div>
+        <textarea placeholder="Additional instructions for Claude Code..." style="width:100%;height:60px;padding:8px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-size:12px;font-family:'Karla',sans-serif;outline:none;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-launch" onclick="closeModal();go('launch-active')">Launch</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function go(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (view === 'dashboard') document.getElementById('nav-dashboard').classList.add('active');
+  else if (view === 'settings') document.getElementById('nav-settings').classList.add('active');
+  else if (view === 'prs' || view === 'pr-detail') document.getElementById('nav-prs').classList.add('active');
+  else if (view === 'onboarding') { var el = document.getElementById('nav-onboarding'); if (el) el.classList.add('active'); }
+  else if (view === 'auth-error') { var el2 = document.getElementById('nav-auth-error'); if (el2) el2.classList.add('active'); }
+  else document.getElementById('nav-issues').classList.add('active');
+}
+
+function showRepoTab(tab) {
+  const issuesTab = document.getElementById('repo-tab-issues');
+  const prsTab = document.getElementById('repo-tab-prs');
+  const tabs = document.querySelectorAll('#view-repo-detail .tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  if (tab === 'issues') { issuesTab.style.display = ''; prsTab.style.display = 'none'; tabs[0].classList.add('active'); }
+  else { issuesTab.style.display = 'none'; prsTab.style.display = ''; tabs[1].classList.add('active'); }
+}
+
+function openModal(id) { document.getElementById('modal-' + id).classList.add('active'); }
+function closeModal() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); }
+document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', (e) => { if (e.target === m) closeModal(); }); });
+</script>
+</body>
+</html>
