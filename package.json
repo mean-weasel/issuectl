@@ -11,7 +11,11 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@types/node": "^22.14.0",
     "husky": "^9.1.7",
-    "turbo": "^2.9.4"
+    "prettier": "^3.5.3",
+    "tsup": "^8.4.0",
+    "turbo": "^2.9.4",
+    "typescript": "^5.8.3"
   }
 }
