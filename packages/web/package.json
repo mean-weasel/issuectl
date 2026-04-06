@@ -1,0 +1,23 @@
+{
+  "name": "@issuectl/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app/",
+    "dev": "next dev --port 3847"
+  },
+  "dependencies": {
+    "@issuectl/core": "workspace:*",
+    "next": "^15.3.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^15.3.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0"
+  }
+}
