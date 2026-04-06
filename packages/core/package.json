@@ -10,6 +10,7 @@
     }
   },
   "dependencies": {
+    "@octokit/rest": "^22.0.0",
     "better-sqlite3": "^11.9.1"
   },
   "devDependencies": {
