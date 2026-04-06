@@ -1,5 +1,11 @@
 import type Database from "better-sqlite3";
 import type { CacheEntry } from "../types.js";
+import { getSetting } from "./settings.js";
+
+export function getCacheTtl(db: Database.Database): number {
+  const ttl = getSetting(db, "cache_ttl");
+  return ttl ? Number(ttl) : 300;
+}
 
 export function getCached<T>(
   db: Database.Database,
@@ -33,20 +39,15 @@ export function setCached(
   ).run(key, JSON.stringify(data));
 }
 
-export function isFresh(
+export function isFresh(fetchedAt: Date, ttlSeconds: number): boolean {
+  return Date.now() - fetchedAt.getTime() < ttlSeconds * 1000;
+}
+
+export function clearCacheKey(
   db: Database.Database,
   key: string,
-  ttlSeconds: number,
-): boolean {
-  const row = db
-    .prepare("SELECT fetched_at FROM cache WHERE key = ?")
-    .get(key) as { fetched_at: string } | undefined;
-
-  if (!row) return false;
-
-  const fetchedAt = new Date(row.fetched_at + "Z").getTime();
-  const now = Date.now();
-  return now - fetchedAt < ttlSeconds * 1000;
+): void {
+  db.prepare("DELETE FROM cache WHERE key = ?").run(key);
 }
 
 export function clearCache(
