@@ -30,3 +30,37 @@ export {
   isFresh,
   clearCache,
 } from "./db/cache.js";
+
+// GitHub client
+export type {
+  GitHubUser,
+  GitHubIssue,
+  GitHubPull,
+  GitHubComment,
+  GitHubLabel,
+  GitHubCheck,
+} from "./github/types.js";
+export { getGhToken, checkGhAuth } from "./github/auth.js";
+export { getOctokit, resetOctokit } from "./github/client.js";
+export {
+  listIssues,
+  getIssue,
+  createIssue,
+  updateIssue,
+  closeIssue,
+  getComments,
+  addComment,
+} from "./github/issues.js";
+export {
+  listPulls,
+  getPull,
+  getPullChecks,
+  findLinkedPRs,
+} from "./github/pulls.js";
+export {
+  LIFECYCLE_LABEL,
+  listLabels,
+  ensureLifecycleLabels,
+  addLabel,
+  removeLabel,
+} from "./github/labels.js";
