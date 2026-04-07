@@ -99,3 +99,12 @@ export {
   openGhosttyTab,
   verifyGhosttyInstalled,
 } from "./launch/ghostty.js";
+
+// Lifecycle label reconciliation
+export { matchLinkedPRs } from "./lifecycle/detect.js";
+export {
+  reconcileIssueLifecycle,
+  reconcileRepoLifecycle,
+  type ReconcileResult,
+  type LinkedPRState,
+} from "./lifecycle/reconcile.js";

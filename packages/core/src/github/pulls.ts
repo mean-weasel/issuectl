@@ -1,6 +1,7 @@
 import type { Octokit } from "@octokit/rest";
 import type { GitHubPull, GitHubCheck, GitHubPullFile, RawGitHubUser } from "./types.js";
 import { mapUser } from "./types.js";
+import { matchLinkedPRs } from "../lifecycle/detect.js";
 
 function mapPull(raw: unknown): GitHubPull {
   const r = raw as {
@@ -117,13 +118,6 @@ export async function findLinkedPRs(
   repo: string,
   issueNumber: number,
 ): Promise<GitHubPull[]> {
-  const pattern = /(?:closes|fixes|resolves)\s+(?:[\w.-]+\/[\w.-]+)?#(\d+)/gi;
   const pulls = await listPulls(octokit, owner, repo, "all");
-  return pulls.filter((pr) => {
-    if (!pr.body) return false;
-    for (const match of pr.body.matchAll(pattern)) {
-      if (Number(match[1]) === issueNumber) return true;
-    }
-    return false;
-  });
+  return matchLinkedPRs(pulls, issueNumber);
 }
