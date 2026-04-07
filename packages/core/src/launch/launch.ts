@@ -1,0 +1,159 @@
+import type Database from "better-sqlite3";
+import type { Octokit } from "@octokit/rest";
+import { getRepo } from "../db/repos.js";
+import { getSetting } from "../db/settings.js";
+import { recordDeployment } from "../db/deployments.js";
+import { getIssueDetail } from "../data/issues.js";
+import { ensureLifecycleLabels, addLabel } from "../github/labels.js";
+import { LIFECYCLE_LABEL } from "../github/labels.js";
+import {
+  assembleContext,
+  writeContextFile,
+  type LaunchContext,
+} from "./context.js";
+import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
+import { openGhosttyWindow, openGhosttyTab } from "./ghostty.js";
+
+export interface LaunchOptions {
+  owner: string;
+  repo: string;
+  issueNumber: number;
+  branchName: string;
+  workspaceMode: WorkspaceMode;
+  selectedComments: number[];
+  selectedFiles: string[];
+  preamble?: string;
+  terminalMode: "window" | "tab";
+}
+
+export interface LaunchResult {
+  deploymentId: number;
+  branchName: string;
+  workspacePath: string;
+  contextFilePath: string;
+}
+
+function expandHome(p: string): string {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? "/";
+  return p.startsWith("~") ? p.replace("~", home) : p;
+}
+
+export async function executeLaunch(
+  db: Database.Database,
+  octokit: Octokit,
+  options: LaunchOptions,
+): Promise<LaunchResult> {
+  // 1. Fetch issue detail
+  const detail = await getIssueDetail(
+    db,
+    octokit,
+    options.owner,
+    options.repo,
+    options.issueNumber,
+  );
+
+  // 2. Filter comments/files based on selections
+  const filteredComments = options.selectedComments.map((i) => {
+    const c = detail.comments[i];
+    if (!c) throw new Error(`Comment index ${i} out of range`);
+    return {
+      author: c.user?.login ?? "unknown",
+      body: c.body,
+      createdAt: c.createdAt,
+    };
+  });
+
+  const filteredFiles =
+    options.selectedFiles.length > 0
+      ? options.selectedFiles
+      : detail.referencedFiles;
+
+  // 3. Assemble context string
+  const launchContext: LaunchContext = {
+    issueNumber: options.issueNumber,
+    issueTitle: detail.issue.title,
+    issueBody: detail.issue.body ?? "",
+    comments: filteredComments,
+    referencedFiles: filteredFiles,
+    preamble: options.preamble,
+    closesInstruction: `Include \`Closes #${options.issueNumber}\` in any PR you create for this issue.`,
+  };
+  const contextString = assembleContext(launchContext);
+
+  // 4. Write context to temp file
+  const contextFilePath = await writeContextFile(
+    contextString,
+    options.issueNumber,
+  );
+
+  // 5. Get repo local path from DB
+  const repoRecord = getRepo(db, options.owner, options.repo);
+  if (!repoRecord) {
+    throw new Error(
+      `Repository ${options.owner}/${options.repo} not found in database`,
+    );
+  }
+
+  const repoPath = repoRecord.localPath
+    ? expandHome(repoRecord.localPath)
+    : null;
+
+  if (!repoPath && options.workspaceMode !== "clone") {
+    throw new Error(
+      `No local path configured for ${options.owner}/${options.repo}. Set a local path in settings or use clone mode.`,
+    );
+  }
+
+  // 6. Prepare workspace
+  const worktreeDir = expandHome(
+    getSetting(db, "worktree_dir") ?? "~/.issuectl/worktrees/",
+  );
+
+  const workspace = await prepareWorkspace({
+    mode: options.workspaceMode,
+    repoPath: repoPath ?? "",
+    owner: options.owner,
+    repo: options.repo,
+    branchName: options.branchName,
+    issueNumber: options.issueNumber,
+    worktreeDir,
+  });
+
+  // 7. Apply issuectl:deployed label
+  await ensureLifecycleLabels(octokit, options.owner, options.repo);
+  await addLabel(
+    octokit,
+    options.owner,
+    options.repo,
+    options.issueNumber,
+    LIFECYCLE_LABEL.deployed,
+  );
+
+  // 8. Record deployment in DB
+  const deployment = recordDeployment(db, {
+    repoId: repoRecord.id,
+    issueNumber: options.issueNumber,
+    branchName: options.branchName,
+    workspaceMode: options.workspaceMode,
+    workspacePath: workspace.path,
+  });
+
+  // 9. Open Ghostty terminal
+  if (options.terminalMode === "tab") {
+    openGhosttyTab(workspace.path, contextFilePath);
+  } else {
+    openGhosttyWindow(workspace.path, contextFilePath);
+  }
+
+  // 10. Return result
+  return {
+    deploymentId: deployment.id,
+    branchName: options.branchName,
+    workspacePath: workspace.path,
+    contextFilePath,
+  };
+}
+
+export { generateBranchName } from "./branch.js";
+export { type WorkspaceMode, type WorkspaceResult } from "./workspace.js";
+export { type LaunchContext } from "./context.js";
