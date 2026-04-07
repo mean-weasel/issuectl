@@ -41,6 +41,7 @@ export type {
   GitHubComment,
   GitHubLabel,
   GitHubCheck,
+  GitHubPullFile,
 } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit } from "./github/client.js";

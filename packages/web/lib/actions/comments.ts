@@ -22,5 +22,6 @@ export async function addComment(
     return { success: false, error: "Failed to post comment" };
   }
   revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
+  revalidatePath(`/${owner}/${repo}/pulls/${issueNumber}`);
   return { success: true };
 }

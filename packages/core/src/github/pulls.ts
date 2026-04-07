@@ -1,5 +1,5 @@
 import type { Octokit } from "@octokit/rest";
-import type { GitHubPull, GitHubCheck, RawGitHubUser } from "./types.js";
+import type { GitHubPull, GitHubCheck, GitHubPullFile, RawGitHubUser } from "./types.js";
 import { mapUser } from "./types.js";
 
 function mapPull(raw: unknown): GitHubPull {
@@ -15,6 +15,7 @@ function mapPull(raw: unknown): GitHubPull {
     base: { ref: string };
     additions: number;
     deletions: number;
+    changed_files: number;
     created_at: string;
     updated_at: string;
     closed_at: string | null;
@@ -31,6 +32,7 @@ function mapPull(raw: unknown): GitHubPull {
     baseRef: r.base.ref,
     additions: r.additions ?? 0,
     deletions: r.deletions ?? 0,
+    changedFiles: r.changed_files ?? 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     mergedAt: r.merged_at ?? null,
@@ -82,8 +84,30 @@ export async function getPullChecks(
   return data.check_runs.map((run) => ({
     name: run.name,
     status: run.status as GitHubCheck["status"],
-    conclusion: run.conclusion ?? null,
+    conclusion: (run.conclusion as GitHubCheck["conclusion"]) ?? null,
+    startedAt: run.started_at ?? null,
+    completedAt: run.completed_at ?? null,
     htmlUrl: run.html_url ?? null,
+  }));
+}
+
+export async function listPullFiles(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<GitHubPullFile[]> {
+  const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+    owner,
+    repo,
+    pull_number: number,
+    per_page: 100,
+  });
+  return files.map((f) => ({
+    filename: f.filename,
+    status: f.status as GitHubPullFile["status"],
+    additions: f.additions,
+    deletions: f.deletions,
   }));
 }
 

@@ -42,6 +42,7 @@ export type GitHubPull = {
   baseRef: string;
   additions: number;
   deletions: number;
+  changedFiles: number;
   createdAt: string;
   updatedAt: string;
   mergedAt: string | null;
@@ -59,6 +60,15 @@ export function mapUser(raw: RawGitHubUser): GitHubUser | null {
 export type GitHubCheck = {
   name: string;
   status: "queued" | "in_progress" | "completed";
-  conclusion: string | null;
+  conclusion: "success" | "failure" | "neutral" | "cancelled" | "timed_out" | "action_required" | "skipped" | "stale" | null;
+  startedAt: string | null;
+  completedAt: string | null;
   htmlUrl: string | null;
+};
+
+export type GitHubPullFile = {
+  filename: string;
+  status: "added" | "modified" | "removed" | "renamed" | "copied" | "changed" | "unchanged";
+  additions: number;
+  deletions: number;
 };

@@ -1,7 +1,7 @@
 import type { Octokit } from "@octokit/rest";
 import type Database from "better-sqlite3";
-import type { GitHubPull, GitHubCheck, GitHubIssue } from "../github/types.js";
-import { listPulls, getPull, getPullChecks } from "../github/pulls.js";
+import type { GitHubPull, GitHubCheck, GitHubIssue, GitHubPullFile } from "../github/types.js";
+import { listPulls, getPull, getPullChecks, listPullFiles } from "../github/pulls.js";
 import { getIssue } from "../github/issues.js";
 import { getCacheTtl, getCached, setCached, isFresh } from "../db/cache.js";
 
@@ -46,20 +46,16 @@ export async function getPulls(
   return { pulls, fromCache: false, cachedAt: new Date() };
 }
 
-export async function getPullDetail(
-  db: Database.Database,
+async function fetchPullDetail(
   octokit: Octokit,
   owner: string,
   repo: string,
   number: number,
-): Promise<{
-  pull: GitHubPull;
-  checks: GitHubCheck[];
-  linkedIssue: GitHubIssue | null;
-}> {
-  const [pull, checks] = await Promise.all([
+): Promise<CachedPullDetail> {
+  const [pull, checks, files] = await Promise.all([
     getPull(octokit, owner, repo, number),
     getPullChecks(octokit, owner, repo, `pull/${number}/head`),
+    listPullFiles(octokit, owner, repo, number),
   ]);
 
   const issueNumber = extractLinkedIssueNumber(pull.body);
@@ -78,5 +74,42 @@ export async function getPullDetail(
     }
   }
 
-  return { pull, checks, linkedIssue };
+  return { pull, checks, files, linkedIssue };
+}
+
+type CachedPullDetail = {
+  pull: GitHubPull;
+  checks: GitHubCheck[];
+  files: GitHubPullFile[];
+  linkedIssue: GitHubIssue | null;
+};
+
+export async function getPullDetail(
+  db: Database.Database,
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+  options?: { forceRefresh?: boolean },
+): Promise<CachedPullDetail & { fromCache: boolean; cachedAt: Date | null }> {
+  const cacheKey = `pull-detail:${owner}/${repo}#${number}`;
+  const ttl = getCacheTtl(db);
+
+  if (!options?.forceRefresh) {
+    const cached = getCached<CachedPullDetail>(db, cacheKey);
+    if (cached) {
+      if (!isFresh(cached.fetchedAt, ttl)) {
+        fetchPullDetail(octokit, owner, repo, number).then((data) => {
+          setCached(db, cacheKey, data);
+        }).catch((err) => {
+          console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
+        });
+      }
+      return { ...cached.data, fromCache: true, cachedAt: cached.fetchedAt };
+    }
+  }
+
+  const data = await fetchPullDetail(octokit, owner, repo, number);
+  setCached(db, cacheKey, data);
+  return { ...data, fromCache: false, cachedAt: new Date() };
 }

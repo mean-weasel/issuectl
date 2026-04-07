@@ -8,13 +8,14 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  title?: string;
 };
 
-export function CommentThread({ comments, owner, repo, issueNumber }: Props) {
+export function CommentThread({ comments, owner, repo, issueNumber, title }: Props) {
   return (
     <div className={styles.container}>
       <span className={styles.title}>
-        {comments.length} Comment{comments.length !== 1 ? "s" : ""}
+        {title ?? `${comments.length} Comment${comments.length !== 1 ? "s" : ""}`}
       </span>
       {comments.map((comment) => (
         <CommentCard key={comment.id} comment={comment} />

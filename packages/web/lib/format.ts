@@ -13,3 +13,13 @@ export function formatDate(dateStr: string): string {
     timeZone: "UTC",
   }).format(new Date(dateStr));
 }
+
+export function formatDuration(startedAt: string, completedAt: string): string {
+  const raw = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (Number.isNaN(raw)) return "--";
+  const ms = Math.max(0, raw);
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}

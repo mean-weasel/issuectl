@@ -1,0 +1,25 @@
+.badge {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+}
+
+.open {
+  background: rgba(63, 185, 80, 0.12);
+  color: var(--green);
+  border: 1px solid rgba(63, 185, 80, 0.25);
+}
+
+.merged {
+  background: rgba(188, 140, 255, 0.12);
+  color: var(--purple);
+  border: 1px solid rgba(188, 140, 255, 0.25);
+}
+
+.closed {
+  background: rgba(248, 81, 73, 0.12);
+  color: var(--red);
+  border: 1px solid rgba(248, 81, 73, 0.25);
+}
