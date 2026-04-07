@@ -5,7 +5,6 @@ import {
   getDb,
   getOctokit,
   executeLaunch,
-  type LaunchResult,
   type WorkspaceMode,
 } from "@issuectl/core";
 
@@ -22,7 +21,7 @@ type LaunchFormData = {
 
 type LaunchResponse = {
   success: boolean;
-  launchResult?: LaunchResult;
+  deploymentId?: number;
   error?: string;
 };
 
@@ -32,6 +31,8 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
   "clone",
 ];
 
+const VALID_BRANCH_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
+
 export async function launchIssue(
   formData: LaunchFormData,
 ): Promise<LaunchResponse> {
@@ -40,11 +41,18 @@ export async function launchIssue(
   if (!owner || !repo || !Number.isInteger(issueNumber) || issueNumber <= 0) {
     return { success: false, error: "Invalid issue reference" };
   }
-  if (!branchName.trim()) {
+  const trimmedBranch = branchName.trim();
+  if (!trimmedBranch) {
     return { success: false, error: "Branch name is required" };
+  }
+  if (!VALID_BRANCH_RE.test(trimmedBranch)) {
+    return { success: false, error: "Branch name contains invalid characters" };
   }
   if (!VALID_WORKSPACE_MODES.includes(workspaceMode)) {
     return { success: false, error: "Invalid workspace mode" };
+  }
+  if (formData.selectedCommentIndices.some((i) => !Number.isInteger(i) || i < 0)) {
+    return { success: false, error: "Invalid comment selection" };
   }
 
   try {
@@ -55,7 +63,7 @@ export async function launchIssue(
       owner,
       repo,
       issueNumber,
-      branchName,
+      branchName: trimmedBranch,
       workspaceMode,
       selectedComments: formData.selectedCommentIndices,
       selectedFiles: formData.selectedFilePaths,
@@ -63,9 +71,13 @@ export async function launchIssue(
       terminalMode: "window",
     });
 
-    revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
+    try {
+      revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
+    } catch (revalErr) {
+      console.warn("[issuectl] Cache revalidation failed (launch succeeded):", revalErr);
+    }
 
-    return { success: true, launchResult: result };
+    return { success: true, deploymentId: result.deploymentId };
   } catch (err) {
     console.error("[issuectl] Launch failed:", err);
     const message =

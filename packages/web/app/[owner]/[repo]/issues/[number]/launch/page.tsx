@@ -55,8 +55,11 @@ export default async function LaunchActivePage({
     );
     commentCount = detail.comments.length;
     fileCount = detail.referencedFiles.length;
-  } catch {
-    // Non-fatal — we still show the deployment info
+  } catch (err) {
+    console.error(
+      `[issuectl] Failed to load issue detail for #${issueNumber} on launch page:`,
+      err,
+    );
   }
 
   return (

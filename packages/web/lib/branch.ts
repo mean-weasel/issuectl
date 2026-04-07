@@ -1,7 +1,7 @@
 /**
- * Generate a branch name from a pattern, issue number, and title.
- * Mirrors the logic in @issuectl/core but lives in the web package
- * so it can be used in client components without pulling in Node.js deps.
+ * Duplicated from @issuectl/core/launch/branch.ts because that module
+ * imports Node.js built-ins (child_process, util) unavailable in client
+ * components. If the core version changes, this must be updated to match.
  */
 export function generateBranchName(
   pattern: string,
