@@ -72,3 +72,30 @@ export {
   getComments,
   addComment,
 } from "./data/comments.js";
+
+// Launch flow
+export {
+  executeLaunch,
+  type LaunchOptions,
+  type LaunchResult,
+  type LaunchContext,
+  type WorkspaceMode,
+  type WorkspaceResult,
+  generateBranchName,
+} from "./launch/launch.js";
+export {
+  branchExists,
+  createOrCheckoutBranch,
+  isWorkingTreeClean,
+  getDefaultBranch,
+} from "./launch/branch.js";
+export {
+  assembleContext,
+  writeContextFile,
+} from "./launch/context.js";
+export { prepareWorkspace } from "./launch/workspace.js";
+export {
+  openGhosttyWindow,
+  openGhosttyTab,
+  verifyGhosttyInstalled,
+} from "./launch/ghostty.js";
