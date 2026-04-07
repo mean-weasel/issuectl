@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import type { GitHubLabel } from "@issuectl/core";
+import type { RepoOption } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { CreateIssueModal } from "./CreateIssueModal";
-
-export type RepoOption = { owner: string; repo: string };
 
 type Props = {
   repos: RepoOption[];

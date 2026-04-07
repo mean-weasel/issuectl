@@ -20,13 +20,17 @@ export function Modal({
   onClose,
   disabled,
 }: Props) {
+  // Stable ref avoids re-registering the keydown listener when onClose identity changes
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
   useEffect(() => {
     if (disabled) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCloseRef.current();
+      if (e.key === "Escape") {
+        e.stopImmediatePropagation();
+        onCloseRef.current();
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);

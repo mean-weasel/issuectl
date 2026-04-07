@@ -1,5 +1,7 @@
 import type { Repo } from "@issuectl/core";
 
+export type RepoOption = { owner: string; repo: string };
+
 export type RepoWithStats = Repo & {
   issueCount: number;
   prCount: number;

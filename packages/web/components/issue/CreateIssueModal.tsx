@@ -6,7 +6,7 @@ import type { GitHubLabel } from "@issuectl/core";
 import { createIssue } from "@/lib/actions/issues";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import type { RepoOption } from "./NewIssueButton";
+import type { RepoOption } from "@/lib/types";
 import { LabelSelector } from "./LabelSelector";
 import styles from "./CreateIssueModal.module.css";
 

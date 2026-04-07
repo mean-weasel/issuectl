@@ -35,12 +35,14 @@ export default async function IssueDetailPage({ params }: Props) {
 
   try {
     const octokit = await getOctokit();
-    const [detail, repoLabels] = await Promise.all([
-      getIssueDetail(db, octokit, owner, repo, issueNumber),
-      listLabels(octokit, owner, repo),
-    ]);
-    data = detail;
-    availableLabels = repoLabels;
+    data = await getIssueDetail(db, octokit, owner, repo, issueNumber);
+
+    // Labels are supplementary — fetch separately so a failure doesn't break the page
+    try {
+      availableLabels = await listLabels(octokit, owner, repo);
+    } catch (labelErr) {
+      console.warn(`[issuectl] Failed to load labels for ${owner}/${repo}:`, labelErr);
+    }
   } catch (err) {
     console.error(
       `[issuectl] Failed to load issue #${issueNumber}:`,

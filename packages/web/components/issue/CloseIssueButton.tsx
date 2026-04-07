@@ -44,7 +44,7 @@ export function CloseIssueButton({ owner, repo, number, isClosed }: Props) {
           onConfirm={handleClose}
           onCancel={() => setShowConfirm(false)}
           isPending={isPending}
-          error={error}
+          error={error ?? undefined}
         />
       )}
     </>

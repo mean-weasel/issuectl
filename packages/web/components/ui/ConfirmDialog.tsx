@@ -11,7 +11,7 @@ type Props = {
   onConfirm: () => void;
   onCancel: () => void;
   isPending?: boolean;
-  error?: string | null;
+  error?: string;
 };
 
 export function ConfirmDialog({

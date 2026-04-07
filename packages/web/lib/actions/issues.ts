@@ -49,8 +49,8 @@ export async function updateIssue(data: {
   body?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const { owner, repo, number, title, body } = data;
-  if (!owner || !repo || number <= 0) {
-    return { success: false, error: "Invalid input" };
+  if (!owner || !repo || !Number.isFinite(number) || number <= 0) {
+    return { success: false, error: "Valid owner, repo, and issue number are required" };
   }
   if (title !== undefined && !title.trim()) {
     return { success: false, error: "Title cannot be empty" };
@@ -78,8 +78,8 @@ export async function closeIssue(
   repo: string,
   number: number,
 ): Promise<{ success: boolean; error?: string }> {
-  if (!owner || !repo || number <= 0) {
-    return { success: false, error: "Invalid input" };
+  if (!owner || !repo || !Number.isFinite(number) || number <= 0) {
+    return { success: false, error: "Valid owner, repo, and issue number are required" };
   }
 
   try {
@@ -104,8 +104,8 @@ export async function toggleLabel(data: {
   action: "add" | "remove";
 }): Promise<{ success: boolean; error?: string }> {
   const { owner, repo, number, label, action } = data;
-  if (!owner || !repo || number <= 0 || !label) {
-    return { success: false, error: "Invalid input" };
+  if (!owner || !repo || !Number.isFinite(number) || number <= 0 || !label) {
+    return { success: false, error: "Valid owner, repo, issue number, and label are required" };
   }
 
   try {
