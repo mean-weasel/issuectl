@@ -1,5 +1,6 @@
 import type {
   GitHubIssue,
+  GitHubComment,
   GitHubPull,
   GitHubLabel,
   Deployment,
@@ -13,12 +14,13 @@ import styles from "./IssueSidebar.module.css";
 
 type Props = {
   issue: GitHubIssue;
-  commentCount: number;
+  comments: GitHubComment[];
   deployments: Deployment[];
   linkedPRs: GitHubPull[];
   referencedFiles: string[];
   owner: string;
   repo: string;
+  repoLocalPath: string | null;
 };
 
 function getDisplayLabels(labels: GitHubLabel[]): GitHubLabel[] {
@@ -32,20 +34,24 @@ function getDisplayLabels(labels: GitHubLabel[]): GitHubLabel[] {
 
 export function IssueSidebar({
   issue,
-  commentCount,
+  comments,
   deployments,
   linkedPRs,
   referencedFiles,
   owner,
   repo,
+  repoLocalPath,
 }: Props) {
   const displayLabels = getDisplayLabels(issue.labels);
 
   return (
     <div className={styles.sidebar}>
       <LaunchCard
+        owner={owner}
+        repo={repo}
+        repoLocalPath={repoLocalPath}
         issue={issue}
-        commentCount={commentCount}
+        comments={comments}
         deployments={deployments}
         referencedFiles={referencedFiles}
       />

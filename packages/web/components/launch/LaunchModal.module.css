@@ -1,0 +1,101 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+}
+
+.header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-family: var(--font-display), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.close {
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 18px;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.body {
+  padding: 20px 24px;
+}
+
+.footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Issue summary card */
+.issueSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.issueDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.issueTitle {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.issueRepo {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.error {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--red-surface);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--red);
+  font-size: 12px;
+}
