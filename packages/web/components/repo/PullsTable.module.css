@@ -1,0 +1,175 @@
+.container {
+  flex: 1;
+  padding: 0 32px 32px;
+  overflow-y: auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+  position: sticky;
+  top: 0;
+  background: var(--bg-base);
+  z-index: 10;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr {
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.table tbody td {
+  padding: 12px 12px;
+  font-size: 13.5px;
+  vertical-align: middle;
+}
+
+.prCell {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.stateDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.open {
+  background: var(--green);
+}
+
+.merged {
+  background: var(--purple);
+}
+
+.closed {
+  background: var(--red);
+}
+
+.prInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.prTitle {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 480px;
+}
+
+.prSubtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.num {
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.statusOpen {
+  composes: statusBadge;
+  background: var(--green-surface);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+.statusMerged {
+  composes: statusBadge;
+  background: var(--purple-surface);
+  color: var(--purple);
+  border: 1px solid rgba(188, 140, 255, 0.2);
+}
+
+.statusClosed {
+  composes: statusBadge;
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+}
+
+.linkedIssue {
+  color: var(--blue);
+  font-size: 12px;
+  font-family: var(--font-mono), monospace;
+}
+
+.changes {
+  font-size: 12px;
+  font-family: var(--font-mono), monospace;
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.plus {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.minus {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.ageCell {
+  font-size: 12px;
+  font-family: var(--font-mono), monospace;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
