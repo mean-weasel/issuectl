@@ -9,7 +9,6 @@ export interface LaunchContext {
   comments: Array<{ author: string; body: string; createdAt: string }>;
   referencedFiles: string[];
   preamble?: string;
-  closesInstruction: string;
 }
 
 export function assembleContext(data: LaunchContext): string {
@@ -23,11 +22,14 @@ export function assembleContext(data: LaunchContext): string {
   if (data.comments.length > 0) {
     sections.push("---\n\n## Comments\n");
     for (const c of data.comments) {
-      const date = new Date(c.createdAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      const parsed = new Date(c.createdAt);
+      const date = isNaN(parsed.getTime())
+        ? c.createdAt
+        : parsed.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          });
       sections.push(`**${c.author}** (${date}):\n${c.body}\n`);
     }
   }
@@ -45,7 +47,7 @@ export function assembleContext(data: LaunchContext): string {
   }
 
   sections.push(
-    `---\n\n**Important:** ${data.closesInstruction}`,
+    `---\n\n**Important:** Include \`Closes #${data.issueNumber}\` in any PR you create for this issue.`,
   );
 
   return sections.join("\n");

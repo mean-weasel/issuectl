@@ -1,7 +1,20 @@
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
+}
+
+export async function verifyGhosttyInstalled(): Promise<void> {
+  try {
+    await execFileAsync("which", ["ghostty"]);
+  } catch {
+    throw new Error(
+      "Ghostty terminal is not installed or not on PATH. Install Ghostty from https://ghostty.org",
+    );
+  }
 }
 
 function launchGhostty(

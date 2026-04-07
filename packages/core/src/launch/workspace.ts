@@ -49,8 +49,8 @@ async function prepareExisting(
   }
 
   await execFileAsync("git", ["fetch", "origin"], { cwd: repoPath }).catch(
-    () => {
-      // Fetch may fail if offline — continue anyway
+    (err) => {
+      console.warn("[issuectl] git fetch failed, continuing with local state:", (err as Error).message);
     },
   );
 
@@ -92,11 +92,15 @@ async function prepareWorktree(options: {
         );
         return { path: worktreePath, mode: "worktree", created: true };
       } catch (retryErr) {
-        await rm(worktreePath, { recursive: true, force: true }).catch(() => {});
+        await rm(worktreePath, { recursive: true, force: true }).catch((e) => {
+        console.warn("[issuectl] Failed to clean up worktree:", (e as Error).message);
+      });
         throw retryErr;
       }
     }
-    await rm(worktreePath, { recursive: true, force: true }).catch(() => {});
+    await rm(worktreePath, { recursive: true, force: true }).catch((e) => {
+        console.warn("[issuectl] Failed to clean up worktree:", (e as Error).message);
+      });
     throw err;
   }
 }

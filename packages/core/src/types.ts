@@ -19,12 +19,14 @@ export type Setting = {
   value: string;
 };
 
+import type { WorkspaceMode } from "./launch/workspace.js";
+
 export type Deployment = {
   id: number;
   repoId: number;
   issueNumber: number;
   branchName: string;
-  workspaceMode: "existing" | "worktree" | "clone";
+  workspaceMode: WorkspaceMode;
   workspacePath: string;
   linkedPrNumber: number | null;
   launchedAt: string;

@@ -12,7 +12,11 @@ import {
   type LaunchContext,
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
-import { openGhosttyWindow, openGhosttyTab } from "./ghostty.js";
+import {
+  openGhosttyWindow,
+  openGhosttyTab,
+  verifyGhosttyInstalled,
+} from "./ghostty.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -45,6 +49,9 @@ export async function executeLaunch(
   octokit: Octokit,
   options: LaunchOptions,
 ): Promise<LaunchResult> {
+  // 0. Verify Ghostty is available before doing any work
+  await verifyGhosttyInstalled();
+
   // 1. Fetch issue detail
   const detail = await getIssueDetail(
     db,
@@ -78,7 +85,6 @@ export async function executeLaunch(
     comments: filteredComments,
     referencedFiles: filteredFiles,
     preamble: options.preamble,
-    closesInstruction: `Include \`Closes #${options.issueNumber}\` in any PR you create for this issue.`,
   };
   const contextString = assembleContext(launchContext);
 

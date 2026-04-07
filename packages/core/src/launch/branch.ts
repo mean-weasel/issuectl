@@ -32,7 +32,12 @@ export async function branchExists(
       { cwd: repoPath },
     );
     return true;
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    const stderr = (err as { stderr?: string }).stderr ?? "";
+    if (code === "ENOENT" || stderr.includes("not a git repository")) {
+      throw err;
+    }
     return false;
   }
 }
@@ -69,7 +74,13 @@ export async function getDefaultBranch(repoPath: string): Promise<string> {
       { cwd: repoPath },
     );
     return stdout.trim();
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    const stderr = (err as { stderr?: string }).stderr ?? "";
+    if (code === "ENOENT" || stderr.includes("not a git repository")) {
+      throw err;
+    }
+    console.warn("[issuectl] Could not detect default branch, falling back to origin/main");
     return "origin/main";
   }
 }

@@ -97,4 +97,5 @@ export { prepareWorkspace } from "./launch/workspace.js";
 export {
   openGhosttyWindow,
   openGhosttyTab,
+  verifyGhosttyInstalled,
 } from "./launch/ghostty.js";
