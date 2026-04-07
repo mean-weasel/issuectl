@@ -1,13 +1,16 @@
 import Link from "next/link";
-import { getDb, listRepos, checkGhAuth, getCached } from "@issuectl/core";
+import { getDb, listRepos, getCached } from "@issuectl/core";
 import type { GitHubIssue, GitHubPull } from "@issuectl/core";
 import { REPO_COLORS } from "@/lib/constants";
 import { SidebarRepoList } from "./SidebarRepoList";
 import styles from "./Sidebar.module.css";
 
-export async function Sidebar() {
+type Props = {
+  username: string;
+};
+
+export async function Sidebar({ username }: Props) {
   let repos: Array<{ owner: string; name: string; issueCount: number }> = [];
-  let username = "unknown";
   let totalIssues = 0;
   let totalPRs = 0;
 
@@ -23,7 +26,6 @@ export async function Sidebar() {
     });
     totalIssues = repos.reduce((sum, r) => sum + r.issueCount, 0);
 
-    // Get PR counts from cache
     for (const r of dbRepos) {
       const cached = getCached<GitHubPull[]>(db, `pulls:${r.owner}/${r.name}`);
       if (cached) {
@@ -31,14 +33,7 @@ export async function Sidebar() {
       }
     }
   } catch (err) {
-    // DB may not exist yet (first run before init)
     console.warn("[issuectl] Sidebar failed to load repos:", err);
-  }
-
-  // checkGhAuth returns errors as values — no try-catch needed
-  const auth = await checkGhAuth();
-  if (auth.ok && auth.username) {
-    username = auth.username;
   }
 
   return (
