@@ -1,0 +1,22 @@
+.message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.danger {
+  background: var(--red);
+  color: var(--text-inverse);
+  border-color: var(--red);
+}
+
+.danger:hover {
+  background: #e5443c;
+}
+
+.error {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--red);
+}

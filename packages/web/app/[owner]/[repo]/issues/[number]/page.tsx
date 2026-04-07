@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { getDb, getOctokit, getIssueDetail, getRepo } from "@issuectl/core";
+import {
+  getDb,
+  getOctokit,
+  getIssueDetail,
+  getRepo,
+  listLabels,
+  type GitHubLabel,
+} from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { IssueBody } from "@/components/issue/IssueBody";
+import { IssueDetailClient } from "@/components/issue/IssueDetailClient";
 import { CommentThread } from "@/components/issue/CommentThread";
 import { IssueSidebar } from "@/components/issue/IssueSidebar";
 import { CloseIssueButton } from "@/components/issue/CloseIssueButton";
@@ -24,10 +31,16 @@ export default async function IssueDetailPage({ params }: Props) {
 
   const db = getDb();
   let data: Awaited<ReturnType<typeof getIssueDetail>> | null = null;
+  let availableLabels: GitHubLabel[] = [];
 
   try {
     const octokit = await getOctokit();
-    data = await getIssueDetail(db, octokit, owner, repo, issueNumber);
+    const [detail, repoLabels] = await Promise.all([
+      getIssueDetail(db, octokit, owner, repo, issueNumber),
+      listLabels(octokit, owner, repo),
+    ]);
+    data = detail;
+    availableLabels = repoLabels;
   } catch (err) {
     console.error(
       `[issuectl] Failed to load issue #${issueNumber}:`,
@@ -81,7 +94,11 @@ export default async function IssueDetailPage({ params }: Props) {
       />
       <div className={styles.detailView}>
         <div className={styles.main}>
-          <IssueBody body={issue.body} />
+          <IssueDetailClient
+            owner={owner}
+            repo={repo}
+            issue={issue}
+          />
           <CommentThread
             comments={comments}
             owner={owner}
@@ -98,6 +115,7 @@ export default async function IssueDetailPage({ params }: Props) {
           owner={owner}
           repo={repo}
           repoLocalPath={repoLocalPath}
+          availableLabels={availableLabels}
         />
       </div>
     </>

@@ -1,0 +1,132 @@
+.field {
+  margin-bottom: 16px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.hint {
+  text-transform: none;
+  font-weight: 400;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-karla), sans-serif;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent-border);
+}
+
+.textarea {
+  width: 100%;
+  height: 120px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-karla), sans-serif;
+  outline: none;
+  resize: vertical;
+}
+
+.textarea:focus {
+  border-color: var(--accent-border);
+}
+
+.repoDisplay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.repoDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.repoName {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.changeLink {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.changeLink:hover {
+  color: var(--text-secondary);
+}
+
+.repoList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.repoOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.repoOption:last-child {
+  border-bottom: none;
+}
+
+.repoOption:hover {
+  background: var(--bg-hover);
+}
+
+.error {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--red-surface);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--red);
+  font-size: 12px;
+}

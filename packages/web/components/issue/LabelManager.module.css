@@ -1,0 +1,52 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+}
+
+.editButton {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.editButton:hover {
+  color: var(--text-secondary);
+}
+
+.labels {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.selector {
+  padding-top: 4px;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.error {
+  font-size: 11px;
+  color: var(--red);
+}
