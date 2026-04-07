@@ -16,5 +16,8 @@ export async function requireAuth(): Promise<{ username: string }> {
     }
     process.exit(1);
   }
+  if (!auth.username) {
+    log.warn("Could not determine GitHub username. Some features may not work correctly.");
+  }
   return { username: auth.username ?? "unknown" };
 }

@@ -30,7 +30,13 @@ export async function webCommand(options: { port: string }): Promise<void> {
 
   // Auto-open browser after a short delay (macOS only for v1)
   setTimeout(() => {
-    execFile("open", [`http://localhost:${port}`], () => {});
+    execFile("open", [`http://localhost:${port}`], (err) => {
+      if (err) {
+        log.warn(
+          `Could not auto-open browser: ${err.message}. Open http://localhost:${port} manually.`,
+        );
+      }
+    });
   }, 2000);
 
   child.on("error", (err) => {

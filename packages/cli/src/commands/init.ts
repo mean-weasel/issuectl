@@ -24,8 +24,16 @@ export async function initCommand(): Promise<void> {
     closeDb();
   }
 
-  const db = getDb();
-  seedDefaults(db);
+  let db;
+  try {
+    db = getDb();
+    seedDefaults(db);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.error(`Failed to initialize database: ${message}`);
+    log.info("Check that ~/.issuectl/ is writable and has sufficient disk space.");
+    process.exit(1);
+  }
   log.success("Database created and defaults seeded.");
 
   const addFirst = await confirm({
