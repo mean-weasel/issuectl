@@ -7,6 +7,7 @@ import { findLinkedPRs } from "../github/pulls.js";
 import { getCacheTtl, getCached, setCached, isFresh } from "../db/cache.js";
 import { getDeploymentsForIssue } from "../db/deployments.js";
 import { getRepo } from "../db/repos.js";
+import { reconcileIssueLifecycle } from "../lifecycle/reconcile.js";
 
 const FILE_PATH_PATTERN = /`([a-zA-Z0-9_./-]+\.[a-zA-Z]{1,10})`/g;
 const GITHUB_BLOB_PATTERN =
@@ -96,8 +97,13 @@ export async function getIssueDetail(
           getIssue(octokit, owner, repo, number),
           fetchComments(octokit, owner, repo, number),
           findLinkedPRs(octokit, owner, repo, number),
-        ]).then(([issue, comments, linkedPRs]) => {
+        ]).then(async ([issue, comments, linkedPRs]) => {
           setCached(db, cacheKey, { issue, comments, linkedPRs });
+          try {
+            await reconcileIssueLifecycle(db, octokit, owner, repo, issue, linkedPRs);
+          } catch (err) {
+            console.warn(`[issuectl] Lifecycle reconciliation failed for #${number}:`, err);
+          }
         }).catch((err) => {
           console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
         });
@@ -119,6 +125,12 @@ export async function getIssueDetail(
   ]);
 
   setCached(db, cacheKey, { issue, comments, linkedPRs });
+
+  if (!options?.forceRefresh) {
+    reconcileIssueLifecycle(db, octokit, owner, repo, issue, linkedPRs).catch(
+      (err) => console.warn(`[issuectl] Lifecycle reconciliation failed for #${number}:`, err),
+    );
+  }
 
   return {
     issue,

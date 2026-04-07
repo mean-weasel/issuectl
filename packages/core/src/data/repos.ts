@@ -6,6 +6,7 @@ import { listRepos } from "../db/repos.js";
 import { getIssues } from "./issues.js";
 import { getPulls } from "./pulls.js";
 import { getDeploymentsByRepo } from "../db/deployments.js";
+import { reconcileRepoLifecycle } from "../lifecycle/reconcile.js";
 
 function countLabelOccurrences(
   labels: GitHubLabel[][],
@@ -54,6 +55,25 @@ export async function getDashboardData(
         getIssues(db, octokit, repo.owner, repo.name, options),
         getPulls(db, octokit, repo.owner, repo.name, options),
       ]);
+
+      if (
+        !options?.forceRefresh &&
+        (!issueResult.fromCache || !pullResult.fromCache)
+      ) {
+        reconcileRepoLifecycle(
+          db,
+          octokit,
+          repo.owner,
+          repo.name,
+          issueResult.issues,
+          pullResult.pulls,
+        ).catch((err) =>
+          console.warn(
+            `[issuectl] Repo lifecycle reconciliation failed for ${repo.owner}/${repo.name}:`,
+            err,
+          ),
+        );
+      }
 
       const deployments = getDeploymentsByRepo(db, repo.id);
       const openIssues = issueResult.issues.filter((i) => i.state === "open");
