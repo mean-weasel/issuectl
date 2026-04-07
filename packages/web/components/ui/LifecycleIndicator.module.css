@@ -1,0 +1,36 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.idle {
+  background: var(--text-tertiary);
+}
+
+.deployed {
+  background: var(--yellow);
+  box-shadow: 0 0 6px var(--yellow);
+}
+
+.pr {
+  background: var(--blue);
+  box-shadow: 0 0 6px var(--blue);
+}
+
+.done {
+  background: var(--green);
+}
+
+.text {
+  color: var(--text-secondary);
+}
