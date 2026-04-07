@@ -1,4 +1,4 @@
-import { getDb, getOctokit, getDashboardData } from "@issuectl/core";
+import { getDb, getOctokit, getDashboardData, dbExists } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { RepoGrid } from "@/components/dashboard/RepoGrid";
 import { CacheBar } from "@/components/dashboard/CacheBar";
@@ -6,14 +6,24 @@ import { CacheBar } from "@/components/dashboard/CacheBar";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  // Not initialized — show genuine empty state
+  if (!dbExists()) {
+    return (
+      <>
+        <PageHeader title="Getting Started" />
+        <RepoGrid repos={[]} />
+      </>
+    );
+  }
+
+  const db = getDb();
   let data;
 
   try {
-    const db = getDb();
     const octokit = await getOctokit();
     data = await getDashboardData(db, octokit);
   } catch (err) {
-    // DB or auth may not be initialized — show empty state
+    // Auth or API failure — log and show empty state with error context
     console.error("[issuectl] Dashboard data fetch failed:", err);
     data = { repos: [], totalIssues: 0, totalPRs: 0, cachedAt: null };
   }

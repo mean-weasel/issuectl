@@ -30,17 +30,15 @@ export async function Sidebar() {
         totalPRs += cached.data.filter((p) => p.state === "open").length;
       }
     }
-  } catch {
+  } catch (err) {
     // DB may not exist yet (first run before init)
+    console.warn("[issuectl] Sidebar failed to load repos:", err);
   }
 
-  try {
-    const auth = await checkGhAuth();
-    if (auth.ok && auth.username) {
-      username = auth.username;
-    }
-  } catch {
-    // Auth check may fail
+  // checkGhAuth returns errors as values — no try-catch needed
+  const auth = await checkGhAuth();
+  if (auth.ok && auth.username) {
+    username = auth.username;
   }
 
   return (
