@@ -1,0 +1,22 @@
+.detailView {
+  padding: 0 32px 32px;
+  display: flex;
+  gap: 24px;
+  flex: 1;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pageTitle {
+  font-size: 22px;
+}
+
+.error {
+  padding: 40px 32px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  text-align: center;
+}

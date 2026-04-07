@@ -51,5 +51,6 @@ export async function addComment(
 ): Promise<GitHubComment> {
   const comment = await postComment(octokit, owner, repo, issueNumber, body);
   clearCacheKey(db, `comments:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
   return comment;
 }
