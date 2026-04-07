@@ -1,0 +1,38 @@
+.bar {
+  padding: 8px 32px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono), monospace;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.refreshLink {
+  color: var(--accent);
+  cursor: pointer;
+  margin-left: auto;
+  font-family: inherit;
+  background: none;
+  border: none;
+  font-size: 11px;
+  padding: 0;
+}
+
+.refreshLink:hover {
+  text-decoration: underline;
+}
+
+.refreshLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
