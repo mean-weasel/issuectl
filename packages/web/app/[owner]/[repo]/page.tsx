@@ -1,9 +1,19 @@
 import { Suspense } from "react";
-import { getDb, getOctokit, getIssues, getPulls } from "@issuectl/core";
+import {
+  getDb,
+  getOctokit,
+  getIssues,
+  getPulls,
+  listRepos,
+  listLabels,
+  type GitHubLabel,
+} from "@issuectl/core";
 import { RepoHeader } from "@/components/repo/RepoHeader";
 import { TabBar } from "@/components/repo/TabBar";
 import { IssuesTable } from "@/components/repo/IssuesTable";
 import { PullsTable } from "@/components/repo/PullsTable";
+import { NewIssueButton } from "@/components/issue/NewIssueButton";
+import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +29,13 @@ export default async function RepoDetailPage({ params, searchParams }: Props) {
 
   let issues: Awaited<ReturnType<typeof getIssues>>["issues"] = [];
   let pulls: Awaited<ReturnType<typeof getPulls>>["pulls"] = [];
+  let labels: GitHubLabel[] = [];
+  let repos: { owner: string; repo: string }[] = [];
+  let loadError: string | null = null;
 
   try {
     const db = getDb();
+    repos = listRepos(db).map((r) => ({ owner: r.owner, repo: r.name }));
     const octokit = await getOctokit();
     const [issueResult, pullResult] = await Promise.all([
       getIssues(db, octokit, owner, repo),
@@ -29,20 +43,46 @@ export default async function RepoDetailPage({ params, searchParams }: Props) {
     ]);
     issues = issueResult.issues;
     pulls = pullResult.pulls;
+
+    // Labels are supplementary — fetch separately so a failure doesn't break the page
+    try {
+      labels = await listLabels(octokit, owner, repo);
+    } catch (labelErr) {
+      console.warn(`[issuectl] Failed to load labels for ${owner}/${repo}:`, labelErr);
+    }
   } catch (err) {
     console.error(`[issuectl] Failed to load data for ${owner}/${repo}:`, err);
+    loadError = "Failed to load repository data. Check that the GitHub CLI is authenticated.";
   }
 
   return (
     <>
-      <RepoHeader owner={owner} repo={repo} />
-      <Suspense>
-        <TabBar issueCount={issues.length} prCount={pulls.length} />
-      </Suspense>
-      {activeTab === "issues" ? (
-        <IssuesTable issues={issues} owner={owner} repo={repo} />
+      <RepoHeader
+        owner={owner}
+        repo={repo}
+        actions={
+          !loadError && (
+            <NewIssueButton
+              repos={repos}
+              currentRepo={{ owner, repo }}
+              availableLabels={labels}
+            />
+          )
+        }
+      />
+      {loadError ? (
+        <div className={styles.error}>{loadError}</div>
       ) : (
-        <PullsTable pulls={pulls} owner={owner} repo={repo} />
+        <>
+          <Suspense>
+            <TabBar issueCount={issues.length} prCount={pulls.length} />
+          </Suspense>
+          {activeTab === "issues" ? (
+            <IssuesTable issues={issues} owner={owner} repo={repo} />
+          ) : (
+            <PullsTable pulls={pulls} owner={owner} repo={repo} />
+          )}
+        </>
       )}
     </>
   );

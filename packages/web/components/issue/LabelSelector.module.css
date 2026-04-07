@@ -1,0 +1,42 @@
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+  transition: background 0.15s, color 0.15s;
+}
+
+.chip:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.chipSelected {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chipSelected:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.chip:disabled,
+.chipSelected:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,12 +1,14 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 type Props = {
   owner: string;
   repo: string;
+  actions?: ReactNode;
 };
 
-export function RepoHeader({ owner, repo }: Props) {
+export function RepoHeader({ owner, repo, actions }: Props) {
   return (
     <PageHeader
       title={repo}
@@ -19,6 +21,7 @@ export function RepoHeader({ owner, repo }: Props) {
           </span>
         </>
       }
+      actions={actions}
     />
   );
 }
