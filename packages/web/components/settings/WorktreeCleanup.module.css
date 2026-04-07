@@ -1,0 +1,90 @@
+.empty {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.rowStale {
+  composes: row;
+  border-color: var(--yellow);
+  border-style: dashed;
+}
+
+.name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.badgeStale {
+  composes: badge;
+  color: var(--yellow);
+  background: var(--yellow-surface);
+}
+
+.badgeActive {
+  composes: badge;
+  color: var(--green);
+  background: var(--green-surface);
+}
+
+.issue {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.deleteBtn {
+  font-size: 11px;
+  padding: 4px 8px;
+  color: var(--red);
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.staleCount {
+  font-size: 13px;
+  color: var(--yellow);
+}
+
+.cleanAllBtn {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--red);
+  margin-top: 4px;
+}
+
+.success {
+  font-size: 12px;
+  color: var(--green);
+  margin-top: 4px;
+}

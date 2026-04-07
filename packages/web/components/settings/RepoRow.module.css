@@ -1,0 +1,142 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.rowNoPath {
+  composes: row;
+  border-style: dashed;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotNoPath {
+  composes: dot;
+  background: var(--text-tertiary);
+}
+
+.name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.nameNoPath {
+  composes: name;
+  color: var(--text-tertiary);
+}
+
+.path {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  flex: 1;
+}
+
+.noPath {
+  composes: path;
+  color: var(--yellow);
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.actionBtn {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.dangerBtn {
+  composes: actionBtn;
+  color: var(--red);
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.editRow {
+  display: flex;
+  gap: 12px;
+}
+
+.editField {
+  flex: 1;
+}
+
+.editLabel {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editInput {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-karla);
+  outline: none;
+}
+
+.editInput:focus {
+  border-color: var(--accent-border);
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--red);
+}
+
+.confirmOverlay {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--red-surface);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+}
+
+.confirmText {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+}

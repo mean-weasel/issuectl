@@ -1,0 +1,72 @@
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.field {
+  flex: 1;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  width: 100%;
+  max-width: 240px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-family: var(--font-karla);
+  cursor: default;
+}
+
+.toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.toggleBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: var(--font-karla);
+  background: var(--bg-elevated);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggleBtn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.toggleBtnActive {
+  composes: toggleBtn;
+  background: var(--accent-surface);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.saved {
+  font-size: 11px;
+  color: var(--green);
+  margin-top: 8px;
+}
+
+.error {
+  font-size: 11px;
+  color: var(--red);
+  margin-top: 8px;
+}
