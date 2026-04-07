@@ -34,6 +34,7 @@ export default async function SettingsPage() {
   const repos = listRepos(db);
   const settings = getSettings(db);
 
+  // Fallback defaults match DEFAULT_SETTINGS in core/db/settings.ts
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
   const cacheTTL = settingMap.cache_ttl ?? "300";
@@ -42,7 +43,10 @@ export default async function SettingsPage() {
 
   const [authResult, worktrees] = await Promise.all([
     checkGhAuth().catch(() => ({ ok: false, username: undefined })),
-    listWorktrees(),
+    listWorktrees().catch((err) => {
+      console.error("[issuectl] Failed to list worktrees:", err);
+      return [] as Awaited<ReturnType<typeof listWorktrees>>;
+    }),
   ]);
   const username = authResult.username ?? null;
 

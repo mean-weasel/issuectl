@@ -37,11 +37,10 @@ export function WorktreeCleanup({ worktrees }: Props) {
     setSuccess(null);
     startTransition(async () => {
       const result = await cleanupStaleWorktrees();
-      if (result.success) {
-        if (result.removed > 0) {
-          setSuccess(`Removed ${result.removed} stale worktree${result.removed > 1 ? "s" : ""}`);
-        }
-      } else {
+      if (result.removed > 0) {
+        setSuccess(`Removed ${result.removed} stale worktree${result.removed > 1 ? "s" : ""}`);
+      }
+      if (!result.success) {
         setError(result.error ?? "Failed to clean stale worktrees");
       }
     });

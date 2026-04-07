@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { addRepo } from "@/lib/actions/repos";
 import { Button } from "@/components/ui/Button";
 import styles from "./AddRepoForm.module.css";
@@ -15,6 +15,13 @@ export function AddRepoForm({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   function handleSubmit() {
     setError(null);
@@ -34,7 +41,7 @@ export function AddRepoForm({ onClose }: Props) {
       if (result.success) {
         if (result.warning) {
           setWarning(result.warning);
-          setTimeout(() => onClose(), 2000);
+          timerRef.current = setTimeout(() => onClose(), 2000);
         } else {
           onClose();
         }

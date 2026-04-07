@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { updateSetting } from "@/lib/actions/settings";
 import styles from "./TerminalSettings.module.css";
 
@@ -14,6 +14,13 @@ export function TerminalSettings({ terminalApp, terminalMode }: Props) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   function handleModeChange(newMode: string) {
     if (newMode === mode) return;
@@ -24,7 +31,8 @@ export function TerminalSettings({ terminalApp, terminalMode }: Props) {
       const result = await updateSetting("terminal_mode", newMode);
       if (result.success) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setSaved(false), 2000);
       } else {
         setMode(mode);
         setError(result.error ?? "Failed to save");

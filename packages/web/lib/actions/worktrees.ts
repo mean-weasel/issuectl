@@ -38,7 +38,11 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
 
   try {
     entries = await readdir(dir);
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    console.error("[issuectl] Failed to read worktree directory:", err);
     return [];
   }
 
@@ -51,11 +55,12 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
       const info = await stat(fullPath).catch(() => null);
       if (!info?.isDirectory()) return null;
 
+      // Worktree dirs follow: {repo-or-owner-repo}-issue-{number}
       const match = name.match(/^(.+)-issue-(\d+)$/);
       const repoName = match ? match[1] : null;
       const issueNumber = match ? Number(match[2]) : null;
 
-      // Try to match against tracked repos by name
+      // Match against tracked repos — worktree dirs may use "repo" or "owner-repo" naming
       const trackedRepo = repoName
         ? repos.find((r) => r.name === repoName || `${r.owner}-${r.name}` === repoName)
         : null;
@@ -79,7 +84,8 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
   let octokit;
   try {
     octokit = await getOctokit();
-  } catch {
+  } catch (err) {
+    console.warn("[issuectl] Could not authenticate with GitHub — staleness checks skipped:", err);
     return worktrees;
   }
 
@@ -87,7 +93,7 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
     worktrees.map(async (wt) => {
       if (!wt.owner || !wt.repo || !wt.issueNumber) return;
 
-      // Resolve the actual repo name (strip owner prefix if present)
+      // Look up the canonical repo name from tracked repos
       const repoName = repos.find(
         (r) => r.name === wt.repo || `${r.owner}-${r.name}` === wt.repo,
       )?.name;
@@ -100,8 +106,15 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
           issue_number: wt.issueNumber,
         });
         wt.stale = data.state === "closed";
-      } catch {
-        // API failure — leave as not stale
+      } catch (err) {
+        if (err && typeof err === "object" && "status" in err) {
+          const status = (err as { status: number }).status;
+          if (status === 404 || status === 410) {
+            wt.stale = true;
+            return;
+          }
+        }
+        console.warn(`[issuectl] Failed to check staleness for ${wt.owner}/${repoName}#${wt.issueNumber}:`, err);
       }
     }),
   );
@@ -114,20 +127,37 @@ export async function cleanupWorktree(
   parentRepoPath?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const worktreeDir = getWorktreeDir();
+  // Prevent path traversal — only allow deletion within the configured worktree directory
   const resolved = resolve(path);
   if (!resolved.startsWith(resolve(worktreeDir))) {
     return { success: false, error: "Invalid worktree path" };
   }
 
+  // Validate parentRepoPath against tracked repos if provided
+  let cwd: string | undefined;
+  if (parentRepoPath) {
+    const db = getDb();
+    const repos = listRepos(db);
+    const matched = repos.find(
+      (r) => r.localPath && resolve(expandHome(r.localPath)) === resolve(expandHome(parentRepoPath)),
+    );
+    if (!matched) {
+      return { success: false, error: "Unknown repository path" };
+    }
+    cwd = expandHome(parentRepoPath);
+  }
+
   try {
-    const cwd = parentRepoPath ? expandHome(parentRepoPath) : undefined;
+    // Two-phase cleanup: best-effort git worktree remove, then always rm the directory
     await execFileAsync("git", ["worktree", "remove", resolved, "--force"], { cwd }).catch(
       (err) => {
-        console.warn("[issuectl] git worktree remove failed, falling back to rm:", err.message);
+        console.warn("[issuectl] git worktree remove failed, will still rm directory:", err.message);
       },
     );
     if (cwd) {
-      await execFileAsync("git", ["worktree", "prune"], { cwd }).catch(() => {});
+      await execFileAsync("git", ["worktree", "prune"], { cwd }).catch((err) => {
+        console.warn("[issuectl] git worktree prune failed:", err.message);
+      });
     }
     await rm(resolved, { recursive: true, force: true });
   } catch (err) {
@@ -148,11 +178,23 @@ export async function cleanupStaleWorktrees(): Promise<{ success: boolean; remov
   }
 
   let removed = 0;
+  const failures: string[] = [];
   for (const wt of stale) {
     const result = await cleanupWorktree(wt.path, wt.localPath ?? undefined);
-    if (result.success) removed++;
+    if (result.success) {
+      removed++;
+    } else {
+      failures.push(`${wt.name}: ${result.error}`);
+    }
   }
 
   revalidatePath("/settings");
+  if (failures.length > 0) {
+    return {
+      success: false,
+      removed,
+      error: `Failed to remove ${failures.length} worktree(s)`,
+    };
+  }
   return { success: true, removed };
 }

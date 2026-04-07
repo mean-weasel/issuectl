@@ -17,7 +17,7 @@ export function DefaultsForm({ branchPattern, cacheTTL }: Props) {
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
   });
-  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<DefaultKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
