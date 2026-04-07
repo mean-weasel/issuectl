@@ -33,6 +33,7 @@ export async function Sidebar({ username }: Props) {
       }
     }
   } catch (err) {
+    // DB may not exist on first run (before 'issuectl init')
     console.warn("[issuectl] Sidebar failed to load repos:", err);
   }
 

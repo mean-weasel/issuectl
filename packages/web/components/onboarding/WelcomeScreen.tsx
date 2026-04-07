@@ -25,19 +25,25 @@ export function WelcomeScreen() {
     }
 
     setSubmitting(true);
-    const result = await addRepo(parts[0], parts[1], localPath.trim() || undefined);
-    setSubmitting(false);
+    try {
+      const result = await addRepo(parts[0], parts[1], localPath.trim() || undefined);
 
-    if (!result.success) {
-      setError(result.error ?? "Failed to add repository");
-      return;
+      if (!result.success) {
+        setError(result.error ?? "Failed to add repository");
+        return;
+      }
+
+      if (result.warning) {
+        setWarning(result.warning);
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    if (result.warning) {
-      setWarning(result.warning);
-    }
-
-    router.refresh();
   }
 
   return (

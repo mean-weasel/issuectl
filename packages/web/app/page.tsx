@@ -13,8 +13,8 @@ export default async function DashboardPage() {
 
   const db = getDb();
 
-  // Check DB for configured repos — don't rely on getDashboardData result,
-  // which may return empty repos[] due to a transient API error
+  // Distinguish "no repos configured" from "API failure" — the catch block
+  // below also produces repos: [], which would incorrectly show WelcomeScreen
   if (listRepos(db).length === 0) {
     return <WelcomeScreen />;
   }
