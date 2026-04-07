@@ -1,33 +1,36 @@
-import type { Deployment, GitHubIssue } from "@issuectl/core";
-import { Button } from "@/components/ui/Button";
+import type {
+  Deployment,
+  GitHubIssue,
+  GitHubComment,
+} from "@issuectl/core";
+import { generateBranchName } from "@/lib/branch";
+import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
+import { LaunchButton } from "@/components/launch/LaunchButton";
 import styles from "./LaunchCard.module.css";
 
 type Props = {
+  owner: string;
+  repo: string;
+  repoLocalPath: string | null;
   issue: GitHubIssue;
-  commentCount: number;
+  comments: GitHubComment[];
   deployments: Deployment[];
   referencedFiles: string[];
 };
 
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-}
-
 export function LaunchCard({
+  owner,
+  repo,
+  repoLocalPath,
   issue,
-  commentCount,
+  comments,
   deployments,
   referencedFiles,
 }: Props) {
   const lastDeployment = deployments[0];
   const branch =
     lastDeployment?.branchName ??
-    `issue-${issue.number}-${slugify(issue.title)}`;
-  const hasLaunched = deployments.length > 0;
+    generateBranchName(DEFAULT_BRANCH_PATTERN, issue.number, issue.title);
 
   return (
     <div className={styles.card}>
@@ -38,13 +41,20 @@ export function LaunchCard({
       <div className={styles.meta}>
         context:{" "}
         <span className={styles.value}>
-          issue + {commentCount} comment{commentCount !== 1 ? "s" : ""} +{" "}
+          issue + {comments.length} comment{comments.length !== 1 ? "s" : ""} +{" "}
           {referencedFiles.length} file{referencedFiles.length !== 1 ? "s" : ""}
         </span>
       </div>
-      <Button variant="launch" className={styles.launchBtn}>
-        {hasLaunched ? "Re-launch" : "Launch"}
-      </Button>
+      <LaunchButton
+        owner={owner}
+        repo={repo}
+        repoLocalPath={repoLocalPath}
+        issue={issue}
+        comments={comments}
+        deployments={deployments}
+        referencedFiles={referencedFiles}
+        className={styles.launchBtn}
+      />
     </div>
   );
 }

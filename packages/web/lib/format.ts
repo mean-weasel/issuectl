@@ -5,6 +5,14 @@ export function daysSince(date: string): string {
   return `${days}d`;
 }
 
+export function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86_400_000);
+  if (days < 1) return "today";
+  if (days === 1) return "1d ago";
+  return `${days}d ago`;
+}
+
 export function formatDate(dateStr: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",

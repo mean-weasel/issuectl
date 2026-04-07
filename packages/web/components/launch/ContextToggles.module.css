@@ -1,0 +1,48 @@
+.field {
+  margin-bottom: 16px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox {
+  accent-color: var(--accent);
+}
+
+.hint {
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.filePath {
+  font-family: var(--font-mono), monospace;
+  color: var(--cyan);
+  font-size: 11px;
+}

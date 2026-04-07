@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { getDb, getOctokit, getIssueDetail } from "@issuectl/core";
+import { getDb, getOctokit, getIssueDetail, getRepo } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Button } from "@/components/ui/Button";
 import { IssueBody } from "@/components/issue/IssueBody";
 import { CommentThread } from "@/components/issue/CommentThread";
 import { IssueSidebar } from "@/components/issue/IssueSidebar";
 import { CloseIssueButton } from "@/components/issue/CloseIssueButton";
+import { LaunchButton } from "@/components/launch/LaunchButton";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,10 @@ export default async function IssueDetailPage({ params }: Props) {
     return <div className={styles.error}>Invalid issue number.</div>;
   }
 
+  const db = getDb();
   let data: Awaited<ReturnType<typeof getIssueDetail>> | null = null;
 
   try {
-    const db = getDb();
     const octokit = await getOctokit();
     data = await getIssueDetail(db, octokit, owner, repo, issueNumber);
   } catch (err) {
@@ -40,6 +40,9 @@ export default async function IssueDetailPage({ params }: Props) {
   }
 
   const { issue, comments, deployments, linkedPRs, referencedFiles } = data;
+
+  const repoRecord = getRepo(db, owner, repo);
+  const repoLocalPath = repoRecord?.localPath ?? null;
 
   return (
     <>
@@ -58,18 +61,21 @@ export default async function IssueDetailPage({ params }: Props) {
         }
         actions={
           <>
-            <Button variant="secondary" disabled>
-              Edit
-            </Button>
             <CloseIssueButton
               owner={owner}
               repo={repo}
               number={issueNumber}
               isClosed={issue.state === "closed"}
             />
-            <Button variant="launch">
-              {deployments.length > 0 ? "Re-launch" : "Launch to Claude Code"}
-            </Button>
+            <LaunchButton
+              owner={owner}
+              repo={repo}
+              repoLocalPath={repoLocalPath}
+              issue={issue}
+              comments={comments}
+              deployments={deployments}
+              referencedFiles={referencedFiles}
+            />
           </>
         }
       />
@@ -85,12 +91,13 @@ export default async function IssueDetailPage({ params }: Props) {
         </div>
         <IssueSidebar
           issue={issue}
-          commentCount={comments.length}
+          comments={comments}
           deployments={deployments}
           linkedPRs={linkedPRs}
           referencedFiles={referencedFiles}
           owner={owner}
           repo={repo}
+          repoLocalPath={repoLocalPath}
         />
       </div>
     </>

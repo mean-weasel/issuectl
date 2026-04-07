@@ -1,0 +1,80 @@
+import type { Deployment } from "@issuectl/core";
+import { LIFECYCLE_LABEL } from "@issuectl/core";
+import styles from "./LaunchProgress.module.css";
+
+type Step = {
+  label: string;
+  detail: string;
+  highlightDetail?: boolean;
+  status: "done" | "active";
+};
+
+type Props = {
+  deployment: Deployment;
+  commentCount: number;
+  fileCount: number;
+};
+
+export function LaunchProgress({ deployment, commentCount, fileCount }: Props) {
+  const steps: Step[] = [
+    {
+      label: "Assembled issue context",
+      detail: `issue + ${commentCount} comment${commentCount !== 1 ? "s" : ""} + ${fileCount} referenced file${fileCount !== 1 ? "s" : ""}`,
+      status: "done",
+    },
+    {
+      label: "Checked deployment history",
+      detail: `Deployment #${deployment.id}`,
+      status: "done",
+    },
+    {
+      label: "Checked out branch",
+      detail: deployment.branchName,
+      highlightDetail: true,
+      status: "done",
+    },
+    {
+      label: "Applied lifecycle label",
+      detail: LIFECYCLE_LABEL.deployed,
+      status: "done",
+    },
+    {
+      label: "Claude Code running",
+      detail: deployment.workspacePath,
+      highlightDetail: true,
+      status: "active",
+    },
+  ];
+
+  return (
+    <div className={styles.steps}>
+      {steps.map((step) => (
+        <div key={step.label} className={styles.step}>
+          <div
+            className={
+              step.status === "done" ? styles.numDone : styles.numActive
+            }
+          >
+            {step.status === "done" ? "\u2713" : ""}
+          </div>
+          <div className={styles.content}>
+            <div
+              className={
+                step.status === "active" ? styles.labelActive : styles.label
+              }
+            >
+              {step.label}
+            </div>
+            <div className={styles.detail}>
+              {step.highlightDetail ? (
+                <span className={styles.highlight}>{step.detail}</span>
+              ) : (
+                step.detail
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
