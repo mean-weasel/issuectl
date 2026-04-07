@@ -35,7 +35,9 @@ export interface LaunchResult {
 
 function expandHome(p: string): string {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? "/";
-  return p.startsWith("~") ? p.replace("~", home) : p;
+  if (p === "~") return home;
+  if (p.startsWith("~/")) return home + p.slice(1);
+  return p;
 }
 
 export async function executeLaunch(
@@ -119,15 +121,22 @@ export async function executeLaunch(
     worktreeDir,
   });
 
-  // 7. Apply issuectl:deployed label
-  await ensureLifecycleLabels(octokit, options.owner, options.repo);
-  await addLabel(
-    octokit,
-    options.owner,
-    options.repo,
-    options.issueNumber,
-    LIFECYCLE_LABEL.deployed,
-  );
+  // Steps 7-9 have side effects — if one fails, earlier artifacts remain.
+  // Workspace cleanup is not attempted since the branch/files may be valuable.
+  try {
+    // 7. Apply issuectl:deployed label
+    await ensureLifecycleLabels(octokit, options.owner, options.repo);
+    await addLabel(
+      octokit,
+      options.owner,
+      options.repo,
+      options.issueNumber,
+      LIFECYCLE_LABEL.deployed,
+    );
+  } catch (err) {
+    // Label failure is non-fatal — the workspace is ready, proceed anyway
+    console.warn("[issuectl] Failed to apply deployed label:", err);
+  }
 
   // 8. Record deployment in DB
   const deployment = recordDeployment(db, {

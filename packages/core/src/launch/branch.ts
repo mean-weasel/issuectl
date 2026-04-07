@@ -42,10 +42,10 @@ export async function createOrCheckoutBranch(
   branchName: string,
   baseBranch?: string,
 ): Promise<void> {
-  try {
+  const exists = await branchExists(repoPath, branchName);
+  if (exists) {
     await execFileAsync("git", ["checkout", branchName], { cwd: repoPath });
-  } catch {
-    // Branch doesn't exist — create from base
+  } else {
     const args = ["checkout", "-b", branchName];
     if (baseBranch) args.push(baseBranch);
     await execFileAsync("git", args, { cwd: repoPath });

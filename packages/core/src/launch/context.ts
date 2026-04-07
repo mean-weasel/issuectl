@@ -55,7 +55,7 @@ export async function writeContextFile(
   context: string,
   issueNumber: number,
 ): Promise<string> {
-  const filePath = join(tmpdir(), `issuectl-launch-${issueNumber}.md`);
+  const filePath = join(tmpdir(), `issuectl-launch-${issueNumber}-${Date.now()}.md`);
   await writeFile(filePath, context, "utf-8");
   return filePath;
 }
