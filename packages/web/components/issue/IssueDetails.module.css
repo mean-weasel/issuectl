@@ -1,0 +1,44 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+}
+
+.rows {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.row:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  color: var(--text-tertiary);
+}
+
+.value {
+  color: var(--text-secondary);
+}
+
+.prLink {
+  color: var(--blue);
+}
