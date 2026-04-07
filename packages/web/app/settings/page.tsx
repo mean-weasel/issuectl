@@ -3,7 +3,6 @@ import {
   dbExists,
   listRepos,
   getSettings,
-  checkGhAuth,
 } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { TrackedRepos } from "@/components/settings/TrackedRepos";
@@ -12,6 +11,7 @@ import { TerminalSettings } from "@/components/settings/TerminalSettings";
 import { AuthStatus } from "@/components/settings/AuthStatus";
 import { WorktreeCleanup } from "@/components/settings/WorktreeCleanup";
 import { listWorktrees } from "@/lib/actions/worktrees";
+import { getAuthStatus } from "@/lib/auth";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +42,13 @@ export default async function SettingsPage() {
   const terminalMode = settingMap.terminal_mode ?? "window";
 
   const [authResult, worktrees] = await Promise.all([
-    checkGhAuth().catch(() => ({ ok: false, username: undefined })),
+    getAuthStatus(),
     listWorktrees().catch((err) => {
       console.error("[issuectl] Failed to list worktrees:", err);
       return [] as Awaited<ReturnType<typeof listWorktrees>>;
     }),
   ]);
-  const username = authResult.username ?? null;
+  const username = authResult.authenticated ? authResult.username : null;
 
   return (
     <>

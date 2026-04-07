@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Karla, Syne, Source_Code_Pro } from "next/font/google";
 import { Sidebar } from "@/components/sidebar/Sidebar";
+import { AuthErrorScreen } from "@/components/auth/AuthErrorScreen";
+import { getAuthStatus } from "@/lib/auth";
 import "./globals.css";
 import styles from "./layout.module.css";
 
@@ -29,14 +31,20 @@ type Props = {
   children: ReactNode;
 };
 
-export default function RootLayout({ children }: Props) {
+export default async function RootLayout({ children }: Props) {
+  const auth = await getAuthStatus();
+
   return (
     <html lang="en" className={`${karla.variable} ${syne.variable} ${sourceCodePro.variable}`}>
       <body className={karla.className}>
-        <div className={styles.app}>
-          <Sidebar />
-          <main className={styles.content}>{children}</main>
-        </div>
+        {auth.authenticated ? (
+          <div className={styles.app}>
+            <Sidebar username={auth.username} />
+            <main className={styles.content}>{children}</main>
+          </div>
+        ) : (
+          <AuthErrorScreen />
+        )}
       </body>
     </html>
   );
