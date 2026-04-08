@@ -169,7 +169,13 @@ export function LaunchModal({
             onClick={handleLaunch}
             disabled={isPending || !branchName.trim()}
           >
-            {isPending ? "Launching…" : "Launch"}
+            {isPending
+              ? workspaceMode === "clone"
+                ? "Cloning repo & launching…"
+                : workspaceMode === "worktree"
+                  ? "Preparing worktree & launching…"
+                  : "Launching…"
+              : "Launch"}
           </Button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, access } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createOrCheckoutBranch,
@@ -16,6 +16,24 @@ export interface WorkspaceResult {
   path: string;
   mode: WorkspaceMode;
   created: boolean;
+}
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isGitRepo(p: string): Promise<boolean> {
+  try {
+    await execFileAsync("git", ["rev-parse", "--git-dir"], { cwd: p });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function prepareWorkspace(options: {
@@ -72,6 +90,16 @@ async function prepareWorktree(options: {
 
   await mkdir(options.worktreeDir, { recursive: true });
 
+  // If the directory already exists from a previous launch, reuse it
+  if (await pathExists(worktreePath)) {
+    if (await isGitRepo(worktreePath)) {
+      await createOrCheckoutBranch(worktreePath, options.branchName);
+      return { path: worktreePath, mode: "worktree", created: false };
+    }
+    // Not a valid git repo — clean up the leftover directory
+    await rm(worktreePath, { recursive: true, force: true });
+  }
+
   try {
     await execFileAsync(
       "git",
@@ -80,7 +108,7 @@ async function prepareWorktree(options: {
     );
     return { path: worktreePath, mode: "worktree", created: true };
   } catch (err) {
-    // Branch may already exist — check stderr for the git error message
+    // Branch may already exist — retry without -b
     const stderr = (err as { stderr?: string }).stderr ?? "";
     const message = err instanceof Error ? err.message : "";
     if (stderr.includes("already exists") || message.includes("already exists")) {
@@ -117,6 +145,21 @@ async function prepareClone(options: {
   const cloneUrl = `https://github.com/${options.owner}/${options.repo}.git`;
 
   await mkdir(options.worktreeDir, { recursive: true });
+
+  // If the directory already exists from a previous launch, reuse it
+  if (await pathExists(clonePath)) {
+    if (await isGitRepo(clonePath)) {
+      await execFileAsync("git", ["fetch", "origin"], { cwd: clonePath }).catch(
+        (err) => {
+          console.warn("[issuectl] git fetch failed on existing clone:", (err as Error).message);
+        },
+      );
+      await createOrCheckoutBranch(clonePath, options.branchName);
+      return { path: clonePath, mode: "clone", created: false };
+    }
+    // Not a valid git repo — clean up the leftover directory
+    await rm(clonePath, { recursive: true, force: true });
+  }
 
   try {
     await execFileAsync("git", ["clone", "--depth=1", cloneUrl, clonePath]);
