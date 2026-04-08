@@ -55,22 +55,6 @@
   align-items: center;
 }
 
-.retryButton {
-  padding: 10px 24px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.retryButton:hover {
-  background: var(--bg-hover);
-}
-
 .link {
   color: var(--accent);
   font-size: 13px;
