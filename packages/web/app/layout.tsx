@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Karla, Syne, Source_Code_Pro } from "next/font/google";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { AuthErrorScreen } from "@/components/auth/AuthErrorScreen";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 import { getAuthStatus } from "@/lib/auth";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -38,10 +39,12 @@ export default async function RootLayout({ children }: Props) {
     <html lang="en" className={`${karla.variable} ${syne.variable} ${sourceCodePro.variable}`}>
       <body className={karla.className}>
         {auth.authenticated ? (
-          <div className={styles.app}>
-            <Sidebar username={auth.username} />
-            <main className={styles.content}>{children}</main>
-          </div>
+          <ToastProvider>
+            <div className={styles.app}>
+              <Sidebar username={auth.username} />
+              <main className={styles.content}>{children}</main>
+            </div>
+          </ToastProvider>
         ) : (
           <AuthErrorScreen />
         )}

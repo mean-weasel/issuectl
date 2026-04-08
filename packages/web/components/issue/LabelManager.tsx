@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { GitHubLabel } from "@issuectl/core";
 import { toggleLabel } from "@/lib/actions/issues";
 import { separateLabels } from "@/lib/labels";
+import { useToast } from "@/components/ui/ToastProvider";
 import { Badge } from "@/components/ui/Badge";
 import { LabelSelector } from "./LabelSelector";
 import styles from "./LabelManager.module.css";
@@ -23,6 +24,7 @@ export function LabelManager({
   currentLabels,
   availableLabels,
 }: Props) {
+  const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [showSelector, setShowSelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,8 @@ export function LabelManager({
       });
       if (!result.success) {
         setError(result.error ?? "Failed to update label");
+      } else {
+        showToast("Labels updated", "success");
       }
     });
   }
