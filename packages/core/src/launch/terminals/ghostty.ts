@@ -4,8 +4,6 @@ import type { TerminalLauncher, TerminalLaunchOptions, TerminalSettings } from "
 
 const execFileAsync = promisify(execFile);
 
-// ── Pure helpers (unit-tested) ──────────────────────────────────────
-
 export type GhosttyVersion = { major: number; minor: number; patch: number };
 
 export function parseGhosttyVersion(raw: string): GhosttyVersion {
@@ -22,10 +20,6 @@ export function meetsMinVersion(v: GhosttyVersion): boolean {
 
 function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
-}
-
-function appleScriptEscape(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 type TabTitleInput = {
@@ -48,46 +42,34 @@ export function buildShellCommand(workspacePath: string, contextFilePath: string
   return `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | claude`;
 }
 
-type AppleScriptInput = {
-  windowTitle: string;
-  tabTitle: string;
-  shellCommand: string;
-};
-
-export function buildGhosttyAppleScript(input: AppleScriptInput): string {
-  const wt = appleScriptEscape(input.windowTitle);
-  const tt = appleScriptEscape(input.tabTitle);
-  const cmd = appleScriptEscape(input.shellCommand);
-
-  return `tell application "Ghostty"
-  activate
-  set issuectlWindow to missing value
-  repeat with w in windows
-    if name of w is "${wt}" then
-      set issuectlWindow to w
-      exit repeat
-    end if
-  end repeat
-
-  if issuectlWindow is missing value then
-    set issuectlWindow to (new window)
-  else
-    tell issuectlWindow to new tab
-  end if
-
-  delay 0.5
-
-  tell front window
-    set focusedTerminal to focused terminal
-    tell focusedTerminal
-      execute action "set_tab_title:${tt}"
-      write "${cmd}" & return
-    end tell
-  end tell
-end tell`;
+export function buildGhosttyArgs(tabTitle: string, shellCommand: string): string[] {
+  return [
+    "-na", "Ghostty.app",
+    "--args",
+    `--title=${tabTitle}`,
+    "-e", "/bin/bash", "-c", shellCommand,
+  ];
 }
 
-// ── Side-effect layer ───────────────────────────────────────────────
+const GHOSTTY_APP_BINARY = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
+
+export async function resolveGhosttyBinary(): Promise<string> {
+  try {
+    await execFileAsync("which", ["ghostty"]);
+    return "ghostty";
+  } catch {
+    // Not on PATH — try macOS .app bundle
+  }
+
+  try {
+    await execFileAsync(GHOSTTY_APP_BINARY, ["--version"]);
+    return GHOSTTY_APP_BINARY;
+  } catch {
+    throw new Error(
+      "Ghostty terminal is not installed. Install from https://ghostty.org",
+    );
+  }
+}
 
 export function createGhosttyLauncher(settings: TerminalSettings): TerminalLauncher {
   return {
@@ -95,44 +77,25 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
 
     async verify(): Promise<void> {
       if (process.platform !== "darwin") {
-        throw new Error("Ghostty AppleScript launcher is only supported on macOS");
+        throw new Error("Ghostty launcher is only supported on macOS");
       }
 
-      let stdout: string;
-      try {
-        const result = await execFileAsync("ghostty", ["--version"]);
-        stdout = result.stdout;
-      } catch {
-        throw new Error(
-          "Ghostty terminal is not installed or not on PATH. Install Ghostty from https://ghostty.org",
-        );
-      }
+      const binary = await resolveGhosttyBinary();
+      const { stdout } = await execFileAsync(binary, ["--version"]);
 
       const version = parseGhosttyVersion(stdout);
       if (!meetsMinVersion(version)) {
         throw new Error(
-          `Ghostty 1.3+ is required for AppleScript support (found ${stdout.trim()}). Update at https://ghostty.org`,
+          `Ghostty 1.3+ is required (found ${stdout.trim()}). Update at https://ghostty.org`,
         );
       }
     },
 
     async launch(options: TerminalLaunchOptions): Promise<void> {
-      const tabTitle = expandTabTitle(settings.tabTitlePattern, {
-        issueNumber: options.issueNumber,
-        issueTitle: options.issueTitle,
-        owner: options.owner,
-        repo: options.repo,
-      });
-
+      const tabTitle = expandTabTitle(settings.tabTitlePattern, options);
       const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath);
-
-      const script = buildGhosttyAppleScript({
-        windowTitle: settings.windowTitle,
-        tabTitle,
-        shellCommand,
-      });
-
-      await execFileAsync("osascript", ["-e", script]);
+      const args = buildGhosttyArgs(tabTitle, shellCommand);
+      await execFileAsync("open", args);
     },
   };
 }

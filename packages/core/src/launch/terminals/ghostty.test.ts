@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   expandTabTitle,
   buildShellCommand,
-  buildGhosttyAppleScript,
+  buildGhosttyArgs,
   parseGhosttyVersion,
   meetsMinVersion,
 } from "./ghostty.js";
@@ -82,40 +82,19 @@ describe("meetsMinVersion", () => {
   });
 });
 
-describe("buildGhosttyAppleScript", () => {
-  it("includes window title in search", () => {
-    const script = buildGhosttyAppleScript({
-      windowTitle: "issuectl",
-      tabTitle: "#42 — Fix auth",
-      shellCommand: "cd /tmp && echo hello",
-    });
-    expect(script).toContain('"issuectl"');
+describe("buildGhosttyArgs", () => {
+  it("produces open -na args with title and command", () => {
+    const args = buildGhosttyArgs("#42 — Fix auth", "cd '/tmp' && echo hello");
+    expect(args).toEqual([
+      "-na", "Ghostty.app",
+      "--args",
+      "--title=#42 — Fix auth",
+      "-e", "/bin/bash", "-c", "cd '/tmp' && echo hello",
+    ]);
   });
 
-  it("includes tab title action", () => {
-    const script = buildGhosttyAppleScript({
-      windowTitle: "issuectl",
-      tabTitle: "#42 — Fix auth",
-      shellCommand: "cd /tmp && echo hello",
-    });
-    expect(script).toContain("set_tab_title:#42");
-  });
-
-  it("includes the shell command with write", () => {
-    const script = buildGhosttyAppleScript({
-      windowTitle: "issuectl",
-      tabTitle: "#42 — Fix auth",
-      shellCommand: "cd /project && cat /tmp/ctx.md | claude",
-    });
-    expect(script).toContain("cd /project && cat /tmp/ctx.md | claude");
-  });
-
-  it("escapes double quotes in window title", () => {
-    const script = buildGhosttyAppleScript({
-      windowTitle: 'my "app"',
-      tabTitle: "#1 — test",
-      shellCommand: "echo hello",
-    });
-    expect(script).toContain('my \\"app\\"');
+  it("handles em dashes in title without issue", () => {
+    const args = buildGhosttyArgs("#99 — Test title", "echo test");
+    expect(args[3]).toBe("--title=#99 — Test title");
   });
 });

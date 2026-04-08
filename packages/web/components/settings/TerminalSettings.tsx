@@ -30,8 +30,7 @@ export function TerminalSettings({ terminalApp, windowTitle, tabTitlePattern }: 
     timerRef.current = setTimeout(() => setSaved(false), 2000);
   }
 
-  function handleBlur(key: "terminal_window_title" | "terminal_tab_title_pattern", value: string, original: string) {
-    if (value === original) return;
+  function handleBlur(key: "terminal_window_title" | "terminal_tab_title_pattern", value: string) {
     setError(null);
     setSaved(false);
     startTransition(async () => {
@@ -61,19 +60,19 @@ export function TerminalSettings({ terminalApp, windowTitle, tabTitlePattern }: 
             className={styles.inputEditable}
             value={winTitle}
             onChange={(e) => setWinTitle(e.target.value)}
-            onBlur={() => handleBlur("terminal_window_title", winTitle, windowTitle)}
+            onBlur={() => winTitle !== windowTitle && handleBlur("terminal_window_title", winTitle)}
             disabled={isPending}
           />
         </div>
       </div>
-      <div className={styles.row} style={{ marginTop: 12 }}>
+      <div className={styles.rowSpaced}>
         <div className={styles.field}>
           <div className={styles.label}>Tab Title Pattern</div>
           <input
             className={styles.inputEditable}
             value={tabPattern}
             onChange={(e) => setTabPattern(e.target.value)}
-            onBlur={() => handleBlur("terminal_tab_title_pattern", tabPattern, tabTitlePattern)}
+            onBlur={() => tabPattern !== tabTitlePattern && handleBlur("terminal_tab_title_pattern", tabPattern)}
             disabled={isPending}
           />
           <div className={styles.help}>

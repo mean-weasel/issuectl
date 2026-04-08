@@ -4,6 +4,11 @@
   align-items: flex-end;
 }
 
+.rowSpaced {
+  composes: row;
+  margin-top: 12px;
+}
+
 .field {
   flex: 1;
 }
