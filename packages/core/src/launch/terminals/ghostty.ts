@@ -7,8 +7,9 @@ const execFileAsync = promisify(execFile);
 export type GhosttyVersion = { major: number; minor: number; patch: number };
 
 export function parseGhosttyVersion(raw: string): GhosttyVersion {
-  const match = raw.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (!match) throw new Error(`Cannot parse Ghostty version from: "${raw}"`);
+  // Ghostty 1.3+ outputs "Ghostty X.Y.Z\n..." — search for version anywhere in output
+  const match = raw.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!match) throw new Error(`Cannot parse Ghostty version from: "${raw.trim()}"`);
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
 }
 
