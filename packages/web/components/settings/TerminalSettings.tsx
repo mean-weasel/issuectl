@@ -28,7 +28,7 @@ export function TerminalSettings({ terminalApp, terminalMode }: Props) {
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const result = await updateSetting("terminal_mode", newMode);
+      const result = await updateSetting("terminal_window_title", newMode);
       if (result.success) {
         setSaved(true);
         if (timerRef.current) clearTimeout(timerRef.current);
