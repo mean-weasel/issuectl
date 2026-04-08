@@ -23,12 +23,13 @@ function launchGhostty(
 ): void {
   const shellCmd = `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | claude`;
 
-  const args = ["-e", "/bin/bash", "-c", shellCmd];
-
-  const child = spawn("ghostty", args, {
-    detached: true,
-    stdio: "ignore",
-  });
+  // Use +new-window to force a new window (not a tab in an existing group).
+  // The -e flag passes the command to run in the new window.
+  const child = spawn(
+    "ghostty",
+    ["+new-window", "-e", "/bin/bash", "-c", shellCmd],
+    { detached: true, stdio: "ignore" },
+  );
 
   child.on("error", (err) => {
     console.error("[issuectl] Failed to launch Ghostty:", err.message);
