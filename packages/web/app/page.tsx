@@ -13,19 +13,14 @@ export default async function DashboardPage() {
 
   const db = getDb();
 
+  // Guard before the try/catch: the catch fallback also produces repos: [],
+  // which would incorrectly show WelcomeScreen on a transient API failure.
   if (listRepos(db).length === 0) {
     return <WelcomeScreen />;
   }
 
-  let data;
-
-  try {
-    const octokit = await getOctokit();
-    data = await getDashboardData(db, octokit);
-  } catch (err) {
-    console.error("[issuectl] Dashboard data fetch failed:", err);
-    data = { repos: [], totalIssues: 0, totalPRs: 0, cachedAt: null };
-  }
+  const octokit = await getOctokit();
+  const data = await getDashboardData(db, octokit);
 
   const cachedAtIso = data.cachedAt?.toISOString() ?? null;
   const ttl = getCacheTtl(db);

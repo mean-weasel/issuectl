@@ -41,11 +41,11 @@ export function AddRepoForm({ onClose }: Props) {
         localPath.trim() || undefined,
       );
       if (result.success) {
-        showToast("Repository added", "success");
         if (result.warning) {
           setWarning(result.warning);
           timerRef.current = setTimeout(() => onClose(), 2000);
         } else {
+          showToast("Repository added", "success");
           onClose();
         }
       } else {
