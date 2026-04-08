@@ -38,6 +38,8 @@ export function TerminalSettings({ terminalApp, windowTitle, tabTitlePattern }: 
       if (result.success) {
         showSaved();
       } else {
+        if (key === "terminal_window_title") setWinTitle(windowTitle);
+        else setTabPattern(tabTitlePattern);
         setError(result.error ?? "Failed to save");
       }
     });

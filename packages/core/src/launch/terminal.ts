@@ -15,9 +15,12 @@ export interface TerminalLaunchOptions {
   repo: string;
 }
 
+export type SupportedTerminal = "ghostty";
+
 export interface TerminalSettings {
-  terminal: string;
+  terminal: SupportedTerminal;
   windowTitle: string;
+  /** Pattern for tab title. Placeholders: {number}, {title} (truncated to 30 chars), {repo}, {owner} */
   tabTitlePattern: string;
 }
 

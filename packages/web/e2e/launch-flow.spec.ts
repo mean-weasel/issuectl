@@ -155,13 +155,26 @@ test.beforeAll(async () => {
     stdio: "pipe",
   });
 
-  await waitForServer("http://localhost:3847", 30000);
+  let serverStderr = "";
+  server.stderr?.on("data", (chunk: Buffer) => { serverStderr += chunk.toString(); });
+
+  await waitForServer("http://localhost:3847", 30000).catch((err) => {
+    throw new Error(`${err.message}. Server stderr: ${serverStderr.slice(-500)}`);
+  });
 });
 
 test.afterAll(async () => {
   if (server) {
+    const killTimeout = setTimeout(() => {
+      try { server.kill("SIGKILL"); } catch { /* already dead */ }
+    }, 5000);
+
     server.kill("SIGTERM");
-    await new Promise((resolve) => server.on("close", resolve));
+    await new Promise<void>((resolve) => {
+      if (server.exitCode !== null) { resolve(); return; }
+      server.on("close", () => resolve());
+    });
+    clearTimeout(killTimeout);
   }
 
   if (pidsBefore) {

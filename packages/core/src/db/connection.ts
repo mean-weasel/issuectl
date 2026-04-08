@@ -8,7 +8,11 @@ import { runMigrations } from "./migrations.js";
 const DEFAULT_DB_PATH = join(homedir(), ".issuectl", "issuectl.db");
 
 export function getDbPath(): string {
-  return process.env.ISSUECTL_DB_PATH ?? DEFAULT_DB_PATH;
+  const envPath = process.env.ISSUECTL_DB_PATH;
+  if (envPath !== undefined && !envPath.trim()) {
+    throw new Error("ISSUECTL_DB_PATH is set but empty. Provide a valid file path or unset it.");
+  }
+  return envPath ?? DEFAULT_DB_PATH;
 }
 
 export function dbExists(): boolean {

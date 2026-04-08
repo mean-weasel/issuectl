@@ -12,7 +12,7 @@ import {
   type LaunchContext,
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
-import { getTerminalLauncher } from "./terminal.js";
+import { getTerminalLauncher, type SupportedTerminal } from "./terminal.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -46,7 +46,7 @@ export async function executeLaunch(
 ): Promise<LaunchResult> {
   // 0. Build terminal launcher and verify
   const terminalSettings = {
-    terminal: getSetting(db, "terminal_app") ?? "ghostty",
+    terminal: (getSetting(db, "terminal_app") ?? "ghostty") as SupportedTerminal,
     windowTitle: getSetting(db, "terminal_window_title") ?? "issuectl",
     tabTitlePattern: getSetting(db, "terminal_tab_title_pattern") ?? "#{number} — {title}",
   };

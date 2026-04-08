@@ -37,6 +37,10 @@ export async function updateSetting(
     console.error("[issuectl] Failed to update setting:", err);
     return { success: false, error: "Failed to update setting" };
   }
-  revalidatePath("/settings");
+  try {
+    revalidatePath("/settings");
+  } catch (err) {
+    console.warn("[issuectl] Cache revalidation failed (setting saved):", err);
+  }
   return { success: true };
 }

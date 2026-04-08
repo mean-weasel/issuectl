@@ -14,7 +14,7 @@ describe("getTerminalLauncher", () => {
   });
 
   it("throws for unknown terminal", () => {
-    const bad = { ...defaultSettings, terminal: "kitty" };
+    const bad = { ...defaultSettings, terminal: "kitty" as TerminalSettings["terminal"] };
     expect(() => getTerminalLauncher(bad)).toThrow("Unsupported terminal: kitty");
   });
 });

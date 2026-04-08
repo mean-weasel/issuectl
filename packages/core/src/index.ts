@@ -99,6 +99,7 @@ export {
   type TerminalLauncher,
   type TerminalLaunchOptions,
   type TerminalSettings,
+  type SupportedTerminal,
 } from "./launch/terminal.js";
 
 // Lifecycle label reconciliation
