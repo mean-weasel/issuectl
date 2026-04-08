@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { TerminalLauncher, TerminalLaunchOptions, TerminalSettings } from "../terminal.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -88,64 +89,50 @@ end tell`;
 
 // ── Side-effect layer ───────────────────────────────────────────────
 
-// NOTE: TerminalLauncher interface doesn't exist yet (created in Task 2).
-// The GhosttyLauncher class will implement it once terminal.ts is created.
-// For now, the class is standalone. Task 2 will add the import and `implements` clause.
+export function createGhosttyLauncher(settings: TerminalSettings): TerminalLauncher {
+  return {
+    name: "Ghostty",
 
-export class GhosttyLauncher {
-  readonly name = "Ghostty";
-  private settings: { terminal: string; windowTitle: string; tabTitlePattern: string };
+    async verify(): Promise<void> {
+      if (process.platform !== "darwin") {
+        throw new Error("Ghostty AppleScript launcher is only supported on macOS");
+      }
 
-  constructor(settings: { terminal: string; windowTitle: string; tabTitlePattern: string }) {
-    this.settings = settings;
-  }
+      let stdout: string;
+      try {
+        const result = await execFileAsync("ghostty", ["--version"]);
+        stdout = result.stdout;
+      } catch {
+        throw new Error(
+          "Ghostty terminal is not installed or not on PATH. Install Ghostty from https://ghostty.org",
+        );
+      }
 
-  async verify(): Promise<void> {
-    if (process.platform !== "darwin") {
-      throw new Error("Ghostty AppleScript launcher is only supported on macOS");
-    }
+      const version = parseGhosttyVersion(stdout);
+      if (!meetsMinVersion(version)) {
+        throw new Error(
+          `Ghostty 1.3+ is required for AppleScript support (found ${stdout.trim()}). Update at https://ghostty.org`,
+        );
+      }
+    },
 
-    let stdout: string;
-    try {
-      const result = await execFileAsync("ghostty", ["--version"]);
-      stdout = result.stdout;
-    } catch {
-      throw new Error(
-        "Ghostty terminal is not installed or not on PATH. Install Ghostty from https://ghostty.org",
-      );
-    }
+    async launch(options: TerminalLaunchOptions): Promise<void> {
+      const tabTitle = expandTabTitle(settings.tabTitlePattern, {
+        issueNumber: options.issueNumber,
+        issueTitle: options.issueTitle,
+        owner: options.owner,
+        repo: options.repo,
+      });
 
-    const version = parseGhosttyVersion(stdout);
-    if (!meetsMinVersion(version)) {
-      throw new Error(
-        `Ghostty 1.3+ is required for AppleScript support (found ${stdout.trim()}). Update at https://ghostty.org`,
-      );
-    }
-  }
+      const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath);
 
-  async launch(options: {
-    workspacePath: string;
-    contextFilePath: string;
-    issueNumber: number;
-    issueTitle: string;
-    owner: string;
-    repo: string;
-  }): Promise<void> {
-    const tabTitle = expandTabTitle(this.settings.tabTitlePattern, {
-      issueNumber: options.issueNumber,
-      issueTitle: options.issueTitle,
-      owner: options.owner,
-      repo: options.repo,
-    });
+      const script = buildGhosttyAppleScript({
+        windowTitle: settings.windowTitle,
+        tabTitle,
+        shellCommand,
+      });
 
-    const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath);
-
-    const script = buildGhosttyAppleScript({
-      windowTitle: this.settings.windowTitle,
-      tabTitle,
-      shellCommand,
-    });
-
-    await execFileAsync("osascript", ["-e", script]);
-  }
+      await execFileAsync("osascript", ["-e", script]);
+    },
+  };
 }
