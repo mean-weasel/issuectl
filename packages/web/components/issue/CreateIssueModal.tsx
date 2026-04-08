@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { GitHubLabel } from "@issuectl/core";
 import { createIssue } from "@/lib/actions/issues";
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import type { RepoOption } from "@/lib/types";
 import { LabelSelector } from "./LabelSelector";
@@ -24,6 +25,7 @@ export function CreateIssueModal({
   onClose,
 }: Props) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +59,7 @@ export function CreateIssueModal({
         return;
       }
 
+      showToast("Issue created", "success");
       router.push(
         `/${selectedRepo.owner}/${selectedRepo.repo}/issues/${result.issueNumber}`,
       );

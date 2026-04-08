@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { addRepo } from "@/lib/actions/repos";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./AddRepoForm.module.css";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export function AddRepoForm({ onClose }: Props) {
+  const { showToast } = useToast();
   const [ownerRepo, setOwnerRepo] = useState("");
   const [localPath, setLocalPath] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function AddRepoForm({ onClose }: Props) {
           setWarning(result.warning);
           timerRef.current = setTimeout(() => onClose(), 2000);
         } else {
+          showToast("Repository added", "success");
           onClose();
         }
       } else {

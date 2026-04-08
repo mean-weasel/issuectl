@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { addComment } from "@/lib/actions/comments";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./CommentForm.module.css";
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function CommentForm({ owner, repo, issueNumber }: Props) {
+  const { showToast } = useToast();
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -26,6 +28,8 @@ export function CommentForm({ owner, repo, issueNumber }: Props) {
       if (!result.success) {
         setBody(text);
         setError(result.error ?? "Failed to post comment. Please try again.");
+      } else {
+        showToast("Comment posted", "success");
       }
     });
   }

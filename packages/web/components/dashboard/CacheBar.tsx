@@ -1,13 +1,11 @@
-"use client";
-
-import { useTransition } from "react";
-import { refreshDashboard } from "@/lib/actions/refresh";
 import styles from "./CacheBar.module.css";
 
 type Props = {
   cachedAt: string | null;
   totalIssues: number;
   totalPRs: number;
+  isRevalidating: boolean;
+  onManualRefresh: () => void;
 };
 
 function formatAge(dateStr: string | null): string {
@@ -19,29 +17,30 @@ function formatAge(dateStr: string | null): string {
   return `${minutes} minutes ago`;
 }
 
-export function CacheBar({ cachedAt, totalIssues, totalPRs }: Props) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleRefresh() {
-    startTransition(async () => {
-      await refreshDashboard();
-    });
-  }
-
+export function CacheBar({
+  cachedAt,
+  totalIssues,
+  totalPRs,
+  isRevalidating,
+  onManualRefresh,
+}: Props) {
   return (
     <div className={styles.bar}>
-      <span className={styles.dot} />
+      <span className={isRevalidating ? styles.dotPulsing : styles.dot} />
       <span>
         cached {formatAge(cachedAt)} &middot; {totalIssues} issues &middot;{" "}
         {totalPRs} PRs
       </span>
-      <button
-        className={styles.refreshLink}
-        onClick={handleRefresh}
-        disabled={isPending}
-      >
-        {isPending ? "refreshing..." : "refresh now"}
-      </button>
+      {isRevalidating ? (
+        <span className={styles.updating}>updating...</span>
+      ) : (
+        <button
+          className={styles.refreshLink}
+          onClick={onManualRefresh}
+        >
+          refresh now
+        </button>
+      )}
     </div>
   );
 }

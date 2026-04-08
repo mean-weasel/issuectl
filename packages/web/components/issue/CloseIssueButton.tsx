@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { closeIssue } from "@/lib/actions/issues";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/ToastProvider";
 
 type Props = {
   owner: string;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function CloseIssueButton({ owner, repo, number, isClosed }: Props) {
+  const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function CloseIssueButton({ owner, repo, number, isClosed }: Props) {
         return;
       }
       setShowConfirm(false);
+      showToast("Issue closed", "success");
     });
   }
 
