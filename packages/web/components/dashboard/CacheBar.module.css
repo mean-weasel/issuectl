@@ -36,3 +36,24 @@
   cursor: not-allowed;
   text-decoration: none;
 }
+
+.dotPulsing {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--yellow);
+  animation: dotPulse 1s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.updating {
+  margin-left: auto;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+  animation: dotPulse 1s ease-in-out infinite;
+}
