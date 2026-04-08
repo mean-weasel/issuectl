@@ -39,7 +39,8 @@ export default async function SettingsPage() {
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
   const cacheTTL = settingMap.cache_ttl ?? "300";
   const terminalApp = settingMap.terminal_app ?? "ghostty";
-  const terminalMode = settingMap.terminal_mode ?? "window";
+  const windowTitle = settingMap.terminal_window_title ?? "issuectl";
+  const tabTitlePattern = settingMap.terminal_tab_title_pattern ?? "#{number} — {title}";
 
   const [authResult, worktrees] = await Promise.all([
     getAuthStatus(),
@@ -71,7 +72,8 @@ export default async function SettingsPage() {
           <div className={styles.sectionTitle}>Terminal</div>
           <TerminalSettings
             terminalApp={terminalApp}
-            terminalMode={terminalMode}
+            windowTitle={windowTitle}
+            tabTitlePattern={tabTitlePattern}
           />
         </section>
 
