@@ -43,12 +43,12 @@ describe("getSettings", () => {
   });
 
   it("returns all settings ordered by key", () => {
-    setSetting(db, "terminal_mode", "tab");
+    setSetting(db, "terminal_window_title", "my-app");
     setSetting(db, "cache_ttl", "300");
     const settings = getSettings(db);
     expect(settings).toHaveLength(2);
     expect(settings[0].key).toBe("cache_ttl");
-    expect(settings[1].key).toBe("terminal_mode");
+    expect(settings[1].key).toBe("terminal_window_title");
   });
 });
 
@@ -62,12 +62,13 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings.length).toBeGreaterThanOrEqual(5);
+    expect(settings).toHaveLength(6);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
     expect(keys).toContain("terminal_app");
-    expect(keys).toContain("terminal_mode");
+    expect(keys).toContain("terminal_window_title");
+    expect(keys).toContain("terminal_tab_title_pattern");
     expect(keys).toContain("cache_ttl");
     expect(keys).toContain("worktree_dir");
   });

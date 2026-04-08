@@ -4,6 +4,11 @@
   align-items: flex-end;
 }
 
+.rowSpaced {
+  composes: row;
+  margin-top: 12px;
+}
+
 .field {
   flex: 1;
 }
@@ -30,33 +35,28 @@
   cursor: default;
 }
 
-.toggle {
-  display: flex;
+.inputEditable {
+  width: 100%;
+  max-width: 320px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.toggleBtn {
-  padding: 8px 16px;
+  color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-karla);
-  background: var(--bg-elevated);
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: border-color 0.15s;
 }
 
-.toggleBtn:not(:last-child) {
-  border-right: 1px solid var(--border);
+.inputEditable:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
-.toggleBtnActive {
-  composes: toggleBtn;
-  background: var(--accent-surface);
-  color: var(--accent);
-  font-weight: 600;
+.help {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
 }
 
 .saved {

@@ -7,7 +7,8 @@ import type { SettingKey } from "@issuectl/core";
 const VALID_KEYS = [
   "branch_pattern",
   "terminal_app",
-  "terminal_mode",
+  "terminal_window_title",
+  "terminal_tab_title_pattern",
   "cache_ttl",
   "worktree_dir",
 ] as const satisfies readonly SettingKey[];
@@ -36,6 +37,10 @@ export async function updateSetting(
     console.error("[issuectl] Failed to update setting:", err);
     return { success: false, error: "Failed to update setting" };
   }
-  revalidatePath("/settings");
+  try {
+    revalidatePath("/settings");
+  } catch (err) {
+    console.warn("[issuectl] Cache revalidation failed (setting saved):", err);
+  }
   return { success: true };
 }

@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "dev": "tsup --watch"
   }
 }

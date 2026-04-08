@@ -68,7 +68,6 @@ export async function launchIssue(
       selectedComments: formData.selectedCommentIndices,
       selectedFiles: formData.selectedFilePaths,
       preamble: formData.preamble || undefined,
-      terminalMode: "window",
     });
 
     try {
