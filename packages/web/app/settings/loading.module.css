@@ -1,0 +1,69 @@
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+}
+
+.headerSkeleton {
+  padding: 24px 32px 0;
+  margin-bottom: 16px;
+}
+
+.titleBar {
+  height: 32px;
+  width: 120px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.content {
+  padding: 20px 32px 32px;
+  max-width: 720px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  width: 180px;
+  height: 16px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.row {
+  height: 40px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  animation: pulse 1.8s ease-in-out infinite 0.1s;
+}
+
+.rowWide {
+  height: 40px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  width: 100%;
+  animation: pulse 1.8s ease-in-out infinite 0.2s;
+}
+
+.rowShort {
+  height: 40px;
+  width: 200px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  animation: pulse 1.8s ease-in-out infinite 0.3s;
+}
