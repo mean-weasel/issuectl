@@ -12,11 +12,7 @@ import {
   type LaunchContext,
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
-import {
-  openGhosttyWindow,
-  openGhosttyTab,
-  verifyGhosttyInstalled,
-} from "./ghostty.js";
+import { getTerminalLauncher } from "./terminal.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -27,7 +23,6 @@ export interface LaunchOptions {
   selectedComments: number[];
   selectedFiles: string[];
   preamble?: string;
-  terminalMode: "window" | "tab";
 }
 
 export interface LaunchResult {
@@ -49,8 +44,14 @@ export async function executeLaunch(
   octokit: Octokit,
   options: LaunchOptions,
 ): Promise<LaunchResult> {
-  // 0. Verify Ghostty is available before doing any work
-  await verifyGhosttyInstalled();
+  // 0. Build terminal launcher and verify
+  const terminalSettings = {
+    terminal: getSetting(db, "terminal_app") ?? "ghostty",
+    windowTitle: getSetting(db, "terminal_window_title") ?? "issuectl",
+    tabTitlePattern: getSetting(db, "terminal_tab_title_pattern") ?? "#{number} — {title}",
+  };
+  const launcher = getTerminalLauncher(terminalSettings);
+  await launcher.verify();
 
   // 1. Fetch issue detail
   const detail = await getIssueDetail(
@@ -153,12 +154,15 @@ export async function executeLaunch(
     workspacePath: workspace.path,
   });
 
-  // 9. Open Ghostty terminal
-  if (options.terminalMode === "tab") {
-    openGhosttyTab(workspace.path, contextFilePath);
-  } else {
-    openGhosttyWindow(workspace.path, contextFilePath);
-  }
+  // 9. Open terminal
+  await launcher.launch({
+    workspacePath: workspace.path,
+    contextFilePath,
+    issueNumber: options.issueNumber,
+    issueTitle: detail.issue.title,
+    owner: options.owner,
+    repo: options.repo,
+  });
 
   // 10. Return result
   return {

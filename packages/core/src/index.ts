@@ -95,10 +95,11 @@ export {
 } from "./launch/context.js";
 export { prepareWorkspace } from "./launch/workspace.js";
 export {
-  openGhosttyWindow,
-  openGhosttyTab,
-  verifyGhosttyInstalled,
-} from "./launch/ghostty.js";
+  getTerminalLauncher,
+  type TerminalLauncher,
+  type TerminalLaunchOptions,
+  type TerminalSettings,
+} from "./launch/terminal.js";
 
 // Lifecycle label reconciliation
 export { matchLinkedPRs } from "./lifecycle/detect.js";
