@@ -7,6 +7,7 @@
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
+    "test": "turbo test",
     "dev": "turbo dev",
     "prepare": "husky"
   },
@@ -19,6 +20,7 @@
     "tsup": "^8.4.0",
     "turbo": "^2.9.4",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.58.0"
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^4.1.3"
   }
 }
