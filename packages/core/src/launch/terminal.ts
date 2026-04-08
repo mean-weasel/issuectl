@@ -1,4 +1,5 @@
 import { createGhosttyLauncher } from "./terminals/ghostty.js";
+import { createTerminalAppLauncher } from "./terminals/macos-terminal.js";
 
 export interface TerminalLauncher {
   readonly name: string;
@@ -15,7 +16,7 @@ export interface TerminalLaunchOptions {
   repo: string;
 }
 
-export type SupportedTerminal = "ghostty";
+export type SupportedTerminal = "ghostty" | "terminal";
 
 export interface TerminalSettings {
   terminal: SupportedTerminal;
@@ -28,6 +29,8 @@ export function getTerminalLauncher(settings: TerminalSettings): TerminalLaunche
   switch (settings.terminal) {
     case "ghostty":
       return createGhosttyLauncher(settings);
+    case "terminal":
+      return createTerminalAppLauncher(settings);
     default:
       throw new Error(`Unsupported terminal: ${settings.terminal}`);
   }

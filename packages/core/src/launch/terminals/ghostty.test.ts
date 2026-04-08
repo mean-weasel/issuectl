@@ -89,7 +89,7 @@ describe("buildGhosttyArgs", () => {
       "-na", "Ghostty.app",
       "--args",
       "--title=#42 — Fix auth",
-      "-e", "/bin/bash", "-c", "cd '/tmp' && echo hello",
+      "-e", "/bin/bash", "-lc", "cd '/tmp' && echo hello || exec $SHELL -l",
     ]);
   });
 
