@@ -3,6 +3,7 @@ import { getDb, listRepos, getCached } from "@issuectl/core";
 import type { GitHubIssue, GitHubPull } from "@issuectl/core";
 import { REPO_COLORS } from "@/lib/constants";
 import { SidebarRepoList } from "./SidebarRepoList";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import styles from "./Sidebar.module.css";
 
 type Props = {
@@ -74,6 +75,11 @@ export async function Sidebar({ username }: Props) {
       <div className={styles.sectionTitle}>Repositories</div>
 
       <SidebarRepoList repos={repos} colors={REPO_COLORS} />
+
+      <div className={styles.themeSection}>
+        <div className={styles.themeLabel}>Theme</div>
+        <ThemeToggle />
+      </div>
 
       <div className={styles.footer}>
         <span className={styles.authDot} />

@@ -164,6 +164,20 @@
   color: var(--text-tertiary);
 }
 
+.themeSection {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.themeLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
 .footer {
   padding: 12px 14px;
   border-top: 1px solid var(--border);
