@@ -15,7 +15,6 @@ import type {
   ParsedIssuesResponse,
   ReviewedIssue,
   BatchCreateResult,
-  GitHubLabel,
 } from "@issuectl/core";
 
 type ParseActionResult = {
