@@ -39,14 +39,15 @@ export function buildShellCommand(workspacePath: string, contextFilePath: string
 }
 
 export function buildGhosttyArgs(tabTitle: string, shellCommand: string): string[] {
-  // Use login shell so PATH includes user tools like claude.
+  // Use interactive login shell (-lic) so PATH includes user tools and
+  // shell aliases are expanded (aliases only work in interactive mode).
   // On failure, drop into an interactive shell so the user can see the error.
   const wrappedCommand = `${shellCommand} || exec $SHELL -l`;
   return [
     "-na", "Ghostty.app",
     "--args",
     `--title=${tabTitle}`,
-    "-e", "/bin/bash", "-lc", wrappedCommand,
+    "-e", "/bin/bash", "-lic", wrappedCommand,
   ];
 }
 
