@@ -119,3 +119,20 @@ export {
   type ReconcileResult,
   type LinkedPRState,
 } from "./lifecycle/reconcile.js";
+
+// Parse flow (NL → structured issues)
+export type {
+  ParsedIssue,
+  ParsedIssueType,
+  ParsedIssueClarity,
+  ParsedIssuesResponse,
+  ReviewedIssue,
+  BatchCreateResult,
+} from "./parse/index.js";
+export {
+  PARSED_ISSUES_SCHEMA,
+  parseIssues,
+  checkClaudeCliAvailable,
+  formatRepoContext,
+  type RepoWithLabels,
+} from "./parse/index.js";
