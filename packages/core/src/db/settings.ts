@@ -3,7 +3,7 @@ import type { Setting, SettingKey } from "../types.js";
 
 const DEFAULT_SETTINGS: Setting[] = [
   { key: "branch_pattern", value: "issue-{number}-{slug}" },
-  { key: "terminal_app", value: "ghostty" },
+  { key: "terminal_app", value: "iterm2" },
   { key: "terminal_window_title", value: "issuectl" },
   { key: "terminal_tab_title_pattern", value: "#{number} — {title}" },
   { key: "cache_ttl", value: "300" },
