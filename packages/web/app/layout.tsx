@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Karla, Syne, Source_Code_Pro } from "next/font/google";
+import { cookies } from "next/headers";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { AuthErrorScreen } from "@/components/auth/AuthErrorScreen";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { ThemeProvider, type Theme } from "@/components/ui/ThemeProvider";
 import { getAuthStatus } from "@/lib/auth";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -32,19 +34,29 @@ type Props = {
   children: ReactNode;
 };
 
+const THEME_SCRIPT = `(function(){try{var t=document.cookie.match(/(?:^|;)\\s*theme=(light|dark|system)/);var v=t?t[1]:"system";var r=v==="system"?window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light":v;document.documentElement.setAttribute("data-theme",r)}catch(e){}})()`;
+
 export default async function RootLayout({ children }: Props) {
   const auth = await getAuthStatus();
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get("theme")?.value;
+  const theme: Theme = themeCookie === "dark" || themeCookie === "light" ? themeCookie : "system";
 
   return (
-    <html lang="en" className={`${karla.variable} ${syne.variable} ${sourceCodePro.variable}`}>
+    <html lang="en" data-theme={theme === "system" ? undefined : theme} className={`${karla.variable} ${syne.variable} ${sourceCodePro.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className={karla.className}>
         {auth.authenticated ? (
-          <ToastProvider>
-            <div className={styles.app}>
-              <Sidebar username={auth.username} />
-              <main className={styles.content}>{children}</main>
-            </div>
-          </ToastProvider>
+          <ThemeProvider initial={theme}>
+            <ToastProvider>
+              <div className={styles.app}>
+                <Sidebar username={auth.username} />
+                <main className={styles.content}>{children}</main>
+              </div>
+            </ToastProvider>
+          </ThemeProvider>
         ) : (
           <AuthErrorScreen />
         )}
