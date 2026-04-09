@@ -8,6 +8,7 @@ import {
   getDeploymentsForIssue,
   getDeploymentsByRepo,
   updateLinkedPR,
+  endDeployment,
 } from "./deployments.js";
 
 function seedRepo(db: Database.Database) {
@@ -39,6 +40,7 @@ describe("recordDeployment", () => {
     expect(dep.workspaceMode).toBe("existing");
     expect(dep.workspacePath).toBe("/home/dev/api");
     expect(dep.linkedPrNumber).toBeNull();
+    expect(dep.endedAt).toBeNull();
     expect(dep.launchedAt).toBeTruthy();
   });
 
@@ -214,6 +216,37 @@ describe("updateLinkedPR", () => {
   it("throws when deployment does not exist", () => {
     expect(() => updateLinkedPR(db, 999, 1)).toThrow(
       "No deployment found with id 999 to link PR",
+    );
+  });
+});
+
+describe("endDeployment", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("sets ended_at on a deployment", () => {
+    const repo = seedRepo(db);
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 1,
+      branchName: "b",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+
+    expect(dep.endedAt).toBeNull();
+    endDeployment(db, dep.id);
+
+    const updated = getDeploymentById(db, dep.id);
+    expect(updated!.endedAt).toBeTruthy();
+  });
+
+  it("throws when deployment does not exist", () => {
+    expect(() => endDeployment(db, 999)).toThrow(
+      "No deployment found with id 999",
     );
   });
 });

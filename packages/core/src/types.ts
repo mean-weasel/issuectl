@@ -39,6 +39,7 @@ export type Deployment = {
   workspacePath: string;
   linkedPrNumber: number | null;
   launchedAt: string;
+  endedAt: string | null;
 };
 
 export type CacheEntry<T = unknown> = {

@@ -86,7 +86,14 @@ export default async function LaunchActivePage({
         }
       />
       <div className={styles.content}>
-        <LaunchActiveBanner branchName={deployment.branchName} />
+        <LaunchActiveBanner
+          deploymentId={deployment.id}
+          branchName={deployment.branchName}
+          endedAt={deployment.endedAt}
+          owner={owner}
+          repo={repo}
+          issueNumber={issueNumber}
+        />
 
         <LaunchProgress
           deployment={deployment}

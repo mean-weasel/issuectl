@@ -23,6 +23,7 @@ export {
   getDeploymentsForIssue,
   getDeploymentsByRepo,
   updateLinkedPR,
+  endDeployment,
 } from "./db/deployments.js";
 export {
   getCacheTtl,

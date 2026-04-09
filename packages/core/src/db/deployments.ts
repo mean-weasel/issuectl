@@ -10,6 +10,7 @@ type DeploymentRow = {
   workspace_path: string;
   linked_pr_number: number | null;
   launched_at: string;
+  ended_at: string | null;
 };
 
 function rowToDeployment(row: DeploymentRow): Deployment {
@@ -22,6 +23,7 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     workspacePath: row.workspace_path,
     linkedPrNumber: row.linked_pr_number,
     launchedAt: row.launched_at,
+    endedAt: row.ended_at,
   };
 }
 
@@ -100,5 +102,17 @@ export function updateLinkedPR(
     throw new Error(
       `No deployment found with id ${deploymentId} to link PR`,
     );
+  }
+}
+
+export function endDeployment(
+  db: Database.Database,
+  deploymentId: number,
+): void {
+  const result = db
+    .prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?")
+    .run(deploymentId);
+  if (result.changes === 0) {
+    throw new Error(`No deployment found with id ${deploymentId}`);
   }
 }

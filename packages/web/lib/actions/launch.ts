@@ -5,6 +5,7 @@ import {
   getDb,
   getOctokit,
   executeLaunch,
+  endDeployment as coreEndDeployment,
   type WorkspaceMode,
 } from "@issuectl/core";
 
@@ -83,4 +84,22 @@ export async function launchIssue(
       err instanceof Error ? err.message : "Launch failed unexpectedly";
     return { success: false, error: message };
   }
+}
+
+export async function endSession(
+  deploymentId: number,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = getDb();
+    coreEndDeployment(db, deploymentId);
+  } catch (err) {
+    console.error("[issuectl] Failed to end session:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Failed to end session" };
+  }
+  revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
+  revalidatePath(`/${owner}/${repo}/issues/${issueNumber}/launch`);
+  return { success: true };
 }
