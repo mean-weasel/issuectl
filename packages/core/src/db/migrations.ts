@@ -6,9 +6,22 @@ type Migration = {
   up: (db: Database.Database) => void;
 };
 
-// Add migrations here as the schema evolves.
-// Each migration bumps the version and applies DDL changes.
-const migrations: Migration[] = [];
+const migrations: Migration[] = [
+  {
+    version: 2,
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS claude_aliases (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          command     TEXT NOT NULL UNIQUE,
+          description TEXT NOT NULL DEFAULT '',
+          is_default  INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+      `);
+    },
+  },
+];
 
 export function runMigrations(db: Database.Database): void {
   const currentVersion = getSchemaVersion(db);

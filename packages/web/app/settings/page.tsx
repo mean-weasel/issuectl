@@ -3,11 +3,12 @@ import {
   dbExists,
   listRepos,
   getSettings,
+  listAliases,
 } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { TrackedRepos } from "@/components/settings/TrackedRepos";
-import { DefaultsForm } from "@/components/settings/DefaultsForm";
-import { TerminalSettings } from "@/components/settings/TerminalSettings";
+import { SettingsForm } from "@/components/settings/SettingsForm";
+import { ClaudeAliases } from "@/components/settings/ClaudeAliases";
 import { AuthStatus } from "@/components/settings/AuthStatus";
 import { WorktreeCleanup } from "@/components/settings/WorktreeCleanup";
 import { listWorktrees } from "@/lib/actions/worktrees";
@@ -33,6 +34,12 @@ export default async function SettingsPage() {
   const db = getDb();
   const repos = listRepos(db);
   const settings = getSettings(db);
+  let aliases: Awaited<ReturnType<typeof listAliases>> = [];
+  try {
+    aliases = listAliases(db);
+  } catch (err) {
+    console.error("[issuectl] Failed to load aliases:", err);
+  }
 
   // Fallback defaults match DEFAULT_SETTINGS in core/db/settings.ts
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
@@ -60,21 +67,17 @@ export default async function SettingsPage() {
           <TrackedRepos repos={repos} />
         </section>
 
-        <section className={styles.section}>
-          <div className={styles.sectionTitle}>Defaults</div>
-          <DefaultsForm
-            branchPattern={branchPattern}
-            cacheTTL={cacheTTL}
-          />
-        </section>
+        <SettingsForm
+          branchPattern={branchPattern}
+          cacheTTL={cacheTTL}
+          terminalApp={terminalApp}
+          windowTitle={windowTitle}
+          tabTitlePattern={tabTitlePattern}
+        />
 
         <section className={styles.section}>
-          <div className={styles.sectionTitle}>Terminal</div>
-          <TerminalSettings
-            terminalApp={terminalApp}
-            windowTitle={windowTitle}
-            tabTitlePattern={tabTitlePattern}
-          />
+          <div className={styles.sectionTitle}>Claude Aliases</div>
+          <ClaudeAliases aliases={aliases} />
         </section>
 
         <section className={styles.section}>

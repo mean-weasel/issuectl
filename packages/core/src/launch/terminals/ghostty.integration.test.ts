@@ -104,6 +104,7 @@ describe("Ghostty integration", () => {
     issueTitle: "Test tab title",
     owner: "test-org",
     repo: "test-repo",
+    claudeCommand: "claude",
   };
 
   it("launches a new Ghostty window without error", async ({ skip }) => {
