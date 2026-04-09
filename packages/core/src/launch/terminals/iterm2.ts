@@ -54,7 +54,7 @@ export function createITermLauncher(settings: TerminalSettings): TerminalLaunche
 
     async launch(options: TerminalLaunchOptions): Promise<void> {
       const tabTitle = expandTabTitle(settings.tabTitlePattern, options);
-      const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath);
+      const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath, options.claudeCommand);
 
       const script = buildITermAppleScript(tabTitle, shellCommand);
 

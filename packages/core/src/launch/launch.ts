@@ -13,6 +13,7 @@ import {
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
 import { getTerminalLauncher, type SupportedTerminal } from "./terminal.js";
+import { getDefaultAlias } from "../db/aliases.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -155,6 +156,7 @@ export async function executeLaunch(
   });
 
   // 9. Open terminal
+  const defaultAlias = getDefaultAlias(db);
   await launcher.launch({
     workspacePath: workspace.path,
     contextFilePath,
@@ -162,6 +164,7 @@ export async function executeLaunch(
     issueTitle: detail.issue.title,
     owner: options.owner,
     repo: options.repo,
+    claudeCommand: defaultAlias?.command ?? "claude",
   });
 
   // 10. Return result

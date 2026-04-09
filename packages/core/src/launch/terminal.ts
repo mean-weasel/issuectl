@@ -15,6 +15,8 @@ export interface TerminalLaunchOptions {
   issueTitle: string;
   owner: string;
   repo: string;
+  /** Shell command to use instead of "claude" (e.g. a user-defined alias). Defaults to "claude". */
+  claudeCommand: string;
 }
 
 export type SupportedTerminal = "ghostty" | "terminal" | "iterm2";

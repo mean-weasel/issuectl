@@ -52,6 +52,16 @@ describe("buildShellCommand", () => {
     const result = buildShellCommand("/home/user/my project", "/tmp/my file.md");
     expect(result).toBe("cd '/home/user/my project' && cat '/tmp/my file.md' | claude");
   });
+
+  it("uses custom command when provided", () => {
+    const result = buildShellCommand("/home/user/project", "/tmp/ctx.md", "yolo");
+    expect(result).toBe("cd '/home/user/project' && cat '/tmp/ctx.md' | yolo");
+  });
+
+  it("defaults to claude when command is omitted", () => {
+    const result = buildShellCommand("/home/user/project", "/tmp/ctx.md");
+    expect(result).toBe("cd '/home/user/project' && cat '/tmp/ctx.md' | claude");
+  });
 });
 
 describe("parseGhosttyVersion", () => {

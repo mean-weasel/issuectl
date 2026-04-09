@@ -15,6 +15,14 @@ export type SettingKey =
   | "cache_ttl"
   | "worktree_dir";
 
+export type ClaudeAlias = {
+  id: number;
+  command: string;
+  description: string;
+  isDefault: boolean;
+  createdAt: string;
+};
+
 export type Setting = {
   key: SettingKey;
   value: string;

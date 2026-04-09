@@ -34,8 +34,8 @@ export function expandTabTitle(pattern: string, input: TabTitleInput): string {
     .replace(/\{repo\}/g, input.repo);
 }
 
-export function buildShellCommand(workspacePath: string, contextFilePath: string): string {
-  return `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | claude`;
+export function buildShellCommand(workspacePath: string, contextFilePath: string, claudeCommand: string = "claude"): string {
+  return `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand}`;
 }
 
 export function buildGhosttyArgs(tabTitle: string, shellCommand: string): string[] {
@@ -97,7 +97,7 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
 
     async launch(options: TerminalLaunchOptions): Promise<void> {
       const tabTitle = expandTabTitle(settings.tabTitlePattern, options);
-      const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath);
+      const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath, options.claudeCommand);
       const args = buildGhosttyArgs(tabTitle, shellCommand);
       try {
         await execFileAsync("open", args);

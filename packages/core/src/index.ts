@@ -1,4 +1,4 @@
-export type { Repo, Setting, SettingKey, Deployment, CacheEntry } from "./types.js";
+export type { Repo, Setting, SettingKey, Deployment, CacheEntry, ClaudeAlias } from "./types.js";
 
 export { getDb, getDbPath, dbExists, closeDb } from "./db/connection.js";
 export { initSchema, getSchemaVersion } from "./db/schema.js";
@@ -32,6 +32,14 @@ export {
   clearCacheKey,
   clearCache,
 } from "./db/cache.js";
+export {
+  listAliases,
+  getDefaultAlias,
+  addAlias,
+  removeAlias,
+  setDefaultAlias,
+  clearDefaultAlias,
+} from "./db/aliases.js";
 
 // GitHub client
 export type {
