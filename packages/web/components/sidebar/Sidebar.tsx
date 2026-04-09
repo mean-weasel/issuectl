@@ -65,6 +65,10 @@ export async function Sidebar({ username }: Props) {
             <span className={styles.navBadge}>{totalPRs}</span>
           )}
         </Link>
+        <Link href="/parse" className={styles.navItem}>
+          <span className={styles.navIcon}>&#9889;</span>
+          Quick Create
+        </Link>
         <Link href="/settings" className={styles.navItem}>
           <span className={styles.navIcon}>&#9881;</span>
           Settings
