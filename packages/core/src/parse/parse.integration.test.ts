@@ -43,9 +43,10 @@ afterAll(async () => {
 });
 
 describe("batch issue creation via GitHub API", () => {
-  it("creates a single issue and verifies it", async () => {
+  it("creates a single issue and verifies it", async (ctx) => {
     if (skipReason) {
-      return expect.soft(true).toBe(true);
+      ctx.skip();
+      return;
     }
 
     const issue = await createIssue(octokit, TEST_OWNER, TEST_REPO, {
@@ -62,9 +63,10 @@ describe("batch issue creation via GitHub API", () => {
     expect(issue.labels.some((l) => l.name === "documentation")).toBe(true);
   });
 
-  it("creates multiple issues in parallel (batch pattern)", async () => {
+  it("creates multiple issues in parallel (batch pattern)", async (ctx) => {
     if (skipReason) {
-      return expect.soft(true).toBe(true);
+      ctx.skip();
+      return;
     }
 
     const fixtures = [

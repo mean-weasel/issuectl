@@ -129,6 +129,12 @@ export async function parseIssues(
     claude.on("close", (code) => {
       clearTimeout(timer);
 
+      if (code !== 0 && finalResult) {
+        console.warn(
+          `[issuectl] Claude CLI exited with code ${code} but produced a result. stderr: ${stderrBuffer.trim()}`,
+        );
+      }
+
       if (code !== 0 && !finalResult) {
         finish({
           success: false,

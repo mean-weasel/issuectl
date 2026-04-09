@@ -45,7 +45,11 @@ export default async function ParsePage() {
           try {
             const labels = await listLabels(octokit, r.owner, r.name);
             return { key: `${r.owner}/${r.name}`, labels };
-          } catch {
+          } catch (err) {
+            console.warn(
+              `[issuectl] Failed to fetch labels for ${r.owner}/${r.name}:`,
+              err instanceof Error ? err.message : err,
+            );
             return { key: `${r.owner}/${r.name}`, labels: [] as GitHubLabel[] };
           }
         }),

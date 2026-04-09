@@ -60,7 +60,8 @@ export const PARSED_ISSUES_SCHEMA = {
           clarity: {
             type: "string",
             enum: ["clear", "ambiguous", "unknown_repo"],
-            description: "How confident the parsing is",
+            description:
+              "Repo match assessment: clear = confident single match, ambiguous = multiple possible repos, unknown_repo = no match found",
           },
         },
         required: [

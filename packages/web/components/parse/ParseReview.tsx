@@ -62,19 +62,27 @@ export function ParseReview({
     }
     setError(null);
     startTransition(async () => {
-      const reviewed = cards
-        .filter((c) => c.accepted)
-        .map((c) => ({
-          id: c.id,
-          title: c.title,
-          body: c.body,
-          owner: c.owner ?? "",
-          repo: c.repo ?? "",
-          labels: c.labels,
-          accepted: true,
-        }));
-      const result = await batchCreateIssues(reviewed);
-      onConfirm(result);
+      try {
+        const reviewed = cards
+          .filter((c) => c.accepted)
+          .map((c) => ({
+            id: c.id,
+            title: c.title,
+            body: c.body,
+            owner: c.owner ?? "",
+            repo: c.repo ?? "",
+            labels: c.labels,
+            accepted: true,
+          }));
+        const result = await batchCreateIssues(reviewed);
+        onConfirm(result);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? `Failed to create issues: ${err.message}`
+            : "An unexpected error occurred while creating issues.",
+        );
+      }
     });
   }
 

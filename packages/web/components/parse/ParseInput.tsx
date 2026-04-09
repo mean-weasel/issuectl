@@ -18,16 +18,24 @@ export function ParseInput({ onParsed }: Props) {
   function handleParse() {
     setError(null);
     startTransition(async () => {
-      const result = await parseNaturalLanguage(input);
-      if (!result.success) {
-        setError(result.error ?? "Failed to parse input");
-        return;
+      try {
+        const result = await parseNaturalLanguage(input);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        if (result.data.parsed.issues.length === 0) {
+          setError("No issues were parsed from the input. Try being more specific.");
+          return;
+        }
+        onParsed(result.data.parsed);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? `Connection error: ${err.message}`
+            : "An unexpected error occurred. Please try again.",
+        );
       }
-      if (result.data!.parsed.issues.length === 0) {
-        setError("No issues were parsed from the input. Try being more specific.");
-        return;
-      }
-      onParsed(result.data!.parsed);
     });
   }
 

@@ -17,11 +17,9 @@ import type {
   BatchCreateResult,
 } from "@issuectl/core";
 
-type ParseActionResult = {
-  success: boolean;
-  data?: { parsed: ParsedIssuesResponse };
-  error?: string;
-};
+type ParseActionResult =
+  | { success: true; data: { parsed: ParsedIssuesResponse } }
+  | { success: false; error: string };
 
 export async function parseNaturalLanguage(
   input: string,
@@ -47,7 +45,11 @@ export async function parseNaturalLanguage(
         try {
           const labels = await listLabels(octokit, r.owner, r.name);
           return { owner: r.owner, name: r.name, labels: labels.map((l) => l.name) };
-        } catch {
+        } catch (err) {
+          console.warn(
+            `[issuectl] Failed to fetch labels for ${r.owner}/${r.name}:`,
+            err instanceof Error ? err.message : err,
+          );
           return { owner: r.owner, name: r.name, labels: [] as string[] };
         }
       }),
@@ -63,7 +65,8 @@ export async function parseNaturalLanguage(
     return { success: true, data: { parsed: result.data } };
   } catch (err) {
     console.error("[issuectl] Failed to parse natural language:", err);
-    return { success: false, error: "Failed to parse input" };
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return { success: false, error: `Failed to parse input: ${message}` };
   }
 }
 
@@ -76,55 +79,70 @@ export async function batchCreateIssues(
     return { created: 0, failed: 0, results: [] };
   }
 
-  const db = getDb();
-  const octokit = await getOctokit();
+  try {
+    const db = getDb();
+    const octokit = await getOctokit();
 
-  const results = await Promise.all(
-    accepted.map(async (issue) => {
-      try {
-        const created = await coreCreateIssue(octokit, issue.owner, issue.repo, {
-          title: issue.title.trim(),
-          body: issue.body.trim() || undefined,
-          labels: issue.labels.length > 0 ? issue.labels : undefined,
-        });
+    const results = await Promise.all(
+      accepted.map(async (issue) => {
+        if (!issue.owner || !issue.repo || !issue.title.trim()) {
+          return {
+            id: issue.id,
+            success: false as const,
+            error: "Owner, repo, and title are required",
+            owner: issue.owner,
+            repo: issue.repo,
+          };
+        }
 
-        clearCacheKey(db, `issues:${issue.owner}/${issue.repo}`);
+        try {
+          const created = await coreCreateIssue(octokit, issue.owner, issue.repo, {
+            title: issue.title.trim(),
+            body: issue.body.trim() || undefined,
+            labels: issue.labels.length > 0 ? issue.labels : undefined,
+          });
 
-        return {
-          id: issue.id,
-          success: true as const,
-          issueNumber: created.number,
-          owner: issue.owner,
-          repo: issue.repo,
-        };
-      } catch (err) {
-        console.error(
-          `[issuectl] Failed to create issue "${issue.title}":`,
-          err,
-        );
-        return {
-          id: issue.id,
-          success: false as const,
-          error: err instanceof Error ? err.message : "Unknown error",
-          owner: issue.owner,
-          repo: issue.repo,
-        };
-      }
-    }),
-  );
+          clearCacheKey(db, `issues:${issue.owner}/${issue.repo}`);
 
-  const affectedRepos = new Set(
-    results
-      .filter((r) => r.success)
-      .map((r) => `/${r.owner}/${r.repo}`),
-  );
-  for (const repoPath of affectedRepos) {
-    revalidatePath(repoPath);
+          return {
+            id: issue.id,
+            success: true as const,
+            issueNumber: created.number,
+            owner: issue.owner,
+            repo: issue.repo,
+          };
+        } catch (err) {
+          console.error(
+            `[issuectl] Failed to create issue "${issue.title}":`,
+            err,
+          );
+          return {
+            id: issue.id,
+            success: false as const,
+            error: err instanceof Error ? err.message : "Unknown error",
+            owner: issue.owner,
+            repo: issue.repo,
+          };
+        }
+      }),
+    );
+
+    const affectedRepos = new Set(
+      results
+        .filter((r) => r.success)
+        .map((r) => `/${r.owner}/${r.repo}`),
+    );
+    for (const repoPath of affectedRepos) {
+      revalidatePath(repoPath);
+    }
+
+    return {
+      created: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  } catch (err) {
+    console.error("[issuectl] Failed to batch create issues:", err);
+    return { created: 0, failed: accepted.length, results: [] };
   }
-
-  return {
-    created: results.filter((r) => r.success).length,
-    failed: results.filter((r) => !r.success).length,
-    results,
-  };
 }
