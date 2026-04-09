@@ -16,6 +16,7 @@ type Props = {
 };
 
 export function LaunchProgress({ deployment, commentCount, fileCount }: Props) {
+  const ended = deployment.endedAt !== null;
   const steps: Step[] = [
     {
       label: "Assembled issue context",
@@ -39,10 +40,10 @@ export function LaunchProgress({ deployment, commentCount, fileCount }: Props) {
       status: "done",
     },
     {
-      label: "Claude Code running",
+      label: ended ? "Session ended" : "Claude Code running",
       detail: deployment.workspacePath,
       highlightDetail: true,
-      status: "active",
+      status: ended ? "done" : "active",
     },
   ];
 

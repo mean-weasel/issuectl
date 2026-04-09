@@ -21,6 +21,12 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 3,
+    up(db) {
+      db.exec(`ALTER TABLE deployments ADD COLUMN ended_at TEXT;`);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

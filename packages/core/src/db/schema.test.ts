@@ -33,13 +33,13 @@ describe("initSchema", () => {
 
   it("sets schema_version to 2", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(2);
+    expect(getSchemaVersion(db)).toBe(3);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(2);
+    expect(getSchemaVersion(db)).toBe(3);
   });
 });
 
@@ -56,12 +56,11 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(2);
+    expect(getSchemaVersion(db)).toBe(3);
   });
 
-  it("migrates v1 schema to v2 by adding claude_aliases table", () => {
+  it("migrates v1 schema through v2 and v3", () => {
     const db = createRawTestDb();
-    // Simulate a v1 database (no claude_aliases table)
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
       CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -73,10 +72,24 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(2);
+    expect(getSchemaVersion(db)).toBe(3);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
     expect(tables).toHaveLength(1);
+  });
+
+  it("migrates v2 schema to v3 by adding ended_at column", () => {
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE deployments (id INTEGER PRIMARY KEY, repo_id INTEGER, issue_number INTEGER, branch_name TEXT, workspace_mode TEXT, workspace_path TEXT, linked_pr_number INTEGER, launched_at TEXT);
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (2);
+    `);
+
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(3);
+    db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
   });
 });

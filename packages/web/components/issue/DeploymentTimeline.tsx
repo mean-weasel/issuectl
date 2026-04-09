@@ -31,9 +31,9 @@ function buildEntries(
 
   for (const dep of deployments) {
     entries.push({
-      label: "Launched to Claude Code",
+      label: dep.endedAt ? "Session ended" : "Claude Code active",
       ref: dep.branchName,
-      date: dep.launchedAt,
+      date: dep.endedAt ?? dep.launchedAt,
       type: "launched",
     });
   }
