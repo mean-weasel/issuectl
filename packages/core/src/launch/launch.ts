@@ -13,7 +13,6 @@ import {
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
 import { getTerminalLauncher, type SupportedTerminal } from "./terminal.js";
-import { getDefaultAlias } from "../db/aliases.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -156,7 +155,13 @@ export async function executeLaunch(
   });
 
   // 9. Open terminal
-  const defaultAlias = getDefaultAlias(db);
+  //
+  // claude_extra_args is validated at save time by validateClaudeArgs in the
+  // Server Action. We don't re-validate here — but we DO a cheap metachar
+  // sanity check as defense-in-depth against a tampered DB. If the stored
+  // value looks dangerous, we fall back to plain "claude" and log a warning.
+  const claudeCommand = buildClaudeCommand(getSetting(db, "claude_extra_args"));
+  console.warn(`[issuectl] launching: ${claudeCommand}`);
   await launcher.launch({
     workspacePath: workspace.path,
     contextFilePath,
@@ -164,7 +169,7 @@ export async function executeLaunch(
     issueTitle: detail.issue.title,
     owner: options.owner,
     repo: options.repo,
-    claudeCommand: defaultAlias?.command ?? "claude",
+    claudeCommand,
   });
 
   // 10. Return result
@@ -174,6 +179,26 @@ export async function executeLaunch(
     workspacePath: workspace.path,
     contextFilePath,
   };
+}
+
+const DANGEROUS_METACHARS = /[;&|<>`$\n\r\t()]/;
+
+/**
+ * Build the shell command that the terminal launcher will run. The stored
+ * value is trusted (validated at save time) but we apply a cheap metachar
+ * check as defense-in-depth — if the value looks dangerous (tampered DB,
+ * backup restore, etc.), fall back to plain `claude` and warn.
+ */
+export function buildClaudeCommand(rawExtraArgs: string | undefined): string {
+  const extraArgs = rawExtraArgs?.trim() ?? "";
+  if (extraArgs === "") return "claude";
+  if (DANGEROUS_METACHARS.test(extraArgs)) {
+    console.warn(
+      `[issuectl] claude_extra_args contains unexpected shell metacharacters; falling back to plain 'claude'. Re-save the value in Settings to re-validate. Got: ${JSON.stringify(extraArgs)}`,
+    );
+    return "claude";
+  }
+  return `claude ${extraArgs}`;
 }
 
 export { generateBranchName } from "./branch.js";

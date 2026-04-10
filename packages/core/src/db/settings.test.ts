@@ -62,7 +62,7 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings).toHaveLength(6);
+    expect(settings).toHaveLength(7);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
@@ -71,6 +71,12 @@ describe("seedDefaults", () => {
     expect(keys).toContain("terminal_tab_title_pattern");
     expect(keys).toContain("cache_ttl");
     expect(keys).toContain("worktree_dir");
+    expect(keys).toContain("claude_extra_args");
+  });
+
+  it("seedDefaults sets claude_extra_args to empty string by default", () => {
+    seedDefaults(db);
+    expect(getSetting(db, "claude_extra_args")).toBe("");
   });
 
   it("uses INSERT OR IGNORE — does not overwrite existing values", () => {

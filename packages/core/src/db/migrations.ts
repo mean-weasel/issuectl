@@ -27,6 +27,30 @@ const migrations: Migration[] = [
       db.exec(`ALTER TABLE deployments ADD COLUMN ended_at TEXT;`);
     },
   },
+  {
+    version: 4,
+    up(db) {
+      // Log how many rows are being destroyed so users/operators have a paper
+      // trail when the alias feature's data disappears. The table may not exist
+      // on fresh installs, so the count query is itself guarded.
+      const row = db
+        .prepare(
+          "SELECT COUNT(*) as c FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'",
+        )
+        .get() as { c: number };
+      if (row.c > 0) {
+        const { n } = db
+          .prepare("SELECT COUNT(*) as n FROM claude_aliases")
+          .get() as { n: number };
+        if (n > 0) {
+          console.warn(
+            `[issuectl] Migration v4: dropping claude_aliases table containing ${n} row(s). The alias feature has been replaced by the claude_extra_args setting.`,
+          );
+        }
+      }
+      db.exec(`DROP TABLE IF EXISTS claude_aliases;`);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

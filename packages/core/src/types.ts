@@ -13,15 +13,8 @@ export type SettingKey =
   | "terminal_window_title"
   | "terminal_tab_title_pattern"
   | "cache_ttl"
-  | "worktree_dir";
-
-export type ClaudeAlias = {
-  id: number;
-  command: string;
-  description: string;
-  isDefault: boolean;
-  createdAt: string;
-};
+  | "worktree_dir"
+  | "claude_extra_args";
 
 export type Setting = {
   key: SettingKey;

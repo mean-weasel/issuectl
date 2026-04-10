@@ -1,4 +1,4 @@
-export type { Repo, Setting, SettingKey, Deployment, CacheEntry, ClaudeAlias } from "./types.js";
+export type { Repo, Setting, SettingKey, Deployment, CacheEntry } from "./types.js";
 
 export { getDb, getDbPath, dbExists, closeDb } from "./db/connection.js";
 export { initSchema, getSchemaVersion } from "./db/schema.js";
@@ -33,15 +33,6 @@ export {
   clearCacheKey,
   clearCache,
 } from "./db/cache.js";
-export {
-  listAliases,
-  getDefaultAlias,
-  addAlias,
-  removeAlias,
-  setDefaultAlias,
-  clearDefaultAlias,
-} from "./db/aliases.js";
-
 // GitHub client
 export type {
   GitHubUser,
@@ -110,6 +101,11 @@ export {
   type TerminalSettings,
   type SupportedTerminal,
 } from "./launch/terminal.js";
+export {
+  validateClaudeArgs,
+  KNOWN_CLAUDE_FLAGS,
+  type ValidationResult,
+} from "./launch/claude-args.js";
 
 // Lifecycle label reconciliation
 export { matchLinkedPRs } from "./lifecycle/detect.js";

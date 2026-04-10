@@ -68,16 +68,9 @@ function createTestDb(dbPath: string): void {
       data TEXT NOT NULL,
       fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE TABLE IF NOT EXISTS claude_aliases (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      command TEXT NOT NULL UNIQUE,
-      description TEXT NOT NULL DEFAULT '',
-      is_default INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
   `);
 
-  db.prepare("INSERT OR IGNORE INTO schema_version (version) VALUES (?)").run(3);
+  db.prepare("INSERT OR IGNORE INTO schema_version (version) VALUES (?)").run(4);
 
   const defaults = [
     ["branch_pattern", "issue-{number}-{slug}"],
