@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { updateSetting } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/Button";
-import { validateClaudeArgs, type SettingKey } from "@issuectl/core";
+import { validateClaudeArgs } from "@issuectl/core/validation";
+import type { SettingKey } from "@issuectl/core";
 import styles from "./SettingsForm.module.css";
 
 type Props = {
