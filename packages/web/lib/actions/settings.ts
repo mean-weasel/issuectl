@@ -11,6 +11,7 @@ const VALID_KEYS = [
   "terminal_tab_title_pattern",
   "cache_ttl",
   "worktree_dir",
+  "claude_extra_args",
 ] as const satisfies readonly SettingKey[];
 
 export async function updateSetting(

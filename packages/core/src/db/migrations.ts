@@ -27,6 +27,12 @@ const migrations: Migration[] = [
       db.exec(`ALTER TABLE deployments ADD COLUMN ended_at TEXT;`);
     },
   },
+  {
+    version: 4,
+    up(db) {
+      db.exec(`DROP TABLE IF EXISTS claude_aliases;`);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

@@ -13,7 +13,8 @@ export type SettingKey =
   | "terminal_window_title"
   | "terminal_tab_title_pattern"
   | "cache_ttl"
-  | "worktree_dir";
+  | "worktree_dir"
+  | "claude_extra_args";
 
 export type ClaudeAlias = {
   id: number;
