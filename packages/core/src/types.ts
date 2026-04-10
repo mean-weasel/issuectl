@@ -39,3 +39,27 @@ export type CacheEntry<T = unknown> = {
   data: T;
   fetchedAt: Date;
 };
+
+export type Priority = "low" | "normal" | "high";
+
+export type Draft = {
+  id: string;
+  title: string;
+  body: string;
+  priority: Priority;
+  createdAt: number; // unix seconds
+  updatedAt: number; // unix seconds
+};
+
+export type DraftInput = {
+  title: string;
+  body?: string;
+  priority?: Priority;
+};
+
+export type IssuePriority = {
+  repoId: number;
+  issueNumber: number;
+  priority: Priority;
+  updatedAt: number; // unix seconds
+};
