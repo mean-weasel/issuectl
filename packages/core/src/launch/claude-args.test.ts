@@ -34,6 +34,13 @@ describe("validateClaudeArgs", () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it("warns on unknown flag in --flag=value form", () => {
+    const result = validateClaudeArgs("--foo=bar");
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain("--foo");
+  });
+
   it("accepts multiple known flags", () => {
     const result = validateClaudeArgs("--verbose --model opus");
     expect(result.ok).toBe(true);
@@ -67,6 +74,45 @@ describe("validateClaudeArgs", () => {
     expect(result.warnings).toHaveLength(1);
   });
 
+  it("rejects newline (command injection attempt)", () => {
+    const result = validateClaudeArgs("--foo\nrm -rf /");
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toMatch(/control|newline/i);
+  });
+
+  it("rejects carriage return", () => {
+    const result = validateClaudeArgs("--foo\rrm -rf /");
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects tab character", () => {
+    const result = validateClaudeArgs("--foo\trm -rf /");
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects $HOME variable expansion", () => {
+    const result = validateClaudeArgs("--append $HOME");
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toMatch(/variable|expansion/i);
+  });
+
+  it("rejects ${VAR} variable expansion", () => {
+    const result = validateClaudeArgs("--append ${USER}");
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects glob patterns with a glob-specific error", () => {
+    const result = validateClaudeArgs("--add-dir *.ts");
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toMatch(/glob/i);
+  });
+
+  it("rejects inline comments with a comment-specific error", () => {
+    const result = validateClaudeArgs("--foo # inline note");
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toMatch(/comment/i);
+  });
+
   it("rejects semicolon operator", () => {
     const result = validateClaudeArgs("--foo; rm -rf /");
     expect(result.ok).toBe(false);
@@ -90,6 +136,11 @@ describe("validateClaudeArgs", () => {
 
   it("rejects command substitution $()", () => {
     const result = validateClaudeArgs("$(evil)");
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects $(command) substitution", () => {
+    const result = validateClaudeArgs("$(whoami)");
     expect(result.ok).toBe(false);
   });
 
