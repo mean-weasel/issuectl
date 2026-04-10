@@ -15,7 +15,7 @@ export interface TerminalLaunchOptions {
   issueTitle: string;
   owner: string;
   repo: string;
-  /** Shell command to use instead of "claude" (e.g. a user-defined alias). Defaults to "claude". */
+  /** Shell invocation to pipe the context into (e.g. "claude --dangerously-skip-permissions"). */
   claudeCommand: string;
 }
 
