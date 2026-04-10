@@ -53,3 +53,14 @@ export function listDrafts(db: Database.Database): Draft[] {
     .all() as DraftRow[];
   return rows.map(rowToDraft);
 }
+
+export function getDraft(db: Database.Database, id: string): Draft | null {
+  const row = db
+    .prepare(
+      `SELECT id, title, body, priority, created_at, updated_at
+       FROM drafts
+       WHERE id = ?`,
+    )
+    .get(id) as DraftRow | undefined;
+  return row ? rowToDraft(row) : null;
+}

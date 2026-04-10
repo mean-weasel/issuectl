@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
-import { createDraft, listDrafts } from "./drafts.js";
+import { createDraft, listDrafts, getDraft } from "./drafts.js";
 
 describe("createDraft", () => {
   let db: Database.Database;
@@ -70,5 +70,23 @@ describe("listDrafts", () => {
     expect(all).toHaveLength(2);
     expect(all[0].id).toBe(d2.id); // newest first
     expect(all[1].id).toBe(d1.id);
+  });
+});
+
+describe("getDraft", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("returns the draft with the given id", () => {
+    const created = createDraft(db, { title: "Find me" });
+    const found = getDraft(db, created.id);
+    expect(found).toEqual(created);
+  });
+
+  it("returns null for a non-existent id", () => {
+    expect(getDraft(db, "does-not-exist")).toBeNull();
   });
 });
