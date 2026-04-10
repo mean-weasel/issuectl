@@ -32,6 +32,10 @@ export const KNOWN_CLAUDE_FLAGS: readonly string[] = [
 const OPERATOR_ERROR =
   "Shell operators (; && || | > < `...` $(...)) are not allowed. Args are passed directly to claude.";
 
+// shell-quote silently closes unmatched quotes at end-of-string instead of throwing
+// (verified empirically — `parse('--foo "bar')` returns `["--foo", "bar"]`). This
+// pre-check is the only thing that prevents an unmatched quote from slipping past
+// validation and into the shell, so do not remove it.
 function hasUnmatchedQuote(s: string): boolean {
   let inSingle = false;
   let inDouble = false;
@@ -99,6 +103,7 @@ export function validateClaudeArgs(input: string): ValidationResult {
   try {
     parsed = parse(trimmed);
   } catch (err) {
+    console.error("[issuectl] validateClaudeArgs: shell-quote.parse threw", { input: trimmed, err });
     return {
       ok: false,
       errors: [

@@ -46,11 +46,25 @@ vi.mock("@issuectl/core", () => ({
 import { updateSetting, updateSettings } from "./settings.js";
 
 function makeFakeDb(): FakeDb {
-  return {
+  const base: FakeDb = {
     settings: new Map(),
-    // Default stub: executes the function synchronously (no real transaction).
-    transaction: (fn) => fn,
+    // Simulate better-sqlite3's transaction semantics: snapshot state before
+    // running the callback, commit on success, rollback on throw. This lets
+    // tests actually verify all-or-nothing behavior when setSetting throws
+    // mid-batch (rather than just trusting the identity stub).
+    transaction: (fn) => {
+      return (pairs) => {
+        const snapshot = new Map(base.settings);
+        try {
+          fn(pairs);
+        } catch (err) {
+          base.settings = snapshot;
+          throw err;
+        }
+      };
+    },
   };
+  return base;
 }
 
 beforeEach(() => {
@@ -138,6 +152,16 @@ describe("updateSetting", () => {
     expect(result.error).toMatch(/busy|another/i);
   });
 
+  it("falls back to a generic 'Failed to update setting' for unmapped errors", async () => {
+    setSetting.mockImplementationOnce(() => {
+      throw new Error("some unrecognized failure");
+    });
+    const result = await updateSetting("branch_pattern", "main");
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/^Failed to update setting:/);
+    expect(result.error).toContain("some unrecognized failure");
+  });
+
   it("returns cacheStale when revalidatePath throws", async () => {
     revalidatePath.mockImplementationOnce(() => {
       throw new Error("revalidation failed");
@@ -188,5 +212,28 @@ describe("updateSettings (batch)", () => {
     const result = await updateSettings({ cache_ttl: "abc" });
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/cache_ttl/);
+  });
+
+  it("rolls back the whole batch when setSetting throws mid-transaction", async () => {
+    // Simulate a DB error on the second write. The rollback-aware fake
+    // transaction should revert the first successful write.
+    let callCount = 0;
+    setSetting.mockImplementation((db: FakeDb, key: string, value: string) => {
+      callCount += 1;
+      if (callCount === 2) {
+        throw new Error("simulated DB failure on second write");
+      }
+      db.settings.set(key, value);
+    });
+
+    const result = await updateSettings({
+      branch_pattern: "main",
+      terminal_window_title: "hello",
+    });
+
+    expect(result.success).toBe(false);
+    // Neither write should survive — the transaction rolls back the first.
+    expect(fakeDb.settings.has("branch_pattern")).toBe(false);
+    expect(fakeDb.settings.has("terminal_window_title")).toBe(false);
   });
 });
