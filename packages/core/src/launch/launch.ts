@@ -161,7 +161,7 @@ export async function executeLaunch(
   // sanity check as defense-in-depth against a tampered DB. If the stored
   // value looks dangerous, we fall back to plain "claude" and log a warning.
   const claudeCommand = buildClaudeCommand(getSetting(db, "claude_extra_args"));
-  console.log(`[issuectl] launching: ${claudeCommand}`);
+  console.warn(`[issuectl] launching: ${claudeCommand}`);
   await launcher.launch({
     workspacePath: workspace.path,
     contextFilePath,
