@@ -35,6 +35,7 @@ The change is primarily visual and informational. The data model grows (drafts, 
 - Preserving the old dashboard or per-repo pages.
 - Offline mode — still online-first with SQLite-backed read cache.
 - Dark mode — Paper *is* the theme.
+- Multi-user coordination, feature flagging, or gradual rollout — `issuectl` is a single-user tool (the author); we ship in one go.
 
 ---
 
@@ -384,14 +385,24 @@ Visual regression tests are out of scope for v1.
 
 ## Rollout
 
-This is a breaking UI change. There is no backwards-compat mode.
+This is a breaking UI change. No backwards-compat mode, no feature flag: `issuectl` is a single-user tool (the author), so there's no coordination required and no other users to protect. We ship in one go.
 
 1. The DB migration to v5 runs automatically on first start after the update, adding `drafts` and `issue_metadata`.
-2. Old routes and components are deleted in the same PR that adds the new ones.
+2. Old routes and components are deleted in the same PRs that add their replacements.
 3. Existing repos, settings, deployments, and cached issues/PRs are preserved — the new UI reads from the same underlying tables.
-4. One-shot cutover. No feature flag. The user base is small enough that maintaining both codepaths would add more complexity than it saves.
 
-The implementation plan should decompose this into phases that keep the app in a working state between merges — e.g., add data layer first (drafts + priority) behind no UI change, then replace the dashboard, then replace the detail pages, then delete the old routes.
+The implementation plan should still decompose this into phases — not for continuous availability, but for **reviewability**. Smaller PRs are easier to review, revert, and bisect when something goes wrong. A reasonable decomposition:
+
+1. **Data layer** — `drafts` and `issue_metadata` tables, core CRUD functions, priority-aware query helpers, schema migration to v5. No UI changes.
+2. **Paper design tokens + shared primitives** — `globals.css` Paper tokens; reusable primitives like `Chip`, `Row`, `Sheet`, `Drawer`, button variants. Can coexist with the old UI.
+3. **Main list** — replace `app/page.tsx` with the flat cross-repo list, its swipe handler, and its section/priority logic. At this point the old dashboard is gone.
+4. **Issue + PR detail** — add `/issues/[owner]/[repo]/[number]` and `/pulls/[owner]/[repo]/[number]` routes with the new Paper detail views.
+5. **Launch flow UI** — new `/launch/...` progress route; update the launch form to Paper; wire the new progress streaming.
+6. **Settings + Quick Create + Auth error + empty states** — restyle these surfaces; backend unchanged.
+7. **Mobile nav drawer + PR tab variant + priority picker sheet** — the supplementary flows from `#flow12`.
+8. **Cleanup** — delete the old `components/dashboard/`, `components/repo/`, `components/sidebar/` directories and the orphaned `[owner]/[repo]/...` routes.
+
+The app may be in a partly-broken state between phases 3 and 8 — that's acceptable since there's only one user.
 
 ---
 
