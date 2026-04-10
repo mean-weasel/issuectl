@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createRawTestDb } from "./test-helpers.js";
 import { initSchema, getSchemaVersion } from "./schema.js";
@@ -95,5 +95,54 @@ describe("runMigrations", () => {
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
     expect(tables).toHaveLength(0);
+  });
+
+  it("migrates v3 schema to v4 and drops populated claude_aliases (data loss is intentional)", () => {
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
+      CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE deployments (
+        id INTEGER PRIMARY KEY,
+        repo_id INTEGER,
+        issue_number INTEGER,
+        branch_name TEXT,
+        workspace_mode TEXT,
+        workspace_path TEXT,
+        linked_pr_number INTEGER,
+        launched_at TEXT,
+        ended_at TEXT
+      );
+      CREATE TABLE cache (key TEXT PRIMARY KEY, data TEXT NOT NULL);
+      CREATE TABLE claude_aliases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        command TEXT NOT NULL UNIQUE,
+        description TEXT NOT NULL DEFAULT '',
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (3);
+      INSERT INTO claude_aliases (command, description) VALUES ('yolo', 'skip perms');
+      INSERT INTO claude_aliases (command, description) VALUES ('debug', 'debug mode');
+    `);
+
+    // Silence the migration's warn() log so the test output stays clean.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(4);
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
+      .all();
+    expect(tables).toHaveLength(0);
+
+    // The migration should have logged the row count being destroyed.
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("2 row"),
+    );
+
+    warnSpy.mockRestore();
   });
 });

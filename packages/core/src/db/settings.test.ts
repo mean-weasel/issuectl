@@ -74,6 +74,11 @@ describe("seedDefaults", () => {
     expect(keys).toContain("claude_extra_args");
   });
 
+  it("seedDefaults sets claude_extra_args to empty string by default", () => {
+    seedDefaults(db);
+    expect(getSetting(db, "claude_extra_args")).toBe("");
+  });
+
   it("uses INSERT OR IGNORE — does not overwrite existing values", () => {
     setSetting(db, "cache_ttl", "999");
     seedDefaults(db);
