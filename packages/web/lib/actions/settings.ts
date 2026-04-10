@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getDb, setSetting } from "@issuectl/core";
+import { getDb, setSetting, validateClaudeArgs } from "@issuectl/core";
 import type { SettingKey } from "@issuectl/core";
 
 const VALID_KEYS = [
@@ -14,6 +14,8 @@ const VALID_KEYS = [
   "claude_extra_args",
 ] as const satisfies readonly SettingKey[];
 
+const ALLOW_EMPTY = new Set<SettingKey>(["claude_extra_args"]);
+
 export async function updateSetting(
   key: SettingKey,
   value: string,
@@ -21,19 +23,29 @@ export async function updateSetting(
   if (!VALID_KEYS.includes(key)) {
     return { success: false, error: "Invalid setting key" };
   }
-  if (!value.trim()) {
+
+  const trimmed = value.trim();
+  if (trimmed === "" && !ALLOW_EMPTY.has(key)) {
     return { success: false, error: "Value cannot be empty" };
   }
+
   if (key === "cache_ttl") {
-    const num = Number(value);
+    const num = Number(trimmed);
     if (!Number.isFinite(num) || num < 0) {
       return { success: false, error: "Cache TTL must be a non-negative number" };
     }
   }
 
+  if (key === "claude_extra_args") {
+    const result = validateClaudeArgs(trimmed);
+    if (!result.ok) {
+      return { success: false, error: result.errors.join(" ") };
+    }
+  }
+
   try {
     const db = getDb();
-    setSetting(db, key, value.trim());
+    setSetting(db, key, trimmed);
   } catch (err) {
     console.error("[issuectl] Failed to update setting:", err);
     return { success: false, error: "Failed to update setting" };
