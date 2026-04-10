@@ -39,6 +39,7 @@ export default async function SettingsPage() {
   const terminalApp = settingMap.terminal_app ?? "ghostty";
   const windowTitle = settingMap.terminal_window_title ?? "issuectl";
   const tabTitlePattern = settingMap.terminal_tab_title_pattern ?? "#{number} — {title}";
+  const claudeExtraArgs = settingMap.claude_extra_args ?? "";
 
   const [authResult, worktrees] = await Promise.all([
     getAuthStatus(),
@@ -64,6 +65,7 @@ export default async function SettingsPage() {
           terminalApp={terminalApp}
           windowTitle={windowTitle}
           tabTitlePattern={tabTitlePattern}
+          claudeExtraArgs={claudeExtraArgs}
         />
 
         <section className={styles.section}>

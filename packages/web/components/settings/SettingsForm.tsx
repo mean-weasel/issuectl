@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { updateSetting } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/Button";
-import type { SettingKey } from "@issuectl/core";
+import { validateClaudeArgs, type SettingKey } from "@issuectl/core";
 import styles from "./SettingsForm.module.css";
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   terminalApp: string;
   windowTitle: string;
   tabTitlePattern: string;
+  claudeExtraArgs: string;
 };
 
 type FormValues = {
@@ -20,6 +21,7 @@ type FormValues = {
   cache_ttl: string;
   terminal_window_title: string;
   terminal_tab_title_pattern: string;
+  claude_extra_args: string;
 };
 
 export function SettingsForm({
@@ -28,12 +30,14 @@ export function SettingsForm({
   terminalApp,
   windowTitle,
   tabTitlePattern,
+  claudeExtraArgs,
 }: Props) {
   const [values, setValues] = useState<FormValues>({
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
     terminal_window_title: windowTitle,
     terminal_tab_title_pattern: tabTitlePattern,
+    claude_extra_args: claudeExtraArgs,
   });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -44,11 +48,16 @@ export function SettingsForm({
     cache_ttl: cacheTTL,
     terminal_window_title: windowTitle,
     terminal_tab_title_pattern: tabTitlePattern,
+    claude_extra_args: claudeExtraArgs,
   };
 
   const isDirty = (Object.keys(originals) as (keyof FormValues)[]).some(
     (k) => values[k] !== originals[k],
   );
+
+  const extraArgsValidation = validateClaudeArgs(values.claude_extra_args);
+  const hasBlockingError = !extraArgsValidation.ok;
+  const hasWarnings = extraArgsValidation.warnings.length > 0;
 
   function handleChange(key: keyof FormValues, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -134,13 +143,51 @@ export function SettingsForm({
         </div>
       </section>
 
+      <section className={styles.section}>
+        <div className={styles.sectionTitle}>Claude</div>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <div className={styles.label}>Extra Args</div>
+            <input
+              className={styles.input}
+              value={values.claude_extra_args}
+              onChange={(e) => handleChange("claude_extra_args", e.target.value)}
+              disabled={isPending}
+              placeholder="--dangerously-skip-permissions"
+            />
+            <div className={styles.help}>
+              Passed verbatim after <code>claude</code> at launch. Leave empty for defaults.
+            </div>
+            {extraArgsValidation.errors.length > 0 && (
+              <div className={styles.fieldError} role="alert">
+                {extraArgsValidation.errors.map((e, i) => (
+                  <div key={i}>{e}</div>
+                ))}
+              </div>
+            )}
+            {extraArgsValidation.errors.length === 0 &&
+              extraArgsValidation.warnings.length > 0 && (
+                <div className={styles.fieldWarning}>
+                  {extraArgsValidation.warnings.map((w, i) => (
+                    <div key={i}>{w}</div>
+                  ))}
+                </div>
+              )}
+          </div>
+        </div>
+      </section>
+
       <div className={styles.saveRow}>
         <Button
           variant="primary"
           onClick={handleSave}
-          disabled={isPending || !isDirty}
+          disabled={isPending || !isDirty || hasBlockingError}
         >
-          {isPending ? "Saving..." : "Save Settings"}
+          {isPending
+            ? "Saving..."
+            : hasWarnings && isDirty
+              ? "Save with warnings"
+              : "Save Settings"}
         </Button>
         {error && <span className={styles.error} role="alert">{error}</span>}
       </div>
