@@ -110,6 +110,11 @@ export {
   type TerminalSettings,
   type SupportedTerminal,
 } from "./launch/terminal.js";
+export {
+  validateClaudeArgs,
+  KNOWN_CLAUDE_FLAGS,
+  type ValidationResult,
+} from "./launch/claude-args.js";
 
 // Lifecycle label reconciliation
 export { matchLinkedPRs } from "./lifecycle/detect.js";
