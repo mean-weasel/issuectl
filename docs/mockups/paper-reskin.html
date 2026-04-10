@@ -1,0 +1,3334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>issuectl — Paper, all mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --shell: #1b1a1d;
+    --shell-surface: #232226;
+    --shell-border: #302f35;
+    --shell-text: #d9d6d0;
+    --shell-muted: #807d85;
+    --shell-accent: #f5efe1;
+  }
+  html, body {
+    background: var(--shell);
+    color: var(--shell-text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 40px 24px 120px; }
+
+  .page-head {
+    max-width: 1600px; margin: 0 auto 36px;
+  }
+  .page-head .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--shell-muted); letter-spacing: 1.4px;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .page-head h1 {
+    font-family: 'Fraunces', Georgia, serif; font-weight: 400;
+    font-size: 34px; font-style: italic; letter-spacing: -0.5px;
+    color: var(--shell-accent);
+    margin-bottom: 8px;
+  }
+  .page-head .sub {
+    font-size: 13px; color: var(--shell-muted); max-width: 760px; line-height: 1.6;
+  }
+
+  /* table of contents */
+  .toc {
+    max-width: 1600px; margin: 0 auto 44px;
+    padding: 16px 22px;
+    background: var(--shell-surface);
+    border: 1px solid var(--shell-border);
+    border-radius: 10px;
+    display: flex; gap: 24px; flex-wrap: wrap; align-items: center;
+  }
+  .toc-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--shell-muted); letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+  .toc a {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 14px;
+    color: var(--shell-accent); text-decoration: none;
+  }
+  .toc a:hover { text-decoration: underline; text-decoration-color: var(--shell-muted); }
+  .toc .num {
+    font-family: 'IBM Plex Mono', monospace; font-style: normal;
+    font-size: 10px; color: var(--shell-muted); margin-right: 4px;
+  }
+
+  section.flow {
+    max-width: 1600px; margin: 0 auto 80px;
+    padding-top: 40px;
+    border-top: 1px solid var(--shell-border);
+    scroll-margin-top: 40px;
+  }
+  section.flow:first-of-type { border-top: none; padding-top: 0; }
+
+  .flow-head {
+    margin-bottom: 24px;
+  }
+  .flow-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--shell-muted); letter-spacing: 1.4px;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .flow-title {
+    font-family: 'Fraunces', serif; font-weight: 500; font-style: italic;
+    font-size: 28px; color: var(--shell-accent); letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .flow-desc {
+    font-size: 12.5px; color: var(--shell-muted); max-width: 680px; line-height: 1.6;
+  }
+
+  .frames {
+    display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap;
+    margin-top: 24px;
+  }
+
+  .frame-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--shell-muted);
+    margin-bottom: 10px; padding-left: 4px;
+  }
+  .frame-label b { color: var(--shell-accent); font-weight: 600; }
+
+  /* Phone frame */
+  .phone {
+    width: 380px; height: 800px;
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.5),
+      0 0 0 10px #0a0a0b,
+      0 0 0 11px rgba(255,255,255,0.06);
+    position: relative;
+  }
+  .phone-notch {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 104px; height: 26px; background: #0a0a0b; border-radius: 14px;
+    z-index: 50;
+  }
+  .phone-body {
+    width: 100%; height: 100%; overflow: hidden;
+    position: relative;
+  }
+
+  /* Desktop frame */
+  .desktop {
+    flex: 1; min-width: 680px; max-width: 1000px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .desktop-chrome {
+    background: #0a0a0b;
+    height: 30px; display: flex; align-items: center; padding: 0 12px; gap: 6px;
+  }
+  .desktop-chrome .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .desktop-chrome .dot:nth-child(1) { background: #ff5f57; }
+  .desktop-chrome .dot:nth-child(2) { background: #febc2e; }
+  .desktop-chrome .dot:nth-child(3) { background: #28c840; }
+  .desktop-chrome .url {
+    margin-left: 14px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px; color: #6a6a70;
+  }
+  .desktop-body {
+    height: 680px; overflow: hidden;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     PAPER THEME
+     ══════════════════════════════════════════════════════════════ */
+  .paper {
+    --bg: #f3ecd9;
+    --bg-warm: #ede5cf;
+    --bg-warmer: #e6dec4;
+    --ink: #1a1712;
+    --ink-soft: #3a342a;
+    --ink-muted: #8a7f63;
+    --ink-faint: #b5a88a;
+    --line: #e0d6bc;
+    --line-soft: #e9dfc6;
+    --accent: #2d5f3f;
+    --accent-dim: #4a7a5c;
+    --accent-soft: #dce8de;
+    --brick: #b84a2e;
+    --butter: #d9a54d;
+
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Fraunces', Georgia, serif;
+    position: relative;
+  }
+  .paper::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/></svg>");
+    background-size: 200px;
+    mix-blend-mode: multiply; opacity: 0.18;
+    pointer-events: none; z-index: 5;
+  }
+  .paper > * { position: relative; z-index: 6; }
+
+  /* ═════════ shared atoms ═════════ */
+  .repo {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600;
+    padding: 2px 8px; border-radius: 3px;
+    background: #e6dec4; color: #3a342a;
+    font-size: 10.5px; letter-spacing: 0.3px;
+  }
+  .repo.none {
+    background: transparent; color: #2d5f3f;
+    border: 1px dashed #2d5f3f; font-style: italic;
+    font-family: 'Fraunces', serif; font-weight: 500;
+  }
+
+  /* ═════════ main bar (top of phone) ═════════ */
+  .bar {
+    padding: 52px 24px 12px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .bar .brand {
+    font-family: 'Fraunces', serif; font-weight: 500; font-style: italic;
+    font-size: 34px; line-height: 1; letter-spacing: -0.8px;
+  }
+  .bar .brand .dot {
+    display: inline-block; width: 10px; height: 10px;
+    background: var(--accent); border-radius: 50%;
+    margin-left: 3px; vertical-align: 6px;
+  }
+  .bar .date {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 11px; color: var(--ink-muted); font-weight: 500;
+    text-align: right; line-height: 1.3;
+  }
+  .bar .date b {
+    display: block; color: var(--ink-soft); font-style: normal;
+    font-weight: 600; font-size: 13px; font-family: 'Fraunces', serif;
+  }
+
+  /* ═════════ tabs ═════════ */
+  .tabs {
+    padding: 18px 24px 0;
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 14px; font-weight: 500;
+    color: var(--ink-muted); padding: 10px 2px 12px;
+    margin-right: 26px; position: relative; cursor: pointer;
+  }
+  .tab.on { color: var(--ink); }
+  .tab.on::after {
+    content: ''; position: absolute; left: -4px; right: -4px; bottom: -1px;
+    height: 2px; background: var(--ink);
+  }
+  .tab .c {
+    font-family: 'IBM Plex Mono', monospace;
+    font-style: normal; font-size: 10px;
+    margin-left: 6px; color: var(--ink-faint); font-weight: 500;
+  }
+
+  /* ═════════ search ═════════ */
+  .srch {
+    padding: 14px 24px 0;
+    position: relative;
+  }
+  .srch-input {
+    width: 100%; padding: 8px 12px 8px 32px;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: 'Fraunces', serif; font-size: 13px; color: var(--ink);
+    font-style: italic;
+  }
+  .srch-input::placeholder { color: var(--ink-faint); }
+  .srch::before {
+    content: '⌕';
+    position: absolute; left: 36px; top: 22px;
+    color: var(--ink-faint); font-size: 16px;
+    z-index: 1;
+  }
+
+  /* ═════════ list section ═════════ */
+  .list { padding: 12px 0 120px; }
+
+  .section {
+    padding: 22px 24px 6px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .section h3 {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-weight: 500; font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .section .rule { flex: 1; height: 1px; background: var(--line); }
+  .section .cnt {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--ink-faint); font-weight: 500;
+  }
+
+  /* ═════════ row item ═════════ */
+  .item {
+    padding: 16px 24px 16px 58px;
+    position: relative;
+    border-bottom: 1px solid var(--line-soft);
+    display: block;
+  }
+  .item.swiped {
+    transform: translateX(-110px);
+    transition: transform 0.3s ease;
+  }
+  .item .check {
+    position: absolute; left: 24px; top: 18px;
+    width: 20px; height: 20px;
+  }
+  .item .check svg { width: 100%; height: 100%; }
+  .item .check .box {
+    fill: transparent; stroke: var(--ink-muted); stroke-width: 1.5;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .item .check.flight .box { stroke: var(--accent); stroke-width: 2; }
+  .item .check.flight .fill {
+    fill: var(--accent); opacity: 0.35;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.75; } }
+  .item .check.done .box { fill: var(--accent); stroke: var(--accent); }
+  .item .check.done .tick {
+    fill: none; stroke: var(--bg); stroke-width: 2.3;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .item .title {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 17px; line-height: 1.3; color: var(--ink);
+    margin-bottom: 6px; letter-spacing: -0.1px;
+  }
+  .item .title.done {
+    color: var(--ink-muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 1.5px;
+  }
+  .item .meta {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    font-family: 'Inter', sans-serif; font-size: 11px;
+    color: var(--ink-muted);
+  }
+  .item .meta .num { font-family: 'IBM Plex Mono', monospace; color: var(--ink-faint); }
+  .item .meta .lbl-bug { color: var(--brick); }
+  .item .meta .lbl-feat { color: var(--butter); }
+  .item .meta .sep { color: var(--ink-faint); }
+
+  /* swipe reveal */
+  .item .reveal {
+    position: absolute; right: -110px; top: 0; bottom: 0;
+    width: 110px;
+    background: var(--accent); color: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px;
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 14px; font-weight: 600;
+  }
+  .item .reveal .arr {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px; font-style: normal; font-weight: 400; opacity: 0.9;
+  }
+
+  /* FAB */
+  .fab {
+    position: absolute; right: 24px; bottom: 30px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--ink); color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-weight: 400; font-size: 34px;
+    line-height: 1; padding-bottom: 4px;
+    box-shadow: 0 16px 40px rgba(26,23,18,0.35), 0 0 0 6px rgba(26,23,18,0.06);
+    z-index: 10;
+  }
+
+  /* ═════════ assign sheet ═════════ */
+  .scrim {
+    position: absolute; inset: 0;
+    background: rgba(26,23,18,0.4);
+    z-index: 30;
+  }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--bg);
+    border-top-left-radius: 24px; border-top-right-radius: 24px;
+    border-top: 1px solid var(--line);
+    padding: 12px 0 28px;
+    z-index: 31;
+    box-shadow: 0 -20px 60px rgba(0,0,0,0.25);
+  }
+  .sheet .grab {
+    width: 44px; height: 4px; background: var(--ink-faint);
+    border-radius: 3px; margin: 0 auto 10px;
+  }
+  .sheet .sheet-head {
+    padding: 10px 28px 4px;
+  }
+  .sheet .sheet-head h3 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 22px; letter-spacing: -0.3px; color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .sheet .sheet-head p {
+    font-family: 'Fraunces', serif; font-size: 13px;
+    color: var(--ink-muted); font-weight: 400;
+  }
+  .sheet .sheet-head p em { color: var(--ink-soft); }
+  .sheet-list { padding: 12px 0 0; }
+  .sheet-row {
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 14px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .sheet-row:first-child { border-top: 1px solid var(--line); }
+  .sheet-row .rdot {
+    width: 12px; height: 12px; border-radius: 3px;
+    background: var(--accent); flex-shrink: 0;
+  }
+  .sheet-row .rdot.alt1 { background: var(--brick); }
+  .sheet-row .rdot.alt2 { background: var(--butter); }
+  .sheet-row .rdot.alt3 { background: #6a88b5; }
+  .sheet-row .rname {
+    flex: 1;
+    font-family: 'Fraunces', serif;
+    font-size: 16px; font-weight: 400; color: var(--ink);
+  }
+  .sheet-row .rname em {
+    font-style: italic; color: var(--ink-muted); font-size: 12px; margin-left: 6px;
+  }
+  .sheet-row .rcount {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--ink-faint); font-weight: 500;
+  }
+  .sheet-cancel {
+    padding: 18px 28px 4px;
+    text-align: center;
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 14px; color: var(--ink-muted);
+  }
+
+  /* ═════════ desktop chrome for list view ═════════ */
+  .desk {
+    position: relative; height: 100%;
+  }
+  .desk-header {
+    padding: 36px 60px 24px;
+    max-width: 900px; margin: 0 auto;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .desk-brand {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-weight: 500; font-size: 40px; letter-spacing: -0.8px; line-height: 1;
+  }
+  .desk-brand .dot {
+    display: inline-block; width: 12px; height: 12px;
+    background: var(--accent); border-radius: 50%;
+    margin-left: 4px; vertical-align: 8px;
+  }
+  .desk-brand .ver {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--ink-faint); font-style: normal;
+    margin-left: 10px; vertical-align: 18px; font-weight: 500;
+  }
+  .desk-actions {
+    display: flex; gap: 12px; align-items: center;
+    font-family: 'Fraunces', serif;
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .desk-actions .date b { color: var(--ink-soft); font-weight: 500; }
+  .desk-actions .btn {
+    padding: 10px 20px;
+    background: var(--ink); color: var(--bg);
+    border-radius: 6px; font-style: italic; font-size: 14px;
+    font-family: 'Fraunces', serif; font-weight: 500;
+    border: none;
+  }
+  .desk-tabs {
+    padding: 0 60px;
+    max-width: 900px; margin: 0 auto;
+    border-bottom: 1px solid var(--line);
+    display: flex; gap: 0;
+  }
+  .desk-tabs .tab { font-size: 15px; margin-right: 32px; }
+  .desk-list {
+    max-width: 900px; margin: 0 auto;
+    padding: 12px 60px 60px;
+  }
+  .desk-list .section { padding: 24px 0 6px; }
+  .desk-list .item { padding: 16px 0 16px 38px; }
+  .desk-list .item .check { left: 0; top: 18px; }
+  .desk-list .item .title { font-size: 18px; }
+  .desk-list .item .reveal { display: none; }
+  .desk-list .item .quick {
+    position: absolute; right: 0; top: 16px;
+    display: flex; gap: 6px; opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .desk-list .item:hover .quick { opacity: 1; }
+  .desk-list .item .quick button {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 12px; padding: 5px 12px;
+    background: transparent; color: var(--ink-muted);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .desk-list .item .quick button:hover { color: var(--accent); border-color: var(--accent); }
+  .desk-list .item .quick button.go {
+    background: var(--ink); color: var(--bg); border-color: var(--ink);
+  }
+
+  /* always-show quick on first row of desktop for demo */
+  .desk-list .item.show-quick .quick { opacity: 1; }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 2 — ISSUE DETAIL
+     ══════════════════════════════════════════════════════════════ */
+  .d-bar {
+    padding: 52px 16px 12px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .d-back {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-size: 22px;
+    color: var(--ink);
+  }
+  .d-crumb {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 13px; color: var(--ink-muted); flex: 1;
+  }
+  .d-crumb b { color: var(--ink-soft); font-style: normal; }
+  .d-menu {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: var(--ink-muted); letter-spacing: 2px;
+  }
+  .d-body { padding: 22px 24px 80px; }
+  .d-title {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 26px; line-height: 1.2; letter-spacing: -0.4px;
+    color: var(--ink); margin-bottom: 12px;
+  }
+  .d-meta {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    font-size: 11.5px; color: var(--ink-muted); margin-bottom: 22px;
+    font-family: 'Inter', sans-serif;
+  }
+  .d-meta .num { font-family: 'IBM Plex Mono', monospace; color: var(--ink-faint); }
+  .d-meta .sep { color: var(--ink-faint); }
+  .d-meta .state { color: var(--accent); font-weight: 600; }
+  .d-meta .lbl-bug { color: var(--brick); }
+  .d-launch {
+    background: var(--bg-warm);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 28px;
+    position: relative;
+  }
+  .d-launch::before {
+    content: ''; position: absolute; left: 0; top: 14px; bottom: 14px;
+    width: 3px; background: var(--accent); border-radius: 2px;
+  }
+  .d-launch h4 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 15px; color: var(--ink); margin-bottom: 4px;
+  }
+  .d-launch p {
+    font-family: 'Fraunces', serif; font-size: 12.5px; color: var(--ink-muted);
+    margin-bottom: 14px; line-height: 1.5;
+  }
+  .d-launch p code { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; background: var(--bg-warmer); padding: 1px 5px; border-radius: 2px; }
+  .d-launch-actions { display: flex; gap: 8px; }
+  .d-launch-actions .btn-primary {
+    background: var(--accent); color: var(--bg);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; padding: 9px 18px; border-radius: 6px;
+    border: none; flex: 1;
+  }
+  .d-launch-actions .btn-ghost {
+    background: transparent; color: var(--ink-soft);
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 12.5px; padding: 9px 14px; border-radius: 6px;
+    border: 1px solid var(--line);
+  }
+  .d-body-text {
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 15.5px; line-height: 1.65; color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+  .d-body-text p { margin-bottom: 12px; }
+  .d-body-text code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    background: var(--bg-warmer); padding: 1px 6px; border-radius: 3px;
+    color: var(--ink-soft);
+  }
+  .d-section-head {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 14px; color: var(--ink-soft);
+    padding: 10px 0 12px; border-top: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px;
+  }
+  .d-section-head .cnt { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-faint); font-style: normal; }
+  .d-comment {
+    padding-bottom: 18px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .d-comment:last-child { border-bottom: none; }
+  .d-comment-head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .d-comment-avi {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--bg-warmer); border: 1px solid var(--line);
+    font-family: 'Fraunces', serif; font-weight: 600; font-style: italic;
+    font-size: 11px; color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .d-comment-who {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 13px; color: var(--ink);
+  }
+  .d-comment-time {
+    font-family: 'Inter', sans-serif; font-size: 11px;
+    color: var(--ink-faint); margin-left: auto;
+  }
+  .d-comment-body {
+    font-family: 'Fraunces', serif; font-size: 14px;
+    line-height: 1.55; color: var(--ink-soft);
+  }
+  .d-comment-body code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: var(--bg-warmer); padding: 1px 5px; border-radius: 3px; }
+  .d-composer {
+    border-top: 1px solid var(--line);
+    padding: 16px 20px; background: var(--bg-warm);
+    display: flex; gap: 10px; align-items: flex-end;
+    position: absolute; left: 0; right: 0; bottom: 0;
+  }
+  .d-composer input {
+    flex: 1; background: transparent; border: none;
+    font-family: 'Fraunces', serif; font-size: 14px;
+    color: var(--ink); font-style: italic;
+    padding: 6px 0;
+  }
+  .d-composer input::placeholder { color: var(--ink-faint); }
+  .d-composer .send {
+    background: var(--ink); color: var(--bg);
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 12px; padding: 6px 14px; border-radius: 5px;
+    border: none;
+  }
+
+  /* desktop detail */
+  .dd { padding: 32px 0 0; max-width: 820px; margin: 0 auto; }
+  .dd-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 40px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dd-back {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .dd-back::before { content: '← '; }
+  .dd-close { margin-left: auto; font-size: 20px; color: var(--ink-muted); }
+  .dd-body { padding: 32px 40px 40px; }
+  .dd-title {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 36px; line-height: 1.15; letter-spacing: -0.7px;
+    color: var(--ink); margin-bottom: 14px;
+  }
+  .dd-meta {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    font-size: 12px; color: var(--ink-muted); margin-bottom: 28px;
+    font-family: 'Inter', sans-serif;
+  }
+  .dd-meta .num { font-family: 'IBM Plex Mono', monospace; color: var(--ink-faint); }
+  .dd-meta .state { color: var(--accent); font-weight: 600; }
+  .dd-meta .lbl-bug { color: var(--brick); padding: 1px 6px; background: rgba(184,74,46,0.08); border-radius: 3px; font-size: 10.5px; font-weight: 500; }
+  .dd-grid { display: grid; grid-template-columns: 1fr 240px; gap: 36px; }
+  .dd-launch {
+    background: var(--bg-warm);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .dd-launch::before {
+    content: ''; position: absolute; left: 0; top: 14px; bottom: 14px;
+    width: 3px; background: var(--accent); border-radius: 2px;
+  }
+  .dd-launch h4 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 13px; color: var(--ink); margin-bottom: 3px;
+  }
+  .dd-launch p {
+    font-family: 'Fraunces', serif; font-size: 11.5px; color: var(--ink-muted);
+    margin-bottom: 12px; line-height: 1.5;
+  }
+  .dd-launch .btn {
+    background: var(--accent); color: var(--bg);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 12px; padding: 8px 14px; border-radius: 5px;
+    border: none; display: block; width: 100%;
+    margin-bottom: 6px;
+  }
+  .dd-launch .btn-sec {
+    background: transparent; color: var(--ink-muted);
+    border: 1px solid var(--line);
+  }
+  .dd-side-block {
+    font-size: 11.5px; color: var(--ink-muted);
+    padding: 12px 0; border-top: 1px solid var(--line);
+  }
+  .dd-side-block .lbl {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--ink-faint); display: block; margin-bottom: 4px;
+  }
+  .dd-side-block .val {
+    font-family: 'Fraunces', serif; font-size: 13px; color: var(--ink);
+  }
+  .dd-text {
+    font-family: 'Fraunces', serif; font-size: 15px;
+    line-height: 1.65; color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+  .dd-text p { margin-bottom: 12px; }
+  .dd-text code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+    background: var(--bg-warmer); padding: 1px 6px; border-radius: 3px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 3 — NEW ISSUE
+     ══════════════════════════════════════════════════════════════ */
+  .n-bar {
+    padding: 50px 18px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .n-close { font-size: 24px; color: var(--ink-muted); }
+  .n-title {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 16px; color: var(--ink);
+  }
+  .n-save {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .n-body { padding: 26px 24px 120px; }
+  .n-title-input {
+    width: 100%;
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 26px; line-height: 1.2; letter-spacing: -0.4px;
+    color: var(--ink); border: none; background: transparent;
+    margin-bottom: 8px; padding: 4px 0; outline: none;
+  }
+  .n-title-input::placeholder { color: var(--ink-faint); font-style: italic; }
+  .n-body-input {
+    width: 100%; height: 120px; resize: none;
+    font-family: 'Fraunces', serif; font-weight: 400;
+    font-size: 15px; line-height: 1.55;
+    color: var(--ink-soft); border: none; background: transparent;
+    padding: 8px 0; outline: none;
+  }
+  .n-body-input::placeholder { color: var(--ink-faint); font-style: italic; }
+  .n-divider { height: 1px; background: var(--line); margin: 20px 0; }
+  .n-field {
+    padding: 14px 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .n-field-lbl {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .n-field-val {
+    font-family: 'Fraunces', serif; font-size: 14px;
+    color: var(--ink); display: flex; align-items: center; gap: 8px;
+  }
+  .n-field-val.none { color: var(--accent); font-style: italic; }
+  .n-field-val.disabled { color: var(--ink-faint); font-style: italic; }
+  .n-field-arrow { color: var(--ink-faint); font-size: 16px; }
+  .n-actions {
+    padding: 20px 24px 30px;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--bg-warm); border-top: 1px solid var(--line);
+    display: flex; gap: 10px;
+  }
+  .n-actions .btn-ghost {
+    flex: 1; padding: 12px 16px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; color: var(--ink-soft);
+    background: transparent; border: 1px solid var(--line); border-radius: 6px;
+  }
+  .n-actions .btn-primary {
+    flex: 1.3; padding: 12px 16px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; color: var(--bg);
+    background: var(--ink); border: none; border-radius: 6px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 4 — LAUNCH (mobile full-screen form)
+     ══════════════════════════════════════════════════════════════ */
+  .ml-bar {
+    padding: 50px 18px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .ml-back {
+    font-family: 'Fraunces', serif; font-size: 22px; color: var(--ink);
+    width: 36px; display: flex; align-items: center;
+  }
+  .ml-title {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 16px; color: var(--ink);
+  }
+  .ml-go {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 700;
+    font-size: 13px; color: var(--accent);
+  }
+  .ml-issue {
+    padding: 18px 24px 16px;
+    background: var(--bg-warm);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  .ml-issue::before {
+    content: ''; position: absolute; left: 0; top: 20px; bottom: 16px;
+    width: 3px; background: var(--accent); border-radius: 2px;
+  }
+  .ml-eyebrow {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--ink-muted); margin-bottom: 3px;
+  }
+  .ml-issue-title {
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 18px;
+    color: var(--ink); margin-bottom: 6px; line-height: 1.25;
+    letter-spacing: -0.2px;
+  }
+  .ml-issue-meta {
+    display: flex; gap: 8px; align-items: center;
+    font-size: 11px; color: var(--ink-muted);
+    font-family: 'Inter', sans-serif;
+  }
+  .ml-issue-meta .lbl-bug { color: var(--brick); }
+  .ml-issue-meta .sep { color: var(--ink-faint); }
+  .ml-form {
+    padding: 4px 24px 40px;
+    overflow-y: auto;
+    max-height: calc(100% - 220px);
+  }
+
+  /* desktop launch modal */
+  .lm-scrim {
+    position: absolute; inset: 0;
+    background: rgba(26,23,18,0.45);
+  }
+  .lm-modal {
+    position: absolute;
+    top: 30px; left: 50%; transform: translateX(-50%);
+    width: 580px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.4);
+  }
+  .lm-modal::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/></svg>");
+    background-size: 200px;
+    mix-blend-mode: multiply; opacity: 0.18;
+    pointer-events: none; border-radius: 14px;
+  }
+  .lm-modal > * { position: relative; }
+  .lm-head {
+    padding: 22px 28px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lm-head .eyebrow {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 12px;
+    color: var(--ink-muted); margin-bottom: 2px;
+  }
+  .lm-head h2 {
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px;
+    letter-spacing: -0.3px; color: var(--ink);
+  }
+  .lm-head .x {
+    position: absolute; right: 20px; top: 18px;
+    font-size: 22px; color: var(--ink-muted);
+  }
+  .lm-form { padding: 18px 28px 8px; }
+  .lm-field { padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .lm-field:last-child { border-bottom: none; }
+  .lm-field .lbl {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11.5px;
+    color: var(--ink-muted); display: block; margin-bottom: 4px;
+    letter-spacing: 0.2px;
+  }
+  .lm-radio { display: flex; gap: 8px; margin-top: 6px; }
+  .lm-radio-opt {
+    flex: 1; padding: 10px 14px;
+    border: 1px solid var(--line); border-radius: 6px;
+    font-family: 'Fraunces', serif; font-size: 12.5px;
+    color: var(--ink-soft);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .lm-radio-opt.on {
+    border-color: var(--accent); background: var(--accent-soft);
+    color: var(--ink);
+  }
+  .lm-radio-opt .t { font-weight: 600; font-style: italic; }
+  .lm-radio-opt .d { font-size: 10.5px; color: var(--ink-muted); }
+  .lm-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+  .lm-toggle {
+    padding: 5px 12px; border-radius: 14px;
+    border: 1px solid var(--line);
+    font-family: 'Fraunces', serif; font-size: 11.5px; font-style: italic;
+    color: var(--ink-muted);
+  }
+  .lm-toggle.on {
+    background: var(--ink); color: var(--bg); border-color: var(--ink);
+    font-weight: 600;
+  }
+  .lm-input {
+    background: transparent; border: none; width: 100%;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+    color: var(--ink); padding: 4px 0; outline: none;
+  }
+  .lm-preamble {
+    background: var(--bg-warm);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px;
+    font-family: 'Fraunces', serif; font-size: 12.5px;
+    color: var(--ink-soft); line-height: 1.5;
+    min-height: 60px;
+  }
+  .lm-preamble em { color: var(--ink); font-style: italic; }
+  .lm-foot {
+    padding: 18px 28px 22px;
+    border-top: 1px solid var(--line);
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .lm-foot .btn-ghost {
+    padding: 11px 18px; background: transparent;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  .lm-foot .btn-go {
+    padding: 11px 26px;
+    background: var(--accent); color: var(--bg);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; border: none; border-radius: 6px;
+  }
+  .lm-foot .btn-go::after { content: ' →'; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 5 — EMPTY / FIRST RUN
+     ══════════════════════════════════════════════════════════════ */
+  .fr {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 90px 30px 40px; text-align: center;
+    height: 100%;
+  }
+  .fr-brand {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 60px; letter-spacing: -1.2px; line-height: 1;
+    color: var(--ink);
+  }
+  .fr-brand .dot {
+    display: inline-block; width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%;
+    margin-left: 4px; vertical-align: 12px;
+  }
+  .fr-tag {
+    font-family: 'Fraunces', serif; font-size: 16px;
+    color: var(--ink-muted); max-width: 280px;
+    line-height: 1.5; margin: 24px 0 36px;
+  }
+  .fr-tag em { color: var(--ink-soft); }
+  .fr-status {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 20px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 12.5px;
+    color: var(--accent); margin-bottom: 20px;
+  }
+  .fr-status .fdot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  }
+  .fr-cta {
+    padding: 14px 32px;
+    background: var(--ink); color: var(--bg);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 15px; border-radius: 8px; border: none;
+    margin-bottom: 16px;
+  }
+  .fr-hint {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  .el-empty { text-align: center; padding: 80px 20px 60px; }
+  .el-empty .mark {
+    font-family: 'Fraunces', serif; font-weight: 500; font-style: italic;
+    font-size: 36px; line-height: 1; color: var(--accent); margin-bottom: 18px;
+  }
+  .el-empty h3 {
+    font-family: 'Fraunces', serif; font-weight: 500; font-style: italic;
+    font-size: 22px; letter-spacing: -0.3px; color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .el-empty p {
+    font-family: 'Fraunces', serif; font-size: 14px;
+    color: var(--ink-muted); max-width: 280px; margin: 0 auto;
+    line-height: 1.55;
+  }
+  .el-empty p em { color: var(--ink-soft); }
+
+  /* notes card */
+  .note {
+    width: 380px;
+    background: var(--shell-surface);
+    border: 1px solid var(--shell-border);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .note h4 {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 18px;
+    color: var(--shell-accent); margin-bottom: 14px;
+  }
+  .note h4 + ul { margin-top: -4px; }
+  .note ul {
+    font-size: 12.5px; line-height: 1.7;
+    color: var(--shell-text); padding-left: 20px;
+  }
+  .note ul + h4 { margin-top: 20px; }
+  .note li { margin-bottom: 6px; }
+  .note b { color: var(--shell-accent); }
+  .note em { font-style: italic; }
+
+  /* final wrap-up notes */
+  .open-questions {
+    max-width: 1600px; margin: 48px auto 0;
+    background: var(--shell-surface);
+    border: 1px solid var(--shell-border);
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .open-questions h3 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 18px; color: var(--shell-accent); margin-bottom: 12px;
+  }
+  .open-questions ul {
+    padding-left: 20px; font-size: 13px; line-height: 1.7;
+    color: var(--shell-text);
+  }
+  .open-questions li { margin-bottom: 6px; }
+  .open-questions b { color: var(--shell-accent); }
+  .open-questions em { font-style: italic; }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 6 — SETTINGS
+     ══════════════════════════════════════════════════════════════ */
+  .s-bar {
+    padding: 50px 18px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .s-bar .back { font-size: 22px; color: var(--ink); width: 36px; }
+  .s-bar h2 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 16px; color: var(--ink);
+  }
+  .s-bar .spacer { width: 36px; }
+  .s-section {
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .s-section-head {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 13px; color: var(--ink-soft);
+    margin-bottom: 14px; display: flex; align-items: baseline; gap: 8px;
+  }
+  .s-section-head .cnt {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    color: var(--ink-faint); font-style: normal;
+  }
+  .s-section-head .rule { flex: 1; height: 1px; background: var(--line); }
+  .s-repo {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .s-repo:last-child { border-bottom: none; }
+  .s-repo .dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    background: var(--accent); flex-shrink: 0;
+  }
+  .s-repo .dot.brick { background: var(--brick); }
+  .s-repo .dot.butter { background: var(--butter); }
+  .s-repo .body { flex: 1; min-width: 0; }
+  .s-repo .nm {
+    font-family: 'Fraunces', serif; font-size: 14px;
+    color: var(--ink); margin-bottom: 2px;
+  }
+  .s-repo .pth {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    color: var(--ink-faint);
+  }
+  .s-repo .edit {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--ink-muted);
+  }
+  .s-add {
+    padding: 12px 0; display: flex; align-items: center; gap: 12px;
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 13px;
+    color: var(--accent);
+  }
+  .s-add .plus {
+    width: 10px; height: 10px; border: 1.5px dashed var(--accent);
+    border-radius: 3px; font-style: normal; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; text-align: center; line-height: 7px;
+  }
+  .s-field {
+    padding: 12px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .s-field:last-child { border-bottom: none; }
+  .s-field .lbl {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11.5px;
+    color: var(--ink-muted); display: block; margin-bottom: 4px;
+  }
+  .s-field .val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+    color: var(--ink);
+  }
+  .s-field .val.italic {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 13px;
+  }
+  .s-field .hint {
+    font-family: 'Fraunces', serif; font-size: 11px; color: var(--ink-faint);
+    margin-top: 2px;
+  }
+  .s-wt {
+    padding: 10px 0;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .s-wt:last-child { border-bottom: none; }
+  .s-wt .wt-path {
+    flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .s-wt .wt-age {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--ink-muted);
+  }
+  .s-wt .wt-rm {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--brick);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 7 — QUICK CREATE
+     ══════════════════════════════════════════════════════════════ */
+  .qc-bar {
+    padding: 50px 18px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .qc-bar .close { font-size: 22px; color: var(--ink-muted); width: 28px; }
+  .qc-bar h2 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 15px;
+  }
+  .qc-bar .next {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 700;
+    font-size: 13px; color: var(--accent);
+  }
+  .qc-bar .next.dim { color: var(--ink-faint); font-weight: 500; }
+  .qc-stepper {
+    padding: 10px 24px 0;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .qc-stepper .step {
+    flex: 1; height: 3px; background: var(--line); border-radius: 2px;
+  }
+  .qc-stepper .step.on { background: var(--accent); }
+  .qc-body { padding: 22px 24px; }
+  .qc-prompt {
+    font-family: 'Fraunces', serif; font-weight: 500; font-style: italic;
+    font-size: 22px; color: var(--ink); margin-bottom: 14px;
+    letter-spacing: -0.3px;
+  }
+  .qc-sub {
+    font-family: 'Fraunces', serif; font-size: 13px;
+    color: var(--ink-muted); margin-bottom: 20px; line-height: 1.5;
+  }
+  .qc-textarea {
+    width: 100%; min-height: 220px; resize: none;
+    background: var(--bg-warm); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px;
+    font-family: 'Fraunces', serif; font-size: 14px; line-height: 1.55;
+    color: var(--ink-soft); outline: none;
+  }
+  .qc-textarea::placeholder { color: var(--ink-faint); font-style: italic; }
+  .qc-parse-btn {
+    margin-top: 20px;
+    width: 100%; padding: 13px;
+    background: var(--ink); color: var(--bg);
+    border: none; border-radius: 8px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 14px;
+  }
+  .qc-card {
+    background: var(--bg-warm); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px;
+    margin-bottom: 12px; position: relative;
+  }
+  .qc-card::before {
+    content: ''; position: absolute; left: 0; top: 14px; bottom: 14px;
+    width: 2px; background: var(--accent); border-radius: 2px;
+  }
+  .qc-card .t {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 14px; color: var(--ink); margin-bottom: 4px; line-height: 1.3;
+  }
+  .qc-card .b {
+    font-family: 'Fraunces', serif; font-size: 11.5px;
+    color: var(--ink-muted); margin-bottom: 8px; line-height: 1.5;
+  }
+  .qc-card .m {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    font-size: 10px; font-family: 'Inter', sans-serif;
+  }
+  .qc-card .m .repo-pick {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 10.5px;
+    color: var(--accent);
+  }
+  .qc-card .m .lbl-bug { color: var(--brick); font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; }
+  .qc-card .m .lbl-feat { color: var(--butter); font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; }
+  .qc-results-ok {
+    padding: 30px 24px 20px; text-align: center;
+  }
+  .qc-results-ok .mark {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 56px; color: var(--accent); line-height: 0.8;
+    margin-bottom: 14px;
+  }
+  .qc-results-ok h3 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 22px; color: var(--ink); margin-bottom: 6px;
+  }
+  .qc-results-ok p {
+    font-family: 'Fraunces', serif; font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .qc-result-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .qc-result-row .check {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0; position: relative;
+  }
+  .qc-result-row .check::after {
+    content: ''; position: absolute; left: 3px; top: 4px;
+    width: 6px; height: 3px;
+    border-left: 1.5px solid var(--bg);
+    border-bottom: 1.5px solid var(--bg);
+    transform: rotate(-45deg);
+  }
+  .qc-result-row .t {
+    flex: 1; font-family: 'Fraunces', serif; font-size: 13px;
+    color: var(--ink);
+  }
+  .qc-result-row .n {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 8 — PR DETAIL
+     ══════════════════════════════════════════════════════════════ */
+  .pr-check-list {
+    margin: 0 0 24px;
+    background: var(--bg-warm); border: 1px solid var(--line);
+    border-radius: 8px; padding: 4px 14px;
+  }
+  .pr-check {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line-soft);
+    font-family: 'Fraunces', serif; font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .pr-check:last-child { border-bottom: none; }
+  .pr-check .dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .pr-check .dot.pass { background: var(--accent); }
+  .pr-check .dot.fail { background: var(--brick); }
+  .pr-check .dot.pending { background: var(--butter); }
+  .pr-check .name { flex: 1; }
+  .pr-check .meta { font-family: 'Inter', sans-serif; font-size: 10.5px; color: var(--ink-faint); }
+  .pr-files {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--ink-soft); line-height: 1.7;
+    background: var(--bg-warm); border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px 14px;
+    margin-bottom: 20px;
+  }
+  .pr-files .line {
+    display: flex; gap: 12px; align-items: center;
+  }
+  .pr-files .add { color: var(--accent); font-family: 'Fraunces', serif; font-style: italic; font-size: 10px; font-weight: 600; }
+  .pr-files .del { color: var(--brick); font-family: 'Fraunces', serif; font-style: italic; font-size: 10px; font-weight: 600; }
+  .pr-merge-btn {
+    width: 100%; padding: 12px;
+    background: var(--accent); color: var(--bg); border: none;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 14px; border-radius: 8px;
+    margin-bottom: 20px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 9 — LAUNCH PROGRESS
+     ══════════════════════════════════════════════════════════════ */
+  .lp-bar {
+    padding: 50px 18px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lp-bar .eyebrow {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--ink-muted); margin-bottom: 2px;
+  }
+  .lp-bar h2 {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 20px; letter-spacing: -0.3px;
+  }
+  .lp-bar .sub {
+    font-family: 'Fraunces', serif; font-size: 11.5px; color: var(--ink-muted);
+    margin-top: 3px;
+  }
+  .lp-body { padding: 32px 24px; }
+  .lp-step {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0;
+    position: relative;
+  }
+  .lp-step + .lp-step::before {
+    content: ''; position: absolute;
+    left: 11px; top: -14px; height: 28px;
+    width: 1.5px; background: var(--line);
+  }
+  .lp-step.done + .lp-step::before { background: var(--accent); }
+  .lp-step .mark {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: var(--bg);
+    flex-shrink: 0;
+    position: relative; z-index: 2;
+  }
+  .lp-step.done .mark {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .lp-step.done .mark::after {
+    content: ''; position: absolute;
+    left: 5px; top: 7px; width: 9px; height: 4px;
+    border-left: 2px solid var(--bg); border-bottom: 2px solid var(--bg);
+    transform: rotate(-45deg);
+  }
+  .lp-step.active .mark {
+    border-color: var(--accent);
+    border-width: 2px;
+  }
+  .lp-step.active .mark::after {
+    content: ''; position: absolute; inset: 3px;
+    background: var(--accent); border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  .lp-step .label {
+    font-family: 'Fraunces', serif; font-size: 15px;
+    color: var(--ink);
+  }
+  .lp-step .detail {
+    font-family: 'Fraunces', serif; font-size: 11px;
+    color: var(--ink-muted); margin-top: 2px;
+  }
+  .lp-step.pending .label { color: var(--ink-faint); }
+  .lp-note {
+    margin-top: 30px; padding: 14px 16px;
+    background: var(--bg-warm); border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 12px;
+    color: var(--ink-muted); line-height: 1.55;
+    text-align: center;
+  }
+  .lp-note em { color: var(--ink-soft); }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 10 — AUTH ERROR
+     ══════════════════════════════════════════════════════════════ */
+  .ae {
+    padding: 80px 30px 40px;
+    text-align: center; height: 100%;
+  }
+  .ae-icon {
+    width: 68px; height: 68px; border-radius: 50%;
+    background: rgba(184, 74, 46, 0.08);
+    border: 1.5px dashed var(--brick);
+    margin: 0 auto 26px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-weight: 700;
+    font-size: 32px; color: var(--brick); line-height: 1;
+  }
+  .ae h2 {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 24px; line-height: 1.2; letter-spacing: -0.3px;
+    color: var(--ink); margin-bottom: 10px;
+  }
+  .ae p {
+    font-family: 'Fraunces', serif; font-size: 14px;
+    color: var(--ink-muted); max-width: 300px;
+    margin: 0 auto 26px; line-height: 1.55;
+  }
+  .ae p em { color: var(--ink-soft); }
+  .ae-steps {
+    text-align: left;
+    background: var(--bg-warm); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 18px;
+    margin-bottom: 22px;
+  }
+  .ae-step {
+    padding: 8px 0;
+    display: flex; gap: 12px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .ae-step:last-child { border-bottom: none; }
+  .ae-step .n {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 13px; color: var(--accent);
+    width: 20px; flex-shrink: 0;
+  }
+  .ae-step .c {
+    flex: 1;
+    font-family: 'Fraunces', serif; font-size: 13px;
+    color: var(--ink-soft); line-height: 1.4;
+  }
+  .ae-step .c code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+    background: var(--bg); padding: 1px 6px; border-radius: 3px;
+    color: var(--ink);
+  }
+  .ae-retry {
+    width: calc(100% - 40px); margin: 0 20px;
+    padding: 12px; background: var(--ink); color: var(--bg);
+    border: none; border-radius: 8px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 14px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 11 — MODAL ANTHOLOGY
+     ══════════════════════════════════════════════════════════════ */
+  .ma-stage {
+    background: var(--bg);
+    padding: 30px;
+    border-radius: 14px;
+    position: relative;
+  }
+  .ma-stage::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/></svg>");
+    background-size: 200px;
+    mix-blend-mode: multiply; opacity: 0.15;
+    pointer-events: none; border-radius: 14px;
+  }
+  .ma-stage > * { position: relative; z-index: 2; }
+  .ma-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 1100px) { .ma-grid { grid-template-columns: 1fr; } }
+  .ma-modal {
+    background: #faf4e1;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 24px 20px;
+    box-shadow: 0 16px 40px rgba(26,23,18,0.12);
+    position: relative;
+  }
+  .ma-modal .ma-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9.5px;
+    color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1.2px;
+    margin-bottom: 10px;
+  }
+  .ma-modal h4 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 17px; color: var(--ink); margin-bottom: 6px;
+    letter-spacing: -0.2px;
+  }
+  .ma-modal p {
+    font-family: 'Fraunces', serif; font-size: 12.5px;
+    color: var(--ink-muted); margin-bottom: 16px; line-height: 1.55;
+  }
+  .ma-modal p em { color: var(--ink-soft); }
+  .ma-modal .ma-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+  .ma-modal .btn {
+    padding: 8px 16px; border-radius: 6px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 12.5px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink-soft);
+  }
+  .ma-modal .btn.danger { background: var(--brick); color: var(--bg); border-color: var(--brick); }
+  .ma-modal .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .ma-modal .btn.accent { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .ma-field {
+    padding: 10px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .ma-field:last-of-type { border-bottom: none; margin-bottom: 10px; }
+  .ma-field .lbl {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 10.5px;
+    color: var(--ink-muted); display: block; margin-bottom: 2px;
+  }
+  .ma-field .val {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+    color: var(--ink);
+  }
+  .ma-field .val.italic {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 12.5px;
+  }
+  .ma-labels {
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;
+  }
+  .ma-lbl-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0;
+    font-family: 'Fraunces', serif; font-size: 12.5px;
+  }
+  .ma-lbl-row .cb {
+    width: 13px; height: 13px; border-radius: 2px;
+    border: 1.5px solid var(--ink-muted);
+  }
+  .ma-lbl-row.on .cb { background: var(--accent); border-color: var(--accent); position: relative; }
+  .ma-lbl-row.on .cb::after {
+    content: ''; position: absolute; left: 2px; top: 3px;
+    width: 6px; height: 3px;
+    border-left: 1.2px solid var(--bg); border-bottom: 1.2px solid var(--bg);
+    transform: rotate(-45deg);
+  }
+  .ma-lbl-row .lbl-text {
+    flex: 1; color: var(--ink-soft);
+  }
+  .ma-lbl-row .lbl-color {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .ma-warn {
+    display: flex; gap: 10px; padding: 10px 12px;
+    background: rgba(184,74,46,0.08);
+    border: 1px solid rgba(184,74,46,0.3);
+    border-radius: 6px; margin-bottom: 14px;
+  }
+  .ma-warn .icon {
+    font-family: 'Fraunces', serif; font-weight: 700; color: var(--brick);
+    font-size: 16px; line-height: 1; flex-shrink: 0;
+  }
+  .ma-warn .text {
+    font-family: 'Fraunces', serif; font-size: 11.5px; color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .ma-warn .text code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    background: var(--bg-warm); padding: 1px 4px; border-radius: 2px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FLOW 12 — SUPPLEMENTS (nav drawer, PR tab, priority picker)
+     ══════════════════════════════════════════════════════════════ */
+
+  /* menu icon */
+  .menu-icon {
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace; font-size: 18px;
+    color: var(--ink-muted); letter-spacing: 1px;
+  }
+
+  /* nav drawer */
+  .nd-drawer {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 300px;
+    background: var(--bg);
+    border-left: 1px solid var(--line);
+    z-index: 41;
+    box-shadow: -20px 0 60px rgba(0,0,0,0.3);
+  }
+  .nd-head {
+    padding: 52px 22px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+  }
+  .nd-head .brand {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 22px; letter-spacing: -0.4px;
+  }
+  .nd-head .brand .dot {
+    display: inline-block; width: 7px; height: 7px;
+    background: var(--accent); border-radius: 50%;
+    margin-left: 2px; vertical-align: 3px;
+  }
+  .nd-head .x { font-size: 22px; color: var(--ink-muted); }
+  .nd-item {
+    padding: 16px 22px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line-soft);
+    font-family: 'Fraunces', serif; font-size: 15px;
+    color: var(--ink);
+  }
+  .nd-item.on { color: var(--accent); font-style: italic; }
+  .nd-item.on::before {
+    content: '› '; color: var(--accent); margin-right: 2px;
+  }
+  .nd-item .arr { color: var(--ink-faint); font-size: 14px; font-family: 'IBM Plex Mono', monospace; }
+  .nd-section {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 11px; color: var(--ink-faint);
+    padding: 18px 22px 6px;
+  }
+  .nd-footer {
+    position: absolute; bottom: 22px; left: 22px; right: 22px;
+    font-family: 'Fraunces', serif; font-style: italic; font-size: 11px;
+    color: var(--ink-muted); line-height: 1.6;
+    padding-top: 14px; border-top: 1px solid var(--line-soft);
+  }
+  .nd-footer .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .nd-footer .auth { color: var(--accent); }
+  .nd-footer .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 5px; vertical-align: 2px; }
+  .nd-footer .mono { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 9.5px; color: var(--ink-faint); }
+
+  /* PR status dots (reuses .item structure) */
+  .item .pr-stat {
+    position: absolute; left: 24px; top: 17px;
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--ink-muted);
+    background: var(--bg);
+  }
+  .item .pr-stat.pass {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .item .pr-stat.pass::after {
+    content: ''; position: absolute;
+    left: 4px; top: 6px; width: 7px; height: 3.5px;
+    border-left: 1.8px solid var(--bg);
+    border-bottom: 1.8px solid var(--bg);
+    transform: rotate(-45deg);
+  }
+  .item .pr-stat.fail {
+    border-color: var(--brick); background: transparent;
+  }
+  .item .pr-stat.fail::after {
+    content: '×'; position: absolute; inset: 0;
+    color: var(--brick); font-family: 'Fraunces', serif; font-weight: 700;
+    font-size: 16px; text-align: center; line-height: 14px;
+  }
+  .item .pr-stat.pending {
+    border-color: var(--butter); background: transparent;
+  }
+  .item .pr-stat.pending::after {
+    content: ''; position: absolute; inset: 3px;
+    background: var(--butter); border-radius: 50%;
+    animation: pulse 1.8s infinite;
+  }
+  .item .pr-stat.merged {
+    background: #8a6db5; border-color: #8a6db5;
+  }
+  .item .pr-stat.merged::after {
+    content: ''; position: absolute;
+    left: 4px; top: 6px; width: 7px; height: 3.5px;
+    border-left: 1.8px solid var(--bg);
+    border-bottom: 1.8px solid var(--bg);
+    transform: rotate(-45deg);
+  }
+
+  /* priority picker rows (reuses sheet styles, adds custom icons) */
+  .pp-icon {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--bg-warm); border: 1.5px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 16px; color: var(--ink-soft); flex-shrink: 0;
+  }
+  .pp-icon.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .pp-icon.high::before { content: '↑'; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-style: normal; }
+  .pp-icon.normal::before { content: '–'; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-style: normal; }
+  .pp-icon.low::before { content: '↓'; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-style: normal; }
+
+  /* priority marker on list rows (for high-priority items) */
+  .item .prio {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+    font-size: 11px; color: var(--accent);
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <div class="eyebrow">paper palette · all mockups</div>
+  <h1>issuectl &mdash; the full picture</h1>
+  <p class="sub">Every screen we've designed so far, consolidated in one place. The main list is the home, then: issue detail, new issue creation, Claude launch (mobile queues, desktop runs), and the first-run / empty states. "Issue" everywhere — never "task."</p>
+</div>
+
+<div class="toc">
+  <span class="toc-label">jump to</span>
+  <a href="#flow1"><span class="num">01</span>main list</a>
+  <a href="#flow2"><span class="num">02</span>issue detail</a>
+  <a href="#flow3"><span class="num">03</span>new issue</a>
+  <a href="#flow4"><span class="num">04</span>claude launch</a>
+  <a href="#flow5"><span class="num">05</span>first run &amp; empty</a>
+  <a href="#flow6"><span class="num">06</span>settings</a>
+  <a href="#flow7"><span class="num">07</span>quick create</a>
+  <a href="#flow8"><span class="num">08</span>pr detail</a>
+  <a href="#flow9"><span class="num">09</span>launch progress</a>
+  <a href="#flow10"><span class="num">10</span>auth error</a>
+  <a href="#flow11"><span class="num">11</span>modal anthology</a>
+  <a href="#flow12"><span class="num">12</span>supplements</a>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 1 — MAIN LIST                                             -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow1">
+  <div class="flow-head">
+    <div class="flow-num">flow 01</div>
+    <div class="flow-title">Main list &mdash; the home</div>
+    <div class="flow-desc">A single cross-repo list of issues grouped into <em>unassigned</em>, <em>in focus</em>, <em>in flight</em>, and <em>shipped</em>. Mobile swipe-from-right reveals a green "assign →" action; tapping it opens the assign sheet. Desktop is the same column, centered in the viewport, with hover reveals instead of swipe.</div>
+  </div>
+
+  <div class="frames">
+
+    <!-- Phone: list with swiped row -->
+    <div>
+      <div class="frame-label">mobile · <b>default list, row swiped</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="bar">
+            <div class="brand">issuectl<span class="dot"></span></div>
+            <div class="date">friday<b>apr 10</b></div>
+          </div>
+          <div class="tabs">
+            <div class="tab on">Issues<span class="c">7</span></div>
+            <div class="tab">Pull requests<span class="c">3</span></div>
+          </div>
+          <div class="srch"><input class="srch-input" placeholder="filter your list…"></div>
+          <div class="list">
+
+            <div class="section"><h3>unassigned</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item swiped">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Rate limit the export endpoint</div>
+              <div class="meta"><span class="repo none">no repo</span><span class="sep">·</span><span>local draft</span></div>
+              <div class="reveal"><span>assign</span><span class="arr">→</span></div>
+            </div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Migrate stale email templates to MDX</div>
+              <div class="meta"><span class="repo none">no repo</span><span class="sep">·</span><span>local draft</span></div>
+            </div>
+
+            <div class="section"><h3>in focus</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Fix flaky auth middleware under load</div>
+              <div class="meta"><span class="repo">api</span><span class="num">#214</span><span class="sep">·</span><span class="lbl-bug">bug</span><span class="sep">·</span><span>2d</span></div>
+            </div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Add retry logic to webhook dispatcher</div>
+              <div class="meta"><span class="repo">api</span><span class="num">#220</span><span class="sep">·</span><span class="lbl-feat">feat</span><span class="sep">·</span><span>1d</span></div>
+            </div>
+
+            <div class="section"><h3>in flight</h3><div class="rule"></div><span class="cnt">1</span></div>
+            <div class="item">
+              <div class="check flight"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/><rect class="fill" x="5" y="5" width="10" height="10" rx="1"/></svg></div>
+              <div class="title">Investigate intermittent SSE drops</div>
+              <div class="meta"><span class="repo">api</span><span class="num">#225</span><span class="sep">·</span><span class="lbl-bug">bug</span><span class="sep">·</span><span>launched 4h ago</span></div>
+            </div>
+
+            <div class="section"><h3>shipped</h3><div class="rule"></div><span class="cnt">1</span></div>
+            <div class="item">
+              <div class="check done"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/><path class="tick" d="M6 10.5 l2.8 2.8 L14.5 7"/></svg></div>
+              <div class="title done">Polish empty state copy on onboarding</div>
+              <div class="meta"><span class="repo">web</span><span class="num">#48</span><span class="sep">·</span><span>deployed</span></div>
+            </div>
+
+          </div>
+          <div class="fab">+</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone: assign sheet -->
+    <div>
+      <div class="frame-label">mobile · <b>assign sheet (post-swipe)</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="bar">
+            <div class="brand">issuectl<span class="dot"></span></div>
+            <div class="date">friday<b>apr 10</b></div>
+          </div>
+          <div class="tabs">
+            <div class="tab on">Issues<span class="c">7</span></div>
+            <div class="tab">Pull requests<span class="c">3</span></div>
+          </div>
+          <div class="srch"><input class="srch-input" placeholder="filter your list…"></div>
+          <div class="list">
+            <div class="section"><h3>unassigned</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Rate limit the export endpoint</div>
+              <div class="meta"><span class="repo none">no repo</span><span class="sep">·</span><span>local draft</span></div>
+            </div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Migrate stale email templates to MDX</div>
+              <div class="meta"><span class="repo none">no repo</span><span class="sep">·</span><span>local draft</span></div>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sheet-head">
+              <h3>Assign to a repo</h3>
+              <p><em>Rate limit the export endpoint</em> will be pushed to GitHub as a new issue in the chosen repo.</p>
+            </div>
+            <div class="sheet-list">
+              <div class="sheet-row">
+                <div class="rdot"></div>
+                <div class="rname">neonwatty/api <em>· the one you're thinking of</em></div>
+                <div class="rcount">12 open</div>
+              </div>
+              <div class="sheet-row">
+                <div class="rdot alt1"></div>
+                <div class="rname">neonwatty/web</div>
+                <div class="rcount">5 open</div>
+              </div>
+              <div class="sheet-row">
+                <div class="rdot alt2"></div>
+                <div class="rname">neonwatty/docs</div>
+                <div class="rcount">2 open</div>
+              </div>
+              <div class="sheet-row">
+                <div class="rdot alt3"></div>
+                <div class="rname">neonwatty/workers</div>
+                <div class="rcount">0 open</div>
+              </div>
+            </div>
+            <div class="sheet-cancel">cancel</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>Row anatomy</h4>
+      <ul>
+        <li><b>Checkbox</b> — open (hollow), in flight (filled, pulsing), done (filled check). All in forest green.</li>
+        <li><b>Title</b> — Fraunces 17px. Strikethrough in green when done.</li>
+        <li><b>Repo chip</b> — mono, warm surface. Dashed italic green when unassigned.</li>
+        <li><b>#num</b> — IBM Plex Mono, muted.</li>
+        <li><b>Label</b> — brick red for bugs, butter yellow for features.</li>
+        <li><b>Age</b> — sans, relative ("2d", "launched 4h ago").</li>
+      </ul>
+      <h4>Swipe behavior</h4>
+      <ul>
+        <li><b>Swipe from right:</b> row slides left ~110px, reveals green "assign →" on the right.</li>
+        <li><b>Short swipe:</b> reveals button — tap to open the assign sheet.</li>
+        <li><b>Long swipe past threshold:</b> opens the sheet immediately.</li>
+        <li><b>Tap outside:</b> row snaps back.</li>
+        <li><b>Assigned issues:</b> swipe opens the same sheet but with a "move to a different repo" warning.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Desktop for main list -->
+  <div style="margin-top: 28px;">
+    <div class="frame-label">desktop · <b>centered column, no sidebar, hover reveals actions</b></div>
+    <div class="desktop">
+      <div class="desktop-chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">localhost:3847</span>
+      </div>
+      <div class="desktop-body paper">
+        <div class="desk">
+          <div class="desk-header">
+            <div class="desk-brand">issuectl<span class="dot"></span><span class="ver">v0.4</span></div>
+            <div class="desk-actions">
+              <div class="date">friday · <b>apr 10</b></div>
+              <button class="btn">+ new issue</button>
+            </div>
+          </div>
+          <div class="desk-tabs">
+            <div class="tab on">Issues<span class="c">7</span></div>
+            <div class="tab">Pull requests<span class="c">3</span></div>
+            <div class="tab">Settings</div>
+          </div>
+          <div class="desk-list">
+            <div class="section"><h3>unassigned</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item show-quick">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Rate limit the export endpoint</div>
+              <div class="meta"><span class="repo none">no repo</span><span class="sep">·</span><span>local draft</span></div>
+              <div class="quick"><button>assign</button></div>
+            </div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Migrate stale email templates to MDX</div>
+              <div class="meta"><span class="repo none">no repo</span><span class="sep">·</span><span>local draft</span></div>
+              <div class="quick"><button>assign</button></div>
+            </div>
+            <div class="section"><h3>in focus</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Fix flaky auth middleware under load</div>
+              <div class="meta"><span class="repo">api</span><span class="num">#214</span><span class="sep">·</span><span class="lbl-bug">bug</span><span class="sep">·</span><span>2d</span></div>
+              <div class="quick"><button>reassign</button><button class="go">launch</button></div>
+            </div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Add retry logic to webhook dispatcher</div>
+              <div class="meta"><span class="repo">api</span><span class="num">#220</span><span class="sep">·</span><span class="lbl-feat">feat</span><span class="sep">·</span><span>1d</span></div>
+              <div class="quick"><button>reassign</button><button class="go">launch</button></div>
+            </div>
+            <div class="section"><h3>in flight</h3><div class="rule"></div><span class="cnt">1</span></div>
+            <div class="item">
+              <div class="check flight"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/><rect class="fill" x="5" y="5" width="10" height="10" rx="1"/></svg></div>
+              <div class="title">Investigate intermittent SSE drops</div>
+              <div class="meta"><span class="repo">api</span><span class="num">#225</span><span class="sep">·</span><span class="lbl-bug">bug</span><span class="sep">·</span><span>launched 4h ago</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 2 — ISSUE DETAIL                                          -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow2">
+  <div class="flow-head">
+    <div class="flow-num">flow 02</div>
+    <div class="flow-title">Issue detail</div>
+    <div class="flow-desc">Tap a row → full-screen on mobile, centered 820px column on desktop. Title dominates, launch card is the only loud element, body and comments share the same serif. Mobile has a sticky composer at the bottom; desktop puts the launch card and metadata in a side column.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>full-screen detail</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="d-bar">
+            <div class="d-back">‹</div>
+            <div class="d-crumb">neonwatty/<b>api</b></div>
+            <div class="d-menu">···</div>
+          </div>
+          <div class="d-body">
+            <div class="d-title">Fix flaky auth middleware under load</div>
+            <div class="d-meta">
+              <span class="repo">api</span>
+              <span class="num">#214</span>
+              <span class="sep">·</span>
+              <span class="state">open</span>
+              <span class="sep">·</span>
+              <span class="lbl-bug">bug</span>
+              <span class="sep">·</span>
+              <span>2d old</span>
+            </div>
+
+            <div class="d-launch">
+              <h4>Ready to launch</h4>
+              <p>Open a Ghostty session with Claude Code pre-loaded. Creates a worktree on <code>issue-214-auth</code>.</p>
+              <div class="d-launch-actions">
+                <button class="btn-primary">launch →</button>
+                <button class="btn-ghost">configure</button>
+              </div>
+            </div>
+
+            <div class="d-body-text">
+              <p>Under 50+ concurrent requests the auth middleware starts returning 401s intermittently. Happens in both staging and prod, doesn't reproduce with fewer than ~30 parallel requests.</p>
+              <p>Looks like the token refresh lock in <code>authClient.ts</code> isn't re-entrant — one request can enter the critical section, another can observe the old token before the refresh completes, and the second one gets rejected.</p>
+            </div>
+
+            <div class="d-section-head">comments <span class="cnt">3</span></div>
+
+            <div class="d-comment">
+              <div class="d-comment-head">
+                <div class="d-comment-avi">mw</div>
+                <div class="d-comment-who">mean-weasel</div>
+                <div class="d-comment-time">yesterday</div>
+              </div>
+              <div class="d-comment-body">Can repro on the staging load test at 48 req/s. Errors cluster around the refresh boundary every 15 min.</div>
+            </div>
+            <div class="d-comment">
+              <div class="d-comment-head">
+                <div class="d-comment-avi">nw</div>
+                <div class="d-comment-who">neonwatty</div>
+                <div class="d-comment-time">4h ago</div>
+              </div>
+              <div class="d-comment-body">I'd start by reading <code>authClient.ts</code> lines 140-180 &mdash; the Promise.resolve fallback is suspicious.</div>
+            </div>
+          </div>
+          <div class="d-composer">
+            <input placeholder="add a comment…">
+            <button class="send">send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="desktop">
+      <div class="desktop-chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">localhost:3847/api/issues/214</span>
+      </div>
+      <div class="desktop-body paper">
+        <div class="dd">
+          <div class="dd-bar">
+            <div class="dd-back">back to list</div>
+            <div class="dd-close">×</div>
+          </div>
+          <div class="dd-body">
+            <div class="dd-title">Fix flaky auth middleware under load</div>
+            <div class="dd-meta">
+              <span class="repo">api</span>
+              <span class="num">#214</span>
+              <span class="state">open</span>
+              <span class="lbl-bug">bug</span>
+              <span>opened 2d ago · last updated 4h ago</span>
+            </div>
+            <div class="dd-grid">
+              <div>
+                <div class="dd-text">
+                  <p>Under 50+ concurrent requests the auth middleware starts returning 401s intermittently. Happens in both staging and prod, doesn't reproduce with fewer than ~30 parallel requests.</p>
+                  <p>Looks like the token refresh lock in <code>authClient.ts</code> isn't re-entrant — one request can enter the critical section, another can observe the old token before the refresh completes, and the second one gets rejected.</p>
+                </div>
+                <div class="d-section-head">comments <span class="cnt">3</span></div>
+                <div class="d-comment">
+                  <div class="d-comment-head">
+                    <div class="d-comment-avi">mw</div>
+                    <div class="d-comment-who">mean-weasel</div>
+                    <div class="d-comment-time">yesterday</div>
+                  </div>
+                  <div class="d-comment-body">Can repro on the staging load test at 48 req/s. Errors cluster around the refresh boundary every 15 min.</div>
+                </div>
+                <div class="d-comment">
+                  <div class="d-comment-head">
+                    <div class="d-comment-avi">nw</div>
+                    <div class="d-comment-who">neonwatty</div>
+                    <div class="d-comment-time">4h ago</div>
+                  </div>
+                  <div class="d-comment-body">I'd start by reading <code>authClient.ts</code> lines 140-180 — the Promise.resolve fallback is suspicious.</div>
+                </div>
+              </div>
+              <aside>
+                <div class="dd-launch">
+                  <h4>Ready to launch</h4>
+                  <p>Open Ghostty with Claude Code pre-loaded on a new worktree.</p>
+                  <button class="btn">launch →</button>
+                  <button class="btn btn-sec">configure</button>
+                </div>
+                <div class="dd-side-block"><span class="lbl">assignee</span><span class="val">—</span></div>
+                <div class="dd-side-block"><span class="lbl">milestone</span><span class="val">0.5.0</span></div>
+                <div class="dd-side-block"><span class="lbl">labels</span><span class="val"><span class="lbl-bug" style="padding:1px 6px;background:rgba(184,74,46,0.08);border-radius:3px;font-size:10.5px;">bug</span></span></div>
+                <div class="dd-side-block"><span class="lbl">referenced files</span><span class="val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;">src/auth/authClient.ts<br>src/middleware/auth.ts</span></div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 3 — NEW ISSUE                                             -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow3">
+  <div class="flow-head">
+    <div class="flow-num">flow 03</div>
+    <div class="flow-title">New issue creation</div>
+    <div class="flow-desc">Tap the FAB (mobile) or the "+ new issue" button (desktop). Title and body feel like writing in a notebook — big serif, no borders, just placeholders that fade out as you type. Repo assignment and labels are secondary fields below the divider. Save as a local draft OR assign immediately.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>new issue form</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="n-bar">
+            <div class="n-close">×</div>
+            <div class="n-title">New issue</div>
+            <div class="n-save">save</div>
+          </div>
+          <div class="n-body">
+            <input class="n-title-input" value="Rate limit the export endpoint">
+            <textarea class="n-body-input">Users are hammering /api/exports and we're hitting connection limits on the shared db. Need a per-user token bucket, probably 10 exports/hour.
+
+Related: #185 (the original export endpoint).</textarea>
+            <div class="n-divider"></div>
+            <div class="n-field">
+              <span class="n-field-lbl">repo</span>
+              <span class="n-field-val none">unassigned &nbsp;<span class="n-field-arrow">›</span></span>
+            </div>
+            <div class="n-field">
+              <span class="n-field-lbl">labels</span>
+              <span class="n-field-val disabled">assign a repo first</span>
+            </div>
+            <div class="n-field">
+              <span class="n-field-lbl">priority</span>
+              <span class="n-field-val">normal &nbsp;<span class="n-field-arrow">›</span></span>
+            </div>
+          </div>
+          <div class="n-actions">
+            <button class="btn-ghost">save draft</button>
+            <button class="btn-primary">assign &amp; save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>How it feels</h4>
+      <ul>
+        <li><b>Title is the hero.</b> 26px serif, no border, no label. Placeholder is italic, value is upright. Tap and you're writing.</li>
+        <li><b>Body is a longer version.</b> Same serif, 15px, multi-line. No toolbar, no markdown preview. Raw markdown until it's pushed to GitHub.</li>
+        <li><b>Repo selector is optional.</b> Tapping it opens the same assign sheet from the main list. You can close the form entirely unassigned.</li>
+        <li><b>Labels wait.</b> Until a repo is chosen, the labels field reads "assign a repo first" — we can't show real labels without a target.</li>
+        <li><b>Two save paths</b>: <em>save draft</em> (quiet, stays local) and <em>assign &amp; save</em> (opens the repo sheet, then syncs to GitHub on pick).</li>
+      </ul>
+      <h4>Desktop version</h4>
+      <ul>
+        <li><b>Same form in a 640px modal</b>, centered over a scrim. Esc closes. Cmd+Enter saves.</li>
+        <li><b>Layout is identical</b> — this form doesn't need to grow sideways. Writing prefers narrow columns.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 4 — LAUNCH                                                -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow4">
+  <div class="flow-head">
+    <div class="flow-num">flow 04</div>
+    <div class="flow-title">Claude Code launch</div>
+    <div class="flow-desc">Launching opens Ghostty on the machine where <em>issuectl</em> is running. The mobile viewport is just a narrower view of the same local app — whether you're in a narrow browser window on your Mac or on your phone over LAN, the server triggers Ghostty on the Mac. Same flow, two layouts: mobile gets a full-screen form, desktop gets a centered modal.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>full-screen launch form</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="ml-bar">
+            <div class="ml-back">‹</div>
+            <div class="ml-title">Launch</div>
+            <div class="ml-go">launch →</div>
+          </div>
+          <div class="ml-issue">
+            <div class="ml-eyebrow">launching</div>
+            <div class="ml-issue-title">Fix flaky auth middleware under load</div>
+            <div class="ml-issue-meta">
+              <span class="repo">api</span>
+              <span class="sep">·</span>
+              <span>#214</span>
+              <span class="sep">·</span>
+              <span class="lbl-bug">bug</span>
+            </div>
+          </div>
+          <div class="ml-form">
+            <div class="lm-field">
+              <span class="lbl">workspace</span>
+              <div class="lm-radio">
+                <div class="lm-radio-opt on">
+                  <div class="t">new worktree</div>
+                  <div class="d">fresh branch</div>
+                </div>
+                <div class="lm-radio-opt">
+                  <div class="t">existing clone</div>
+                  <div class="d">~/code/api</div>
+                </div>
+              </div>
+            </div>
+            <div class="lm-field">
+              <span class="lbl">branch</span>
+              <input class="lm-input" value="issue-214-auth-middleware">
+            </div>
+            <div class="lm-field">
+              <span class="lbl">preamble</span>
+              <div class="lm-preamble">You're working on issue #214 in the <em>api</em> repo. The bug is that auth middleware returns 401s intermittently under load. Start by reading src/auth/authClient.ts.</div>
+            </div>
+            <div class="lm-field">
+              <span class="lbl">context</span>
+              <div class="lm-toggles">
+                <span class="lm-toggle on">comments</span>
+                <span class="lm-toggle on">referenced files</span>
+                <span class="lm-toggle">linked PRs</span>
+              </div>
+            </div>
+            <div class="lm-field">
+              <span class="lbl">claude extra args</span>
+              <input class="lm-input" value="--model opus-4.6">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="desktop">
+      <div class="desktop-chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">localhost:3847/api/issues/214</span>
+      </div>
+      <div class="desktop-body paper">
+        <div style="padding: 30px 60px; opacity: 0.25; pointer-events: none;">
+          <div style="font-family: 'Fraunces', serif; font-size: 34px; font-style: italic;">issuectl<span style="color: var(--accent);">.</span></div>
+          <div style="margin-top: 20px; font-family: 'Fraunces', serif; font-style: italic; font-size: 13px; color: var(--ink-muted);">— in focus</div>
+          <div style="padding: 14px 0; font-family: 'Fraunces', serif; font-size: 17px;">Fix flaky auth middleware under load</div>
+          <div style="padding: 14px 0; font-family: 'Fraunces', serif; font-size: 17px;">Add retry logic to webhook dispatcher</div>
+        </div>
+        <div class="lm-scrim"></div>
+        <div class="lm-modal">
+          <div class="lm-head">
+            <div class="eyebrow">launching</div>
+            <h2>Fix flaky auth middleware under load</h2>
+            <div class="x">×</div>
+          </div>
+          <div class="lm-form">
+            <div class="lm-field">
+              <span class="lbl">workspace</span>
+              <div class="lm-radio">
+                <div class="lm-radio-opt on">
+                  <div class="t">new worktree</div>
+                  <div class="d">fresh branch from main</div>
+                </div>
+                <div class="lm-radio-opt">
+                  <div class="t">existing clone</div>
+                  <div class="d">~/code/api</div>
+                </div>
+              </div>
+            </div>
+            <div class="lm-field">
+              <span class="lbl">branch</span>
+              <input class="lm-input" value="issue-214-auth-middleware">
+            </div>
+            <div class="lm-field">
+              <span class="lbl">preamble</span>
+              <div class="lm-preamble">You're working on issue #214 in the <em>api</em> repo. The bug is that auth middleware returns 401s intermittently under load. Start by reading src/auth/authClient.ts and src/middleware/auth.ts. Check if the refresh lock is re-entrant.</div>
+            </div>
+            <div class="lm-field">
+              <span class="lbl">context</span>
+              <div class="lm-toggles">
+                <span class="lm-toggle on">include comments</span>
+                <span class="lm-toggle on">referenced files</span>
+                <span class="lm-toggle">linked PRs</span>
+                <span class="lm-toggle">issue history</span>
+              </div>
+            </div>
+            <div class="lm-field">
+              <span class="lbl">claude extra args</span>
+              <input class="lm-input" value="--model opus-4.6">
+            </div>
+          </div>
+          <div class="lm-foot">
+            <button class="btn-ghost">save as default</button>
+            <button class="btn-go">launch</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 5 — FIRST RUN / EMPTY                                     -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow5">
+  <div class="flow-head">
+    <div class="flow-num">flow 05</div>
+    <div class="flow-title">First run &amp; empty states</div>
+    <div class="flow-desc">How the app introduces itself on the first open, and how the main list looks when you're caught up. Both lean into the paper metaphor — calm, generous, no confetti.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>first run welcome</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="fr">
+            <div class="fr-brand">issuectl<span class="dot"></span></div>
+            <div class="fr-tag">every issue, every repo.<br><em>launch any of them with Claude Code.</em></div>
+            <div class="fr-status">
+              <span class="fdot"></span>
+              GitHub CLI — authenticated as <strong style="font-weight:600;margin-left:4px;">neonwatty</strong>
+            </div>
+            <button class="fr-cta">add your first repo</button>
+            <div class="fr-hint">or <em>create a draft</em> without a repo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="frame-label">mobile · <b>all clear (empty list)</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="bar">
+            <div class="brand">issuectl<span class="dot"></span></div>
+            <div class="date">friday<b>apr 10</b></div>
+          </div>
+          <div class="tabs">
+            <div class="tab on">Issues<span class="c">0</span></div>
+            <div class="tab">Pull requests<span class="c">0</span></div>
+          </div>
+          <div class="el-empty">
+            <div class="mark" style="font-size: 62px; line-height: 0.75; margin-bottom: 16px;">❧</div>
+            <h3>all clear</h3>
+            <p>nothing on your plate today. <em>breathe, or draft the next one.</em></p>
+          </div>
+          <div class="fab">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>Voice guidelines</h4>
+      <ul>
+        <li><b>Short, lowercase, italic</b> for secondary copy — "a quiet place," "breathe, or draft the next thing"</li>
+        <li><b>No emoji, no exclamation marks</b>. The paper aesthetic carries the mood.</li>
+        <li><b>Italic fragments punctuate</b>; they don't narrate.</li>
+        <li><b>Brand signature</b>: the word <em>issuectl</em> in italic serif, followed by a small green dot like a period.</li>
+        <li><b>Status chips</b> use the accent color with soft surface for a "keeping watch" feel.</li>
+        <li><b>Error states</b> use brick red sparingly — only when something actually broke. Expected empty states stay calm.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 6 — SETTINGS                                              -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow6">
+  <div class="flow-head">
+    <div class="flow-num">flow 06</div>
+    <div class="flow-title">Settings</div>
+    <div class="flow-desc">One settings surface with four sections: tracked repos (add/edit/remove + local path), defaults (branch pattern, cache TTL, terminal), claude config (extra args, preamble template), and worktree cleanup. Mobile: full-screen stacked sections. Desktop: same layout in the centered column.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>settings, top of page</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper" style="overflow-y: auto;">
+          <div class="s-bar">
+            <div class="back">‹</div>
+            <h2>Settings</h2>
+            <div class="spacer"></div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-head">tracked repos <div class="rule"></div><span class="cnt">4</span></div>
+            <div class="s-repo">
+              <div class="dot"></div>
+              <div class="body">
+                <div class="nm">neonwatty/api</div>
+                <div class="pth">~/code/api</div>
+              </div>
+              <div class="edit">edit</div>
+            </div>
+            <div class="s-repo">
+              <div class="dot brick"></div>
+              <div class="body">
+                <div class="nm">neonwatty/web</div>
+                <div class="pth">~/code/web</div>
+              </div>
+              <div class="edit">edit</div>
+            </div>
+            <div class="s-repo">
+              <div class="dot butter"></div>
+              <div class="body">
+                <div class="nm">neonwatty/docs</div>
+                <div class="pth">no local path</div>
+              </div>
+              <div class="edit">edit</div>
+            </div>
+            <div class="s-add"><div class="plus">+</div> add a repo</div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-head">defaults <div class="rule"></div></div>
+            <div class="s-field">
+              <span class="lbl">branch pattern</span>
+              <span class="val">issue-{number}-{slug}</span>
+              <div class="hint">used when creating a worktree for launch</div>
+            </div>
+            <div class="s-field">
+              <span class="lbl">cache ttl</span>
+              <span class="val">300 seconds</span>
+            </div>
+            <div class="s-field">
+              <span class="lbl">terminal</span>
+              <span class="val italic">Ghostty · v1</span>
+              <div class="hint">hard-coded for v1 &mdash; other terminals in v2</div>
+            </div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-head">claude config <div class="rule"></div></div>
+            <div class="s-field">
+              <span class="lbl">extra args</span>
+              <span class="val">--model opus-4.6</span>
+            </div>
+            <div class="s-field">
+              <span class="lbl">default preamble</span>
+              <span class="val italic" style="display:block;margin-top:2px;">You're working on issue {num} in the {repo} repo…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="frame-label">mobile · <b>settings, worktree + about</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper" style="overflow-y: auto;">
+          <div class="s-bar">
+            <div class="back">‹</div>
+            <h2>Settings</h2>
+            <div class="spacer"></div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-head">worktree cleanup <div class="rule"></div><span class="cnt">2 stale</span></div>
+            <div class="s-wt">
+              <div class="wt-path">~/code/api-issue-198-rate</div>
+              <div class="wt-age">12d · merged</div>
+              <div class="wt-rm">remove</div>
+            </div>
+            <div class="s-wt">
+              <div class="wt-path">~/code/web-issue-42-hero</div>
+              <div class="wt-age">9d · closed</div>
+              <div class="wt-rm">remove</div>
+            </div>
+            <div class="s-add"><div class="plus" style="border-style:solid;">⟳</div> remove all stale</div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-head">about <div class="rule"></div></div>
+            <div class="s-field">
+              <span class="lbl">github auth</span>
+              <span class="val italic" style="color:var(--accent);">✓ neonwatty (via gh cli)</span>
+            </div>
+            <div class="s-field">
+              <span class="lbl">version</span>
+              <span class="val">0.4.1 · 2026-04-10</span>
+            </div>
+            <div class="s-field">
+              <span class="lbl">data</span>
+              <span class="val">~/.issuectl/issuectl.db</span>
+              <div class="hint">4.2 MB · last vacuumed 3d ago</div>
+            </div>
+            <div class="s-field">
+              <span class="lbl">network</span>
+              <span class="val">bound to 192.168.1.42:3847</span>
+              <div class="hint">reachable from this LAN and over your vpn</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>Settings decisions</h4>
+      <ul>
+        <li><b>One page, four sections</b> — repos, defaults, claude config, worktree cleanup. A small "about" footer shows auth + version + data location + bound address.</li>
+        <li><b>Repos are first</b> — it's the most edited section; goes at the top.</li>
+        <li><b>Terminal is read-only</b> in v1 — shown as <em>Ghostty · v1</em> with a hint about v2.</li>
+        <li><b>Worktree cleanup</b> surfaces stale worktrees (linked to merged/closed issues) with per-row remove and a "remove all stale" bulk action.</li>
+        <li><b>Network row</b> shows the LAN-bound address so you know the URL to hit from your phone.</li>
+        <li><b>No save button</b> — fields commit on blur, with a subtle "saved" flash on the field itself.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 7 — QUICK CREATE                                          -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow7">
+  <div class="flow-head">
+    <div class="flow-num">flow 07</div>
+    <div class="flow-title">Quick create &mdash; Claude-parsed issues</div>
+    <div class="flow-desc">The existing natural-language flow, restyled. Type freeform text describing one or more issues, Claude parses and auto-routes them to repos, you review, then batch-create. Three steps shown side-by-side: input → review → results.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">step 1 · <b>input (natural language)</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="qc-bar">
+            <div class="close">×</div>
+            <h2>Quick Create</h2>
+            <div class="next dim">parse →</div>
+          </div>
+          <div class="qc-stepper">
+            <div class="step on"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+          </div>
+          <div class="qc-body">
+            <div class="qc-prompt">What's on your mind?</div>
+            <div class="qc-sub">Describe one or more issues in plain language. Claude will parse them into structured issues, auto-route to the right repo, and let you review before creating.</div>
+            <textarea class="qc-textarea">Two things today:
+
+1. We need to rate limit /api/exports — hitting the shared DB too hard. Per-user bucket, ~10/hour cap. Goes in the api repo.
+
+2. The onboarding welcome screen copy is too precious. Pull it back to something more functional. That's in the web repo — low priority.</textarea>
+            <button class="qc-parse-btn">parse with Claude →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="frame-label">step 2 · <b>review parsed issues</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="qc-bar">
+            <div class="close">‹</div>
+            <h2>Review &middot; 2</h2>
+            <div class="next">create →</div>
+          </div>
+          <div class="qc-stepper">
+            <div class="step on"></div>
+            <div class="step on"></div>
+            <div class="step"></div>
+          </div>
+          <div class="qc-body">
+            <div class="qc-sub" style="margin-bottom: 14px;">Claude parsed your input into <em>2 issues</em>. Review, edit, and pick a repo for each before creating.</div>
+
+            <div class="qc-card">
+              <div class="t">Rate limit the export endpoint</div>
+              <div class="b">Add per-user token bucket to /api/exports with ~10/hour cap. Prevents shared DB overload.</div>
+              <div class="m">
+                <span class="repo-pick">› api</span>
+                <span class="lbl-bug">bug</span>
+                <span style="color: var(--ink-faint);">suggested</span>
+              </div>
+            </div>
+
+            <div class="qc-card">
+              <div class="t">Soften onboarding welcome copy</div>
+              <div class="b">Current copy is too precious. Pull back to something more functional and practical.</div>
+              <div class="m">
+                <span class="repo-pick">› web</span>
+                <span class="lbl-feat">copy</span>
+                <span style="color: var(--ink-faint);">low priority</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="frame-label">step 3 · <b>results</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="qc-bar">
+            <div class="close">×</div>
+            <h2>Created</h2>
+            <div class="next dim">done</div>
+          </div>
+          <div class="qc-stepper">
+            <div class="step on"></div>
+            <div class="step on"></div>
+            <div class="step on"></div>
+          </div>
+          <div class="qc-results-ok">
+            <div class="mark">❧</div>
+            <h3>both created</h3>
+            <p>pushed to GitHub &middot; added to your list</p>
+          </div>
+          <div style="padding: 0 24px;">
+            <div class="qc-result-row">
+              <div class="check"></div>
+              <div class="t">Rate limit the export endpoint</div>
+              <div class="n">api · #226</div>
+            </div>
+            <div class="qc-result-row">
+              <div class="check"></div>
+              <div class="t">Soften onboarding welcome copy</div>
+              <div class="n">web · #49</div>
+            </div>
+          </div>
+          <div style="padding: 24px; text-align: center;">
+            <button class="qc-parse-btn" style="margin-top:0;">back to list</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 8 — PR DETAIL                                             -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow8">
+  <div class="flow-head">
+    <div class="flow-num">flow 08</div>
+    <div class="flow-title">PR detail</div>
+    <div class="flow-desc">Sibling of the issue detail. Same top bar, same serif, same side column. The differences: CI check list replaces the launch card, files changed list replaces the "referenced files," and a merge button replaces the launch button (when the CI is green). Mobile + desktop follow the same adaptation pattern.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>PR detail, CI + files</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="d-bar">
+            <div class="d-back">‹</div>
+            <div class="d-crumb">neonwatty/<b>api</b></div>
+            <div class="d-menu">···</div>
+          </div>
+          <div class="d-body">
+            <div class="d-title">Add rate limiting to /api/exports</div>
+            <div class="d-meta">
+              <span class="repo">api</span>
+              <span class="num">#224</span>
+              <span class="sep">·</span>
+              <span class="state">open</span>
+              <span class="sep">·</span>
+              <span>closes #214 · 3d old</span>
+            </div>
+
+            <button class="pr-merge-btn">merge pull request →</button>
+
+            <div class="pr-check-list">
+              <div class="pr-check">
+                <div class="dot pass"></div>
+                <div class="name">CI / build</div>
+                <div class="meta">2m 14s</div>
+              </div>
+              <div class="pr-check">
+                <div class="dot pass"></div>
+                <div class="name">CI / test</div>
+                <div class="meta">3m 42s</div>
+              </div>
+              <div class="pr-check">
+                <div class="dot pass"></div>
+                <div class="name">CI / typecheck</div>
+                <div class="meta">0m 48s</div>
+              </div>
+              <div class="pr-check">
+                <div class="dot pending"></div>
+                <div class="name">Deploy preview</div>
+                <div class="meta">building…</div>
+              </div>
+            </div>
+
+            <div class="d-body-text">
+              <p>Adds a per-user token bucket to <code>/api/exports</code> — configurable rate, defaulting to 10/hour. Uses an in-memory map with a small TTL cleanup sweeper.</p>
+              <p>Closes #214. Does not address the broader webhook dispatcher retry (that's #220).</p>
+            </div>
+
+            <div class="d-section-head">files changed <span class="cnt">4</span></div>
+            <div class="pr-files">
+              <div class="line"><span class="add">+52</span> <span class="del">-8</span> src/middleware/rateLimit.ts</div>
+              <div class="line"><span class="add">+14</span> <span class="del">-2</span> src/routes/exports.ts</div>
+              <div class="line"><span class="add">+38</span> <span class="del">-0</span> src/middleware/__tests__/rateLimit.test.ts</div>
+              <div class="line"><span class="add">+2</span> <span class="del">-0</span> src/config.ts</div>
+            </div>
+          </div>
+          <div class="d-composer">
+            <input placeholder="add a review comment…">
+            <button class="send">send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="desktop">
+      <div class="desktop-chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">localhost:3847/api/pulls/224</span>
+      </div>
+      <div class="desktop-body paper">
+        <div class="dd">
+          <div class="dd-bar">
+            <div class="dd-back">back to list</div>
+            <div class="dd-close">×</div>
+          </div>
+          <div class="dd-body">
+            <div class="dd-title">Add rate limiting to /api/exports</div>
+            <div class="dd-meta">
+              <span class="repo">api</span>
+              <span class="num">#224</span>
+              <span class="state">open</span>
+              <span>closes #214 · opened 3d ago · mean-weasel</span>
+            </div>
+            <div class="dd-grid">
+              <div>
+                <div class="dd-text">
+                  <p>Adds a per-user token bucket to <code>/api/exports</code> — configurable rate, defaulting to 10/hour. Uses an in-memory map with a small TTL cleanup sweeper.</p>
+                  <p>Closes #214. Does not address the broader webhook dispatcher retry (that's #220).</p>
+                </div>
+                <div class="d-section-head">files changed <span class="cnt">4</span></div>
+                <div class="pr-files">
+                  <div class="line"><span class="add">+52</span> <span class="del">-8</span> src/middleware/rateLimit.ts</div>
+                  <div class="line"><span class="add">+14</span> <span class="del">-2</span> src/routes/exports.ts</div>
+                  <div class="line"><span class="add">+38</span> <span class="del">-0</span> src/middleware/__tests__/rateLimit.test.ts</div>
+                  <div class="line"><span class="add">+2</span> <span class="del">-0</span> src/config.ts</div>
+                </div>
+                <div class="d-section-head">review comments <span class="cnt">1</span></div>
+                <div class="d-comment">
+                  <div class="d-comment-head">
+                    <div class="d-comment-avi">nw</div>
+                    <div class="d-comment-who">neonwatty</div>
+                    <div class="d-comment-time">1h ago</div>
+                  </div>
+                  <div class="d-comment-body">Nit: the TTL sweeper interval feels long. Fine to merge — follow-up in a separate PR.</div>
+                </div>
+              </div>
+              <aside>
+                <div class="dd-launch">
+                  <h4>CI status</h4>
+                  <p>3 passing · 1 building · closes #214</p>
+                  <button class="btn">merge →</button>
+                  <button class="btn btn-sec">view on github</button>
+                </div>
+                <div class="dd-side-block"><span class="lbl">base</span><span class="val" style="font-family:'IBM Plex Mono',monospace;font-size:11px;">main ← rate-limit-exports</span></div>
+                <div class="dd-side-block"><span class="lbl">linked issue</span><span class="val">#214 — Fix flaky auth middleware</span></div>
+                <div class="dd-side-block"><span class="lbl">labels</span><span class="val"><span class="lbl-bug" style="padding:1px 6px;background:rgba(184,74,46,0.08);border-radius:3px;font-size:10.5px;">bug</span></span></div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 9 — LAUNCH PROGRESS                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow9">
+  <div class="flow-head">
+    <div class="flow-num">flow 09</div>
+    <div class="flow-title">Launch progress</div>
+    <div class="flow-desc">Shown after the launch form is submitted. A stepped checklist of what the server is doing in the background — assembling context, creating worktree, checking out branch, applying the <code>issuectl:launched</code> label, opening Ghostty. The current step pulses; completed steps fill green.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>launch in progress</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="lp-bar">
+            <div class="eyebrow">launching</div>
+            <h2>Fix flaky auth middleware under load</h2>
+            <div class="sub">api · #214 · <em>step 4 of 5</em></div>
+          </div>
+          <div class="lp-body">
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Assembled context</div>
+                <div class="detail">4 comments · 2 referenced files</div>
+              </div>
+            </div>
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Created worktree</div>
+                <div class="detail">~/code/api-issue-214-auth</div>
+              </div>
+            </div>
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Checked out branch</div>
+                <div class="detail">issue-214-auth-middleware</div>
+              </div>
+            </div>
+            <div class="lp-step active">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Opening Ghostty…</div>
+                <div class="detail">with Claude Code pre-loaded</div>
+              </div>
+            </div>
+            <div class="lp-step pending">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Apply "launched" label</div>
+                <div class="detail">on GitHub issue</div>
+              </div>
+            </div>
+
+            <div class="lp-note">
+              this window stays open while the server works. <em>a new Ghostty window will appear on your Mac</em> when it's ready.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="frame-label">mobile · <b>launch complete</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="lp-bar">
+            <div class="eyebrow">launched</div>
+            <h2>Fix flaky auth middleware under load</h2>
+            <div class="sub">api · #214 · <em>in flight</em></div>
+          </div>
+          <div class="lp-body">
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Assembled context</div>
+                <div class="detail">4 comments · 2 referenced files</div>
+              </div>
+            </div>
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Created worktree</div>
+                <div class="detail">~/code/api-issue-214-auth</div>
+              </div>
+            </div>
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Checked out branch</div>
+                <div class="detail">issue-214-auth-middleware</div>
+              </div>
+            </div>
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Opened Ghostty</div>
+                <div class="detail">claude code running</div>
+              </div>
+            </div>
+            <div class="lp-step done">
+              <div class="mark"></div>
+              <div>
+                <div class="label">Applied "launched" label</div>
+                <div class="detail">#214 is now in flight</div>
+              </div>
+            </div>
+
+            <div class="lp-note" style="background: var(--accent-soft); border-color: var(--accent);">
+              <span style="color: var(--accent); font-weight: 600;">ready to go.</span> <em>Claude is working in the Ghostty window on your Mac.</em>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+              <a href="#" style="font-family: 'Fraunces', serif; font-style: italic; font-size: 13px; color: var(--ink-muted); text-decoration: none;">‹ back to list</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>Progress behavior</h4>
+      <ul>
+        <li><b>Stepped checklist</b> instead of a generic spinner — tells you what's happening at each stage.</li>
+        <li><b>Active step pulses</b> the inner dot in accent green. Completed steps fill and show a check. Pending steps stay faint.</li>
+        <li><b>Step details</b> show concrete values (worktree path, branch name, file count) so you can sanity-check.</li>
+        <li><b>Same view on mobile and desktop</b> — the form-to-progress transition happens inside the same modal/sheet, just with larger type and padding on desktop.</li>
+        <li><b>Bailout path</b>: if any step fails, the active step turns brick red, shows the error, and offers a retry or "open logs" action. (Not mocked here — same visual vocabulary.)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 10 — AUTH ERROR                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow10">
+  <div class="flow-head">
+    <div class="flow-num">flow 10</div>
+    <div class="flow-title">Auth error &mdash; <code>gh</code> not ready</div>
+    <div class="flow-desc">Shown on app load if the <code>gh</code> CLI isn't installed or isn't authenticated. Blocks the app until fixed. Stays in the Paper aesthetic — brick red for the single error signal, three clear remediation steps, a retry button.</div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="frame-label">mobile · <b>auth error</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="ae">
+            <div class="ae-icon">!</div>
+            <h2>GitHub CLI not ready</h2>
+            <p><em>issuectl</em> reads your GitHub credentials from the <code style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: var(--bg-warm); padding: 1px 5px; border-radius: 3px;">gh</code> CLI. It isn't installed or isn't authenticated.</p>
+            <div class="ae-steps">
+              <div class="ae-step">
+                <span class="n">1.</span>
+                <span class="c">install it: <code>brew install gh</code></span>
+              </div>
+              <div class="ae-step">
+                <span class="n">2.</span>
+                <span class="c">authenticate: <code>gh auth login</code></span>
+              </div>
+              <div class="ae-step">
+                <span class="n">3.</span>
+                <span class="c">hit retry &mdash; we'll pick up the new token automatically.</span>
+              </div>
+            </div>
+          </div>
+          <button class="ae-retry">retry →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>Error state notes</h4>
+      <ul>
+        <li><b>Brick red is the only error color</b> — used sparingly (dashed circle + the "!" glyph), not flooding the whole screen. Keeps the paper mood.</li>
+        <li><b>Three steps, numbered</b> — concrete shell commands in monospace, shown in a warm card to feel "copy this."</li>
+        <li><b>Retry button</b> fires a fresh auth check without reloading the app. If it still fails, it stays on this screen with a small subtle message: "<em>still not seeing a token</em>."</li>
+        <li><b>Same pattern reused</b> for other fatal startup errors (SQLite inaccessible, port in use). Different glyph, same layout.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 11 — MODAL ANTHOLOGY                                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow11">
+  <div class="flow-head">
+    <div class="flow-num">flow 11</div>
+    <div class="flow-title">Modal anthology</div>
+    <div class="flow-desc">Five small overlays that share one pattern: warm paper background, serif italic title, short muted explanation, action row at the bottom right. Brick red for destructive, forest green for primary, ink for neutral primary, ghost for cancel. Shown here at desktop size; on mobile they become full-screen sheets.</div>
+  </div>
+
+  <div class="frames" style="flex-direction: column; gap: 0;">
+    <div class="ma-stage paper" style="background: #d9d2be;">
+
+      <div class="ma-grid">
+
+        <!-- 1. Close issue -->
+        <div class="ma-modal">
+          <div class="ma-label">01 · close issue confirmation</div>
+          <h4>Close issue #214?</h4>
+          <p><em>"Fix flaky auth middleware under load"</em> will be closed on GitHub. You can reopen it later if needed.</p>
+          <div class="ma-actions">
+            <button class="btn">cancel</button>
+            <button class="btn danger">close issue</button>
+          </div>
+        </div>
+
+        <!-- 2. Edit issue -->
+        <div class="ma-modal">
+          <div class="ma-label">02 · edit issue</div>
+          <h4 style="margin-bottom: 10px;">Edit issue</h4>
+          <div class="ma-field">
+            <span class="lbl">title</span>
+            <span class="val italic">Fix flaky auth middleware under load</span>
+          </div>
+          <div class="ma-field">
+            <span class="lbl">body</span>
+            <span class="val italic">Under 50+ concurrent requests the auth middleware starts returning 401s intermittently…</span>
+          </div>
+          <div class="ma-actions">
+            <button class="btn">cancel</button>
+            <button class="btn primary">save changes</button>
+          </div>
+        </div>
+
+        <!-- 3. Label manager -->
+        <div class="ma-modal">
+          <div class="ma-label">03 · label manager</div>
+          <h4>Labels</h4>
+          <p>Pick labels from the <em>api</em> repo. Changes sync to GitHub on save.</p>
+          <div class="ma-labels">
+            <div class="ma-lbl-row on">
+              <div class="cb"></div>
+              <span class="lbl-text">bug</span>
+              <div class="lbl-color" style="background: var(--brick);"></div>
+            </div>
+            <div class="ma-lbl-row">
+              <div class="cb"></div>
+              <span class="lbl-text">enhancement</span>
+              <div class="lbl-color" style="background: var(--butter);"></div>
+            </div>
+            <div class="ma-lbl-row on">
+              <div class="cb"></div>
+              <span class="lbl-text">needs repro</span>
+              <div class="lbl-color" style="background: #6a88b5;"></div>
+            </div>
+            <div class="ma-lbl-row">
+              <div class="cb"></div>
+              <span class="lbl-text">good first issue</span>
+              <div class="lbl-color" style="background: var(--accent);"></div>
+            </div>
+          </div>
+          <div class="ma-actions">
+            <button class="btn">cancel</button>
+            <button class="btn accent">apply</button>
+          </div>
+        </div>
+
+        <!-- 4. Repo add/edit -->
+        <div class="ma-modal">
+          <div class="ma-label">04 · add a repo</div>
+          <h4>Add a repo</h4>
+          <div class="ma-field">
+            <span class="lbl">owner/name</span>
+            <span class="val">neonwatty/workers</span>
+          </div>
+          <div class="ma-field">
+            <span class="lbl">local path <em style="font-style: italic; color: var(--ink-faint); font-family: 'Fraunces', serif;">(optional)</em></span>
+            <span class="val">~/code/workers</span>
+          </div>
+          <div class="ma-field">
+            <span class="lbl">branch pattern override</span>
+            <span class="val italic" style="color: var(--ink-faint);">use default (issue-{number}-{slug})</span>
+          </div>
+          <div class="ma-actions">
+            <button class="btn">cancel</button>
+            <button class="btn primary">add repo</button>
+          </div>
+        </div>
+
+        <!-- 5. Clone prompt -->
+        <div class="ma-modal" style="grid-column: 1 / -1;">
+          <div class="ma-label">05 · clone prompt (no local path)</div>
+          <h4>No local path set for <em>neonwatty/docs</em></h4>
+          <div class="ma-warn">
+            <span class="icon">!</span>
+            <span class="text">Launching requires a local clone. You can clone it now to <code>~/code/docs</code>, or cancel and set a different path in settings first.</span>
+          </div>
+          <div class="ma-actions">
+            <button class="btn">cancel</button>
+            <button class="btn">set path manually</button>
+            <button class="btn accent">clone &amp; launch →</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="note" style="width: 100%; max-width: 1000px; margin-top: 20px;">
+      <h4>Modal vocabulary</h4>
+      <ul>
+        <li><b>Warm paper card</b> slightly brighter than the page (#faf4e1) so it floats a touch. Sits over a dimmed paper scrim.</li>
+        <li><b>Label eyebrow</b> in IBM Plex Mono at 9.5px, uppercase, muted — numbers each modal so you can reference them in code.</li>
+        <li><b>Serif italic title</b>, short muted explanation (optional), then the action row at bottom right.</li>
+        <li><b>Button hierarchy:</b> ghost for cancel, ink for neutral primary (save), accent green for primary (apply/clone), brick red for destructive (close).</li>
+        <li><b>Clone prompt</b> spans both columns because its action row has 3 buttons — designed slightly wider to breathe.</li>
+        <li><b>On mobile</b>, all five collapse to full-screen sheets with the same button row at the bottom (sticky). Header pattern is identical.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- FLOW 12 — SUPPLEMENTS                                          -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<section class="flow" id="flow12">
+  <div class="flow-head">
+    <div class="flow-num">flow 12</div>
+    <div class="flow-title">Supplements &mdash; nav, PRs, priority</div>
+    <div class="flow-desc">Three gap-fillers I flagged in the coverage review: (1) a mobile navigation drawer so you can reach Settings and Quick Create from the main list, (2) the <em>Pull requests</em> tab variant of the main list with PR-specific row anatomy, and (3) a priority picker that drives list order within each section.</div>
+  </div>
+
+  <div class="frames">
+
+    <!-- 12a · Mobile nav drawer -->
+    <div>
+      <div class="frame-label">mobile · <b>nav drawer open</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <!-- main list visible behind drawer, slightly dimmed -->
+          <div class="bar" style="opacity: 0.4;">
+            <div class="brand">issuectl<span class="dot"></span></div>
+            <div class="menu-icon">···</div>
+          </div>
+          <div class="tabs" style="opacity: 0.4;">
+            <div class="tab on">Issues<span class="c">7</span></div>
+            <div class="tab">Pull requests<span class="c">3</span></div>
+          </div>
+          <div class="list" style="opacity: 0.4;">
+            <div class="section"><h3>unassigned</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item">
+              <div class="check"><svg viewBox="0 0 20 20"><rect class="box" x="2" y="2" width="16" height="16" rx="2"/></svg></div>
+              <div class="title">Rate limit the export endpoint</div>
+              <div class="meta"><span class="repo none">no repo</span></div>
+            </div>
+          </div>
+
+          <div class="scrim"></div>
+          <div class="nd-drawer">
+            <div class="nd-head">
+              <div class="brand">issuectl<span class="dot"></span></div>
+              <div class="x">×</div>
+            </div>
+
+            <div class="nd-section">main views</div>
+            <div class="nd-item on">All issues<span class="arr">›</span></div>
+            <div class="nd-item">Pull requests<span class="arr">›</span></div>
+
+            <div class="nd-section">actions</div>
+            <div class="nd-item">Quick Create<span class="arr">›</span></div>
+            <div class="nd-item">Settings<span class="arr">›</span></div>
+
+            <div class="nd-footer">
+              <div class="row"><span><span class="dot"></span>neonwatty</span><span class="auth">gh ✓</span></div>
+              <div class="row"><span>v0.4.1</span><span class="mono">192.168.1.42:3847</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12b · PR tab variant -->
+    <div>
+      <div class="frame-label">mobile · <b>pull requests tab</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="bar">
+            <div class="brand">issuectl<span class="dot"></span></div>
+            <div class="menu-icon">···</div>
+          </div>
+          <div class="tabs">
+            <div class="tab">Issues<span class="c">7</span></div>
+            <div class="tab on">Pull requests<span class="c">4</span></div>
+          </div>
+          <div class="srch"><input class="srch-input" placeholder="filter your list…"></div>
+          <div class="list">
+
+            <div class="section"><h3>ready to merge</h3><div class="rule"></div><span class="cnt">1</span></div>
+            <div class="item">
+              <div class="pr-stat pass"></div>
+              <div class="title">Add rate limiting to /api/exports</div>
+              <div class="meta">
+                <span class="repo">api</span>
+                <span class="num">#224</span>
+                <span class="sep">·</span>
+                <span>closes #214</span>
+                <span class="sep">·</span>
+                <span style="color: var(--accent);">CI ✓</span>
+              </div>
+            </div>
+
+            <div class="section"><h3>in review</h3><div class="rule"></div><span class="cnt">2</span></div>
+            <div class="item">
+              <div class="pr-stat pending"></div>
+              <div class="title">Refactor the webhook dispatcher</div>
+              <div class="meta">
+                <span class="repo">api</span>
+                <span class="num">#227</span>
+                <span class="sep">·</span>
+                <span>closes #220</span>
+                <span class="sep">·</span>
+                <span style="color: var(--butter);">CI building…</span>
+              </div>
+            </div>
+            <div class="item">
+              <div class="pr-stat fail"></div>
+              <div class="title">Upgrade Next.js to 15.3</div>
+              <div class="meta">
+                <span class="repo">web</span>
+                <span class="num">#51</span>
+                <span class="sep">·</span>
+                <span style="color: var(--brick);">typecheck failed</span>
+              </div>
+            </div>
+
+            <div class="section"><h3>shipped</h3><div class="rule"></div><span class="cnt">1</span></div>
+            <div class="item">
+              <div class="pr-stat merged"></div>
+              <div class="title done">Polish onboarding empty state</div>
+              <div class="meta">
+                <span class="repo">web</span>
+                <span class="num">#48</span>
+                <span class="sep">·</span>
+                <span>merged 2d ago</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12c · Priority picker -->
+    <div>
+      <div class="frame-label">mobile · <b>priority picker (from detail)</b></div>
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-body paper">
+          <div class="d-bar">
+            <div class="d-back">‹</div>
+            <div class="d-crumb">neonwatty/<b>api</b></div>
+            <div class="d-menu">···</div>
+          </div>
+          <div class="d-body">
+            <div class="d-title">Fix flaky auth middleware under load</div>
+            <div class="d-meta">
+              <span class="repo">api</span>
+              <span class="num">#214</span>
+              <span class="sep">·</span>
+              <span class="state">open</span>
+              <span class="sep">·</span>
+              <span style="color: var(--accent); font-weight: 600;">↑ high priority</span>
+            </div>
+            <div class="d-launch">
+              <h4>Ready to launch</h4>
+              <p>Open Ghostty with Claude Code pre-loaded.</p>
+              <div class="d-launch-actions">
+                <button class="btn-primary">launch →</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="scrim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sheet-head">
+              <h3>Priority</h3>
+              <p>Drives the order within each section. <em>High</em> bubbles to the top of <em>in focus</em>.</p>
+            </div>
+            <div class="sheet-list">
+              <div class="sheet-row" style="gap: 16px;">
+                <div class="pp-icon on high"></div>
+                <div style="flex: 1;">
+                  <div style="font-family: 'Fraunces', serif; font-size: 16px; color: var(--ink);">high</div>
+                  <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 11px; color: var(--ink-muted); margin-top: 2px;">bubble to the top</div>
+                </div>
+                <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 11px; color: var(--accent);">current</div>
+              </div>
+              <div class="sheet-row" style="gap: 16px;">
+                <div class="pp-icon normal"></div>
+                <div style="flex: 1;">
+                  <div style="font-family: 'Fraunces', serif; font-size: 16px; color: var(--ink);">normal</div>
+                  <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 11px; color: var(--ink-muted); margin-top: 2px;">sort by last updated</div>
+                </div>
+              </div>
+              <div class="sheet-row" style="gap: 16px;">
+                <div class="pp-icon low"></div>
+                <div style="flex: 1;">
+                  <div style="font-family: 'Fraunces', serif; font-size: 16px; color: var(--ink);">low</div>
+                  <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 11px; color: var(--ink-muted); margin-top: 2px;">sink to the bottom</div>
+                </div>
+              </div>
+            </div>
+            <div class="sheet-cancel">cancel</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="frames" style="margin-top: 8px;">
+    <div class="note">
+      <h4>Mobile navigation</h4>
+      <ul>
+        <li><b>Top-right ···</b> icon opens the drawer from the right.</li>
+        <li><b>Drawer covers ~80% width</b>, scrim behind dims the list. Tap scrim or × to close.</li>
+        <li><b>Two sections</b>: main views (All issues, PRs) and actions (Quick Create, Settings).</li>
+        <li><b>Footer</b> shows auth status, version, and the LAN-bound address so you can tell someone else the URL.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h4>PR row anatomy</h4>
+      <ul>
+        <li><b>Status dot replaces checkbox</b> — a filled ✓ circle for CI pass, a brick × for CI fail, a pulsing yellow dot for CI pending, a purple filled ✓ for merged.</li>
+        <li><b>Meta line</b>: repo · #num · <em>closes #X</em> · CI status + age.</li>
+        <li><b>Sections renamed</b> for PRs: <em>ready to merge / in review / shipped</em> (no "unassigned," no "in flight").</li>
+        <li><b>Swipe on a PR row</b> goes to the PR detail (no assign action — PRs are always on a repo).</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h4>Priority &amp; order</h4>
+      <ul>
+        <li><b>Three levels</b>: high / normal / low. Default is normal. Local-only, never synced to GitHub.</li>
+        <li><b>Sort rule within a section</b>: high first, then normal, then low. Ties break by updated-at.</li>
+        <li><b>No manual drag-to-reorder</b> — changing priority is how you reorder. Simpler than a drag gesture, works on desktop too.</li>
+        <li><b>Visual marker</b> on high-priority rows only: small <code>↑</code> glyph on the meta row (seen on the detail page in this frame). Normal and low have no marker — position in the list carries the signal.</li>
+        <li><b>Picker triggered</b> from the detail page (tap the priority indicator in the meta row) and from the new-issue form (priority field below the repo field).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="open-questions">
+  <h3>Decisions so far</h3>
+  <ul>
+    <li><b>Network model:</b> app runs locally on a PC/Mac and binds to the LAN interface so phones on the same network can reach it directly. Remote access is user-managed via VPN. No auth shim in v1 — trust the LAN/VPN.</li>
+    <li><b>Priority default:</b> new drafts start at <em>normal</em>.</li>
+    <li><b>Welcome copy:</b> pulled back from "quiet place" to something more functional — <em>"every issue, every repo. launch any of them with Claude Code."</em></li>
+    <li><b>Empty-list mark:</b> replaced ✓ with <b>❧</b> (hedera, a classical typographic ornament marking "end of section"). More paper-notebook, less checkmark.</li>
+    <li><b>Section names:</b> keeping <em>unassigned / in focus / in flight / shipped</em> for v1.</li>
+  </ul>
+  <h3 style="margin-top: 22px;">Screen coverage</h3>
+  <ul>
+    <li><b>Complete.</b> Two audit agents compared the current app code, the spec, and the original mockup against this set. All essential v1 screens are now mocked: main list, issue detail, new issue, Claude launch (form + progress), first run, empty state, settings, quick create (3-step), PR detail, auth error, and the 5 small modal patterns (close / edit / labels / add repo / clone prompt).</li>
+    <li><b>Intentionally deferred to the design doc as text-only:</b> 404 page, generic error boundary, loading skeletons, inline comment form (visible in issue detail), PR tab variant of the main list (trivial variant).</li>
+  </ul>
+</div>
+
+</body>
+</html>
