@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
-import { createDraft } from "./drafts.js";
+import { createDraft, listDrafts } from "./drafts.js";
 
 describe("createDraft", () => {
   let db: Database.Database;
@@ -39,5 +39,36 @@ describe("createDraft", () => {
       .get(draft.id) as { id: string; title: string } | undefined;
     expect(row).toBeDefined();
     expect(row?.title).toBe("Persisted");
+  });
+});
+
+describe("listDrafts", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("returns an empty array when no drafts exist", () => {
+    expect(listDrafts(db)).toEqual([]);
+  });
+
+  it("returns all drafts ordered by updated_at DESC", () => {
+    const d1 = createDraft(db, { title: "First" });
+    // Force distinct timestamps by advancing the DB value
+    db.prepare("UPDATE drafts SET updated_at = ? WHERE id = ?").run(
+      100,
+      d1.id,
+    );
+    const d2 = createDraft(db, { title: "Second" });
+    db.prepare("UPDATE drafts SET updated_at = ? WHERE id = ?").run(
+      200,
+      d2.id,
+    );
+
+    const all = listDrafts(db);
+    expect(all).toHaveLength(2);
+    expect(all[0].id).toBe(d2.id); // newest first
+    expect(all[1].id).toBe(d1.id);
   });
 });

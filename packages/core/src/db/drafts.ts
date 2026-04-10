@@ -42,3 +42,14 @@ export function createDraft(db: Database.Database, input: DraftInput): Draft {
     updatedAt: now,
   };
 }
+
+export function listDrafts(db: Database.Database): Draft[] {
+  const rows = db
+    .prepare(
+      `SELECT id, title, body, priority, created_at, updated_at
+       FROM drafts
+       ORDER BY updated_at DESC`,
+    )
+    .all() as DraftRow[];
+  return rows.map(rowToDraft);
+}
