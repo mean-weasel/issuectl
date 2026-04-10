@@ -3,12 +3,10 @@ import {
   dbExists,
   listRepos,
   getSettings,
-  listAliases,
 } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { TrackedRepos } from "@/components/settings/TrackedRepos";
 import { SettingsForm } from "@/components/settings/SettingsForm";
-import { ClaudeAliases } from "@/components/settings/ClaudeAliases";
 import { AuthStatus } from "@/components/settings/AuthStatus";
 import { WorktreeCleanup } from "@/components/settings/WorktreeCleanup";
 import { listWorktrees } from "@/lib/actions/worktrees";
@@ -34,13 +32,6 @@ export default async function SettingsPage() {
   const db = getDb();
   const repos = listRepos(db);
   const settings = getSettings(db);
-  let aliases: Awaited<ReturnType<typeof listAliases>> = [];
-  try {
-    aliases = listAliases(db);
-  } catch (err) {
-    console.error("[issuectl] Failed to load aliases:", err);
-  }
-
   // Fallback defaults match DEFAULT_SETTINGS in core/db/settings.ts
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
@@ -74,11 +65,6 @@ export default async function SettingsPage() {
           windowTitle={windowTitle}
           tabTitlePattern={tabTitlePattern}
         />
-
-        <section className={styles.section}>
-          <div className={styles.sectionTitle}>Claude Aliases</div>
-          <ClaudeAliases aliases={aliases} />
-        </section>
 
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Worktrees</div>

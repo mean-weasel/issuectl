@@ -16,14 +16,6 @@ export type SettingKey =
   | "worktree_dir"
   | "claude_extra_args";
 
-export type ClaudeAlias = {
-  id: number;
-  command: string;
-  description: string;
-  isDefault: boolean;
-  createdAt: string;
-};
-
 export type Setting = {
   key: SettingKey;
   value: string;
