@@ -371,15 +371,18 @@ Toast notifications use a small bottom-center sheet pattern (not mocked in Flow 
 
 ## Testing
 
-No test framework is currently set up. When adding one (Vitest is the intended choice), prioritize:
+**Correction to earlier draft:** Vitest is already set up in `packages/core` (see `package.json`'s `test` / `test:integration` scripts and the many `*.test.ts` files under `packages/core/src/db/`). New core code for this reskin follows the existing convention: `*.test.ts` alongside each source file, using the `createTestDb()` helper from `src/db/test-helpers.ts`.
 
-1. **Draft lifecycle** — `createDraft` → `assignDraftToRepo` → verify the GitHub issue was created with the expected title/body and the draft row was deleted.
-2. **Priority ordering** — verify `listIssues` returns rows sorted by `priority DESC, updated_at DESC` within each section.
-3. **Section assignment rules** — unit test the logic that groups issues into `unassigned / in focus / in flight / shipped`.
-4. **Swipe gesture handler** — unit test threshold detection and reveal/trigger states.
-5. **Launch progress streaming** — integration test that `/launch/...` emits the five steps in order for a happy path, and that an error on any step transitions that step to the error state.
+The web package does not currently have a component test framework. Phase 2 primitives and Phase 3+ components are validated by visual inspection and downstream usage rather than unit tests — consistent with the existing web package convention. Adding a React testing setup (Vitest + `@testing-library/react`) is a reasonable follow-up but out of scope for this reskin.
 
-Visual regression tests are out of scope for v1.
+Priority test surfaces for the reskin work:
+
+1. **Draft lifecycle** — `createDraft` → `assignDraftToRepo` → verify the GitHub issue was created with the expected title/body and the draft row was deleted. Use a fake Octokit object in the test.
+2. **Priority store** — `setPriority`, `getPriority` (with `normal` fallback), `deletePriority`, `listPrioritiesForRepo`.
+3. **Section assignment rules** — unit test the logic (added in Phase 3) that groups issues into `unassigned / in focus / in flight / shipped`.
+4. **Swipe gesture handler** — unit test threshold detection and reveal/trigger states (Phase 3).
+
+Since `issuectl` is a single-user tool, hand testing is the primary quality gate beyond the core unit tests; end-to-end and visual regression tests are out of scope for v1.
 
 ---
 
