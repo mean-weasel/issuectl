@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateSetting } from "@/lib/actions/settings";
+import { updateSettings } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { validateClaudeArgs } from "@issuectl/core/validation";
@@ -56,7 +56,19 @@ export function SettingsForm({
     (k) => values[k] !== originals[k],
   );
 
-  const extraArgsValidation = validateClaudeArgs(values.claude_extra_args);
+  // validateClaudeArgs is pure and shouldn't throw, but guard against
+  // unexpected runtime errors so a bad value never crashes the form.
+  let extraArgsValidation;
+  try {
+    extraArgsValidation = validateClaudeArgs(values.claude_extra_args);
+  } catch (err) {
+    console.error("[issuectl] validateClaudeArgs threw unexpectedly", err);
+    extraArgsValidation = {
+      ok: false,
+      errors: ["Could not validate input (internal error). Try reloading the page."],
+      warnings: [],
+    };
+  }
   const hasBlockingError = !extraArgsValidation.ok;
   const hasWarnings = extraArgsValidation.warnings.length > 0;
 
@@ -70,14 +82,24 @@ export function SettingsForm({
       const changed = (Object.keys(originals) as (keyof FormValues)[]).filter(
         (k) => values[k] !== originals[k],
       );
+      if (changed.length === 0) return;
+
+      const updates: Partial<Record<SettingKey, string>> = {};
       for (const key of changed) {
-        const result = await updateSetting(key as SettingKey, values[key]);
-        if (!result.success) {
-          setError(result.error ?? `Failed to save ${key}`);
-          return;
-        }
+        updates[key as SettingKey] = values[key];
       }
-      showToast("Settings saved", "success");
+
+      const result = await updateSettings(updates);
+      if (!result.success) {
+        setError(result.error ?? "Failed to save settings");
+        return;
+      }
+
+      if (result.cacheStale) {
+        showToast("Settings saved — reload to see updates", "success");
+      } else {
+        showToast("Settings saved", "success");
+      }
     });
   }
 
