@@ -45,3 +45,30 @@ export function getPriority(
     .get(repoId, issueNumber) as { priority: Priority } | undefined;
   return row?.priority ?? "normal";
 }
+
+export function deletePriority(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+): boolean {
+  const info = db
+    .prepare(
+      `DELETE FROM issue_metadata WHERE repo_id = ? AND issue_number = ?`,
+    )
+    .run(repoId, issueNumber);
+  return info.changes > 0;
+}
+
+export function listPrioritiesForRepo(
+  db: Database.Database,
+  repoId: number,
+): IssuePriority[] {
+  const rows = db
+    .prepare(
+      `SELECT repo_id, issue_number, priority, updated_at
+       FROM issue_metadata
+       WHERE repo_id = ?`,
+    )
+    .all(repoId) as IssuePriorityRow[];
+  return rows.map(rowToIssuePriority);
+}

@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
 import { addRepo } from "./repos.js";
-import { setPriority, getPriority } from "./priority.js";
+import {
+  setPriority,
+  getPriority,
+  deletePriority,
+  listPrioritiesForRepo,
+} from "./priority.js";
 
 describe("setPriority", () => {
   let db: Database.Database;
@@ -59,5 +64,54 @@ describe("getPriority", () => {
     setPriority(db, repoId, 42, "high");
     setPriority(db, repoId, 42, "low");
     expect(getPriority(db, repoId, 42)).toBe("low");
+  });
+});
+
+describe("deletePriority", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    const repo = addRepo(db, { owner: "neonwatty", name: "test" });
+    repoId = repo.id;
+  });
+
+  it("removes the row and returns true", () => {
+    setPriority(db, repoId, 42, "high");
+    expect(deletePriority(db, repoId, 42)).toBe(true);
+    expect(getPriority(db, repoId, 42)).toBe("normal");
+  });
+
+  it("returns false when no row exists", () => {
+    expect(deletePriority(db, repoId, 999)).toBe(false);
+  });
+});
+
+describe("listPrioritiesForRepo", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    const repo = addRepo(db, { owner: "neonwatty", name: "test" });
+    repoId = repo.id;
+  });
+
+  it("returns all priority rows for the repo", () => {
+    setPriority(db, repoId, 1, "high");
+    setPriority(db, repoId, 2, "low");
+    setPriority(db, repoId, 3, "normal");
+
+    const all = listPrioritiesForRepo(db, repoId);
+    expect(all).toHaveLength(3);
+    const byNum = new Map(all.map((r) => [r.issueNumber, r.priority]));
+    expect(byNum.get(1)).toBe("high");
+    expect(byNum.get(2)).toBe("low");
+    expect(byNum.get(3)).toBe("normal");
+  });
+
+  it("returns an empty array when no priorities exist", () => {
+    expect(listPrioritiesForRepo(db, repoId)).toEqual([]);
   });
 });
