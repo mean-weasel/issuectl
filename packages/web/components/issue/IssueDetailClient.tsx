@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { GitHubIssue } from "@issuectl/core";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { IssueBody } from "./IssueBody";
 import { EditIssueForm } from "./EditIssueForm";
 import styles from "./IssueDetailClient.module.css";

@@ -10,15 +10,15 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  background: var(--bg-elevated);
-  color: var(--text-tertiary);
-  border: 1px solid var(--border);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-muted);
+  border: 1px solid var(--paper-line);
   transition: background 0.15s, color 0.15s;
 }
 
 .chip:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-soft);
 }
 
 .chipSelected {

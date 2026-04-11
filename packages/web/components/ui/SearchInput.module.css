@@ -11,7 +11,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 15px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   pointer-events: none;
   z-index: 1;
 }
@@ -19,19 +19,19 @@
 .input {
   width: 100%;
   padding: 8px 12px 8px 36px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
   font-family: inherit;
   outline: none;
 }
 
 .input:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }

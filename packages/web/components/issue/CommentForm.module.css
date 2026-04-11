@@ -7,24 +7,24 @@
 .textarea {
   width: 100%;
   min-height: 80px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
   padding: 12px;
   font-size: 13px;
   font-family: inherit;
-  color: var(--text-primary);
+  color: var(--paper-ink);
   resize: vertical;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .textarea::placeholder {
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .textarea:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .textarea:disabled {
@@ -40,11 +40,11 @@
 
 .posting {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .error {
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
   padding: 6px 0;
 }

@@ -3,7 +3,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border-radius: var(--radius-md);
+  border-radius: var(--paper-radius-md);
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
@@ -15,45 +15,45 @@
 
 .secondary {
   composes: btn;
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  border-color: var(--border);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-soft);
+  border-color: var(--paper-line);
 }
 
 .secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-accent);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+  border-color: var(--paper-accent);
 }
 
 .primary {
   composes: btn;
-  background: var(--accent);
-  color: var(--text-inverse);
+  background: var(--paper-accent);
+  color: var(--paper-bg);
   border: none;
   font-weight: 600;
 }
 
 .primary:hover {
-  background: var(--accent-hover);
+  background: var(--paper-accent-dim);
 }
 
 .ghost {
   composes: btn;
   background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
+  color: var(--paper-ink-soft);
+  border: 1px solid var(--paper-line);
 }
 
 .ghost:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
 }
 
 .launch {
   composes: btn;
-  background: linear-gradient(135deg, var(--accent) 0%, #d05e18 100%);
-  color: var(--text-inverse);
+  background: linear-gradient(135deg, var(--paper-accent) 0%, #d05e18 100%);
+  color: var(--paper-bg);
   border: none;
   font-weight: 600;
   box-shadow: 0 0 20px rgba(232, 113, 37, 0.15);

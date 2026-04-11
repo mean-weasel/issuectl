@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { closeIssue } from "@/lib/actions/issues";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 
@@ -36,7 +36,7 @@ export function CloseIssueButton({ owner, repo, number, isClosed }: Props) {
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setShowConfirm(true)}>
+      <Button variant="ghost" onClick={() => setShowConfirm(true)}>
         Close
       </Button>
       {showConfirm && (
