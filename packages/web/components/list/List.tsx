@@ -5,6 +5,7 @@ import type { Section, UnifiedList } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
 import { ListSection } from "./ListSection";
 import { CreateDraftSheet } from "./CreateDraftSheet";
+import { AssignSheet } from "./AssignSheet";
 import { NavDrawerContent } from "./NavDrawerContent";
 import styles from "./List.module.css";
 
@@ -36,6 +37,10 @@ function formatDate(d: Date): { weekday: string; short: string } {
 export function List({ data, activeTab, prCount, username }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   const issueCount =
     data.unassigned.length +
@@ -94,18 +99,22 @@ export function List({ data, activeTab, prCount, username }: Props) {
             <ListSection
               title={SECTION_LABEL.unassigned}
               items={data.unassigned}
+              onAssign={(id, title) => setAssignTarget({ id, title })}
             />
             <ListSection
               title={SECTION_LABEL.in_focus}
               items={data.in_focus}
+              onAssign={(id, title) => setAssignTarget({ id, title })}
             />
             <ListSection
               title={SECTION_LABEL.in_flight}
               items={data.in_flight}
+              onAssign={(id, title) => setAssignTarget({ id, title })}
             />
             <ListSection
               title={SECTION_LABEL.shipped}
               items={data.shipped}
+              onAssign={(id, title) => setAssignTarget({ id, title })}
             />
           </div>
         )
@@ -128,6 +137,12 @@ export function List({ data, activeTab, prCount, username }: Props) {
           <CreateDraftSheet
             open={createOpen}
             onClose={() => setCreateOpen(false)}
+          />
+          <AssignSheet
+            open={assignTarget !== null}
+            onClose={() => setAssignTarget(null)}
+            draftId={assignTarget?.id ?? ""}
+            draftTitle={assignTarget?.title ?? ""}
           />
         </>
       )}

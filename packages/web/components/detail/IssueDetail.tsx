@@ -3,6 +3,7 @@ import type {
   GitHubIssue,
   GitHubComment,
   GitHubPull,
+  Priority,
 } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { DetailTopBar } from "./DetailTopBar";
@@ -14,13 +15,17 @@ import {
 } from "./DetailMeta";
 import { BodyText } from "./BodyText";
 import { CommentList } from "./CommentList";
+import { CommentComposer } from "./CommentComposer";
 import { LaunchCard } from "./LaunchCard";
+import { PriorityPicker } from "./PriorityPicker";
 import styles from "./IssueDetail.module.css";
 
 type Props = {
   owner: string;
   repoName: string;
+  repoId: number;
   repoLocalPath: string | null;
+  currentPriority: Priority;
   issue: GitHubIssue;
   comments: GitHubComment[];
   deployments: Deployment[];
@@ -40,7 +45,9 @@ function formatAge(updatedAt: string): string {
 export function IssueDetail({
   owner,
   repoName,
+  repoId,
   repoLocalPath,
+  currentPriority,
   issue,
   comments,
   deployments,
@@ -79,6 +86,12 @@ export function IssueDetail({
           )}
           <MetaSeparator />
           <span>{formatAge(issue.updatedAt)}</span>
+          <MetaSeparator />
+          <PriorityPicker
+            repoId={repoId}
+            issueNumber={issue.number}
+            currentPriority={currentPriority}
+          />
         </DetailMeta>
 
         <LaunchCard
@@ -92,6 +105,11 @@ export function IssueDetail({
         />
         <BodyText body={issue.body} />
         <CommentList comments={comments} />
+        <CommentComposer
+          owner={owner}
+          repo={repoName}
+          issueNumber={issue.number}
+        />
       </div>
     </div>
   );

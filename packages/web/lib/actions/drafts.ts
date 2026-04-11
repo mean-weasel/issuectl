@@ -6,7 +6,10 @@ import {
   getOctokit,
   createDraft,
   assignDraftToRepo,
+  listRepos,
+  updateDraft,
   type DraftInput,
+  type DraftUpdate,
   type Priority,
 } from "@issuectl/core";
 
@@ -63,6 +66,27 @@ export async function createDraftAction(
     console.error("[issuectl] createDraftAction failed", err);
     throw err;
   }
+}
+
+export async function listReposAction(): Promise<
+  Array<{ id: number; owner: string; name: string }>
+> {
+  const db = getDb();
+  const repos = listRepos(db);
+  return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+}
+
+export async function updateDraftAction(
+  draftId: string,
+  update: DraftUpdate,
+): Promise<void> {
+  if (typeof draftId !== "string" || draftId.length === 0) {
+    throw new Error("draftId must be a non-empty string");
+  }
+  const db = getDb();
+  updateDraft(db, draftId, update);
+  revalidatePath("/");
+  revalidatePath(`/drafts/${draftId}`);
 }
 
 export async function assignDraftAction(
