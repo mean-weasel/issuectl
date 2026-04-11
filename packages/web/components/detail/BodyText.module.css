@@ -1,0 +1,18 @@
+.body {
+  font-family: var(--paper-serif);
+  font-weight: 400;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--paper-ink-soft);
+  margin-bottom: 28px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.empty {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-ink-faint);
+  margin-bottom: 28px;
+}
