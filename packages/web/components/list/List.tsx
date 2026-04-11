@@ -1,18 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import type { Section, UnifiedList } from "@issuectl/core";
+import type { GitHubPull, Section, UnifiedList } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
 import { ListSection } from "./ListSection";
+import { PrListRow } from "./PrListRow";
 import { CreateDraftSheet } from "./CreateDraftSheet";
 import { AssignSheet } from "./AssignSheet";
 import { NavDrawerContent } from "./NavDrawerContent";
 import styles from "./List.module.css";
 
+type PrEntry = { repo: { owner: string; name: string }; pull: GitHubPull };
+
 type Props = {
   data: UnifiedList;
   activeTab: "issues" | "prs";
   prCount: number;
+  prs: PrEntry[];
   username: string | null;
 };
 
@@ -34,7 +38,7 @@ function formatDate(d: Date): { weekday: string; short: string } {
   return { weekday, short };
 }
 
-export function List({ data, activeTab, prCount, username }: Props) {
+export function List({ data, activeTab, prCount, prs, username }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<{
@@ -118,13 +122,24 @@ export function List({ data, activeTab, prCount, username }: Props) {
             />
           </div>
         )
-      ) : (
+      ) : isEmpty ? (
         <div className={styles.empty}>
           <div className={styles.emptyMark}>❧</div>
-          <h3>pull requests</h3>
+          <h3>no pull requests</h3>
           <p>
-            <em>cross-repo PR view coming in a future update</em>
+            <em>no open pull requests across your repos.</em>
           </p>
+        </div>
+      ) : (
+        <div>
+          {prs.map(({ repo, pull }) => (
+            <PrListRow
+              key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
+              owner={repo.owner}
+              repoName={repo.name}
+              pull={pull}
+            />
+          ))}
         </div>
       )}
 
