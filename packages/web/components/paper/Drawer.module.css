@@ -1,0 +1,55 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 18, 0.5);
+  z-index: 1000;
+}
+
+.drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--paper-bg);
+  border-left: 1px solid var(--paper-line);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.head {
+  padding: 52px 22px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--paper-line);
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+  color: var(--paper-ink);
+}
+
+.close {
+  background: transparent;
+  border: none;
+  color: var(--paper-ink-muted);
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.body {
+  flex: 1;
+  padding: 0;
+}
