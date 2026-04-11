@@ -42,7 +42,11 @@ function compareByPriorityThenUpdatedAt(
 ): number {
   const rankDiff = PRIORITY_RANK[bPriority] - PRIORITY_RANK[aPriority];
   if (rankDiff !== 0) return rankDiff;
-  return bUpdatedAt - aUpdatedAt;
+  // Guard against NaN from malformed timestamps (e.g., an unparseable ISO
+  // string from GitHub). Fall back to 0 so the sort stays deterministic.
+  const aSafe = Number.isFinite(aUpdatedAt) ? aUpdatedAt : 0;
+  const bSafe = Number.isFinite(bUpdatedAt) ? bUpdatedAt : 0;
+  return bSafe - aSafe;
 }
 
 export function groupIntoSections(
@@ -133,17 +137,30 @@ export async function getUnifiedList(
   const drafts = listDrafts(db);
   const repos = listRepos(db);
 
-  // Fetch issues for each tracked repo in parallel. Uses the existing
-  // SWR cache in data/issues.ts, so cold-cache calls hit GitHub and
-  // warm-cache calls return cached data with a subsequent background
-  // refresh — we don't block on that refresh here.
-  const perRepo: PerRepoData[] = await Promise.all(
-    repos.map(async (repo) => {
-      const { issues } = await getIssues(db, octokit, repo.owner, repo.name);
-      const deployments = getDeploymentsByRepo(db, repo.id);
-      const priorities = listPrioritiesForRepo(db, repo.id);
-      return { repo, issues, deployments, priorities };
+  // Fetch each tracked repo's data in parallel. Per-repo failures (network
+  // error, 404, rate limit, revoked token) are caught and logged so one bad
+  // repo doesn't kill the whole page — we render the remaining repos' data
+  // and drafts. Phase 4/5 can surface a "couldn't load N repos" banner if
+  // the degraded experience becomes noticeable.
+  const results = await Promise.all(
+    repos.map(async (repo): Promise<PerRepoData | null> => {
+      try {
+        const { issues } = await getIssues(db, octokit, repo.owner, repo.name);
+        const deployments = getDeploymentsByRepo(db, repo.id);
+        const priorities = listPrioritiesForRepo(db, repo.id);
+        return { repo, issues, deployments, priorities };
+      } catch (err) {
+        console.error(
+          `[issuectl] getUnifiedList: failed to fetch data for ${repo.owner}/${repo.name}`,
+          err,
+        );
+        return null;
+      }
     }),
+  );
+
+  const perRepo: PerRepoData[] = results.filter(
+    (r): r is PerRepoData => r !== null,
   );
 
   return groupIntoSections({ drafts, perRepo });
