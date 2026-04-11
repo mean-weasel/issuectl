@@ -1,10 +1,29 @@
 import type Database from "better-sqlite3";
 import type { Priority, IssuePriority } from "../types.js";
 
+const PRIORITIES: readonly Priority[] = ["low", "normal", "high"];
+
+// Narrowing helper for values coming out of SQLite. The CHECK constraint
+// on the drafts and issue_metadata tables prevents invalid writes, so this
+// is defense-in-depth for row reads that bypass the type system via casts.
+export function parsePriority(value: unknown): Priority {
+  if (
+    typeof value === "string" &&
+    (PRIORITIES as readonly string[]).includes(value)
+  ) {
+    return value as Priority;
+  }
+  throw new Error(
+    `Invalid priority value: ${JSON.stringify(value)}. Expected one of ${PRIORITIES.join(
+      ", ",
+    )}.`,
+  );
+}
+
 type IssuePriorityRow = {
   repo_id: number;
   issue_number: number;
-  priority: Priority;
+  priority: string;
   updated_at: number;
 };
 
@@ -12,7 +31,7 @@ function rowToIssuePriority(row: IssuePriorityRow): IssuePriority {
   return {
     repoId: row.repo_id,
     issueNumber: row.issue_number,
-    priority: row.priority,
+    priority: parsePriority(row.priority),
     updatedAt: row.updated_at,
   };
 }
@@ -42,8 +61,8 @@ export function getPriority(
       `SELECT priority FROM issue_metadata
        WHERE repo_id = ? AND issue_number = ?`,
     )
-    .get(repoId, issueNumber) as { priority: Priority } | undefined;
-  return row?.priority ?? "normal";
+    .get(repoId, issueNumber) as { priority: string } | undefined;
+  return row ? parsePriority(row.priority) : "normal";
 }
 
 export function deletePriority(

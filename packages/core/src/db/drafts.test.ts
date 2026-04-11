@@ -48,6 +48,15 @@ describe("createDraft", () => {
     expect(row).toBeDefined();
     expect(row?.title).toBe("Persisted");
   });
+
+  it("rejects an empty title", () => {
+    expect(() => createDraft(db, { title: "" })).toThrow(/title/i);
+  });
+
+  it("rejects a whitespace-only title", () => {
+    expect(() => createDraft(db, { title: "   " })).toThrow(/title/i);
+    expect(() => createDraft(db, { title: "\t\n " })).toThrow(/title/i);
+  });
 });
 
 describe("listDrafts", () => {
@@ -79,6 +88,25 @@ describe("listDrafts", () => {
     expect(all[0].id).toBe(d2.id); // newest first
     expect(all[1].id).toBe(d1.id);
   });
+
+  it("orders deterministically when updated_at values are equal", () => {
+    // unix-seconds precision means two drafts created within the same
+    // second would share an updated_at. Verify the secondary sort by id
+    // gives a deterministic result across multiple calls.
+    const d1 = createDraft(db, { title: "First" });
+    const d2 = createDraft(db, { title: "Second" });
+    db.prepare("UPDATE drafts SET updated_at = 100").run();
+
+    const first = listDrafts(db);
+    const second = listDrafts(db);
+
+    expect(first).toHaveLength(2);
+    expect(first.map((d) => d.id).sort()).toEqual(
+      [d1.id, d2.id].sort(),
+    );
+    // Identical order across calls → deterministic
+    expect(second.map((d) => d.id)).toEqual(first.map((d) => d.id));
+  });
 });
 
 describe("getDraft", () => {
@@ -94,8 +122,8 @@ describe("getDraft", () => {
     expect(found).toEqual(created);
   });
 
-  it("returns null for a non-existent id", () => {
-    expect(getDraft(db, "does-not-exist")).toBeNull();
+  it("returns undefined for a non-existent id", () => {
+    expect(getDraft(db, "does-not-exist")).toBeUndefined();
   });
 });
 
@@ -120,7 +148,7 @@ describe("updateDraft", () => {
       priority: "high",
     });
 
-    expect(updated).not.toBeNull();
+    expect(updated).not.toBeUndefined();
     expect(updated?.title).toBe("New title");
     expect(updated?.body).toBe("new body");
     expect(updated?.priority).toBe("high");
@@ -140,8 +168,8 @@ describe("updateDraft", () => {
     expect(updated?.priority).toBe("low");
   });
 
-  it("returns null when the draft doesn't exist", () => {
-    expect(updateDraft(db, "missing", { title: "x" })).toBeNull();
+  it("returns undefined when the draft doesn't exist", () => {
+    expect(updateDraft(db, "missing", { title: "x" })).toBeUndefined();
   });
 });
 
@@ -156,7 +184,7 @@ describe("deleteDraft", () => {
     const created = createDraft(db, { title: "Goodbye" });
     const removed = deleteDraft(db, created.id);
     expect(removed).toBe(true);
-    expect(getDraft(db, created.id)).toBeNull();
+    expect(getDraft(db, created.id)).toBeUndefined();
   });
 
   it("returns false when the draft doesn't exist", () => {
@@ -227,7 +255,7 @@ describe("assignDraftToRepo", () => {
     expect(result.repoId).toBe(repoId);
 
     // 3. Draft is deleted
-    expect(getDraft(db, draft.id)).toBeNull();
+    expect(getDraft(db, draft.id)).toBeUndefined();
 
     // 4. Priority carried over to issue_metadata
     const metaRow = db
@@ -256,7 +284,7 @@ describe("assignDraftToRepo", () => {
       assignDraftToRepo(db, fakeOctokit, draft.id, repoId),
     ).rejects.toThrow("network down");
 
-    expect(getDraft(db, draft.id)).not.toBeNull();
+    expect(getDraft(db, draft.id)).not.toBeUndefined();
   });
 
   it("throws if the draft doesn't exist", async () => {

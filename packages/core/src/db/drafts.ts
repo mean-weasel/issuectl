@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
-import type { Draft, DraftInput, Priority } from "../types.js";
 import type { Octokit } from "@octokit/rest";
+import type { Draft, DraftInput } from "../types.js";
 import { getRepoById } from "./repos.js";
-import { setPriority } from "./priority.js";
+import { parsePriority, setPriority } from "./priority.js";
 
 type DraftRow = {
   id: string;
   title: string;
   body: string;
-  priority: Priority;
+  priority: string;
   created_at: number;
   updated_at: number;
 };
@@ -19,13 +19,17 @@ function rowToDraft(row: DraftRow): Draft {
     id: row.id,
     title: row.title,
     body: row.body,
-    priority: row.priority,
+    priority: parsePriority(row.priority),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export function createDraft(db: Database.Database, input: DraftInput): Draft {
+  if (input.title.trim().length === 0) {
+    throw new Error("Draft title must not be empty or whitespace-only");
+  }
+
   const id = randomUUID();
   const now = Math.floor(Date.now() / 1000);
   const body = input.body ?? "";
@@ -47,17 +51,23 @@ export function createDraft(db: Database.Database, input: DraftInput): Draft {
 }
 
 export function listDrafts(db: Database.Database): Draft[] {
+  // Secondary sort by id ensures deterministic ordering when two drafts
+  // share an updated_at (unix seconds has second precision, so two drafts
+  // created in the same second would otherwise have undefined order).
   const rows = db
     .prepare(
       `SELECT id, title, body, priority, created_at, updated_at
        FROM drafts
-       ORDER BY updated_at DESC`,
+       ORDER BY updated_at DESC, id DESC`,
     )
     .all() as DraftRow[];
   return rows.map(rowToDraft);
 }
 
-export function getDraft(db: Database.Database, id: string): Draft | null {
+export function getDraft(
+  db: Database.Database,
+  id: string,
+): Draft | undefined {
   const row = db
     .prepare(
       `SELECT id, title, body, priority, created_at, updated_at
@@ -65,7 +75,7 @@ export function getDraft(db: Database.Database, id: string): Draft | null {
        WHERE id = ?`,
     )
     .get(id) as DraftRow | undefined;
-  return row ? rowToDraft(row) : null;
+  return row ? rowToDraft(row) : undefined;
 }
 
 export type DraftUpdate = Partial<Pick<Draft, "title" | "body" | "priority">>;
@@ -74,9 +84,9 @@ export function updateDraft(
   db: Database.Database,
   id: string,
   update: DraftUpdate,
-): Draft | null {
+): Draft | undefined {
   const existing = getDraft(db, id);
-  if (!existing) return null;
+  if (!existing) return undefined;
 
   const next: Draft = {
     ...existing,
@@ -133,15 +143,19 @@ export async function assignDraftToRepo(
   const issueNumber = response.data.number;
   const issueUrl = response.data.html_url;
 
-  // Carry the local priority over to issue_metadata if it wasn't 'normal'.
-  // Priority is local-only metadata — the GitHub issue itself has no concept
-  // of it, so we key it under (repoId, issueNumber) on this side.
-  if (draft.priority !== "normal") {
-    setPriority(db, repoId, issueNumber, draft.priority);
-  }
-
-  // Finally, remove the local draft now that the GitHub issue exists.
-  deleteDraft(db, draftId);
+  // Run the two local writes (priority carryover + draft delete) in a
+  // single DB transaction after the network call succeeds. If either
+  // throws, both roll back and the draft stays intact locally — but the
+  // GitHub issue already exists. The caller should surface the error so
+  // the user can manually reconcile (the issueNumber is recoverable from
+  // the exception context if needed).
+  const localCommit = db.transaction(() => {
+    if (draft.priority !== "normal") {
+      setPriority(db, repoId, issueNumber, draft.priority);
+    }
+    deleteDraft(db, draftId);
+  });
+  localCommit();
 
   return { repoId, issueNumber, issueUrl };
 }
