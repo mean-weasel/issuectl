@@ -7,37 +7,37 @@
 .titleInput {
   width: 100%;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 16px;
   font-weight: 600;
-  font-family: var(--font-karla), sans-serif;
+  font-family: var(--paper-serif), sans-serif;
   outline: none;
 }
 
 .titleInput:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .bodyInput {
   width: 100%;
   min-height: 200px;
   padding: 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
-  font-family: var(--font-mono), monospace;
+  font-family: var(--paper-mono), monospace;
   line-height: 1.6;
   outline: none;
   resize: vertical;
 }
 
 .bodyInput:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .actions {
@@ -50,7 +50,7 @@
   padding: 8px 12px;
   background: var(--red-surface);
   border: 1px solid rgba(248, 81, 73, 0.2);
-  border-radius: var(--radius-md);
-  color: var(--red);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-brick);
   font-size: 12px;
 }

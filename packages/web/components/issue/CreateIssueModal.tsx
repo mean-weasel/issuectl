@@ -6,7 +6,7 @@ import type { GitHubLabel } from "@issuectl/core";
 import { createIssue } from "@/lib/actions/issues";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import type { RepoOption } from "@/lib/types";
 import { LabelSelector } from "./LabelSelector";
 import styles from "./CreateIssueModal.module.css";
@@ -74,7 +74,7 @@ export function CreateIssueModal({
       disabled={isPending}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button variant="ghost" onClick={onClose} disabled={isPending}>
             Cancel
           </Button>
           <Button

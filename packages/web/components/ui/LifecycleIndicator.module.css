@@ -14,12 +14,12 @@
 }
 
 .idle {
-  background: var(--text-tertiary);
+  background: var(--paper-ink-muted);
 }
 
 .deployed {
-  background: var(--yellow);
-  box-shadow: 0 0 6px var(--yellow);
+  background: var(--paper-butter);
+  box-shadow: 0 0 6px var(--paper-butter);
 }
 
 .pr {
@@ -28,9 +28,9 @@
 }
 
 .done {
-  background: var(--green);
+  background: var(--paper-accent);
 }
 
 .text {
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
 }

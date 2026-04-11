@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { GitHubLabel } from "@issuectl/core";
 import type { RepoOption } from "@/lib/types";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { CreateIssueModal } from "./CreateIssueModal";
 
 type Props = {

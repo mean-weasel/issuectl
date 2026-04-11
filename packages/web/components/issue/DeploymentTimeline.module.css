@@ -1,7 +1,7 @@
 .card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .timeline {
@@ -35,7 +35,7 @@
   top: 28px;
   bottom: -2px;
   width: 1px;
-  background: var(--border);
+  background: var(--paper-line);
 }
 
 .dot {
@@ -53,8 +53,8 @@
 }
 
 .dotLaunched {
-  border-color: var(--accent);
-  background: var(--accent-surface);
+  border-color: var(--paper-accent);
+  background: var(--paper-accent-soft);
 }
 
 .content {
@@ -65,21 +65,21 @@
 }
 
 .label {
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
 }
 
 .ref {
   color: var(--blue);
-  font-family: var(--font-mono), monospace;
+  font-family: var(--paper-mono), monospace;
   font-size: 11px;
 }
 
 .date {
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   font-size: 11px;
 }
 
 .empty {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }

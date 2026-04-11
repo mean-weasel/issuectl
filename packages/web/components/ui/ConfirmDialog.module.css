@@ -1,14 +1,14 @@
 .message {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
   line-height: 1.5;
   margin: 0;
 }
 
 .danger {
-  background: var(--red);
-  color: var(--text-inverse);
-  border-color: var(--red);
+  background: var(--paper-brick);
+  color: var(--paper-bg);
+  border-color: var(--paper-brick);
 }
 
 .danger:hover {
@@ -18,5 +18,5 @@
 .error {
   margin: 12px 0 0;
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
 }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { GitHubIssue } from "@issuectl/core";
 import { updateIssue } from "@/lib/actions/issues";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./EditIssueForm.module.css";
 

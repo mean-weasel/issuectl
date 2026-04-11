@@ -10,9 +10,9 @@
 }
 
 .modal {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
@@ -20,20 +20,20 @@
 
 .header {
   padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--paper-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .title {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--paper-serif), sans-serif;
   font-size: 18px;
   font-weight: 700;
 }
 
 .close {
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   cursor: pointer;
   font-size: 18px;
   background: none;
@@ -43,8 +43,8 @@
 }
 
 .close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
 }
 
 .body {
@@ -53,7 +53,7 @@
 
 .footer {
   padding: 16px 24px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--paper-line);
   display: flex;
   justify-content: flex-end;
   gap: 8px;

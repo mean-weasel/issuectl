@@ -1,7 +1,7 @@
 .card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -13,16 +13,16 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .list {
-  font-family: var(--font-mono), monospace;
+  font-family: var(--paper-mono), monospace;
   font-size: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  color: var(--cyan);
+  color: var(--paper-accent);
 }
 
 .file {

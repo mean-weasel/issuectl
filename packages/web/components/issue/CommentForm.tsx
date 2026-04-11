@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addComment } from "@/lib/actions/comments";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./CommentForm.module.css";
 
