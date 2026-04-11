@@ -5,6 +5,7 @@ import styles from "./ListRow.module.css";
 
 type Props = {
   item: UnifiedListItem;
+  onAssign?: (draftId: string, draftTitle: string) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -35,22 +36,49 @@ function labelClass(labelName: string): string | undefined {
   return undefined;
 }
 
-export function ListRow({ item }: Props) {
+export function ListRow({ item, onAssign }: Props) {
   if (item.kind === "draft") {
     return (
-      <Link href={`/drafts/${item.draft.id}`} className={styles.item}>
-        <span className={styles.check}>
-          <Checkbox state="draft" />
-        </span>
-        <div className={styles.title}>{item.draft.title}</div>
-        <div className={styles.meta}>
-          <Chip variant="dashed">no repo</Chip>
-          <span className={styles.sep}>·</span>
-          <span>local draft</span>
-          <span className={styles.sep}>·</span>
-          <span>{formatAge(item.draft.updatedAt)}</span>
+      <div className={styles.item}>
+        <Link href={`/drafts/${item.draft.id}`} className={styles.rowLink}>
+          <span className={styles.check}>
+            <Checkbox state="draft" />
+          </span>
+          <div className={styles.title}>{item.draft.title}</div>
+          <div className={styles.meta}>
+            <Chip variant="dashed">no repo</Chip>
+            <span className={styles.sep}>·</span>
+            <span>local draft</span>
+            <span className={styles.sep}>·</span>
+            <span>{formatAge(item.draft.updatedAt)}</span>
+            {onAssign && (
+              <>
+                <span className={styles.sep}>·</span>
+                <button
+                  className={styles.assignBtn}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onAssign(item.draft.id, item.draft.title);
+                  }}
+                >
+                  assign →
+                </button>
+              </>
+            )}
+          </div>
+        </Link>
+        <div className={styles.actions}>
+          {onAssign && (
+            <button
+              className={styles.actionBtn}
+              onClick={() => onAssign(item.draft.id, item.draft.title)}
+              aria-label="Assign draft to repo"
+            >
+              assign
+            </button>
+          )}
         </div>
-      </Link>
+      </div>
     );
   }
 
@@ -65,23 +93,39 @@ export function ListRow({ item }: Props) {
   );
 
   return (
-    <Link href={`/issues/${repo.owner}/${repo.name}/${issue.number}`} className={styles.item}>
-      <span className={styles.check}>
-        <Checkbox state={checkState} />
-      </span>
-      <div className={titleClass}>{issue.title}</div>
-      <div className={styles.meta}>
-        <Chip>{repo.name}</Chip>
-        <span className={styles.num}>#{issue.number}</span>
-        {firstLabel && (
-          <>
-            <span className={styles.sep}>·</span>
-            <span className={labelClass(firstLabel.name)}>{firstLabel.name}</span>
-          </>
-        )}
-        <span className={styles.sep}>·</span>
-        <span>{formatAge(issue.updatedAt)}</span>
+    <div className={styles.item}>
+      <Link
+        href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
+        className={styles.rowLink}
+      >
+        <span className={styles.check}>
+          <Checkbox state={checkState} />
+        </span>
+        <div className={titleClass}>{issue.title}</div>
+        <div className={styles.meta}>
+          <Chip>{repo.name}</Chip>
+          <span className={styles.num}>#{issue.number}</span>
+          {firstLabel && (
+            <>
+              <span className={styles.sep}>·</span>
+              <span className={labelClass(firstLabel.name)}>
+                {firstLabel.name}
+              </span>
+            </>
+          )}
+          <span className={styles.sep}>·</span>
+          <span>{formatAge(issue.updatedAt)}</span>
+        </div>
+      </Link>
+      <div className={styles.actions}>
+        <Link
+          href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
+          className={styles.actionBtn}
+          aria-label="Open issue detail"
+        >
+          launch
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }
