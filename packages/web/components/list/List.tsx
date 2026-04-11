@@ -2,21 +2,19 @@
 
 import { useState } from "react";
 import type { Section, UnifiedList } from "@issuectl/core";
-import { Fab } from "@/components/paper";
+import { Drawer, Fab } from "@/components/paper";
 import { ListSection } from "./ListSection";
 import { CreateDraftSheet } from "./CreateDraftSheet";
+import { NavDrawerContent } from "./NavDrawerContent";
 import styles from "./List.module.css";
 
 type Props = {
   data: UnifiedList;
+  activeTab: "issues" | "prs";
+  prCount: number;
+  username: string | null;
 };
 
-// Display labels for each section. Kept local to the web package so the
-// import of `Section` stays type-only — importing a runtime const from
-// @issuectl/core pulls the whole core barrel (including better-sqlite3,
-// fs, child_process) into the client bundle. `Record<Section, ...>`
-// enforces exhaustiveness at compile time, so a new section variant
-// can't land without adding its label here.
 const SECTION_LABEL: Record<Section, string> = {
   unassigned: "unassigned",
   in_focus: "in focus",
@@ -24,8 +22,7 @@ const SECTION_LABEL: Record<Section, string> = {
   shipped: "shipped",
 };
 
-// Lowercase is intentional — matches the Paper mockup typography. Do not
-// "fix" this to Title Case without updating the design.
+// Lowercase is intentional — matches the Paper mockup typography.
 function formatDate(d: Date): { weekday: string; short: string } {
   const weekday = d
     .toLocaleDateString("en-US", { weekday: "long" })
@@ -36,8 +33,9 @@ function formatDate(d: Date): { weekday: string; short: string } {
   return { weekday, short };
 }
 
-export function List({ data }: Props) {
+export function List({ data, activeTab, prCount, username }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const issueCount =
     data.unassigned.length +
@@ -45,7 +43,7 @@ export function List({ data }: Props) {
     data.in_flight.length +
     data.shipped.length;
   const { weekday, short } = formatDate(new Date());
-  const isEmpty = issueCount === 0;
+  const isEmpty = activeTab === "issues" ? issueCount === 0 : prCount === 0;
 
   return (
     <div className={styles.container}>
@@ -53,46 +51,98 @@ export function List({ data }: Props) {
         <div className={styles.brand}>
           issuectl<span className={styles.dot} />
         </div>
-        <div className={styles.date}>
-          {weekday}
-          <b>{short}</b>
-        </div>
+        <button
+          className={styles.menuBtn}
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open navigation"
+        >
+          ···
+        </button>
       </div>
+
+      {/* Desktop: date + tabs inline. Mobile: tabs only, date in drawer. */}
       <div className={styles.tabs}>
-        <div className={`${styles.tab} ${styles.on}`}>
+        <a
+          href="/"
+          className={`${styles.tab} ${activeTab === "issues" ? styles.on : ""}`}
+        >
           Issues<span className={styles.count}>{issueCount}</span>
-        </div>
-        <div className={styles.tab}>
-          Pull requests<span className={styles.count}>0</span>
+        </a>
+        <a
+          href="/?tab=prs"
+          className={`${styles.tab} ${activeTab === "prs" ? styles.on : ""}`}
+        >
+          Pull requests<span className={styles.count}>{prCount}</span>
+        </a>
+        <div className={styles.desktopDate}>
+          {weekday} · <b>{short}</b>
         </div>
       </div>
 
-      {isEmpty ? (
+      {activeTab === "issues" ? (
+        isEmpty ? (
+          <div className={styles.empty}>
+            <div className={styles.emptyMark}>❧</div>
+            <h3>all clear</h3>
+            <p>
+              nothing on your plate today.{" "}
+              <em>breathe, or draft the next one.</em>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <ListSection
+              title={SECTION_LABEL.unassigned}
+              items={data.unassigned}
+            />
+            <ListSection
+              title={SECTION_LABEL.in_focus}
+              items={data.in_focus}
+            />
+            <ListSection
+              title={SECTION_LABEL.in_flight}
+              items={data.in_flight}
+            />
+            <ListSection
+              title={SECTION_LABEL.shipped}
+              items={data.shipped}
+            />
+          </div>
+        )
+      ) : (
         <div className={styles.empty}>
           <div className={styles.emptyMark}>❧</div>
-          <h3>all clear</h3>
+          <h3>pull requests</h3>
           <p>
-            nothing on your plate today.{" "}
-            <em>breathe, or draft the next one.</em>
+            <em>cross-repo PR view coming in a future update</em>
           </p>
-        </div>
-      ) : (
-        <div>
-          <ListSection
-            title={SECTION_LABEL.unassigned}
-            items={data.unassigned}
-          />
-          <ListSection title={SECTION_LABEL.in_focus} items={data.in_focus} />
-          <ListSection
-            title={SECTION_LABEL.in_flight}
-            items={data.in_flight}
-          />
-          <ListSection title={SECTION_LABEL.shipped} items={data.shipped} />
         </div>
       )}
 
-      <Fab aria-label="Create a new draft" onClick={() => setCreateOpen(true)} />
-      <CreateDraftSheet open={createOpen} onClose={() => setCreateOpen(false)} />
+      {activeTab === "issues" && (
+        <>
+          <Fab
+            aria-label="Create a new draft"
+            onClick={() => setCreateOpen(true)}
+          />
+          <CreateDraftSheet
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+          />
+        </>
+      )}
+
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={
+          <>
+            issuectl<span className={styles.drawerDot} />
+          </>
+        }
+      >
+        <NavDrawerContent activeTab={activeTab} username={username} />
+      </Drawer>
     </div>
   );
 }

@@ -34,18 +34,35 @@
   vertical-align: 6px;
 }
 
-.date {
+.menuBtn {
+  background: transparent;
+  border: none;
+  font-family: var(--paper-mono);
+  font-size: 18px;
+  color: var(--paper-ink-muted);
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--paper-radius-sm);
+}
+
+.menuBtn:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+/* Desktop: show the date inline in the tabs row instead of in the top bar */
+.desktopDate {
+  display: none;
   font-family: var(--paper-serif);
   font-style: italic;
   font-size: 11px;
   color: var(--paper-ink-muted);
-  font-weight: 500;
-  text-align: right;
-  line-height: 1.3;
+  margin-left: auto;
+  align-self: center;
 }
 
-.date b {
-  display: block;
+.desktopDate b {
   color: var(--paper-ink-soft);
   font-style: normal;
   font-weight: 600;
@@ -131,4 +148,24 @@
 
 .empty p em {
   color: var(--paper-ink-soft);
+}
+
+.drawerDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--paper-accent);
+  border-radius: 50%;
+  margin-left: 2px;
+  vertical-align: 3px;
+}
+
+@media (min-width: 768px) {
+  .menuBtn {
+    display: none;
+  }
+
+  .desktopDate {
+    display: block;
+  }
 }
