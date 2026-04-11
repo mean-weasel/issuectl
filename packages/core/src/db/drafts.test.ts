@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
-import { createDraft, listDrafts, getDraft, updateDraft, deleteDraft } from "./drafts.js";
+import {
+  createDraft,
+  listDrafts,
+  getDraft,
+  updateDraft,
+  deleteDraft,
+  assignDraftToRepo,
+} from "./drafts.js";
+import { addRepo } from "./repos.js";
 
 describe("createDraft", () => {
   let db: Database.Database;
@@ -153,5 +161,125 @@ describe("deleteDraft", () => {
 
   it("returns false when the draft doesn't exist", () => {
     expect(deleteDraft(db, "missing")).toBe(false);
+  });
+});
+
+describe("assignDraftToRepo", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    const repo = addRepo(db, { owner: "neonwatty", name: "api" });
+    repoId = repo.id;
+  });
+
+  it("pushes the draft to GitHub, deletes the draft, and returns the created issue info", async () => {
+    const draft = createDraft(db, {
+      title: "Fix the bug",
+      body: "full body text",
+      priority: "high",
+    });
+
+    // Fake octokit: record the call and return a fake issue
+    const calls: Array<{
+      owner: string;
+      repo: string;
+      title: string;
+      body: string;
+    }> = [];
+    const fakeOctokit = {
+      rest: {
+        issues: {
+          create: async (params: {
+            owner: string;
+            repo: string;
+            title: string;
+            body: string;
+          }) => {
+            calls.push(params);
+            return {
+              data: {
+                number: 214,
+                title: params.title,
+                body: params.body,
+                state: "open",
+                html_url: `https://github.com/${params.owner}/${params.repo}/issues/214`,
+              },
+            };
+          },
+        },
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const result = await assignDraftToRepo(db, fakeOctokit, draft.id, repoId);
+
+    // 1. Octokit was called with the right args
+    expect(calls).toHaveLength(1);
+    expect(calls[0].owner).toBe("neonwatty");
+    expect(calls[0].repo).toBe("api");
+    expect(calls[0].title).toBe("Fix the bug");
+    expect(calls[0].body).toBe("full body text");
+
+    // 2. Returned issue info
+    expect(result.issueNumber).toBe(214);
+    expect(result.repoId).toBe(repoId);
+
+    // 3. Draft is deleted
+    expect(getDraft(db, draft.id)).toBeNull();
+
+    // 4. Priority carried over to issue_metadata
+    const metaRow = db
+      .prepare(
+        "SELECT priority FROM issue_metadata WHERE repo_id = ? AND issue_number = ?",
+      )
+      .get(repoId, 214) as { priority: string } | undefined;
+    expect(metaRow?.priority).toBe("high");
+  });
+
+  it("leaves the draft in place if the GitHub call throws", async () => {
+    const draft = createDraft(db, { title: "Will fail" });
+
+    const fakeOctokit = {
+      rest: {
+        issues: {
+          create: async () => {
+            throw new Error("network down");
+          },
+        },
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    await expect(
+      assignDraftToRepo(db, fakeOctokit, draft.id, repoId),
+    ).rejects.toThrow("network down");
+
+    expect(getDraft(db, draft.id)).not.toBeNull();
+  });
+
+  it("throws if the draft doesn't exist", async () => {
+    const fakeOctokit = {
+      rest: { issues: { create: async () => ({ data: {} }) } },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    await expect(
+      assignDraftToRepo(db, fakeOctokit, "missing", repoId),
+    ).rejects.toThrow(/draft/i);
+  });
+
+  it("throws if the repo doesn't exist", async () => {
+    const draft = createDraft(db, { title: "x" });
+
+    const fakeOctokit = {
+      rest: { issues: { create: async () => ({ data: {} }) } },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    await expect(
+      assignDraftToRepo(db, fakeOctokit, draft.id, 99999),
+    ).rejects.toThrow(/repo/i);
   });
 });

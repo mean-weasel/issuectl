@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Draft, DraftInput, Priority } from "../types.js";
+import type { Octokit } from "@octokit/rest";
+import { getRepoById } from "./repos.js";
+import { setPriority } from "./priority.js";
 
 type DraftRow = {
   id: string;
@@ -93,4 +96,52 @@ export function updateDraft(
 export function deleteDraft(db: Database.Database, id: string): boolean {
   const info = db.prepare("DELETE FROM drafts WHERE id = ?").run(id);
   return info.changes > 0;
+}
+
+export type AssignDraftResult = {
+  repoId: number;
+  issueNumber: number;
+  issueUrl: string;
+};
+
+export async function assignDraftToRepo(
+  db: Database.Database,
+  octokit: Octokit,
+  draftId: string,
+  repoId: number,
+): Promise<AssignDraftResult> {
+  const draft = getDraft(db, draftId);
+  if (!draft) {
+    throw new Error(`No draft with id '${draftId}'`);
+  }
+
+  const repo = getRepoById(db, repoId);
+  if (!repo) {
+    throw new Error(`No tracked repo with id ${repoId}`);
+  }
+
+  // Create the issue on GitHub first. If this throws, we leave the draft
+  // in place so the user can retry — do not delete the draft until we know
+  // the push succeeded.
+  const response = await octokit.rest.issues.create({
+    owner: repo.owner,
+    repo: repo.name,
+    title: draft.title,
+    body: draft.body,
+  });
+
+  const issueNumber = response.data.number;
+  const issueUrl = response.data.html_url;
+
+  // Carry the local priority over to issue_metadata if it wasn't 'normal'.
+  // Priority is local-only metadata — the GitHub issue itself has no concept
+  // of it, so we key it under (repoId, issueNumber) on this side.
+  if (draft.priority !== "normal") {
+    setPriority(db, repoId, issueNumber, draft.priority);
+  }
+
+  // Finally, remove the local draft now that the GitHub issue exists.
+  deleteDraft(db, draftId);
+
+  return { repoId, issueNumber, issueUrl };
 }
