@@ -4,15 +4,18 @@ import {
   getUnifiedList,
   listRepos,
   dbExists,
+  checkGhAuth,
 } from "@issuectl/core";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 import { List } from "@/components/list/List";
 
 export const dynamic = "force-dynamic";
 
-export default async function MainListPage() {
-  // Preserve the existing first-run behavior: no DB, or no tracked repos,
-  // falls back to the WelcomeScreen onboarding flow.
+type Props = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
+export default async function MainListPage({ searchParams }: Props) {
   if (!dbExists()) {
     return <WelcomeScreen />;
   }
@@ -22,8 +25,27 @@ export default async function MainListPage() {
     return <WelcomeScreen />;
   }
 
+  const { tab } = await searchParams;
+  const activeTab = tab === "prs" ? "prs" : "issues";
+
   const octokit = await getOctokit();
   const data = await getUnifiedList(db, octokit);
 
-  return <List data={data} />;
+  // Get the authenticated username for the nav drawer footer.
+  let username: string | null = null;
+  try {
+    const auth = await checkGhAuth();
+    username = auth.username ?? null;
+  } catch {
+    // Non-fatal — the drawer just won't show the username.
+  }
+
+  return (
+    <List
+      data={data}
+      activeTab={activeTab}
+      prCount={0}
+      username={username}
+    />
+  );
 }
