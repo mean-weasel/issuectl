@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
-import { addRepo } from "./repos.js";
+import { addRepo, removeRepo } from "./repos.js";
 import {
   setPriority,
   getPriority,
@@ -113,5 +113,63 @@ describe("listPrioritiesForRepo", () => {
 
   it("returns an empty array when no priorities exist", () => {
     expect(listPrioritiesForRepo(db, repoId)).toEqual([]);
+  });
+
+  it("only returns rows for the requested repo", () => {
+    // Add a second repo and set priorities on both — verify the query
+    // is scoped so a caller never sees rows from another repo.
+    const other = addRepo(db, { owner: "neonwatty", name: "web" });
+    setPriority(db, repoId, 1, "high");
+    setPriority(db, repoId, 2, "low");
+    setPriority(db, other.id, 10, "high");
+    setPriority(db, other.id, 20, "low");
+
+    const mine = listPrioritiesForRepo(db, repoId);
+    expect(mine).toHaveLength(2);
+    expect(mine.every((row) => row.repoId === repoId)).toBe(true);
+
+    const theirs = listPrioritiesForRepo(db, other.id);
+    expect(theirs).toHaveLength(2);
+    expect(theirs.every((row) => row.repoId === other.id)).toBe(true);
+  });
+});
+
+describe("issue_metadata ON DELETE CASCADE", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    const repo = addRepo(db, { owner: "neonwatty", name: "test" });
+    repoId = repo.id;
+  });
+
+  it("deletes issue_metadata rows when the parent repo is removed", () => {
+    setPriority(db, repoId, 1, "high");
+    setPriority(db, repoId, 2, "low");
+    expect(listPrioritiesForRepo(db, repoId)).toHaveLength(2);
+
+    removeRepo(db, repoId);
+
+    // After the repo is removed, all its metadata rows should be gone
+    // via ON DELETE CASCADE on issue_metadata.repo_id.
+    const remaining = db
+      .prepare(
+        "SELECT COUNT(*) as n FROM issue_metadata WHERE repo_id = ?",
+      )
+      .get(repoId) as { n: number };
+    expect(remaining.n).toBe(0);
+  });
+
+  it("leaves unrelated repos' metadata intact on repo removal", () => {
+    const other = addRepo(db, { owner: "neonwatty", name: "keep-me" });
+    setPriority(db, repoId, 1, "high");
+    setPriority(db, other.id, 1, "low");
+
+    removeRepo(db, repoId);
+
+    // Only the removed repo's rows cascade; the other repo is untouched.
+    expect(listPrioritiesForRepo(db, other.id)).toHaveLength(1);
+    expect(listPrioritiesForRepo(db, other.id)[0].priority).toBe("low");
   });
 });

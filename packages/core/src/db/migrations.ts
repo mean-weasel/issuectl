@@ -54,6 +54,11 @@ const migrations: Migration[] = [
   {
     version: 5,
     up(db) {
+      // Adds two new tables for the Paper reskin: drafts (local-only
+      // scratchpad for issues not yet pushed to GitHub) and issue_metadata
+      // (per-issue local annotations — currently just priority, since
+      // GitHub has no native priority field). Both tables enforce the
+      // priority CHECK constraint matching the TypeScript Priority union.
       db.exec(`
         CREATE TABLE IF NOT EXISTS drafts (
           id         TEXT PRIMARY KEY,
