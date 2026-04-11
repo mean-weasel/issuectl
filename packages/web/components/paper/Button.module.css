@@ -1,0 +1,74 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--paper-radius-md);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  border: 1px solid transparent;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+}
+
+.accent {
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--paper-ink-soft);
+  border-color: var(--paper-line);
+}
+
+.ghost:hover:not(:disabled) {
+  color: var(--paper-accent);
+  border-color: var(--paper-accent);
+  opacity: 1;
+}
+
+.destructive {
+  background: var(--paper-brick);
+  color: var(--paper-bg);
+}
+
+.sm {
+  padding: 7px 14px;
+  font-size: 12.5px;
+}
+
+.md {
+  /* default — already set on .btn */
+}
+
+.lg {
+  padding: 13px 28px;
+  font-size: 15px;
+}
+
+.fullWidth {
+  width: 100%;
+}
