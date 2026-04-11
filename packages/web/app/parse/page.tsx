@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   dbExists,
   getDb,
@@ -10,15 +11,17 @@ import type { GitHubLabel } from "@issuectl/core";
 import type { RepoOption } from "@/lib/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ParseFlow } from "@/components/parse/ParseFlow";
+import type { Metadata } from "next";
 import styles from "./page.module.css";
 
+export const metadata: Metadata = { title: "Quick Create — issuectl" };
 export const dynamic = "force-dynamic";
 
 export default async function ParsePage() {
   if (!dbExists()) {
     return (
       <>
-        <PageHeader title="Quick Create" />
+        <PageHeader title="Quick Create" breadcrumb={<Link href="/">← dashboard</Link>} />
         <div className={styles.content}>
           <p style={{ color: "var(--text-secondary)" }}>
             Run <code>issuectl init</code> to get started.
@@ -67,7 +70,7 @@ export default async function ParsePage() {
 
   return (
     <>
-      <PageHeader title="Quick Create" />
+      <PageHeader title="Quick Create" breadcrumb={<Link href="/">← dashboard</Link>} />
       <div className={styles.content}>
         <ParseFlow
           repos={repos}

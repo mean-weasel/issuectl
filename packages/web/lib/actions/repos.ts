@@ -5,6 +5,7 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import {
   getDb,
+  getOctokit,
   addRepo as coreAddRepo,
   removeRepo as coreRemoveRepo,
   updateRepo as coreUpdateRepo,
@@ -24,6 +25,13 @@ export async function addRepo(
   }
   if (!/^[a-zA-Z0-9._-]+$/.test(owner) || !/^[a-zA-Z0-9._-]+$/.test(name)) {
     return { success: false, error: "Invalid owner/repo format" };
+  }
+
+  try {
+    const octokit = await getOctokit();
+    await octokit.rest.repos.get({ owner, repo: name });
+  } catch {
+    return { success: false, error: `Repository ${owner}/${name} not found on GitHub (or not accessible with your token)` };
   }
 
   try {

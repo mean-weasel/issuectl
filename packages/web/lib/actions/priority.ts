@@ -9,22 +9,23 @@ export async function setPriorityAction(
   repoId: number,
   issueNumber: number,
   priority: Priority,
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   if (typeof repoId !== "number" || !Number.isInteger(repoId) || repoId <= 0) {
-    throw new Error("repoId must be a positive integer");
+    return { success: false, error: "repoId must be a positive integer" };
   }
   if (
     typeof issueNumber !== "number" ||
     !Number.isInteger(issueNumber) ||
     issueNumber <= 0
   ) {
-    throw new Error("issueNumber must be a positive integer");
+    return { success: false, error: "issueNumber must be a positive integer" };
   }
   if (!(VALID_PRIORITIES as readonly string[]).includes(priority)) {
-    throw new Error(`Invalid priority: ${String(priority)}`);
+    return { success: false, error: "Invalid priority value" };
   }
 
   const db = getDb();
   setPriority(db, repoId, issueNumber, priority);
   revalidatePath("/");
+  return { success: true };
 }

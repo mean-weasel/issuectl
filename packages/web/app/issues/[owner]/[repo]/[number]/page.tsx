@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import {
   getDb,
   getOctokit,
@@ -15,6 +16,15 @@ type Params = {
   repo: string;
   number: string;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  const { owner, repo, number } = await params;
+  return { title: `#${number} — ${owner}/${repo} — issuectl` };
+}
 
 export default async function IssueDetailPage({
   params,
