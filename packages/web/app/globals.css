@@ -34,6 +34,40 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  /* ═══ PAPER palette (2026-04-10 reskin) ═══════════════════════════
+   * Additive — coexists with the legacy light/dark tokens above.
+   * Used by components under packages/web/components/paper/.
+   * Phase 8 cleanup will strip the --paper- prefix once the legacy
+   * tokens are gone. */
+  --paper-bg:           #f3ecd9;
+  --paper-bg-warm:      #ede5cf;
+  --paper-bg-warmer:    #e6dec4;
+  --paper-ink:          #1a1712;
+  --paper-ink-soft:     #3a342a;
+  --paper-ink-muted:    #8a7f63;
+  --paper-ink-faint:    #b5a88a;
+  --paper-line:         #e0d6bc;
+  --paper-line-soft:    #e9dfc6;
+  --paper-accent:       #2d5f3f;
+  --paper-accent-dim:   #4a7a5c;
+  --paper-accent-soft:  #dce8de;
+  --paper-brick:        #b84a2e;
+  --paper-butter:       #d9a54d;
+
+  --paper-radius-sm:    3px;
+  --paper-radius-md:    6px;
+  --paper-radius-lg:    10px;
+  --paper-radius-xl:    14px;
+
+  --paper-shadow-card:  0 12px 30px rgba(26, 23, 18, 0.08);
+  --paper-shadow-modal: 0 40px 100px rgba(26, 23, 18, 0.35);
+
+  /* Font families — these reference the next/font variables injected
+   * in Task 2.2. Falls back to system fonts if next/font isn't wired yet. */
+  --paper-serif:  var(--font-serif), Georgia, serif;
+  --paper-sans:   var(--font-sans), system-ui, -apple-system, sans-serif;
+  --paper-mono:   var(--font-mono-paper), ui-monospace, SFMono-Regular, monospace;
 }
 
 [data-theme="dark"] {
@@ -154,4 +188,32 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-accent);
+}
+
+/* ═══ Paper noise surface utility ═══════════════════════════
+ * Apply className="paperSurface" to a container to give it a subtle
+ * fractal-noise texture on a warm cream background. Children are
+ * positioned above the noise layer. Used by Paper primitives and
+ * pages that want the Paper aesthetic. */
+.paperSurface {
+  position: relative;
+  background: var(--paper-bg);
+  color: var(--paper-ink);
+}
+
+.paperSurface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/></svg>");
+  background-size: 200px;
+}
+
+.paperSurface > * {
+  position: relative;
+  z-index: 1;
 }
