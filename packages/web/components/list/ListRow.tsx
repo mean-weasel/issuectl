@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
 import { Checkbox, Chip } from "@/components/paper";
 import styles from "./ListRow.module.css";
@@ -37,7 +38,7 @@ function labelClass(labelName: string): string | undefined {
 export function ListRow({ item }: Props) {
   if (item.kind === "draft") {
     return (
-      <div className={styles.item}>
+      <Link href={`/drafts/${item.draft.id}`} className={styles.item}>
         <span className={styles.check}>
           <Checkbox state="draft" />
         </span>
@@ -49,7 +50,7 @@ export function ListRow({ item }: Props) {
           <span className={styles.sep}>·</span>
           <span>{formatAge(item.draft.updatedAt)}</span>
         </div>
-      </div>
+      </Link>
     );
   }
 
@@ -64,7 +65,7 @@ export function ListRow({ item }: Props) {
   );
 
   return (
-    <div className={styles.item}>
+    <Link href={`/issues/${repo.owner}/${repo.name}/${issue.number}`} className={styles.item}>
       <span className={styles.check}>
         <Checkbox state={checkState} />
       </span>
@@ -81,6 +82,6 @@ export function ListRow({ item }: Props) {
         <span className={styles.sep}>·</span>
         <span>{formatAge(issue.updatedAt)}</span>
       </div>
-    </div>
+    </Link>
   );
 }
