@@ -1,3 +1,4 @@
+import ReactMarkdown from "react-markdown";
 import styles from "./BodyText.module.css";
 
 type Props = {
@@ -12,5 +13,9 @@ export function BodyText({ body }: Props) {
       </div>
     );
   }
-  return <div className={styles.body}>{body}</div>;
+  return (
+    <div className={styles.body}>
+      <ReactMarkdown>{body}</ReactMarkdown>
+    </div>
+  );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
 import { Checkbox, Chip } from "@/components/paper";
+import { SwipeRow } from "./SwipeRow";
 import styles from "./ListRow.module.css";
 
 type Props = {
@@ -38,7 +39,7 @@ function labelClass(labelName: string): string | undefined {
 
 export function ListRow({ item, onAssign }: Props) {
   if (item.kind === "draft") {
-    return (
+    const draftContent = (
       <div className={styles.item}>
         <Link href={`/drafts/${item.draft.id}`} className={styles.rowLink}>
           <span className={styles.check}>
@@ -80,6 +81,15 @@ export function ListRow({ item, onAssign }: Props) {
         </div>
       </div>
     );
+
+    if (onAssign) {
+      return (
+        <SwipeRow onAssign={() => onAssign(item.draft.id, item.draft.title)}>
+          {draftContent}
+        </SwipeRow>
+      );
+    }
+    return draftContent;
   }
 
   const { issue, repo, section } = item;

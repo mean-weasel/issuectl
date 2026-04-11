@@ -1,0 +1,80 @@
+.item {
+  border-bottom: 1px solid var(--paper-line-soft);
+  display: flex;
+  align-items: stretch;
+}
+
+.item:hover {
+  background: var(--paper-bg-warm);
+}
+
+.rowLink {
+  flex: 1;
+  padding: 16px 24px 16px 58px;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  position: relative;
+  min-width: 0;
+}
+
+/* Status dot sits in the left gutter (same position as the checkbox in ListRow) */
+.dot {
+  position: absolute;
+  left: 28px;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--paper-ink-faint);
+}
+
+.dot.pass {
+  background: var(--paper-accent);
+}
+
+.dot.merged {
+  background: var(--paper-accent);
+  opacity: 0.6;
+}
+
+.dot.fail {
+  background: var(--paper-brick);
+}
+
+.dot.pending {
+  background: var(--paper-butter);
+}
+
+.dot.none {
+  background: var(--paper-ink-faint);
+}
+
+.title {
+  font-family: var(--paper-serif);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--paper-ink);
+  margin-bottom: 6px;
+  letter-spacing: -0.1px;
+}
+
+.meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: var(--paper-sans);
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+}
+
+.num {
+  font-family: var(--paper-mono);
+  color: var(--paper-ink-faint);
+}
+
+.sep {
+  color: var(--paper-ink-faint);
+}
