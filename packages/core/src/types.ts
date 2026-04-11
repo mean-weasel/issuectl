@@ -67,15 +67,6 @@ export type IssuePriority = {
 
 export type Section = "unassigned" | "in_focus" | "in_flight" | "shipped";
 
-// Display labels for each section. Keyed on the underscore form used in
-// the type so a new section can't be added without giving it a label.
-export const SECTION_LABEL: Record<Section, string> = {
-  unassigned: "unassigned",
-  in_focus: "in focus",
-  in_flight: "in flight",
-  shipped: "shipped",
-};
-
 // A UnifiedListItem is a discriminated union with two variants: a local
 // Draft (the caller will place it in the unassigned section) or a
 // GitHub-backed issue already assigned to one of the three issue sections.

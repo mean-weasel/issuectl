@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SECTION_LABEL, type UnifiedList } from "@issuectl/core";
+import type { Section, UnifiedList } from "@issuectl/core";
 import { Fab } from "@/components/paper";
 import { ListSection } from "./ListSection";
 import { CreateDraftSheet } from "./CreateDraftSheet";
@@ -9,6 +9,19 @@ import styles from "./List.module.css";
 
 type Props = {
   data: UnifiedList;
+};
+
+// Display labels for each section. Kept local to the web package so the
+// import of `Section` stays type-only — importing a runtime const from
+// @issuectl/core pulls the whole core barrel (including better-sqlite3,
+// fs, child_process) into the client bundle. `Record<Section, ...>`
+// enforces exhaustiveness at compile time, so a new section variant
+// can't land without adding its label here.
+const SECTION_LABEL: Record<Section, string> = {
+  unassigned: "unassigned",
+  in_focus: "in focus",
+  in_flight: "in flight",
+  shipped: "shipped",
 };
 
 // Lowercase is intentional — matches the Paper mockup typography. Do not
