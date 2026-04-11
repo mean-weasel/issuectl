@@ -74,7 +74,6 @@ export function PrDetail({
       <DetailTopBar
         backHref="/?tab=prs"
         crumb={<>{owner}/<b>{repoName}</b></>}
-        menu="···"
       />
       <div className={styles.body}>
         <h1 className={styles.title}>{pull.title}</h1>
@@ -135,13 +134,13 @@ export function PrDetail({
           <div className={styles.mergedBanner}>merged successfully</div>
         )}
 
-        <div className={styles.section}>description</div>
+        <h2 className={styles.section}>description</h2>
         <BodyText body={pull.body} />
 
-        <div className={styles.section}>ci checks</div>
+        <h2 className={styles.section}>ci checks</h2>
         <CIChecks checks={checks} />
 
-        <div className={styles.section}>files changed</div>
+        <h2 className={styles.section}>files changed</h2>
         <FilesChanged files={files} />
       </div>
     </div>

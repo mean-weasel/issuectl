@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOctokit } from "@issuectl/core";
+import { getDb, getOctokit, getRepo } from "@issuectl/core";
 
 export async function mergePullAction(
   owner: string,
@@ -16,6 +16,12 @@ export async function mergePullAction(
   }
   if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
     return { success: false, error: "Invalid pull request number" };
+  }
+
+  const db = getDb();
+  const tracked = getRepo(db, owner, repo);
+  if (!tracked) {
+    return { success: false, error: "Repository is not tracked" };
   }
 
   try {

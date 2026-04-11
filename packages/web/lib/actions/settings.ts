@@ -54,10 +54,16 @@ function validateOne(
   if (trimmed === "" && !ALLOW_EMPTY.has(key)) {
     return { ok: false, error: "Value cannot be empty" };
   }
+  if (trimmed.length > 500) {
+    return { ok: false, error: "Value is too long (max 500 characters)" };
+  }
   if (key === "cache_ttl") {
     const num = Number(trimmed);
     if (!Number.isFinite(num) || num < 0) {
       return { ok: false, error: "Cache TTL must be a non-negative number" };
+    }
+    if (num > 604800) {
+      return { ok: false, error: "Cache TTL cannot exceed 604800 seconds (7 days)" };
     }
   }
   if (key === "claude_extra_args") {

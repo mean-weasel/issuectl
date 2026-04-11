@@ -37,7 +37,7 @@ export function LaunchCard({
   return (
     <>
       <div className={styles.card}>
-        <h4>Ready to launch</h4>
+        <h2>Ready to launch</h2>
         <p>
           Open a Ghostty session with Claude Code pre-loaded. Creates a worktree
           on a fresh branch.

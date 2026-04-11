@@ -6,6 +6,7 @@ import type {
   Priority,
 } from "@issuectl/core";
 import { Chip } from "@/components/paper";
+import { timeAgo } from "@/lib/format";
 import { DetailTopBar } from "./DetailTopBar";
 import {
   DetailMeta,
@@ -33,15 +34,6 @@ type Props = {
   referencedFiles: string[];
 };
 
-function formatAge(updatedAt: string): string {
-  const t = new Date(updatedAt).getTime();
-  if (!Number.isFinite(t)) return "";
-  const diffDays = Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000));
-  if (diffDays < 1) return "today";
-  if (diffDays === 1) return "1d old";
-  return `${diffDays}d old`;
-}
-
 export function IssueDetail({
   owner,
   repoName,
@@ -67,7 +59,6 @@ export function IssueDetail({
             {owner}/<b>{repoName}</b>
           </>
         }
-        menu="···"
       />
       <div className={styles.body}>
         <h1 className={styles.title}>{issue.title}</h1>
@@ -85,7 +76,7 @@ export function IssueDetail({
             </>
           )}
           <MetaSeparator />
-          <span>{formatAge(issue.updatedAt)}</span>
+          <span>{timeAgo(issue.updatedAt)}</span>
           <MetaSeparator />
           <PriorityPicker
             repoId={repoId}

@@ -1,6 +1,6 @@
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.15; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .container {
@@ -18,7 +18,7 @@
   width: 120px;
   background: var(--paper-bg-warm);
   border-radius: var(--paper-radius-md);
-  animation: pulse 1.8s ease-in-out infinite;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 .content {
@@ -36,7 +36,7 @@
   background: var(--paper-bg-warm);
   border-radius: 4px;
   margin-bottom: 16px;
-  animation: pulse 1.8s ease-in-out infinite;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 .row {
@@ -45,7 +45,7 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
-  animation: pulse 1.8s ease-in-out infinite 0.1s;
+  animation: pulse 1.5s ease-in-out infinite 0.1s;
 }
 
 .rowWide {
@@ -55,7 +55,7 @@
   border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
   width: 100%;
-  animation: pulse 1.8s ease-in-out infinite 0.2s;
+  animation: pulse 1.5s ease-in-out infinite 0.2s;
 }
 
 .rowShort {
@@ -65,5 +65,5 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
-  animation: pulse 1.8s ease-in-out infinite 0.3s;
+  animation: pulse 1.5s ease-in-out infinite 0.3s;
 }

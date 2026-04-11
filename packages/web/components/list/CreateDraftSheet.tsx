@@ -67,7 +67,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           <Button variant="ghost" onClick={handleClose} disabled={saving}>
             cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
+          <Button variant="primary" onClick={handleSave} disabled={saving || title.trim().length === 0}>
             {saving ? "saving…" : "save draft"}
           </Button>
         </div>

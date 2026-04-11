@@ -5,14 +5,14 @@
   --paper-bg-warmer:    #e6dec4;
   --paper-ink:          #1a1712;
   --paper-ink-soft:     #3a342a;
-  --paper-ink-muted:    #8a7f63;
-  --paper-ink-faint:    #b5a88a;
+  --paper-ink-muted:    #746a50;
+  --paper-ink-faint:    #857a5e;
   --paper-line:         #e0d6bc;
   --paper-line-soft:    #e9dfc6;
   --paper-accent:       #2d5f3f;
   --paper-accent-dim:   #4a7a5c;
   --paper-accent-soft:  #dce8de;
-  --paper-brick:        #b84a2e;
+  --paper-brick:        #a8432a;
   --paper-butter:       #d9a54d;
 
   --paper-radius-sm:    3px;
@@ -58,6 +58,19 @@ button {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
+}
+
+/* Consistent focus-visible ring for all interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--paper-accent);
+  outline-offset: 2px;
+  border-radius: var(--paper-radius-sm);
 }
 
 input,

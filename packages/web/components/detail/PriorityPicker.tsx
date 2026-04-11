@@ -45,9 +45,13 @@ export function PriorityPicker({ repoId, issueNumber, currentPriority }: Props) 
     setSetting(next);
     setError(null);
     try {
-      await setPriorityAction(repoId, issueNumber, next);
-      setPriority(next);
-      setOpen(false);
+      const result = await setPriorityAction(repoId, issueNumber, next);
+      if (result.success) {
+        setPriority(next);
+        setOpen(false);
+      } else {
+        setError(result.error ?? "Failed to update priority");
+      }
     } catch {
       setError("Failed to update priority");
     } finally {

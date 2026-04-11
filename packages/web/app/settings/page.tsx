@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   getDb,
   dbExists,
@@ -11,15 +12,17 @@ import { AuthStatus } from "@/components/settings/AuthStatus";
 import { WorktreeCleanup } from "@/components/settings/WorktreeCleanup";
 import { listWorktrees } from "@/lib/actions/worktrees";
 import { getAuthStatus } from "@/lib/auth";
+import type { Metadata } from "next";
 import styles from "./page.module.css";
 
+export const metadata: Metadata = { title: "Settings — issuectl" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   if (!dbExists()) {
     return (
       <>
-        <PageHeader title="Settings" />
+        <PageHeader title="Settings" breadcrumb={<Link href="/">← dashboard</Link>} />
         <div className={styles.content}>
           <p style={{ color: "var(--text-secondary)" }}>
             Run <code>issuectl init</code> to get started.
@@ -52,7 +55,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" breadcrumb={<Link href="/">← dashboard</Link>} />
       <div className={styles.content}>
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Tracked Repositories</div>
