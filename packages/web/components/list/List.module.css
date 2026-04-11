@@ -51,6 +51,34 @@
   color: var(--paper-ink);
 }
 
+/* Desktop: inline nav links (hidden on mobile, where the drawer handles nav) */
+.desktopNav {
+  display: none;
+  align-items: baseline;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.desktopNavLink {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.desktopNavLink:hover {
+  color: var(--paper-ink);
+}
+
+.desktopNavSep {
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  color: var(--paper-ink-faint);
+  margin: 0 10px;
+}
+
 /* Desktop: show the date inline in the tabs row instead of in the top bar */
 .desktopDate {
   display: none;
@@ -163,6 +191,10 @@
 @media (min-width: 768px) {
   .menuBtn {
     display: none;
+  }
+
+  .desktopNav {
+    display: flex;
   }
 
   .desktopDate {
