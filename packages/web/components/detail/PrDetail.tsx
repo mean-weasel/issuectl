@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type {
   GitHubPull,
   GitHubCheck,
@@ -15,6 +18,7 @@ import {
 import { BodyText } from "./BodyText";
 import { CIChecks } from "./CIChecks";
 import { FilesChanged } from "./FilesChanged";
+import { mergePullAction } from "@/lib/actions/pulls";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -38,6 +42,33 @@ export function PrDetail({
     ? "merged"
     : pull.state;
 
+  const [confirming, setConfirming] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
+  const [merged, setMerged] = useState(false);
+
+  const handleMergeClick = () => {
+    setMergeError(null);
+    setConfirming(true);
+  };
+
+  const handleConfirm = async () => {
+    setConfirming(false);
+    setMerging(true);
+    setMergeError(null);
+    const result = await mergePullAction(owner, repoName, pull.number);
+    setMerging(false);
+    if (result.success) {
+      setMerged(true);
+    } else {
+      setMergeError(result.error ?? "Merge failed");
+    }
+  };
+
+  const handleCancel = () => {
+    setConfirming(false);
+  };
+
   return (
     <div className={styles.container}>
       <DetailTopBar
@@ -51,7 +82,7 @@ export function PrDetail({
           <Chip>{repoName}</Chip>
           <MetaNum>#{pull.number}</MetaNum>
           <MetaSeparator />
-          <StateChip state={prState} />
+          <StateChip state={merged ? "merged" : prState} />
           {linkedIssue && (
             <>
               <MetaSeparator />
@@ -65,13 +96,43 @@ export function PrDetail({
           </span>
         </DetailMeta>
 
-        {prState === "open" && (
+        {prState === "open" && !merged && (
           <>
-            <button className={styles.mergeBtn} disabled>
-              merge pull request →
-            </button>
-            <div className={styles.hint}>wired up in Phase 5</div>
+            {confirming ? (
+              <div className={styles.confirmRow}>
+                <span className={styles.confirmLabel}>
+                  merge into <b>{pull.baseRef}</b>?
+                </span>
+                <button
+                  className={styles.confirmBtn}
+                  onClick={handleConfirm}
+                >
+                  yes, merge →
+                </button>
+                <button
+                  className={styles.cancelBtn}
+                  onClick={handleCancel}
+                >
+                  cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                className={styles.mergeBtn}
+                onClick={handleMergeClick}
+                disabled={merging}
+              >
+                {merging ? "merging…" : "merge pull request →"}
+              </button>
+            )}
+            {mergeError && (
+              <div className={styles.mergeError}>{mergeError}</div>
+            )}
           </>
+        )}
+
+        {merged && (
+          <div className={styles.mergedBanner}>merged successfully</div>
         )}
 
         <div className={styles.section}>description</div>
