@@ -49,10 +49,19 @@ gh api -X POST "repos/$REPO/git/refs" \
 # Create a trivial file change via the API (no local clone needed)
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 CONTENT=$(printf "Smoke test fixture\nCreated: %s\n" "$TIMESTAMP" | base64)
-gh api -X PUT "repos/$REPO/contents/smoke-test-fixture.md" \
-  -f "message=chore: smoke test fixture ($TIMESTAMP)" \
-  -f "content=$CONTENT" \
-  -f "branch=$BRANCH" --silent
+FILE_SHA=$(gh api "repos/$REPO/contents/smoke-test-fixture.md?ref=$BRANCH" --jq '.sha' 2>/dev/null || echo "")
+if [ -n "$FILE_SHA" ]; then
+  gh api -X PUT "repos/$REPO/contents/smoke-test-fixture.md" \
+    -f "message=chore: smoke test fixture ($TIMESTAMP)" \
+    -f "content=$CONTENT" \
+    -f "branch=$BRANCH" \
+    -f "sha=$FILE_SHA" --silent
+else
+  gh api -X PUT "repos/$REPO/contents/smoke-test-fixture.md" \
+    -f "message=chore: smoke test fixture ($TIMESTAMP)" \
+    -f "content=$CONTENT" \
+    -f "branch=$BRANCH" --silent
+fi
 
 # Create PR
 PR_URL=$(gh pr create --repo "$REPO" \
@@ -66,9 +75,9 @@ echo "  Created: $PR_URL"
 # --- Step 3: Clean up local drafts from prior runs ---
 echo "[3/4] Cleaning local drafts from prior smoke tests..."
 if [ -f "$DB" ]; then
-  DRAFT_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM drafts WHERE title LIKE '%smoke%' OR title LIKE '%Smoke%' OR title LIKE '%Mobile draft%';")
+  DRAFT_COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM drafts WHERE title LIKE '%smoke%' OR title LIKE '%Mobile draft%' OR title LIKE '%Test draft%' OR title LIKE '%Desktop draft%';")
   if [ "$DRAFT_COUNT" -gt 0 ]; then
-    sqlite3 "$DB" "DELETE FROM drafts WHERE title LIKE '%smoke%' OR title LIKE '%Smoke%' OR title LIKE '%Mobile draft%';"
+    sqlite3 "$DB" "DELETE FROM drafts WHERE title LIKE '%smoke%' OR title LIKE '%Mobile draft%' OR title LIKE '%Test draft%' OR title LIKE '%Desktop draft%';"
     echo "  Deleted $DRAFT_COUNT smoke-test drafts"
   else
     echo "  No smoke-test drafts to clean"

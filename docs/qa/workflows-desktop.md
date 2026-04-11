@@ -182,21 +182,19 @@
 
 ---
 
-## Workflow 11: Navigation Drawer
+## Workflow 11: Desktop Navigation
 
 **Route:** `/`
 
 1. Navigate to `/`
-2. Click the menu button (···) in the top bar
-2. Verify drawer slides in from the right
-3. Verify links: All issues, Pull requests, Quick Create, Settings
-4. Verify GitHub username and auth badge in footer
-5. Click "Settings"
-6. Verify navigation to `/settings` and drawer closes
-7. Click menu button again, press Escape
-8. Verify drawer closes without navigating
+2. Verify "Quick Create" and "Settings" links visible in the top bar (right side)
+3. Click "Settings" link
+4. Verify navigation to `/settings`
+5. Click browser back to return to `/`
+6. Click "Quick Create" link
+7. Verify navigation to `/parse`
 
-**Expected:** Drawer opens/closes cleanly, links navigate correctly, Escape dismisses.
+**Expected:** Desktop inline nav links are visible and navigate correctly. The drawer menu button (···) is hidden at desktop viewport — it is mobile-only.
 
 ---
 

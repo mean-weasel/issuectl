@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { GitHubPull, Section, UnifiedList } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
 import { ListSection } from "./ListSection";
@@ -60,6 +61,11 @@ export function List({ data, activeTab, prCount, prs, username }: Props) {
         <div className={styles.brand}>
           issuectl<span className={styles.dot} />
         </div>
+        <nav className={styles.desktopNav}>
+          <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
+          <span className={styles.desktopNavSep}>·</span>
+          <Link href="/settings" className={styles.desktopNavLink}>Settings</Link>
+        </nav>
         <button
           className={styles.menuBtn}
           onClick={() => setDrawerOpen(true)}
