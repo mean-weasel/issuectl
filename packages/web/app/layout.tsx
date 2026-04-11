@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Karla, Syne, Source_Code_Pro } from "next/font/google";
+import {
+  Karla,
+  Syne,
+  Source_Code_Pro,
+  Fraunces,
+  Inter,
+  IBM_Plex_Mono,
+} from "next/font/google";
 import { cookies } from "next/headers";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { AuthErrorScreen } from "@/components/auth/AuthErrorScreen";
@@ -25,6 +32,31 @@ const sourceCodePro = Source_Code_Pro({
   variable: "--font-mono",
 });
 
+// Paper fonts (2026-04-10 reskin) — used by components under
+// packages/web/components/paper/. Loaded alongside the legacy fonts
+// so the old UI stays intact during Phase 2.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono-paper",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "issuectl",
   description: "Cross-repo GitHub issue command center",
@@ -43,7 +75,11 @@ export default async function RootLayout({ children }: Props) {
   const theme: Theme = themeCookie === "dark" || themeCookie === "light" ? themeCookie : "system";
 
   return (
-    <html lang="en" data-theme={theme === "system" ? undefined : theme} className={`${karla.variable} ${syne.variable} ${sourceCodePro.variable}`}>
+    <html
+      lang="en"
+      data-theme={theme === "system" ? undefined : theme}
+      className={`${karla.variable} ${syne.variable} ${sourceCodePro.variable} ${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
