@@ -1,0 +1,57 @@
+.wrapper {
+  font-family: var(--paper-mono);
+  font-size: 11px;
+  color: var(--paper-ink-soft);
+  line-height: 1.7;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+
+.line {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.add {
+  color: var(--paper-accent);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 26px;
+  text-align: right;
+}
+
+.del {
+  color: var(--paper-brick);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 26px;
+  text-align: right;
+}
+
+.filename {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removed .filename {
+  text-decoration: line-through;
+  color: var(--paper-ink-faint);
+}
+
+.empty {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--paper-ink-faint);
+  text-align: center;
+}
