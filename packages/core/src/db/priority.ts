@@ -31,3 +31,17 @@ export function setPriority(
      DO UPDATE SET priority = excluded.priority, updated_at = excluded.updated_at`,
   ).run(repoId, issueNumber, priority, now);
 }
+
+export function getPriority(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+): Priority {
+  const row = db
+    .prepare(
+      `SELECT priority FROM issue_metadata
+       WHERE repo_id = ? AND issue_number = ?`,
+    )
+    .get(repoId, issueNumber) as { priority: Priority } | undefined;
+  return row?.priority ?? "normal";
+}
