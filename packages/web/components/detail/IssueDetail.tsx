@@ -14,16 +14,18 @@ import {
 } from "./DetailMeta";
 import { BodyText } from "./BodyText";
 import { CommentList } from "./CommentList";
-import { LaunchCardPlaceholder } from "./LaunchCardPlaceholder";
+import { LaunchCard } from "./LaunchCard";
 import styles from "./IssueDetail.module.css";
 
 type Props = {
   owner: string;
   repoName: string;
+  repoLocalPath: string | null;
   issue: GitHubIssue;
   comments: GitHubComment[];
   deployments: Deployment[];
   linkedPRs: GitHubPull[];
+  referencedFiles: string[];
 };
 
 function formatAge(updatedAt: string): string {
@@ -38,10 +40,12 @@ function formatAge(updatedAt: string): string {
 export function IssueDetail({
   owner,
   repoName,
+  repoLocalPath,
   issue,
   comments,
-  deployments: _deployments,
+  deployments,
   linkedPRs: _linkedPRs,
+  referencedFiles,
 }: Props) {
   const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
@@ -77,7 +81,15 @@ export function IssueDetail({
           <span>{formatAge(issue.updatedAt)}</span>
         </DetailMeta>
 
-        <LaunchCardPlaceholder />
+        <LaunchCard
+          owner={owner}
+          repo={repoName}
+          repoLocalPath={repoLocalPath}
+          issue={issue}
+          comments={comments}
+          deployments={deployments}
+          referencedFiles={referencedFiles}
+        />
         <BodyText body={issue.body} />
         <CommentList comments={comments} />
       </div>

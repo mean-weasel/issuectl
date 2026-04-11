@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import styles from "./ClonePromptModal.module.css";
 
 type Props = {
@@ -40,7 +40,7 @@ export function ClonePromptModal({ owner, repo, onConfirm, onClose }: Props) {
         </div>
 
         <div className={styles.footer}>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <Button variant="primary" onClick={onConfirm}>

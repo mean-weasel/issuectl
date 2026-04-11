@@ -6,7 +6,7 @@ import type {
   GitHubComment,
   Deployment,
 } from "@issuectl/core";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { LaunchModal } from "./LaunchModal";
 import { ClonePromptModal } from "./ClonePromptModal";
 
@@ -54,7 +54,7 @@ export function LaunchButton({
 
   return (
     <>
-      <Button variant="launch" className={className} onClick={handleClick}>
+      <Button variant="accent" className={className} onClick={handleClick}>
         {hasLaunched ? "Re-launch" : "Launch to Claude Code"}
       </Button>
 

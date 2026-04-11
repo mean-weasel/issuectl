@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
 
 type Props = {
@@ -26,7 +26,7 @@ export function EndSessionButton({ deploymentId, owner, repo, issueNumber }: Pro
   }
 
   return (
-    <Button variant="secondary" onClick={handleEnd} disabled={isPending}>
+    <Button variant="ghost" onClick={handleEnd} disabled={isPending}>
       {isPending ? "Ending..." : "End Session"}
     </Button>
   );

@@ -11,7 +11,7 @@ import type {
 import { generateBranchName } from "@/lib/branch";
 import { launchIssue } from "@/lib/actions/launch";
 import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { BranchInput } from "./BranchInput";
 import { WorkspaceModeSelector } from "./WorkspaceModeSelector";
 import { ContextToggles } from "./ContextToggles";
@@ -104,7 +104,7 @@ export function LaunchModal({
       }
 
       router.push(
-        `/${owner}/${repo}/issues/${issue.number}/launch?deploymentId=${deploymentId}`,
+        `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}`,
       );
     });
   }
@@ -161,11 +161,11 @@ export function LaunchModal({
         </div>
 
         <div className={styles.footer}>
-          <Button variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button variant="ghost" onClick={onClose} disabled={isPending}>
             Cancel
           </Button>
           <Button
-            variant="launch"
+            variant="accent"
             onClick={handleLaunch}
             disabled={isPending || !branchName.trim()}
           >
