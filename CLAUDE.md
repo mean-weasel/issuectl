@@ -86,11 +86,26 @@ When the spec or plan references a file, check if it exists before assuming its 
 
 ## Testing
 
-No test framework is set up yet. When it's time to add tests:
-- Use Vitest (fast, ESM-native, workspace-aware)
-- Core package gets unit tests for all DB operations, GitHub client functions, and launch flow
-- Web package gets integration tests for Server Actions
+| Layer | Tool | Command |
+|---|---|---|
+| Unit / integration | Vitest | `pnpm turbo test` (all) or `pnpm --filter @issuectl/core test` |
+| E2E | Playwright **CLI** | `pnpm --filter @issuectl/web test:e2e` (dev server must be running on :3847) |
+
 - Test files live next to the code they test (`foo.test.ts` alongside `foo.ts`)
+- E2E specs live in `packages/web/e2e/`
+- Core package: unit tests for DB operations, GitHub client functions, launch flow, data aggregation
+- Web package: integration tests for Server Actions, Playwright e2e for critical user flows
+- **Playwright CLI only.** Use `@playwright/test` via the CLI (`playwright test`). Do NOT use the Playwright MCP server or browser-in-Claude approaches. All e2e tests run headless from the terminal.
+
+## QA
+
+QA skills are available for targeted quality checks. All browser-based checks use the **Playwright CLI** — never the Playwright MCP server.
+
+- **smoke-tester** — Quick pass/fail check of app workflows via Playwright CLI
+- **ux-auditor** — Visual/interaction quality audit against Paper design system
+- **mobile-ux-auditor** — Mobile-specific audit at 393x852 viewport
+- **performance-profiler** — Web Vitals and static code anti-pattern scan
+- **adversarial-breaker** — Edge cases, bad inputs, auth bypass attempts
 
 ## Git
 

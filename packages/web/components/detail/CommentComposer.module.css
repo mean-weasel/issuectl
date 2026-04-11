@@ -16,7 +16,7 @@
 .textarea {
   width: 100%;
   font-family: var(--paper-serif);
-  font-size: 14.5px;
+  font-size: 16px;
   line-height: 1.55;
   color: var(--paper-ink-soft);
   background: var(--paper-bg-warm);
@@ -63,5 +63,16 @@
 @media (max-width: 767px) {
   .hint {
     display: none;
+  }
+
+  .composer {
+    position: sticky;
+    bottom: 0;
+    background: var(--paper-bg);
+    padding-top: 12px;
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+    margin-top: 16px;
+    border-top: 1px solid var(--paper-line);
+    z-index: 10;
   }
 }

@@ -4,7 +4,7 @@
   align-items: center;
   flex-wrap: wrap;
   font-family: var(--paper-sans);
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--paper-ink-muted);
   margin-bottom: 22px;
 }
@@ -20,7 +20,7 @@
 
 .state {
   font-family: var(--paper-mono);
-  font-size: 10.5px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--paper-radius-sm);
   font-weight: 600;

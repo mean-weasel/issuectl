@@ -109,8 +109,9 @@ export function SettingsForm({
         <div className={styles.sectionTitle}>Defaults</div>
         <div className={styles.row}>
           <div className={styles.field}>
-            <div className={styles.label}>Branch Pattern</div>
+            <label className={styles.label} htmlFor="sf-branch-pattern">Branch Pattern</label>
             <input
+              id="sf-branch-pattern"
               className={styles.input}
               value={values.branch_pattern}
               onChange={(e) => handleChange("branch_pattern", e.target.value)}
@@ -118,8 +119,9 @@ export function SettingsForm({
             />
           </div>
           <div className={styles.field}>
-            <div className={styles.label}>Cache TTL (seconds)</div>
+            <label className={styles.label} htmlFor="sf-cache-ttl">Cache TTL (seconds)</label>
             <input
+              id="sf-cache-ttl"
               className={styles.input}
               value={values.cache_ttl}
               onChange={(e) => handleChange("cache_ttl", e.target.value)}
@@ -133,16 +135,18 @@ export function SettingsForm({
         <div className={styles.sectionTitle}>Terminal</div>
         <div className={styles.row}>
           <div className={styles.field}>
-            <div className={styles.label}>Application</div>
+            <label className={styles.label} htmlFor="sf-terminal-app">Application</label>
             <input
+              id="sf-terminal-app"
               className={styles.inputReadonly}
               value={terminalApp}
               readOnly
             />
           </div>
           <div className={styles.field}>
-            <div className={styles.label}>Window Title</div>
+            <label className={styles.label} htmlFor="sf-window-title">Window Title</label>
             <input
+              id="sf-window-title"
               className={styles.input}
               value={values.terminal_window_title}
               onChange={(e) => handleChange("terminal_window_title", e.target.value)}
@@ -152,8 +156,9 @@ export function SettingsForm({
         </div>
         <div className={styles.row}>
           <div className={styles.field}>
-            <div className={styles.label}>Tab Title Pattern</div>
+            <label className={styles.label} htmlFor="sf-tab-title">Tab Title Pattern</label>
             <input
+              id="sf-tab-title"
               className={styles.input}
               value={values.terminal_tab_title_pattern}
               onChange={(e) => handleChange("terminal_tab_title_pattern", e.target.value)}
@@ -170,8 +175,9 @@ export function SettingsForm({
         <div className={styles.sectionTitle}>Claude</div>
         <div className={styles.row}>
           <div className={styles.field}>
-            <div className={styles.label}>Extra Args</div>
+            <label className={styles.label} htmlFor="sf-claude-args">Extra Args</label>
             <input
+              id="sf-claude-args"
               className={styles.input}
               value={values.claude_extra_args}
               onChange={(e) => handleChange("claude_extra_args", e.target.value)}

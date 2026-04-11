@@ -13,6 +13,7 @@
   border: 1px solid transparent;
   transition: opacity 120ms ease, transform 120ms ease;
   white-space: nowrap;
+  min-height: 44px;
 }
 
 .btn:hover:not(:disabled) {

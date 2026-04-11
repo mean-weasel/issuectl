@@ -54,8 +54,9 @@
 }
 
 .actionBtn {
-  font-size: 11px;
-  padding: 4px 8px;
+  font-size: 12px;
+  padding: 10px 12px;
+  min-height: 44px;
 }
 
 .dangerBtn {
@@ -99,7 +100,7 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: 16px;
   font-family: var(--paper-serif);
   outline: none;
 }
@@ -139,4 +140,19 @@
 .confirmActions {
   display: flex;
   gap: 8px;
+}
+
+@media (max-width: 767px) {
+  .row,
+  .rowNoPath {
+    flex-wrap: wrap;
+  }
+
+  .path,
+  .noPath {
+    width: 100%;
+    order: 3;
+    flex: none;
+    margin-top: 4px;
+  }
 }

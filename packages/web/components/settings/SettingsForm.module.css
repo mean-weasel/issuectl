@@ -20,12 +20,14 @@
 }
 
 .label {
+  display: block;
   font-size: 12px;
   color: var(--paper-ink-muted);
   margin-bottom: 6px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  cursor: pointer;
 }
 
 .input {
@@ -36,14 +38,26 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: 16px;
   font-family: var(--paper-serif);
   transition: border-color 0.15s;
+  min-height: 44px;
 }
 
 .input:focus {
   outline: none;
   border-color: var(--paper-accent);
+}
+
+@media (max-width: 767px) {
+  .row {
+    flex-direction: column;
+  }
+
+  .input,
+  .inputReadonly {
+    max-width: none;
+  }
 }
 
 .inputReadonly {

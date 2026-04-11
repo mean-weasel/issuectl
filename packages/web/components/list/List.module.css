@@ -41,7 +41,7 @@
   font-size: 18px;
   color: var(--paper-ink-muted);
   letter-spacing: 1px;
-  padding: 4px 8px;
+  padding: 10px 12px;
   cursor: pointer;
   border-radius: var(--paper-radius-sm);
 }
@@ -83,7 +83,7 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--paper-ink-muted);
-  padding: 10px 2px 12px;
+  padding: 12px 2px 14px;
   margin-right: 26px;
   position: relative;
   cursor: default;
@@ -106,7 +106,7 @@
 .tab .count {
   font-family: var(--paper-mono);
   font-style: normal;
-  font-size: 10px;
+  font-size: 12px;
   margin-left: 6px;
   color: var(--paper-ink-faint);
   font-weight: 500;
