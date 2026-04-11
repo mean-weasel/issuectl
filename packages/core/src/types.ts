@@ -22,6 +22,7 @@ export type Setting = {
 };
 
 import type { WorkspaceMode } from "./launch/workspace.js";
+import type { GitHubIssue } from "./github/types.js";
 
 export type Deployment = {
   id: number;
@@ -62,4 +63,29 @@ export type IssuePriority = {
   issueNumber: number;
   priority: Priority;
   updatedAt: number; // unix seconds
+};
+
+export type Section = "unassigned" | "in_focus" | "in_flight" | "shipped";
+
+// A UnifiedListItem is either a local draft (unassigned) or a
+// GitHub-backed issue enriched with its local priority and its
+// lifecycle state for the current section.
+export type UnifiedListItem =
+  | {
+      kind: "draft";
+      draft: Draft;
+    }
+  | {
+      kind: "issue";
+      repo: Repo;
+      issue: GitHubIssue;
+      priority: Priority;
+      section: Exclude<Section, "unassigned">;
+    };
+
+export type UnifiedList = {
+  unassigned: UnifiedListItem[];
+  in_focus: UnifiedListItem[];
+  in_flight: UnifiedListItem[];
+  shipped: UnifiedListItem[];
 };
