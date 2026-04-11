@@ -1,0 +1,48 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--paper-radius-sm);
+  font-family: var(--paper-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.default {
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-soft);
+}
+
+.dashed {
+  background: transparent;
+  color: var(--paper-accent);
+  border: 1px dashed var(--paper-accent);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.tinted {
+  font-family: var(--paper-mono);
+  font-weight: 600;
+}
+
+.tinted.brick {
+  background: rgba(184, 74, 46, 0.08);
+  color: var(--paper-brick);
+}
+
+.tinted.butter {
+  background: rgba(217, 165, 77, 0.12);
+  color: #9a6b1f; /* darker butter for readability on cream */
+}
+
+.tinted.accent {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
