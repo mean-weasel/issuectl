@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getDb, getOctokit, getIssueDetail } from "@issuectl/core";
+import { getDb, getOctokit, getIssueDetail, getRepo } from "@issuectl/core";
 import { IssueDetail } from "@/components/detail/IssueDetail";
 
 export const dynamic = "force-dynamic";
@@ -26,14 +26,17 @@ export default async function IssueDetailPage({
 
   try {
     const detail = await getIssueDetail(db, octokit, owner, repo, issueNumber);
+    const repoRecord = getRepo(db, owner, repo);
     return (
       <IssueDetail
         owner={owner}
         repoName={repo}
+        repoLocalPath={repoRecord?.localPath ?? null}
         issue={detail.issue}
         comments={detail.comments}
         deployments={detail.deployments}
         linkedPRs={detail.linkedPRs}
+        referencedFiles={detail.referencedFiles}
       />
     );
   } catch (err) {
