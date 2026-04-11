@@ -1,0 +1,28 @@
+.section {
+  padding: 22px 24px 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.section h3 {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--paper-ink-soft);
+  margin: 0;
+}
+
+.rule {
+  flex: 1;
+  height: 1px;
+  background: var(--paper-line);
+}
+
+.count {
+  font-family: var(--paper-mono);
+  font-size: 10px;
+  color: var(--paper-ink-faint);
+  font-weight: 500;
+}

@@ -1,0 +1,134 @@
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 12px 0 120px;
+  background: var(--paper-bg);
+  min-height: 100vh;
+  position: relative;
+}
+
+.topBar {
+  padding: 52px 24px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.brand {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.8px;
+  color: var(--paper-ink);
+}
+
+.brand .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--paper-accent);
+  border-radius: 50%;
+  margin-left: 3px;
+  vertical-align: 6px;
+}
+
+.date {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  font-weight: 500;
+  text-align: right;
+  line-height: 1.3;
+}
+
+.date b {
+  display: block;
+  color: var(--paper-ink-soft);
+  font-style: normal;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: var(--paper-serif);
+}
+
+.tabs {
+  padding: 18px 24px 0;
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.tab {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--paper-ink-muted);
+  padding: 10px 2px 12px;
+  margin-right: 26px;
+  position: relative;
+  cursor: default;
+}
+
+.tab.on {
+  color: var(--paper-ink);
+}
+
+.tab.on::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--paper-ink);
+}
+
+.tab .count {
+  font-family: var(--paper-mono);
+  font-style: normal;
+  font-size: 10px;
+  margin-left: 6px;
+  color: var(--paper-ink-faint);
+  font-weight: 500;
+}
+
+.empty {
+  padding: 80px 20px 60px;
+  text-align: center;
+}
+
+.emptyMark {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 56px;
+  line-height: 0.8;
+  color: var(--paper-accent);
+  margin-bottom: 18px;
+}
+
+.empty h3 {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  color: var(--paper-ink);
+  margin-bottom: 8px;
+}
+
+.empty p {
+  font-family: var(--paper-serif);
+  font-size: 14px;
+  color: var(--paper-ink-muted);
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+
+.empty p em {
+  color: var(--paper-ink-soft);
+}
