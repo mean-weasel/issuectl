@@ -1,3 +1,5 @@
+import type Database from "better-sqlite3";
+import type { Octokit } from "@octokit/rest";
 import type {
   Draft,
   Repo,
@@ -8,6 +10,11 @@ import type {
   UnifiedListItem,
 } from "../types.js";
 import type { GitHubIssue } from "../github/types.js";
+import { listDrafts } from "../db/drafts.js";
+import { listRepos } from "../db/repos.js";
+import { getDeploymentsByRepo } from "../db/deployments.js";
+import { listPrioritiesForRepo } from "../db/priority.js";
+import { getIssues } from "./issues.js";
 
 export type PerRepoData = {
   repo: Repo;
@@ -117,4 +124,27 @@ export function groupIntoSections(
     in_flight: sortIssues(in_flight),
     shipped: sortIssues(shipped),
   };
+}
+
+export async function getUnifiedList(
+  db: Database.Database,
+  octokit: Octokit,
+): Promise<UnifiedList> {
+  const drafts = listDrafts(db);
+  const repos = listRepos(db);
+
+  // Fetch issues for each tracked repo in parallel. Uses the existing
+  // SWR cache in data/issues.ts, so cold-cache calls hit GitHub and
+  // warm-cache calls return cached data with a subsequent background
+  // refresh — we don't block on that refresh here.
+  const perRepo: PerRepoData[] = await Promise.all(
+    repos.map(async (repo) => {
+      const { issues } = await getIssues(db, octokit, repo.owner, repo.name);
+      const deployments = getDeploymentsByRepo(db, repo.id);
+      const priorities = listPrioritiesForRepo(db, repo.id);
+      return { repo, issues, deployments, priorities };
+    }),
+  );
+
+  return groupIntoSections({ drafts, perRepo });
 }
