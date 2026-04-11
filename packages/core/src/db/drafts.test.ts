@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
-import { createDraft, listDrafts, getDraft } from "./drafts.js";
+import { createDraft, listDrafts, getDraft, updateDraft } from "./drafts.js";
 
 describe("createDraft", () => {
   let db: Database.Database;
@@ -88,5 +88,51 @@ describe("getDraft", () => {
 
   it("returns null for a non-existent id", () => {
     expect(getDraft(db, "does-not-exist")).toBeNull();
+  });
+});
+
+describe("updateDraft", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("updates the provided fields and bumps updated_at", () => {
+    const created = createDraft(db, { title: "Original", body: "old" });
+    // Force updated_at to a known past value
+    db.prepare("UPDATE drafts SET updated_at = ? WHERE id = ?").run(
+      100,
+      created.id,
+    );
+
+    const updated = updateDraft(db, created.id, {
+      title: "New title",
+      body: "new body",
+      priority: "high",
+    });
+
+    expect(updated).not.toBeNull();
+    expect(updated?.title).toBe("New title");
+    expect(updated?.body).toBe("new body");
+    expect(updated?.priority).toBe("high");
+    expect(updated?.updatedAt).toBeGreaterThan(100);
+    expect(updated?.createdAt).toBe(created.createdAt);
+  });
+
+  it("supports partial updates — only provided fields change", () => {
+    const created = createDraft(db, {
+      title: "Keep",
+      body: "keep body",
+      priority: "low",
+    });
+    const updated = updateDraft(db, created.id, { title: "Changed only" });
+    expect(updated?.title).toBe("Changed only");
+    expect(updated?.body).toBe("keep body");
+    expect(updated?.priority).toBe("low");
+  });
+
+  it("returns null when the draft doesn't exist", () => {
+    expect(updateDraft(db, "missing", { title: "x" })).toBeNull();
   });
 });

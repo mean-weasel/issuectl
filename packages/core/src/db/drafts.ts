@@ -64,3 +64,28 @@ export function getDraft(db: Database.Database, id: string): Draft | null {
     .get(id) as DraftRow | undefined;
   return row ? rowToDraft(row) : null;
 }
+
+export type DraftUpdate = Partial<Pick<Draft, "title" | "body" | "priority">>;
+
+export function updateDraft(
+  db: Database.Database,
+  id: string,
+  update: DraftUpdate,
+): Draft | null {
+  const existing = getDraft(db, id);
+  if (!existing) return null;
+
+  const next: Draft = {
+    ...existing,
+    ...update,
+    updatedAt: Math.floor(Date.now() / 1000),
+  };
+
+  db.prepare(
+    `UPDATE drafts
+     SET title = ?, body = ?, priority = ?, updated_at = ?
+     WHERE id = ?`,
+  ).run(next.title, next.body, next.priority, next.updatedAt, id);
+
+  return next;
+}
