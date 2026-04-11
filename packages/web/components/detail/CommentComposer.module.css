@@ -1,0 +1,67 @@
+.composer {
+  margin-top: 32px;
+  border-top: 1px solid var(--paper-line);
+  padding-top: 20px;
+}
+
+.label {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--paper-ink-soft);
+  margin-bottom: 10px;
+}
+
+.textarea {
+  width: 100%;
+  font-family: var(--paper-serif);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--paper-ink-soft);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.textarea:focus {
+  border-color: var(--paper-accent-dim);
+  background: var(--paper-bg);
+}
+
+.textarea:disabled {
+  opacity: 0.6;
+}
+
+.error {
+  font-family: var(--paper-serif);
+  font-size: 12px;
+  color: var(--paper-brick);
+  margin-top: 6px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.hint {
+  font-family: var(--paper-sans);
+  font-size: 10.5px;
+  color: var(--paper-ink-faint);
+}
+
+/* On mobile hide the keyboard hint (touch doesn't have ⌘) */
+@media (max-width: 767px) {
+  .hint {
+    display: none;
+  }
+}

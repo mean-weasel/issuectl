@@ -14,6 +14,7 @@ import {
 } from "./DetailMeta";
 import { BodyText } from "./BodyText";
 import { CommentList } from "./CommentList";
+import { CommentComposer } from "./CommentComposer";
 import { LaunchCard } from "./LaunchCard";
 import styles from "./IssueDetail.module.css";
 
@@ -92,6 +93,11 @@ export function IssueDetail({
         />
         <BodyText body={issue.body} />
         <CommentList comments={comments} />
+        <CommentComposer
+          owner={owner}
+          repo={repoName}
+          issueNumber={issue.number}
+        />
       </div>
     </div>
   );
