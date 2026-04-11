@@ -216,18 +216,154 @@ describe("groupIntoSections", () => {
     expect(focus[2].issue.number).toBe(1);
   });
 
-  it("sorts drafts by priority DESC then updatedAt DESC", () => {
-    const normalOlder = makeDraft({ title: "A", priority: "normal", updatedAt: 100 });
-    const normalNewer = makeDraft({ title: "B", priority: "normal", updatedAt: 200 });
-    const high = makeDraft({ title: "C", priority: "high", updatedAt: 50 });
+  it("sorts drafts by priority DESC then updatedAt DESC, including low", () => {
+    const lowest = makeDraft({ title: "A", priority: "low", updatedAt: 500 });
+    const normalOlder = makeDraft({ title: "B", priority: "normal", updatedAt: 100 });
+    const normalNewer = makeDraft({ title: "C", priority: "normal", updatedAt: 200 });
+    const high = makeDraft({ title: "D", priority: "high", updatedAt: 50 });
     const result = groupIntoSections({
-      drafts: [normalOlder, normalNewer, high],
+      drafts: [lowest, normalOlder, normalNewer, high],
       perRepo: [],
     });
     const titles = result.unassigned.map((item) => {
       if (item.kind !== "draft") throw new Error("expected draft");
       return item.draft.title;
     });
-    expect(titles).toEqual(["C", "B", "A"]);
+    // high first, then normal newer, then normal older, then low last
+    expect(titles).toEqual(["D", "C", "B", "A"]);
+  });
+
+  it("item.section matches the bucket an issue lands in", () => {
+    const openIssue = makeIssue({ number: 1, state: "open" });
+    const shippedIssue = makeIssue({ number: 2, state: "closed" });
+    const flightIssue = makeIssue({ number: 3, state: "open" });
+    const result = groupIntoSections({
+      drafts: [],
+      perRepo: [
+        {
+          repo,
+          issues: [openIssue, shippedIssue, flightIssue],
+          deployments: [makeDeployment(3, false)],
+          priorities: [],
+        },
+      ],
+    });
+
+    for (const item of result.in_focus) {
+      if (item.kind !== "issue") throw new Error("expected issue");
+      expect(item.section).toBe("in_focus");
+    }
+    for (const item of result.in_flight) {
+      if (item.kind !== "issue") throw new Error("expected issue");
+      expect(item.section).toBe("in_flight");
+    }
+    for (const item of result.shipped) {
+      if (item.kind !== "issue") throw new Error("expected issue");
+      expect(item.section).toBe("shipped");
+    }
+  });
+
+  it("aggregates issues across multiple tracked repos", () => {
+    const apiRepo = repo;
+    const webRepo: Repo = { ...repo, id: 2, name: "web" };
+
+    const apiIssue1 = makeIssue({ number: 1, title: "api bug" });
+    const apiIssue2 = makeIssue({ number: 2, title: "api feat" });
+    const webIssue1 = makeIssue({ number: 1, title: "web bug" });
+
+    const result = groupIntoSections({
+      drafts: [],
+      perRepo: [
+        {
+          repo: apiRepo,
+          issues: [apiIssue1, apiIssue2],
+          deployments: [],
+          priorities: [],
+        },
+        {
+          repo: webRepo,
+          issues: [webIssue1],
+          deployments: [],
+          priorities: [],
+        },
+      ],
+    });
+
+    expect(result.in_focus).toHaveLength(3);
+    // Verify both repos are represented by looking at the item.repo.name
+    const repoNames = result.in_focus.map((item) => {
+      if (item.kind !== "issue") throw new Error("expected issue");
+      return item.repo.name;
+    });
+    expect(repoNames).toContain("api");
+    expect(repoNames).toContain("web");
+  });
+
+  it("does not confuse priority rows across repos with the same issue number", () => {
+    // Regression guard: the priority map must be scoped to the repo.
+    // If the impl ever keys by issueNumber alone, the api-repo issue #1
+    // would wrongly inherit the web-repo #1's "high" priority.
+    const apiRepo = repo;
+    const webRepo: Repo = { ...repo, id: 2, name: "web" };
+
+    const apiIssue1 = makeIssue({ number: 1, title: "api" });
+    const webIssue1 = makeIssue({ number: 1, title: "web" });
+
+    const result = groupIntoSections({
+      drafts: [],
+      perRepo: [
+        {
+          repo: apiRepo,
+          issues: [apiIssue1],
+          deployments: [],
+          priorities: [], // api #1 has no explicit priority → normal
+        },
+        {
+          repo: webRepo,
+          issues: [webIssue1],
+          deployments: [],
+          priorities: [
+            { repoId: webRepo.id, issueNumber: 1, priority: "high", updatedAt: 0 },
+          ],
+        },
+      ],
+    });
+
+    for (const item of result.in_focus) {
+      if (item.kind !== "issue") throw new Error("expected issue");
+      if (item.repo.name === "api") {
+        expect(item.priority).toBe("normal");
+      } else if (item.repo.name === "web") {
+        expect(item.priority).toBe("high");
+      }
+    }
+  });
+
+  it("a closed issue with an active deployment still lands in shipped", () => {
+    // Precedence test: closed → shipped wins over active deployment → in_flight.
+    // Pins the branch order in groupIntoSections so a future refactor can't
+    // silently move closed-with-deployment issues into in_flight.
+    const issue = makeIssue({ number: 7, state: "closed" });
+    const result = groupIntoSections({
+      drafts: [],
+      perRepo: [
+        {
+          repo,
+          issues: [issue],
+          deployments: [makeDeployment(7, false)], // active
+          priorities: [],
+        },
+      ],
+    });
+    expect(result.shipped).toHaveLength(1);
+    expect(result.in_flight).toHaveLength(0);
+  });
+
+  it("handles empty input cleanly", () => {
+    const result = groupIntoSections({ drafts: [], perRepo: [] });
+    expect(result.unassigned).toEqual([]);
+    expect(result.in_focus).toEqual([]);
+    expect(result.in_flight).toEqual([]);
+    expect(result.shipped).toEqual([]);
   });
 });
