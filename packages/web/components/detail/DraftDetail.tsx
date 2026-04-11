@@ -21,23 +21,40 @@ function formatUnix(updatedAt: number): string {
 }
 
 export function DraftDetail({ draft }: Props) {
+  const [title, setTitle] = useState(draft.title);
   const [body, setBody] = useState(draft.body ?? "");
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleBlur = async () => {
-    // Only save if body actually changed from the draft's current body.
-    const trimmed = body;
-    if (trimmed === (draft.body ?? "")) return;
+  function flashSaved() {
+    setSavedAt(Date.now());
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => setSavedAt(null), 3000);
+  }
 
+  const handleTitleBlur = async () => {
+    const trimmed = title.trim();
+    // Don't save blank titles or unchanged titles.
+    if (trimmed.length === 0 || trimmed === draft.title) {
+      if (trimmed.length === 0) setTitle(draft.title);
+      return;
+    }
     setSaveError(null);
     try {
-      await updateDraftAction(draft.id, { body: trimmed });
-      setSavedAt(Date.now());
-      // Clear the "saved" indicator after 3 seconds.
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => setSavedAt(null), 3000);
+      await updateDraftAction(draft.id, { title: trimmed });
+      flashSaved();
+    } catch {
+      setSaveError("Failed to save title — try again");
+    }
+  };
+
+  const handleBodyBlur = async () => {
+    if (body === (draft.body ?? "")) return;
+    setSaveError(null);
+    try {
+      await updateDraftAction(draft.id, { body });
+      flashSaved();
     } catch {
       setSaveError("Failed to save — try again");
     }
@@ -47,7 +64,13 @@ export function DraftDetail({ draft }: Props) {
     <div className={styles.container}>
       <DetailTopBar backHref="/" crumb={<em>draft</em>} />
       <div className={styles.body}>
-        <h1 className={styles.title}>{draft.title}</h1>
+        <input
+          className={styles.titleInput}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={handleTitleBlur}
+          aria-label="Draft title"
+        />
         <DetailMeta>
           <Chip variant="dashed">no repo</Chip>
           <MetaSeparator />
@@ -64,7 +87,7 @@ export function DraftDetail({ draft }: Props) {
             className={styles.textarea}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            onBlur={handleBlur}
+            onBlur={handleBodyBlur}
             placeholder="add a description…"
             rows={8}
           />

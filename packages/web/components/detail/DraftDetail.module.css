@@ -8,7 +8,9 @@
   padding: 22px 24px 60px;
 }
 
-.title {
+.titleInput {
+  display: block;
+  width: 100%;
   font-family: var(--paper-serif);
   font-weight: 500;
   font-size: 26px;
@@ -16,6 +18,20 @@
   letter-spacing: -0.4px;
   color: var(--paper-ink);
   margin-bottom: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  outline: none;
+  padding: 0;
+  transition: border-color 0.15s;
+}
+
+.titleInput:hover {
+  border-bottom-color: var(--paper-line);
+}
+
+.titleInput:focus {
+  border-bottom-color: var(--paper-accent-dim);
 }
 
 .hint {
@@ -80,7 +96,7 @@
     margin: 0 auto;
     padding: 32px 40px 40px;
   }
-  .title {
+  .titleInput {
     font-size: 36px;
     line-height: 1.15;
     letter-spacing: -0.7px;
