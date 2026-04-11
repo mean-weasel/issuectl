@@ -14,7 +14,7 @@
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   border-top: 1px solid var(--paper-line);
-  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--paper-shadow-sheet);
   padding: 12px 0 28px;
   z-index: 1001;
   max-height: 85vh;

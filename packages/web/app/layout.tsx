@@ -32,9 +32,9 @@ const sourceCodePro = Source_Code_Pro({
   variable: "--font-mono",
 });
 
-// Paper fonts (2026-04-10 reskin) — used by components under
-// packages/web/components/paper/. Loaded alongside the legacy fonts
-// so the old UI stays intact during Phase 2.
+// Paper fonts — used by components under packages/web/components/paper/.
+// Loaded alongside the legacy Karla/Syne/Source Code Pro fonts so both
+// sets are available simultaneously.
 const fraunces = Fraunces({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],

@@ -14,7 +14,7 @@
   max-width: 85vw;
   background: var(--paper-bg);
   border-left: 1px solid var(--paper-line);
-  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--paper-shadow-drawer);
   z-index: 1001;
   display: flex;
   flex-direction: column;

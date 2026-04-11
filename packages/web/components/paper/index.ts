@@ -1,4 +1,4 @@
-export { Chip } from "./Chip.js";
-export { Button } from "./Button.js";
-export { Sheet } from "./Sheet.js";
-export { Drawer } from "./Drawer.js";
+export { Chip } from "./Chip";
+export { Button } from "./Button";
+export { Sheet } from "./Sheet";
+export { Drawer } from "./Drawer";

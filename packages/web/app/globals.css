@@ -35,11 +35,10 @@
   --radius-md: 8px;
   --radius-lg: 12px;
 
-  /* ═══ PAPER palette (2026-04-10 reskin) ═══════════════════════════
-   * Additive — coexists with the legacy light/dark tokens above.
-   * Used by components under packages/web/components/paper/.
-   * Phase 8 cleanup will strip the --paper- prefix once the legacy
-   * tokens are gone. */
+  /* ═══ PAPER palette ═══════════════════════════════════════════════
+   * Prefixed with --paper- to coexist with the legacy light/dark
+   * tokens above. Used by components under packages/web/components/paper/.
+   * The prefix can be dropped if/when the legacy palette is removed. */
   --paper-bg:           #f3ecd9;
   --paper-bg-warm:      #ede5cf;
   --paper-bg-warmer:    #e6dec4;
@@ -60,11 +59,14 @@
   --paper-radius-lg:    10px;
   --paper-radius-xl:    14px;
 
-  --paper-shadow-card:  0 12px 30px rgba(26, 23, 18, 0.08);
-  --paper-shadow-modal: 0 40px 100px rgba(26, 23, 18, 0.35);
+  --paper-shadow-card:   0 12px 30px rgba(26, 23, 18, 0.08);
+  --paper-shadow-modal:  0 40px 100px rgba(26, 23, 18, 0.35);
+  /* Shadow for a bottom sheet — cast upward from the sheet's top edge. */
+  --paper-shadow-sheet:  0 -20px 60px rgba(0, 0, 0, 0.25);
+  /* Shadow for a side drawer — cast horizontally from the drawer's edge. */
+  --paper-shadow-drawer: -20px 0 60px rgba(0, 0, 0, 0.3);
 
-  /* Font families — these reference the next/font variables injected
-   * in Task 2.2. Falls back to system fonts if next/font isn't wired yet. */
+  /* Font variables are injected by next/font in app/layout.tsx. */
   --paper-serif:  var(--font-serif), Georgia, serif;
   --paper-sans:   var(--font-sans), system-ui, -apple-system, sans-serif;
   --paper-mono:   var(--font-mono-paper), ui-monospace, SFMono-Regular, monospace;
