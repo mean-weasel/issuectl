@@ -15,7 +15,7 @@
   border-top-right-radius: 24px;
   border-top: 1px solid var(--paper-line);
   box-shadow: var(--paper-shadow-sheet);
-  padding: 12px 0 28px;
+  padding: 12px 0 calc(28px + env(safe-area-inset-bottom, 0px));
   z-index: 1001;
   max-height: 85vh;
   overflow-y: auto;

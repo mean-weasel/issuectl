@@ -57,7 +57,13 @@ export function PriorityPicker({ repoId, issueNumber, currentPriority }: Props) 
 
   return (
     <>
-      <button className={styles.trigger} onClick={() => setOpen(true)}>
+      <button
+        className={styles.trigger}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+      >
         priority: {priority}
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="set priority">

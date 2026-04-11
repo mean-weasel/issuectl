@@ -18,7 +18,7 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: 16px;
   font-family: var(--paper-serif), sans-serif;
   outline: none;
   resize: vertical;

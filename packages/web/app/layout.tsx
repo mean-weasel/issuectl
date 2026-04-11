@@ -31,6 +31,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "issuectl",
   description: "Cross-repo GitHub issue command center with Claude Code launch",
+  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
 };
 
 type Props = {
