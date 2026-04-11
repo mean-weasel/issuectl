@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { UnifiedList } from "@issuectl/core";
+import { SECTION_LABEL, type UnifiedList } from "@issuectl/core";
 import { Fab } from "@/components/paper";
 import { ListSection } from "./ListSection";
 import { CreateDraftSheet } from "./CreateDraftSheet";
@@ -11,6 +11,8 @@ type Props = {
   data: UnifiedList;
 };
 
+// Lowercase is intentional — matches the Paper mockup typography. Do not
+// "fix" this to Title Case without updating the design.
 function formatDate(d: Date): { weekday: string; short: string } {
   const weekday = d
     .toLocaleDateString("en-US", { weekday: "long" })
@@ -63,10 +65,16 @@ export function List({ data }: Props) {
         </div>
       ) : (
         <div>
-          <ListSection title="unassigned" items={data.unassigned} />
-          <ListSection title="in focus" items={data.in_focus} />
-          <ListSection title="in flight" items={data.in_flight} />
-          <ListSection title="shipped" items={data.shipped} />
+          <ListSection
+            title={SECTION_LABEL.unassigned}
+            items={data.unassigned}
+          />
+          <ListSection title={SECTION_LABEL.in_focus} items={data.in_focus} />
+          <ListSection
+            title={SECTION_LABEL.in_flight}
+            items={data.in_flight}
+          />
+          <ListSection title={SECTION_LABEL.shipped} items={data.shipped} />
         </div>
       )}
 

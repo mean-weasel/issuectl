@@ -7,7 +7,8 @@ import type {
   Deployment,
   Priority,
   UnifiedList,
-  UnifiedListItem,
+  DraftListItem,
+  IssueListItem,
 } from "../types.js";
 import type { GitHubIssue } from "../github/types.js";
 import { listDrafts } from "../db/drafts.js";
@@ -28,6 +29,8 @@ export type GroupIntoSectionsInput = {
   perRepo: PerRepoData[];
 };
 
+// Higher rank sorts earlier via compareByPriorityThenUpdatedAt — e.g.,
+// all "high" items come before any "normal" item, regardless of timestamp.
 const PRIORITY_RANK: Record<Priority, number> = {
   high: 2,
   normal: 1,
@@ -52,8 +55,7 @@ function compareByPriorityThenUpdatedAt(
 export function groupIntoSections(
   input: GroupIntoSectionsInput,
 ): UnifiedList {
-  // Unassigned: all drafts, sorted by priority DESC then updatedAt DESC
-  const unassigned: UnifiedListItem[] = input.drafts
+  const unassigned: DraftListItem[] = input.drafts
     .slice()
     .sort((a, b) =>
       compareByPriorityThenUpdatedAt(
@@ -65,27 +67,29 @@ export function groupIntoSections(
     )
     .map((draft) => ({ kind: "draft" as const, draft }));
 
-  const in_focus: UnifiedListItem[] = [];
-  const in_flight: UnifiedListItem[] = [];
-  const shipped: UnifiedListItem[] = [];
+  const in_focus: IssueListItem[] = [];
+  const in_flight: IssueListItem[] = [];
+  const shipped: IssueListItem[] = [];
 
   for (const { repo, issues, deployments, priorities } of input.perRepo) {
-    // Build a set of issue numbers with an active deployment (ended_at IS NULL)
+    // A deployment row with ended_at IS NULL means there's a live
+    // worktree / Claude session still open for that issue.
     const activeLaunchSet = new Set(
       deployments
         .filter((d) => d.endedAt === null)
         .map((d) => d.issueNumber),
     );
 
-    // Build a priority map for this repo
     const priorityMap = new Map<number, Priority>(
       priorities.map((p) => [p.issueNumber, p.priority]),
     );
 
     for (const issue of issues) {
       const priority = priorityMap.get(issue.number) ?? "normal";
-      let section: "in_focus" | "in_flight" | "shipped";
 
+      // Closed wins over an active deployment (a stale deployment shouldn't
+      // keep a closed issue out of shipped). See the dedicated test.
+      let section: "in_focus" | "in_flight" | "shipped";
       if (issue.state === "closed") {
         section = "shipped";
       } else if (activeLaunchSet.has(issue.number)) {
@@ -94,7 +98,7 @@ export function groupIntoSections(
         section = "in_focus";
       }
 
-      const item: UnifiedListItem = {
+      const item: IssueListItem = {
         kind: "issue",
         repo,
         issue,
@@ -108,10 +112,8 @@ export function groupIntoSections(
     }
   }
 
-  // Sort each issue section by priority DESC then updatedAt DESC
-  const sortIssues = (items: UnifiedListItem[]): UnifiedListItem[] =>
+  const sortIssues = (items: IssueListItem[]): IssueListItem[] =>
     items.slice().sort((a, b) => {
-      if (a.kind !== "issue" || b.kind !== "issue") return 0;
       const aUpdated = new Date(a.issue.updatedAt).getTime();
       const bUpdated = new Date(b.issue.updatedAt).getTime();
       return compareByPriorityThenUpdatedAt(

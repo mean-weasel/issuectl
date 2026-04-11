@@ -15,6 +15,10 @@ export function CreateDraftSheet({ open, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Defense in depth: createDraft in core also validates the title, and
+  // createDraftAction validates at the server boundary. The client-side
+  // check here is a UX affordance — avoids a server round-trip just to
+  // surface "title required."
   const handleSave = async () => {
     if (title.trim().length === 0) {
       setError("A title is required");
@@ -56,7 +60,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           autoFocus
         />
         <div className={styles.hint}>
-          body, labels, and repo assignment come in a later iteration
+          title only — add a body, labels, and a repo when you assign it
         </div>
         {error && <div className={styles.error}>{error}</div>}
         <div className={styles.actions}>

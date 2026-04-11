@@ -6,21 +6,31 @@ type Props = {
   item: UnifiedListItem;
 };
 
+// Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
+// use ISO strings. Normalize both to "N days ago" for display. Clamps
+// negative diffs to "today" so a clock-skewed future timestamp doesn't
+// render "-1d".
 function formatAge(updatedAt: string | number): string {
   const now = Date.now();
   const updated =
-    typeof updatedAt === "number" ? updatedAt * 1000 : new Date(updatedAt).getTime();
-  const diffMs = now - updated;
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  if (diffDays <= 0) return "today";
+    typeof updatedAt === "number"
+      ? updatedAt * 1000
+      : new Date(updatedAt).getTime();
+  if (!Number.isFinite(updated)) return "";
+  const diffDays = Math.floor((now - updated) / (24 * 60 * 60 * 1000));
+  if (diffDays < 1) return "today";
   if (diffDays === 1) return "1d";
   return `${diffDays}d`;
 }
 
+// Case-insensitive substring match. A label like "bug-report" will match
+// "bug" — that's intentional so common variants all paint brick red.
 function labelClass(labelName: string): string | undefined {
   const lower = labelName.toLowerCase();
   if (lower.includes("bug")) return styles.lblBug;
-  if (lower.includes("feat") || lower.includes("enhancement")) return styles.lblFeat;
+  if (lower.includes("feat") || lower.includes("enhancement")) {
+    return styles.lblFeat;
+  }
   return undefined;
 }
 
