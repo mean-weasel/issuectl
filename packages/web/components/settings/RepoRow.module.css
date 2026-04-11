@@ -3,9 +3,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
 }
 
@@ -23,7 +23,7 @@
 
 .dotNoPath {
   composes: dot;
-  background: var(--text-tertiary);
+  background: var(--paper-ink-muted);
 }
 
 .name {
@@ -33,19 +33,19 @@
 
 .nameNoPath {
   composes: name;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .path {
   font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--text-tertiary);
+  font-family: var(--paper-mono);
+  color: var(--paper-ink-muted);
   flex: 1;
 }
 
 .noPath {
   composes: path;
-  color: var(--yellow);
+  color: var(--paper-butter);
 }
 
 .actions {
@@ -60,7 +60,7 @@
 
 .dangerBtn {
   composes: actionBtn;
-  color: var(--red);
+  color: var(--paper-brick);
 }
 
 .editForm {
@@ -68,9 +68,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-accent);
+  border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
 }
 
@@ -85,7 +85,7 @@
 
 .editLabel {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-bottom: 4px;
   font-weight: 600;
   text-transform: uppercase;
@@ -95,17 +95,17 @@
 .editInput {
   width: 100%;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
-  font-family: var(--font-karla);
+  font-family: var(--paper-serif);
   outline: none;
 }
 
 .editInput:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .editActions {
@@ -116,7 +116,7 @@
 
 .error {
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
 }
 
 .confirmOverlay {
@@ -124,16 +124,16 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--red-surface);
-  border: 1px solid var(--red);
-  border-radius: var(--radius-md);
+  background: rgba(184, 74, 46, 0.08);
+  border: 1px solid var(--paper-brick);
+  border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
 }
 
 .confirmText {
   flex: 1;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
 }
 
 .confirmActions {

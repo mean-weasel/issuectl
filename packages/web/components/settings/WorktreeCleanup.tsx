@@ -3,7 +3,7 @@
 import { useTransition, useState } from "react";
 import { cleanupWorktree, cleanupStaleWorktrees } from "@/lib/actions/worktrees";
 import type { WorktreeInfo } from "@/lib/actions/worktrees";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import styles from "./WorktreeCleanup.module.css";
 
 type Props = {
@@ -54,7 +54,7 @@ export function WorktreeCleanup({ worktrees }: Props) {
             {staleCount} stale worktree{staleCount > 1 ? "s" : ""}
           </span>
           <Button
-            variant="secondary"
+            variant="ghost"
             className={styles.cleanAllBtn}
             onClick={handleCleanAll}
             disabled={isPending}

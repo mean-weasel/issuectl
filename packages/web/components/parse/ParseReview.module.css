@@ -6,7 +6,7 @@
 
 .summary {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
 }
 
 .cards {
@@ -24,9 +24,9 @@
 
 .error {
   padding: 8px 12px;
-  background: var(--red-surface);
+  background: rgba(184, 74, 46, 0.08);
   border: 1px solid rgba(248, 81, 73, 0.2);
-  border-radius: var(--radius-md);
-  color: var(--red);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-brick);
   font-size: 12px;
 }

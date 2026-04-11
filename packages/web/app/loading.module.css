@@ -10,14 +10,14 @@
 .titleBar {
   height: 32px;
   width: 220px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg-warm);
+  border-radius: var(--paper-radius-md);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 .cacheBarSkeleton {
   height: 32px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--paper-line-soft);
   margin-bottom: 20px;
 }
 
@@ -28,9 +28,9 @@
 }
 
 .cardSkeleton {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
   padding: 20px;
   height: 160px;
   animation: pulse 1.5s ease-in-out infinite;

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import type { GitHubLabel, ParsedIssuesResponse, BatchCreateResult } from "@issuectl/core";
 import type { RepoOption } from "@/lib/types";
 import { batchCreateIssues } from "@/lib/actions/parse";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { ParseIssueCard, type IssueCardState } from "./ParseIssueCard";
 import styles from "./ParseReview.module.css";
 
@@ -112,7 +112,7 @@ export function ParseReview({
       )}
 
       <div className={styles.footer}>
-        <Button variant="secondary" onClick={onBack} disabled={isPending}>
+        <Button variant="ghost" onClick={onBack} disabled={isPending}>
           Back
         </Button>
         <Button

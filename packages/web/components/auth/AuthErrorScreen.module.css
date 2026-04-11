@@ -18,45 +18,45 @@
 .icon {
   width: 56px;
   height: 56px;
-  background: var(--red-surface);
+  background: rgba(184, 74, 46, 0.08);
   border: 1px solid rgba(248, 81, 73, 0.2);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  color: var(--red);
+  color: var(--paper-brick);
   font-weight: 700;
 }
 
 .title {
-  font-family: var(--font-display);
+  font-family: var(--paper-serif);
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.5px;
 }
 
 .description {
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
   font-size: 14px;
   line-height: 1.7;
 }
 
 .inlineCode {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
+  font-family: var(--paper-mono);
+  background: var(--paper-bg-warm);
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 12px;
-  color: var(--cyan);
-  border: 1px solid var(--border);
+  color: var(--paper-accent);
+  border: 1px solid var(--paper-line);
 }
 
 .card {
   width: 100%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
   padding: 24px;
   text-align: left;
   display: flex;
@@ -65,7 +65,7 @@
 }
 
 .cardTitle {
-  font-family: var(--font-display);
+  font-family: var(--paper-serif);
   font-size: 15px;
   font-weight: 600;
 }
@@ -80,15 +80,15 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
+  font-family: var(--paper-mono);
+  color: var(--paper-ink-soft);
   flex-shrink: 0;
 }
 
@@ -100,13 +100,13 @@
 .stepCommand {
   display: block;
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-top: 2px;
-  font-family: var(--font-mono);
+  font-family: var(--paper-mono);
 }
 
 .stepDetail {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-top: 2px;
 }

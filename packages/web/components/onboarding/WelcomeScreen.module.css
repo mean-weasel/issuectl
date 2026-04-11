@@ -17,40 +17,40 @@
 .logoMark {
   width: 56px;
   height: 56px;
-  background: var(--accent);
+  background: var(--paper-accent);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--paper-mono);
   font-weight: 700;
   font-size: 24px;
-  color: var(--text-inverse);
+  color: var(--paper-bg);
   letter-spacing: -1px;
 }
 
 .title {
-  font-family: var(--font-display);
+  font-family: var(--paper-serif);
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.5px;
 }
 
 .accent {
-  color: var(--accent);
+  color: var(--paper-accent);
 }
 
 .description {
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
   font-size: 14px;
   line-height: 1.7;
 }
 
 .card {
   width: 100%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
   padding: 24px;
   text-align: left;
   display: flex;
@@ -59,7 +59,7 @@
 }
 
 .cardTitle {
-  font-family: var(--font-display);
+  font-family: var(--paper-serif);
   font-size: 16px;
   font-weight: 600;
 }
@@ -67,7 +67,7 @@
 .label {
   display: block;
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -77,10 +77,10 @@
 .input {
   width: 100%;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
   font-family: inherit;
   outline: none;
@@ -88,21 +88,21 @@
 }
 
 .input:focus {
-  border-color: var(--border-accent);
+  border-color: var(--paper-accent);
 }
 
 .input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .error {
   font-size: 13px;
-  color: var(--red);
+  color: var(--paper-brick);
 }
 
 .warning {
   font-size: 13px;
-  color: var(--yellow);
+  color: var(--paper-butter);
 }
 
 .submitBtn {
@@ -112,15 +112,15 @@
 
 .hint {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
 }
 
 .inlineCode {
-  font-family: var(--font-mono);
-  background: var(--bg-elevated);
+  font-family: var(--paper-mono);
+  background: var(--paper-bg-warm);
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 11px;
-  color: var(--cyan);
-  border: 1px solid var(--border);
+  color: var(--paper-accent);
+  border: 1px solid var(--paper-line);
 }

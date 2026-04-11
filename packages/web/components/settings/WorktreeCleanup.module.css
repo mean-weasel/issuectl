@@ -1,10 +1,10 @@
 .empty {
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   padding: 12px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
 }
 
 .row {
@@ -12,15 +12,15 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
 }
 
 .rowStale {
   composes: row;
-  border-color: var(--yellow);
+  border-color: var(--paper-butter);
   border-style: dashed;
 }
 
@@ -38,26 +38,26 @@
 
 .badgeStale {
   composes: badge;
-  color: var(--yellow);
-  background: var(--yellow-surface);
+  color: var(--paper-butter);
+  background: rgba(217, 165, 77, 0.12);
 }
 
 .badgeActive {
   composes: badge;
-  color: var(--green);
-  background: var(--green-surface);
+  color: var(--paper-accent);
+  background: var(--paper-accent-soft);
 }
 
 .issue {
   font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--text-tertiary);
+  font-family: var(--paper-mono);
+  color: var(--paper-ink-muted);
 }
 
 .deleteBtn {
   font-size: 11px;
   padding: 4px 8px;
-  color: var(--red);
+  color: var(--paper-brick);
 }
 
 .bulkBar {
@@ -69,7 +69,7 @@
 
 .staleCount {
   font-size: 13px;
-  color: var(--yellow);
+  color: var(--paper-butter);
 }
 
 .cleanAllBtn {
@@ -79,12 +79,12 @@
 
 .error {
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
   margin-top: 4px;
 }
 
 .success {
   font-size: 12px;
-  color: var(--green);
+  color: var(--paper-accent);
   margin-top: 4px;
 }

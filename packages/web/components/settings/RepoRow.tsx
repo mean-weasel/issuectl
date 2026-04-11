@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { removeRepo, updateRepo } from "@/lib/actions/repos";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import type { Repo } from "@issuectl/core";
 import styles from "./RepoRow.module.css";
 
@@ -59,7 +59,7 @@ export function RepoRow({ repo, color }: Props) {
             Cancel
           </Button>
           <Button
-            variant="secondary"
+            variant="ghost"
             onClick={handleRemove}
             disabled={isPending}
             className={styles.dangerBtn}

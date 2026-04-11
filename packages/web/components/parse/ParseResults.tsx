@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { BatchCreateResult } from "@issuectl/core";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import styles from "./ParseResults.module.css";
 
 type Props = {
