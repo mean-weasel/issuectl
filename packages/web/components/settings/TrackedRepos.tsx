@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Repo } from "@issuectl/core";
 import { REPO_COLORS } from "@/lib/constants";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { RepoRow } from "./RepoRow";
 import { AddRepoForm } from "./AddRepoForm";
 import styles from "./TrackedRepos.module.css";
@@ -28,7 +28,7 @@ export function TrackedRepos({ repos }: Props) {
         <AddRepoForm onClose={() => setShowAdd(false)} />
       ) : (
         <Button
-          variant="secondary"
+          variant="ghost"
           className={styles.addBtn}
           onClick={() => setShowAdd(true)}
         >

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { ParsedIssuesResponse } from "@issuectl/core";
 import { parseNaturalLanguage } from "@/lib/actions/parse";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import styles from "./ParseInput.module.css";
 
 type Props = {

@@ -3,9 +3,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-accent);
+  border-radius: var(--paper-radius-md);
   margin-bottom: 8px;
 }
 
@@ -20,7 +20,7 @@
 
 .label {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-bottom: 4px;
   font-weight: 600;
   text-transform: uppercase;
@@ -30,17 +30,17 @@
 .input {
   width: 100%;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
-  font-family: var(--font-karla);
+  font-family: var(--paper-serif);
   outline: none;
 }
 
 .input:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .actions {
@@ -51,11 +51,11 @@
 
 .error {
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
 }
 
 .pathHint {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-top: 2px;
 }

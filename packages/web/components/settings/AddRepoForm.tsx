@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { addRepo } from "@/lib/actions/repos";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./AddRepoForm.module.css";
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { addRepo } from "@/lib/actions/repos";
 import styles from "./WelcomeScreen.module.css";
 

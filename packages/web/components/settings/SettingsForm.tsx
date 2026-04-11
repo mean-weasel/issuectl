@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateSettings } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/paper";
 import { validateClaudeArgs } from "@issuectl/core/validation";
 import type { SettingKey } from "@issuectl/core";
 import styles from "./SettingsForm.module.css";

@@ -3,9 +3,9 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
 }
 
 .dot {
@@ -17,29 +17,29 @@
 
 .dotOk {
   composes: dot;
-  background: var(--green);
+  background: var(--paper-accent);
 }
 
 .dotError {
   composes: dot;
-  background: var(--red);
+  background: var(--paper-brick);
 }
 
 .text {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--paper-ink-soft);
 }
 
 .username {
-  color: var(--text-primary);
+  color: var(--paper-ink);
   font-weight: 600;
 }
 
 .code {
-  font-family: var(--font-mono);
+  font-family: var(--paper-mono);
   font-size: 12px;
-  color: var(--cyan);
-  background: var(--bg-elevated);
+  color: var(--paper-accent);
+  background: var(--paper-bg-warm);
   padding: 2px 6px;
   border-radius: 3px;
 }

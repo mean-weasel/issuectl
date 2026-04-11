@@ -3,7 +3,7 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-display);
+  font-family: var(--paper-serif);
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
@@ -21,7 +21,7 @@
 
 .label {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-bottom: 6px;
   font-weight: 600;
   text-transform: uppercase;
@@ -32,30 +32,30 @@
   width: 100%;
   max-width: 320px;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
-  font-family: var(--font-karla);
+  font-family: var(--paper-serif);
   transition: border-color 0.15s;
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--paper-accent);
 }
 
 .inputReadonly {
   composes: input;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   cursor: default;
   max-width: 240px;
 }
 
 .help {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   margin-top: 4px;
 }
 
@@ -68,17 +68,17 @@
 
 .error {
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
 }
 
 .fieldError {
   font-size: 12px;
-  color: var(--red);
+  color: var(--paper-brick);
   margin-top: 6px;
 }
 
 .fieldWarning {
   font-size: 12px;
-  color: var(--yellow);
+  color: var(--paper-butter);
   margin-top: 6px;
 }

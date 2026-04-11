@@ -1,7 +1,7 @@
 .card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-elevated);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
+  background: var(--paper-bg-warm);
   overflow: hidden;
 }
 
@@ -20,8 +20,8 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-base);
+  border-bottom: 1px solid var(--paper-line);
+  background: var(--paper-bg);
 }
 
 .typeBadge {
@@ -30,15 +30,15 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-surface);
-  color: var(--accent);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
   flex-shrink: 0;
 }
 
 .confidenceHigh {
   font-size: 11px;
-  color: var(--green);
+  color: var(--paper-accent);
   flex-shrink: 0;
 }
 
@@ -50,7 +50,7 @@
 
 .confidenceLow {
   font-size: 11px;
-  color: var(--red);
+  color: var(--paper-brick);
   flex-shrink: 0;
 }
 
@@ -61,22 +61,22 @@
 .toggleButton {
   font-size: 11px;
   padding: 3px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
+  border-radius: var(--paper-radius-sm);
+  border: 1px solid var(--paper-line);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-soft);
   cursor: pointer;
 }
 
 .toggleButton:hover {
-  background: var(--bg-hover);
+  background: var(--paper-bg-warm);
 }
 
 .toggleButtonActive {
   composes: toggleButton;
-  background: var(--green-surface);
-  border-color: var(--green-border);
-  color: var(--green);
+  background: var(--paper-accent-soft);
+  border-color: var(--paper-accent);
+  color: var(--paper-accent);
 }
 
 .body {
@@ -94,7 +94,7 @@
 
 .fieldLabel {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -103,53 +103,53 @@
 .input {
   width: 100%;
   padding: 7px 10px;
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
-  font-family: var(--font-karla), sans-serif;
+  font-family: var(--paper-serif), sans-serif;
   outline: none;
 }
 
 .input:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .textarea {
   width: 100%;
   min-height: 100px;
   padding: 8px 10px;
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 12px;
-  font-family: var(--font-mono), monospace;
+  font-family: var(--paper-mono), monospace;
   outline: none;
   resize: vertical;
   line-height: 1.5;
 }
 
 .textarea:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .select {
   width: 100%;
   padding: 7px 10px;
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
   font-size: 13px;
-  font-family: var(--font-karla), sans-serif;
+  font-family: var(--paper-serif), sans-serif;
   outline: none;
   cursor: pointer;
 }
 
 .select:focus {
-  border-color: var(--accent-border);
+  border-color: var(--paper-accent);
 }
 
 .selectUnmatched {
@@ -166,10 +166,10 @@
 
 .originalText {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--paper-ink-muted);
   font-style: italic;
   padding: 6px 10px;
-  background: var(--bg-base);
-  border-radius: var(--radius-sm);
-  border-left: 2px solid var(--border);
+  background: var(--paper-bg);
+  border-radius: var(--paper-radius-sm);
+  border-left: 2px solid var(--paper-line);
 }
