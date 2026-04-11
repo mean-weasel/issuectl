@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import { AuthErrorScreen } from "@/components/auth/AuthErrorScreen";
@@ -31,7 +31,12 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "issuectl",
   description: "Cross-repo GitHub issue command center with Claude Code launch",
-  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 type Props = {
