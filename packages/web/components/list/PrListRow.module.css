@@ -78,3 +78,20 @@
 .sep {
   color: var(--paper-ink-faint);
 }
+
+.branch {
+  font-family: var(--paper-mono);
+  font-size: 10.5px;
+  color: var(--paper-ink-muted);
+}
+
+.additions {
+  font-family: var(--paper-mono);
+  color: var(--paper-accent);
+  margin-right: -4px;
+}
+
+.deletions {
+  font-family: var(--paper-mono);
+  color: var(--paper-brick);
+}

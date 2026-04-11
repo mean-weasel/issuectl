@@ -39,6 +39,11 @@ export function PrListRow({ owner, repoName, pull }: Props) {
           <Chip>{repoName}</Chip>
           <span className={styles.num}>#{pull.number}</span>
           <span className={styles.sep}>·</span>
+          <span className={styles.branch}>{pull.headRef}</span>
+          <span className={styles.sep}>·</span>
+          <span className={styles.additions}>+{pull.additions}</span>
+          <span className={styles.deletions}>-{pull.deletions}</span>
+          <span className={styles.sep}>·</span>
           <span>{pull.merged ? "merged" : pull.state}</span>
           <span className={styles.sep}>·</span>
           <span>{formatAge(pull.updatedAt)}</span>

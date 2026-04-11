@@ -248,11 +248,13 @@
 
 2. **"saved" indicator on draft auto-save (W3)** — The saved indicator (`flashSaved()` in `DraftDetail.tsx`) is already implemented. It displays "saved" in accent color for 3 seconds after a successful blur-save. The automated test likely moved too fast to observe the flash. Code is correct at `DraftDetail.tsx:30-34` and `DraftDetail.module.css:78-84`.
 
-### Minor Issues (not fixed)
+### False Positives (cont.)
 
-3. **PR list rows missing branch/diff stats (W1)** — PR rows in the list show repo, number, status, and age, but not branch name or +/- diff stats as the workflow expects. These stats are only visible on the PR detail page. Consider updating the workflow spec to match the actual UI.
+3. **~~No toast notification on Settings save (W10)~~** — The toast IS already implemented (`SettingsForm.tsx:98-102`). `showToast("Settings saved", "success")` fires on successful save via the `ToastProvider`. The automated test likely dismissed too fast to observe the 4-second toast.
 
-4. **No toast notification on Settings save (W10)** — Settings save silently. The button returning to disabled state is the only indication. A brief toast would improve confidence.
+### Bugs (fixed)
+
+4. **~~PR list rows missing branch/diff stats (W1)~~** — FIXED. Added `headRef` branch name and `+additions / -deletions` stats to PR list rows.
 
 ---
 
@@ -261,6 +263,7 @@
 | Issue | Fix | Files Changed |
 |-------|-----|---------------|
 | Desktop nav unreachable (W11) | Added `desktopNav` links in top bar, visible at ≥768px | `List.tsx`, `List.module.css` |
+| PR list missing branch/stats (W1) | Added `headRef`, `+additions`, `-deletions` to PR rows | `PrListRow.tsx`, `PrListRow.module.css` |
 | Fixture reset script fails on existing files | Handle existing file SHA in GitHub contents API | `reset-test-fixtures.sh` |
 | Fixture reset misses draft patterns | Added "Test draft" and "Desktop draft" to cleanup query | `reset-test-fixtures.sh` |
 
