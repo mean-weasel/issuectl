@@ -89,3 +89,8 @@ export function updateDraft(
 
   return next;
 }
+
+export function deleteDraft(db: Database.Database, id: string): boolean {
+  const info = db.prepare("DELETE FROM drafts WHERE id = ?").run(id);
+  return info.changes > 0;
+}

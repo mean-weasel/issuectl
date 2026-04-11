@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
-import { createDraft, listDrafts, getDraft, updateDraft } from "./drafts.js";
+import { createDraft, listDrafts, getDraft, updateDraft, deleteDraft } from "./drafts.js";
 
 describe("createDraft", () => {
   let db: Database.Database;
@@ -134,5 +134,24 @@ describe("updateDraft", () => {
 
   it("returns null when the draft doesn't exist", () => {
     expect(updateDraft(db, "missing", { title: "x" })).toBeNull();
+  });
+});
+
+describe("deleteDraft", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("removes the draft and returns true", () => {
+    const created = createDraft(db, { title: "Goodbye" });
+    const removed = deleteDraft(db, created.id);
+    expect(removed).toBe(true);
+    expect(getDraft(db, created.id)).toBeNull();
+  });
+
+  it("returns false when the draft doesn't exist", () => {
+    expect(deleteDraft(db, "missing")).toBe(false);
   });
 });
