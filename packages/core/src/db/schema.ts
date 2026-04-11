@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -34,6 +34,25 @@ const CREATE_TABLES = `
     key        TEXT PRIMARY KEY,
     data       TEXT NOT NULL,
     fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS drafts (
+    id         TEXT PRIMARY KEY,
+    title      TEXT NOT NULL,
+    body       TEXT NOT NULL DEFAULT '',
+    priority   TEXT NOT NULL DEFAULT 'normal'
+               CHECK (priority IN ('low', 'normal', 'high')),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS issue_metadata (
+    repo_id      INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    issue_number INTEGER NOT NULL,
+    priority     TEXT NOT NULL DEFAULT 'normal'
+                 CHECK (priority IN ('low', 'normal', 'high')),
+    updated_at   INTEGER NOT NULL,
+    PRIMARY KEY (repo_id, issue_number)
   );
 
   CREATE TABLE IF NOT EXISTS schema_version (

@@ -51,6 +51,36 @@ const migrations: Migration[] = [
       db.exec(`DROP TABLE IF EXISTS claude_aliases;`);
     },
   },
+  {
+    version: 5,
+    up(db) {
+      // Adds two new tables for the Paper reskin: drafts (local-only
+      // scratchpad for issues not yet pushed to GitHub) and issue_metadata
+      // (per-issue local annotations — currently just priority, since
+      // GitHub has no native priority field). Both tables enforce the
+      // priority CHECK constraint matching the TypeScript Priority union.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS drafts (
+          id         TEXT PRIMARY KEY,
+          title      TEXT NOT NULL,
+          body       TEXT NOT NULL DEFAULT '',
+          priority   TEXT NOT NULL DEFAULT 'normal'
+                     CHECK (priority IN ('low', 'normal', 'high')),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS issue_metadata (
+          repo_id      INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+          issue_number INTEGER NOT NULL,
+          priority     TEXT NOT NULL DEFAULT 'normal'
+                       CHECK (priority IN ('low', 'normal', 'high')),
+          updated_at   INTEGER NOT NULL,
+          PRIMARY KEY (repo_id, issue_number)
+        );
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

@@ -1,4 +1,14 @@
-export type { Repo, Setting, SettingKey, Deployment, CacheEntry } from "./types.js";
+export type {
+  Repo,
+  Setting,
+  SettingKey,
+  Deployment,
+  CacheEntry,
+  Draft,
+  DraftInput,
+  Priority,
+  IssuePriority,
+} from "./types.js";
 
 export { getDb, getDbPath, dbExists, closeDb } from "./db/connection.js";
 export { initSchema, getSchemaVersion } from "./db/schema.js";
@@ -17,6 +27,22 @@ export {
   getSettings,
   seedDefaults,
 } from "./db/settings.js";
+export {
+  createDraft,
+  listDrafts,
+  getDraft,
+  updateDraft,
+  deleteDraft,
+  assignDraftToRepo,
+  type DraftUpdate,
+  type AssignDraftResult,
+} from "./db/drafts.js";
+export {
+  setPriority,
+  getPriority,
+  deletePriority,
+  listPrioritiesForRepo,
+} from "./db/priority.js";
 export {
   recordDeployment,
   getDeploymentById,
