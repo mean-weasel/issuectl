@@ -73,6 +73,13 @@
   text-decoration: underline;
 }
 
+/* Ensure touch devices never see the hover actions panel */
+@media (hover: none) {
+  .actions {
+    display: none !important;
+  }
+}
+
 @media (min-width: 768px) {
   /* On desktop, hide the meta-row assign link; hover actions panel handles it */
   .assignBtn {
