@@ -8,6 +8,9 @@ export type {
   DraftInput,
   Priority,
   IssuePriority,
+  Section,
+  UnifiedListItem,
+  UnifiedList,
 } from "./types.js";
 
 export { getDb, getDbPath, dbExists, closeDb } from "./db/connection.js";
@@ -98,6 +101,12 @@ export {
   getComments,
   addComment,
 } from "./data/comments.js";
+export {
+  getUnifiedList,
+  groupIntoSections,
+  type PerRepoData,
+  type GroupIntoSectionsInput,
+} from "./data/unified-list.js";
 
 // Launch flow
 export {
