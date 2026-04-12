@@ -111,7 +111,8 @@ export async function getIssueHeader(
 
 /**
  * Fetches the slower parts of an issue detail: comments and linked PRs.
- * Runs reconcileIssueLifecycle as a side effect on the linked PR result.
+ * Also re-fetches the issue itself to pass fresh data into
+ * reconcileIssueLifecycle — reconcile must never run on cached/stale state.
  */
 export async function getIssueContent(
   db: Database.Database,
@@ -124,6 +125,7 @@ export async function getIssueContent(
   linkedPRs: GitHubPull[];
 }> {
   const cacheKey = `issue-content:${owner}/${repo}#${number}`;
+  const headerCacheKey = `issue-header:${owner}/${repo}#${number}`;
   const ttl = getCacheTtl(db);
 
   type CachedContent = {
@@ -131,39 +133,38 @@ export async function getIssueContent(
     linkedPRs: GitHubPull[];
   };
 
+  const refreshAndReconcile = async (): Promise<{
+    issue: GitHubIssue;
+    comments: GitHubComment[];
+    linkedPRs: GitHubPull[];
+  }> => {
+    const [issue, comments, linkedPRs] = await Promise.all([
+      getIssue(octokit, owner, repo, number),
+      fetchComments(octokit, owner, repo, number),
+      findLinkedPRs(octokit, owner, repo, number),
+    ]);
+    setCached(db, cacheKey, { comments, linkedPRs });
+    setCached(db, headerCacheKey, issue);
+    try {
+      await reconcileIssueLifecycle(db, octokit, owner, repo, issue, linkedPRs);
+    } catch (err) {
+      console.warn(`[issuectl] Lifecycle reconciliation failed for #${number}:`, err);
+    }
+    return { issue, comments, linkedPRs };
+  };
+
   const cached = getCached<CachedContent>(db, cacheKey);
   if (cached) {
     if (!isFresh(cached.fetchedAt, ttl)) {
-      Promise.all([
-        fetchComments(octokit, owner, repo, number),
-        findLinkedPRs(octokit, owner, repo, number),
-      ])
-        .then(([comments, linkedPRs]) => {
-          setCached(db, cacheKey, { comments, linkedPRs });
-        })
-        .catch((err) => {
-          console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
-        });
+      // Background revalidation also runs reconcile with fresh data.
+      refreshAndReconcile().catch((err) => {
+        console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
+      });
     }
     return cached.data;
   }
 
-  const [comments, linkedPRs] = await Promise.all([
-    fetchComments(octokit, owner, repo, number),
-    findLinkedPRs(octokit, owner, repo, number),
-  ]);
-
-  setCached(db, cacheKey, { comments, linkedPRs });
-
-  // Reconcile lifecycle after content is fetched — fire-and-forget.
-  // getIssue is needed, try to reuse the header cache first.
-  const headerCached = getCached<GitHubIssue>(db, `issue-header:${owner}/${repo}#${number}`);
-  if (headerCached) {
-    reconcileIssueLifecycle(db, octokit, owner, repo, headerCached.data, linkedPRs).catch(
-      (err) => console.warn(`[issuectl] Lifecycle reconciliation failed for #${number}:`, err),
-    );
-  }
-
+  const { comments, linkedPRs } = await refreshAndReconcile();
   return { comments, linkedPRs };
 }
 

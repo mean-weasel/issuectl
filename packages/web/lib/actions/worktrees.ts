@@ -172,7 +172,17 @@ export async function cleanupWorktree(
 }
 
 export async function cleanupStaleWorktrees(): Promise<{ success: boolean; removed: number; error?: string }> {
-  const worktrees = await listWorktrees();
+  let worktrees;
+  try {
+    worktrees = await listWorktrees();
+  } catch (err) {
+    console.error("[issuectl] cleanupStaleWorktrees: failed to list worktrees:", err);
+    return {
+      success: false,
+      removed: 0,
+      error: err instanceof Error ? err.message : "Failed to read worktree directory",
+    };
+  }
   const stale = worktrees.filter((wt) => wt.stale);
 
   if (stale.length === 0) {

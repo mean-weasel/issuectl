@@ -18,6 +18,18 @@
   margin-bottom: 12px;
 }
 
+.contentError {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: var(--paper-fs-base);
+  color: var(--paper-brick);
+  padding: 16px;
+  margin-top: 16px;
+  background: rgba(184, 74, 46, 0.06);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+}
+
 @media (min-width: 768px) {
   .body {
     max-width: 820px;
