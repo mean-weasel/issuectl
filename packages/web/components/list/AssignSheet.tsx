@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sheet, Button } from "@/components/paper";
 import { listReposAction, assignDraftAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import styles from "./AssignSheet.module.css";
 
 type Repo = { id: number; owner: string; name: string };
@@ -35,8 +36,9 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
   const handleAssign = async (repoId: number) => {
     setAssigning(repoId);
     setError(null);
+    const idempotencyKey = newIdempotencyKey();
     try {
-      const result = await assignDraftAction(draftId, repoId);
+      const result = await assignDraftAction(draftId, repoId, idempotencyKey);
       if (!result.success) {
         setError(result.error);
         return;

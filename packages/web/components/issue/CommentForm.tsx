@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addComment } from "@/lib/actions/comments";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import styles from "./CommentForm.module.css";
 
 type Props = {
@@ -21,10 +22,11 @@ export function CommentForm({ owner, repo, issueNumber }: Props) {
   function handleSubmit() {
     if (!body.trim()) return;
     const text = body;
+    const idempotencyKey = newIdempotencyKey();
     setBody("");
     setError(null);
     startTransition(async () => {
-      const result = await addComment(owner, repo, issueNumber, text);
+      const result = await addComment(owner, repo, issueNumber, text, idempotencyKey);
       if (!result.success) {
         setBody(text);
         setError(result.error ?? "Failed to post comment. Please try again.");

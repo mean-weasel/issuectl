@@ -98,6 +98,31 @@ const migrations: Migration[] = [
       db.exec(`ALTER TABLE deployments ADD COLUMN state TEXT NOT NULL DEFAULT 'active';`);
     },
   },
+  {
+    version: 7,
+    up(db) {
+      // R1: action_nonces table backs the idempotency sentinel. A client
+      // generates a UUID per submission; the server claims the (nonce,
+      // action_type) pair via INSERT OR IGNORE before running the action
+      // and stores the serialized result on completion. A second call
+      // with the same nonce either replays the stored result (completed)
+      // or refuses (pending / failed). Cleanup runs opportunistically
+      // on writes — rows older than 1 hour are pruned.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS action_nonces (
+          nonce       TEXT NOT NULL,
+          action_type TEXT NOT NULL,
+          status      TEXT NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'completed', 'failed')),
+          result_json TEXT,
+          created_at  INTEGER NOT NULL,
+          PRIMARY KEY (nonce, action_type)
+        );
+        CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
+          ON action_nonces(created_at);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -56,6 +56,19 @@ const CREATE_TABLES = `
     updated_at   INTEGER NOT NULL,
     PRIMARY KEY (repo_id, issue_number)
   );
+
+  CREATE TABLE IF NOT EXISTS action_nonces (
+    nonce       TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending', 'completed', 'failed')),
+    result_json TEXT,
+    created_at  INTEGER NOT NULL,
+    PRIMARY KEY (nonce, action_type)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
+    ON action_nonces(created_at);
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL
