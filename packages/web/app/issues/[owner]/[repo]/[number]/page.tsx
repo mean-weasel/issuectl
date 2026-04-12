@@ -69,6 +69,10 @@ export default async function IssueDetailPage({
     if (status === 404 || status === 410) {
       notFound();
     }
+    console.error(
+      `[issuectl] IssueDetailPage: unexpected error fetching ${owner}/${repo}#${issueNumber}`,
+      err,
+    );
     throw err instanceof Error ? new Error(err.message) : new Error(String(err));
   }
 }

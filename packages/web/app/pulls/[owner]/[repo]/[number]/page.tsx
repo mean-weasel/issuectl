@@ -53,6 +53,10 @@ export default async function PullDetailPage({
     if (status === 404 || status === 410) {
       notFound();
     }
+    console.error(
+      `[issuectl] PullDetailPage: unexpected error fetching ${owner}/${repo}#${pullNumber}`,
+      err,
+    );
     throw err instanceof Error ? new Error(err.message) : new Error(String(err));
   }
 }
