@@ -3,7 +3,9 @@ import { getAuthStatus } from "@/lib/auth";
 
 export async function AuthSection() {
   const authResult = await getAuthStatus();
-  const username = authResult.authenticated ? authResult.username : null;
 
-  return <AuthStatus username={username} />;
+  if (authResult.authenticated) {
+    return <AuthStatus username={authResult.username} />;
+  }
+  return <AuthStatus username={null} error={authResult.error} />;
 }

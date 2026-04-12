@@ -2,15 +2,17 @@ import styles from "./AuthStatus.module.css";
 
 type Props = {
   username: string | null;
+  error?: string;
 };
 
-export function AuthStatus({ username }: Props) {
+export function AuthStatus({ username, error }: Props) {
   if (!username) {
     return (
       <div className={styles.card}>
         <span className={styles.dotError} />
         <span className={styles.text}>
-          Not authenticated — run <code className={styles.code}>gh auth login</code>
+          {error ?? "Not authenticated — run"}{" "}
+          {!error && <code className={styles.code}>gh auth login</code>}
         </span>
       </div>
     );
