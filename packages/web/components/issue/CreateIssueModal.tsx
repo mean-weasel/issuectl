@@ -134,6 +134,7 @@ export function CreateIssueModal({
           placeholder="Issue title"
           autoFocus
           disabled={isPending}
+          maxLength={256}
         />
       </div>
 
@@ -147,6 +148,7 @@ export function CreateIssueModal({
           onChange={(e) => setBody(e.target.value)}
           placeholder="Describe the issue..."
           disabled={isPending}
+          maxLength={65536}
         />
       </div>
 

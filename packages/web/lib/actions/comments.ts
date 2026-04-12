@@ -1,16 +1,30 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { getDb, getOctokit, getRepo, addComment as coreAddComment } from "@issuectl/core";
+import {
+  getDb,
+  getRepo,
+  addComment as coreAddComment,
+  withAuthRetry,
+  formatErrorForUser,
+} from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
+
+const MAX_COMMENT_BODY = 65536;
 
 export async function addComment(
   owner: string,
   repo: string,
   issueNumber: number,
   body: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (!owner || !repo || issueNumber <= 0 || !body.trim()) {
     return { success: false, error: "Invalid input" };
+  }
+  if (body.length > MAX_COMMENT_BODY) {
+    return {
+      success: false,
+      error: `Comment must be ${MAX_COMMENT_BODY} characters or fewer`,
+    };
   }
 
   try {
@@ -18,13 +32,16 @@ export async function addComment(
     if (!getRepo(db, owner, repo)) {
       return { success: false, error: "Repository is not tracked" };
     }
-    const octokit = await getOctokit();
-    await coreAddComment(db, octokit, owner, repo, issueNumber, body);
+    await withAuthRetry((octokit) =>
+      coreAddComment(db, octokit, owner, repo, issueNumber, body),
+    );
   } catch (err) {
     console.error("[issuectl] Failed to add comment:", err);
-    return { success: false, error: "Failed to post comment" };
+    return { success: false, error: formatErrorForUser(err) };
   }
-  revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
-  revalidatePath(`/${owner}/${repo}/pulls/${issueNumber}`);
-  return { success: true };
+  const { stale } = revalidateSafely(
+    `/${owner}/${repo}/issues/${issueNumber}`,
+    `/${owner}/${repo}/pulls/${issueNumber}`,
+  );
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

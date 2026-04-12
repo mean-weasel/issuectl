@@ -1,8 +1,12 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import type { TerminalLauncher, TerminalLaunchOptions, TerminalSettings } from "../terminal.js";
+import { timedExec } from "../exec-timeout.js";
 
-const execFileAsync = promisify(execFile);
+// Timeout budgets for the handful of synchronous Ghostty-probing calls.
+// `open -na Ghostty.app` returns quickly once the application receives the
+// event — 10s is generous. `which` and `--version` are similarly fast.
+const WHICH_TIMEOUT_MS = 5_000;
+const VERSION_TIMEOUT_MS = 5_000;
+const OPEN_TIMEOUT_MS = 10_000;
 
 export type GhosttyVersion = { readonly major: number; readonly minor: number; readonly patch: number };
 
@@ -55,7 +59,10 @@ const GHOSTTY_APP_BINARY = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
 
 export async function resolveGhosttyBinary(): Promise<string> {
   try {
-    await execFileAsync("which", ["ghostty"]);
+    await timedExec("which", ["ghostty"], {
+      timeoutMs: WHICH_TIMEOUT_MS,
+      step: "which ghostty",
+    });
     return "ghostty";
   } catch (err: unknown) {
     // "which" exits 1 when not found — only fall through for that case
@@ -64,7 +71,10 @@ export async function resolveGhosttyBinary(): Promise<string> {
   }
 
   try {
-    await execFileAsync(GHOSTTY_APP_BINARY, ["--version"]);
+    await timedExec(GHOSTTY_APP_BINARY, ["--version"], {
+      timeoutMs: VERSION_TIMEOUT_MS,
+      step: "ghostty --version",
+    });
     return GHOSTTY_APP_BINARY;
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
@@ -86,7 +96,10 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
       }
 
       const binary = await resolveGhosttyBinary();
-      const { stdout } = await execFileAsync(binary, ["--version"]);
+      const { stdout } = await timedExec(binary, ["--version"], {
+        timeoutMs: VERSION_TIMEOUT_MS,
+        step: "ghostty --version",
+      });
 
       const version = parseGhosttyVersion(stdout);
       if (!meetsMinVersion(version)) {
@@ -101,7 +114,10 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
       const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath, options.claudeCommand);
       const args = buildGhosttyArgs(tabTitle, shellCommand);
       try {
-        await execFileAsync("open", args);
+        await timedExec("open", args, {
+          timeoutMs: OPEN_TIMEOUT_MS,
+          step: "open -na Ghostty.app",
+        });
       } catch (err) {
         throw new Error(
           `Failed to launch Ghostty terminal. Ensure Ghostty.app is installed and accessible. ` +
@@ -112,3 +128,4 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
     },
   };
 }
+

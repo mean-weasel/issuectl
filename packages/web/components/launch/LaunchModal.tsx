@@ -12,6 +12,7 @@ import { generateBranchName } from "@/lib/branch";
 import { launchIssue } from "@/lib/actions/launch";
 import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
 import { Button } from "@/components/paper";
+import { useToast } from "@/components/ui/ToastProvider";
 import { BranchInput } from "./BranchInput";
 import { WorkspaceModeSelector } from "./WorkspaceModeSelector";
 import { ContextToggles } from "./ContextToggles";
@@ -42,6 +43,7 @@ export function LaunchModal({
   onClose,
 }: Props) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +103,10 @@ export function LaunchModal({
       if (!deploymentId) {
         setError("Launch succeeded but deployment ID was not returned");
         return;
+      }
+
+      if (result.labelWarning) {
+        showToast(result.labelWarning, "warning");
       }
 
       router.push(

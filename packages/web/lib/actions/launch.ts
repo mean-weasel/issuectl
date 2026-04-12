@@ -1,14 +1,15 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import {
   getDb,
-  getOctokit,
   getRepo,
   executeLaunch,
   endDeployment as coreEndDeployment,
+  withAuthRetry,
+  formatErrorForUser,
   type WorkspaceMode,
 } from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
 type LaunchFormData = {
   owner: string;
@@ -25,6 +26,14 @@ type LaunchResponse = {
   success: boolean;
   deploymentId?: number;
   error?: string;
+  cacheStale?: true;
+  /**
+   * Set when the `issuectl:deployed` label could not be applied after the
+   * retry budget. Launch still succeeded — the deployment row exists and
+   * the terminal opened — but the reconciler may not auto-advance this
+   * issue's lifecycle state.
+   */
+  labelWarning?: string;
 };
 
 const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
@@ -57,37 +66,42 @@ export async function launchIssue(
     return { success: false, error: "Invalid comment selection" };
   }
 
+  let deploymentId: number;
+  let labelWarning: string | undefined;
   try {
     const db = getDb();
     if (!getRepo(db, owner, repo)) {
       return { success: false, error: "Repository is not tracked" };
     }
-    const octokit = await getOctokit();
 
-    const result = await executeLaunch(db, octokit, {
-      owner,
-      repo,
-      issueNumber,
-      branchName: trimmedBranch,
-      workspaceMode,
-      selectedComments: formData.selectedCommentIndices,
-      selectedFiles: formData.selectedFilePaths,
-      preamble: formData.preamble || undefined,
-    });
-
-    try {
-      revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
-    } catch (revalErr) {
-      console.warn("[issuectl] Cache revalidation failed (launch succeeded):", revalErr);
-    }
-
-    return { success: true, deploymentId: result.deploymentId };
+    const result = await withAuthRetry((octokit) =>
+      executeLaunch(db, octokit, {
+        owner,
+        repo,
+        issueNumber,
+        branchName: trimmedBranch,
+        workspaceMode,
+        selectedComments: formData.selectedCommentIndices,
+        selectedFiles: formData.selectedFilePaths,
+        preamble: formData.preamble || undefined,
+      }),
+    );
+    deploymentId = result.deploymentId;
+    labelWarning = result.labelWarning;
   } catch (err) {
     console.error("[issuectl] Launch failed:", err);
-    const message =
-      err instanceof Error ? err.message : "Launch failed unexpectedly";
-    return { success: false, error: message };
+    return { success: false, error: formatErrorForUser(err) };
   }
+
+  const { stale } = revalidateSafely(
+    `/${owner}/${repo}/issues/${issueNumber}`,
+  );
+  return {
+    success: true,
+    deploymentId,
+    ...(stale ? { cacheStale: true as const } : {}),
+    ...(labelWarning ? { labelWarning } : {}),
+  };
 }
 
 export async function endSession(
@@ -95,7 +109,7 @@ export async function endSession(
   owner: string,
   repo: string,
   issueNumber: number,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   try {
     const db = getDb();
     coreEndDeployment(db, deploymentId);
@@ -103,7 +117,9 @@ export async function endSession(
     console.error("[issuectl] Failed to end session:", err);
     return { success: false, error: err instanceof Error ? err.message : "Failed to end session" };
   }
-  revalidatePath(`/${owner}/${repo}/issues/${issueNumber}`);
-  revalidatePath(`/${owner}/${repo}/issues/${issueNumber}/launch`);
-  return { success: true };
+  const { stale } = revalidateSafely(
+    `/${owner}/${repo}/issues/${issueNumber}`,
+    `/${owner}/${repo}/issues/${issueNumber}/launch`,
+  );
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

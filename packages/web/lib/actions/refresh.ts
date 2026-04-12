@@ -1,17 +1,27 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { getDb, getOctokit, getDashboardData } from "@issuectl/core";
+import {
+  getDb,
+  getDashboardData,
+  withAuthRetry,
+  formatErrorForUser,
+} from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
-export async function refreshDashboard(): Promise<{ success: boolean; error?: string }> {
+export async function refreshDashboard(): Promise<{
+  success: boolean;
+  error?: string;
+  cacheStale?: true;
+}> {
   try {
     const db = getDb();
-    const octokit = await getOctokit();
-    await getDashboardData(db, octokit, { forceRefresh: true });
+    await withAuthRetry((octokit) =>
+      getDashboardData(db, octokit, { forceRefresh: true }),
+    );
   } catch (err) {
     console.error("[issuectl] Dashboard refresh failed:", err);
-    return { success: false, error: "Failed to refresh dashboard data" };
+    return { success: false, error: formatErrorForUser(err) };
   }
-  revalidatePath("/");
-  return { success: true };
+  const { stale } = revalidateSafely("/");
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

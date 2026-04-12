@@ -1,12 +1,17 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { readdir, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { getDb, getSetting, listRepos, getOctokit } from "@issuectl/core";
+import {
+  getDb,
+  getSetting,
+  listRepos,
+  withAuthRetry,
+} from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
 const execFileAsync = promisify(execFile);
 
@@ -82,31 +87,26 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
 
   const worktrees = results.filter((wt): wt is WorktreeInfo => wt !== null);
 
-  // Check staleness via GitHub API — a closed issue means the worktree is stale
-  let octokit;
-  try {
-    octokit = await getOctokit();
-  } catch (err) {
-    console.warn("[issuectl] Could not authenticate with GitHub — staleness checks skipped:", err);
-    return worktrees;
-  }
-
+  // Check staleness via GitHub API — a closed issue means the worktree is stale.
+  // Each issue lookup goes through withAuthRetry so a rotated token doesn't
+  // leave the entire staleness check in the dark.
   await Promise.all(
     worktrees.map(async (wt) => {
       if (!wt.owner || !wt.repo || !wt.issueNumber) return;
 
-      // Look up the canonical repo name from tracked repos
       const repoName = repos.find(
         (r) => r.name === wt.repo || `${r.owner}-${r.name}` === wt.repo,
       )?.name;
       if (!repoName) return;
 
       try {
-        const { data } = await octokit.rest.issues.get({
-          owner: wt.owner,
-          repo: repoName,
-          issue_number: wt.issueNumber,
-        });
+        const { data } = await withAuthRetry((octokit) =>
+          octokit.rest.issues.get({
+            owner: wt.owner!,
+            repo: repoName,
+            issue_number: wt.issueNumber!,
+          }),
+        );
         wt.stale = data.state === "closed";
       } catch (err) {
         if (err && typeof err === "object" && "status" in err) {
@@ -116,7 +116,10 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
             return;
           }
         }
-        console.warn(`[issuectl] Failed to check staleness for ${wt.owner}/${repoName}#${wt.issueNumber}:`, err);
+        console.warn(
+          `[issuectl] Failed to check staleness for ${wt.owner}/${repoName}#${wt.issueNumber}:`,
+          err,
+        );
       }
     }),
   );
@@ -127,7 +130,7 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
 export async function cleanupWorktree(
   path: string,
   parentRepoPath?: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   const worktreeDir = getWorktreeDir();
   // Prevent path traversal — only allow deletion within the configured worktree directory
   const resolved = resolve(path);
@@ -149,29 +152,55 @@ export async function cleanupWorktree(
     cwd = expandHome(parentRepoPath);
   }
 
+  // R9: two-phase cleanup. Git worktree removal is best-effort (the worktree
+  // entry may already be missing from .git/worktrees). rm, however, is the
+  // source of truth — if it fails with a permission error, the directory is
+  // orphaned and we MUST surface that to the user with the full path so they
+  // can clean it up manually.
+  let gitWarning: string | null = null;
   try {
-    // Two-phase cleanup: best-effort git worktree remove, then always rm the directory
-    await execFileAsync("git", ["worktree", "remove", resolved, "--force"], { cwd }).catch(
-      (err) => {
-        console.warn("[issuectl] git worktree remove failed, will still rm directory:", err.message);
-      },
-    );
-    if (cwd) {
-      await execFileAsync("git", ["worktree", "prune"], { cwd }).catch((err) => {
-        console.warn("[issuectl] git worktree prune failed:", err.message);
-      });
-    }
-    await rm(resolved, { recursive: true, force: true });
+    await execFileAsync("git", ["worktree", "remove", resolved, "--force"], { cwd });
   } catch (err) {
-    console.error("[issuectl] Failed to cleanup worktree:", err);
-    return { success: false, error: "Failed to remove worktree" };
+    gitWarning =
+      err instanceof Error ? err.message : "git worktree remove failed";
+    console.warn("[issuectl] git worktree remove failed, will still rm directory:", gitWarning);
+  }
+  if (cwd) {
+    try {
+      await execFileAsync("git", ["worktree", "prune"], { cwd });
+    } catch (err) {
+      console.warn(
+        "[issuectl] git worktree prune failed:",
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
-  revalidatePath("/settings");
-  return { success: true };
+  try {
+    await rm(resolved, { recursive: true, force: true });
+  } catch (err) {
+    console.error(
+      "[issuectl] Failed to rm worktree directory:",
+      { path: resolved, gitWarning },
+      err,
+    );
+    const rmMessage = err instanceof Error ? err.message : String(err);
+    const errorMessage = gitWarning
+      ? `Filesystem cleanup of ${resolved} failed (${rmMessage}); the git worktree entry also had a problem earlier (${gitWarning}). Remove the directory manually and run \`git worktree prune\` in the parent repo.`
+      : `Filesystem cleanup of ${resolved} failed (${rmMessage}). Remove the directory manually.`;
+    return { success: false, error: errorMessage };
+  }
+
+  const { stale } = revalidateSafely("/settings");
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
-export async function cleanupStaleWorktrees(): Promise<{ success: boolean; removed: number; error?: string }> {
+export async function cleanupStaleWorktrees(): Promise<{
+  success: boolean;
+  removed: number;
+  error?: string;
+  cacheStale?: true;
+}> {
   let worktrees;
   try {
     worktrees = await listWorktrees();
@@ -200,13 +229,18 @@ export async function cleanupStaleWorktrees(): Promise<{ success: boolean; remov
     }
   }
 
-  revalidatePath("/settings");
+  const { stale: cacheStale } = revalidateSafely("/settings");
   if (failures.length > 0) {
     return {
       success: false,
       removed,
-      error: `Failed to remove ${failures.length} worktree(s)`,
+      error: `Failed to remove ${failures.length} worktree(s):\n${failures.join("\n")}`,
+      ...(cacheStale ? { cacheStale: true as const } : {}),
     };
   }
-  return { success: true, removed };
+  return {
+    success: true,
+    removed,
+    ...(cacheStale ? { cacheStale: true as const } : {}),
+  };
 }

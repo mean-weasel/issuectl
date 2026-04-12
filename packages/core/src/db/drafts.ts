@@ -114,6 +114,37 @@ export type AssignDraftResult = {
   issueUrl: string;
 };
 
+/**
+ * Thrown when `assignDraftToRepo` successfully creates the GitHub issue but
+ * the follow-up local DB commit (priority carryover + draft delete) fails.
+ * The issue is already on GitHub, so the error carries enough context for
+ * the UI to tell the user where their work ended up and let them recover.
+ *
+ * Callers (server actions) should catch this explicitly and surface both
+ * the human message AND the `issueNumber` / `issueUrl` to the UI — a plain
+ * catch that returns `{success: false, error: "Failed to …"}` loses the
+ * information the user needs to find their issue.
+ */
+export class DraftPartialCommitError extends Error {
+  readonly issueNumber: number;
+  readonly issueUrl: string;
+  readonly repoId: number;
+
+  constructor(
+    result: AssignDraftResult,
+    cause: unknown,
+  ) {
+    super(
+      `Issue #${result.issueNumber} was created on GitHub but the local draft cleanup failed. See ${result.issueUrl} — the draft can be deleted manually.`,
+      { cause },
+    );
+    this.name = "DraftPartialCommitError";
+    this.issueNumber = result.issueNumber;
+    this.issueUrl = result.issueUrl;
+    this.repoId = result.repoId;
+  }
+}
+
 export async function assignDraftToRepo(
   db: Database.Database,
   octokit: Octokit,
@@ -140,22 +171,28 @@ export async function assignDraftToRepo(
     body: draft.body,
   });
 
-  const issueNumber = response.data.number;
-  const issueUrl = response.data.html_url;
+  const result: AssignDraftResult = {
+    repoId,
+    issueNumber: response.data.number,
+    issueUrl: response.data.html_url,
+  };
 
   // Run the two local writes (priority carryover + draft delete) in a
   // single DB transaction after the network call succeeds. If either
   // throws, both roll back and the draft stays intact locally — but the
-  // GitHub issue already exists. The caller should surface the error so
-  // the user can manually reconcile (the issueNumber is recoverable from
-  // the exception context if needed).
-  const localCommit = db.transaction(() => {
-    if (draft.priority !== "normal") {
-      setPriority(db, repoId, issueNumber, draft.priority);
-    }
-    deleteDraft(db, draftId);
-  });
-  localCommit();
+  // GitHub issue already exists. Wrap the failure in a typed error that
+  // carries the issue number/url so the UI can point the user at it.
+  try {
+    const localCommit = db.transaction(() => {
+      if (draft.priority !== "normal") {
+        setPriority(db, repoId, result.issueNumber, draft.priority);
+      }
+      deleteDraft(db, draftId);
+    });
+    localCommit();
+  } catch (err) {
+    throw new DraftPartialCommitError(result, err);
+  }
 
-  return { repoId, issueNumber, issueUrl };
+  return result;
 }

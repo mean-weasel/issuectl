@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { getDb, setPriority, type Priority } from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
 const VALID_PRIORITIES: readonly Priority[] = ["low", "normal", "high"];
 
@@ -9,7 +9,7 @@ export async function setPriorityAction(
   repoId: number,
   issueNumber: number,
   priority: Priority,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (typeof repoId !== "number" || !Number.isInteger(repoId) || repoId <= 0) {
     return { success: false, error: "repoId must be a positive integer" };
   }
@@ -26,6 +26,6 @@ export async function setPriorityAction(
 
   const db = getDb();
   setPriority(db, repoId, issueNumber, priority);
-  revalidatePath("/");
-  return { success: true };
+  const { stale } = revalidateSafely("/");
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

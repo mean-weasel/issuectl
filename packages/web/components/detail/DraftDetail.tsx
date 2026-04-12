@@ -78,6 +78,7 @@ export function DraftDetail({ draft }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
           aria-label="Draft title"
+          maxLength={256}
         />
         <DetailMeta>
           <Chip variant="dashed">no repo</Chip>
@@ -98,6 +99,7 @@ export function DraftDetail({ draft }: Props) {
             onBlur={handleBodyBlur}
             placeholder="add a description…"
             rows={8}
+            maxLength={65536}
           />
           {savedAt !== null && (
             <div className={styles.savedIndicator}>saved</div>

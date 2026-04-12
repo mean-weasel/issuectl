@@ -63,6 +63,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           disabled={saving}
           autoFocus
           aria-label="Draft title"
+          maxLength={256}
         />
         <div className={styles.hint}>
           title only — add a body, labels, and a repo when you assign it

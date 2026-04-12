@@ -51,6 +51,7 @@ export function EditIssueForm({ owner, repo, issue, onDone }: Props) {
         placeholder="Issue title"
         disabled={isPending}
         autoFocus
+        maxLength={256}
       />
       <textarea
         className={styles.bodyInput}
@@ -58,6 +59,7 @@ export function EditIssueForm({ owner, repo, issue, onDone }: Props) {
         onChange={(e) => setBody(e.target.value)}
         placeholder="Description (markdown)"
         disabled={isPending}
+        maxLength={65536}
       />
       {error && (
         <div className={styles.error} role="alert">

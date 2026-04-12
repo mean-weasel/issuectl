@@ -29,6 +29,10 @@
   border-left: 3px solid var(--paper-brick);
 }
 
+.warning {
+  border-left: 3px solid var(--paper-amber, var(--paper-brick));
+}
+
 .message {
   flex: 1;
 }
