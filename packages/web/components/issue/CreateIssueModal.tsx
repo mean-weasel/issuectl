@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/paper";
 import type { RepoOption } from "@/lib/types";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { LabelSelector } from "./LabelSelector";
 import styles from "./CreateIssueModal.module.css";
 
@@ -45,6 +46,11 @@ export function CreateIssueModal({
 
   function handleSubmit() {
     setError(null);
+    // A fresh nonce per click — a replay at the server layer (proxy,
+    // React internal retry, etc.) sees the same nonce and returns the
+    // stored result; a genuine retry after a failure also gets a fresh
+    // nonce because this function runs again.
+    const idempotencyKey = newIdempotencyKey();
     startTransition(async () => {
       const result = await createIssue({
         owner: selectedRepo.owner,
@@ -52,6 +58,7 @@ export function CreateIssueModal({
         title,
         body: body || undefined,
         labels: selectedLabels.length > 0 ? selectedLabels : undefined,
+        idempotencyKey,
       });
 
       if (!result.success) {

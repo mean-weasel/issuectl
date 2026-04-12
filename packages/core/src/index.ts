@@ -68,6 +68,12 @@ export {
   clearCacheKey,
   clearCache,
 } from "./db/cache.js";
+export {
+  withIdempotency,
+  pruneExpiredNonces,
+  isValidNonce,
+  DuplicateInFlightError,
+} from "./db/idempotency.js";
 // GitHub client
 export type {
   GitHubUser,

@@ -22,6 +22,7 @@ describe("initSchema", () => {
 
     const names = tables.map((t) => t.name);
     expect(names).toEqual([
+      "action_nonces",
       "cache",
       "deployments",
       "drafts",
@@ -32,15 +33,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 6", () => {
+  it("sets schema_version to 7", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
   });
 });
 
@@ -57,10 +58,10 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
   });
 
-  it("migrates v1 schema through v6 and drops claude_aliases", () => {
+  it("migrates v1 schema through v7 and drops claude_aliases", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -73,14 +74,14 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v2 schema to v6 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state)", () => {
+  it("migrates v2 schema to v7 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state+action_nonces)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE claude_aliases (id INTEGER PRIMARY KEY, command TEXT, description TEXT, is_default INTEGER, created_at TEXT);
@@ -91,7 +92,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -99,7 +100,7 @@ describe("runMigrations", () => {
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v3 schema to v6 and drops populated claude_aliases (data loss is intentional)", () => {
+  it("migrates v3 schema to v7 and drops populated claude_aliases (data loss is intentional)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -134,7 +135,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -150,10 +151,10 @@ describe("runMigrations", () => {
 });
 
 describe("schema v5 — drafts and issue_metadata", () => {
-  it("initSchema on a fresh DB produces schema version 6", () => {
+  it("initSchema on a fresh DB produces schema version 7", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -187,7 +188,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
     ).toThrow();
   });
 
-  it("migration from v4 → v6 adds drafts, issue_metadata, and deployments.state", () => {
+  it("migration from v4 → v7 adds drafts, issue_metadata, deployments.state, and action_nonces", () => {
     const db = createRawTestDb();
     // Simulate a v4 DB: run the v4-era schema manually. The deployments
     // table is included here because v6's migration does ALTER TABLE on it.
@@ -219,7 +220,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(6);
+    expect(getSchemaVersion(db)).toBe(7);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",

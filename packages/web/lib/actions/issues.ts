@@ -10,6 +10,8 @@ import {
   removeLabel as coreRemoveLabel,
   clearCacheKey,
   withAuthRetry,
+  withIdempotency,
+  DuplicateInFlightError,
   formatErrorForUser,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
@@ -23,13 +25,20 @@ export async function createIssue(data: {
   title: string;
   body?: string;
   labels?: string[];
+  /**
+   * Idempotency nonce — optional but strongly recommended for any
+   * client-originated call. If present, a second call with the same nonce
+   * replays the stored result rather than creating a duplicate issue on
+   * GitHub. Generated client-side via `crypto.randomUUID()` per submission.
+   */
+  idempotencyKey?: string;
 }): Promise<{
   success: boolean;
   issueNumber?: number;
   error?: string;
   cacheStale?: true;
 }> {
-  const { owner, repo, title, body, labels } = data;
+  const { owner, repo, title, body, labels, idempotencyKey } = data;
   if (!owner || !repo || !title.trim()) {
     return { success: false, error: "Owner, repo, and title are required" };
   }
@@ -46,16 +55,28 @@ export async function createIssue(data: {
     if (!getRepo(db, owner, repo)) {
       return { success: false, error: "Repository is not tracked" };
     }
-    const issue = await withAuthRetry((octokit) =>
-      coreCreateIssue(octokit, owner, repo, {
-        title: title.trim(),
-        body: body?.trim() || undefined,
-        labels,
-      }),
-    );
-    clearCacheKey(db, `issues:${owner}/${repo}`);
-    issueNumber = issue.number;
+    const runCreate = async () => {
+      const issue = await withAuthRetry((octokit) =>
+        coreCreateIssue(octokit, owner, repo, {
+          title: title.trim(),
+          body: body?.trim() || undefined,
+          labels,
+        }),
+      );
+      clearCacheKey(db, `issues:${owner}/${repo}`);
+      return { number: issue.number };
+    };
+    const result = idempotencyKey
+      ? await withIdempotency(db, "create-issue", idempotencyKey, runCreate)
+      : await runCreate();
+    issueNumber = result.number;
   } catch (err) {
+    if (err instanceof DuplicateInFlightError) {
+      return {
+        success: false,
+        error: "This issue is already being created — please wait.",
+      };
+    }
     console.error("[issuectl] Failed to create issue:", err);
     return { success: false, error: formatErrorForUser(err) };
   }

@@ -5,6 +5,8 @@ import {
   getRepo,
   addComment as coreAddComment,
   withAuthRetry,
+  withIdempotency,
+  DuplicateInFlightError,
   formatErrorForUser,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
@@ -16,6 +18,7 @@ export async function addComment(
   repo: string,
   issueNumber: number,
   body: string,
+  idempotencyKey?: string,
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (!owner || !repo || issueNumber <= 0 || !body.trim()) {
     return { success: false, error: "Invalid input" };
@@ -32,10 +35,24 @@ export async function addComment(
     if (!getRepo(db, owner, repo)) {
       return { success: false, error: "Repository is not tracked" };
     }
-    await withAuthRetry((octokit) =>
-      coreAddComment(db, octokit, owner, repo, issueNumber, body),
-    );
+    const runAddComment = async () => {
+      await withAuthRetry((octokit) =>
+        coreAddComment(db, octokit, owner, repo, issueNumber, body),
+      );
+      return null;
+    };
+    if (idempotencyKey) {
+      await withIdempotency(db, "add-comment", idempotencyKey, runAddComment);
+    } else {
+      await runAddComment();
+    }
   } catch (err) {
+    if (err instanceof DuplicateInFlightError) {
+      return {
+        success: false,
+        error: "This comment is already being posted — please wait.",
+      };
+    }
     console.error("[issuectl] Failed to add comment:", err);
     return { success: false, error: formatErrorForUser(err) };
   }

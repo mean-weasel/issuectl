@@ -6,6 +6,8 @@ import {
   executeLaunch,
   endDeployment as coreEndDeployment,
   withAuthRetry,
+  withIdempotency,
+  DuplicateInFlightError,
   formatErrorForUser,
   type WorkspaceMode,
 } from "@issuectl/core";
@@ -20,6 +22,7 @@ type LaunchFormData = {
   selectedCommentIndices: number[];
   selectedFilePaths: string[];
   preamble?: string;
+  idempotencyKey?: string;
 };
 
 type LaunchResponse = {
@@ -74,21 +77,36 @@ export async function launchIssue(
       return { success: false, error: "Repository is not tracked" };
     }
 
-    const result = await withAuthRetry((octokit) =>
-      executeLaunch(db, octokit, {
-        owner,
-        repo,
-        issueNumber,
-        branchName: trimmedBranch,
-        workspaceMode,
-        selectedComments: formData.selectedCommentIndices,
-        selectedFiles: formData.selectedFilePaths,
-        preamble: formData.preamble || undefined,
-      }),
-    );
+    const runLaunch = async () => {
+      const r = await withAuthRetry((octokit) =>
+        executeLaunch(db, octokit, {
+          owner,
+          repo,
+          issueNumber,
+          branchName: trimmedBranch,
+          workspaceMode,
+          selectedComments: formData.selectedCommentIndices,
+          selectedFiles: formData.selectedFilePaths,
+          preamble: formData.preamble || undefined,
+        }),
+      );
+      return {
+        deploymentId: r.deploymentId,
+        labelWarning: r.labelWarning ?? null,
+      };
+    };
+    const result = formData.idempotencyKey
+      ? await withIdempotency(db, "launch-issue", formData.idempotencyKey, runLaunch)
+      : await runLaunch();
     deploymentId = result.deploymentId;
-    labelWarning = result.labelWarning;
+    labelWarning = result.labelWarning ?? undefined;
   } catch (err) {
+    if (err instanceof DuplicateInFlightError) {
+      return {
+        success: false,
+        error: "This launch is already in progress — please wait.",
+      };
+    }
     console.error("[issuectl] Launch failed:", err);
     return { success: false, error: formatErrorForUser(err) };
   }

@@ -13,6 +13,7 @@ import { launchIssue } from "@/lib/actions/launch";
 import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { BranchInput } from "./BranchInput";
 import { WorkspaceModeSelector } from "./WorkspaceModeSelector";
 import { ContextToggles } from "./ContextToggles";
@@ -82,6 +83,7 @@ export function LaunchModal({
 
   function handleLaunch() {
     setError(null);
+    const idempotencyKey = newIdempotencyKey();
     startTransition(async () => {
       const result = await launchIssue({
         owner,
@@ -92,6 +94,7 @@ export function LaunchModal({
         selectedCommentIndices: selectedComments,
         selectedFilePaths: selectedFiles,
         preamble: preamble.trim() || undefined,
+        idempotencyKey,
       });
 
       if (!result.success) {

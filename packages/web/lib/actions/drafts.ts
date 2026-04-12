@@ -7,6 +7,8 @@ import {
   listRepos,
   updateDraft,
   withAuthRetry,
+  withIdempotency,
+  DuplicateInFlightError,
   formatErrorForUser,
   DraftPartialCommitError,
   type DraftInput,
@@ -130,6 +132,7 @@ export async function updateDraftAction(
 export async function assignDraftAction(
   draftId: string,
   repoId: number,
+  idempotencyKey?: string,
 ): Promise<
   | {
       success: true;
@@ -160,32 +163,54 @@ export async function assignDraftAction(
   let cleanupWarning: string | undefined;
   try {
     const db = getDb();
-    const result = await withAuthRetry((octokit) =>
-      assignDraftToRepo(db, octokit, draftId, repoId),
-    );
+    const runAssign = async () => {
+      try {
+        const result = await withAuthRetry((octokit) =>
+          assignDraftToRepo(db, octokit, draftId, repoId),
+        );
+        return {
+          issueNumber: result.issueNumber,
+          issueUrl: result.issueUrl,
+          cleanupWarning: null as string | null,
+        };
+      } catch (err) {
+        if (err instanceof DraftPartialCommitError) {
+          // The GitHub issue exists — return it as a "success with warning"
+          // so the idempotency sentinel stores it as completed and a retry
+          // replays the same issueNumber rather than creating a duplicate.
+          console.warn(
+            "[issuectl] assignDraftAction partial commit",
+            { draftId, repoId, issueNumber: err.issueNumber },
+            err,
+          );
+          return {
+            issueNumber: err.issueNumber,
+            issueUrl: err.issueUrl,
+            cleanupWarning: err.message,
+          };
+        }
+        throw err;
+      }
+    };
+    const result = idempotencyKey
+      ? await withIdempotency(db, "assign-draft", idempotencyKey, runAssign)
+      : await runAssign();
     issueNumber = result.issueNumber;
     issueUrl = result.issueUrl;
+    cleanupWarning = result.cleanupWarning ?? undefined;
   } catch (err) {
-    if (err instanceof DraftPartialCommitError) {
-      // The GitHub issue exists — surface it as a success with a cleanup
-      // warning rather than a hard failure. The user needs the link to
-      // find their work.
-      console.warn(
-        "[issuectl] assignDraftAction partial commit",
-        { draftId, repoId, issueNumber: err.issueNumber },
-        err,
-      );
-      issueNumber = err.issueNumber;
-      issueUrl = err.issueUrl;
-      cleanupWarning = err.message;
-    } else {
-      console.error(
-        "[issuectl] assignDraftAction failed",
-        { draftId, repoId },
-        err,
-      );
-      return { success: false, error: formatErrorForUser(err) };
+    if (err instanceof DuplicateInFlightError) {
+      return {
+        success: false,
+        error: "This draft is already being assigned — please wait.",
+      };
     }
+    console.error(
+      "[issuectl] assignDraftAction failed",
+      { draftId, repoId },
+      err,
+    );
+    return { success: false, error: formatErrorForUser(err) };
   }
 
   const { stale } = revalidateSafely("/");
