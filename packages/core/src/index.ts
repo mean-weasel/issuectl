@@ -77,6 +77,12 @@ export type {
 export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit } from "./github/client.js";
 export {
+  classifyGitHubError,
+  formatErrorForUser,
+  type ClassifiedError,
+  type GitHubErrorKind,
+} from "./github/errors.js";
+export {
   createIssue,
   updateIssue,
   closeIssue,

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { writeFile, unlink } from "node:fs/promises";
+import { writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { ParsedIssuesResponse } from "./types.js";
@@ -50,6 +50,23 @@ export async function parseIssues(
     };
   }
 
+  // Guarantee the temp prompt file is removed regardless of how the child
+  // process exits — timeout kill, error event, close event, or the caller
+  // being cancelled. `rm` with force:true swallows ENOENT so a duplicate
+  // cleanup is harmless.
+  try {
+    return await runClaudeCli(promptFilePath, contextPrompt, userInput, timeoutMs);
+  } finally {
+    await rm(promptFilePath, { force: true }).catch(() => {});
+  }
+}
+
+function runClaudeCli(
+  promptFilePath: string,
+  contextPrompt: string,
+  userInput: string,
+  timeoutMs: number,
+): Promise<ParseResult> {
   const fullPrompt = `${contextPrompt}\n\n---\n\n## User Input\n\n${userInput}`;
 
   const args = [
@@ -83,7 +100,6 @@ export async function parseIssues(
     const finish = (result: ParseResult) => {
       if (settled) return;
       settled = true;
-      unlink(promptFilePath).catch(() => {});
       resolve(result);
     };
 
