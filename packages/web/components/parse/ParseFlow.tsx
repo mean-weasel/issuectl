@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { GitHubLabel, ParsedIssuesResponse, BatchCreateResult } from "@issuectl/core";
 import type { RepoOption } from "@/lib/types";
+import { getErrorHint } from "@/lib/getErrorHint";
 import { ParseInput } from "./ParseInput";
 import { ParseReview } from "./ParseReview";
 import { ParseResults } from "./ParseResults";
@@ -14,12 +15,22 @@ type Props = {
   repos: RepoOption[];
   labelsPerRepo: Record<string, GitHubLabel[]>;
   claudeAvailable: boolean;
+  initError?: string;
 };
 
-export function ParseFlow({ repos, labelsPerRepo, claudeAvailable }: Props) {
+export function ParseFlow({ repos, labelsPerRepo, claudeAvailable, initError }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [parsedData, setParsedData] = useState<ParsedIssuesResponse | null>(null);
   const [results, setResults] = useState<BatchCreateResult | null>(null);
+
+  if (initError) {
+    const hint = getErrorHint(initError);
+    return (
+      <div className={styles.unavailable} role="alert">
+        {hint ?? initError}
+      </div>
+    );
+  }
 
   if (!claudeAvailable) {
     return (

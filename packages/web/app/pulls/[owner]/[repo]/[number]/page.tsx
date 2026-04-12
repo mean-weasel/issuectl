@@ -47,10 +47,16 @@ export default async function PullDetailPage({
       />
     );
   } catch (err) {
+    const status = err !== null && err !== undefined && typeof err === "object" && "status" in err
+      ? (err as { status: number }).status
+      : undefined;
+    if (status === 404 || status === 410) {
+      notFound();
+    }
     console.error(
-      `[issuectl] PullDetailPage: failed to fetch ${owner}/${repo}#${pullNumber}`,
+      `[issuectl] PullDetailPage: unexpected error fetching ${owner}/${repo}#${pullNumber}`,
       err,
     );
-    notFound();
+    throw err instanceof Error ? new Error(err.message) : new Error(String(err));
   }
 }
