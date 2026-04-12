@@ -37,7 +37,7 @@
 .hint {
   font-family: var(--paper-serif);
   font-style: italic;
-  font-size: 12.5px;
+  font-size: var(--paper-fs-sm);
   color: var(--paper-ink-faint);
   padding: 14px 16px;
   background: var(--paper-bg-warm);
@@ -78,7 +78,7 @@
 .savedIndicator {
   font-family: var(--paper-serif);
   font-style: italic;
-  font-size: 11.5px;
+  font-size: var(--paper-fs-xs);
   color: var(--paper-accent);
   margin-top: 6px;
 }

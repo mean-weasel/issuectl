@@ -1,13 +1,16 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
   getDb,
   getOctokit,
-  getIssueDetail,
+  getIssueHeader,
   getRepo,
   getPriority,
 } from "@issuectl/core";
 import { IssueDetail } from "@/components/detail/IssueDetail";
+import { IssueDetailContent } from "@/components/detail/IssueDetailContent";
+import styles from "./loading.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +29,16 @@ export async function generateMetadata({
   return { title: `#${number} — ${owner}/${repo} — issuectl` };
 }
 
+function ContentSkeleton() {
+  return (
+    <>
+      <div className={styles.bodyBlock} />
+      <div className={styles.commentBlock} />
+      <div className={styles.commentBlock} />
+    </>
+  );
+}
+
 export default async function IssueDetailPage({
   params,
 }: {
@@ -41,7 +54,13 @@ export default async function IssueDetailPage({
   const octokit = await getOctokit();
 
   try {
-    const detail = await getIssueDetail(db, octokit, owner, repo, issueNumber);
+    const { issue, deployments, referencedFiles } = await getIssueHeader(
+      db,
+      octokit,
+      owner,
+      repo,
+      issueNumber,
+    );
     const repoRecord = getRepo(db, owner, repo);
     const repoId = repoRecord?.id ?? 0;
     const currentPriority = repoId > 0
@@ -53,14 +72,20 @@ export default async function IssueDetailPage({
         owner={owner}
         repoName={repo}
         repoId={repoId}
-        repoLocalPath={repoRecord?.localPath ?? null}
         currentPriority={currentPriority}
-        issue={detail.issue}
-        comments={detail.comments}
-        deployments={detail.deployments}
-        linkedPRs={detail.linkedPRs}
-        referencedFiles={detail.referencedFiles}
-      />
+        issue={issue}
+      >
+        <Suspense fallback={<ContentSkeleton />}>
+          <IssueDetailContent
+            owner={owner}
+            repoName={repo}
+            repoLocalPath={repoRecord?.localPath ?? null}
+            issue={issue}
+            deployments={deployments}
+            referencedFiles={referencedFiles}
+          />
+        </Suspense>
+      </IssueDetail>
     );
   } catch (err) {
     const status = err !== null && err !== undefined && typeof err === "object" && "status" in err

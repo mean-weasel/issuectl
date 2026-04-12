@@ -24,7 +24,7 @@
 .hint {
   font-family: var(--paper-serif);
   font-style: italic;
-  font-size: 11.5px;
+  font-size: var(--paper-fs-xs);
   color: var(--paper-ink-faint);
   margin-bottom: 18px;
 }
@@ -37,7 +37,7 @@
 
 .error {
   font-family: var(--paper-serif);
-  font-size: 12.5px;
+  font-size: var(--paper-fs-sm);
   color: var(--paper-brick);
   margin-bottom: 10px;
 }

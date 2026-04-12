@@ -81,7 +81,7 @@
 
 .branch {
   font-family: var(--paper-mono);
-  font-size: 10.5px;
+  font-size: var(--paper-fs-xs);
   color: var(--paper-ink-muted);
 }
 

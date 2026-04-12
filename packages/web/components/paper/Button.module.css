@@ -58,7 +58,7 @@
 
 .sm {
   padding: 7px 14px;
-  font-size: 12.5px;
+  font-size: var(--paper-fs-sm);
 }
 
 .md {

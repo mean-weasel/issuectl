@@ -93,6 +93,8 @@ export {
 export {
   getIssues,
   getIssueDetail,
+  getIssueHeader,
+  getIssueContent,
 } from "./data/issues.js";
 export {
   getPulls,

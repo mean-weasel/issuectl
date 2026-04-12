@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getDb, getOctokit, getRepo } from "@issuectl/core";
+import { getDb, getOctokit, getRepo, clearCacheKey } from "@issuectl/core";
 
 export async function mergePullAction(
   owner: string,
@@ -31,6 +31,11 @@ export async function mergePullAction(
       repo,
       pull_number: pullNumber,
     });
+    // Clear the PR detail cache so the re-rendered page shows merged state
+    // instead of the pre-merge snapshot (otherwise the top StateChip stays
+    // "open" until TTL expiry, contradicting the "merged successfully" banner).
+    clearCacheKey(db, `pull-detail:${owner}/${repo}#${pullNumber}`);
+    clearCacheKey(db, `pulls:${owner}/${repo}`);
     revalidatePath(`/pulls/${owner}/${repo}/${pullNumber}`);
     revalidatePath("/");
     return { success: true };

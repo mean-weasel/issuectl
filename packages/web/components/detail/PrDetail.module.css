@@ -108,7 +108,7 @@
 
 .mergeError {
   font-family: var(--paper-serif);
-  font-size: 12.5px;
+  font-size: var(--paper-fs-sm);
   color: var(--paper-brick);
   margin-top: -12px;
   margin-bottom: 20px;

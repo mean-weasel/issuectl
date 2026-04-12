@@ -20,6 +20,18 @@
   --paper-radius-lg:    10px;
   --paper-radius-xl:    14px;
 
+  /* Type scale — keep in sync with usage counts in CSS modules.
+     Consolidates 20+ font sizes down to a 9-step scale. */
+  --paper-fs-xs:        11px;
+  --paper-fs-sm:        12px;
+  --paper-fs-base:      13px;
+  --paper-fs-md:        14px;
+  --paper-fs-lg:        16px;
+  --paper-fs-xl:        18px;
+  --paper-fs-2xl:       22px;
+  --paper-fs-3xl:       26px;
+  --paper-fs-4xl:       36px;
+
   --paper-shadow-card:   0 12px 30px rgba(26, 23, 18, 0.08);
   --paper-shadow-modal:  0 40px 100px rgba(26, 23, 18, 0.35);
   --paper-shadow-sheet:  0 -20px 60px rgba(0, 0, 0, 0.25);

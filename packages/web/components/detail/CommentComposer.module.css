@@ -55,7 +55,7 @@
 
 .hint {
   font-family: var(--paper-sans);
-  font-size: 10.5px;
+  font-size: var(--paper-fs-xs);
   color: var(--paper-ink-faint);
 }
 

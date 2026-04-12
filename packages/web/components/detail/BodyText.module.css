@@ -1,7 +1,7 @@
 .body {
   font-family: var(--paper-serif);
   font-weight: 400;
-  font-size: 15.5px;
+  font-size: var(--paper-fs-lg);
   line-height: 1.65;
   color: var(--paper-ink-soft);
   margin-bottom: 28px;
