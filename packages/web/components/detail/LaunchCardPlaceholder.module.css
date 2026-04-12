@@ -29,7 +29,7 @@
 
 .card p {
   font-family: var(--paper-serif);
-  font-size: 12.5px;
+  font-size: var(--paper-fs-sm);
   color: var(--paper-ink-muted);
   margin-bottom: 14px;
   line-height: 1.5;

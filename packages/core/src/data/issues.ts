@@ -60,6 +60,113 @@ export async function getIssues(
   return { issues, fromCache: false, cachedAt: new Date() };
 }
 
+/**
+ * Fetches only the issue itself (no comments or linked PRs) plus local data
+ * needed to render the issue header. Used by the detail page to stream the
+ * above-the-fold content before the slower comments/PRs fetch.
+ */
+export async function getIssueHeader(
+  db: Database.Database,
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<{
+  issue: GitHubIssue;
+  deployments: Deployment[];
+  referencedFiles: string[];
+}> {
+  const cacheKey = `issue-header:${owner}/${repo}#${number}`;
+  const ttl = getCacheTtl(db);
+  const repoRecord = getRepo(db, owner, repo);
+
+  const deployments = repoRecord
+    ? getDeploymentsForIssue(db, repoRecord.id, number)
+    : [];
+
+  const cached = getCached<GitHubIssue>(db, cacheKey);
+  if (cached) {
+    if (!isFresh(cached.fetchedAt, ttl)) {
+      getIssue(octokit, owner, repo, number)
+        .then((issue) => setCached(db, cacheKey, issue))
+        .catch((err) => {
+          console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
+        });
+    }
+    return {
+      issue: cached.data,
+      deployments,
+      referencedFiles: extractReferencedFiles(cached.data.body),
+    };
+  }
+
+  const issue = await getIssue(octokit, owner, repo, number);
+  setCached(db, cacheKey, issue);
+  return {
+    issue,
+    deployments,
+    referencedFiles: extractReferencedFiles(issue.body),
+  };
+}
+
+/**
+ * Fetches the slower parts of an issue detail: comments and linked PRs.
+ * Runs reconcileIssueLifecycle as a side effect on the linked PR result.
+ */
+export async function getIssueContent(
+  db: Database.Database,
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<{
+  comments: GitHubComment[];
+  linkedPRs: GitHubPull[];
+}> {
+  const cacheKey = `issue-content:${owner}/${repo}#${number}`;
+  const ttl = getCacheTtl(db);
+
+  type CachedContent = {
+    comments: GitHubComment[];
+    linkedPRs: GitHubPull[];
+  };
+
+  const cached = getCached<CachedContent>(db, cacheKey);
+  if (cached) {
+    if (!isFresh(cached.fetchedAt, ttl)) {
+      Promise.all([
+        fetchComments(octokit, owner, repo, number),
+        findLinkedPRs(octokit, owner, repo, number),
+      ])
+        .then(([comments, linkedPRs]) => {
+          setCached(db, cacheKey, { comments, linkedPRs });
+        })
+        .catch((err) => {
+          console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
+        });
+    }
+    return cached.data;
+  }
+
+  const [comments, linkedPRs] = await Promise.all([
+    fetchComments(octokit, owner, repo, number),
+    findLinkedPRs(octokit, owner, repo, number),
+  ]);
+
+  setCached(db, cacheKey, { comments, linkedPRs });
+
+  // Reconcile lifecycle after content is fetched — fire-and-forget.
+  // getIssue is needed, try to reuse the header cache first.
+  const headerCached = getCached<GitHubIssue>(db, `issue-header:${owner}/${repo}#${number}`);
+  if (headerCached) {
+    reconcileIssueLifecycle(db, octokit, owner, repo, headerCached.data, linkedPRs).catch(
+      (err) => console.warn(`[issuectl] Lifecycle reconciliation failed for #${number}:`, err),
+    );
+  }
+
+  return { comments, linkedPRs };
+}
+
 export async function getIssueDetail(
   db: Database.Database,
   octokit: Octokit,

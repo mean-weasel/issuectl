@@ -42,8 +42,10 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
     if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
     }
-    console.error("[issuectl] Failed to read worktree directory:", err);
-    return [];
+    // EACCES, ENOTDIR, ELOOP, and other filesystem errors indicate a
+    // misconfigured worktree directory — surface them so settings can
+    // show a real error instead of silently hiding worktrees.
+    throw err;
   }
 
   const db = getDb();

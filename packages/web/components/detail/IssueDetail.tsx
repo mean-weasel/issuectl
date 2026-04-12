@@ -1,10 +1,5 @@
-import type {
-  Deployment,
-  GitHubIssue,
-  GitHubComment,
-  GitHubPull,
-  Priority,
-} from "@issuectl/core";
+import type { ReactNode } from "react";
+import type { GitHubIssue, Priority } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { timeAgo } from "@/lib/format";
 import { DetailTopBar } from "./DetailTopBar";
@@ -15,9 +10,6 @@ import {
   MetaNum,
 } from "./DetailMeta";
 import { BodyText } from "./BodyText";
-import { CommentList } from "./CommentList";
-import { CommentComposer } from "./CommentComposer";
-import { LaunchCard } from "./LaunchCard";
 import { PriorityPicker } from "./PriorityPicker";
 import styles from "./IssueDetail.module.css";
 
@@ -25,26 +17,19 @@ type Props = {
   owner: string;
   repoName: string;
   repoId: number;
-  repoLocalPath: string | null;
   currentPriority: Priority;
   issue: GitHubIssue;
-  comments: GitHubComment[];
-  deployments: Deployment[];
-  linkedPRs: GitHubPull[];
-  referencedFiles: string[];
+  /** Rendered after the body — used by the page to stream launch/comments. */
+  children?: ReactNode;
 };
 
 export function IssueDetail({
   owner,
   repoName,
   repoId,
-  repoLocalPath,
   currentPriority,
   issue,
-  comments,
-  deployments,
-  linkedPRs: _linkedPRs,
-  referencedFiles,
+  children,
 }: Props) {
   const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
@@ -85,22 +70,8 @@ export function IssueDetail({
           />
         </DetailMeta>
 
-        <LaunchCard
-          owner={owner}
-          repo={repoName}
-          repoLocalPath={repoLocalPath}
-          issue={issue}
-          comments={comments}
-          deployments={deployments}
-          referencedFiles={referencedFiles}
-        />
         <BodyText body={issue.body} />
-        <CommentList comments={comments} />
-        <CommentComposer
-          owner={owner}
-          repo={repoName}
-          issueNumber={issue.number}
-        />
+        {children}
       </div>
     </div>
   );

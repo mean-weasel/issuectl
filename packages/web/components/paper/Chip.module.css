@@ -5,7 +5,7 @@
   padding: 2px 8px;
   border-radius: var(--paper-radius-sm);
   font-family: var(--paper-mono);
-  font-size: 10.5px;
+  font-size: var(--paper-fs-xs);
   font-weight: 600;
   letter-spacing: 0.3px;
   white-space: nowrap;

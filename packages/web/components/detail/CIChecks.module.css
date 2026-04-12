@@ -13,7 +13,7 @@
   padding: 9px 0;
   border-bottom: 1px solid var(--paper-line-soft);
   font-family: var(--paper-serif);
-  font-size: 12.5px;
+  font-size: var(--paper-fs-sm);
   color: var(--paper-ink-soft);
 }
 
@@ -50,7 +50,7 @@
 
 .detail {
   font-family: var(--paper-sans);
-  font-size: 10.5px;
+  font-size: var(--paper-fs-xs);
   color: var(--paper-ink-faint);
 }
 
