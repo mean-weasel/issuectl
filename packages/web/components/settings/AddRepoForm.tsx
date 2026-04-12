@@ -64,6 +64,7 @@ export function AddRepoForm({ onClose }: Props) {
             value={ownerRepo}
             onChange={(e) => setOwnerRepo(e.target.value)}
             placeholder="owner/repo (e.g., mean-weasel/seatify)"
+            disabled={isPending}
             autoFocus
           />
         </div>
@@ -74,6 +75,7 @@ export function AddRepoForm({ onClose }: Props) {
             value={localPath}
             onChange={(e) => setLocalPath(e.target.value)}
             placeholder="~/Desktop/seatify"
+            disabled={isPending}
           />
           <div className={styles.pathHint}>Leave blank to prompt on launch</div>
         </div>
