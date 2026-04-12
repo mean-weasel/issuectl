@@ -32,15 +32,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 5", () => {
+  it("sets schema_version to 6", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
   });
 });
 
@@ -57,10 +57,10 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
   });
 
-  it("migrates v1 schema through v5 and drops claude_aliases", () => {
+  it("migrates v1 schema through v6 and drops claude_aliases", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -73,14 +73,14 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v2 schema to v5 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata)", () => {
+  it("migrates v2 schema to v6 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE claude_aliases (id INTEGER PRIMARY KEY, command TEXT, description TEXT, is_default INTEGER, created_at TEXT);
@@ -91,7 +91,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -99,7 +99,7 @@ describe("runMigrations", () => {
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v3 schema to v5 and drops populated claude_aliases (data loss is intentional)", () => {
+  it("migrates v3 schema to v6 and drops populated claude_aliases (data loss is intentional)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -134,7 +134,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -150,10 +150,10 @@ describe("runMigrations", () => {
 });
 
 describe("schema v5 — drafts and issue_metadata", () => {
-  it("initSchema on a fresh DB produces schema version 5", () => {
+  it("initSchema on a fresh DB produces schema version 6", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -187,9 +187,10 @@ describe("schema v5 — drafts and issue_metadata", () => {
     ).toThrow();
   });
 
-  it("migration from v4 → v5 adds drafts and issue_metadata to an existing DB", () => {
+  it("migration from v4 → v6 adds drafts, issue_metadata, and deployments.state", () => {
     const db = createRawTestDb();
-    // Simulate a v4 DB: run the v4-era schema manually
+    // Simulate a v4 DB: run the v4-era schema manually. The deployments
+    // table is included here because v6's migration does ALTER TABLE on it.
     db.exec(`
       CREATE TABLE schema_version (version INTEGER NOT NULL);
       INSERT INTO schema_version (version) VALUES (4);
@@ -202,12 +203,23 @@ describe("schema v5 — drafts and issue_metadata", () => {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(owner, name)
       );
+      CREATE TABLE deployments (
+        id INTEGER PRIMARY KEY,
+        repo_id INTEGER,
+        issue_number INTEGER,
+        branch_name TEXT,
+        workspace_mode TEXT,
+        workspace_path TEXT,
+        linked_pr_number INTEGER,
+        launched_at TEXT,
+        ended_at TEXT
+      );
     `);
     expect(getSchemaVersion(db)).toBe(4);
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(5);
+    expect(getSchemaVersion(db)).toBe(6);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -220,5 +232,12 @@ describe("schema v5 — drafts and issue_metadata", () => {
       )
       .get();
     expect(meta).toBeDefined();
+    // v6 ALTER should have added the state column with default 'active'
+    const cols = db
+      .prepare("PRAGMA table_info(deployments)")
+      .all() as { name: string; dflt_value: string | null }[];
+    const stateCol = cols.find((c) => c.name === "state");
+    expect(stateCol).toBeDefined();
+    expect(stateCol?.dflt_value).toContain("active");
   });
 });
