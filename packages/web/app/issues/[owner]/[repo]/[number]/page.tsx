@@ -63,10 +63,12 @@ export default async function IssueDetailPage({
       />
     );
   } catch (err) {
-    const status = (err as { status?: number }).status;
+    const status = err !== null && err !== undefined && typeof err === "object" && "status" in err
+      ? (err as { status: number }).status
+      : undefined;
     if (status === 404 || status === 410) {
       notFound();
     }
-    throw err;
+    throw err instanceof Error ? new Error(err.message) : new Error(String(err));
   }
 }

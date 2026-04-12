@@ -1,7 +1,10 @@
 export function getErrorHint(message: string): string | null {
   const lower = message.toLowerCase();
-  if (lower.includes("rate limit") || lower.includes("403")) {
+  if (lower.includes("rate limit")) {
     return "This may be a GitHub rate limit — wait a moment and try again.";
+  }
+  if (lower.includes("403")) {
+    return "GitHub denied access (403) — this could be a rate limit, or you may lack permission for this resource.";
   }
   if (lower.includes("401") || lower.includes("auth") || lower.includes("token")) {
     return "Your GitHub token may have expired — re-run `gh auth login` in your terminal.";
