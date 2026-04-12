@@ -45,7 +45,7 @@
 
 .noPath {
   composes: path;
-  color: var(--paper-butter);
+  color: #8a6914;
 }
 
 .actions {

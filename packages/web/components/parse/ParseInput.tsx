@@ -52,6 +52,7 @@ export function ParseInput({ onParsed }: Props) {
         placeholder="e.g. Fix the login timeout bug in seatify and add search functionality to the dashboard..."
         disabled={isPending}
         autoFocus
+        aria-label="Issue description for Claude to parse"
       />
       <div className={styles.footer}>
         <Button

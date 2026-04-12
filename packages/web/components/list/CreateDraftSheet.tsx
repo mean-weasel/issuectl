@@ -27,11 +27,15 @@ export function CreateDraftSheet({ open, onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await createDraftAction({ title });
+      const result = await createDraftAction({ title });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
       setTitle("");
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save draft");
+    } catch {
+      setError("Failed to save draft");
     } finally {
       setSaving(false);
     }
@@ -58,6 +62,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           disabled={saving}
           autoFocus
+          aria-label="Draft title"
         />
         <div className={styles.hint}>
           title only — add a body, labels, and a repo when you assign it

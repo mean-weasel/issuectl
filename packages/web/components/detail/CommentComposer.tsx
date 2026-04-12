@@ -52,6 +52,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
         placeholder="write a comment…"
         rows={3}
         disabled={sending}
+        aria-label="Comment body"
       />
       {error && <div className={styles.error}>{error}</div>}
       <div className={styles.footer}>

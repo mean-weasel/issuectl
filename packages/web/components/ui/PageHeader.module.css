@@ -40,6 +40,7 @@
   color: var(--paper-ink-soft);
   text-decoration: none;
   cursor: pointer;
+  padding: 8px 4px;
 }
 
 .breadcrumb a:hover {

@@ -52,6 +52,7 @@
   color: var(--paper-accent);
   font-size: 13px;
   font-weight: 500;
+  padding: 8px 12px;
 }
 
 .link:hover {

@@ -52,7 +52,7 @@ function validateBody(body: unknown): string | undefined {
 
 export async function createDraftAction(
   input: DraftInput,
-): Promise<{ id: string }> {
+): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
     const title = validateTitle(input.title);
     const body = validateBody(input.body);
@@ -61,10 +61,10 @@ export async function createDraftAction(
     const db = getDb();
     const draft = createDraft(db, { title, body, priority });
     revalidatePath("/");
-    return { id: draft.id };
+    return { success: true, id: draft.id };
   } catch (err) {
     console.error("[issuectl] createDraftAction failed", err);
-    throw err;
+    return { success: false, error: "Failed to create draft" };
   }
 }
 
@@ -79,43 +79,60 @@ export async function listReposAction(): Promise<
 export async function updateDraftAction(
   draftId: string,
   update: DraftUpdate,
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   if (typeof draftId !== "string" || draftId.length === 0) {
-    throw new Error("draftId must be a non-empty string");
+    return { success: false, error: "draftId must be a non-empty string" };
   }
-  const db = getDb();
-  updateDraft(db, draftId, update);
-  revalidatePath("/");
-  revalidatePath(`/drafts/${draftId}`);
+  if (update.title !== undefined) validateTitle(update.title);
+  if (update.body !== undefined) validateBody(update.body);
+  if (update.priority !== undefined) validatePriority(update.priority);
+
+  try {
+    const db = getDb();
+    updateDraft(db, draftId, update);
+    revalidatePath("/");
+    revalidatePath(`/drafts/${draftId}`);
+    return { success: true };
+  } catch (err) {
+    console.error("[issuectl] updateDraftAction failed", err);
+    return { success: false, error: "Failed to update draft" };
+  }
 }
 
 export async function assignDraftAction(
   draftId: string,
   repoId: number,
-): Promise<{ issueNumber: number; issueUrl: string }> {
-  try {
-    if (typeof draftId !== "string" || draftId.length === 0) {
-      throw new Error("draftId must be a non-empty string");
-    }
-    if (
-      typeof repoId !== "number" ||
-      !Number.isInteger(repoId) ||
-      repoId <= 0
-    ) {
-      throw new Error("repoId must be a positive integer");
-    }
+): Promise<
+  | { success: true; issueNumber: number; issueUrl: string }
+  | { success: false; error: string }
+> {
+  if (typeof draftId !== "string" || draftId.length === 0) {
+    return { success: false, error: "draftId must be a non-empty string" };
+  }
+  if (
+    typeof repoId !== "number" ||
+    !Number.isInteger(repoId) ||
+    repoId <= 0
+  ) {
+    return { success: false, error: "repoId must be a positive integer" };
+  }
 
+  try {
     const db = getDb();
     const octokit = await getOctokit();
     const result = await assignDraftToRepo(db, octokit, draftId, repoId);
     revalidatePath("/");
-    return { issueNumber: result.issueNumber, issueUrl: result.issueUrl };
+    return {
+      success: true,
+      issueNumber: result.issueNumber,
+      issueUrl: result.issueUrl,
+    };
   } catch (err) {
     console.error(
       "[issuectl] assignDraftAction failed",
       { draftId, repoId },
       err,
     );
-    throw err;
+    return { success: false, error: "Failed to assign draft to repo" };
   }
 }

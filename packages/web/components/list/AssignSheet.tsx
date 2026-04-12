@@ -34,10 +34,14 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
     setAssigning(repoId);
     setError(null);
     try {
-      await assignDraftAction(draftId, repoId);
+      const result = await assignDraftAction(draftId, repoId);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to assign draft");
+    } catch {
+      setError("Failed to assign draft");
     } finally {
       setAssigning(null);
     }

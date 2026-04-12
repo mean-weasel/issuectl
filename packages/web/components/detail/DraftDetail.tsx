@@ -35,14 +35,17 @@ export function DraftDetail({ draft }: Props) {
 
   const handleTitleBlur = async () => {
     const trimmed = title.trim();
-    // Don't save blank titles or unchanged titles.
     if (trimmed.length === 0 || trimmed === draft.title) {
       if (trimmed.length === 0) setTitle(draft.title);
       return;
     }
     setSaveError(null);
     try {
-      await updateDraftAction(draft.id, { title: trimmed });
+      const result = await updateDraftAction(draft.id, { title: trimmed });
+      if (!result.success) {
+        setSaveError(result.error ?? "Failed to save title");
+        return;
+      }
       flashSaved();
     } catch {
       setSaveError("Failed to save title — try again");
@@ -53,7 +56,11 @@ export function DraftDetail({ draft }: Props) {
     if (body === (draft.body ?? "")) return;
     setSaveError(null);
     try {
-      await updateDraftAction(draft.id, { body });
+      const result = await updateDraftAction(draft.id, { body });
+      if (!result.success) {
+        setSaveError(result.error ?? "Failed to save");
+        return;
+      }
       flashSaved();
     } catch {
       setSaveError("Failed to save — try again");
@@ -64,6 +71,7 @@ export function DraftDetail({ draft }: Props) {
     <div className={styles.container}>
       <DetailTopBar backHref="/" crumb={<em>draft</em>} />
       <div className={styles.body}>
+        <h1 className={styles.srOnly}>{title || "Untitled draft"}</h1>
         <input
           className={styles.titleInput}
           value={title}

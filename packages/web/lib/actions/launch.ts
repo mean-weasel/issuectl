@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   getDb,
   getOctokit,
+  getRepo,
   executeLaunch,
   endDeployment as coreEndDeployment,
   type WorkspaceMode,
@@ -58,6 +59,9 @@ export async function launchIssue(
 
   try {
     const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
     const octokit = await getOctokit();
 
     const result = await executeLaunch(db, octokit, {

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getDb, getOctokit, addComment as coreAddComment } from "@issuectl/core";
+import { getDb, getOctokit, getRepo, addComment as coreAddComment } from "@issuectl/core";
 
 export async function addComment(
   owner: string,
@@ -15,6 +15,9 @@ export async function addComment(
 
   try {
     const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
     const octokit = await getOctokit();
     await coreAddComment(db, octokit, owner, repo, issueNumber, body);
   } catch (err) {
