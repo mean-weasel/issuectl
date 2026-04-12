@@ -16,3 +16,16 @@
   align-items: center;
   justify-content: space-between;
 }
+
+.sectionSkeleton {
+  height: 40px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

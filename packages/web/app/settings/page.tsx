@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   getDb,
@@ -8,15 +9,17 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { TrackedRepos } from "@/components/settings/TrackedRepos";
 import { SettingsForm } from "@/components/settings/SettingsForm";
-import { AuthStatus } from "@/components/settings/AuthStatus";
-import { WorktreeCleanup } from "@/components/settings/WorktreeCleanup";
-import { listWorktrees } from "@/lib/actions/worktrees";
-import { getAuthStatus } from "@/lib/auth";
+import { WorktreeSection } from "./WorktreeSection";
+import { AuthSection } from "./AuthSection";
 import type { Metadata } from "next";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = { title: "Settings — issuectl" };
 export const dynamic = "force-dynamic";
+
+function SectionSkeleton() {
+  return <div className={styles.sectionSkeleton} />;
+}
 
 export default async function SettingsPage() {
   if (!dbExists()) {
@@ -35,7 +38,6 @@ export default async function SettingsPage() {
   const db = getDb();
   const repos = listRepos(db);
   const settings = getSettings(db);
-  // Fallback defaults match DEFAULT_SETTINGS in core/db/settings.ts
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
   const cacheTTL = settingMap.cache_ttl ?? "300";
@@ -43,15 +45,6 @@ export default async function SettingsPage() {
   const windowTitle = settingMap.terminal_window_title ?? "issuectl";
   const tabTitlePattern = settingMap.terminal_tab_title_pattern ?? "#{number} — {title}";
   const claudeExtraArgs = settingMap.claude_extra_args ?? "";
-
-  const [authResult, worktrees] = await Promise.all([
-    getAuthStatus(),
-    listWorktrees().catch((err) => {
-      console.error("[issuectl] Failed to list worktrees:", err);
-      return [] as Awaited<ReturnType<typeof listWorktrees>>;
-    }),
-  ]);
-  const username = authResult.authenticated ? authResult.username : null;
 
   return (
     <>
@@ -73,12 +66,16 @@ export default async function SettingsPage() {
 
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Worktrees</div>
-          <WorktreeCleanup worktrees={worktrees} />
+          <Suspense fallback={<SectionSkeleton />}>
+            <WorktreeSection />
+          </Suspense>
         </section>
 
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Authentication</div>
-          <AuthStatus username={username} />
+          <Suspense fallback={<SectionSkeleton />}>
+            <AuthSection />
+          </Suspense>
         </section>
       </div>
     </>
