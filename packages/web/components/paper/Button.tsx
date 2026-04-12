@@ -30,7 +30,7 @@ export function Button({
     .join(" ");
 
   return (
-    <button className={classes} {...rest}>
+    <button type={rest.type ?? "button"} className={classes} {...rest}>
       {children}
     </button>
   );

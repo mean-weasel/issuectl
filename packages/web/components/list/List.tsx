@@ -58,9 +58,9 @@ export function List({ data, activeTab, prCount, prs, username }: Props) {
   return (
     <div className={styles.container}>
       <div className={styles.topBar}>
-        <div className={styles.brand}>
+        <h1 className={styles.brand}>
           issuectl<span className={styles.dot} />
-        </div>
+        </h1>
         <nav className={styles.desktopNav}>
           <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
           <span className={styles.desktopNavSep}>·</span>
@@ -77,18 +77,18 @@ export function List({ data, activeTab, prCount, prs, username }: Props) {
 
       {/* Desktop: date + tabs inline. Mobile: tabs only, date in drawer. */}
       <div className={styles.tabs}>
-        <a
+        <Link
           href="/"
           className={`${styles.tab} ${activeTab === "issues" ? styles.on : ""}`}
         >
           Issues<span className={styles.count}>{issueCount}</span>
-        </a>
-        <a
+        </Link>
+        <Link
           href="/?tab=prs"
           className={`${styles.tab} ${activeTab === "prs" ? styles.on : ""}`}
         >
           Pull requests<span className={styles.count}>{prCount}</span>
-        </a>
+        </Link>
         <div className={styles.desktopDate}>
           {weekday} · <b>{short}</b>
         </div>

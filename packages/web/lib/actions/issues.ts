@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   getDb,
   getOctokit,
+  getRepo,
   createIssue as coreCreateIssue,
   updateIssue as coreUpdateIssue,
   closeIssue as coreCloseIssue,
@@ -26,6 +27,9 @@ export async function createIssue(data: {
 
   try {
     const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
     const octokit = await getOctokit();
     const issue = await coreCreateIssue(octokit, owner, repo, {
       title: title.trim(),
@@ -58,6 +62,9 @@ export async function updateIssue(data: {
 
   try {
     const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
     const octokit = await getOctokit();
     await coreUpdateIssue(octokit, owner, repo, number, {
       title: title?.trim(),
@@ -84,6 +91,9 @@ export async function closeIssue(
 
   try {
     const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
     const octokit = await getOctokit();
     await coreCloseIssue(octokit, owner, repo, number);
     clearCacheKey(db, `issue-detail:${owner}/${repo}#${number}`);
@@ -110,6 +120,9 @@ export async function toggleLabel(data: {
 
   try {
     const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
     const octokit = await getOctokit();
     if (action === "add") {
       await coreAddLabel(octokit, owner, repo, number, label);

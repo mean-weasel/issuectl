@@ -37,7 +37,8 @@
   flex-shrink: 0;
 }
 
-.item:hover .actions {
+.item:hover .actions,
+.item:focus-within .actions {
   display: flex;
 }
 
@@ -77,15 +78,14 @@
   text-decoration: underline;
 }
 
-/* Ensure touch devices never see the hover actions panel */
+/* On touch devices, always show the actions panel since hover isn't available */
 @media (hover: none) {
   .actions {
-    display: none !important;
+    display: flex;
   }
 }
 
-@media (min-width: 768px) {
-  /* On desktop, hide the meta-row assign link; hover actions panel handles it */
+@media (min-width: 768px) and (hover: hover) {
   .assignBtn {
     display: none;
   }
