@@ -81,6 +81,23 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 6,
+    up(db) {
+      // R2: deployments now have an explicit lifecycle state. "pending"
+      // covers the narrow window during executeLaunch between writing the
+      // DB row and the terminal actually opening — if the terminal launch
+      // fails, the launch flow deletes the pending row as a clean rollback.
+      // Existing rows migrate to "active" (they pre-date the state column
+      // and are already live).
+      //
+      // SQLite can't ADD COLUMN with a CHECK constraint, so we add the
+      // column with a DEFAULT and rely on the application layer to insert
+      // only valid values going forward. The CREATE TABLE for fresh
+      // installs in schema.ts does include the CHECK constraint.
+      db.exec(`ALTER TABLE deployments ADD COLUMN state TEXT NOT NULL DEFAULT 'active';`);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

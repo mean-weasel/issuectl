@@ -3,6 +3,7 @@ export type {
   Setting,
   SettingKey,
   Deployment,
+  DeploymentState,
   CacheEntry,
   Draft,
   DraftInput,
@@ -56,6 +57,8 @@ export {
   getDeploymentsByRepo,
   updateLinkedPR,
   endDeployment,
+  activateDeployment,
+  deletePendingDeployment,
 } from "./db/deployments.js";
 export {
   getCacheTtl,

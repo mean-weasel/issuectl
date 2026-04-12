@@ -2,7 +2,11 @@ import type Database from "better-sqlite3";
 import type { Octokit } from "@octokit/rest";
 import { getRepo } from "../db/repos.js";
 import { getSetting } from "../db/settings.js";
-import { recordDeployment } from "../db/deployments.js";
+import {
+  recordDeployment,
+  activateDeployment,
+  deletePendingDeployment,
+} from "../db/deployments.js";
 import { getIssueDetail } from "../data/issues.js";
 import { ensureLifecycleLabels, addLabel } from "../github/labels.js";
 import { LIFECYCLE_LABEL } from "../github/labels.js";
@@ -161,13 +165,16 @@ export async function executeLaunch(
     console.warn("[issuectl] Failed to apply deployed label after retries:", err);
   }
 
-  // 8. Record deployment in DB
+  // 8. Record deployment in DB as pending. This row is INVISIBLE to the
+  // UI and reconciler until step 9 succeeds — if the terminal launch
+  // fails, we delete the row in the catch and no one ever saw it.
   const deployment = recordDeployment(db, {
     repoId: repoRecord.id,
     issueNumber: options.issueNumber,
     branchName: options.branchName,
     workspaceMode: options.workspaceMode,
     workspacePath: workspace.path,
+    state: "pending",
   });
 
   // 9. Open terminal
@@ -178,15 +185,36 @@ export async function executeLaunch(
   // value looks dangerous, we fall back to plain "claude" and log a warning.
   const claudeCommand = buildClaudeCommand(getSetting(db, "claude_extra_args"));
   console.warn(`[issuectl] launching: ${claudeCommand}`);
-  await launcher.launch({
-    workspacePath: workspace.path,
-    contextFilePath,
-    issueNumber: options.issueNumber,
-    issueTitle: detail.issue.title,
-    owner: options.owner,
-    repo: options.repo,
-    claudeCommand,
-  });
+  try {
+    await launcher.launch({
+      workspacePath: workspace.path,
+      contextFilePath,
+      issueNumber: options.issueNumber,
+      issueTitle: detail.issue.title,
+      owner: options.owner,
+      repo: options.repo,
+      claudeCommand,
+    });
+  } catch (err) {
+    // Terminal launch failed — unwind the pending deployment row so the
+    // UI doesn't show a phantom active session. The workspace artifacts
+    // (branch, worktree/clone directory) stay put since they may be
+    // valuable; only the DB state is rolled back.
+    try {
+      deletePendingDeployment(db, deployment.id);
+    } catch (rollbackErr) {
+      console.error(
+        "[issuectl] Failed to roll back pending deployment after launch failure",
+        { deploymentId: deployment.id },
+        rollbackErr,
+      );
+    }
+    throw err;
+  }
+
+  // 9b. Flip pending → active. The deployment is now visible to the UI
+  // and reconciler.
+  activateDeployment(db, deployment.id);
 
   // 10. Return result
   return {

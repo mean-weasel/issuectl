@@ -24,6 +24,8 @@ export type Setting = {
 import type { WorkspaceMode } from "./launch/workspace.js";
 import type { GitHubIssue } from "./github/types.js";
 
+export type DeploymentState = "pending" | "active";
+
 export type Deployment = {
   id: number;
   repoId: number;
@@ -32,6 +34,14 @@ export type Deployment = {
   workspaceMode: WorkspaceMode;
   workspacePath: string;
   linkedPrNumber: number | null;
+  /**
+   * Lifecycle state of the deployment row. "pending" is a transient
+   * staging state used only by the launch flow — written before the
+   * terminal is opened and flipped to "active" on success (or deleted
+   * on failure). UI and reconciler queries filter out pending rows;
+   * only the rollback path in executeLaunch sees them.
+   */
+  state: DeploymentState;
   launchedAt: string;
   endedAt: string | null;
 };
