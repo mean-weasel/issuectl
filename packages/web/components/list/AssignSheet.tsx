@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sheet, Button } from "@/components/paper";
 import { listReposAction, assignDraftAction } from "@/lib/actions/drafts";
+import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./AssignSheet.module.css";
 
 type Repo = { id: number; owner: string; name: string };
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
+  const { showToast } = useToast();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<number | null>(null);
@@ -38,6 +40,11 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
       if (!result.success) {
         setError(result.error);
         return;
+      }
+      if (result.cleanupWarning) {
+        showToast(result.cleanupWarning, "warning");
+      } else {
+        showToast(`Issue #${result.issueNumber} created`, "success");
       }
       onClose();
     } catch {

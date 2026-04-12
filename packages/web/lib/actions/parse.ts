@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import {
   getDb,
   getOctokit,
@@ -10,12 +9,15 @@ import {
   clearCacheKey,
   parseIssues,
   formatRepoContext,
+  withAuthRetry,
+  formatErrorForUser,
 } from "@issuectl/core";
 import type {
   ParsedIssuesResponse,
   ReviewedIssue,
   BatchCreateResult,
 } from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
 type ParseActionResult =
   | { success: true; data: { parsed: ParsedIssuesResponse } }
@@ -65,8 +67,10 @@ export async function parseNaturalLanguage(
     return { success: true, data: { parsed: result.data } };
   } catch (err) {
     console.error("[issuectl] Failed to parse natural language:", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return { success: false, error: `Failed to parse input: ${message}` };
+    return {
+      success: false,
+      error: `Failed to parse input: ${formatErrorForUser(err)}`,
+    };
   }
 }
 
@@ -81,7 +85,6 @@ export async function batchCreateIssues(
 
   try {
     const db = getDb();
-    const octokit = await getOctokit();
 
     const results = await Promise.all(
       accepted.map(async (issue) => {
@@ -96,11 +99,13 @@ export async function batchCreateIssues(
         }
 
         try {
-          const created = await coreCreateIssue(octokit, issue.owner, issue.repo, {
-            title: issue.title.trim(),
-            body: issue.body.trim() || undefined,
-            labels: issue.labels.length > 0 ? issue.labels : undefined,
-          });
+          const created = await withAuthRetry((octokit) =>
+            coreCreateIssue(octokit, issue.owner, issue.repo, {
+              title: issue.title.trim(),
+              body: issue.body.trim() || undefined,
+              labels: issue.labels.length > 0 ? issue.labels : undefined,
+            }),
+          );
 
           clearCacheKey(db, `issues:${issue.owner}/${issue.repo}`);
 
@@ -119,7 +124,7 @@ export async function batchCreateIssues(
           return {
             id: issue.id,
             success: false as const,
-            error: err instanceof Error ? err.message : "Unknown error",
+            error: formatErrorForUser(err),
             owner: issue.owner,
             repo: issue.repo,
           };
@@ -132,9 +137,7 @@ export async function batchCreateIssues(
         .filter((r) => r.success)
         .map((r) => `/${r.owner}/${r.repo}`),
     );
-    for (const repoPath of affectedRepos) {
-      revalidatePath(repoPath);
-    }
+    revalidateSafely(...affectedRepos);
 
     return {
       created: results.filter((r) => r.success).length,

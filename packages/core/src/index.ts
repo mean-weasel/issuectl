@@ -39,6 +39,7 @@ export {
   updateDraft,
   deleteDraft,
   assignDraftToRepo,
+  DraftPartialCommitError,
   type DraftUpdate,
   type AssignDraftResult,
 } from "./db/drafts.js";
@@ -75,7 +76,7 @@ export type {
   GitHubPullFile,
 } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
-export { getOctokit, resetOctokit } from "./github/client.js";
+export { getOctokit, resetOctokit, withAuthRetry } from "./github/client.js";
 export {
   classifyGitHubError,
   formatErrorForUser,

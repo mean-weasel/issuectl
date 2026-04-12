@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import styles from "./Toast.module.css";
 
-export type ToastType = "success" | "error";
+export type ToastType = "success" | "error" | "warning";
 
 type ToastData = {
   message: string;
@@ -45,7 +45,7 @@ export function Toast({ toast, onDismiss }: Props) {
     <div
       className={cn(styles.toast, styles[toast.type])}
       data-exiting={exiting ? "true" : undefined}
-      role={toast.type === "error" ? "alert" : "status"}
+      role={toast.type === "error" || toast.type === "warning" ? "alert" : "status"}
     >
       <span className={styles.message}>{toast.message}</span>
       <button className={styles.dismiss} onClick={handleDismiss} aria-label="Dismiss">

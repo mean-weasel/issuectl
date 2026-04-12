@@ -1,19 +1,23 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import {
   getDb,
-  getOctokit,
   createDraft,
   assignDraftToRepo,
   listRepos,
   updateDraft,
+  withAuthRetry,
+  formatErrorForUser,
+  DraftPartialCommitError,
   type DraftInput,
   type DraftUpdate,
   type Priority,
 } from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
 const VALID_PRIORITIES: readonly Priority[] = ["low", "normal", "high"];
+const MAX_TITLE = 256;
+const MAX_BODY = 65536;
 
 // Server actions are HTTP endpoints reachable with arbitrary request bodies,
 // not just via the UI. Validate shape at the boundary so untrusted clients
@@ -25,6 +29,9 @@ function validateTitle(title: unknown): string {
   }
   if (title.trim().length === 0) {
     throw new Error("Draft title must not be empty");
+  }
+  if (title.length > MAX_TITLE) {
+    throw new Error(`Draft title must be ${MAX_TITLE} characters or fewer`);
   }
   return title;
 }
@@ -47,12 +54,19 @@ function validateBody(body: unknown): string | undefined {
   if (typeof body !== "string") {
     throw new Error("Draft body must be a string");
   }
+  if (body.length > MAX_BODY) {
+    throw new Error(`Draft body must be ${MAX_BODY} characters or fewer`);
+  }
   return body;
 }
 
 export async function createDraftAction(
   input: DraftInput,
-): Promise<{ success: true; id: string } | { success: false; error: string }> {
+): Promise<
+  | { success: true; id: string; cacheStale?: true }
+  | { success: false; error: string }
+> {
+  let draftId: string;
   try {
     const title = validateTitle(input.title);
     const body = validateBody(input.body);
@@ -60,12 +74,20 @@ export async function createDraftAction(
 
     const db = getDb();
     const draft = createDraft(db, { title, body, priority });
-    revalidatePath("/");
-    return { success: true, id: draft.id };
+    draftId = draft.id;
   } catch (err) {
     console.error("[issuectl] createDraftAction failed", err);
-    return { success: false, error: "Failed to create draft" };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to create draft",
+    };
   }
+  const { stale } = revalidateSafely("/");
+  return {
+    success: true,
+    id: draftId,
+    ...(stale ? { cacheStale: true as const } : {}),
+  };
 }
 
 export async function listReposAction(): Promise<
@@ -79,31 +101,47 @@ export async function listReposAction(): Promise<
 export async function updateDraftAction(
   draftId: string,
   update: DraftUpdate,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (typeof draftId !== "string" || draftId.length === 0) {
     return { success: false, error: "draftId must be a non-empty string" };
   }
-  if (update.title !== undefined) validateTitle(update.title);
-  if (update.body !== undefined) validateBody(update.body);
-  if (update.priority !== undefined) validatePriority(update.priority);
+  try {
+    if (update.title !== undefined) validateTitle(update.title);
+    if (update.body !== undefined) validateBody(update.body);
+    if (update.priority !== undefined) validatePriority(update.priority);
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Invalid draft update",
+    };
+  }
 
   try {
     const db = getDb();
     updateDraft(db, draftId, update);
-    revalidatePath("/");
-    revalidatePath(`/drafts/${draftId}`);
-    return { success: true };
   } catch (err) {
     console.error("[issuectl] updateDraftAction failed", err);
     return { success: false, error: "Failed to update draft" };
   }
+  const { stale } = revalidateSafely("/", `/drafts/${draftId}`);
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
 export async function assignDraftAction(
   draftId: string,
   repoId: number,
 ): Promise<
-  | { success: true; issueNumber: number; issueUrl: string }
+  | {
+      success: true;
+      issueNumber: number;
+      issueUrl: string;
+      // Set when the GitHub issue was created successfully but the local
+      // draft cleanup failed (DraftPartialCommitError). The caller should
+      // show the user the issue URL AND surface the warning so they know
+      // to delete the lingering draft manually.
+      cleanupWarning?: string;
+      cacheStale?: true;
+    }
   | { success: false; error: string }
 > {
   if (typeof draftId !== "string" || draftId.length === 0) {
@@ -117,22 +155,45 @@ export async function assignDraftAction(
     return { success: false, error: "repoId must be a positive integer" };
   }
 
+  let issueNumber: number;
+  let issueUrl: string;
+  let cleanupWarning: string | undefined;
   try {
     const db = getDb();
-    const octokit = await getOctokit();
-    const result = await assignDraftToRepo(db, octokit, draftId, repoId);
-    revalidatePath("/");
-    return {
-      success: true,
-      issueNumber: result.issueNumber,
-      issueUrl: result.issueUrl,
-    };
-  } catch (err) {
-    console.error(
-      "[issuectl] assignDraftAction failed",
-      { draftId, repoId },
-      err,
+    const result = await withAuthRetry((octokit) =>
+      assignDraftToRepo(db, octokit, draftId, repoId),
     );
-    return { success: false, error: "Failed to assign draft to repo" };
+    issueNumber = result.issueNumber;
+    issueUrl = result.issueUrl;
+  } catch (err) {
+    if (err instanceof DraftPartialCommitError) {
+      // The GitHub issue exists — surface it as a success with a cleanup
+      // warning rather than a hard failure. The user needs the link to
+      // find their work.
+      console.warn(
+        "[issuectl] assignDraftAction partial commit",
+        { draftId, repoId, issueNumber: err.issueNumber },
+        err,
+      );
+      issueNumber = err.issueNumber;
+      issueUrl = err.issueUrl;
+      cleanupWarning = err.message;
+    } else {
+      console.error(
+        "[issuectl] assignDraftAction failed",
+        { draftId, repoId },
+        err,
+      );
+      return { success: false, error: formatErrorForUser(err) };
+    }
   }
+
+  const { stale } = revalidateSafely("/");
+  return {
+    success: true,
+    issueNumber,
+    issueUrl,
+    ...(cleanupWarning ? { cleanupWarning } : {}),
+    ...(stale ? { cacheStale: true as const } : {}),
+  };
 }

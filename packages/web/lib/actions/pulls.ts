@@ -1,13 +1,19 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { getDb, getOctokit, getRepo, clearCacheKey } from "@issuectl/core";
+import {
+  getDb,
+  getRepo,
+  clearCacheKey,
+  withAuthRetry,
+  formatErrorForUser,
+} from "@issuectl/core";
+import { revalidateSafely } from "@/lib/revalidate";
 
 export async function mergePullAction(
   owner: string,
   repo: string,
   pullNumber: number,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (typeof owner !== "string" || owner.trim().length === 0) {
     return { success: false, error: "Invalid owner" };
   }
@@ -25,29 +31,30 @@ export async function mergePullAction(
   }
 
   try {
-    const octokit = await getOctokit();
-    await octokit.rest.pulls.merge({
-      owner,
-      repo,
-      pull_number: pullNumber,
-    });
+    await withAuthRetry((octokit) =>
+      octokit.rest.pulls.merge({
+        owner,
+        repo,
+        pull_number: pullNumber,
+      }),
+    );
     // Clear the PR detail cache so the re-rendered page shows merged state
     // instead of the pre-merge snapshot (otherwise the top StateChip stays
     // "open" until TTL expiry, contradicting the "merged successfully" banner).
     clearCacheKey(db, `pull-detail:${owner}/${repo}#${pullNumber}`);
     clearCacheKey(db, `pulls:${owner}/${repo}`);
-    revalidatePath(`/pulls/${owner}/${repo}/${pullNumber}`);
-    revalidatePath("/");
-    return { success: true };
   } catch (err) {
     console.error(
       "[issuectl] mergePullAction failed",
       { owner, repo, pullNumber },
       err,
     );
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Merge failed",
-    };
+    return { success: false, error: formatErrorForUser(err) };
   }
+
+  const { stale } = revalidateSafely(
+    `/pulls/${owner}/${repo}/${pullNumber}`,
+    "/",
+  );
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

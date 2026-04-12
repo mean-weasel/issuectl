@@ -30,6 +30,14 @@ export interface LaunchResult {
   branchName: string;
   workspacePath: string;
   contextFilePath: string;
+  /**
+   * Set when the `issuectl:deployed` label could not be applied after the
+   * retry budget was exhausted. Launch continues in that case — the workspace
+   * and deployment row are valid — but the lifecycle reconciler won't pick
+   * up this issue until the label is added by some other path. Surface this
+   * to the UI so the user knows the state has drifted.
+   */
+  labelWarning?: string;
 }
 
 function expandHome(p: string): string {
@@ -130,19 +138,27 @@ export async function executeLaunch(
 
   // Steps 7-9 have side effects — if one fails, earlier artifacts remain.
   // Workspace cleanup is not attempted since the branch/files may be valuable.
+  let labelWarning: string | undefined;
   try {
-    // 7. Apply issuectl:deployed label
+    // 7. Apply issuectl:deployed label. Retry up to 3 times because label
+    // failures are usually transient (rate limit, network blip) and a
+    // dropped label leaves the reconciler unable to advance this issue.
     await ensureLifecycleLabels(octokit, options.owner, options.repo);
-    await addLabel(
-      octokit,
-      options.owner,
-      options.repo,
-      options.issueNumber,
-      LIFECYCLE_LABEL.deployed,
+    await retryLabel(() =>
+      addLabel(
+        octokit,
+        options.owner,
+        options.repo,
+        options.issueNumber,
+        LIFECYCLE_LABEL.deployed,
+      ),
     );
   } catch (err) {
-    // Label failure is non-fatal — the workspace is ready, proceed anyway
-    console.warn("[issuectl] Failed to apply deployed label:", err);
+    // Final failure is non-fatal — the workspace is ready, proceed anyway
+    // but record a warning so the caller can tell the user.
+    const msg = err instanceof Error ? err.message : String(err);
+    labelWarning = `Could not apply the \`${LIFECYCLE_LABEL.deployed}\` label after 3 attempts (${msg}). Launch continued, but lifecycle status may not update automatically — you may need to add the label manually.`;
+    console.warn("[issuectl] Failed to apply deployed label after retries:", err);
   }
 
   // 8. Record deployment in DB
@@ -178,7 +194,24 @@ export async function executeLaunch(
     branchName: options.branchName,
     workspacePath: workspace.path,
     contextFilePath,
+    ...(labelWarning ? { labelWarning } : {}),
   };
+}
+
+async function retryLabel<T>(fn: () => Promise<T>): Promise<T> {
+  const delaysMs = [500, 1_000, 2_000];
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < delaysMs.length; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < delaysMs.length - 1) {
+        await new Promise((r) => setTimeout(r, delaysMs[attempt]));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 const DANGEROUS_METACHARS = /[;&|<>`$\n\r\t()]/;

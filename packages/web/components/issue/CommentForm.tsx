@@ -43,6 +43,7 @@ export function CommentForm({ owner, repo, issueNumber }: Props) {
         onChange={(e) => setBody(e.target.value)}
         rows={3}
         disabled={isPending}
+        maxLength={65536}
       />
       {error && (
         <div className={styles.error} role="alert">
