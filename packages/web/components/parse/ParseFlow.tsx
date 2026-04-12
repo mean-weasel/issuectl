@@ -14,12 +14,21 @@ type Props = {
   repos: RepoOption[];
   labelsPerRepo: Record<string, GitHubLabel[]>;
   claudeAvailable: boolean;
+  initError?: string;
 };
 
-export function ParseFlow({ repos, labelsPerRepo, claudeAvailable }: Props) {
+export function ParseFlow({ repos, labelsPerRepo, claudeAvailable, initError }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [parsedData, setParsedData] = useState<ParsedIssuesResponse | null>(null);
   const [results, setResults] = useState<BatchCreateResult | null>(null);
+
+  if (initError) {
+    return (
+      <div className={styles.unavailable} role="alert">
+        {initError}
+      </div>
+    );
+  }
 
   if (!claudeAvailable) {
     return (

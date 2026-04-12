@@ -63,10 +63,10 @@ export default async function IssueDetailPage({
       />
     );
   } catch (err) {
-    console.error(
-      `[issuectl] IssueDetailPage: failed to fetch ${owner}/${repo}#${issueNumber}`,
-      err,
-    );
-    notFound();
+    const status = (err as { status?: number }).status;
+    if (status === 404 || status === 410) {
+      notFound();
+    }
+    throw err;
   }
 }

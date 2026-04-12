@@ -47,10 +47,10 @@ export default async function PullDetailPage({
       />
     );
   } catch (err) {
-    console.error(
-      `[issuectl] PullDetailPage: failed to fetch ${owner}/${repo}#${pullNumber}`,
-      err,
-    );
-    notFound();
+    const status = (err as { status?: number }).status;
+    if (status === 404 || status === 410) {
+      notFound();
+    }
+    throw err;
   }
 }

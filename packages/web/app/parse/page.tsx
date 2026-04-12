@@ -37,6 +37,7 @@ export default async function ParsePage() {
   let repos: RepoOption[] = [];
   const labelsPerRepo: Record<string, GitHubLabel[]> = {};
   let claudeAvailable = false;
+  let initError: string | undefined;
 
   try {
     const octokit = await getOctokit();
@@ -66,6 +67,7 @@ export default async function ParsePage() {
     claudeAvailable = claudeCheck;
   } catch (err) {
     console.error("[issuectl] Failed to load repos/labels:", err);
+    initError = err instanceof Error ? err.message : "Failed to connect to GitHub";
   }
 
   return (
@@ -76,6 +78,7 @@ export default async function ParsePage() {
           repos={repos}
           labelsPerRepo={labelsPerRepo}
           claudeAvailable={claudeAvailable}
+          initError={initError}
         />
       </div>
     </>
