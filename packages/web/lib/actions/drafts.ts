@@ -120,7 +120,17 @@ export async function updateDraftAction(
 
   try {
     const db = getDb();
-    updateDraft(db, draftId, update);
+    // updateDraft returns undefined when no row exists for the id —
+    // a tab-A-deleted-the-draft / tab-B-still-editing race. Surface
+    // that as an explicit failure so the editing tab cannot believe
+    // its autosaves are persisting when they are silently no-ops.
+    const updated = updateDraft(db, draftId, update);
+    if (!updated) {
+      return {
+        success: false,
+        error: "Draft no longer exists — it may have been deleted in another tab",
+      };
+    }
   } catch (err) {
     console.error("[issuectl] updateDraftAction failed", err);
     return { success: false, error: "Failed to update draft" };
