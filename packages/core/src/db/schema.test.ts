@@ -83,6 +83,10 @@ describe("runMigrations", () => {
 
   it("migrates v2 schema to v9 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state+action_nonces, rebuilds deployments with CASCADE+live index)", () => {
     const db = createRawTestDb();
+    // The v2 fixture originally covered only claude_aliases; a repos
+    // table + row is now included because the v8 deployments rebuild
+    // declares a FK against repos and SQLite validates the reference
+    // table during the INSERT SELECT.
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, name TEXT NOT NULL, UNIQUE(owner, name));
       INSERT INTO repos (owner, name) VALUES ('acme', 'api');
@@ -246,16 +250,6 @@ describe("schema v5 — drafts and issue_metadata", () => {
 });
 
 describe("schema v8 — deployments FK cascade", () => {
-  it("fresh schema declares ON DELETE CASCADE on deployments.repo_id", () => {
-    const db = createTestDb();
-    const fks = db
-      .prepare("PRAGMA foreign_key_list(deployments)")
-      .all() as { table: string; from: string; on_delete: string }[];
-    const repoFk = fks.find((f) => f.from === "repo_id" && f.table === "repos");
-    expect(repoFk).toBeDefined();
-    expect(repoFk?.on_delete).toBe("CASCADE");
-  });
-
   it("deleting a repo cascades to its deployment rows", () => {
     const db = createTestDb();
     db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run(
@@ -312,26 +306,25 @@ describe("schema v8 — deployments FK cascade", () => {
       );
     `);
     db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run("o", "n");
+    // Seed `state='pending'` explicitly so the preservation assertion
+    // below cannot be satisfied by the fresh schema's DEFAULT 'active'.
     db.prepare(
-      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 1, 'b', 'existing', '/x')",
+      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, state) VALUES (1, 1, 'b', 'existing', '/x', 'pending')",
     ).run();
 
     runMigrations(db);
 
     expect(getSchemaVersion(db)).toBe(9);
-    const fks = db
-      .prepare("PRAGMA foreign_key_list(deployments)")
-      .all() as { table: string; from: string; on_delete: string }[];
-    expect(fks.find((f) => f.from === "repo_id")?.on_delete).toBe("CASCADE");
 
-    // Pre-existing row should have been copied over
+    // Pre-existing row should have been copied over with its state intact
     const row = db
       .prepare("SELECT issue_number, state FROM deployments WHERE id = 1")
       .get() as { issue_number: number; state: string };
     expect(row.issue_number).toBe(1);
-    expect(row.state).toBe("active");
+    expect(row.state).toBe("pending");
 
-    // Cascade works on the upgraded table
+    // Cascade works on the upgraded table — the behavioral check that
+    // proves the rebuilt FK is in place.
     db.prepare("DELETE FROM repos WHERE id = 1").run();
     const { c } = db
       .prepare("SELECT COUNT(*) as c FROM deployments")
@@ -341,30 +334,10 @@ describe("schema v8 — deployments FK cascade", () => {
 });
 
 describe("schema v9 — live deployment unique index", () => {
-  it("fresh schema creates idx_deployments_live as a partial unique index", () => {
-    const db = createTestDb();
-    const idx = db
-      .prepare(
-        "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_deployments_live'",
-      )
-      .get() as { name: string; sql: string } | undefined;
-    expect(idx).toBeDefined();
-    expect(idx?.sql).toContain("UNIQUE");
-    expect(idx?.sql).toContain("ended_at IS NULL");
-  });
-
-  it("blocks a second live deployment for the same (repo, issue)", () => {
-    const db = createTestDb();
-    db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run("o", "n");
-    const insertRow = () =>
-      db
-        .prepare(
-          "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'b', 'existing', '/x')",
-        )
-        .run();
-    insertRow();
-    expect(insertRow).toThrow(/UNIQUE/);
-  });
+  // The "blocks a second live deployment" case lives in deployments.test.ts
+  // where it exercises the recordDeployment helper rather than raw SQL.
+  // Here we keep only the cases that are specific to the schema layer:
+  // the allowed-after-end behavior and the v8→v9 migration dedup.
 
   it("allows a new live deployment after the previous one is ended", () => {
     const db = createTestDb();
@@ -411,16 +384,36 @@ describe("schema v9 — live deployment unique index", () => {
         VALUES (1, 42, 'b1', 'existing', '/a');
       INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path)
         VALUES (1, 42, 'b2', 'existing', '/b');
+      -- A third row for the same (repo, issue) that is already ended.
+      -- The dedup subquery's inner "ended_at IS NULL" filter must exclude
+      -- this row from the MAX(id) computation so the most recent *live*
+      -- row (id=2) wins, even though this ended row has the highest id.
+      INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, ended_at)
+        VALUES (1, 42, 'historic', 'existing', '/h', '2025-01-01T00:00:00');
     `);
+
+    // Silence the migration's warn() log so test output stays clean.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     runMigrations(db);
 
     expect(getSchemaVersion(db)).toBe(9);
-    // The older duplicate (id=1) should have been ended; id=2 remains live.
+    // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
+    // id=3 (historic ended) → still ended, untouched.
     const live = db
       .prepare("SELECT id FROM deployments WHERE ended_at IS NULL")
       .all() as { id: number }[];
     expect(live).toHaveLength(1);
     expect(live[0].id).toBe(2);
+
+    const ended = db
+      .prepare("SELECT id FROM deployments WHERE ended_at IS NOT NULL ORDER BY id")
+      .all() as { id: number }[];
+    expect(ended.map((r) => r.id)).toEqual([1, 3]);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("ending 1 duplicate"),
+    );
+    warnSpy.mockRestore();
   });
 });

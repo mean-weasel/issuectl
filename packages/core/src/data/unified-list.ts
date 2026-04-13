@@ -140,12 +140,10 @@ export async function getUnifiedList(
   const drafts = listDrafts(db);
   const repos = listRepos(db);
 
-  // Fetch each tracked repo's data with bounded concurrency. Per-repo
-  // failures (network error, 404, rate limit, revoked token) are caught
-  // and logged so one bad repo doesn't kill the whole page — we render
-  // the remaining repos' data and drafts. A4: mapLimit caps fan-out so
-  // loading the feed with many tracked repos does not burst past
-  // GitHub's secondary rate limit.
+  // Per-repo failures are caught and logged so one bad repo doesn't
+  // kill the whole feed — we render the remaining repos' data and
+  // drafts. Phase 4/5 can surface a "couldn't load N repos" banner if
+  // the degraded experience becomes noticeable.
   const results = await mapLimit(
     repos,
     DEFAULT_REPO_FANOUT,

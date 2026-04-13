@@ -52,6 +52,12 @@ function expandHome(p: string): string {
   return p;
 }
 
+function duplicateLaunchError(issueNumber: number): Error {
+  return new Error(
+    `Issue #${issueNumber} already has an active deployment. End the existing session before launching again.`,
+  );
+}
+
 export async function executeLaunch(
   db: Database.Database,
   octokit: Octokit,
@@ -116,16 +122,12 @@ export async function executeLaunch(
     );
   }
 
-  // A3: refuse to launch when a live deployment already exists for this
-  // issue. The partial unique index idx_deployments_live would catch this
-  // at INSERT time, but by then prepareWorkspace has already run — doing
-  // the check up front saves the git cycles and surfaces a clean error.
-  // A race that slips past this pre-check will still be caught by the
-  // index when recordDeployment runs.
+  // Cheap pre-check before the expensive git work in step 6. The partial
+  // unique index `idx_deployments_live` is the source of truth at insert
+  // time (step 8); this lookup just avoids burning workspace prep on a
+  // request that will be rejected anyway.
   if (hasLiveDeploymentForIssue(db, repoRecord.id, options.issueNumber)) {
-    throw new Error(
-      `Issue #${options.issueNumber} already has an active deployment. End the existing session before launching again.`,
-    );
+    throw duplicateLaunchError(options.issueNumber);
   }
 
   const repoPath = repoRecord.localPath
@@ -181,14 +183,35 @@ export async function executeLaunch(
   // 8. Record deployment in DB as pending. This row is INVISIBLE to the
   // UI and reconciler until step 9 succeeds — if the terminal launch
   // fails, we delete the row in the catch and no one ever saw it.
-  const deployment = recordDeployment(db, {
-    repoId: repoRecord.id,
-    issueNumber: options.issueNumber,
-    branchName: options.branchName,
-    workspaceMode: options.workspaceMode,
-    workspacePath: workspace.path,
-    state: "pending",
-  });
+  //
+  // The pre-check is an optimization, not a lock: concurrent launches
+  // can both pass it, and the loser trips `idx_deployments_live` here.
+  // Translate that one constraint into the friendly duplicate-launch
+  // message so both sides of the race see the same story.
+  let deployment;
+  try {
+    deployment = recordDeployment(db, {
+      repoId: repoRecord.id,
+      issueNumber: options.issueNumber,
+      branchName: options.branchName,
+      workspaceMode: options.workspaceMode,
+      workspacePath: workspace.path,
+      state: "pending",
+    });
+  } catch (err) {
+    // `idx_deployments_live` is the only unique constraint on
+    // `deployments`, so any SQLITE_CONSTRAINT_UNIQUE thrown here came
+    // from that index. better-sqlite3 formats the message as
+    // "UNIQUE constraint failed: deployments.repo_id, deployments.issue_number"
+    // — the column list, not the index name — so match on `code`.
+    if (
+      err instanceof Error &&
+      (err as { code?: string }).code === "SQLITE_CONSTRAINT_UNIQUE"
+    ) {
+      throw duplicateLaunchError(options.issueNumber);
+    }
+    throw err;
+  }
 
   // 9. Open terminal
   //

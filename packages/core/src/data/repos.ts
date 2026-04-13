@@ -50,10 +50,6 @@ export async function getDashboardData(
   const repos = listRepos(db);
   let oldestCachedAt: Date | null = null;
 
-  // A4: cap per-repo fan-out so loading a dashboard with many tracked
-  // repos does not burst past GitHub's secondary rate limit. Each worker
-  // still issues issues + pulls in parallel, so steady-state concurrency
-  // is roughly DEFAULT_REPO_FANOUT * 2 outbound Octokit requests.
   const enrichedRepos = await mapLimit(
     repos,
     DEFAULT_REPO_FANOUT,

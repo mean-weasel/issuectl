@@ -110,12 +110,8 @@ export function getDeploymentsByRepo(
 }
 
 /**
- * Returns true if a live (not-ended) deployment already exists for the
- * given (repo, issue). "Live" covers both "pending" and "active" — i.e.
- * anything that will conflict with the partial unique index
- * `idx_deployments_live`. Used by the launch flow as a pre-check so the
- * user sees a friendly error instead of the workspace prep burning git
- * cycles only to then trip the UNIQUE constraint at insert time.
+ * "Live" means pending or active (ended rows are excluded) — matches
+ * the `idx_deployments_live` partial unique index predicate.
  */
 export function hasLiveDeploymentForIssue(
   db: Database.Database,

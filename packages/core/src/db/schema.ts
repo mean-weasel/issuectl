@@ -70,9 +70,9 @@ const CREATE_TABLES = `
   CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
     ON action_nonces(created_at);
 
-  -- A3: at most one live deployment per (repo, issue). "Live" = not ended.
-  -- Covers both pending and active states; ended rows (historical audit
-  -- trail) are excluded so re-launching after a session ends is allowed.
+  -- At most one live deployment per (repo, issue). Ended rows are
+  -- historical audit trail and are excluded from the predicate so
+  -- re-launching after a session closes is allowed.
   CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
     ON deployments(repo_id, issue_number)
     WHERE ended_at IS NULL;

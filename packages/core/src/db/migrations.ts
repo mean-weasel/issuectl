@@ -126,15 +126,13 @@ const migrations: Migration[] = [
   {
     version: 8,
     up(db) {
-      // A2: deployments.repo_id had no ON DELETE clause, so the default
-      // NO ACTION blocked removeRepo on any repo with launch history.
-      // SQLite cannot ALTER a foreign key; rebuild the table with CASCADE.
-      // Nothing else references deployments, so the rebuild needs no
-      // deferred-FK gymnastics.
-      //
-      // This rebuild also folds in the CHECK (state IN ('pending','active'))
-      // constraint that the v6 ALTER-based migration could not add —
-      // migrated DBs now match fresh installs.
+      // Rebuild `deployments` so `repo_id` uses ON DELETE CASCADE — the
+      // v1 schema omitted the clause, and SQLite cannot ALTER an FK.
+      // Nothing else references `deployments`, so the rebuild needs no
+      // deferred-FK gymnastics. The rebuild also folds in the
+      // CHECK (state IN ('pending','active')) constraint that the v6
+      // ALTER-based migration could not add, so migrated DBs now match
+      // fresh installs.
       db.exec(`
         CREATE TABLE deployments_new (
           id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -167,14 +165,34 @@ const migrations: Migration[] = [
   {
     version: 9,
     up(db) {
-      // A3: enforce at most one live (not-ended) deployment per (repo, issue).
-      // The adversarial audit showed that nothing prevents duplicate active
-      // rows for the same issue — rapid Launch clicks or multi-tab relaunches
-      // create phantom deployments pointing at the same worktree.
+      // Enforce at most one live (not-ended) deployment per
+      // (repo, issue). DBs that ran under earlier versions may already
+      // have duplicates — end the older rows first (most recent id per
+      // pair wins) so the index creation cannot fail. The subquery's
+      // inner `ended_at IS NULL` filter is load-bearing: a mixed
+      // live+ended pair must keep its live row, even if the live row
+      // is not the highest id overall.
       //
-      // Existing DBs may already have duplicates (that's the bug). Dedupe
-      // first by ending the older rows — the most recent (highest id) per
-      // (repo, issue) wins — then create the partial unique index.
+      // Count duplicates first and log the row count so operators have
+      // a paper trail for state that quietly disappears from the UI
+      // (matches the v4 claude_aliases precedent).
+      const { n } = db
+        .prepare(
+          `SELECT COUNT(*) as n FROM deployments
+           WHERE ended_at IS NULL
+             AND id NOT IN (
+               SELECT MAX(id) FROM deployments
+               WHERE ended_at IS NULL
+               GROUP BY repo_id, issue_number
+             )`,
+        )
+        .get() as { n: number };
+      if (n > 0) {
+        console.warn(
+          `[issuectl] Migration v9: ending ${n} duplicate live deployment row(s) so the new unique index can be created. The most recent deployment per (repo, issue) is kept; older rows receive ended_at = now.`,
+        );
+      }
+
       db.exec(`
         UPDATE deployments
         SET ended_at = datetime('now')

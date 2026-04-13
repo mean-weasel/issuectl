@@ -48,9 +48,9 @@ describe("recordDeployment", () => {
   });
 
   it("allows re-deploying an issue after the prior deployment has ended", () => {
-    // A3: the partial unique index idx_deployments_live forbids two live
-    // rows for the same (repo, issue), but historical (ended) rows do not
-    // count — ending d1 frees up the (repo, issue) slot for d2.
+    // The live-unique index forbids two live rows for the same
+    // (repo, issue), but ended rows do not count — ending d1 frees up
+    // the slot for d2.
     const d1 = recordDeployment(db, {
       repoId,
       issueNumber: 1,
@@ -87,7 +87,7 @@ describe("recordDeployment", () => {
         workspaceMode: "worktree",
         workspacePath: "/b",
       }),
-    ).toThrow(/UNIQUE/);
+    ).toThrow(/UNIQUE constraint failed: deployments\.repo_id, deployments\.issue_number/);
   });
 
   it("rejects non-existent repoId (FK constraint)", () => {
@@ -139,10 +139,10 @@ describe("getDeploymentsForIssue", () => {
   it("returns only deployments matching repo and issue number", () => {
     const repo = seedRepo(db);
 
-    // The v9 live-unique index forbids two live rows for the same
+    // The live-unique index forbids two live rows for the same
     // (repo, issue), so end the first before launching a second. Ended
-    // rows stay visible to getDeploymentsForIssue (state='active' filter
-    // does not exclude ended_at).
+    // rows stay visible to getDeploymentsForIssue (the `state='active'`
+    // filter does not exclude ended_at).
     const first = recordDeployment(db, {
       repoId: repo.id,
       issueNumber: 1,
@@ -175,8 +175,8 @@ describe("getDeploymentsForIssue", () => {
     const repo = seedRepo(db);
 
     // Explicit timestamps so ordering is deterministic (datetime('now')
-    // has second-level precision). The older row is also marked ended to
-    // satisfy the v9 live-unique index; getDeploymentsForIssue still
+    // has second-level precision). The older row is also marked ended
+    // to satisfy the live-unique index; getDeploymentsForIssue still
     // surfaces ended rows for history.
     db.prepare(
       `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at)
