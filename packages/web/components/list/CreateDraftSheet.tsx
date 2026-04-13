@@ -55,19 +55,19 @@ export function CreateDraftSheet({ open, onClose }: Props) {
       description={<em>a local draft without a repo — assign it later</em>}
     >
       <div className={styles.form}>
+        <label htmlFor="create-draft-title" className={styles.label}>
+          Title
+        </label>
         <input
+          id="create-draft-title"
           className={styles.input}
           placeholder="What needs to be done?"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           disabled={saving}
           autoFocus
-          aria-label="Draft title"
           maxLength={256}
         />
-        <div className={styles.hint}>
-          title only — add a body, labels, and a repo when you assign it
-        </div>
         {error && <div className={styles.error}>{error}</div>}
         <div className={styles.actions}>
           <Button variant="ghost" onClick={handleClose} disabled={saving}>

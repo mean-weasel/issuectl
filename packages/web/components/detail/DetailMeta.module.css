@@ -19,12 +19,20 @@
 }
 
 .state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--paper-mono);
   font-size: 12px;
   padding: 2px 8px;
   border-radius: var(--paper-radius-sm);
   font-weight: 600;
   letter-spacing: 0.3px;
+}
+
+.stateGlyph {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .state.open {

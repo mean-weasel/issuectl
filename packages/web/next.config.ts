@@ -1,8 +1,18 @@
 import type { NextConfig } from "next";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Pin the workspace root to the monorepo root so Next.js does not
+// silently pick up a stray lockfile elsewhere on disk and emit the
+// "inferred your workspace root" warning on every dev startup. The
+// import.meta.url indirection keeps this resilient to where the
+// command is run from.
+const WORKSPACE_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   transpilePackages: ["@issuectl/core"],
+  outputFileTracingRoot: WORKSPACE_ROOT,
   images: {
     remotePatterns: [
       { hostname: "avatars.githubusercontent.com" },
@@ -14,16 +24,28 @@ const nextConfig: NextConfig = {
     // anywhere. The header limits the blast radius of any future DOM
     // manipulation or third-party script injection.
     //
-    // 'unsafe-inline' on style-src is required by next/font (which
-    // injects inline @font-face CSS) and React's runtime style hoisting.
+    // 'unsafe-inline' on script-src is required by Next.js (App Router
+    // emits inline hydration scripts on every SSR'd page; without
+    // 'unsafe-inline' the browser refuses every one of them and
+    // hydration silently fails — surfaced as ~30 CSP-violation entries
+    // in the dev error indicator). The strict alternative is per-page
+    // nonce-based CSP via middleware, which is significantly more
+    // invasive; this matches the recommended next/security-headers
+    // policy and the React docs' standard CSP example.
+    //
+    // 'unsafe-inline' on style-src is required by next/font (inline
+    // @font-face CSS) and React's runtime style hoisting.
+    //
     // 'unsafe-eval' on script-src is required by Next.js dev-mode HMR;
-    // it is harmless in production builds where eval is not used by the
-    // framework. img-src whitelists the GitHub avatar host already
-    // configured under `images.remotePatterns` above. data: covers
-    // inline SVG and base64 placeholders.
+    // it is harmless in production where eval is not used by the
+    // framework but kept for parity so dev/prod CSPs match.
+    //
+    // img-src whitelists the GitHub avatar host already configured
+    // under `images.remotePatterns` above. data: covers inline SVG and
+    // base64 placeholders.
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://avatars.githubusercontent.com",
       "font-src 'self'",
