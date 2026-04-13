@@ -48,7 +48,7 @@ export function LaunchProgress({ deployment, commentCount, fileCount }: Props) {
   ];
 
   return (
-    <div className={styles.steps}>
+    <div className={styles.steps} role="status" aria-live="polite">
       {steps.map((step) => (
         <div key={step.label} className={styles.step}>
           <div

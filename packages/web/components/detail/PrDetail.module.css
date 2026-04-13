@@ -31,6 +31,7 @@
 
 .mergeBtn {
   width: 100%;
+  min-height: 44px;
   padding: 12px;
   background: var(--paper-accent);
   color: var(--paper-bg);
@@ -73,7 +74,10 @@
 }
 
 .confirmBtn {
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
   background: var(--paper-accent);
   color: var(--paper-bg);
   border: none;
@@ -90,7 +94,10 @@
 }
 
 .cancelBtn {
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
   background: transparent;
   color: var(--paper-ink-muted);
   border: 1px solid var(--paper-line);
