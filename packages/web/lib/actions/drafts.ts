@@ -202,9 +202,36 @@ export async function assignDraftAction(
         throw err;
       }
     };
+    // B10: a per-draft singleflight gate, layered under the user-nonce
+    // idempotency. Two concurrent tabs send fresh (distinct) user nonces,
+    // so the outer "assign-draft" sentinel does not deduplicate them —
+    // both would race into runAssign and both would create GitHub issues,
+    // orphaning whichever loses the local delete. Keying a second
+    // sentinel on the draftId itself collapses cross-tab requests onto
+    // the same result: the loser of the race either replays the winner's
+    // {issueNumber, issueUrl} (if the winner has finished) or throws
+    // DuplicateInFlightError (if the winner is still in flight). Both
+    // surface the same friendly "already being assigned" UI message —
+    // and the replay case actually returns the winner's issue URL so
+    // the user is led directly to their newly created issue.
+    //
+    // withIdempotency's isValidNonce requires 8+ URL-safe chars. Draft
+    // UUIDs are 36 chars hyphenated and pass cleanly; rejecting shorter
+    // ids upfront keeps the singleflight error message coherent for
+    // malformed callers.
+    if (draftId.length < 8) {
+      return { success: false, error: "draftId must be at least 8 characters" };
+    }
+    const runWithSingleflight = () =>
+      withIdempotency(db, "assign-draft-singleflight", draftId, runAssign);
     const result = idempotencyKey
-      ? await withIdempotency(db, "assign-draft", idempotencyKey, runAssign)
-      : await runAssign();
+      ? await withIdempotency(
+          db,
+          "assign-draft",
+          idempotencyKey,
+          runWithSingleflight,
+        )
+      : await runWithSingleflight();
     issueNumber = result.issueNumber;
     issueUrl = result.issueUrl;
     cleanupWarning = result.cleanupWarning ?? undefined;

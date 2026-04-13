@@ -150,3 +150,93 @@ describe("pruneExpiredNonces", () => {
     expect(remaining.map((r) => r.nonce)).toEqual(["newnonce1234"]);
   });
 });
+
+describe("withIdempotency — singleflight pattern (B10 use case)", () => {
+  // assignDraftAction wraps two layers of withIdempotency: an outer
+  // user-nonce sentinel for same-tab dedup, and an inner draftId-keyed
+  // sentinel that collapses cross-tab requests onto the same result.
+  // These tests exercise the inner-layer semantics directly — the same
+  // mechanism, just keyed on a draft id instead of a user-supplied nonce.
+
+  const draftId = "550e8400-e29b-41d4-a716-446655440000";
+  const SINGLEFLIGHT = "assign-draft-singleflight";
+
+  it("a second caller with a different outer nonce replays the first caller's result", async () => {
+    // Tab A wins: claims the draftId, runs the work, stores the result.
+    // Tab B (different user nonce, same draftId) hits the completed
+    // sentinel and replays without re-running the GH-issue-creating
+    // inner function. Same issue URL for both tabs — the user is led
+    // to the issue tab A actually created.
+    const work = vi.fn().mockResolvedValue({
+      issueNumber: 42,
+      issueUrl: "https://github.com/o/r/issues/42",
+    });
+
+    const tabA = await withIdempotency(db, SINGLEFLIGHT, draftId, work);
+    const tabB = await withIdempotency(db, SINGLEFLIGHT, draftId, work);
+
+    expect(tabA).toEqual({
+      issueNumber: 42,
+      issueUrl: "https://github.com/o/r/issues/42",
+    });
+    expect(tabB).toEqual(tabA);
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it("a second caller throws DuplicateInFlightError while the first is still pending", async () => {
+    // Tab A is mid-flight (pending sentinel row); tab B refuses rather
+    // than start a parallel run that would create a duplicate GitHub
+    // issue. Tab B's inner work is never invoked.
+    let releaseTabA: () => void = () => {};
+    const tabAStarted = new Promise<void>((resolve) => {
+      releaseTabA = resolve;
+    });
+
+    const tabAWork = vi.fn(async () => {
+      await tabAStarted;
+      return { issueNumber: 42, issueUrl: "https://example.invalid/42" };
+    });
+
+    const tabAPromise = withIdempotency(db, SINGLEFLIGHT, draftId, tabAWork);
+
+    const tabBWork = vi.fn().mockResolvedValue({
+      issueNumber: 99,
+      issueUrl: "should-never-be-returned",
+    });
+
+    await expect(
+      withIdempotency(db, SINGLEFLIGHT, draftId, tabBWork),
+    ).rejects.toBeInstanceOf(DuplicateInFlightError);
+    expect(tabBWork).not.toHaveBeenCalled();
+
+    releaseTabA();
+    await tabAPromise;
+  });
+
+  it("a failed first attempt does not wedge the singleflight slot", async () => {
+    // The original assignment failed transiently (e.g. network blip).
+    // The next caller is allowed to retry — the failed sentinel is
+    // deleted and recreated on the recursive call.
+    const failingWork = vi.fn().mockRejectedValue(new Error("network timeout"));
+    await expect(
+      withIdempotency(db, SINGLEFLIGHT, draftId, failingWork),
+    ).rejects.toThrow("network timeout");
+
+    const successfulWork = vi.fn().mockResolvedValue({
+      issueNumber: 42,
+      issueUrl: "https://example.invalid/42",
+    });
+    const result = await withIdempotency(
+      db,
+      SINGLEFLIGHT,
+      draftId,
+      successfulWork,
+    );
+
+    expect(result).toEqual({
+      issueNumber: 42,
+      issueUrl: "https://example.invalid/42",
+    });
+    expect(successfulWork).toHaveBeenCalledTimes(1);
+  });
+});
