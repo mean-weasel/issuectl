@@ -147,4 +147,18 @@ describe("prepareWorkspace — clone mode", () => {
     ).rejects.toThrow("clone failed");
     expect(rmMock).toHaveBeenCalled();
   });
+
+  it("refuses to reuse a dirty existing clone", async () => {
+    // Symmetric with the worktree-mode dirty refusal: an existing
+    // clone dir from a previous launch may have uncommitted work that
+    // createOrCheckoutBranch would silently switch away from.
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "clone" }),
+    ).rejects.toThrow(/uncommitted changes/);
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
+  });
 });

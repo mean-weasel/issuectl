@@ -185,9 +185,18 @@ async function prepareClone(options: {
 
   await mkdir(options.worktreeDir, { recursive: true });
 
-  // If the directory already exists from a previous launch, reuse it
+  // If the directory already exists from a previous launch, reuse it.
+  // Same hazard as the worktree reuse path above: createOrCheckoutBranch
+  // would silently switch branches and lose any uncommitted work the
+  // user left behind. Refuse loudly when the existing clone is dirty.
   if (await pathExists(clonePath)) {
     if (await isGitRepo(clonePath)) {
+      const clean = await isWorkingTreeClean(clonePath);
+      if (!clean) {
+        throw new Error(
+          `Clone at ${clonePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the directory) before launching again.`,
+        );
+      }
       await timedExec("git", ["fetch", "origin"], {
         cwd: clonePath,
         timeoutMs: GIT_FETCH_TIMEOUT_MS,
