@@ -92,6 +92,17 @@ export function List({ data, activeTab, prCount, prs, username }: Props) {
         <div className={styles.desktopDate}>
           {weekday} · <b>{short}</b>
         </div>
+        {/* Desktop-only inline create-draft button. The Fab below is */}
+        {/* the mobile entry point and is hidden on desktop. */}
+        {activeTab === "issues" && (
+          <button
+            type="button"
+            className={styles.desktopDraftBtn}
+            onClick={() => setCreateOpen(true)}
+          >
+            + draft
+          </button>
+        )}
       </div>
 
       {activeTab === "issues" ? (

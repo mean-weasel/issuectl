@@ -26,9 +26,12 @@
   opacity: 0.92;
 }
 
+/* Mobile-only entry point. Desktop has the inline `+ draft` button in
+ * the tabs row (see List.module.css `.desktopDraftBtn`), so showing
+ * the FAB at the same breakpoint would create two redundant entry
+ * points for the same action. */
 @media (min-width: 768px) {
   .fab {
-    right: 40px;
-    bottom: 40px;
+    display: none;
   }
 }

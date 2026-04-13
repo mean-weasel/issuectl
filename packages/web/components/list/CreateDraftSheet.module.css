@@ -2,6 +2,15 @@
   padding: 0 28px 28px;
 }
 
+.label {
+  display: block;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  margin-bottom: 4px;
+}
+
 .input {
   width: 100%;
   font-family: var(--paper-serif);
@@ -14,19 +23,12 @@
   background: transparent;
   padding: 4px 0 16px;
   outline: none;
+  margin-bottom: 18px;
 }
 
 .input::placeholder {
   color: var(--paper-ink-faint);
   font-style: italic;
-}
-
-.hint {
-  font-family: var(--paper-serif);
-  font-style: italic;
-  font-size: var(--paper-fs-xs);
-  color: var(--paper-ink-faint);
-  margin-bottom: 18px;
 }
 
 .actions {

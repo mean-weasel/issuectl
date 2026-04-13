@@ -90,6 +90,32 @@
   align-self: center;
 }
 
+/* Desktop-only inline draft button. The mobile FAB is hidden at the
+ * same breakpoint by Fab.module.css so only one entry point is shown
+ * per viewport. */
+.desktopDraftBtn {
+  display: none;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-accent);
+  background: transparent;
+  border: 1px solid var(--paper-accent-soft);
+  border-radius: var(--paper-radius-sm);
+  padding: 6px 12px;
+  margin-left: 16px;
+  align-self: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.desktopDraftBtn:hover {
+  background: var(--paper-accent-soft);
+  border-color: var(--paper-accent);
+}
+
 .desktopDate b {
   color: var(--paper-ink-soft);
   font-style: normal;
@@ -199,5 +225,9 @@
 
   .desktopDate {
     display: block;
+  }
+
+  .desktopDraftBtn {
+    display: inline-block;
   }
 }
