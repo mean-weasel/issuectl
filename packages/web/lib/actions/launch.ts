@@ -133,7 +133,7 @@ export async function endSession(
     coreEndDeployment(db, deploymentId);
   } catch (err) {
     console.error("[issuectl] Failed to end session:", err);
-    return { success: false, error: err instanceof Error ? err.message : "Failed to end session" };
+    return { success: false, error: formatErrorForUser(err) };
   }
   const { stale } = revalidateSafely(
     `/${owner}/${repo}/issues/${issueNumber}`,
