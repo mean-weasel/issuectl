@@ -9,6 +9,7 @@ import type {
 } from "@issuectl/core";
 import { Button } from "@/components/paper";
 import { LaunchModal } from "@/components/launch/LaunchModal";
+import { LaunchActiveBanner } from "@/components/launch/LaunchActiveBanner";
 import styles from "./LaunchCardPlaceholder.module.css";
 
 type Props = {
@@ -33,6 +34,24 @@ export function LaunchCard({
   initialWorkspaceMode,
 }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Without this check the page renders "Ready to launch" for an
+  // issue already in flight — the unique-deployment DB constraint
+  // only rejects the duplicate after the user clicks Launch.
+  const liveDeployment = deployments.find((d) => d.endedAt === null);
+
+  if (liveDeployment) {
+    return (
+      <LaunchActiveBanner
+        deploymentId={liveDeployment.id}
+        branchName={liveDeployment.branchName}
+        endedAt={liveDeployment.endedAt}
+        owner={owner}
+        repo={repo}
+        issueNumber={issue.number}
+      />
+    );
+  }
 
   return (
     <>
