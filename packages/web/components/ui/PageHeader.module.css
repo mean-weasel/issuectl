@@ -40,7 +40,11 @@
   color: var(--paper-ink-soft);
   text-decoration: none;
   cursor: pointer;
-  padding: 8px 4px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  margin: -6px 0;
 }
 
 .breadcrumb a:hover {

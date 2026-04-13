@@ -144,6 +144,11 @@ export function SettingsForm({
               value={values.branch_pattern}
               onChange={(e) => handleChange("branch_pattern", e.target.value)}
               disabled={isPending}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
             />
           </div>
           <div className={styles.field}>
@@ -154,6 +159,10 @@ export function SettingsForm({
               value={values.cache_ttl}
               onChange={(e) => handleChange("cache_ttl", e.target.value)}
               disabled={isPending}
+              autoComplete="off"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              enterKeyHint="done"
             />
           </div>
         </div>
@@ -179,6 +188,11 @@ export function SettingsForm({
               value={values.terminal_window_title}
               onChange={(e) => handleChange("terminal_window_title", e.target.value)}
               disabled={isPending}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
             />
           </div>
         </div>
@@ -191,6 +205,11 @@ export function SettingsForm({
               value={values.terminal_tab_title_pattern}
               onChange={(e) => handleChange("terminal_tab_title_pattern", e.target.value)}
               disabled={isPending}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
             />
             <div className={styles.help}>
               Placeholders: {"{number}"}, {"{title}"}, {"{repo}"}, {"{owner}"}
@@ -211,6 +230,11 @@ export function SettingsForm({
               onChange={(e) => handleChange("claude_extra_args", e.target.value)}
               disabled={isPending}
               placeholder="--dangerously-skip-permissions"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
             />
             <div className={styles.help}>
               Passed verbatim after <code>claude</code> at launch. Leave empty for defaults.

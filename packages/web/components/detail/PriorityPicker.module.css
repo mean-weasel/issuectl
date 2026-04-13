@@ -5,7 +5,10 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 14px 8px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 2px;
