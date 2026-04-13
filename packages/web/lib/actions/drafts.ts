@@ -120,15 +120,17 @@ export async function updateDraftAction(
 
   try {
     const db = getDb();
-    // updateDraft returns undefined when no row exists for the id —
-    // a tab-A-deleted-the-draft / tab-B-still-editing race. Surface
-    // that as an explicit failure so the editing tab cannot believe
-    // its autosaves are persisting when they are silently no-ops.
+    // updateDraft returns undefined when no row exists for the id.
+    // Surface that as an explicit failure so the editing surface
+    // cannot believe its autosaves are persisting when they are
+    // silently no-ops — reachable via cross-tab delete, stale router
+    // cache on back-navigation, or an unmounted editor still
+    // referencing a freshly-deleted id.
     const updated = updateDraft(db, draftId, update);
     if (!updated) {
       return {
         success: false,
-        error: "Draft no longer exists — it may have been deleted in another tab",
+        error: "Draft no longer exists — it may have been deleted.",
       };
     }
   } catch (err) {
@@ -157,8 +159,11 @@ export async function assignDraftAction(
     }
   | { success: false; error: string }
 > {
-  if (typeof draftId !== "string" || draftId.length === 0) {
-    return { success: false, error: "draftId must be a non-empty string" };
+  // Length floor matches `isValidNonce`'s 8-char minimum so the
+  // singleflight wrap below can use draftId as a sentinel key without
+  // tripping on a malformed caller. UUID drafts are 36 chars and pass.
+  if (typeof draftId !== "string" || draftId.length < 8) {
+    return { success: false, error: "draftId must be at least 8 characters" };
   }
   if (
     typeof repoId !== "number" ||
@@ -202,26 +207,14 @@ export async function assignDraftAction(
         throw err;
       }
     };
-    // B10: a per-draft singleflight gate, layered under the user-nonce
-    // idempotency. Two concurrent tabs send fresh (distinct) user nonces,
-    // so the outer "assign-draft" sentinel does not deduplicate them —
-    // both would race into runAssign and both would create GitHub issues,
-    // orphaning whichever loses the local delete. Keying a second
-    // sentinel on the draftId itself collapses cross-tab requests onto
-    // the same result: the loser of the race either replays the winner's
-    // {issueNumber, issueUrl} (if the winner has finished) or throws
-    // DuplicateInFlightError (if the winner is still in flight). Both
-    // surface the same friendly "already being assigned" UI message —
-    // and the replay case actually returns the winner's issue URL so
-    // the user is led directly to their newly created issue.
-    //
-    // withIdempotency's isValidNonce requires 8+ URL-safe chars. Draft
-    // UUIDs are 36 chars hyphenated and pass cleanly; rejecting shorter
-    // ids upfront keeps the singleflight error message coherent for
-    // malformed callers.
-    if (draftId.length < 8) {
-      return { success: false, error: "draftId must be at least 8 characters" };
-    }
+    // Two-layer idempotency: the outer sentinel deduplicates same-tab
+    // retries (one user nonce → one stored result), while the inner
+    // sentinel collapses cross-tab races onto the same draft. Distinct
+    // user nonces bypass the outer layer, so without this the second
+    // tab would race into runAssign and create a duplicate GitHub
+    // issue; keying the inner layer on the draftId itself means the
+    // loser of the race either replays the winner's {issueNumber,
+    // issueUrl} or throws DuplicateInFlightError.
     const runWithSingleflight = () =>
       withIdempotency(db, "assign-draft-singleflight", draftId, runAssign);
     const result = idempotencyKey

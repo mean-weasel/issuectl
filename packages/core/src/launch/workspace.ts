@@ -115,7 +115,7 @@ async function prepareWorktree(options: {
   // re-launches the same issue with a different branch name, the
   // existing worktree's checkout would silently be switched away from
   // any uncommitted work. Refuse instead and let the user commit or
-  // stash deliberately. Adversarial audit finding #8.
+  // stash deliberately.
   if (await pathExists(worktreePath)) {
     if (await isGitRepo(worktreePath)) {
       const clean = await isWorkingTreeClean(worktreePath);

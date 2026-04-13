@@ -151,12 +151,10 @@ describe("pruneExpiredNonces", () => {
   });
 });
 
-describe("withIdempotency — singleflight pattern (B10 use case)", () => {
-  // assignDraftAction wraps two layers of withIdempotency: an outer
-  // user-nonce sentinel for same-tab dedup, and an inner draftId-keyed
-  // sentinel that collapses cross-tab requests onto the same result.
-  // These tests exercise the inner-layer semantics directly — the same
-  // mechanism, just keyed on a draft id instead of a user-supplied nonce.
+describe("withIdempotency — singleflight pattern", () => {
+  // Pin the cross-tab idempotency case where the sentinel key is a
+  // resource id (e.g. draftId) instead of a per-submission user nonce,
+  // so two distinct callers collapse onto the same stored result.
 
   const draftId = "550e8400-e29b-41d4-a716-446655440000";
   const SINGLEFLIGHT = "assign-draft-singleflight";

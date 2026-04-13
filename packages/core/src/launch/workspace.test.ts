@@ -108,7 +108,7 @@ describe("prepareWorkspace — worktree mode", () => {
     expect(branchMocks.createOrCheckoutBranch).toHaveBeenCalled();
   });
 
-  it("refuses to reuse a dirty existing worktree (B8)", async () => {
+  it("refuses to reuse a dirty existing worktree", async () => {
     // The previous launch left uncommitted work in the reused dir; the
     // existing path silently switched branches and lost it. Now we
     // refuse loudly and the user must commit/stash before relaunching.
