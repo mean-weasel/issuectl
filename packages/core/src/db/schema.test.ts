@@ -417,3 +417,53 @@ describe("schema v9 — live deployment unique index", () => {
     warnSpy.mockRestore();
   });
 });
+
+describe("schema invariants — assumptions other code depends on", () => {
+  it("deployments has exactly one unique index, named idx_deployments_live", () => {
+    // The race-path catch in launch.ts (executeLaunch step 8) translates
+    // any SQLITE_CONSTRAINT_UNIQUE thrown by recordDeployment into the
+    // friendly duplicate-launch error. That predicate is only correct
+    // because `idx_deployments_live` is the *sole* unique constraint on
+    // `deployments` — if a future migration adds another, the catch
+    // would misfire and translate the wrong constraint. This test fails
+    // loudly so the developer is forced to update the catch in lockstep.
+    const db = createTestDb();
+    const indexes = db
+      .prepare(
+        `SELECT name, "unique" FROM pragma_index_list('deployments') WHERE "unique" = 1`,
+      )
+      .all() as { name: string; unique: number }[];
+    expect(indexes).toHaveLength(1);
+    expect(indexes[0]?.name).toBe("idx_deployments_live");
+  });
+
+  it("no other table has a foreign key referencing deployments", () => {
+    // The v8 migration rebuilds `deployments` via CREATE/INSERT/DROP/
+    // RENAME without disabling foreign keys. That works only because
+    // nothing FK-references `deployments` — if some future table does,
+    // the v8 migration is frozen history and won't be updated, so the
+    // new migration would need to run with deferred FK enforcement.
+    // This test fails loudly so the developer notices when adding such
+    // a reference.
+    const db = createTestDb();
+    const tables = db
+      .prepare(
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'deployments'`,
+      )
+      .all() as { name: string }[];
+
+    const offenders: Array<{ table: string; from: string }> = [];
+    for (const { name } of tables) {
+      const fks = db
+        .prepare(`SELECT "table" as ref, "from" FROM pragma_foreign_key_list(?)`)
+        .all(name) as { ref: string; from: string }[];
+      for (const fk of fks) {
+        if (fk.ref === "deployments") {
+          offenders.push({ table: name, from: fk.from });
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
