@@ -6,6 +6,7 @@ import {
   recordDeployment,
   activateDeployment,
   deletePendingDeployment,
+  hasLiveDeploymentForIssue,
 } from "../db/deployments.js";
 import { getIssueDetail } from "../data/issues.js";
 import { ensureLifecycleLabels, addLabel } from "../github/labels.js";
@@ -112,6 +113,18 @@ export async function executeLaunch(
   if (!repoRecord) {
     throw new Error(
       `Repository ${options.owner}/${options.repo} not found in database`,
+    );
+  }
+
+  // A3: refuse to launch when a live deployment already exists for this
+  // issue. The partial unique index idx_deployments_live would catch this
+  // at INSERT time, but by then prepareWorkspace has already run — doing
+  // the check up front saves the git cycles and surfaces a clean error.
+  // A race that slips past this pre-check will still be caught by the
+  // index when recordDeployment runs.
+  if (hasLiveDeploymentForIssue(db, repoRecord.id, options.issueNumber)) {
+    throw new Error(
+      `Issue #${options.issueNumber} already has an active deployment. End the existing session before launching again.`,
     );
   }
 

@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -69,6 +69,13 @@ const CREATE_TABLES = `
 
   CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
     ON action_nonces(created_at);
+
+  -- A3: at most one live deployment per (repo, issue). "Live" = not ended.
+  -- Covers both pending and active states; ended rows (historical audit
+  -- trail) are excluded so re-launching after a session ends is allowed.
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
+    ON deployments(repo_id, issue_number)
+    WHERE ended_at IS NULL;
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL

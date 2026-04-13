@@ -164,6 +164,33 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 9,
+    up(db) {
+      // A3: enforce at most one live (not-ended) deployment per (repo, issue).
+      // The adversarial audit showed that nothing prevents duplicate active
+      // rows for the same issue — rapid Launch clicks or multi-tab relaunches
+      // create phantom deployments pointing at the same worktree.
+      //
+      // Existing DBs may already have duplicates (that's the bug). Dedupe
+      // first by ending the older rows — the most recent (highest id) per
+      // (repo, issue) wins — then create the partial unique index.
+      db.exec(`
+        UPDATE deployments
+        SET ended_at = datetime('now')
+        WHERE ended_at IS NULL
+          AND id NOT IN (
+            SELECT MAX(id) FROM deployments
+            WHERE ended_at IS NULL
+            GROUP BY repo_id, issue_number
+          );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
+          ON deployments(repo_id, issue_number)
+          WHERE ended_at IS NULL;
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

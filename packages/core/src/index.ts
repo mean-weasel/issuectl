@@ -55,6 +55,7 @@ export {
   getDeploymentById,
   getDeploymentsForIssue,
   getDeploymentsByRepo,
+  hasLiveDeploymentForIssue,
   updateLinkedPR,
   endDeployment,
   activateDeployment,

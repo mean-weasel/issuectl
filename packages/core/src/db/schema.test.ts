@@ -33,15 +33,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 8", () => {
+  it("sets schema_version to 9", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
   });
 });
 
@@ -58,10 +58,10 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
   });
 
-  it("migrates v1 schema through v8 and drops claude_aliases", () => {
+  it("migrates v1 schema through v9 and drops claude_aliases", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -74,14 +74,14 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v2 schema to v8 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state+action_nonces, rebuilds deployments with CASCADE)", () => {
+  it("migrates v2 schema to v9 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state+action_nonces, rebuilds deployments with CASCADE+live index)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, name TEXT NOT NULL, UNIQUE(owner, name));
@@ -94,7 +94,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -102,7 +102,7 @@ describe("runMigrations", () => {
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v3 schema to v8 and drops populated claude_aliases (data loss is intentional)", () => {
+  it("migrates v3 schema to v9 and drops populated claude_aliases (data loss is intentional)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -137,7 +137,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -153,10 +153,10 @@ describe("runMigrations", () => {
 });
 
 describe("schema v5 — drafts and issue_metadata", () => {
-  it("initSchema on a fresh DB produces schema version 8", () => {
+  it("initSchema on a fresh DB produces schema version 9", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -190,7 +190,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
     ).toThrow();
   });
 
-  it("migration from v4 → v8 adds drafts, issue_metadata, deployments.state+CHECK+CASCADE, and action_nonces", () => {
+  it("migration from v4 → v9 adds drafts, issue_metadata, deployments.state+CHECK+CASCADE+live index, and action_nonces", () => {
     const db = createRawTestDb();
     // Simulate a v4 DB: run the v4-era schema manually. The deployments
     // table is included here because v6's migration does ALTER TABLE on it.
@@ -222,7 +222,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -318,7 +318,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(8);
+    expect(getSchemaVersion(db)).toBe(9);
     const fks = db
       .prepare("PRAGMA foreign_key_list(deployments)")
       .all() as { table: string; from: string; on_delete: string }[];
@@ -337,5 +337,90 @@ describe("schema v8 — deployments FK cascade", () => {
       .prepare("SELECT COUNT(*) as c FROM deployments")
       .get() as { c: number };
     expect(c).toBe(0);
+  });
+});
+
+describe("schema v9 — live deployment unique index", () => {
+  it("fresh schema creates idx_deployments_live as a partial unique index", () => {
+    const db = createTestDb();
+    const idx = db
+      .prepare(
+        "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_deployments_live'",
+      )
+      .get() as { name: string; sql: string } | undefined;
+    expect(idx).toBeDefined();
+    expect(idx?.sql).toContain("UNIQUE");
+    expect(idx?.sql).toContain("ended_at IS NULL");
+  });
+
+  it("blocks a second live deployment for the same (repo, issue)", () => {
+    const db = createTestDb();
+    db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run("o", "n");
+    const insertRow = () =>
+      db
+        .prepare(
+          "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'b', 'existing', '/x')",
+        )
+        .run();
+    insertRow();
+    expect(insertRow).toThrow(/UNIQUE/);
+  });
+
+  it("allows a new live deployment after the previous one is ended", () => {
+    const db = createTestDb();
+    db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run("o", "n");
+    db.prepare(
+      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'b1', 'existing', '/x')",
+    ).run();
+    db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = 1").run();
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'b2', 'existing', '/y')",
+        )
+        .run(),
+    ).not.toThrow();
+  });
+
+  it("v8 → v9 migration dedupes existing live rows before creating the index", () => {
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (8);
+      CREATE TABLE repos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner TEXT NOT NULL,
+        name TEXT NOT NULL,
+        UNIQUE(owner, name)
+      );
+      CREATE TABLE deployments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+        issue_number INTEGER NOT NULL,
+        branch_name TEXT NOT NULL,
+        workspace_mode TEXT NOT NULL,
+        workspace_path TEXT NOT NULL,
+        linked_pr_number INTEGER,
+        state TEXT NOT NULL DEFAULT 'active'
+          CHECK (state IN ('pending', 'active')),
+        launched_at TEXT NOT NULL DEFAULT (datetime('now')),
+        ended_at TEXT
+      );
+      INSERT INTO repos (owner, name) VALUES ('o', 'n');
+      INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path)
+        VALUES (1, 42, 'b1', 'existing', '/a');
+      INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path)
+        VALUES (1, 42, 'b2', 'existing', '/b');
+    `);
+
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(9);
+    // The older duplicate (id=1) should have been ended; id=2 remains live.
+    const live = db
+      .prepare("SELECT id FROM deployments WHERE ended_at IS NULL")
+      .all() as { id: number }[];
+    expect(live).toHaveLength(1);
+    expect(live[0].id).toBe(2);
   });
 });

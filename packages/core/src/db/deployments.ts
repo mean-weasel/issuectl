@@ -109,6 +109,27 @@ export function getDeploymentsByRepo(
   return rows.map(rowToDeployment);
 }
 
+/**
+ * Returns true if a live (not-ended) deployment already exists for the
+ * given (repo, issue). "Live" covers both "pending" and "active" — i.e.
+ * anything that will conflict with the partial unique index
+ * `idx_deployments_live`. Used by the launch flow as a pre-check so the
+ * user sees a friendly error instead of the workspace prep burning git
+ * cycles only to then trip the UNIQUE constraint at insert time.
+ */
+export function hasLiveDeploymentForIssue(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+): boolean {
+  const row = db
+    .prepare(
+      "SELECT 1 FROM deployments WHERE repo_id = ? AND issue_number = ? AND ended_at IS NULL LIMIT 1",
+    )
+    .get(repoId, issueNumber);
+  return row !== undefined;
+}
+
 export function updateLinkedPR(
   db: Database.Database,
   deploymentId: number,
