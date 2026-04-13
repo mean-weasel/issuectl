@@ -44,20 +44,41 @@
 
 .actionBtn {
   font-family: var(--paper-serif);
-  font-style: italic;
-  font-size: 12px;
-  color: var(--paper-ink-muted);
-  background: transparent;
-  border: none;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--paper-accent);
+  background: var(--paper-accent-soft);
+  border: 1px solid transparent;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 7px 14px;
   text-decoration: none;
   border-radius: var(--paper-radius-sm);
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .actionBtn:hover {
-  color: var(--paper-ink);
+  background: var(--paper-bg);
+  border-color: var(--paper-accent);
+  color: var(--paper-accent);
+}
+
+/* In-flight variant — visually distinct from the launch CTA so a row
+ * with an active session reads as "go to existing" rather than
+ * "start something new". */
+.actionBtnFlight {
+  color: var(--paper-ink-soft);
   background: var(--paper-bg-warmer);
+}
+
+.actionBtnFlight:hover {
+  color: var(--paper-ink);
+  background: var(--paper-bg);
+  border-color: var(--paper-line);
 }
 
 /* Mobile: keep assign in the meta row, hide desktop actions panel */

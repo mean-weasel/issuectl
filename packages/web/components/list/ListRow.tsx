@@ -102,6 +102,32 @@ export function ListRow({ item, onAssign }: Props) {
     (l) => !l.name.startsWith("issuectl:"),
   );
 
+  // Label reflects what the click does: in-flight rows open an active
+  // session rather than launching, so "launch" would mislead.
+  // Exhaustive switch so a future addition to the Section union is a
+  // compile error here instead of silently rendering "launch →" on a
+  // section that should not launch.
+  let actionLabel: string;
+  let actionAria: string;
+  switch (section) {
+    case "in_focus":
+      actionLabel = "launch";
+      actionAria = "Launch issue";
+      break;
+    case "in_flight":
+      actionLabel = "open";
+      actionAria = "Open active session";
+      break;
+    case "shipped":
+      actionLabel = "view";
+      actionAria = "View issue";
+      break;
+    default: {
+      const _exhaustive: never = section;
+      throw new Error(`ListRow: unhandled section ${String(_exhaustive)}`);
+    }
+  }
+
   return (
     <div className={styles.item}>
       <Link
@@ -130,10 +156,10 @@ export function ListRow({ item, onAssign }: Props) {
       <div className={styles.actions}>
         <Link
           href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
-          className={styles.actionBtn}
-          aria-label="Open issue detail"
+          className={`${styles.actionBtn} ${section === "in_flight" ? styles.actionBtnFlight : ""}`}
+          aria-label={actionAria}
         >
-          launch
+          {actionLabel} →
         </Link>
       </div>
     </div>
