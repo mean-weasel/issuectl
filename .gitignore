@@ -8,3 +8,15 @@ dist/
 .env.local
 .worktrees/
 .superpowers/
+
+# QA tool caches and run artifacts
+.playwright-cli/
+.playwright-mcp/
+.qa-learnings/
+
+# QA report scratch — only the .md report files are committed; the
+# raw screenshots, scripts, and per-run data directories are ephemeral.
+qa-reports/screenshots/
+qa-reports/perf-audit-r2-data/
+qa-reports/*.mjs
+qa-reports/*.json
