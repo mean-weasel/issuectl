@@ -60,7 +60,7 @@ export default async function LaunchProgressPage({
   }
 
   return (
-    <div style={{ background: "var(--paper-bg)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--paper-bg)", minHeight: "100dvh" }}>
       <DetailTopBar
         backHref={`/issues/${owner}/${repo}/${issueNumber}`}
         crumb={

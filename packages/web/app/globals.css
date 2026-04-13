@@ -57,7 +57,7 @@ body {
   background: var(--paper-bg);
   color: var(--paper-ink);
   font-family: var(--paper-sans);
-  min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
 

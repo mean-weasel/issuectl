@@ -52,6 +52,9 @@ export function ParseInput({ onParsed }: Props) {
         placeholder="e.g. Fix the login timeout bug in seatify and add search functionality to the dashboard..."
         disabled={isPending}
         autoFocus
+        autoComplete="off"
+        autoCapitalize="sentences"
+        spellCheck={true}
         aria-label="Issue description for Claude to parse"
         maxLength={8192}
       />

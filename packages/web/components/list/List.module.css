@@ -3,7 +3,7 @@
   margin: 0 auto;
   padding: 12px 0 120px;
   background: var(--paper-bg);
-  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 }
 
@@ -41,7 +41,12 @@
   font-size: 18px;
   color: var(--paper-ink-muted);
   letter-spacing: 1px;
-  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
   cursor: pointer;
   border-radius: var(--paper-radius-sm);
 }
