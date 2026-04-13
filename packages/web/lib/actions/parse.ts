@@ -20,6 +20,13 @@ import type {
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
+// Parse input is a free-form prompt that gets piped to the Claude CLI;
+// cost and latency are proportional to token count and the content is
+// never persisted, so the cap is much tighter than draft/issue body
+// limits (65536). 8K is generous for the "describe what you want" use
+// case and prevents a paste-bomb from burning the LLM budget.
+const MAX_PARSE_INPUT = 8192;
+
 type ParseActionResult =
   | { success: true; data: { parsed: ParsedIssuesResponse } }
   | { success: false; error: string };
@@ -27,8 +34,17 @@ type ParseActionResult =
 export async function parseNaturalLanguage(
   input: string,
 ): Promise<ParseActionResult> {
+  if (typeof input !== "string") {
+    return { success: false, error: "Input must be a string" };
+  }
   if (!input.trim()) {
     return { success: false, error: "Input cannot be empty" };
+  }
+  if (input.length > MAX_PARSE_INPUT) {
+    return {
+      success: false,
+      error: `Input must be ${MAX_PARSE_INPUT} characters or fewer`,
+    };
   }
 
   try {
