@@ -53,6 +53,7 @@ export function ParseInput({ onParsed }: Props) {
         disabled={isPending}
         autoFocus
         aria-label="Issue description for Claude to parse"
+        maxLength={8192}
       />
       <div className={styles.footer}>
         <Button

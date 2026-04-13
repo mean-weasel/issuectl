@@ -6,9 +6,12 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 import { getAuthStatus } from "@/lib/auth";
 import "./globals.css";
 
+// Inter and Fraunces are variable fonts — omitting `weight` lets
+// next/font ship a single file per style instead of one per weight,
+// cutting the per-route font CSS substantially while keeping every
+// weight (400-700) the design system uses.
 const fraunces = Fraunces({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-serif",
   display: "swap",
@@ -16,14 +19,18 @@ const fraunces = Fraunces({
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
 
+// IBM Plex Mono is not a variable font on Google Fonts, so we still
+// specify discrete weights — but only the ones used in the design
+// system (400 for body mono, 600 for emphasis chips/badges). 500 had
+// no usage in CSS and 700 is browser-synthesized from 600 in the rare
+// case it's requested.
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "600"],
   variable: "--font-mono-paper",
   display: "swap",
 });

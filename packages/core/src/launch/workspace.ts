@@ -110,9 +110,20 @@ async function prepareWorktree(options: {
 
   await mkdir(options.worktreeDir, { recursive: true });
 
-  // If the directory already exists from a previous launch, reuse it
+  // If the directory already exists from a previous launch, reuse it.
+  // The path is keyed only on (repo, issue#), not branch — if the user
+  // re-launches the same issue with a different branch name, the
+  // existing worktree's checkout would silently be switched away from
+  // any uncommitted work. Refuse instead and let the user commit or
+  // stash deliberately.
   if (await pathExists(worktreePath)) {
     if (await isGitRepo(worktreePath)) {
+      const clean = await isWorkingTreeClean(worktreePath);
+      if (!clean) {
+        throw new Error(
+          `Worktree at ${worktreePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the worktree with \`git worktree remove\`) before launching again.`,
+        );
+      }
       await createOrCheckoutBranch(worktreePath, options.branchName);
       return { path: worktreePath, mode: "worktree", created: false };
     }
@@ -174,9 +185,18 @@ async function prepareClone(options: {
 
   await mkdir(options.worktreeDir, { recursive: true });
 
-  // If the directory already exists from a previous launch, reuse it
+  // If the directory already exists from a previous launch, reuse it.
+  // Same hazard as the worktree reuse path above: createOrCheckoutBranch
+  // would silently switch branches and lose any uncommitted work the
+  // user left behind. Refuse loudly when the existing clone is dirty.
   if (await pathExists(clonePath)) {
     if (await isGitRepo(clonePath)) {
+      const clean = await isWorkingTreeClean(clonePath);
+      if (!clean) {
+        throw new Error(
+          `Clone at ${clonePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the directory) before launching again.`,
+        );
+      }
       await timedExec("git", ["fetch", "origin"], {
         cwd: clonePath,
         timeoutMs: GIT_FETCH_TIMEOUT_MS,

@@ -120,7 +120,19 @@ export async function updateDraftAction(
 
   try {
     const db = getDb();
-    updateDraft(db, draftId, update);
+    // updateDraft returns undefined when no row exists for the id.
+    // Surface that as an explicit failure so the editing surface
+    // cannot believe its autosaves are persisting when they are
+    // silently no-ops — reachable via cross-tab delete, stale router
+    // cache on back-navigation, or an unmounted editor still
+    // referencing a freshly-deleted id.
+    const updated = updateDraft(db, draftId, update);
+    if (!updated) {
+      return {
+        success: false,
+        error: "Draft no longer exists — it may have been deleted.",
+      };
+    }
   } catch (err) {
     console.error("[issuectl] updateDraftAction failed", err);
     return { success: false, error: "Failed to update draft" };
@@ -147,8 +159,11 @@ export async function assignDraftAction(
     }
   | { success: false; error: string }
 > {
-  if (typeof draftId !== "string" || draftId.length === 0) {
-    return { success: false, error: "draftId must be a non-empty string" };
+  // Length floor matches `isValidNonce`'s 8-char minimum so the
+  // singleflight wrap below can use draftId as a sentinel key without
+  // tripping on a malformed caller. UUID drafts are 36 chars and pass.
+  if (typeof draftId !== "string" || draftId.length < 8) {
+    return { success: false, error: "draftId must be at least 8 characters" };
   }
   if (
     typeof repoId !== "number" ||
@@ -192,9 +207,24 @@ export async function assignDraftAction(
         throw err;
       }
     };
+    // Two-layer idempotency: the outer sentinel deduplicates same-tab
+    // retries (one user nonce → one stored result), while the inner
+    // sentinel collapses cross-tab races onto the same draft. Distinct
+    // user nonces bypass the outer layer, so without this the second
+    // tab would race into runAssign and create a duplicate GitHub
+    // issue; keying the inner layer on the draftId itself means the
+    // loser of the race either replays the winner's {issueNumber,
+    // issueUrl} or throws DuplicateInFlightError.
+    const runWithSingleflight = () =>
+      withIdempotency(db, "assign-draft-singleflight", draftId, runAssign);
     const result = idempotencyKey
-      ? await withIdempotency(db, "assign-draft", idempotencyKey, runAssign)
-      : await runAssign();
+      ? await withIdempotency(
+          db,
+          "assign-draft",
+          idempotencyKey,
+          runWithSingleflight,
+        )
+      : await runWithSingleflight();
     issueNumber = result.issueNumber;
     issueUrl = result.issueUrl;
     cleanupWarning = result.cleanupWarning ?? undefined;

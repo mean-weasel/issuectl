@@ -40,9 +40,9 @@ beforeEach(() => {
   accessMock.mockReset();
   mkdirMock.mockResolvedValue(undefined);
   rmMock.mockResolvedValue(undefined);
-  branchMocks.createOrCheckoutBranch.mockResolvedValue(undefined);
-  branchMocks.isWorkingTreeClean.mockResolvedValue(true);
-  branchMocks.getDefaultBranch.mockResolvedValue("origin/main");
+  branchMocks.createOrCheckoutBranch.mockReset().mockResolvedValue(undefined);
+  branchMocks.isWorkingTreeClean.mockReset().mockResolvedValue(true);
+  branchMocks.getDefaultBranch.mockReset().mockResolvedValue("origin/main");
 });
 
 const BASE_OPTIONS = {
@@ -107,6 +107,20 @@ describe("prepareWorkspace — worktree mode", () => {
     expect(result.created).toBe(false);
     expect(branchMocks.createOrCheckoutBranch).toHaveBeenCalled();
   });
+
+  it("refuses to reuse a dirty existing worktree", async () => {
+    // The previous launch left uncommitted work in the reused dir; the
+    // existing path silently switched branches and lost it. Now we
+    // refuse loudly and the user must commit/stash before relaunching.
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "worktree" }),
+    ).rejects.toThrow(/uncommitted changes/);
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
+  });
 });
 
 /* ---------- clone mode ---------- */
@@ -132,5 +146,19 @@ describe("prepareWorkspace — clone mode", () => {
       prepareWorkspace({ ...BASE_OPTIONS, mode: "clone" }),
     ).rejects.toThrow("clone failed");
     expect(rmMock).toHaveBeenCalled();
+  });
+
+  it("refuses to reuse a dirty existing clone", async () => {
+    // Symmetric with the worktree-mode dirty refusal: an existing
+    // clone dir from a previous launch may have uncommitted work that
+    // createOrCheckoutBranch would silently switch away from.
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "clone" }),
+    ).rejects.toThrow(/uncommitted changes/);
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
   });
 });
