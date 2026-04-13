@@ -70,16 +70,27 @@ const CREATE_TABLES = `
   CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
     ON action_nonces(created_at);
 
-  -- At most one live deployment per (repo, issue). Ended rows are
-  -- historical audit trail and are excluded from the predicate so
-  -- re-launching after a session closes is allowed.
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
-    ON deployments(repo_id, issue_number)
-    WHERE ended_at IS NULL;
-
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL
   );
+`;
+
+// `idx_deployments_live` is intentionally NOT in CREATE_TABLES. On
+// upgrade DBs that pre-date R1 idempotency, the deployments table may
+// contain duplicate live rows from before the singleflight fix landed;
+// SQLite cannot create a unique index over a table that already
+// violates it, so a naive `CREATE UNIQUE INDEX IF NOT EXISTS` in
+// CREATE_TABLES would throw before the v9 migration's dedupe pass got
+// a chance to run (initSchema is called before runMigrations in
+// connection.ts). The fix:
+//   - Fresh installs: deployments is empty, so initSchema can create
+//     the index directly below after setting schema_version.
+//   - Upgrade installs: the v9 migration runs the dedupe and the
+//     CREATE INDEX in the correct order via runMigrations.
+const CREATE_LIVE_DEPLOYMENT_INDEX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
+    ON deployments(repo_id, issue_number)
+    WHERE ended_at IS NULL;
 `;
 
 export function initSchema(db: Database.Database): void {
@@ -93,6 +104,10 @@ export function initSchema(db: Database.Database): void {
     db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(
       SCHEMA_VERSION,
     );
+    // Fresh install — deployments is empty, so the unique index
+    // creates cleanly. Upgrade DBs deliberately skip this branch and
+    // go through the v9 migration's dedupe-then-create-index path.
+    db.exec(CREATE_LIVE_DEPLOYMENT_INDEX);
   }
 }
 
