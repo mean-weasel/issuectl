@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { updateSettings } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/paper";
 import { validateClaudeArgs } from "@issuectl/core/validation";
 import type { SettingKey } from "@issuectl/core";
 import styles from "./SettingsForm.module.css";
+
+// Save button gets an inline flash in addition to the toast: the
+// toast is the global + screen-reader path, but after clicking the
+// user's eyes are on the button, not the toast region.
+const SAVED_FLASH_MS = 2500;
 
 type Props = {
   branchPattern: string;
@@ -41,8 +46,16 @@ export function SettingsForm({
     claude_extra_args: claudeExtraArgs,
   });
   const [error, setError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
 
   const originals: FormValues = {
     branch_pattern: branchPattern,
@@ -78,11 +91,21 @@ export function SettingsForm({
 
   function handleSave() {
     setError(null);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     startTransition(async () => {
       const changed = (Object.keys(originals) as (keyof FormValues)[]).filter(
         (k) => values[k] !== originals[k],
       );
-      if (changed.length === 0) return;
+      if (changed.length === 0) {
+        // Unreachable: the Save button is `disabled={!isDirty}` so a
+        // click without any dirty fields means the disabled-button
+        // invariant has drifted. Log loudly rather than silently no-op
+        // (which would also wipe a stale ✓ Saved flash on screen).
+        console.warn(
+          "[issuectl] SettingsForm.handleSave: clicked with no dirty fields — disabled-button invariant broken",
+        );
+        return;
+      }
 
       const updates: Partial<Record<SettingKey, string>> = {};
       for (const key of changed) {
@@ -100,6 +123,11 @@ export function SettingsForm({
       } else {
         showToast("Settings saved", "success");
       }
+      setSavedFlash(true);
+      flashTimerRef.current = setTimeout(
+        () => setSavedFlash(false),
+        SAVED_FLASH_MS,
+      );
     });
   }
 
@@ -218,6 +246,11 @@ export function SettingsForm({
               ? "Save with warnings"
               : "Save Settings"}
         </Button>
+        {savedFlash && !isPending && (
+          <span className={styles.savedFlash} aria-hidden="true">
+            ✓ Saved
+          </span>
+        )}
         {error && <span className={styles.error} role="alert">{error}</span>}
       </div>
     </>
