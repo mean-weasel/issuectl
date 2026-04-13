@@ -33,15 +33,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 7", () => {
+  it("sets schema_version to 8", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
   });
 });
 
@@ -58,15 +58,15 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
   });
 
-  it("migrates v1 schema through v7 and drops claude_aliases", () => {
+  it("migrates v1 schema through v8 and drops claude_aliases", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
       CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      CREATE TABLE deployments (id INTEGER PRIMARY KEY, repo_id INTEGER, issue_number INTEGER, branch_name TEXT, workspace_mode TEXT, workspace_path TEXT);
+      CREATE TABLE deployments (id INTEGER PRIMARY KEY, repo_id INTEGER, issue_number INTEGER, branch_name TEXT, workspace_mode TEXT, workspace_path TEXT, linked_pr_number INTEGER, launched_at TEXT);
       CREATE TABLE cache (key TEXT PRIMARY KEY, data TEXT NOT NULL);
       CREATE TABLE schema_version (version INTEGER NOT NULL);
       INSERT INTO schema_version (version) VALUES (1);
@@ -74,16 +74,18 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v2 schema to v7 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state+action_nonces)", () => {
+  it("migrates v2 schema to v8 (adds ended_at, drops claude_aliases, adds drafts+issue_metadata+state+action_nonces, rebuilds deployments with CASCADE)", () => {
     const db = createRawTestDb();
     db.exec(`
+      CREATE TABLE repos (id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, name TEXT NOT NULL, UNIQUE(owner, name));
+      INSERT INTO repos (owner, name) VALUES ('acme', 'api');
       CREATE TABLE claude_aliases (id INTEGER PRIMARY KEY, command TEXT, description TEXT, is_default INTEGER, created_at TEXT);
       CREATE TABLE deployments (id INTEGER PRIMARY KEY, repo_id INTEGER, issue_number INTEGER, branch_name TEXT, workspace_mode TEXT, workspace_path TEXT, linked_pr_number INTEGER, launched_at TEXT);
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -92,7 +94,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -100,7 +102,7 @@ describe("runMigrations", () => {
     expect(tables).toHaveLength(0);
   });
 
-  it("migrates v3 schema to v7 and drops populated claude_aliases (data loss is intentional)", () => {
+  it("migrates v3 schema to v8 and drops populated claude_aliases (data loss is intentional)", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE repos (id INTEGER PRIMARY KEY, owner TEXT, name TEXT);
@@ -135,7 +137,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -151,10 +153,10 @@ describe("runMigrations", () => {
 });
 
 describe("schema v5 — drafts and issue_metadata", () => {
-  it("initSchema on a fresh DB produces schema version 7", () => {
+  it("initSchema on a fresh DB produces schema version 8", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -188,7 +190,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
     ).toThrow();
   });
 
-  it("migration from v4 → v7 adds drafts, issue_metadata, deployments.state, and action_nonces", () => {
+  it("migration from v4 → v8 adds drafts, issue_metadata, deployments.state+CHECK+CASCADE, and action_nonces", () => {
     const db = createRawTestDb();
     // Simulate a v4 DB: run the v4-era schema manually. The deployments
     // table is included here because v6's migration does ALTER TABLE on it.
@@ -220,7 +222,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(7);
+    expect(getSchemaVersion(db)).toBe(8);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -240,5 +242,100 @@ describe("schema v5 — drafts and issue_metadata", () => {
     const stateCol = cols.find((c) => c.name === "state");
     expect(stateCol).toBeDefined();
     expect(stateCol?.dflt_value).toContain("active");
+  });
+});
+
+describe("schema v8 — deployments FK cascade", () => {
+  it("fresh schema declares ON DELETE CASCADE on deployments.repo_id", () => {
+    const db = createTestDb();
+    const fks = db
+      .prepare("PRAGMA foreign_key_list(deployments)")
+      .all() as { table: string; from: string; on_delete: string }[];
+    const repoFk = fks.find((f) => f.from === "repo_id" && f.table === "repos");
+    expect(repoFk).toBeDefined();
+    expect(repoFk?.on_delete).toBe("CASCADE");
+  });
+
+  it("deleting a repo cascades to its deployment rows", () => {
+    const db = createTestDb();
+    db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run(
+      "acme",
+      "api",
+    );
+    const repoId = Number(
+      (db.prepare("SELECT id FROM repos WHERE owner='acme'").get() as { id: number }).id,
+    );
+    db.prepare(
+      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (?, ?, ?, ?, ?)",
+    ).run(repoId, 1, "b", "existing", "/x");
+
+    const before = db
+      .prepare("SELECT COUNT(*) as c FROM deployments WHERE repo_id = ?")
+      .get(repoId) as { c: number };
+    expect(before.c).toBe(1);
+
+    db.prepare("DELETE FROM repos WHERE id = ?").run(repoId);
+
+    const after = db
+      .prepare("SELECT COUNT(*) as c FROM deployments WHERE repo_id = ?")
+      .get(repoId) as { c: number };
+    expect(after.c).toBe(0);
+  });
+
+  it("migrated DB matches fresh schema's FK cascade", () => {
+    // A v7 DB upgraded to v8 should have the same CASCADE FK as a fresh
+    // install — the migration rebuilds the deployments table.
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (7);
+      CREATE TABLE repos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner TEXT NOT NULL,
+        name TEXT NOT NULL,
+        local_path TEXT,
+        branch_pattern TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(owner, name)
+      );
+      CREATE TABLE deployments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL REFERENCES repos(id),
+        issue_number INTEGER NOT NULL,
+        branch_name TEXT NOT NULL,
+        workspace_mode TEXT NOT NULL,
+        workspace_path TEXT NOT NULL,
+        linked_pr_number INTEGER,
+        state TEXT NOT NULL DEFAULT 'active',
+        launched_at TEXT NOT NULL DEFAULT (datetime('now')),
+        ended_at TEXT
+      );
+    `);
+    db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run("o", "n");
+    db.prepare(
+      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 1, 'b', 'existing', '/x')",
+    ).run();
+
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(8);
+    const fks = db
+      .prepare("PRAGMA foreign_key_list(deployments)")
+      .all() as { table: string; from: string; on_delete: string }[];
+    expect(fks.find((f) => f.from === "repo_id")?.on_delete).toBe("CASCADE");
+
+    // Pre-existing row should have been copied over
+    const row = db
+      .prepare("SELECT issue_number, state FROM deployments WHERE id = 1")
+      .get() as { issue_number: number; state: string };
+    expect(row.issue_number).toBe(1);
+    expect(row.state).toBe("active");
+
+    // Cascade works on the upgraded table
+    db.prepare("DELETE FROM repos WHERE id = 1").run();
+    const { c } = db
+      .prepare("SELECT COUNT(*) as c FROM deployments")
+      .get() as { c: number };
+    expect(c).toBe(0);
   });
 });

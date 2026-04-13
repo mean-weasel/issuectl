@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -20,7 +20,7 @@ const CREATE_TABLES = `
 
   CREATE TABLE IF NOT EXISTS deployments (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    repo_id          INTEGER NOT NULL REFERENCES repos(id),
+    repo_id          INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
     issue_number     INTEGER NOT NULL,
     branch_name      TEXT NOT NULL,
     workspace_mode   TEXT NOT NULL,

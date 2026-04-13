@@ -123,6 +123,47 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    up(db) {
+      // A2: deployments.repo_id had no ON DELETE clause, so the default
+      // NO ACTION blocked removeRepo on any repo with launch history.
+      // SQLite cannot ALTER a foreign key; rebuild the table with CASCADE.
+      // Nothing else references deployments, so the rebuild needs no
+      // deferred-FK gymnastics.
+      //
+      // This rebuild also folds in the CHECK (state IN ('pending','active'))
+      // constraint that the v6 ALTER-based migration could not add —
+      // migrated DBs now match fresh installs.
+      db.exec(`
+        CREATE TABLE deployments_new (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          repo_id          INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+          issue_number     INTEGER NOT NULL,
+          branch_name      TEXT NOT NULL,
+          workspace_mode   TEXT NOT NULL,
+          workspace_path   TEXT NOT NULL,
+          linked_pr_number INTEGER,
+          state            TEXT NOT NULL DEFAULT 'active'
+                           CHECK (state IN ('pending', 'active')),
+          launched_at      TEXT NOT NULL DEFAULT (datetime('now')),
+          ended_at         TEXT
+        );
+
+        INSERT INTO deployments_new (
+          id, repo_id, issue_number, branch_name, workspace_mode,
+          workspace_path, linked_pr_number, state, launched_at, ended_at
+        )
+        SELECT
+          id, repo_id, issue_number, branch_name, workspace_mode,
+          workspace_path, linked_pr_number, state, launched_at, ended_at
+        FROM deployments;
+
+        DROP TABLE deployments;
+        ALTER TABLE deployments_new RENAME TO deployments;
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {
