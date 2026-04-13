@@ -3,6 +3,7 @@
 import {
   getDb,
   getOctokit,
+  getRepo,
   listRepos,
   listLabels,
   createIssue as coreCreateIssue,
@@ -93,6 +94,16 @@ export async function batchCreateIssues(
             id: issue.id,
             success: false as const,
             error: "Owner, repo, and title are required",
+            owner: issue.owner,
+            repo: issue.repo,
+          };
+        }
+
+        if (!getRepo(db, issue.owner, issue.repo)) {
+          return {
+            id: issue.id,
+            success: false as const,
+            error: `Repository not tracked: ${issue.owner}/${issue.repo}`,
             owner: issue.owner,
             repo: issue.repo,
           };
