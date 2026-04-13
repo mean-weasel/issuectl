@@ -1,36 +1,46 @@
 .toast {
   position: fixed;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  right: calc(24px + env(safe-area-inset-right, 0px));
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: calc(28px + env(safe-area-inset-right, 0px));
   z-index: 10000;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 14px;
+  padding: 16px 22px;
   background: var(--paper-bg);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
-  font-size: 13px;
+  font-family: var(--paper-serif);
+  font-size: 15px;
+  font-weight: 500;
   color: var(--paper-ink);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  animation: slideIn 0.2s ease-out;
-  max-width: 360px;
+  box-shadow: 0 12px 32px rgba(26, 23, 18, 0.28),
+    0 2px 6px rgba(26, 23, 18, 0.12);
+  animation: slideIn 0.22s ease-out;
+  min-width: 260px;
+  max-width: 420px;
 }
 
 .toast[data-exiting="true"] {
-  animation: slideOut 0.15s ease-in forwards;
+  animation: slideOut 0.18s ease-in forwards;
 }
 
 .success {
-  border-left: 3px solid var(--paper-accent);
+  border-left: 5px solid var(--paper-accent);
+  background: var(--paper-accent-soft);
+  color: var(--paper-ink);
 }
 
 .error {
-  border-left: 3px solid var(--paper-brick);
+  border-left: 5px solid var(--paper-brick);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
 }
 
 .warning {
-  border-left: 3px solid var(--paper-amber, var(--paper-brick));
+  border-left: 5px solid var(--paper-butter);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
 }
 
 .message {
@@ -42,13 +52,16 @@
   border: none;
   color: var(--paper-ink-muted);
   cursor: pointer;
-  font-size: 16px;
-  padding: 0;
+  font-size: 20px;
+  padding: 4px 4px 6px;
   line-height: 1;
+  border-radius: var(--paper-radius-sm);
+  transition: color 0.15s, background 0.15s;
 }
 
 .dismiss:hover {
-  color: var(--paper-ink-soft);
+  color: var(--paper-ink);
+  background: rgba(26, 23, 18, 0.06);
 }
 
 @keyframes slideIn {
