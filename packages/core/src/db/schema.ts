@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 9;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -20,7 +20,7 @@ const CREATE_TABLES = `
 
   CREATE TABLE IF NOT EXISTS deployments (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    repo_id          INTEGER NOT NULL REFERENCES repos(id),
+    repo_id          INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
     issue_number     INTEGER NOT NULL,
     branch_name      TEXT NOT NULL,
     workspace_mode   TEXT NOT NULL,
@@ -69,6 +69,13 @@ const CREATE_TABLES = `
 
   CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
     ON action_nonces(created_at);
+
+  -- At most one live deployment per (repo, issue). Ended rows are
+  -- historical audit trail and are excluded from the predicate so
+  -- re-launching after a session closes is allowed.
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
+    ON deployments(repo_id, issue_number)
+    WHERE ended_at IS NULL;
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL

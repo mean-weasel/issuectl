@@ -16,6 +16,7 @@ import { listRepos } from "../db/repos.js";
 import { getDeploymentsByRepo } from "../db/deployments.js";
 import { listPrioritiesForRepo } from "../db/priority.js";
 import { getIssues } from "./issues.js";
+import { mapLimit, DEFAULT_REPO_FANOUT } from "./map-limit.js";
 
 export type PerRepoData = {
   repo: Repo;
@@ -139,13 +140,14 @@ export async function getUnifiedList(
   const drafts = listDrafts(db);
   const repos = listRepos(db);
 
-  // Fetch each tracked repo's data in parallel. Per-repo failures (network
-  // error, 404, rate limit, revoked token) are caught and logged so one bad
-  // repo doesn't kill the whole page — we render the remaining repos' data
-  // and drafts. Phase 4/5 can surface a "couldn't load N repos" banner if
+  // Per-repo failures are caught and logged so one bad repo doesn't
+  // kill the whole feed — we render the remaining repos' data and
+  // drafts. Phase 4/5 can surface a "couldn't load N repos" banner if
   // the degraded experience becomes noticeable.
-  const results = await Promise.all(
-    repos.map(async (repo): Promise<PerRepoData | null> => {
+  const results = await mapLimit(
+    repos,
+    DEFAULT_REPO_FANOUT,
+    async (repo): Promise<PerRepoData | null> => {
       try {
         const { issues } = await getIssues(db, octokit, repo.owner, repo.name);
         const deployments = getDeploymentsByRepo(db, repo.id);
@@ -158,7 +160,7 @@ export async function getUnifiedList(
         );
         return null;
       }
-    }),
+    },
   );
 
   const perRepo: PerRepoData[] = results.filter(

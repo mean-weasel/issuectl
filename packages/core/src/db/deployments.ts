@@ -109,6 +109,23 @@ export function getDeploymentsByRepo(
   return rows.map(rowToDeployment);
 }
 
+/**
+ * "Live" means pending or active (ended rows are excluded) — matches
+ * the `idx_deployments_live` partial unique index predicate.
+ */
+export function hasLiveDeploymentForIssue(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+): boolean {
+  const row = db
+    .prepare(
+      "SELECT 1 FROM deployments WHERE repo_id = ? AND issue_number = ? AND ended_at IS NULL LIMIT 1",
+    )
+    .get(repoId, issueNumber);
+  return row !== undefined;
+}
+
 export function updateLinkedPR(
   db: Database.Database,
   deploymentId: number,

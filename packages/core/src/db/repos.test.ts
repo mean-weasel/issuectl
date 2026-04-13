@@ -9,7 +9,7 @@ import {
   listRepos,
   updateRepo,
 } from "./repos.js";
-import { recordDeployment } from "./deployments.js";
+import { recordDeployment, getDeploymentsByRepo } from "./deployments.js";
 
 describe("addRepo", () => {
   let db: Database.Database;
@@ -134,7 +134,9 @@ describe("removeRepo", () => {
     );
   });
 
-  it("rejects deletion when repo has deployments (FK constraint)", () => {
+  it("cascades to deployment rows (no FK block)", () => {
+    // A2 fix: deployments.repo_id now has ON DELETE CASCADE, so removing
+    // a repo with launch history is allowed and drops the orphaned rows.
     const repo = addRepo(db, { owner: "acme", name: "fk-test" });
     recordDeployment(db, {
       repoId: repo.id,
@@ -143,7 +145,12 @@ describe("removeRepo", () => {
       workspaceMode: "existing",
       workspacePath: "/x",
     });
-    expect(() => removeRepo(db, repo.id)).toThrow();
+    expect(getDeploymentsByRepo(db, repo.id)).toHaveLength(1);
+
+    removeRepo(db, repo.id);
+
+    expect(getRepoById(db, repo.id)).toBeUndefined();
+    expect(getDeploymentsByRepo(db, repo.id)).toHaveLength(0);
   });
 });
 

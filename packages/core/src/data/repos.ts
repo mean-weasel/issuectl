@@ -7,6 +7,7 @@ import { getIssues } from "./issues.js";
 import { getPulls } from "./pulls.js";
 import { getDeploymentsByRepo } from "../db/deployments.js";
 import { reconcileRepoLifecycle } from "../lifecycle/reconcile.js";
+import { mapLimit, DEFAULT_REPO_FANOUT } from "./map-limit.js";
 
 function countLabelOccurrences(
   labels: GitHubLabel[][],
@@ -49,8 +50,10 @@ export async function getDashboardData(
   const repos = listRepos(db);
   let oldestCachedAt: Date | null = null;
 
-  const enrichedRepos = await Promise.all(
-    repos.map(async (repo) => {
+  const enrichedRepos = await mapLimit(
+    repos,
+    DEFAULT_REPO_FANOUT,
+    async (repo) => {
       const [issueResult, pullResult] = await Promise.all([
         getIssues(db, octokit, repo.owner, repo.name, options),
         getPulls(db, octokit, repo.owner, repo.name, options),
@@ -94,7 +97,7 @@ export async function getDashboardData(
           ? Math.max(...openIssues.map((i) => daysSince(i.createdAt)))
           : 0,
       };
-    }),
+    },
   );
 
   const totalIssues = enrichedRepos.reduce((sum, r) => sum + r.issueCount, 0);

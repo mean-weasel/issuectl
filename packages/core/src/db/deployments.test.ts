@@ -7,6 +7,7 @@ import {
   getDeploymentById,
   getDeploymentsForIssue,
   getDeploymentsByRepo,
+  hasLiveDeploymentForIssue,
   updateLinkedPR,
   endDeployment,
   activateDeployment,
@@ -46,7 +47,10 @@ describe("recordDeployment", () => {
     expect(dep.launchedAt).toBeTruthy();
   });
 
-  it("allows multiple deployments for the same issue", () => {
+  it("allows re-deploying an issue after the prior deployment has ended", () => {
+    // The live-unique index forbids two live rows for the same
+    // (repo, issue), but ended rows do not count — ending d1 frees up
+    // the slot for d2.
     const d1 = recordDeployment(db, {
       repoId,
       issueNumber: 1,
@@ -54,6 +58,8 @@ describe("recordDeployment", () => {
       workspaceMode: "existing",
       workspacePath: "/a",
     });
+    endDeployment(db, d1.id);
+
     const d2 = recordDeployment(db, {
       repoId,
       issueNumber: 1,
@@ -63,6 +69,25 @@ describe("recordDeployment", () => {
     });
 
     expect(d1.id).not.toBe(d2.id);
+  });
+
+  it("blocks a second live deployment for the same (repo, issue)", () => {
+    recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1-a",
+      workspaceMode: "existing",
+      workspacePath: "/a",
+    });
+    expect(() =>
+      recordDeployment(db, {
+        repoId,
+        issueNumber: 1,
+        branchName: "issue-1-b",
+        workspaceMode: "worktree",
+        workspacePath: "/b",
+      }),
+    ).toThrow(/UNIQUE constraint failed: deployments\.repo_id, deployments\.issue_number/);
   });
 
   it("rejects non-existent repoId (FK constraint)", () => {
@@ -114,13 +139,18 @@ describe("getDeploymentsForIssue", () => {
   it("returns only deployments matching repo and issue number", () => {
     const repo = seedRepo(db);
 
-    recordDeployment(db, {
+    // The live-unique index forbids two live rows for the same
+    // (repo, issue), so end the first before launching a second. Ended
+    // rows stay visible to getDeploymentsForIssue (the `state='active'`
+    // filter does not exclude ended_at).
+    const first = recordDeployment(db, {
       repoId: repo.id,
       issueNumber: 1,
       branchName: "a",
       workspaceMode: "existing",
       workspacePath: "/a",
     });
+    endDeployment(db, first.id);
     recordDeployment(db, {
       repoId: repo.id,
       issueNumber: 1,
@@ -144,11 +174,22 @@ describe("getDeploymentsForIssue", () => {
   it("returns results ordered by launched_at DESC", () => {
     const repo = seedRepo(db);
 
-    // Explicit timestamps so ordering is deterministic (datetime('now') has second-level precision)
+    // Explicit timestamps so ordering is deterministic (datetime('now')
+    // has second-level precision). The older row is also marked ended
+    // to satisfy the live-unique index; getDeploymentsForIssue still
+    // surfaces ended rows for history.
     db.prepare(
-      `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(repo.id, 1, "first", "existing", "/first", "2025-01-01T00:00:00");
+      `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      repo.id,
+      1,
+      "first",
+      "existing",
+      "/first",
+      "2025-01-01T00:00:00",
+      "2025-01-01T12:00:00",
+    );
     db.prepare(
       `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -394,5 +435,65 @@ describe("deployment state (R2: pending/active lifecycle)", () => {
     );
     // Active row should still be there
     expect(getDeploymentById(db, dep.id)).toBeDefined();
+  });
+});
+
+describe("hasLiveDeploymentForIssue", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    repoId = seedRepo(db).id;
+  });
+
+  it("returns false when no deployment exists for the issue", () => {
+    expect(hasLiveDeploymentForIssue(db, repoId, 42)).toBe(false);
+  });
+
+  it("returns true when a pending deployment exists", () => {
+    recordDeployment(db, {
+      repoId,
+      issueNumber: 42,
+      branchName: "b",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+      state: "pending",
+    });
+    expect(hasLiveDeploymentForIssue(db, repoId, 42)).toBe(true);
+  });
+
+  it("returns true when an active deployment exists", () => {
+    recordDeployment(db, {
+      repoId,
+      issueNumber: 42,
+      branchName: "b",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+    expect(hasLiveDeploymentForIssue(db, repoId, 42)).toBe(true);
+  });
+
+  it("returns false when only an ended deployment exists", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 42,
+      branchName: "b",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+    endDeployment(db, dep.id);
+    expect(hasLiveDeploymentForIssue(db, repoId, 42)).toBe(false);
+  });
+
+  it("scopes by (repo, issue) — other issues do not count", () => {
+    recordDeployment(db, {
+      repoId,
+      issueNumber: 42,
+      branchName: "b",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+    expect(hasLiveDeploymentForIssue(db, repoId, 99)).toBe(false);
   });
 });

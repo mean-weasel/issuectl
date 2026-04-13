@@ -123,6 +123,92 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    up(db) {
+      // Rebuild `deployments` so `repo_id` uses ON DELETE CASCADE — the
+      // v1 schema omitted the clause, and SQLite cannot ALTER an FK.
+      // Nothing else references `deployments`, so the rebuild needs no
+      // deferred-FK gymnastics. The rebuild also folds in the
+      // CHECK (state IN ('pending','active')) constraint that the v6
+      // ALTER-based migration could not add, so migrated DBs now match
+      // fresh installs.
+      db.exec(`
+        CREATE TABLE deployments_new (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          repo_id          INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+          issue_number     INTEGER NOT NULL,
+          branch_name      TEXT NOT NULL,
+          workspace_mode   TEXT NOT NULL,
+          workspace_path   TEXT NOT NULL,
+          linked_pr_number INTEGER,
+          state            TEXT NOT NULL DEFAULT 'active'
+                           CHECK (state IN ('pending', 'active')),
+          launched_at      TEXT NOT NULL DEFAULT (datetime('now')),
+          ended_at         TEXT
+        );
+
+        INSERT INTO deployments_new (
+          id, repo_id, issue_number, branch_name, workspace_mode,
+          workspace_path, linked_pr_number, state, launched_at, ended_at
+        )
+        SELECT
+          id, repo_id, issue_number, branch_name, workspace_mode,
+          workspace_path, linked_pr_number, state, launched_at, ended_at
+        FROM deployments;
+
+        DROP TABLE deployments;
+        ALTER TABLE deployments_new RENAME TO deployments;
+      `);
+    },
+  },
+  {
+    version: 9,
+    up(db) {
+      // Enforce at most one live (not-ended) deployment per
+      // (repo, issue). DBs that ran under earlier versions may already
+      // have duplicates — end the older rows first (most recent id per
+      // pair wins) so the index creation cannot fail. The subquery's
+      // inner `ended_at IS NULL` filter is load-bearing: a mixed
+      // live+ended pair must keep its live row, even if the live row
+      // is not the highest id overall.
+      //
+      // Count duplicates first and log the row count so operators have
+      // a paper trail for state that quietly disappears from the UI
+      // (matches the v4 claude_aliases precedent).
+      const { n } = db
+        .prepare(
+          `SELECT COUNT(*) as n FROM deployments
+           WHERE ended_at IS NULL
+             AND id NOT IN (
+               SELECT MAX(id) FROM deployments
+               WHERE ended_at IS NULL
+               GROUP BY repo_id, issue_number
+             )`,
+        )
+        .get() as { n: number };
+      if (n > 0) {
+        console.warn(
+          `[issuectl] Migration v9: ending ${n} duplicate live deployment row(s) so the new unique index can be created. The most recent deployment per (repo, issue) is kept; older rows receive ended_at = now.`,
+        );
+      }
+
+      db.exec(`
+        UPDATE deployments
+        SET ended_at = datetime('now')
+        WHERE ended_at IS NULL
+          AND id NOT IN (
+            SELECT MAX(id) FROM deployments
+            WHERE ended_at IS NULL
+            GROUP BY repo_id, issue_number
+          );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
+          ON deployments(repo_id, issue_number)
+          WHERE ended_at IS NULL;
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {
