@@ -3,6 +3,7 @@ import { getDb, getDeploymentById } from "@issuectl/core";
 import { DetailTopBar } from "@/components/detail/DetailTopBar";
 import { LaunchProgress } from "@/components/launch/LaunchProgress";
 import { LaunchProgressPoller } from "@/components/launch/LaunchProgressPoller";
+import { parseCount } from "@/lib/parse-count";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,6 @@ type SearchParams = {
   c?: string;
   f?: string;
 };
-
-function parseCount(raw: string | undefined): number | null {
-  if (raw === undefined) return null;
-  const n = Number(raw);
-  return Number.isInteger(n) && n >= 0 ? n : null;
-}
 
 export default async function LaunchProgressPage({
   params,
@@ -52,6 +47,10 @@ export default async function LaunchProgressPage({
 
   const commentCount = parseCount(c);
   const fileCount = parseCount(f);
+  const counts =
+    commentCount !== null && fileCount !== null
+      ? { commentCount, fileCount }
+      : undefined;
 
   return (
     <div style={{ background: "var(--paper-bg)", minHeight: "100dvh" }}>
@@ -92,11 +91,7 @@ export default async function LaunchProgressPage({
         >
           {owner}/{repo} · #{issueNumber}
         </p>
-        <LaunchProgress
-          deployment={deployment}
-          commentCount={commentCount}
-          fileCount={fileCount}
-        />
+        <LaunchProgress deployment={deployment} counts={counts} />
         <LaunchProgressPoller active={deployment.endedAt === null} />
       </div>
     </div>
