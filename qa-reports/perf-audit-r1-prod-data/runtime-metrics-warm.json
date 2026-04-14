@@ -1,0 +1,242 @@
+[
+  {
+    "name": "dashboard",
+    "path": "/",
+    "metrics": {
+      "url": "/",
+      "ttfb": 4,
+      "responseEnd": 572,
+      "domContentLoaded": 575,
+      "loadEvent": 581,
+      "fcp": 588,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 30,
+      "resourceByType": {
+        "link": 12,
+        "script": 8,
+        "fetch": 10
+      },
+      "totalTransferKB": 13,
+      "jsKB": 0,
+      "cssKB": 0,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 10,
+      "rscKB": 13,
+      "slowestResource": {
+        "name": "http://localhost:3847/parse",
+        "duration": 11,
+        "size": 1253
+      },
+      "domNodes": 242,
+      "maxDomDepth": 10,
+      "memoryMB": {
+        "used": 7,
+        "total": 12
+      }
+    }
+  },
+  {
+    "name": "settings",
+    "path": "/settings",
+    "metrics": {
+      "url": "/settings",
+      "ttfb": 3,
+      "responseEnd": 298,
+      "domContentLoaded": 298,
+      "loadEvent": 299,
+      "fcp": 36,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 22,
+      "resourceByType": {
+        "link": 14,
+        "script": 7,
+        "fetch": 1
+      },
+      "totalTransferKB": 0,
+      "jsKB": 0,
+      "cssKB": 0,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/",
+        "duration": 3,
+        "size": 414
+      },
+      "domNodes": 121,
+      "maxDomDepth": 8,
+      "memoryMB": {
+        "used": 12,
+        "total": 15
+      }
+    }
+  },
+  {
+    "name": "parse",
+    "path": "/parse",
+    "metrics": {
+      "url": "/parse",
+      "ttfb": 4,
+      "responseEnd": 250,
+      "domContentLoaded": 250,
+      "loadEvent": 250,
+      "fcp": 332,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 20,
+      "resourceByType": {
+        "link": 12,
+        "script": 7,
+        "fetch": 1
+      },
+      "totalTransferKB": 0,
+      "jsKB": 0,
+      "cssKB": 0,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/",
+        "duration": 4,
+        "size": 414
+      },
+      "domNodes": 52,
+      "maxDomDepth": 6,
+      "memoryMB": {
+        "used": 14,
+        "total": 18
+      }
+    }
+  },
+  {
+    "name": "issue-detail",
+    "path": "/issues/mean-weasel/issuectl-test-repo/11",
+    "metrics": {
+      "url": "/issues/mean-weasel/issuectl-test-repo/11",
+      "ttfb": 4,
+      "responseEnd": 6,
+      "domContentLoaded": 10,
+      "loadEvent": 13,
+      "fcp": 20,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 21,
+      "resourceByType": {
+        "link": 12,
+        "script": 8,
+        "fetch": 1
+      },
+      "totalTransferKB": 0,
+      "jsKB": 0,
+      "cssKB": 0,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/",
+        "duration": 3,
+        "size": 414
+      },
+      "domNodes": 74,
+      "maxDomDepth": 7,
+      "memoryMB": {
+        "used": 19,
+        "total": 21
+      }
+    }
+  },
+  {
+    "name": "launch-active",
+    "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+    "metrics": {
+      "url": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+      "ttfb": 3,
+      "responseEnd": 6,
+      "domContentLoaded": 10,
+      "loadEvent": 10,
+      "fcp": 36,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 20,
+      "resourceByType": {
+        "link": 12,
+        "script": 7,
+        "fetch": 1
+      },
+      "totalTransferKB": 1,
+      "jsKB": 0,
+      "cssKB": 0,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 1,
+      "slowestResource": {
+        "name": "http://localhost:3847/issues/mean-weasel/issuectl-test-repo/11",
+        "duration": 3,
+        "size": 1301
+      },
+      "domNodes": 74,
+      "maxDomDepth": 9,
+      "memoryMB": {
+        "used": 22,
+        "total": 27
+      }
+    }
+  },
+  {
+    "name": "launch-active-cf",
+    "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+    "metrics": {
+      "url": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+      "ttfb": 3,
+      "responseEnd": 5,
+      "domContentLoaded": 9,
+      "loadEvent": 9,
+      "fcp": 28,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 20,
+      "resourceByType": {
+        "link": 12,
+        "script": 7,
+        "fetch": 1
+      },
+      "totalTransferKB": 1,
+      "jsKB": 0,
+      "cssKB": 0,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 1,
+      "slowestResource": {
+        "name": "http://localhost:3847/issues/mean-weasel/issuectl-test-repo/11",
+        "duration": 3,
+        "size": 1300
+      },
+      "domNodes": 74,
+      "maxDomDepth": 9,
+      "memoryMB": {
+        "used": 11,
+        "total": 15
+      }
+    }
+  }
+]

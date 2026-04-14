@@ -1,0 +1,47 @@
+{
+  "pre": {
+    "now": 3159,
+    "rscCount": 1,
+    "rsc": [
+      {
+        "start": 57,
+        "dur": 2,
+        "size": 1298
+      }
+    ],
+    "memoryMB": {
+      "used": 4
+    },
+    "domNodes": 74
+  },
+  "post": {
+    "now": 34277,
+    "rscCount": 1,
+    "rsc": [
+      {
+        "start": 57,
+        "dur": 2,
+        "size": 1298
+      }
+    ],
+    "memoryMB": {
+      "used": 3
+    },
+    "domNodes": 74
+  },
+  "summary": {
+    "url": "http://localhost:3847/launch/mean-weasel/issuectl-test-repo/1?deploymentId=9",
+    "windowMs": 34277,
+    "rscBefore": 1,
+    "rscAfter": 1,
+    "newRscInWindow": 0,
+    "memoryStart": {
+      "used": 4
+    },
+    "memoryEnd": {
+      "used": 3
+    },
+    "domNodesStart": 74,
+    "domNodesEnd": 74
+  }
+}

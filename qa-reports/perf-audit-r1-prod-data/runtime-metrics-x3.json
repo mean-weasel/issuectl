@@ -1,0 +1,504 @@
+{
+  "summary": {
+    "dashboard": {
+      "path": "/",
+      "ttfb": {
+        "values": [
+          357,
+          3,
+          397
+        ],
+        "median": 357
+      },
+      "fcp": {
+        "values": [
+          408,
+          364,
+          424
+        ],
+        "median": 408
+      },
+      "totalTransferKB": {
+        "values": [
+          299,
+          299,
+          299
+        ],
+        "median": 299
+      },
+      "jsKB": {
+        "values": [
+          119,
+          119,
+          119
+        ],
+        "median": 119
+      },
+      "jsDecodedKB": {
+        "values": [
+          388,
+          388,
+          388
+        ],
+        "median": 388
+      },
+      "resourceCount": {
+        "values": [
+          31,
+          31,
+          31
+        ],
+        "median": 31
+      }
+    },
+    "settings": {
+      "path": "/settings",
+      "ttfb": {
+        "values": [
+          4,
+          3,
+          3
+        ],
+        "median": 3
+      },
+      "fcp": {
+        "values": [
+          32,
+          48,
+          32
+        ],
+        "median": 32
+      },
+      "totalTransferKB": {
+        "values": [
+          289,
+          289,
+          289
+        ],
+        "median": 289
+      },
+      "jsKB": {
+        "values": [
+          119,
+          119,
+          119
+        ],
+        "median": 119
+      },
+      "jsDecodedKB": {
+        "values": [
+          389,
+          389,
+          389
+        ],
+        "median": 389
+      },
+      "resourceCount": {
+        "values": [
+          23,
+          23,
+          23
+        ],
+        "median": 23
+      }
+    },
+    "parse": {
+      "path": "/parse",
+      "ttfb": {
+        "values": [
+          5,
+          4,
+          4
+        ],
+        "median": 4
+      },
+      "fcp": {
+        "values": [
+          484,
+          544,
+          468
+        ],
+        "median": 484
+      },
+      "totalTransferKB": {
+        "values": [
+          284,
+          284,
+          284
+        ],
+        "median": 284
+      },
+      "jsKB": {
+        "values": [
+          117,
+          117,
+          117
+        ],
+        "median": 117
+      },
+      "jsDecodedKB": {
+        "values": [
+          380,
+          380,
+          380
+        ],
+        "median": 380
+      },
+      "resourceCount": {
+        "values": [
+          21,
+          21,
+          21
+        ],
+        "median": 21
+      }
+    },
+    "issue-detail": {
+      "path": "/issues/mean-weasel/issuectl-test-repo/11",
+      "ttfb": {
+        "values": [
+          3,
+          3,
+          3
+        ],
+        "median": 3
+      },
+      "fcp": {
+        "values": [
+          48,
+          56,
+          44
+        ],
+        "median": 48
+      },
+      "totalTransferKB": {
+        "values": [
+          290,
+          290,
+          290
+        ],
+        "median": 290
+      },
+      "jsKB": {
+        "values": [
+          124,
+          124,
+          124
+        ],
+        "median": 124
+      },
+      "jsDecodedKB": {
+        "values": [
+          399,
+          399,
+          399
+        ],
+        "median": 399
+      },
+      "resourceCount": {
+        "values": [
+          22,
+          22,
+          22
+        ],
+        "median": 22
+      }
+    },
+    "launch-active": {
+      "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+      "ttfb": {
+        "values": [
+          3,
+          3,
+          3
+        ],
+        "median": 3
+      },
+      "fcp": {
+        "values": [
+          40,
+          40,
+          40
+        ],
+        "median": 40
+      },
+      "totalTransferKB": {
+        "values": [
+          278,
+          278,
+          278
+        ],
+        "median": 278
+      },
+      "jsKB": {
+        "values": [
+          111,
+          111,
+          111
+        ],
+        "median": 111
+      },
+      "jsDecodedKB": {
+        "values": [
+          363,
+          363,
+          363
+        ],
+        "median": 363
+      },
+      "resourceCount": {
+        "values": [
+          21,
+          21,
+          21
+        ],
+        "median": 21
+      }
+    },
+    "launch-active-cf": {
+      "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+      "ttfb": {
+        "values": [
+          3,
+          3,
+          3
+        ],
+        "median": 3
+      },
+      "fcp": {
+        "values": [
+          40,
+          40,
+          40
+        ],
+        "median": 40
+      },
+      "totalTransferKB": {
+        "values": [
+          278,
+          278,
+          278
+        ],
+        "median": 278
+      },
+      "jsKB": {
+        "values": [
+          111,
+          111,
+          111
+        ],
+        "median": 111
+      },
+      "jsDecodedKB": {
+        "values": [
+          363,
+          363,
+          363
+        ],
+        "median": 363
+      },
+      "resourceCount": {
+        "values": [
+          21,
+          21,
+          21
+        ],
+        "median": 21
+      }
+    }
+  },
+  "raw": {
+    "dashboard": {
+      "path": "/",
+      "runs": [
+        {
+          "ttfb": 357,
+          "responseEnd": 360,
+          "fcp": 408,
+          "totalTransferKB": 299,
+          "jsKB": 119,
+          "jsDecodedKB": 388,
+          "resourceCount": 31
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 340,
+          "fcp": 364,
+          "totalTransferKB": 299,
+          "jsKB": 119,
+          "jsDecodedKB": 388,
+          "resourceCount": 31
+        },
+        {
+          "ttfb": 397,
+          "responseEnd": 401,
+          "fcp": 424,
+          "totalTransferKB": 299,
+          "jsKB": 119,
+          "jsDecodedKB": 388,
+          "resourceCount": 31
+        }
+      ]
+    },
+    "settings": {
+      "path": "/settings",
+      "runs": [
+        {
+          "ttfb": 4,
+          "responseEnd": 729,
+          "fcp": 32,
+          "totalTransferKB": 289,
+          "jsKB": 119,
+          "jsDecodedKB": 389,
+          "resourceCount": 23
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 490,
+          "fcp": 48,
+          "totalTransferKB": 289,
+          "jsKB": 119,
+          "jsDecodedKB": 389,
+          "resourceCount": 23
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 529,
+          "fcp": 32,
+          "totalTransferKB": 289,
+          "jsKB": 119,
+          "jsDecodedKB": 389,
+          "resourceCount": 23
+        }
+      ]
+    },
+    "parse": {
+      "path": "/parse",
+      "runs": [
+        {
+          "ttfb": 5,
+          "responseEnd": 454,
+          "fcp": 484,
+          "totalTransferKB": 284,
+          "jsKB": 117,
+          "jsDecodedKB": 380,
+          "resourceCount": 21
+        },
+        {
+          "ttfb": 4,
+          "responseEnd": 509,
+          "fcp": 544,
+          "totalTransferKB": 284,
+          "jsKB": 117,
+          "jsDecodedKB": 380,
+          "resourceCount": 21
+        },
+        {
+          "ttfb": 4,
+          "responseEnd": 421,
+          "fcp": 468,
+          "totalTransferKB": 284,
+          "jsKB": 117,
+          "jsDecodedKB": 380,
+          "resourceCount": 21
+        }
+      ]
+    },
+    "issue-detail": {
+      "path": "/issues/mean-weasel/issuectl-test-repo/11",
+      "runs": [
+        {
+          "ttfb": 3,
+          "responseEnd": 5,
+          "fcp": 48,
+          "totalTransferKB": 290,
+          "jsKB": 124,
+          "jsDecodedKB": 399,
+          "resourceCount": 22
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 5,
+          "fcp": 56,
+          "totalTransferKB": 290,
+          "jsKB": 124,
+          "jsDecodedKB": 399,
+          "resourceCount": 22
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 6,
+          "fcp": 44,
+          "totalTransferKB": 290,
+          "jsKB": 124,
+          "jsDecodedKB": 399,
+          "resourceCount": 22
+        }
+      ]
+    },
+    "launch-active": {
+      "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+      "runs": [
+        {
+          "ttfb": 3,
+          "responseEnd": 5,
+          "fcp": 40,
+          "totalTransferKB": 278,
+          "jsKB": 111,
+          "jsDecodedKB": 363,
+          "resourceCount": 21
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 5,
+          "fcp": 40,
+          "totalTransferKB": 278,
+          "jsKB": 111,
+          "jsDecodedKB": 363,
+          "resourceCount": 21
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 5,
+          "fcp": 40,
+          "totalTransferKB": 278,
+          "jsKB": 111,
+          "jsDecodedKB": 363,
+          "resourceCount": 21
+        }
+      ]
+    },
+    "launch-active-cf": {
+      "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+      "runs": [
+        {
+          "ttfb": 3,
+          "responseEnd": 5,
+          "fcp": 40,
+          "totalTransferKB": 278,
+          "jsKB": 111,
+          "jsDecodedKB": 363,
+          "resourceCount": 21
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 6,
+          "fcp": 40,
+          "totalTransferKB": 278,
+          "jsKB": 111,
+          "jsDecodedKB": 363,
+          "resourceCount": 21
+        },
+        {
+          "ttfb": 3,
+          "responseEnd": 6,
+          "fcp": 40,
+          "totalTransferKB": 278,
+          "jsKB": 111,
+          "jsDecodedKB": 363,
+          "resourceCount": 21
+        }
+      ]
+    }
+  }
+}
