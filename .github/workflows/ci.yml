@@ -88,6 +88,12 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build core package
+        # next dev resolves @issuectl/core via its package.json exports
+        # (dist/index.js), so the workspace package must be built before
+        # the web dev server can boot. Other jobs use TS path resolution
+        # and don't need this.
+        run: pnpm turbo build --filter=@issuectl/core
       - name: Verify gh CLI auth
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
