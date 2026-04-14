@@ -1,0 +1,237 @@
+[
+  {
+    "name": "dashboard",
+    "path": "/",
+    "metrics": {
+      "url": "/",
+      "ttfb": 535,
+      "responseEnd": 555,
+      "domContentLoaded": 555,
+      "loadEvent": 793,
+      "fcp": 568,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 16,
+      "resourceByType": {
+        "link": 9,
+        "script": 6,
+        "other": 1
+      },
+      "totalTransferKB": 2279,
+      "jsKB": 2088,
+      "cssKB": 190,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 0,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/main-app.js",
+        "duration": 124,
+        "size": 1759667
+      },
+      "domNodes": 243,
+      "maxDomDepth": 10,
+      "memoryMB": {
+        "used": 52,
+        "total": 55
+      }
+    }
+  },
+  {
+    "name": "settings",
+    "path": "/settings",
+    "metrics": {
+      "url": "/settings",
+      "ttfb": 1093,
+      "responseEnd": 1210,
+      "domContentLoaded": 1211,
+      "loadEvent": 1357,
+      "fcp": 1152,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 15,
+      "resourceByType": {
+        "link": 10,
+        "script": 5
+      },
+      "totalTransferKB": 2079,
+      "jsKB": 2038,
+      "cssKB": 41,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 0,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/main-app.js",
+        "duration": 137,
+        "size": 1759667
+      },
+      "domNodes": 137,
+      "maxDomDepth": 8,
+      "memoryMB": {
+        "used": 55,
+        "total": 63
+      }
+    }
+  },
+  {
+    "name": "parse",
+    "path": "/parse",
+    "metrics": {
+      "url": "/parse",
+      "ttfb": 1114,
+      "responseEnd": 1148,
+      "domContentLoaded": 1148,
+      "loadEvent": 1370,
+      "fcp": 1424,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 14,
+      "resourceByType": {
+        "link": 9,
+        "script": 5
+      },
+      "totalTransferKB": 2050,
+      "jsKB": 2010,
+      "cssKB": 39,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 0,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/main-app.js",
+        "duration": 127,
+        "size": 1759667
+      },
+      "domNodes": 60,
+      "maxDomDepth": 6,
+      "memoryMB": {
+        "used": 70,
+        "total": 81
+      }
+    }
+  },
+  {
+    "name": "issue-detail",
+    "path": "/issues/mean-weasel/issuectl-test-repo/11",
+    "metrics": {
+      "url": "/issues/mean-weasel/issuectl-test-repo/11",
+      "ttfb": 1527,
+      "responseEnd": 1672,
+      "domContentLoaded": 1673,
+      "loadEvent": 2069,
+      "fcp": 1584,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 15,
+      "resourceByType": {
+        "link": 10,
+        "script": 5
+      },
+      "totalTransferKB": 2161,
+      "jsKB": 2118,
+      "cssKB": 43,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 0,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/main-app.js",
+        "duration": 399,
+        "size": 1759667
+      },
+      "domNodes": 92,
+      "maxDomDepth": 7,
+      "memoryMB": {
+        "used": 89,
+        "total": 102
+      }
+    }
+  },
+  {
+    "name": "launch-active",
+    "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+    "metrics": {
+      "url": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+      "ttfb": 978,
+      "responseEnd": 996,
+      "domContentLoaded": 996,
+      "loadEvent": 1224,
+      "fcp": 1020,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 14,
+      "resourceByType": {
+        "link": 9,
+        "script": 5
+      },
+      "totalTransferKB": 1987,
+      "jsKB": 1951,
+      "cssKB": 36,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 0,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/main-app.js",
+        "duration": 118,
+        "size": 1759667
+      },
+      "domNodes": 86,
+      "maxDomDepth": 9,
+      "memoryMB": {
+        "used": 100,
+        "total": 110
+      }
+    }
+  },
+  {
+    "name": "launch-idle",
+    "path": "/launch/mean-weasel/issuectl-test-repo/1?deploymentId=9",
+    "metrics": {
+      "url": "/launch/mean-weasel/issuectl-test-repo/1?deploymentId=9",
+      "ttfb": 32,
+      "responseEnd": 51,
+      "domContentLoaded": 51,
+      "loadEvent": 284,
+      "fcp": 76,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 14,
+      "resourceByType": {
+        "link": 9,
+        "script": 5
+      },
+      "totalTransferKB": 1987,
+      "jsKB": 1951,
+      "cssKB": 36,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 0,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/main-app.js",
+        "duration": 118,
+        "size": 1759667
+      },
+      "domNodes": 88,
+      "maxDomDepth": 9,
+      "memoryMB": {
+        "used": 118,
+        "total": 125
+      }
+    }
+  }
+]

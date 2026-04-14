@@ -112,8 +112,10 @@ export function LaunchModal({
         showToast(result.labelWarning, "warning");
       }
 
+      const c = selectedComments.length;
+      const f = selectedFiles.length;
       router.push(
-        `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}`,
+        `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}&c=${c}&f=${f}`,
       );
     });
   }

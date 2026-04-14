@@ -11,16 +11,18 @@ type Step = {
 
 type Props = {
   deployment: Deployment;
-  commentCount: number;
-  fileCount: number;
+  counts?: { commentCount: number; fileCount: number };
 };
 
-export function LaunchProgress({ deployment, commentCount, fileCount }: Props) {
+export function LaunchProgress({ deployment, counts }: Props) {
   const ended = deployment.endedAt !== null;
+  const contextDetail = counts
+    ? `issue + ${counts.commentCount} comment${counts.commentCount !== 1 ? "s" : ""} + ${counts.fileCount} referenced file${counts.fileCount !== 1 ? "s" : ""}`
+    : "issue + selected comments + referenced files";
   const steps: Step[] = [
     {
       label: "Assembled issue context",
-      detail: `issue + ${commentCount} comment${commentCount !== 1 ? "s" : ""} + ${fileCount} referenced file${fileCount !== 1 ? "s" : ""}`,
+      detail: contextDetail,
       status: "done",
     },
     {

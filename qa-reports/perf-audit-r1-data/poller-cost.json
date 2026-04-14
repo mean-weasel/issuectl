@@ -1,0 +1,316 @@
+{
+  "active": {
+    "url": "http://localhost:3847/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+    "baseline": {
+      "now": 3223,
+      "rscCount": 0,
+      "rscBytes": 0,
+      "rscDurTotal": 0,
+      "rscSamples": [],
+      "longTaskCount": 0,
+      "longTaskMs": 0,
+      "memoryMB": {
+        "used": 198,
+        "total": 215
+      },
+      "totalRes": 14
+    },
+    "samples": [
+      {
+        "tag": "t=0",
+        "now": 3223,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 198,
+          "total": 215
+        },
+        "totalRes": 14
+      },
+      {
+        "tag": "t=6",
+        "now": 10337,
+        "rscCount": 1,
+        "rscBytes": 7966,
+        "rscDurTotal": 38,
+        "rscSamples": [
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 5628,
+            "dur": 38,
+            "size": 7966,
+            "type": "fetch"
+          }
+        ],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 200,
+          "total": 215
+        },
+        "totalRes": 17
+      },
+      {
+        "tag": "t=12",
+        "now": 18448,
+        "rscCount": 3,
+        "rscBytes": 23899,
+        "rscDurTotal": 102,
+        "rscSamples": [
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 5628,
+            "dur": 38,
+            "size": 7966,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 10627,
+            "dur": 20,
+            "size": 7966,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 15625,
+            "dur": 45,
+            "size": 7967,
+            "type": "fetch"
+          }
+        ],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 200,
+          "total": 214
+        },
+        "totalRes": 24
+      },
+      {
+        "tag": "t=18",
+        "now": 25553,
+        "rscCount": 4,
+        "rscBytes": 31863,
+        "rscDurTotal": 145,
+        "rscSamples": [
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 10627,
+            "dur": 20,
+            "size": 7966,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 15625,
+            "dur": 45,
+            "size": 7967,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 20632,
+            "dur": 43,
+            "size": 7964,
+            "type": "fetch"
+          }
+        ],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 201,
+          "total": 213
+        },
+        "totalRes": 27
+      },
+      {
+        "tag": "t=24",
+        "now": 33666,
+        "rscCount": 6,
+        "rscBytes": 47792,
+        "rscDurTotal": 203,
+        "rscSamples": [
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 20632,
+            "dur": 43,
+            "size": 7964,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 25630,
+            "dur": 21,
+            "size": 7967,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 30626,
+            "dur": 36,
+            "size": 7962,
+            "type": "fetch"
+          }
+        ],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 150,
+          "total": 156
+        },
+        "totalRes": 35
+      },
+      {
+        "tag": "t=30",
+        "now": 40746,
+        "rscCount": 8,
+        "rscBytes": 63728,
+        "rscDurTotal": 283,
+        "rscSamples": [
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 30626,
+            "dur": 36,
+            "size": 7962,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 35630,
+            "dur": 41,
+            "size": 7968,
+            "type": "fetch"
+          },
+          {
+            "name": "host:3847/launch/mean-weasel/issuectl-test-repo/11?…",
+            "start": 40626,
+            "dur": 39,
+            "size": 7968,
+            "type": "fetch"
+          }
+        ],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 152,
+          "total": 156
+        },
+        "totalRes": 42
+      }
+    ]
+  },
+  "idle": {
+    "url": "http://localhost:3847/launch/mean-weasel/issuectl-test-repo/1?deploymentId=9",
+    "baseline": {
+      "now": 2928,
+      "rscCount": 0,
+      "rscBytes": 0,
+      "rscDurTotal": 0,
+      "rscSamples": [],
+      "longTaskCount": 0,
+      "longTaskMs": 0,
+      "memoryMB": {
+        "used": 168,
+        "total": 172
+      },
+      "totalRes": 14
+    },
+    "samples": [
+      {
+        "tag": "t=0",
+        "now": 2928,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 168,
+          "total": 172
+        },
+        "totalRes": 14
+      },
+      {
+        "tag": "t=6",
+        "now": 10046,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 166,
+          "total": 173
+        },
+        "totalRes": 14
+      },
+      {
+        "tag": "t=12",
+        "now": 17153,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 167,
+          "total": 173
+        },
+        "totalRes": 14
+      },
+      {
+        "tag": "t=18",
+        "now": 24251,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 167,
+          "total": 173
+        },
+        "totalRes": 14
+      },
+      {
+        "tag": "t=24",
+        "now": 31353,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 156,
+          "total": 158
+        },
+        "totalRes": 14
+      },
+      {
+        "tag": "t=30",
+        "now": 38459,
+        "rscCount": 0,
+        "rscBytes": 0,
+        "rscDurTotal": 0,
+        "rscSamples": [],
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "memoryMB": {
+          "used": 156,
+          "total": 158
+        },
+        "totalRes": 14
+      }
+    ]
+  }
+}

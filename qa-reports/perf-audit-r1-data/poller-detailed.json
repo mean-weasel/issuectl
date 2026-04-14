@@ -1,0 +1,183 @@
+{
+  "url": "http://localhost:3847/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+  "data": {
+    "now": 63962,
+    "rsc": [
+      {
+        "start": 5867,
+        "dur": 35,
+        "size": 7963,
+        "encoded": 7663,
+        "decoded": 30728,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 10865,
+        "dur": 41,
+        "size": 7967,
+        "encoded": 7667,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 15867,
+        "dur": 40,
+        "size": 7964,
+        "encoded": 7664,
+        "decoded": 30728,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 20864,
+        "dur": 36,
+        "size": 7965,
+        "encoded": 7665,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 25865,
+        "dur": 41,
+        "size": 7969,
+        "encoded": 7669,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 30865,
+        "dur": 41,
+        "size": 7967,
+        "encoded": 7667,
+        "decoded": 30728,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 35865,
+        "dur": 38,
+        "size": 7967,
+        "encoded": 7667,
+        "decoded": 30727,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 40864,
+        "dur": 37,
+        "size": 7966,
+        "encoded": 7666,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 45864,
+        "dur": 33,
+        "size": 7968,
+        "encoded": 7668,
+        "decoded": 30728,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 50864,
+        "dur": 39,
+        "size": 7964,
+        "encoded": 7664,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 55865,
+        "dur": 39,
+        "size": 7964,
+        "encoded": 7664,
+        "decoded": 30727,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 60865,
+        "dur": 500,
+        "size": 8510,
+        "encoded": 8210,
+        "decoded": 31757,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      }
+    ],
+    "longTasks": [],
+    "memoryMB": {
+      "used": 162,
+      "total": 169
+    },
+    "domNodes": 87
+  },
+  "summary": {
+    "windowMs": 63962,
+    "totalTicks": 12,
+    "avgGapMs": 5000,
+    "totalTransferBytes": 96134,
+    "totalDecodedBytes": 369768,
+    "totalDurationMs": 920,
+    "perTickTransferBytes": 8011,
+    "perTickDecodedBytes": 30814,
+    "perTickDurationMs": 77,
+    "longTaskCount": 0,
+    "longTaskTotalMs": 0,
+    "memoryMB": {
+      "used": 162,
+      "total": 169
+    },
+    "domNodes": 87,
+    "samples": [
+      {
+        "start": 5867,
+        "dur": 35,
+        "size": 7963,
+        "encoded": 7663,
+        "decoded": 30728,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 10865,
+        "dur": 41,
+        "size": 7967,
+        "encoded": 7667,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 15867,
+        "dur": 40,
+        "size": 7964,
+        "encoded": 7664,
+        "decoded": 30728,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 20864,
+        "dur": 36,
+        "size": 7965,
+        "encoded": 7665,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 25865,
+        "dur": 41,
+        "size": 7969,
+        "encoded": 7669,
+        "decoded": 30729,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      }
+    ],
+    "tickGaps": [
+      4998,
+      5002,
+      4997,
+      5001,
+      5000,
+      5000,
+      4999,
+      5000,
+      5000,
+      5001,
+      5000
+    ]
+  }
+}
