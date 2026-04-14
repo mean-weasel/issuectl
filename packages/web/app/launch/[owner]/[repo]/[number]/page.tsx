@@ -7,6 +7,7 @@ import {
 } from "@issuectl/core";
 import { DetailTopBar } from "@/components/detail/DetailTopBar";
 import { LaunchProgress } from "@/components/launch/LaunchProgress";
+import { LaunchProgressPoller } from "@/components/launch/LaunchProgressPoller";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,7 @@ export default async function LaunchProgressPage({
           commentCount={commentCount}
           fileCount={fileCount}
         />
+        <LaunchProgressPoller active={deployment.endedAt === null} />
       </div>
     </div>
   );
