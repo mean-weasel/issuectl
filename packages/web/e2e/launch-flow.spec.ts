@@ -6,6 +6,14 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
 
+// STATUS (2026-04): this spec exercises the full real-terminal launch
+// flow — gated on macOS + Ghostty + gh auth, never runs in CI. The route
+// paths and copy assertions below pre-date a route restructure and are
+// known stale; running this requires updating those AND a real terminal
+// launch + cleanup pass. CI-friendly UI coverage of the launch progress
+// page (poller, spinner, back link, aria) lives in launch-ui.spec.ts,
+// which seeds a deployment row directly without spawning anything.
+
 const execFileAsync = promisify(execFile);
 
 // ── Skip conditions ─────────────────────────────────────────────────

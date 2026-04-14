@@ -76,8 +76,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo build
 
-  e2e-mobile-ux:
-    name: E2E Mobile UX
+  e2e-web:
+    name: E2E Web (mobile UX + launch UI)
     runs-on: ubuntu-latest
     needs: [typecheck, lint, test]
     steps:
@@ -98,20 +98,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # GH_TOKEN env var satisfies both `gh auth status` here and the
-        # canRun() probe inside the spec (which calls `gh auth token`).
-        # The spec hard-fails in CI if canRun() returns false, so a
+        # canRun() probe inside both specs (which call `gh auth token`).
+        # Specs hard-fail in CI if canRun() returns false, so a
         # misconfigured token causes a loud failure, not a silent skip.
         run: gh auth status
       - name: Install Playwright chromium
         run: pnpm --filter @issuectl/web exec playwright install --with-deps chromium
-      - name: Run mobile UX regression tests
+      - name: Run mobile-chromium e2e specs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter @issuectl/web exec playwright test mobile-ux-patterns.spec.ts --project=mobile-chromium
+        run: pnpm --filter @issuectl/web exec playwright test --project=mobile-chromium
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-mobile-ux
+          name: playwright-report-e2e-web
           path: packages/web/playwright-report/
           retention-days: 7
