@@ -75,3 +75,43 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo build
+
+  e2e-mobile-ux:
+    name: E2E Mobile UX
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build core package
+        # next dev resolves @issuectl/core via its package.json exports
+        # (dist/index.js), so the workspace package must be built before
+        # the web dev server can boot. Other jobs use TS path resolution
+        # and don't need this.
+        run: pnpm turbo build --filter=@issuectl/core
+      - name: Verify gh CLI auth
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # GH_TOKEN env var satisfies both `gh auth status` here and the
+        # canRun() probe inside the spec (which calls `gh auth token`).
+        # The spec hard-fails in CI if canRun() returns false, so a
+        # misconfigured token causes a loud failure, not a silent skip.
+        run: gh auth status
+      - name: Install Playwright chromium
+        run: pnpm --filter @issuectl/web exec playwright install --with-deps chromium
+      - name: Run mobile UX regression tests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test mobile-ux-patterns.spec.ts --project=mobile-chromium
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-mobile-ux
+          path: packages/web/playwright-report/
+          retention-days: 7
