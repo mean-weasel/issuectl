@@ -356,6 +356,10 @@ test.describe("Mobile UX regressions — iOS form attrs (R3, R5)", () => {
   }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/settings`);
+    // Wait for the form to actually render before bulk-collecting inputs —
+    // .locator(...).all() does not auto-wait, so on a slow CI runner the
+    // collection can fire before hydration finishes.
+    await expect(page.locator("#sf-branch-pattern")).toBeVisible();
     const inputs = await page
       .locator('input[type="text"]:visible, input:not([type]):visible')
       .all();

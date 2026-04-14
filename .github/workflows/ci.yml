@@ -104,10 +104,18 @@ jobs:
         run: gh auth status
       - name: Install Playwright chromium
         run: pnpm --filter @issuectl/web exec playwright install --with-deps chromium
-      - name: Run mobile-chromium e2e specs
+      - name: Run mobile UX regression spec
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter @issuectl/web exec playwright test --project=mobile-chromium
+        # Specs run in separate invocations because two `next dev`
+        # processes against the same packages/web/.next/cache/webpack/
+        # collide on pack file rename, even sequentially. Each
+        # `playwright test` invocation gets a clean process boundary.
+        run: pnpm --filter @issuectl/web exec playwright test mobile-ux-patterns.spec.ts --project=mobile-chromium
+      - name: Run launch UI spec
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test launch-ui.spec.ts --project=mobile-chromium
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
