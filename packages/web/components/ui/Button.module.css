@@ -1,7 +1,9 @@
 .btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-height: 44px;
   padding: 8px 14px;
   border-radius: var(--paper-radius-md);
   font-size: 13px;

@@ -103,20 +103,6 @@ export default async function LaunchProgressPage({
           commentCount={commentCount}
           fileCount={fileCount}
         />
-        <div style={{ marginTop: 30, textAlign: "center" }}>
-          <a
-            href={`/issues/${owner}/${repo}/${issueNumber}`}
-            style={{
-              fontFamily: "var(--paper-serif)",
-              fontStyle: "italic",
-              fontSize: 13,
-              color: "var(--paper-ink-muted)",
-              textDecoration: "none",
-            }}
-          >
-            ‹ back to issue
-          </a>
-        </div>
       </div>
     </div>
   );

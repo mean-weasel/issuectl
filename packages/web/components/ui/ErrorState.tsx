@@ -16,7 +16,7 @@ export function ErrorState({ error, reset }: Props) {
   return (
     <div className={styles.container}>
       <div className={styles.inner}>
-        <div className={styles.icon}>!</div>
+        <div className={styles.icon} aria-hidden="true">!</div>
         <h1 className={styles.title}>Something went wrong</h1>
         <p className={styles.message}>{error.message}</p>
         {hint && <p className={styles.hint}>{hint}</p>}

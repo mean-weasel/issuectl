@@ -17,7 +17,7 @@ export function NotFoundState({ title, message, links }: Props) {
   return (
     <div className={styles.container}>
       <div className={styles.inner}>
-        <div className={styles.icon}>?</div>
+        <div className={styles.icon} aria-hidden="true">?</div>
         <h1 className={styles.title}>{title}</h1>
         <p className={styles.message}>{message}</p>
         <div className={styles.actions}>

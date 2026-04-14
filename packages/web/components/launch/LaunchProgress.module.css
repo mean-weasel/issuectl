@@ -35,7 +35,7 @@
   height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 2px solid var(--paper-accent);
+  border: 2px solid var(--paper-accent-soft);
   border-top-color: var(--paper-accent);
   animation: spin 0.8s linear infinite;
 }
@@ -43,6 +43,12 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .numActive {
+    animation: none;
   }
 }
 

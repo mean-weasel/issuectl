@@ -79,6 +79,10 @@ export function DraftDetail({ draft }: Props) {
           onBlur={handleTitleBlur}
           aria-label="Draft title"
           maxLength={256}
+          autoComplete="off"
+          autoCapitalize="sentences"
+          spellCheck={true}
+          enterKeyHint="done"
         />
         <DetailMeta>
           <Chip variant="dashed">no repo</Chip>
@@ -100,12 +104,23 @@ export function DraftDetail({ draft }: Props) {
             placeholder="add a description…"
             rows={8}
             maxLength={65536}
+            autoComplete="off"
+            autoCapitalize="sentences"
+            spellCheck={true}
           />
           {savedAt !== null && (
-            <div className={styles.savedIndicator}>saved</div>
+            <div
+              className={styles.savedIndicator}
+              role="status"
+              aria-live="polite"
+            >
+              saved
+            </div>
           )}
           {saveError && (
-            <div className={styles.saveError}>{saveError}</div>
+            <div className={styles.saveError} role="alert">
+              {saveError}
+            </div>
           )}
         </div>
       </div>

@@ -31,7 +31,15 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef }: Props) {
   };
 
   if (merged) {
-    return <div className={styles.mergedBanner}>merged successfully</div>;
+    return (
+      <div
+        className={styles.mergedBanner}
+        role="status"
+        aria-live="polite"
+      >
+        merged successfully
+      </div>
+    );
   }
 
   return (
@@ -63,7 +71,11 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef }: Props) {
           {merging ? "merging…" : "merge pull request →"}
         </button>
       )}
-      {mergeError && <div className={styles.mergeError}>{mergeError}</div>}
+      {mergeError && (
+        <div className={styles.mergeError} role="alert">
+          {mergeError}
+        </div>
+      )}
     </>
   );
 }
