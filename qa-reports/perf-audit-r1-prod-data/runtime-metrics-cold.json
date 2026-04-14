@@ -1,0 +1,272 @@
+[
+  {
+    "name": "dashboard",
+    "path": "/",
+    "metrics": {
+      "url": "/",
+      "ttfb": 4,
+      "transferDoc": 7314,
+      "responseEnd": 327,
+      "domContentLoaded": 329,
+      "loadEvent": 351,
+      "fcp": 372,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 31,
+      "resourceByType": {
+        "link": 12,
+        "script": 8,
+        "fetch": 10,
+        "other": 1
+      },
+      "totalTransferKB": 299,
+      "totalEncodedKB": 290,
+      "totalDecodedKB": 632,
+      "jsKB": 119,
+      "jsDecodedKB": 388,
+      "cssKB": 164,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 10,
+      "rscKB": 13,
+      "slowestResource": {
+        "name": "http://localhost:3847/issues/mean-weasel/issuectl-test-repo/2",
+        "duration": 14,
+        "size": 1299
+      },
+      "domNodes": 242,
+      "maxDomDepth": 10,
+      "memoryMB": {
+        "used": 6,
+        "total": 9
+      }
+    }
+  },
+  {
+    "name": "settings",
+    "path": "/settings",
+    "metrics": {
+      "url": "/settings",
+      "ttfb": 375,
+      "transferDoc": 6932,
+      "responseEnd": 463,
+      "domContentLoaded": 463,
+      "loadEvent": 463,
+      "fcp": 488,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 23,
+      "resourceByType": {
+        "link": 14,
+        "script": 7,
+        "fetch": 1,
+        "other": 1
+      },
+      "totalTransferKB": 289,
+      "totalEncodedKB": 283,
+      "totalDecodedKB": 612,
+      "jsKB": 119,
+      "jsDecodedKB": 389,
+      "cssKB": 167,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/a4f3bcc6-c81023aa5332ab1f.js",
+        "duration": 14,
+        "size": 54663
+      },
+      "domNodes": 124,
+      "maxDomDepth": 8,
+      "memoryMB": {
+        "used": 4,
+        "total": 7
+      }
+    }
+  },
+  {
+    "name": "parse",
+    "path": "/parse",
+    "metrics": {
+      "url": "/parse",
+      "ttfb": 4,
+      "transferDoc": 5488,
+      "responseEnd": 432,
+      "domContentLoaded": 433,
+      "loadEvent": 441,
+      "fcp": 492,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 21,
+      "resourceByType": {
+        "link": 12,
+        "script": 7,
+        "fetch": 1,
+        "other": 1
+      },
+      "totalTransferKB": 284,
+      "totalEncodedKB": 277,
+      "totalDecodedKB": 596,
+      "jsKB": 117,
+      "jsDecodedKB": 380,
+      "cssKB": 164,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/a4f3bcc6-c81023aa5332ab1f.js",
+        "duration": 13,
+        "size": 54663
+      },
+      "domNodes": 52,
+      "maxDomDepth": 6,
+      "memoryMB": {
+        "used": 5,
+        "total": 8
+      }
+    }
+  },
+  {
+    "name": "issue-detail",
+    "path": "/issues/mean-weasel/issuectl-test-repo/11",
+    "metrics": {
+      "url": "/issues/mean-weasel/issuectl-test-repo/11",
+      "ttfb": 3,
+      "transferDoc": 5707,
+      "responseEnd": 6,
+      "domContentLoaded": 12,
+      "loadEvent": 48,
+      "fcp": 80,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 22,
+      "resourceByType": {
+        "link": 12,
+        "script": 8,
+        "other": 1,
+        "fetch": 1
+      },
+      "totalTransferKB": 290,
+      "totalEncodedKB": 283,
+      "totalDecodedKB": 608,
+      "jsKB": 124,
+      "jsDecodedKB": 399,
+      "cssKB": 163,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 0,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/a4f3bcc6-c81023aa5332ab1f.js",
+        "duration": 13,
+        "size": 54663
+      },
+      "domNodes": 74,
+      "maxDomDepth": 7,
+      "memoryMB": {
+        "used": 5,
+        "total": 8
+      }
+    }
+  },
+  {
+    "name": "launch-active",
+    "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+    "metrics": {
+      "url": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11",
+      "ttfb": 4,
+      "transferDoc": 5264,
+      "responseEnd": 7,
+      "domContentLoaded": 13,
+      "loadEvent": 50,
+      "fcp": 44,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 21,
+      "resourceByType": {
+        "link": 12,
+        "script": 7,
+        "other": 1,
+        "fetch": 1
+      },
+      "totalTransferKB": 278,
+      "totalEncodedKB": 272,
+      "totalDecodedKB": 575,
+      "jsKB": 111,
+      "jsDecodedKB": 363,
+      "cssKB": 163,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 1,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/a4f3bcc6-c81023aa5332ab1f.js",
+        "duration": 13,
+        "size": 54663
+      },
+      "domNodes": 74,
+      "maxDomDepth": 9,
+      "memoryMB": {
+        "used": 4,
+        "total": 8
+      }
+    }
+  },
+  {
+    "name": "launch-active-cf",
+    "path": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+    "metrics": {
+      "url": "/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+      "ttfb": 4,
+      "transferDoc": 5364,
+      "responseEnd": 10,
+      "domContentLoaded": 13,
+      "loadEvent": 49,
+      "fcp": 40,
+      "lcp": null,
+      "cls": 0,
+      "longTaskCount": 0,
+      "tbtApprox": 0,
+      "resourceCount": 21,
+      "resourceByType": {
+        "link": 12,
+        "script": 7,
+        "other": 1,
+        "fetch": 1
+      },
+      "totalTransferKB": 278,
+      "totalEncodedKB": 272,
+      "totalDecodedKB": 575,
+      "jsKB": 111,
+      "jsDecodedKB": 363,
+      "cssKB": 163,
+      "imgKB": 0,
+      "fontKB": 0,
+      "rscCount": 1,
+      "rscKB": 1,
+      "slowestResource": {
+        "name": "http://localhost:3847/_next/static/chunks/a4f3bcc6-c81023aa5332ab1f.js",
+        "duration": 13,
+        "size": 54663
+      },
+      "domNodes": 74,
+      "maxDomDepth": 9,
+      "memoryMB": {
+        "used": 4,
+        "total": 8
+      }
+    }
+  }
+]

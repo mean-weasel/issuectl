@@ -1,0 +1,34 @@
+[
+  {
+    "url": "http://localhost:3847/pulls/mean-weasel/issuectl-test-repo/1",
+    "metrics": {
+      "url": "/pulls/mean-weasel/issuectl-test-repo/1",
+      "ttfb": 4,
+      "fcp": 668,
+      "resourceCount": 23,
+      "totalTransferKB": 282,
+      "jsKB": 113,
+      "jsDecodedKB": 369,
+      "cssKB": 17,
+      "statusOk": true,
+      "status": 200,
+      "domNodes": 53
+    }
+  },
+  {
+    "url": "http://localhost:3847/pulls/mean-weasel/issuectl-test-repo/79",
+    "metrics": {
+      "url": "/pulls/mean-weasel/issuectl-test-repo/79",
+      "ttfb": 384,
+      "fcp": 476,
+      "resourceCount": 23,
+      "totalTransferKB": 282,
+      "jsKB": 113,
+      "jsDecodedKB": 369,
+      "cssKB": 17,
+      "statusOk": true,
+      "status": 200,
+      "domNodes": 50
+    }
+  }
+]

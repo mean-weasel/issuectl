@@ -1,0 +1,217 @@
+{
+  "url": "http://localhost:3847/launch/mean-weasel/issuectl-test-repo/11?deploymentId=11&c=3&f=2",
+  "pre": {
+    "now": 3143,
+    "rsc": [
+      {
+        "start": 65,
+        "dur": 2,
+        "size": 1300,
+        "encoded": 1000,
+        "decoded": 3312,
+        "name": "issues/mean-weasel/issuectl-test-repo/11"
+      }
+    ],
+    "longTasks": [],
+    "memoryMB": {
+      "used": 4,
+      "total": 8
+    },
+    "domNodes": 74
+  },
+  "post": {
+    "now": 64242,
+    "rsc": [
+      {
+        "start": 65,
+        "dur": 2,
+        "size": 1300,
+        "encoded": 1000,
+        "decoded": 3312,
+        "name": "issues/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 5059,
+        "dur": 8,
+        "size": 3411,
+        "encoded": 3111,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 10057,
+        "dur": 8,
+        "size": 3411,
+        "encoded": 3111,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 15057,
+        "dur": 8,
+        "size": 3409,
+        "encoded": 3109,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 20057,
+        "dur": 8,
+        "size": 3410,
+        "encoded": 3110,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 25056,
+        "dur": 3,
+        "size": 3408,
+        "encoded": 3108,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 30054,
+        "dur": 3,
+        "size": 3413,
+        "encoded": 3113,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 35057,
+        "dur": 8,
+        "size": 3410,
+        "encoded": 3110,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 40057,
+        "dur": 7,
+        "size": 3409,
+        "encoded": 3109,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 45057,
+        "dur": 8,
+        "size": 3410,
+        "encoded": 3110,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 50057,
+        "dur": 365,
+        "size": 3479,
+        "encoded": 3179,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 55057,
+        "dur": 8,
+        "size": 3408,
+        "encoded": 3108,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 60057,
+        "dur": 8,
+        "size": 3409,
+        "encoded": 3109,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      }
+    ],
+    "longTasks": [],
+    "memoryMB": {
+      "used": 5,
+      "total": 7
+    },
+    "domNodes": 74
+  },
+  "summary": {
+    "windowMs": 64242,
+    "preTickCount": 1,
+    "windowTickCount": 12,
+    "avgGapMs": 5000,
+    "tickGaps": [
+      4998,
+      5000,
+      5000,
+      4999,
+      4998,
+      5003,
+      5000,
+      5000,
+      5000,
+      5000,
+      5000
+    ],
+    "totalTransferBytes": 40987,
+    "totalDecodedBytes": 141552,
+    "totalDurationMs": 442,
+    "perTickTransferBytes": 3416,
+    "perTickDecodedBytes": 11796,
+    "perTickDurationMs": 37,
+    "longTaskCountTotal": 0,
+    "longTaskTotalMs": 0,
+    "memoryMBStart": {
+      "used": 4,
+      "total": 8
+    },
+    "memoryMBEnd": {
+      "used": 5,
+      "total": 7
+    },
+    "memoryDeltaMB": 1,
+    "domNodesStart": 74,
+    "domNodesEnd": 74,
+    "samples": [
+      {
+        "start": 5059,
+        "dur": 8,
+        "size": 3411,
+        "encoded": 3111,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 10057,
+        "dur": 8,
+        "size": 3411,
+        "encoded": 3111,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 15057,
+        "dur": 8,
+        "size": 3409,
+        "encoded": 3109,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 20057,
+        "dur": 8,
+        "size": 3410,
+        "encoded": 3110,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      },
+      {
+        "start": 25056,
+        "dur": 3,
+        "size": 3408,
+        "encoded": 3108,
+        "decoded": 11796,
+        "name": "launch/mean-weasel/issuectl-test-repo/11"
+      }
+    ]
+  }
+}
