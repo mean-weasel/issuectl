@@ -22,7 +22,7 @@
 }
 
 .head {
-  padding: 52px 22px 18px;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 22px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;

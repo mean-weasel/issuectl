@@ -9,7 +9,7 @@
 }
 
 .header {
-  padding: 52px 16px 12px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
   border-bottom: 1px solid var(--paper-line);
 }
 
