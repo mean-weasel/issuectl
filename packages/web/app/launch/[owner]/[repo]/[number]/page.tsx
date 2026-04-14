@@ -1,10 +1,5 @@
 import { notFound } from "next/navigation";
-import {
-  getDb,
-  getOctokit,
-  getDeploymentById,
-  getIssueDetail,
-} from "@issuectl/core";
+import { getDb, getDeploymentById } from "@issuectl/core";
 import { DetailTopBar } from "@/components/detail/DetailTopBar";
 import { LaunchProgress } from "@/components/launch/LaunchProgress";
 import { LaunchProgressPoller } from "@/components/launch/LaunchProgressPoller";
@@ -17,15 +12,27 @@ type Params = {
   number: string;
 };
 
+type SearchParams = {
+  deploymentId?: string;
+  c?: string;
+  f?: string;
+};
+
+function parseCount(raw: string | undefined): number | null {
+  if (raw === undefined) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
 export default async function LaunchProgressPage({
   params,
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ deploymentId?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { owner, repo, number } = await params;
-  const { deploymentId: idStr } = await searchParams;
+  const { deploymentId: idStr, c, f } = await searchParams;
 
   const issueNumber = Number(number);
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
@@ -43,22 +50,8 @@ export default async function LaunchProgressPage({
     notFound();
   }
 
-  const octokit = await getOctokit();
-  let commentCount = 0;
-  let fileCount = 0;
-  try {
-    const detail = await getIssueDetail(
-      db,
-      octokit,
-      owner,
-      repo,
-      issueNumber,
-    );
-    commentCount = detail.comments.length;
-    fileCount = detail.referencedFiles.length;
-  } catch {
-    // Non-fatal — we can still show the progress without exact counts.
-  }
+  const commentCount = parseCount(c);
+  const fileCount = parseCount(f);
 
   return (
     <div style={{ background: "var(--paper-bg)", minHeight: "100dvh" }}>
