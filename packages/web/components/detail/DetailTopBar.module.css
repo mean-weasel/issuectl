@@ -1,5 +1,5 @@
 .bar {
-  padding: 52px 16px 12px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
   display: flex;
   align-items: center;
   gap: 12px;

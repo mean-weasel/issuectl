@@ -8,7 +8,7 @@
 }
 
 .topBar {
-  padding: 52px 24px 12px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 24px 12px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -220,6 +220,10 @@
 }
 
 @media (min-width: 768px) {
+  .topBar {
+    padding: 52px 24px 12px;
+  }
+
   .menuBtn {
     display: none;
   }
