@@ -22,12 +22,12 @@
 
 .input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: var(--paper-fs-lg);
   font-family: var(--paper-serif), sans-serif;
   outline: none;
 }
@@ -38,13 +38,13 @@
 
 .textarea {
   width: 100%;
-  height: 120px;
+  min-height: 140px;
   padding: 10px 12px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: var(--paper-fs-lg);
   font-family: var(--paper-serif), sans-serif;
   outline: none;
   resize: vertical;
@@ -52,6 +52,17 @@
 
 .textarea:focus {
   border-color: var(--paper-accent);
+}
+
+@media (min-width: 768px) {
+  .input,
+  .textarea {
+    font-size: var(--paper-fs-base);
+  }
+
+  .input {
+    padding: 8px 12px;
+  }
 }
 
 .repoDisplay {
@@ -73,22 +84,33 @@
 }
 
 .repoName {
-  font-size: 13px;
+  font-size: var(--paper-fs-base);
   font-weight: 500;
 }
 
 .changeLink {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--paper-fs-base);
   color: var(--paper-ink-muted);
   cursor: pointer;
   background: none;
   border: none;
-  padding: 0;
+  padding: 8px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .changeLink:hover {
   color: var(--paper-ink-soft);
+}
+
+@media (min-width: 768px) {
+  .changeLink {
+    font-size: var(--paper-fs-xs);
+    padding: 0;
+    min-height: 0;
+  }
 }
 
 .repoList {
@@ -103,12 +125,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 12px;
+  min-height: 44px;
   background: var(--paper-bg-warm);
   border: none;
   border-bottom: 1px solid var(--paper-line);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: var(--paper-fs-base);
   cursor: pointer;
   text-align: left;
 }
