@@ -5,11 +5,11 @@ import {
   getPulls,
   listRepos,
   dbExists,
-  checkGhAuth,
   type GitHubPull,
 } from "@issuectl/core";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 import { List } from "@/components/list/List";
+import { getAuthStatus } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +33,34 @@ export default async function MainListPage({ searchParams }: Props) {
   const { tab } = await searchParams;
   const activeTab = tab === "prs" ? "prs" : "issues";
 
-  const octokit = await getOctokit();
-  const data = await getUnifiedList(db, octokit);
+  // Auth check doesn't depend on octokit, so start it in parallel with the
+  // octokit handshake. Then fan out data fetches in parallel once octokit is ready.
+  const [octokit, auth] = await Promise.all([getOctokit(), getAuthStatus()]);
 
-  // Fetch PRs across all repos (non-fatal — PR tab degrades gracefully).
-  let allPrs: PrEntry[] = [];
+  const [data, allPrs] = await Promise.all([
+    getUnifiedList(db, octokit),
+    gatherPulls(db, octokit, repos),
+  ]);
+
+  const username = auth.authenticated ? auth.username : null;
+
+  return (
+    <List
+      data={data}
+      activeTab={activeTab}
+      prs={allPrs}
+      prCount={allPrs.length}
+      username={username}
+    />
+  );
+}
+
+// Non-fatal — PR tab degrades gracefully if any repo's pulls fail to load.
+async function gatherPulls(
+  db: ReturnType<typeof getDb>,
+  octokit: Awaited<ReturnType<typeof getOctokit>>,
+  repos: ReturnType<typeof listRepos>,
+): Promise<PrEntry[]> {
   try {
     const prResults = await Promise.all(
       repos.map(async (repo) => {
@@ -52,27 +75,8 @@ export default async function MainListPage({ searchParams }: Props) {
         }
       }),
     );
-    allPrs = prResults.flat();
+    return prResults.flat();
   } catch {
-    // Non-fatal — PR tab shows empty state.
+    return [];
   }
-
-  // Get the authenticated username for the nav drawer footer.
-  let username: string | null = null;
-  try {
-    const auth = await checkGhAuth();
-    username = auth.username ?? null;
-  } catch {
-    // Non-fatal — the drawer just won't show the username.
-  }
-
-  return (
-    <List
-      data={data}
-      activeTab={activeTab}
-      prs={allPrs}
-      prCount={allPrs.length}
-      username={username}
-    />
-  );
 }
