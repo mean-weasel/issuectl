@@ -18,7 +18,7 @@
   box-shadow: var(--paper-shadow-sheet);
   padding: 12px 0 calc(28px + env(safe-area-inset-bottom, 0px));
   z-index: 1001;
-  max-height: 85vh;
+  max-height: 85dvh;
   overflow-y: auto;
   animation: sheetIn 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }

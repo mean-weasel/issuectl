@@ -67,6 +67,12 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           disabled={saving}
           autoFocus
           maxLength={256}
+          autoComplete="off"
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck
+          enterKeyHint="done"
+          style={title.length > 50 ? { fontSize: 20, lineHeight: 1.3 } : undefined}
         />
         {error && <div className={styles.error}>{error}</div>}
         <div className={styles.actions}>

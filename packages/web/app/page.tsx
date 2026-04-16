@@ -5,11 +5,11 @@ import {
   getPulls,
   listRepos,
   dbExists,
-  checkGhAuth,
   type GitHubPull,
 } from "@issuectl/core";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 import { List } from "@/components/list/List";
+import { getAuthStatus } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -33,38 +33,16 @@ export default async function MainListPage({ searchParams }: Props) {
   const { tab } = await searchParams;
   const activeTab = tab === "prs" ? "prs" : "issues";
 
-  const octokit = await getOctokit();
-  const data = await getUnifiedList(db, octokit);
+  // Auth check doesn't depend on octokit, so start it in parallel with the
+  // octokit handshake. Then fan out data fetches in parallel once octokit is ready.
+  const [octokit, auth] = await Promise.all([getOctokit(), getAuthStatus()]);
 
-  // Fetch PRs across all repos (non-fatal — PR tab degrades gracefully).
-  let allPrs: PrEntry[] = [];
-  try {
-    const prResults = await Promise.all(
-      repos.map(async (repo) => {
-        try {
-          const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
-          return pulls.map((pull) => ({
-            repo: { owner: repo.owner, name: repo.name },
-            pull,
-          }));
-        } catch {
-          return [];
-        }
-      }),
-    );
-    allPrs = prResults.flat();
-  } catch {
-    // Non-fatal — PR tab shows empty state.
-  }
+  const [data, allPrs] = await Promise.all([
+    getUnifiedList(db, octokit),
+    gatherPulls(db, octokit, repos),
+  ]);
 
-  // Get the authenticated username for the nav drawer footer.
-  let username: string | null = null;
-  try {
-    const auth = await checkGhAuth();
-    username = auth.username ?? null;
-  } catch {
-    // Non-fatal — the drawer just won't show the username.
-  }
+  const username = auth.authenticated ? auth.username : null;
 
   return (
     <List
@@ -75,4 +53,34 @@ export default async function MainListPage({ searchParams }: Props) {
       username={username}
     />
   );
+}
+
+async function gatherPulls(
+  db: ReturnType<typeof getDb>,
+  octokit: Awaited<ReturnType<typeof getOctokit>>,
+  repos: ReturnType<typeof listRepos>,
+): Promise<PrEntry[]> {
+  try {
+    const prResults = await Promise.all(
+      repos.map(async (repo) => {
+        try {
+          const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
+          return pulls.map((pull) => ({
+            repo: { owner: repo.owner, name: repo.name },
+            pull,
+          }));
+        } catch (err) {
+          console.warn(
+            `[issuectl] getPulls failed for ${repo.owner}/${repo.name}:`,
+            err instanceof Error ? err.message : err,
+          );
+          return [];
+        }
+      }),
+    );
+    return prResults.flat();
+  } catch (err) {
+    console.error("[issuectl] PR gather failed:", err);
+    return [];
+  }
 }

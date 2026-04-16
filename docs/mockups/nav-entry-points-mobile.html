@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>New Issue entry points — mobile mockup</title>
+<style>
+  /* ── Paper tokens ── */
+  :root {
+    --paper-bg:           #f3ecd9;
+    --paper-bg-warm:      #ede5cf;
+    --paper-bg-warmer:    #e6dec4;
+    --paper-ink:          #1a1712;
+    --paper-ink-soft:     #3a342a;
+    --paper-ink-muted:    #746a50;
+    --paper-ink-faint:    #6e644a;
+    --paper-line:         #e0d6bc;
+    --paper-line-soft:    #e9dfc6;
+    --paper-accent:       #2d5f3f;
+    --paper-accent-dim:   #4a7a5c;
+    --paper-accent-soft:  #dce8de;
+    --paper-brick:        #a8432a;
+    --paper-radius-sm:    3px;
+    --paper-radius-md:    6px;
+    --paper-radius-lg:    10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #888;
+    color: var(--paper-ink);
+    font-family: Georgia, "Times New Roman", serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 20px;
+  }
+
+  .caption {
+    color: #fff;
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  /* ── Phone frame ── */
+  .device-frame {
+    width: 393px;
+    height: 852px;
+    background: var(--paper-bg);
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    position: relative;
+  }
+
+  /* ── Top bar (matches List.tsx) ── */
+  .top-bar {
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--paper-line);
+  }
+  .brand {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .brand-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--paper-accent);
+    margin-left: 2px;
+    vertical-align: 12px;
+  }
+  .menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 44px; height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--paper-ink-muted);
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    padding: 18px 16px 12px;
+    display: flex;
+    gap: 18px;
+    border-bottom: 1px solid var(--paper-line);
+  }
+  .tab {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--paper-ink-muted);
+    text-decoration: none;
+    padding: 6px 0;
+    position: relative;
+  }
+  .tab.on {
+    color: var(--paper-ink);
+    font-weight: 600;
+  }
+  .tab.on::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    bottom: -13px;
+    height: 2px;
+    background: var(--paper-ink);
+  }
+  .tab .count {
+    margin-left: 4px;
+    color: var(--paper-ink-faint);
+    font-style: normal;
+    font-weight: 400;
+  }
+
+  /* ── Issues list (simplified) ── */
+  .section-label {
+    font-style: italic;
+    font-size: 13px;
+    color: var(--paper-ink-muted);
+    padding: 16px 16px 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .issue-row {
+    padding: 14px 16px;
+    border-top: 1px solid var(--paper-line-soft);
+  }
+  .issue-row:last-child { border-bottom: 1px solid var(--paper-line-soft); }
+  .issue-title {
+    font-family: Georgia, serif;
+    font-size: 17px;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .issue-meta {
+    font-size: 12px;
+    color: var(--paper-ink-muted);
+    font-family: monospace;
+  }
+
+  /* ── FAB ── */
+  .fab {
+    position: absolute;
+    right: 24px;
+    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--paper-ink);
+    color: var(--paper-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 300;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 50;
+  }
+  .fab:hover { opacity: 0.9; }
+
+  .fab-hint {
+    position: absolute;
+    right: 96px;
+    bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+    font-style: italic;
+    font-size: 11px;
+    color: var(--paper-ink-muted);
+    background: var(--paper-bg-warm);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--paper-line);
+    z-index: 50;
+    white-space: nowrap;
+  }
+
+  /* ── Drawer scrim + drawer ── */
+  .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 23, 18, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease-out;
+  }
+  .scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .drawer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 85%;
+    background: var(--paper-bg);
+    border-left: 1px solid var(--paper-line);
+    box-shadow: -20px 0 60px rgba(0,0,0,0.3);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-head {
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--paper-line);
+  }
+  .drawer-title {
+    font-style: italic;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.4px;
+  }
+  .drawer-close {
+    background: none;
+    border: none;
+    color: var(--paper-ink-muted);
+    font-size: 22px;
+    padding: 10px 12px;
+    cursor: pointer;
+    min-width: 44px; min-height: 44px;
+  }
+
+  .drawer-section-label {
+    font-style: italic;
+    font-size: 11px;
+    color: var(--paper-ink-faint);
+    padding: 18px 22px 6px;
+  }
+
+  .drawer-item {
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--paper-line-soft);
+    font-family: Georgia, serif;
+    font-size: 15px;
+    color: var(--paper-ink);
+    text-decoration: none;
+    cursor: pointer;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    width: 100%;
+    text-align: left;
+    min-height: 52px;
+  }
+  .drawer-item:hover { background: var(--paper-bg-warm); }
+  .drawer-item.on {
+    color: var(--paper-accent);
+    font-style: italic;
+  }
+  .drawer-item.highlight {
+    color: var(--paper-accent);
+    font-weight: 600;
+  }
+  .drawer-item.highlight::before {
+    content: "+ ";
+    font-weight: 400;
+    margin-right: 2px;
+  }
+
+  .drawer-arrow {
+    color: var(--paper-ink-faint);
+    font-size: 14px;
+    font-family: monospace;
+  }
+
+  .drawer-footer {
+    margin-top: auto;
+    padding: 16px 22px;
+    border-top: 1px solid var(--paper-line-soft);
+    display: flex;
+    justify-content: space-between;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--paper-ink-muted);
+  }
+  .drawer-footer .dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--paper-accent);
+    margin-right: 5px;
+    vertical-align: 2px;
+  }
+  .drawer-footer .auth { color: var(--paper-accent); }
+
+  /* ── Callouts for annotation ── */
+  .callout {
+    position: absolute;
+    font-style: italic;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid;
+    z-index: 60;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .callout-fab {
+    background: #fff4d6;
+    color: #7a5a00;
+    border-color: #e8c760;
+    bottom: 70px;
+    right: 96px;
+  }
+  .callout-menu {
+    background: #e0f0e4;
+    color: #1a5030;
+    border-color: #60a080;
+    top: 44px;
+    right: 72px;
+  }
+
+  /* ── Mobile: full viewport ── */
+  @media (max-width: 499px) {
+    body {
+      padding: 0;
+      background: var(--paper-bg);
+    }
+    .caption { display: none; }
+    .device-frame {
+      width: 100%;
+      height: 100dvh;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .callout { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="caption">Tap <b>···</b> (top right) → drawer opens → "+ New Issue" goes to the full page. Tap <b>+</b> (bottom right) → quick draft sheet.</div>
+
+<div class="device-frame">
+
+  <!-- ── Top bar ── -->
+  <div class="top-bar">
+    <span class="brand">issuectl<span class="brand-dot"></span></span>
+    <button class="menu-btn" onclick="toggleDrawer()" aria-label="Open navigation">···</button>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <a href="#" class="tab on">Issues <span class="count">85</span></a>
+    <a href="#" class="tab">Pull requests <span class="count">571</span></a>
+  </div>
+
+  <!-- ── Issue list (truncated) ── -->
+  <div class="section-label">
+    <span>in focus</span><span>39</span>
+  </div>
+
+  <div class="issue-row">
+    <div class="issue-title">Optimizer silently drops guests at zero-slack capacity when keep-apart constraint can't be resolved greedily</div>
+    <div class="issue-meta">seatify · #655 · bug · today</div>
+  </div>
+  <div class="issue-row">
+    <div class="issue-title">b3 Table Readiness shows 0/100 for wedding events even with exact-fit capacity + confirmed RSVPs</div>
+    <div class="issue-meta">seatify · #654 · bug · today</div>
+  </div>
+  <div class="issue-row">
+    <div class="issue-title">Enrichment pages: optimistic UI + revalidation race loses updates</div>
+    <div class="issue-meta">issuectl · #42 · yesterday</div>
+  </div>
+
+  <!-- ── Quick-create FAB (existing behavior — opens draft sheet) ── -->
+  <span class="fab-hint">quick draft</span>
+  <button class="fab" onclick="showQuickDraftToast()">+</button>
+
+  <!-- ── Annotation callouts ── -->
+  <div class="callout callout-fab">FAB → Quick draft sheet (unchanged)</div>
+  <div class="callout callout-menu">··· → Drawer (add "New Issue" here)</div>
+
+  <!-- ── Drawer ── -->
+  <div class="scrim" id="scrim" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <span class="drawer-title">Menu</span>
+      <button class="drawer-close" onclick="toggleDrawer()" aria-label="Close">×</button>
+    </div>
+
+    <div class="drawer-section-label">main views</div>
+    <a href="#" class="drawer-item on">All issues <span class="drawer-arrow">›</span></a>
+    <a href="#" class="drawer-item">Pull requests <span class="drawer-arrow">›</span></a>
+
+    <div class="drawer-section-label">create</div>
+    <a href="new-issue-mobile.html" class="drawer-item highlight">New issue <span class="drawer-arrow">›</span></a>
+    <a href="#" class="drawer-item">Quick create (bulk) <span class="drawer-arrow">›</span></a>
+
+    <div class="drawer-section-label">settings</div>
+    <a href="#" class="drawer-item">Settings <span class="drawer-arrow">›</span></a>
+
+    <div class="drawer-footer">
+      <span><span class="dot"></span>neonwatty</span>
+      <span class="auth">gh ✓</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="caption" style="max-width: 600px; text-align: center; line-height: 1.5;">
+  <b>Option B:</b> FAB stays for speed (quick draft) · Drawer gains a dedicated "New Issue" entry for formal issues with metadata · Nothing about the existing FAB behavior changes
+</div>
+
+<script>
+  function toggleDrawer() {
+    document.getElementById('drawer').classList.toggle('open');
+    document.getElementById('scrim').classList.toggle('open');
+  }
+
+  function showQuickDraftToast() {
+    const old = document.getElementById('toast');
+    if (old) old.remove();
+    const toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.textContent = '→ opens CreateDraftSheet (unchanged behavior)';
+    toast.style.cssText = 'position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:#1a1712;color:#f3ecd9;padding:10px 16px;border-radius:8px;font-style:italic;font-size:13px;z-index:2000;white-space:nowrap;';
+    document.querySelector('.device-frame').appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+  }
+</script>
+
+</body>
+</html>

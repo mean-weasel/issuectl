@@ -1,0 +1,18 @@
+.emptyState {
+  padding: 32px 20px;
+  color: var(--paper-ink-muted);
+  font-size: var(--paper-fs-md);
+}
+
+.link {
+  color: var(--paper-accent);
+  text-decoration: underline;
+}
+
+@media (min-width: 768px) {
+  .emptyState {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 32px 40px;
+  }
+}

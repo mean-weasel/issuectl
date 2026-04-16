@@ -1,0 +1,319 @@
+.container {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky top bar — the whole point of the mobile layout. Keeps the Create
+   button reachable regardless of keyboard state. */
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--paper-bg);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.back {
+  font-family: var(--paper-serif), sans-serif;
+  font-size: 22px;
+  color: var(--paper-ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: -10px;
+  border-radius: var(--paper-radius-sm);
+  line-height: 1;
+}
+
+.back:hover {
+  background: var(--paper-bg-warm);
+}
+
+.pageTitle {
+  flex: 1;
+  font-family: var(--paper-serif), sans-serif;
+  font-style: italic;
+  font-size: var(--paper-fs-xl);
+  font-weight: 700;
+  color: var(--paper-ink);
+}
+
+.submitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  border-radius: var(--paper-radius-md);
+  font-family: var(--paper-serif), sans-serif;
+  font-style: italic;
+  font-size: var(--paper-fs-md);
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  border: 1px solid transparent;
+  min-height: 44px;
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+  transition: opacity 120ms ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+/* Disabled state keeps full opacity but swaps to a muted surface so the
+   button reads as "waiting for input" rather than "greyed out / broken". */
+.submitBtn:disabled {
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-faint);
+  cursor: not-allowed;
+}
+
+/* ── Form body ── */
+.form {
+  padding: 20px 20px calc(40px + env(safe-area-inset-bottom, 0px));
+  flex: 1;
+}
+
+.initError {
+  margin-bottom: 20px;
+  padding: 10px 12px;
+  background: var(--paper-bg-warmer);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink-soft);
+  font-size: var(--paper-fs-sm);
+  font-family: var(--paper-serif), sans-serif;
+}
+
+.field {
+  margin-bottom: 24px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.fieldLabel {
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.fieldHint {
+  text-transform: none;
+  font-weight: 400;
+}
+
+/* ── Repo picker ── */
+.repoDisplay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+}
+
+.repoDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--paper-accent);
+  flex-shrink: 0;
+}
+
+.repoName {
+  font-size: var(--paper-fs-md);
+  font-weight: 500;
+}
+
+.repoChange {
+  margin-left: auto;
+  font-size: var(--paper-fs-base);
+  color: var(--paper-ink-muted);
+  background: none;
+  border: none;
+  padding: 8px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.repoChange:hover {
+  color: var(--paper-ink-soft);
+}
+
+.repoList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  overflow: hidden;
+}
+
+.repoOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  min-height: 44px;
+  background: var(--paper-bg-warm);
+  border: none;
+  border-bottom: 1px solid var(--paper-line);
+  color: var(--paper-ink);
+  font-family: var(--paper-serif), sans-serif;
+  font-size: var(--paper-fs-md);
+  cursor: pointer;
+  text-align: left;
+}
+
+.repoOption:last-child {
+  border-bottom: none;
+}
+
+.repoOption:hover {
+  background: var(--paper-bg-warmer);
+}
+
+.repoOptionSelected {
+  composes: repoOption;
+  color: var(--paper-accent);
+  font-weight: 600;
+}
+
+/* ── Text inputs — 16px on mobile kills iOS auto-zoom on focus. ── */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
+  font-size: var(--paper-fs-lg);
+  font-family: var(--paper-serif), sans-serif;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--paper-accent);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 10px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
+  font-size: var(--paper-fs-lg);
+  font-family: var(--paper-serif), sans-serif;
+  outline: none;
+  resize: vertical;
+  /* field-sizing is Safari 17.4+ / Chrome 123+ — grows with content where
+     supported, falls back to resize: vertical + rows=4 elsewhere. */
+  field-sizing: content;
+}
+
+.textarea:focus {
+  border-color: var(--paper-accent);
+}
+
+/* ── Label chips — horizontal scroll, no scrollbar chrome. A right-edge
+   fade mask hints that more chips exist beyond the viewport when the row
+   overflows. iOS hides scrollbars entirely so this is the only signal. ── */
+.labelChips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  -webkit-mask-image: linear-gradient(to left, transparent 0, black 24px);
+  mask-image: linear-gradient(to left, transparent 0, black 24px);
+}
+
+.labelChips::-webkit-scrollbar {
+  display: none;
+}
+
+.labelChip {
+  padding: 6px 14px;
+  border-radius: 14px;
+  font-size: var(--paper-fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-muted);
+  border: 1px solid var(--paper-line);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.labelChip:hover:not(:disabled) {
+  color: var(--paper-ink-soft);
+}
+
+.labelChipSelected {
+  composes: labelChip;
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+  border-color: var(--paper-accent-dim);
+}
+
+.labelChip:disabled,
+.labelChipSelected:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--paper-bg-warmer);
+  border: 1px solid var(--paper-brick);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-brick);
+  font-size: var(--paper-fs-sm);
+}
+
+/* ── Desktop ── */
+@media (min-width: 768px) {
+  .topBar {
+    padding: 24px 40px 16px;
+    max-width: 820px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .form {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 28px 40px 40px;
+    width: 100%;
+  }
+
+  .input,
+  .textarea {
+    font-size: var(--paper-fs-base);
+  }
+}

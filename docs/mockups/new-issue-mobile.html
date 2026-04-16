@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>New Issue — mobile mockup</title>
+<style>
+  /* ── Paper tokens (copied from globals.css) ── */
+  :root {
+    --paper-bg:           #f3ecd9;
+    --paper-bg-warm:      #ede5cf;
+    --paper-bg-warmer:    #e6dec4;
+    --paper-ink:          #1a1712;
+    --paper-ink-soft:     #3a342a;
+    --paper-ink-muted:    #746a50;
+    --paper-ink-faint:    #6e644a;
+    --paper-line:         #e0d6bc;
+    --paper-line-soft:    #e9dfc6;
+    --paper-accent:       #2d5f3f;
+    --paper-accent-dim:   #4a7a5c;
+    --paper-accent-soft:  #dce8de;
+    --paper-brick:        #a8432a;
+    --paper-butter:       #d9a54d;
+    --paper-radius-sm:    3px;
+    --paper-radius-md:    6px;
+    --paper-radius-lg:    10px;
+    --paper-radius-xl:    14px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper-bg);
+    color: var(--paper-ink);
+    font-family: Georgia, "Times New Roman", serif;
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ── Sticky top bar (mirrors DetailTopBar) ── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--paper-bg);
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--paper-line);
+  }
+  .back {
+    font-size: 22px;
+    color: var(--paper-ink);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin-left: -10px;
+    border-radius: var(--paper-radius-sm);
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  .back:hover { background: var(--paper-bg-warm); }
+  .page-title {
+    flex: 1;
+    font-style: italic;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 18px;
+    border-radius: var(--paper-radius-md);
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    min-height: 44px;
+    white-space: nowrap;
+    cursor: pointer;
+    background: var(--paper-accent);
+    color: var(--paper-bg);
+    transition: opacity 120ms ease;
+  }
+  .submit-btn:hover { opacity: 0.9; }
+  .submit-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── Form body ── */
+  .form-body {
+    padding: 20px 20px calc(40px + env(safe-area-inset-bottom, 0px));
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .field { margin-bottom: 24px; }
+  .field-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--paper-ink-muted);
+    margin-bottom: 6px;
+  }
+  .field-hint {
+    text-transform: none;
+    font-weight: 400;
+  }
+
+  /* ── Repo picker ── */
+  .repo-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+  }
+  .repo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--paper-accent);
+    flex-shrink: 0;
+  }
+  .repo-name { font-size: 14px; font-weight: 500; }
+  .repo-change {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--paper-ink-muted);
+    background: none;
+    border: none;
+    padding: 8px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .repo-change:hover { color: var(--paper-ink-soft); }
+
+  /* Expanded repo list */
+  .repo-list {
+    display: none;
+    flex-direction: column;
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    overflow: hidden;
+  }
+  .repo-list.open { display: flex; }
+  .repo-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    min-height: 44px;
+    background: var(--paper-bg-warm);
+    border: none;
+    border-bottom: 1px solid var(--paper-line);
+    color: var(--paper-ink);
+    font-family: Georgia, serif;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .repo-option:last-child { border-bottom: none; }
+  .repo-option:hover { background: var(--paper-bg-warmer); }
+  .repo-option.selected { color: var(--paper-accent); font-weight: 600; }
+
+  /* ── Text inputs ── */
+  .text-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    color: var(--paper-ink);
+    font-size: 16px;
+    font-family: Georgia, serif;
+    outline: none;
+  }
+  .text-input:focus { border-color: var(--paper-accent); }
+  .text-input::placeholder { color: var(--paper-ink-faint); }
+
+  .body-textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 10px 12px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    color: var(--paper-ink);
+    font-size: 16px;
+    font-family: Georgia, serif;
+    outline: none;
+    resize: none;
+    overflow: hidden;
+    field-sizing: content;
+  }
+  .body-textarea:focus { border-color: var(--paper-accent); }
+  .body-textarea::placeholder { color: var(--paper-ink-faint); }
+
+  /* ── Label chips ── */
+  .label-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .label-chips::-webkit-scrollbar { display: none; }
+
+  .label-chip {
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--paper-bg-warm);
+    color: var(--paper-ink-muted);
+    border: 1px solid var(--paper-line);
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .label-chip:hover { color: var(--paper-ink-soft); }
+  .label-chip.selected {
+    background: var(--paper-accent-soft);
+    color: var(--paper-accent);
+    border-color: var(--paper-accent-dim);
+  }
+  .label-chip[data-color="bug"] {
+    /* Example: red-ish label when selected */
+  }
+
+  /* ── Keyboard simulation ── */
+  .keyboard-sim {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 300px;
+    background: #d1d3d9;
+    border-top: 1px solid #b8babe;
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    color: #666;
+  }
+  .keyboard-sim.visible { display: flex; }
+
+  /* ── Toggle button for keyboard sim ── */
+  .kbd-toggle {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 300;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--paper-ink);
+    color: var(--paper-bg);
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .kbd-toggle:hover { opacity: 0.85; }
+
+  /* ── Desktop: center the mockup ── */
+  @media (min-width: 500px) {
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #888;
+      padding: 40px 0;
+    }
+    .device-frame {
+      width: 393px;
+      min-height: 852px;
+      background: var(--paper-bg);
+      border-radius: 40px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .kbd-toggle { position: absolute; }
+    .keyboard-sim { position: absolute; }
+  }
+  @media (max-width: 499px) {
+    .device-frame { min-height: 100dvh; }
+  }
+</style>
+</head>
+<body>
+
+<div class="device-frame">
+
+  <!-- ── Top bar ── -->
+  <div class="top-bar">
+    <button class="back" aria-label="Back" onclick="history.back()">←</button>
+    <span class="page-title">New Issue</span>
+    <button class="submit-btn" id="createBtn" disabled>Create</button>
+  </div>
+
+  <!-- ── Form ── -->
+  <div class="form-body">
+
+    <!-- Repository -->
+    <div class="field">
+      <div class="field-label">Repository</div>
+      <div class="repo-display" id="repoDisplay">
+        <span class="repo-dot"></span>
+        <span class="repo-name" id="repoName">mean-weasel / seatify</span>
+        <button class="repo-change" onclick="toggleRepoPicker()">change</button>
+      </div>
+      <div class="repo-list" id="repoList">
+        <button class="repo-option selected" onclick="selectRepo(this, 'mean-weasel / seatify')">
+          <span class="repo-dot"></span> mean-weasel / seatify
+        </button>
+        <button class="repo-option" onclick="selectRepo(this, 'mean-weasel / issuectl')">
+          <span class="repo-dot"></span> mean-weasel / issuectl
+        </button>
+        <button class="repo-option" onclick="selectRepo(this, 'neonwatty / blog')">
+          <span class="repo-dot"></span> neonwatty / blog
+        </button>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="field">
+      <div class="field-label">Title</div>
+      <input
+        class="text-input"
+        id="titleInput"
+        type="text"
+        placeholder="What's the issue?"
+        autocapitalize="sentences"
+        autocorrect="on"
+        spellcheck="true"
+        enterkeyhint="next"
+        oninput="updateCreateBtn()"
+      >
+    </div>
+
+    <!-- Body -->
+    <div class="field">
+      <div class="field-label">Description <span class="field-hint">(markdown)</span></div>
+      <textarea
+        class="body-textarea"
+        placeholder="Describe the issue..."
+        autocapitalize="sentences"
+        autocorrect="on"
+        spellcheck="true"
+        enterkeyhint="enter"
+        rows="4"
+      ></textarea>
+    </div>
+
+    <!-- Labels -->
+    <div class="field">
+      <div class="field-label">Labels</div>
+      <div class="label-chips">
+        <button class="label-chip" onclick="toggleLabel(this)">bug</button>
+        <button class="label-chip" onclick="toggleLabel(this)">enhancement</button>
+        <button class="label-chip" onclick="toggleLabel(this)">documentation</button>
+        <button class="label-chip" onclick="toggleLabel(this)">performance</button>
+        <button class="label-chip" onclick="toggleLabel(this)">mobile</button>
+        <button class="label-chip" onclick="toggleLabel(this)">design</button>
+        <button class="label-chip" onclick="toggleLabel(this)">tech-debt</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Fake keyboard overlay for demo purposes -->
+  <div class="keyboard-sim" id="keyboardSim">
+    <span>⌨ keyboard area (300 px) — scroll the form above to see fields stay reachable</span>
+  </div>
+
+  <!-- Toggle button to simulate keyboard -->
+  <button class="kbd-toggle" onclick="toggleKeyboard()" title="Toggle keyboard simulation">⌨</button>
+
+</div>
+
+<script>
+  // ── Repo picker ──
+  function toggleRepoPicker() {
+    const list = document.getElementById('repoList');
+    const display = document.getElementById('repoDisplay');
+    const isOpen = list.classList.contains('open');
+    list.classList.toggle('open');
+    display.style.display = isOpen ? '' : 'none';
+  }
+
+  function selectRepo(btn, name) {
+    document.getElementById('repoName').textContent = name;
+    document.querySelectorAll('.repo-option').forEach(o => o.classList.remove('selected'));
+    btn.classList.add('selected');
+    toggleRepoPicker();
+  }
+
+  // ── Label toggle ──
+  function toggleLabel(chip) {
+    chip.classList.toggle('selected');
+  }
+
+  // ── Create button state ──
+  function updateCreateBtn() {
+    const btn = document.getElementById('createBtn');
+    const title = document.getElementById('titleInput').value.trim();
+    btn.disabled = !title;
+  }
+
+  // ── Keyboard simulation ──
+  function toggleKeyboard() {
+    document.getElementById('keyboardSim').classList.toggle('visible');
+  }
+</script>
+
+</body>
+</html>

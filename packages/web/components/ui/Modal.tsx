@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import styles from "./Modal.module.css";
 
 type Props = {
@@ -16,10 +16,14 @@ export function Modal({
   title,
   children,
   footer,
-  width = 600,
+  width,
   onClose,
   disabled,
 }: Props) {
+  const modalStyle =
+    width !== undefined
+      ? ({ "--modal-width": `${width}px` } as CSSProperties)
+      : undefined;
   // Stable ref avoids re-registering the keydown listener when onClose identity changes
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -43,7 +47,7 @@ export function Modal({
     >
       <div
         className={styles.modal}
-        style={{ width }}
+        style={modalStyle}
         role="dialog"
         aria-modal="true"
         aria-label={title}

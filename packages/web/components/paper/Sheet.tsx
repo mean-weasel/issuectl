@@ -44,6 +44,18 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     };
   }, [open]);
 
+  // Body scroll lock while the sheet is open. Prevents the page behind the
+  // scrim from scrolling when the user drags on the scrim or tries to swipe
+  // the sheet — a real mobile Safari confusion source otherwise.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   // Keyboard handling: Escape closes, Tab/Shift+Tab cycle within the dialog.
   useEffect(() => {
     if (!open) return;

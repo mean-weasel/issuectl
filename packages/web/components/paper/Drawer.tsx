@@ -39,6 +39,16 @@ export function Drawer({ open, onClose, title, children }: Props) {
     };
   }, [open]);
 
+  // Body scroll lock while the drawer is open.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   // Escape + Tab trap.
   useEffect(() => {
     if (!open) return;
