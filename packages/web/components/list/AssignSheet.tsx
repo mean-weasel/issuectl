@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Sheet, Button } from "@/components/paper";
 import { listReposAction, assignDraftAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,6 +39,7 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
     setAssigning(repoId);
     setError(null);
     const idempotencyKey = newIdempotencyKey();
+    const repo = repos.find((r) => r.id === repoId);
     try {
       const result = await assignDraftAction(draftId, repoId, idempotencyKey);
       if (!result.success) {
@@ -49,6 +52,12 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
         showToast(`Issue #${result.issueNumber} created`, "success");
       }
       onClose();
+      // Navigate to the promoted issue. On DraftDetail this avoids a 404
+      // (the draft no longer exists in the DB); on the list this confirms
+      // the action by showing the resulting issue.
+      if (repo && result.issueNumber) {
+        router.push(`/issues/${repo.owner}/${repo.name}/${result.issueNumber}`);
+      }
     } catch {
       setError("Failed to assign draft");
     } finally {

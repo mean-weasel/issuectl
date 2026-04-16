@@ -5,6 +5,7 @@ import type { Draft } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { DetailTopBar } from "./DetailTopBar";
 import { DetailMeta, MetaSeparator } from "./DetailMeta";
+import { AssignSheet } from "@/components/list/AssignSheet";
 import { updateDraftAction } from "@/lib/actions/drafts";
 import styles from "./DraftDetail.module.css";
 
@@ -25,6 +26,7 @@ export function DraftDetail({ draft }: Props) {
   const [body, setBody] = useState(draft.body ?? "");
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function flashSaved() {
@@ -92,8 +94,17 @@ export function DraftDetail({ draft }: Props) {
           <span>{formatUnix(draft.updatedAt)}</span>
         </DetailMeta>
         <div className={styles.hint}>
-          this is a local draft — it lives only on your machine until you
-          assign it to a repo.
+          <div className={styles.hintText}>
+            this is a local draft — it lives only on your machine until you
+            assign it to a repo.
+          </div>
+          <button
+            type="button"
+            className={styles.assignBtn}
+            onClick={() => setAssignOpen(true)}
+          >
+            assign to repo →
+          </button>
         </div>
         <div className={styles.bodyEditor}>
           <textarea
@@ -124,6 +135,12 @@ export function DraftDetail({ draft }: Props) {
           )}
         </div>
       </div>
+      <AssignSheet
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        draftId={draft.id}
+        draftTitle={title}
+      />
     </div>
   );
 }
