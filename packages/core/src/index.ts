@@ -91,7 +91,6 @@ export type {
   GitHubPullFile,
   GitHubAccessibleRepo,
 } from "./github/types.js";
-export { repoKey } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit, withAuthRetry } from "./github/client.js";
 export {

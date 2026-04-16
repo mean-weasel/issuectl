@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { repoKey, type GitHubAccessibleRepo } from "@issuectl/core";
+import type { GitHubAccessibleRepo } from "@issuectl/core";
 import {
   getGithubReposAction,
   refreshGithubReposAction,
 } from "@/lib/actions/repos";
+import { repoKey } from "@/lib/repo-key";
 import styles from "./RepoPicker.module.css";
 
 type Props = {

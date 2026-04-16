@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { repoKey } from "@issuectl/core";
 import { REPO_COLORS } from "@/lib/constants";
+import { repoKey } from "@/lib/repo-key";
 import styles from "./RepoFilterChips.module.css";
 
 type Repo = { owner: string; name: string };

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { repoKey } from "@issuectl/core";
 import { Sheet } from "@/components/paper";
 import { REPO_COLORS } from "@/lib/constants";
+import { repoKey } from "@/lib/repo-key";
 import styles from "./FiltersSheet.module.css";
 
 type Repo = { owner: string; name: string };

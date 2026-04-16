@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { repoKey, type GitHubPull, type Section, type UnifiedList } from "@issuectl/core";
+import type { GitHubPull, Section, UnifiedList } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
 import { REPO_COLORS } from "@/lib/constants";
+import { repoKey } from "@/lib/repo-key";
 import { ListSection } from "./ListSection";
 import { PrListRow } from "./PrListRow";
 import { CreateDraftSheet } from "./CreateDraftSheet";

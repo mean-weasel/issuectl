@@ -1,4 +1,5 @@
-import { repoKey, type GitHubPull, type UnifiedList } from "@issuectl/core";
+import type { GitHubPull, UnifiedList } from "@issuectl/core";
+import { repoKey } from "./repo-key";
 
 export type PrEntry = {
   repo: { owner: string; name: string };

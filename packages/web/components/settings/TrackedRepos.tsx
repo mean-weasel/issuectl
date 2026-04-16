@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { repoKey, type Repo } from "@issuectl/core";
+import type { Repo } from "@issuectl/core";
 import { REPO_COLORS } from "@/lib/constants";
+import { repoKey } from "@/lib/repo-key";
 import { Button } from "@/components/paper";
 import { RepoRow } from "./RepoRow";
 import { AddRepoForm } from "./AddRepoForm";
