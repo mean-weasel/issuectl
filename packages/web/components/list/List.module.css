@@ -1,7 +1,9 @@
 .container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 12px 0 120px;
+  /* Bottom padding clears the FAB (60px + 30px inset + 14px breathing room)
+     so the last row never sits under the floating action button. */
+  padding: 12px 0 calc(104px + env(safe-area-inset-bottom, 0px));
   background: var(--paper-bg);
   min-height: 100dvh;
   position: relative;

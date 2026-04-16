@@ -70,8 +70,11 @@
   opacity: 0.92;
 }
 
+/* Disabled state keeps full opacity but swaps to a muted surface so the
+   button reads as "waiting for input" rather than "greyed out / broken". */
 .submitBtn:disabled {
-  opacity: 0.4;
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-faint);
   cursor: not-allowed;
 }
 
@@ -231,7 +234,9 @@
   border-color: var(--paper-accent);
 }
 
-/* ── Label chips — horizontal scroll, no scrollbar chrome. ── */
+/* ── Label chips — horizontal scroll, no scrollbar chrome. A right-edge
+   fade mask hints that more chips exist beyond the viewport when the row
+   overflows. iOS hides scrollbars entirely so this is the only signal. ── */
 .labelChips {
   display: flex;
   gap: 8px;
@@ -239,6 +244,8 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 4px;
+  -webkit-mask-image: linear-gradient(to left, transparent 0, black 24px);
+  mask-image: linear-gradient(to left, transparent 0, black 24px);
 }
 
 .labelChips::-webkit-scrollbar {

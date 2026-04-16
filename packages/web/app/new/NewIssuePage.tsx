@@ -166,7 +166,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
             autoCapitalize="sentences"
             autoCorrect="on"
             spellCheck
-            enterKeyHint="next"
+            enterKeyHint="done"
           />
         </div>
 
