@@ -13,13 +13,17 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   transpilePackages: ["@issuectl/core"],
   outputFileTracingRoot: WORKSPACE_ROOT,
-  // Next.js 15 warns on cross-origin requests to /_next/* in dev mode
-  // and threatens to refuse them in a future major. issuectl is a local
-  // single-user tool that's commonly accessed from a phone or tablet on
-  // the same LAN as the host machine, so the private RFC1918 ranges
-  // are explicitly allowed. localhost is implicit and does not need
-  // listing here.
-  allowedDevOrigins: ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"],
+  // Next.js 15 blocks cross-origin /_next/* requests in dev mode unless
+  // the origin is listed here. issuectl is a single-user local tool that
+  // is commonly accessed from a phone or tablet on the same LAN as the
+  // host machine, so LAN IPs need to be allow-listed.
+  //
+  // NOTE: `allowedDevOrigins` expects literal hostnames or glob
+  // wildcards — CIDR notation (e.g. "192.168.0.0/16") is NOT parsed and
+  // silently fails to match. If you access the dev server from a device
+  // whose LAN IP is not listed below, add it here and restart the dev
+  // server. Localhost is implicit and does not need listing.
+  allowedDevOrigins: ["192.168.1.30"],
   images: {
     remotePatterns: [
       { hostname: "avatars.githubusercontent.com" },
