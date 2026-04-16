@@ -81,34 +81,59 @@
   border-color: var(--paper-line);
 }
 
-/* Mobile: keep assign in the meta row, hide desktop actions panel */
-.assignBtn {
+/* Always-visible assign affordance on draft rows — the previous swipe-to-reveal
+   was undiscoverable on mobile and the button was redundant. On mobile this
+   renders inline below the meta; on desktop it floats right on hover. */
+.draftActions {
+  display: flex;
+  align-items: center;
+  padding: 0 24px 14px 58px;
+  flex-shrink: 0;
+}
+
+.assignCta {
   font-family: var(--paper-serif);
-  font-style: italic;
-  font-size: 11px;
-  color: var(--paper-accent-dim);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  line-height: inherit;
-}
-
-.assignBtn:hover {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--paper-accent);
-  text-decoration: underline;
+  background: var(--paper-accent-soft);
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: var(--paper-radius-sm);
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-/* On touch devices, always show the actions panel since hover isn't available */
+.assignCta:hover {
+  background: var(--paper-bg);
+  border-color: var(--paper-accent);
+}
+
+/* On touch devices, always show the hover-gated actions panel for non-draft rows */
 @media (hover: none) {
   .actions {
     display: flex;
   }
 }
 
+/* Desktop: lift the assign CTA into the row's right-side actions area instead
+   of a stacked block below the meta. */
 @media (min-width: 768px) and (hover: hover) {
-  .assignBtn {
-    display: none;
+  .item {
+    align-items: center;
+  }
+
+  .draftActions {
+    padding: 0 16px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .item:hover .draftActions,
+  .item:focus-within .draftActions {
+    opacity: 1;
   }
 }
 
