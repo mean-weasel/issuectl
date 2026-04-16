@@ -142,11 +142,6 @@ export function CreateIssueModal({
           autoFocus
           disabled={isPending}
           maxLength={256}
-          autoComplete="off"
-          autoCapitalize="sentences"
-          autoCorrect="on"
-          spellCheck
-          enterKeyHint="next"
         />
       </div>
 
@@ -161,10 +156,6 @@ export function CreateIssueModal({
           placeholder="Describe the issue..."
           disabled={isPending}
           maxLength={65536}
-          autoCapitalize="sentences"
-          autoCorrect="on"
-          spellCheck
-          enterKeyHint="enter"
         />
       </div>
 
