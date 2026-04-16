@@ -1,8 +1,8 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: 14px;
+  padding: 16px;
   background: var(--paper-bg);
   border: 1px solid var(--paper-accent);
   border-radius: var(--paper-radius-md);
@@ -11,17 +11,19 @@
 
 .row {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .field {
   flex: 1;
+  min-width: 0;
 }
 
 .label {
   font-size: 12px;
   color: var(--paper-ink-muted);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -29,12 +31,13 @@
 
 .input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  min-height: 44px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 13px;
+  font-size: 16px;
   font-family: var(--paper-serif);
   outline: none;
 }
@@ -43,19 +46,116 @@
   border-color: var(--paper-accent);
 }
 
+.manual {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.backLink {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--paper-accent);
+  font-family: var(--paper-serif);
+  font-size: 12px;
+  font-style: italic;
+  cursor: pointer;
+  padding: 6px 0;
+  min-height: 32px;
+}
+
+.backLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-accent);
+  border-radius: var(--paper-radius-md);
+}
+
+.selectedDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--paper-accent);
+  flex-shrink: 0;
+}
+
+.selectedName {
+  flex: 1;
+  font-weight: 500;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectedChange {
+  background: none;
+  border: none;
+  color: var(--paper-accent);
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  font-style: italic;
+  cursor: pointer;
+  padding: 6px 8px;
+  min-height: 32px;
+}
+
+.selectedChange:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .actions {
   display: flex;
+  flex-direction: column-reverse;
   gap: 8px;
-  justify-content: flex-end;
+}
+
+.actions > * {
+  width: 100%;
+  min-height: 44px;
 }
 
 .error {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--paper-brick);
 }
 
 .pathHint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--paper-ink-muted);
-  margin-top: 2px;
+  margin-top: 4px;
+}
+
+/* Darker warm yellow (#d9a54d on cream fails WCAG AA at 1.89:1). */
+.warning {
+  font-size: 13px;
+  color: #8a6914;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .row {
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .actions > * {
+    width: auto;
+  }
 }

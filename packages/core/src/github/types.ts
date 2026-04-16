@@ -72,3 +72,17 @@ export type GitHubPullFile = {
   additions: number;
   deletions: number;
 };
+
+export type GitHubAccessibleRepo = {
+  owner: string;
+  name: string;
+  private: boolean;
+  pushedAt: string | null;
+};
+
+// Canonical `owner/name` key shared across UI + cache lookups. Callers
+// previously computed this inline in at least four places; drift here
+// silently breaks Set<string> membership checks, URL param compares, etc.
+export function repoKey(r: { owner: string; name: string }): string {
+  return `${r.owner}/${r.name}`;
+}

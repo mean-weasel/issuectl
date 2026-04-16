@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { Repo } from "@issuectl/core";
+import { useMemo, useState } from "react";
+import { repoKey, type Repo } from "@issuectl/core";
 import { REPO_COLORS } from "@/lib/constants";
 import { Button } from "@/components/paper";
 import { RepoRow } from "./RepoRow";
@@ -14,6 +14,10 @@ type Props = {
 
 export function TrackedRepos({ repos }: Props) {
   const [showAdd, setShowAdd] = useState(false);
+  const trackedSet = useMemo(
+    () => new Set(repos.map(repoKey)),
+    [repos],
+  );
 
   return (
     <>
@@ -25,7 +29,10 @@ export function TrackedRepos({ repos }: Props) {
         />
       ))}
       {showAdd ? (
-        <AddRepoForm onClose={() => setShowAdd(false)} />
+        <AddRepoForm
+          onClose={() => setShowAdd(false)}
+          trackedSet={trackedSet}
+        />
       ) : (
         <Button
           variant="ghost"

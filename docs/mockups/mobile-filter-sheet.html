@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mobile filter sheet — mockup</title>
+<style>
+  :root {
+    --paper-bg:           #f3ecd9;
+    --paper-bg-warm:      #ede5cf;
+    --paper-bg-warmer:    #e6dec4;
+    --paper-ink:          #1a1712;
+    --paper-ink-soft:     #3a342a;
+    --paper-ink-muted:    #746a50;
+    --paper-line:         #e0d6bc;
+    --paper-line-soft:    #e9dfc6;
+    --paper-accent:       #2d5f3f;
+    --paper-accent-soft:  #dce8de;
+    --paper-brick:        #a8432a;
+    --paper-butter:       #d9a54d;
+    --paper-radius-sm:    3px;
+    --paper-radius-md:    6px;
+    --paper-radius-lg:    10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #2a2a28;
+    color: #e8e3d3;
+    font-family: Georgia, "Times New Roman", serif;
+    padding: 24px;
+    min-height: 100dvh;
+  }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 14px; color: #b8b09a; font-weight: normal; font-style: italic; margin-bottom: 24px; }
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(393px, max-content));
+    gap: 32px;
+    justify-content: start;
+  }
+  .frame-label { font-size: 12px; color: #b8b09a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-family: system-ui, sans-serif; }
+  .frame {
+    width: 393px;
+    height: 760px;
+    background: var(--paper-bg);
+    color: var(--paper-ink);
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    position: relative;
+  }
+
+  /* ── Header ── */
+  .top-bar {
+    padding: 18px 20px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .brand {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .brand-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--paper-accent);
+    margin-left: 2px;
+  }
+  .menu {
+    font-size: 22px;
+    color: var(--paper-ink-muted);
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Tabs row ── */
+  .tabs-row {
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 24px;
+    border-bottom: 1px solid var(--paper-line);
+  }
+  .tabs {
+    display: flex;
+    gap: 18px;
+    flex: 1;
+  }
+  .tab, .tab-on {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 14px 0;
+    font-size: 14px;
+    color: var(--paper-ink-muted);
+    text-decoration: none;
+    font-family: Georgia, serif;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab-on {
+    color: var(--paper-ink);
+    font-weight: 700;
+    font-style: italic;
+    border-bottom-color: var(--paper-ink);
+  }
+  .tab .count, .tab-on .count {
+    font-size: 12px;
+    color: var(--paper-ink-muted);
+    font-weight: 400;
+    font-style: normal;
+  }
+  .filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    background: transparent;
+    border: none;
+    color: var(--paper-ink);
+    font-size: 18px;
+    cursor: pointer;
+    position: relative;
+  }
+  .filter-btn .badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--paper-accent);
+  }
+
+  /* ── Section sub-tabs ── */
+  .sub-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--paper-line);
+  }
+  .sub-tabs::-webkit-scrollbar { display: none; }
+  .sub, .sub-on {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--paper-ink-muted);
+    text-decoration: none;
+    font-family: Georgia, serif;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sub-on {
+    color: var(--paper-ink);
+    font-weight: 500;
+    border-bottom-color: var(--paper-ink);
+  }
+  .sub-count { font-size: 11px; color: var(--paper-ink-muted); }
+
+  /* ── Active scope pill (optional indicator variant) ── */
+  .scope-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    padding: 2px 8px;
+    background: var(--paper-accent-soft);
+    border-radius: 999px;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--paper-ink-soft);
+    font-weight: 500;
+  }
+  .scope-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .scope-pill .close { color: var(--paper-ink-muted); font-size: 14px; line-height: 1; }
+
+  /* ── List area (illustrative) ── */
+  .list { padding: 14px 0 0; }
+  .row {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--paper-line-soft);
+  }
+  .row-title {
+    font-size: 15px;
+    color: var(--paper-ink);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  .row-meta {
+    font-size: 12px;
+    color: var(--paper-ink-muted);
+  }
+  .row-chip {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    background: var(--paper-bg-warmer);
+    padding: 2px 6px;
+    border-radius: var(--paper-radius-sm);
+    margin-right: 6px;
+  }
+  .fab {
+    position: absolute;
+    bottom: 30px;
+    right: 24px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--paper-ink);
+    color: var(--paper-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+  }
+
+  /* ── Sheet (bottom sheet overlay) ── */
+  .sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+  }
+  .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--paper-bg);
+    border-radius: 20px 20px 0 0;
+    padding: 10px 0 28px;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.2);
+  }
+  .sheet-grabber {
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--paper-line);
+    margin: 0 auto 12px;
+  }
+  .sheet-header {
+    padding: 6px 20px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .sheet-title { font-family: Georgia, serif; font-size: 18px; font-weight: 700; font-style: italic; }
+  .sheet-clear {
+    color: var(--paper-accent);
+    font-size: 13px;
+    font-style: italic;
+    font-family: Georgia, serif;
+    background: none;
+    border: none;
+    min-height: 32px;
+    padding: 4px 0;
+    cursor: pointer;
+  }
+  .sheet-group-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    color: var(--paper-ink-muted);
+    padding: 10px 20px 6px;
+  }
+  .sheet-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    min-height: 56px;
+    border-bottom: 1px solid var(--paper-line-soft);
+    cursor: pointer;
+  }
+  .sheet-row:last-of-type { border-bottom: none; }
+  .sheet-row:hover { background: var(--paper-bg-warm); }
+  .sheet-row.selected { background: var(--paper-accent-soft); }
+  .sheet-row .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sheet-row .label { flex: 1; font-size: 16px; color: var(--paper-ink); }
+  .sheet-row .sublabel { font-size: 12px; color: var(--paper-ink-muted); }
+  .sheet-row .check {
+    width: 20px;
+    height: 20px;
+    color: var(--paper-accent);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .sheet-done {
+    margin: 18px 20px 0;
+    padding: 14px;
+    min-height: 44px;
+    width: calc(100% - 40px);
+    background: var(--paper-ink);
+    color: var(--paper-bg);
+    border: none;
+    border-radius: 12px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>Mobile filter redesign</h1>
+  <h2>Chip rows collapsed into a single filter button + bottom sheet</h2>
+
+  <div class="gallery">
+
+    <!-- 1. Current layout for reference -->
+    <div>
+      <div class="frame-label">1. Current (3 filter rows)</div>
+      <div class="frame">
+        <div class="top-bar">
+          <span class="brand">issuectl<span class="brand-dot"></span></span>
+          <span class="menu">···</span>
+        </div>
+        <div class="tabs-row">
+          <div class="tabs">
+            <span class="tab-on">Issues<span class="count">107</span></span>
+            <span class="tab">Pull requests<span class="count">4</span></span>
+          </div>
+        </div>
+        <div style="padding: 12px 20px 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--paper-line);">
+          <span style="padding: 6px 12px; border: 1px solid var(--paper-line); border-radius: 999px; background: var(--paper-bg-warm); font-size: 13px;">all</span>
+          <span style="padding: 6px 12px; border: 1px solid var(--paper-line); border-radius: 999px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #f85149;"></span>issuectl</span>
+          <span style="padding: 6px 12px; border: 1px solid var(--paper-line); border-radius: 999px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #58a6ff;"></span>seatify</span>
+        </div>
+        <div class="sub-tabs">
+          <span class="sub">drafts<span class="sub-count">3</span></span>
+          <span class="sub-on">in focus<span class="sub-count">50</span></span>
+          <span class="sub">in flight<span class="sub-count">0</span></span>
+          <span class="sub">shipped<span class="sub-count">54</span></span>
+        </div>
+        <div class="list">
+          <div class="row">
+            <div class="row-title">test(e2e): upload wizard — specs fail consistently post-fix</div>
+            <div class="row-meta"><span class="row-chip">seatify</span>#678 · today</div>
+          </div>
+          <div class="row">
+            <div class="row-title">ci: nightly-stability workflow has failed on main</div>
+            <div class="row-meta"><span class="row-chip">seatify</span>#677 · today</div>
+          </div>
+          <div class="row">
+            <div class="row-title">bug: Add Manually toggle doesn't render</div>
+            <div class="row-meta"><span class="row-chip">issuectl</span>#612 · 1d</div>
+          </div>
+        </div>
+        <div class="fab">+</div>
+      </div>
+    </div>
+
+    <!-- 2. Proposed: filter icon in tab row, no active filters -->
+    <div>
+      <div class="frame-label">2. Proposed — 2 rows, filter icon in tab row</div>
+      <div class="frame">
+        <div class="top-bar">
+          <span class="brand">issuectl<span class="brand-dot"></span></span>
+          <span class="menu">···</span>
+        </div>
+        <div class="tabs-row">
+          <div class="tabs">
+            <span class="tab-on">Issues<span class="count">107</span></span>
+            <span class="tab">Pull requests<span class="count">4</span></span>
+          </div>
+          <button class="filter-btn" aria-label="Filters">
+            ⚲
+          </button>
+        </div>
+        <div class="sub-tabs">
+          <span class="sub">drafts<span class="sub-count">3</span></span>
+          <span class="sub-on">in focus<span class="sub-count">50</span></span>
+          <span class="sub">in flight<span class="sub-count">0</span></span>
+          <span class="sub">shipped<span class="sub-count">54</span></span>
+        </div>
+        <div class="list">
+          <div class="row">
+            <div class="row-title">test(e2e): upload wizard — specs fail consistently post-fix</div>
+            <div class="row-meta"><span class="row-chip">seatify</span>#678 · today</div>
+          </div>
+          <div class="row">
+            <div class="row-title">ci: nightly-stability workflow has failed on main</div>
+            <div class="row-meta"><span class="row-chip">seatify</span>#677 · today</div>
+          </div>
+          <div class="row">
+            <div class="row-title">bug: Add Manually toggle doesn't render</div>
+            <div class="row-meta"><span class="row-chip">issuectl</span>#612 · 1d</div>
+          </div>
+          <div class="row">
+            <div class="row-title">bug(setup-import): validation error on empty field</div>
+            <div class="row-meta"><span class="row-chip">issuectl</span>#611 · 1d</div>
+          </div>
+          <div class="row">
+            <div class="row-title">feat: add draft-to-issue assign flow from detail page</div>
+            <div class="row-meta"><span class="row-chip">issuectl</span>#608 · 2d</div>
+          </div>
+        </div>
+        <div class="fab">+</div>
+      </div>
+    </div>
+
+    <!-- 3. Proposed: with active filter (dot indicator + scope pill) -->
+    <div>
+      <div class="frame-label">3. Proposed — repo filter active (dot + pill)</div>
+      <div class="frame">
+        <div class="top-bar">
+          <span class="brand">issuectl<span class="brand-dot"></span></span>
+          <span class="menu">···</span>
+        </div>
+        <div class="tabs-row">
+          <div class="tabs">
+            <span class="tab-on">
+              Issues<span class="count">8</span>
+              <span class="scope-pill"><span class="dot" style="background: #f85149"></span>issuectl<span class="close">×</span></span>
+            </span>
+            <span class="tab">PRs<span class="count">0</span></span>
+          </div>
+          <button class="filter-btn" aria-label="Filters">
+            ⚲
+            <span class="badge"></span>
+          </button>
+        </div>
+        <div class="sub-tabs">
+          <span class="sub-on">in focus<span class="sub-count">2</span></span>
+          <span class="sub">in flight<span class="sub-count">0</span></span>
+          <span class="sub">shipped<span class="sub-count">6</span></span>
+        </div>
+        <div class="list">
+          <div class="row">
+            <div class="row-title">CI: push re-runs the full test suite after merge</div>
+            <div class="row-meta"><span class="row-chip">issuectl</span>#60 · 3d</div>
+          </div>
+          <div class="row">
+            <div class="row-title">Ghostty launcher: -e flag not working correctly via open -na</div>
+            <div class="row-meta"><span class="row-chip">issuectl</span>#29 · 7d</div>
+          </div>
+        </div>
+        <div class="fab">+</div>
+      </div>
+    </div>
+
+    <!-- 4. Filter sheet open — Issues tab (just repo) -->
+    <div>
+      <div class="frame-label">4. Sheet open — Issues tab</div>
+      <div class="frame">
+        <div class="top-bar">
+          <span class="brand">issuectl<span class="brand-dot"></span></span>
+          <span class="menu">···</span>
+        </div>
+        <div class="tabs-row">
+          <div class="tabs">
+            <span class="tab-on">Issues<span class="count">107</span></span>
+            <span class="tab">PRs<span class="count">4</span></span>
+          </div>
+          <button class="filter-btn">⚲</button>
+        </div>
+        <div class="sub-tabs">
+          <span class="sub">drafts<span class="sub-count">3</span></span>
+          <span class="sub-on">in focus<span class="sub-count">50</span></span>
+          <span class="sub">in flight<span class="sub-count">0</span></span>
+          <span class="sub">shipped<span class="sub-count">54</span></span>
+        </div>
+        <div class="list" style="opacity: 0.3;">
+          <div class="row"><div class="row-title">test(e2e)…</div></div>
+          <div class="row"><div class="row-title">ci: nightly-stability…</div></div>
+        </div>
+        <div class="sheet-backdrop"></div>
+        <div class="sheet">
+          <div class="sheet-grabber"></div>
+          <div class="sheet-header">
+            <span class="sheet-title">Filters</span>
+            <button class="sheet-clear" disabled style="opacity: 0.4">Clear</button>
+          </div>
+          <div class="sheet-group-label">Repository</div>
+          <div class="sheet-row selected">
+            <span class="label">All repos</span>
+            <span class="check">✓</span>
+          </div>
+          <div class="sheet-row">
+            <span class="dot" style="background: #f85149;"></span>
+            <span class="label">mean-weasel/issuectl</span>
+          </div>
+          <div class="sheet-row">
+            <span class="dot" style="background: #58a6ff;"></span>
+            <span class="label">mean-weasel/seatify</span>
+          </div>
+          <button class="sheet-done">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Filter sheet open — PRs tab (repo + author) -->
+    <div>
+      <div class="frame-label">5. Sheet open — PRs tab (repo + author)</div>
+      <div class="frame">
+        <div class="top-bar">
+          <span class="brand">issuectl<span class="brand-dot"></span></span>
+          <span class="menu">···</span>
+        </div>
+        <div class="tabs-row">
+          <div class="tabs">
+            <span class="tab">Issues<span class="count">107</span></span>
+            <span class="tab-on">PRs<span class="count">4</span></span>
+          </div>
+          <button class="filter-btn">⚲<span class="badge"></span></button>
+        </div>
+        <div class="list" style="opacity: 0.3;">
+          <div class="row"><div class="row-title">chore(deps)…</div></div>
+        </div>
+        <div class="sheet-backdrop"></div>
+        <div class="sheet">
+          <div class="sheet-grabber"></div>
+          <div class="sheet-header">
+            <span class="sheet-title">Filters</span>
+            <button class="sheet-clear">Clear</button>
+          </div>
+          <div class="sheet-group-label">Repository</div>
+          <div class="sheet-row">
+            <span class="label">All repos</span>
+          </div>
+          <div class="sheet-row selected">
+            <span class="dot" style="background: #f85149;"></span>
+            <span class="label">mean-weasel/issuectl</span>
+            <span class="check">✓</span>
+          </div>
+          <div class="sheet-row">
+            <span class="dot" style="background: #58a6ff;"></span>
+            <span class="label">mean-weasel/seatify</span>
+          </div>
+          <div class="sheet-group-label" style="margin-top: 8px;">Author</div>
+          <div class="sheet-row selected">
+            <span class="label">Everyone</span>
+            <span class="check">✓</span>
+          </div>
+          <div class="sheet-row">
+            <span class="label">Just me <span class="sublabel">(@neonwatty)</span></span>
+          </div>
+          <button class="sheet-done">Done</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

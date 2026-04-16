@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Add Repo Picker — mockup</title>
+<style>
+  :root {
+    --paper-bg:           #f3ecd9;
+    --paper-bg-warm:      #ede5cf;
+    --paper-bg-warmer:    #e6dec4;
+    --paper-ink:          #1a1712;
+    --paper-ink-soft:     #3a342a;
+    --paper-ink-muted:    #746a50;
+    --paper-line:         #e0d6bc;
+    --paper-line-soft:    #e9dfc6;
+    --paper-accent:       #2d5f3f;
+    --paper-accent-dim:   #4a7a5c;
+    --paper-accent-soft:  #dce8de;
+    --paper-brick:        #a8432a;
+    --paper-butter:       #d9a54d;
+    --paper-radius-sm:    3px;
+    --paper-radius-md:    6px;
+    --paper-radius-lg:    10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #2a2a28;
+    color: #e8e3d3;
+    font-family: Georgia, "Times New Roman", serif;
+    padding: 24px;
+    min-height: 100dvh;
+  }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  h2 { font-size: 14px; color: #b8b09a; margin-bottom: 10px; font-weight: normal; font-style: italic; }
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(393px, 1fr));
+    gap: 32px;
+    margin-top: 24px;
+  }
+  .frame {
+    background: var(--paper-bg);
+    color: var(--paper-ink);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .frame-label { font-size: 12px; color: #b8b09a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-family: system-ui, sans-serif; }
+  .mobile { width: 393px; }
+  .desktop { width: 640px; }
+
+  /* ── Shared form styles ── */
+  .page { padding: 20px 16px 32px; }
+  .section-title { font-size: 12px; color: var(--paper-ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  .form {
+    background: var(--paper-bg);
+    border: 1px solid var(--paper-accent);
+    border-radius: var(--paper-radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .field-label { font-size: 12px; color: var(--paper-ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+  /* ── Picker trigger (closed state) ── */
+  .picker-trigger {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    color: var(--paper-ink-muted);
+    font-size: 16px;
+    font-family: Georgia, serif;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+  .picker-trigger.selected { color: var(--paper-ink); }
+  .picker-trigger .caret { color: var(--paper-ink-muted); font-size: 12px; }
+
+  /* ── Picker open ── */
+  .picker-open {
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-accent);
+    border-radius: var(--paper-radius-md);
+    overflow: hidden;
+  }
+  .picker-search {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--paper-line);
+    font-size: 16px;
+    font-family: Georgia, serif;
+    color: var(--paper-ink);
+    outline: none;
+  }
+  .picker-search::placeholder { color: var(--paper-ink-muted); font-style: italic; }
+  .picker-list {
+    max-height: 280px;
+    overflow-y: auto;
+    list-style: none;
+  }
+  .picker-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    min-height: 44px;
+    border-bottom: 1px solid var(--paper-line-soft);
+    cursor: pointer;
+    font-size: 15px;
+  }
+  .picker-item:last-child { border-bottom: none; }
+  .picker-item:hover { background: var(--paper-accent-soft); }
+  .picker-item.tracked { opacity: 0.5; cursor: default; }
+  .picker-item.tracked:hover { background: transparent; }
+  .picker-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--paper-accent); flex-shrink: 0; }
+  .picker-item .name { flex: 1; }
+  .picker-item .name .owner { color: var(--paper-ink-muted); }
+  .picker-item .badge {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--paper-bg-warmer);
+    color: var(--paper-ink-muted);
+    font-family: system-ui, sans-serif;
+  }
+  .picker-item .badge.private { background: var(--paper-butter); color: var(--paper-ink); }
+
+  .picker-footer {
+    padding: 8px 12px;
+    background: var(--paper-bg);
+    border-top: 1px solid var(--paper-line);
+  }
+  .picker-footer button {
+    background: none;
+    border: none;
+    color: var(--paper-accent);
+    font-size: 13px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    cursor: pointer;
+    padding: 6px 0;
+    min-height: 32px;
+  }
+
+  /* ── Manual entry fallback ── */
+  .manual-entry input {
+    width: 100%;
+    padding: 10px 12px;
+    min-height: 44px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    color: var(--paper-ink);
+    font-size: 16px;
+    font-family: Georgia, serif;
+    outline: none;
+  }
+  .manual-entry input:focus { border-color: var(--paper-accent); }
+  .manual-entry .back-to-picker {
+    background: none;
+    border: none;
+    color: var(--paper-accent);
+    font-size: 12px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    cursor: pointer;
+    padding: 6px 0;
+    margin-top: 4px;
+  }
+
+  /* ── Local path field ── */
+  .path-input {
+    width: 100%;
+    padding: 10px 12px;
+    min-height: 44px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    color: var(--paper-ink);
+    font-size: 16px;
+    font-family: Georgia, serif;
+    outline: none;
+  }
+  .path-hint { font-size: 12px; color: var(--paper-ink-muted); margin-top: 6px; }
+
+  /* ── Actions ── */
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .mobile .actions { flex-direction: column-reverse; }
+  .desktop .actions { justify-content: flex-end; }
+  .btn {
+    min-height: 44px;
+    padding: 10px 18px;
+    border-radius: var(--paper-radius-md);
+    font-family: Georgia, serif;
+    font-size: 15px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .mobile .btn { width: 100%; }
+  .btn-primary {
+    background: var(--paper-accent);
+    color: #fff;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--paper-ink);
+    border-color: var(--paper-line);
+  }
+
+  /* ── Desktop two-column ── */
+  .row-desktop {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* Tracked repos above form */
+  .tracked-list { margin-bottom: 12px; }
+  .tracked-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--paper-bg);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    margin-bottom: 6px;
+    font-size: 14px;
+    flex-wrap: wrap;
+  }
+  .tracked-item .dot-tracked { width: 8px; height: 8px; border-radius: 50%; background: var(--paper-accent); }
+  .tracked-item .name-tracked { flex: 1; font-weight: 500; }
+  .tracked-item .path-tracked { font-family: ui-monospace, monospace; font-size: 11px; color: var(--paper-ink-muted); width: 100%; margin-left: 18px; }
+</style>
+</head>
+<body>
+  <h1>Add Repo — picker redesign</h1>
+  <h2>Mobile-first, fed by GitHub API, with manual fallback</h2>
+
+  <div class="gallery">
+
+    <!-- 1. Mobile: closed / empty state -->
+    <div>
+      <div class="frame-label">1. Mobile — closed state (initial)</div>
+      <div class="frame mobile">
+        <div class="page">
+          <div class="section-title">Tracked Repositories</div>
+          <div class="tracked-list">
+            <div class="tracked-item">
+              <span class="dot-tracked"></span>
+              <span class="name-tracked">mean-weasel/issuectl</span>
+              <span class="path-tracked">~/Desktop/issuectl</span>
+            </div>
+          </div>
+          <div class="form">
+            <div>
+              <div class="field-label">Repository</div>
+              <button class="picker-trigger">
+                <span>Select a repository…</span>
+                <span class="caret">▾</span>
+              </button>
+            </div>
+            <div>
+              <div class="field-label">Local Path (optional)</div>
+              <input class="path-input" placeholder="~/Desktop/my-repo">
+              <div class="path-hint">Leave blank to prompt on launch</div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-ghost">Cancel</button>
+              <button class="btn btn-primary">Add Repo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Mobile: picker open with search + list -->
+    <div>
+      <div class="frame-label">2. Mobile — picker open, filtered</div>
+      <div class="frame mobile">
+        <div class="page">
+          <div class="form">
+            <div>
+              <div class="field-label">Repository</div>
+              <div class="picker-open">
+                <input class="picker-search" value="sea" placeholder="search your repos…" autofocus>
+                <ul class="picker-list">
+                  <li class="picker-item">
+                    <span class="dot"></span>
+                    <span class="name"><span class="owner">mean-weasel/</span><strong>sea</strong>tify</span>
+                    <span class="badge">public</span>
+                  </li>
+                  <li class="picker-item">
+                    <span class="dot"></span>
+                    <span class="name"><span class="owner">mean-weasel/</span><strong>sea</strong>tify-web</span>
+                    <span class="badge private">private</span>
+                  </li>
+                  <li class="picker-item tracked">
+                    <span class="dot"></span>
+                    <span class="name"><span class="owner">acme-co/</span>ocean-<strong>sea</strong>rch</span>
+                    <span class="badge">already tracked</span>
+                  </li>
+                </ul>
+                <div class="picker-footer">
+                  <button>Can't find it? Enter manually →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Mobile: manual entry fallback -->
+    <div>
+      <div class="frame-label">3. Mobile — manual entry fallback</div>
+      <div class="frame mobile">
+        <div class="page">
+          <div class="form">
+            <div class="manual-entry">
+              <div class="field-label">Repository</div>
+              <input placeholder="owner/repo (e.g., mean-weasel/seatify)">
+              <button class="back-to-picker">← back to picker</button>
+            </div>
+            <div>
+              <div class="field-label">Local Path (optional)</div>
+              <input class="path-input" value="~/Desktop/other-repo">
+              <div class="path-hint">Leave blank to prompt on launch</div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-ghost">Cancel</button>
+              <button class="btn btn-primary">Add Repo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Desktop: picker open -->
+    <div>
+      <div class="frame-label">4. Desktop — ≥768px, two-column</div>
+      <div class="frame desktop">
+        <div class="page">
+          <div class="form">
+            <div class="row-desktop">
+              <div>
+                <div class="field-label">Repository</div>
+                <div class="picker-open">
+                  <input class="picker-search" value="" placeholder="search your repos…">
+                  <ul class="picker-list">
+                    <li class="picker-item">
+                      <span class="dot"></span>
+                      <span class="name"><span class="owner">mean-weasel/</span>seatify</span>
+                      <span class="badge">public</span>
+                    </li>
+                    <li class="picker-item">
+                      <span class="dot"></span>
+                      <span class="name"><span class="owner">mean-weasel/</span>blog</span>
+                      <span class="badge">public</span>
+                    </li>
+                    <li class="picker-item tracked">
+                      <span class="dot"></span>
+                      <span class="name"><span class="owner">mean-weasel/</span>issuectl</span>
+                      <span class="badge">already tracked</span>
+                    </li>
+                    <li class="picker-item">
+                      <span class="dot"></span>
+                      <span class="name"><span class="owner">acme-co/</span>billing-api</span>
+                      <span class="badge private">private</span>
+                    </li>
+                  </ul>
+                  <div class="picker-footer">
+                    <button>Can't find it? Enter manually →</button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="field-label">Local Path (optional)</div>
+                <input class="path-input" placeholder="~/Desktop/my-repo">
+                <div class="path-hint">Leave blank to prompt on launch</div>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-ghost">Cancel</button>
+              <button class="btn btn-primary">Add Repo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

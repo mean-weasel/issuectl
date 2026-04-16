@@ -209,6 +209,26 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 10,
+    up(db) {
+      // Local cache of the authenticated user's accessible GitHub repos.
+      // Populated by the RepoPicker in settings so adding a new repo shows
+      // a searchable list without a network round-trip on every open.
+      // Refreshed on-demand via the picker's refresh button or when
+      // synced_at is older than the app-level staleness threshold (24h).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS github_accessible_repos (
+          owner      TEXT NOT NULL,
+          name       TEXT NOT NULL,
+          is_private INTEGER NOT NULL DEFAULT 0 CHECK (is_private IN (0, 1)),
+          pushed_at  TEXT,
+          synced_at  INTEGER NOT NULL,
+          PRIMARY KEY (owner, name)
+        );
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

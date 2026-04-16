@@ -77,11 +77,19 @@
 
 .editRow {
   display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
 .editField {
   flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .editRow {
+    flex-direction: row;
+  }
 }
 
 .editLabel {
@@ -95,7 +103,8 @@
 
 .editInput {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  min-height: 44px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);

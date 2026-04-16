@@ -1,0 +1,67 @@
+.row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.row::-webkit-scrollbar {
+  display: none;
+}
+
+.chip,
+.chipActive {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  min-height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--paper-line);
+  background: var(--paper-bg);
+  color: var(--paper-ink-soft);
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Extend hit area to 44x44 without visually growing the chip (WCAG 2.5.5).
+   Horizontal extension stays at 0 so hit zones don't collide with adjacent
+   chips in the horizontal scroll row. */
+.chip::before,
+.chipActive::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  background: var(--paper-bg-warm);
+  outline: none;
+}
+
+.chipActive {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+  border-width: 1.5px;
+  font-weight: 500;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .row {
+    padding: 8px 16px 16px;
+  }
+}

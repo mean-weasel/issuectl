@@ -40,12 +40,26 @@
   }
 }
 
+/* Generous invisible hit area around the visible grabber so a user can
+   initiate the drag-to-dismiss gesture with a thumb without having to
+   land on the 4px bar. Only this zone is touch-enabled for dismissal;
+   the body is left scrollable. */
+.grabArea {
+  padding: 6px 0 10px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.grabArea:active {
+  cursor: grabbing;
+}
+
 .grab {
   width: 44px;
   height: 4px;
   background: var(--paper-ink-faint);
   border-radius: 3px;
-  margin: 0 auto 10px;
+  margin: 0 auto;
 }
 
 .head {
