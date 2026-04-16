@@ -24,14 +24,17 @@ export async function getPulls(
   fromCache: boolean;
   cachedAt: Date | null;
 }> {
-  const cacheKey = `pulls:${owner}/${repo}`;
+  // Prefix is `pulls-open:` (not `pulls:`) so the switch from state="all" to
+  // state="open" on upgrade doesn't briefly render stale merged/closed PRs
+  // from the old cache until TTL expires.
+  const cacheKey = `pulls-open:${owner}/${repo}`;
   const ttl = getCacheTtl(db);
 
   if (!options?.forceRefresh) {
     const cached = getCached<GitHubPull[]>(db, cacheKey);
     if (cached) {
       if (!isFresh(cached.fetchedAt, ttl)) {
-        listPulls(octokit, owner, repo, "all").then((data) => {
+        listPulls(octokit, owner, repo, "open").then((data) => {
           setCached(db, cacheKey, data);
         }).catch((err) => {
           console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
@@ -41,7 +44,7 @@ export async function getPulls(
     }
   }
 
-  const pulls = await listPulls(octokit, owner, repo, "all");
+  const pulls = await listPulls(octokit, owner, repo, "open");
   setCached(db, cacheKey, pulls);
   return { pulls, fromCache: false, cachedAt: new Date() };
 }

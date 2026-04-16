@@ -6,18 +6,35 @@ import {
   listRepos,
   dbExists,
   type GitHubPull,
+  type Section,
 } from "@issuectl/core";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 import { List } from "@/components/list/List";
 import { getAuthStatus } from "@/lib/auth";
+import {
+  filterPrs,
+  filterUnifiedList,
+  resolveActiveRepo,
+  type PrEntry,
+} from "@/lib/page-filters";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    repo?: string;
+    mine?: string;
+    section?: string;
+  }>;
 };
 
-type PrEntry = { repo: { owner: string; name: string }; pull: GitHubPull };
+const SECTIONS: readonly Section[] = [
+  "unassigned",
+  "in_focus",
+  "in_flight",
+  "shipped",
+];
 
 export default async function MainListPage({ searchParams }: Props) {
   if (!dbExists()) {
@@ -30,11 +47,21 @@ export default async function MainListPage({ searchParams }: Props) {
     return <WelcomeScreen />;
   }
 
-  const { tab } = await searchParams;
+  const {
+    tab,
+    repo: repoParam,
+    mine: mineParam,
+    section: sectionParam,
+  } = await searchParams;
   const activeTab = tab === "prs" ? "prs" : "issues";
+  const activeRepo = resolveActiveRepo(repoParam, repos);
+  const mineOnly = mineParam === "1";
+  const activeSection: Section = (SECTIONS as readonly string[]).includes(
+    sectionParam ?? "",
+  )
+    ? (sectionParam as Section)
+    : "in_focus";
 
-  // Auth check doesn't depend on octokit, so start it in parallel with the
-  // octokit handshake. Then fan out data fetches in parallel once octokit is ready.
   const [octokit, auth] = await Promise.all([getOctokit(), getAuthStatus()]);
 
   const [data, allPrs] = await Promise.all([
@@ -43,14 +70,20 @@ export default async function MainListPage({ searchParams }: Props) {
   ]);
 
   const username = auth.authenticated ? auth.username : null;
+  const filteredData = filterUnifiedList(data, activeRepo);
+  const filteredPrs = filterPrs(allPrs, activeRepo, mineOnly ? username : null);
 
   return (
     <List
-      data={data}
+      data={filteredData}
       activeTab={activeTab}
-      prs={allPrs}
-      prCount={allPrs.length}
+      activeSection={activeSection}
+      prs={filteredPrs}
+      prCount={filteredPrs.length}
       username={username}
+      repos={repos.map((r) => ({ owner: r.owner, name: r.name }))}
+      activeRepo={activeRepo}
+      mineOnly={mineOnly}
     />
   );
 }

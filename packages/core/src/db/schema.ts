@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -69,6 +69,15 @@ const CREATE_TABLES = `
 
   CREATE INDEX IF NOT EXISTS idx_action_nonces_created_at
     ON action_nonces(created_at);
+
+  CREATE TABLE IF NOT EXISTS github_accessible_repos (
+    owner      TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    is_private INTEGER NOT NULL DEFAULT 0 CHECK (is_private IN (0, 1)),
+    pushed_at  TEXT,
+    synced_at  INTEGER NOT NULL,
+    PRIMARY KEY (owner, name)
+  );
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL

@@ -28,6 +28,11 @@ export {
   updateRepo,
 } from "./db/repos.js";
 export {
+  listCachedAccessibleRepos,
+  getAccessibleReposSyncedAt,
+  replaceAccessibleRepos,
+} from "./db/github-repos.js";
+export {
   getSetting,
   setSetting,
   getSettings,
@@ -84,6 +89,7 @@ export type {
   GitHubLabel,
   GitHubCheck,
   GitHubPullFile,
+  GitHubAccessibleRepo,
 } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit, withAuthRetry } from "./github/client.js";
@@ -105,6 +111,7 @@ export {
   addLabel,
   removeLabel,
 } from "./github/labels.js";
+export { listAccessibleRepos } from "./github/repos.js";
 
 // Cached data layer (SWR)
 export {
@@ -118,6 +125,12 @@ export {
   getPullDetail,
 } from "./data/pulls.js";
 export { getDashboardData } from "./data/repos.js";
+export {
+  readCachedAccessibleRepos,
+  refreshAccessibleRepos,
+  ACCESSIBLE_REPOS_TTL_SECONDS,
+  type AccessibleReposSnapshot,
+} from "./data/github-repos.js";
 export {
   getComments,
   addComment,

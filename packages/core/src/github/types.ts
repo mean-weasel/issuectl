@@ -72,3 +72,10 @@ export type GitHubPullFile = {
   additions: number;
   deletions: number;
 };
+
+export type GitHubAccessibleRepo = {
+  owner: string;
+  name: string;
+  private: boolean;
+  pushedAt: string | null;
+};

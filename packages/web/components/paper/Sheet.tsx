@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useId, useRef } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import styles from "./Sheet.module.css";
 
 type Props = {
@@ -12,8 +12,6 @@ type Props = {
   children: ReactNode;
 };
 
-// Tabbable elements inside a dialog container. Excludes disabled and
-// explicit -1 tabindex. Keeps focus cycling predictable for the trap.
 function getFocusable(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>(
@@ -22,15 +20,34 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
   );
 }
 
+// Dismiss thresholds, matching iOS-native bottom-sheet feel:
+//   - A slow drag past DISMISS_DRAG_PX dismisses.
+//   - A fast flick (velocity > FLICK_VELOCITY_PX_PER_MS) dismisses after
+//     only FLICK_MIN_DRAG_PX — so a quick swipe closes without needing the
+//     full slow-drag distance.
+const DISMISS_DRAG_PX = 100;
+const FLICK_VELOCITY_PX_PER_MS = 0.5;
+const FLICK_MIN_DRAG_PX = 40;
+
 export function Sheet({ open, onClose, title, description, children }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [dragY, setDragY] = useState(0);
+  const dragStart = useRef<{ y: number; t: number } | null>(null);
+  const isDesktopRef = useRef(false);
 
-  // Focus management: on open, move focus into the dialog and capture the
-  // previously-focused element so we can restore it on close. This effect
-  // is intentionally scoped to `[open]` — rerunning it on `onClose` identity
-  // change would re-capture mid-session and land focus back inside the
-  // dialog instead of on the trigger that opened it.
+  // Track viewport size across the sheet's open lifetime so a
+  // portrait→landscape rotation mid-drag doesn't compose the wrong transform.
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    const update = () => {
+      isDesktopRef.current = mql.matches;
+    };
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const toRestore = document.activeElement as HTMLElement | null;
@@ -44,9 +61,6 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     };
   }, [open]);
 
-  // Body scroll lock while the sheet is open. Prevents the page behind the
-  // scrim from scrolling when the user drags on the scrim or tries to swipe
-  // the sheet — a real mobile Safari confusion source otherwise.
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -56,7 +70,6 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     };
   }, [open]);
 
-  // Keyboard handling: Escape closes, Tab/Shift+Tab cycle within the dialog.
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -86,7 +99,61 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
+  // Reset drag state when the sheet closes so a stale dragY doesn't leak
+  // into the next open.
+  useEffect(() => {
+    if (!open) {
+      dragStart.current = null;
+      setDragY(0);
+    }
+  }, [open]);
+
   if (!open) return null;
+
+  const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 0) return;
+    dragStart.current = { y: e.touches[0].clientY, t: Date.now() };
+  };
+
+  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    // iOS can fire touchmove with an empty touches list during gesture
+    // interruption (system UI preempt, multi-touch release race). Guard
+    // both conditions so a stale dragStart can't crash us.
+    if (!dragStart.current || e.touches.length === 0) return;
+    const delta = e.touches[0].clientY - dragStart.current.y;
+    setDragY(Math.max(0, delta));
+  };
+
+  const onTouchEnd = () => {
+    if (!dragStart.current) return;
+    const elapsed = Math.max(1, Date.now() - dragStart.current.t);
+    const velocity = dragY / elapsed;
+    const shouldDismiss =
+      dragY > DISMISS_DRAG_PX ||
+      (dragY > FLICK_MIN_DRAG_PX && velocity > FLICK_VELOCITY_PX_PER_MS);
+    dragStart.current = null;
+    if (shouldDismiss) {
+      onClose();
+    } else {
+      setDragY(0);
+    }
+  };
+
+  // Preserve the existing desktop centered transform by composing the two.
+  // On mobile the sheet is edge-aligned so only translateY matters.
+  const sheetTransform =
+    dragY > 0
+      ? isDesktopRef.current
+        ? `translate(-50%, ${dragY}px)`
+        : `translate3d(0, ${dragY}px, 0)`
+      : undefined;
+  const sheetStyle: CSSProperties | undefined = sheetTransform
+    ? { transform: sheetTransform, transition: "none" }
+    : undefined;
+  const scrimStyle: CSSProperties | undefined =
+    dragY > 0
+      ? { opacity: Math.max(0.1, 1 - dragY / 400), transition: "none" }
+      : undefined;
 
   return (
     <>
@@ -94,6 +161,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
         className={styles.scrim}
         onClick={onClose}
         aria-hidden="true"
+        style={scrimStyle}
       />
       <div
         ref={dialogRef}
@@ -102,8 +170,18 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
+        style={sheetStyle}
       >
-        <div className={styles.grab} />
+        <div
+          className={styles.grabArea}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+          aria-hidden="true"
+        >
+          <div className={styles.grab} />
+        </div>
         <div className={styles.head}>
           <h2 id={titleId} className={styles.title}>
             {title}

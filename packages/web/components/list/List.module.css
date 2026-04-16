@@ -1,9 +1,10 @@
 .container {
   max-width: 900px;
   margin: 0 auto;
-  /* Bottom padding clears the FAB (60px + 30px inset + 14px breathing room)
-     so the last row never sits under the floating action button. */
-  padding: 12px 0 calc(104px + env(safe-area-inset-bottom, 0px));
+  /* Bottom padding clears the FAB (60px + 30px inset + 54px breathing room)
+     so the last row's trailing action button clears the floating action
+     button even when a user scrolls to the end of a dense row. */
+  padding: 12px 0 calc(144px + env(safe-area-inset-bottom, 0px));
   background: var(--paper-bg);
   min-height: 100dvh;
   position: relative;
@@ -241,4 +242,233 @@
   .desktopDraftBtn {
     display: inline-block;
   }
+}
+
+.mineToggle {
+  display: inline-flex;
+  margin: 0 16px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  padding: 2px;
+  align-self: flex-start;
+}
+
+.mineOption,
+.mineOptionActive {
+  position: relative;
+  padding: 6px 14px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  color: var(--paper-ink-muted);
+  text-decoration: none;
+}
+
+/* Extend hit area to 44px without visually growing the segmented toggle. */
+.mineOption::before,
+.mineOptionActive::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+.mineOptionActive {
+  background: var(--paper-bg);
+  color: var(--paper-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  font-weight: 500;
+}
+
+.sectionTabs {
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.sectionTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionTab,
+.sectionTabActive {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  min-height: 40px;
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  color: var(--paper-ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  flex-shrink: 0;
+}
+
+/* Extend hit area to 44px (40 + 2 + 2) for WCAG 2.5.5 compliance. */
+.sectionTab::before,
+.sectionTabActive::before {
+  content: "";
+  position: absolute;
+  inset: -2px 0;
+}
+
+.sectionTab:hover,
+.sectionTab:focus-visible {
+  color: var(--paper-ink-soft);
+  outline: none;
+}
+
+.sectionTabActive {
+  color: var(--paper-ink);
+  font-weight: 500;
+  border-bottom-color: var(--paper-ink);
+}
+
+.sectionTabCount {
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  font-weight: 400;
+}
+
+.sectionTabActive .sectionTabCount {
+  color: var(--paper-ink-soft);
+}
+
+/* ── Filter button (mobile only) ── */
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  align-self: center;
+  background: transparent;
+  border: none;
+  color: var(--paper-ink);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.filterBtn:hover,
+.filterBtn:focus-visible {
+  color: var(--paper-accent);
+  outline: none;
+}
+
+.filterBtnDot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--paper-accent);
+  border: 1.5px solid var(--paper-bg);
+}
+
+/* ── Scope pill (mobile only) ── */
+.scopePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 2px 4px 2px 8px;
+  background: var(--paper-accent-soft);
+  border-radius: 999px;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--paper-ink-soft);
+  font-family: var(--paper-serif);
+  max-width: 160px;
+}
+
+.scopePillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.scopePillLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scopePillClear {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--paper-ink-muted);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1;
+  font-style: normal;
+}
+
+/* Extend hit area on the × link to ~30px without visually growing the pill. */
+.scopePillClear::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.scopePillClear:hover,
+.scopePillClear:focus-visible {
+  color: var(--paper-ink);
+  outline: none;
+}
+
+/* ── Responsive: desktop shows chip row + inline mine toggle, hides filter
+     button + scope pill. Mobile inverts. ── */
+@media (max-width: 767px) {
+  .desktopChipRow {
+    display: none;
+  }
+  .mineToggle {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .filterBtn {
+    display: none;
+  }
+  .scopePill {
+    display: none;
+  }
+}
+
+/* Swap tab labels at narrow widths so the scope pill + filter icon
+   don't force "Pull requests" to wrap. */
+.tabLabelShort { display: none; }
+
+@media (max-width: 479px) {
+  .tabLabelFull { display: none; }
+  .tabLabelShort { display: inline; }
+  .tab {
+    margin-right: 18px;
+  }
+}
+
+.tab {
+  white-space: nowrap;
 }

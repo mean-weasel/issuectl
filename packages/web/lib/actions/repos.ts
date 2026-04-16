@@ -7,8 +7,14 @@ import {
   addRepo as coreAddRepo,
   removeRepo as coreRemoveRepo,
   updateRepo as coreUpdateRepo,
+  readCachedAccessibleRepos,
+  refreshAccessibleRepos,
+  getIssues,
+  getPulls,
+  listLabels,
   withAuthRetry,
   formatErrorForUser,
+  type AccessibleReposSnapshot,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
@@ -16,16 +22,24 @@ function expandHome(p: string): string {
   return p.startsWith("~") ? p.replace("~", homedir()) : p;
 }
 
+function errMessage(err: unknown): unknown {
+  return err instanceof Error ? err.message : err;
+}
+
+export type AddRepoResult =
+  | {
+      success: true;
+      addedRepo: { owner: string; name: string };
+      warning?: string;
+      cacheStale?: true;
+    }
+  | { success: false; error: string };
+
 export async function addRepo(
   owner: string,
   name: string,
   localPath?: string,
-): Promise<{
-  success: boolean;
-  warning?: string;
-  error?: string;
-  cacheStale?: true;
-}> {
+): Promise<AddRepoResult> {
   if (!owner || !name) {
     return { success: false, error: "Owner and repo name are required" };
   }
@@ -38,7 +52,7 @@ export async function addRepo(
       octokit.rest.repos.get({ owner, repo: name }),
     );
   } catch (err) {
-    console.error("[issuectl] Failed to fetch repo from GitHub:", err);
+    console.error("[issuectl] Failed to fetch repo from GitHub:", errMessage(err));
     return {
       success: false,
       error: `Repository ${owner}/${name} not found on GitHub: ${formatErrorForUser(err)}`,
@@ -49,27 +63,69 @@ export async function addRepo(
     const db = getDb();
     coreAddRepo(db, { owner, name, localPath });
   } catch (err) {
-    console.error("[issuectl] Failed to add repo:", err);
+    console.error("[issuectl] Failed to add repo:", errMessage(err));
     const msg =
       err instanceof Error && err.message.includes("UNIQUE")
         ? "Repository already tracked"
         : "Failed to add repository";
     return { success: false, error: msg };
   }
+
+  // Warm the caches for the new repo so the user lands on / with a populated
+  // dashboard rather than waiting for first-visit SSR fetches. Individual
+  // failures are logged but do not fail the add — the index page's SWR path
+  // will retry on next render.
+  try {
+    const db = getDb();
+    await withAuthRetry(async (octokit) => {
+      await Promise.all([
+        getIssues(db, octokit, owner, name).catch((err) => {
+          console.warn(
+            `[issuectl] Warm getIssues failed for ${owner}/${name}:`,
+            errMessage(err),
+          );
+        }),
+        getPulls(db, octokit, owner, name).catch((err) => {
+          console.warn(
+            `[issuectl] Warm getPulls failed for ${owner}/${name}:`,
+            errMessage(err),
+          );
+        }),
+        listLabels(octokit, owner, name).catch((err) => {
+          console.warn(
+            `[issuectl] Warm listLabels failed for ${owner}/${name}:`,
+            errMessage(err),
+          );
+        }),
+      ]);
+    });
+  } catch (err) {
+    console.error(
+      `[issuectl] Warm sync failed for ${owner}/${name}:`,
+      errMessage(err),
+    );
+  }
+
   const { stale } = revalidateSafely("/settings", "/");
+  const addedRepo = { owner, name };
 
   if (localPath) {
     const exists = await stat(expandHome(localPath)).catch(() => null);
     if (!exists) {
       return {
         success: true,
+        addedRepo,
         warning: "Local path does not exist — will prompt to clone on launch",
         ...(stale ? { cacheStale: true as const } : {}),
       };
     }
   }
 
-  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+  return {
+    success: true,
+    addedRepo,
+    ...(stale ? { cacheStale: true as const } : {}),
+  };
 }
 
 export async function removeRepo(
@@ -83,11 +139,43 @@ export async function removeRepo(
     const db = getDb();
     coreRemoveRepo(db, id);
   } catch (err) {
-    console.error("[issuectl] Failed to remove repo:", err);
+    console.error("[issuectl] Failed to remove repo:", errMessage(err));
     return { success: false, error: "Failed to remove repository" };
   }
   const { stale } = revalidateSafely("/settings", "/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+export async function getGithubReposAction(): Promise<
+  | { success: true; snapshot: AccessibleReposSnapshot }
+  | { success: false; error: string }
+> {
+  try {
+    const db = getDb();
+    return { success: true, snapshot: readCachedAccessibleRepos(db) };
+  } catch (err) {
+    console.error("[issuectl] readCachedAccessibleRepos failed:", errMessage(err));
+    return { success: false, error: formatErrorForUser(err) };
+  }
+}
+
+export async function refreshGithubReposAction(): Promise<
+  | { success: true; snapshot: AccessibleReposSnapshot }
+  | { success: false; error: string }
+> {
+  try {
+    const db = getDb();
+    const snapshot = await withAuthRetry((octokit) =>
+      refreshAccessibleRepos(db, octokit),
+    );
+    return { success: true, snapshot };
+  } catch (err) {
+    console.error(
+      "[issuectl] refreshAccessibleRepos failed:",
+      errMessage(err),
+    );
+    return { success: false, error: formatErrorForUser(err) };
+  }
 }
 
 export async function updateRepo(
@@ -102,7 +190,7 @@ export async function updateRepo(
     const db = getDb();
     coreUpdateRepo(db, id, updates);
   } catch (err) {
-    console.error("[issuectl] Failed to update repo:", err);
+    console.error("[issuectl] Failed to update repo:", errMessage(err));
     return { success: false, error: "Failed to update repository" };
   }
   const { stale } = revalidateSafely("/settings");

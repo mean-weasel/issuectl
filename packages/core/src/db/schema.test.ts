@@ -26,6 +26,7 @@ describe("initSchema", () => {
       "cache",
       "deployments",
       "drafts",
+      "github_accessible_repos",
       "issue_metadata",
       "repos",
       "schema_version",
@@ -33,15 +34,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 9", () => {
+  it("sets schema_version to 10", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
   });
 });
 
@@ -58,7 +59,7 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
   });
 
   it("migrates v1 schema through v9 and drops claude_aliases", () => {
@@ -74,7 +75,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -98,7 +99,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -141,7 +142,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -160,7 +161,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
   it("initSchema on a fresh DB produces schema version 9", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -226,7 +227,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -314,7 +315,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -397,7 +398,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db
@@ -549,7 +550,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(9);
+    expect(getSchemaVersion(db)).toBe(10);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -575,5 +576,22 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       .prepare(`SELECT name FROM pragma_index_list('deployments') WHERE "unique" = 1`)
       .all() as { name: string }[];
     expect(indexes.map((i) => i.name)).toContain("idx_deployments_live");
+  });
+
+  it("v10 migration creates github_accessible_repos with expected columns", () => {
+    const db = createTestDb();
+    expect(getSchemaVersion(db)).toBe(10);
+
+    const cols = db
+      .prepare("PRAGMA table_info(github_accessible_repos)")
+      .all() as { name: string; type: string; pk: number }[];
+    const names = cols.map((c) => c.name).sort();
+    expect(names).toEqual(["is_private", "name", "owner", "pushed_at", "synced_at"]);
+
+    const pkCols = cols
+      .filter((c) => c.pk > 0)
+      .map((c) => c.name)
+      .sort();
+    expect(pkCols).toEqual(["name", "owner"]);
   });
 });
