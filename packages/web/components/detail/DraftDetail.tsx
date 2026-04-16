@@ -49,8 +49,11 @@ export function DraftDetail({ draft }: Props) {
         return;
       }
       flashSaved();
-    } catch {
-      setSaveError("Failed to save title — try again");
+    } catch (err) {
+      console.error("[issuectl] updateDraft title threw:", err);
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save title — try again",
+      );
     }
   };
 
@@ -64,8 +67,11 @@ export function DraftDetail({ draft }: Props) {
         return;
       }
       flashSaved();
-    } catch {
-      setSaveError("Failed to save — try again");
+    } catch (err) {
+      console.error("[issuectl] updateDraft body threw:", err);
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save — try again",
+      );
     }
   };
 
@@ -139,7 +145,9 @@ export function DraftDetail({ draft }: Props) {
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
         draftId={draft.id}
-        draftTitle={title}
+        // Use the persisted title so the preview matches what gets created on
+        // GitHub. Unsaved edits to `title` state only commit on blur.
+        draftTitle={draft.title}
       />
     </div>
   );

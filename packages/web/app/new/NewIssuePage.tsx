@@ -64,24 +64,31 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
     setError(null);
     const idempotencyKey = newIdempotencyKey();
     startTransition(async () => {
-      const result = await createIssue({
-        owner: selectedRepo.owner,
-        repo: selectedRepo.repo,
-        title,
-        body: body || undefined,
-        labels: selectedLabels.length > 0 ? selectedLabels : undefined,
-        idempotencyKey,
-      });
+      try {
+        const result = await createIssue({
+          owner: selectedRepo.owner,
+          repo: selectedRepo.repo,
+          title,
+          body: body || undefined,
+          labels: selectedLabels.length > 0 ? selectedLabels : undefined,
+          idempotencyKey,
+        });
 
-      if (!result.success) {
-        setError(result.error ?? "Failed to create issue");
-        return;
+        if (!result.success) {
+          setError(result.error ?? "Failed to create issue");
+          return;
+        }
+
+        showToast("Issue created", "success");
+        router.push(
+          `/issues/${selectedRepo.owner}/${selectedRepo.repo}/${result.issueNumber}`,
+        );
+      } catch (err) {
+        console.error("[issuectl] createIssue threw:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to create issue",
+        );
       }
-
-      showToast("Issue created", "success");
-      router.push(
-        `/${selectedRepo.owner}/${selectedRepo.repo}/issues/${result.issueNumber}`,
-      );
     });
   }
 

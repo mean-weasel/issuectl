@@ -55,7 +55,6 @@ export default async function MainListPage({ searchParams }: Props) {
   );
 }
 
-// Non-fatal — PR tab degrades gracefully if any repo's pulls fail to load.
 async function gatherPulls(
   db: ReturnType<typeof getDb>,
   octokit: Awaited<ReturnType<typeof getOctokit>>,
@@ -70,13 +69,18 @@ async function gatherPulls(
             repo: { owner: repo.owner, name: repo.name },
             pull,
           }));
-        } catch {
+        } catch (err) {
+          console.warn(
+            `[issuectl] getPulls failed for ${repo.owner}/${repo.name}:`,
+            err instanceof Error ? err.message : err,
+          );
           return [];
         }
       }),
     );
     return prResults.flat();
-  } catch {
+  } catch (err) {
+    console.error("[issuectl] PR gather failed:", err);
     return [];
   }
 }

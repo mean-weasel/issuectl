@@ -52,14 +52,17 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
         showToast(`Issue #${result.issueNumber} created`, "success");
       }
       onClose();
-      // Navigate to the promoted issue. On DraftDetail this avoids a 404
-      // (the draft no longer exists in the DB); on the list this confirms
-      // the action by showing the resulting issue.
+      // The draft was deleted from the DB when it was promoted; sending
+      // the user back to / avoids a stale-detail-page 404 if navigation
+      // to the new issue fails.
       if (repo && result.issueNumber) {
         router.push(`/issues/${repo.owner}/${repo.name}/${result.issueNumber}`);
+      } else {
+        router.push("/");
       }
-    } catch {
-      setError("Failed to assign draft");
+    } catch (err) {
+      console.error("[issuectl] assignDraft threw:", err);
+      setError(err instanceof Error ? err.message : "Failed to assign draft");
     } finally {
       setAssigning(null);
     }
