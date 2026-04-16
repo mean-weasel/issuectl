@@ -26,6 +26,9 @@ export function NavDrawerContent({ activeTab, username }: Props) {
       </Link>
 
       <div className={styles.sectionLabel}>actions</div>
+      <Link href="/new" className={styles.item}>
+        New Issue<span className={styles.arrow}>›</span>
+      </Link>
       <Link href="/parse" className={styles.item}>
         Quick Create<span className={styles.arrow}>›</span>
       </Link>
