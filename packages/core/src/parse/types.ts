@@ -32,11 +32,13 @@ export type ReviewedIssue = {
 
 export type BatchCreateResult = {
   created: number;
+  drafted: number;
   failed: number;
   results: Array<{
     id: string;
     success: boolean;
     issueNumber?: number;
+    draftId?: string;
     error?: string;
     owner: string;
     repo: string;

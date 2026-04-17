@@ -10,6 +10,20 @@ type Props = {
   onReset: () => void;
 };
 
+function summaryText(results: BatchCreateResult): string {
+  const parts: string[] = [];
+  if (results.created > 0) {
+    parts.push(`${results.created} issue${results.created !== 1 ? "s" : ""} created`);
+  }
+  if (results.drafted > 0) {
+    parts.push(`${results.drafted} draft${results.drafted !== 1 ? "s" : ""} saved`);
+  }
+  if (results.failed > 0) {
+    parts.push(`${results.failed} failed`);
+  }
+  return parts.length > 0 ? parts.join(", ") : "No issues processed";
+}
+
 export function ParseResults({ results, onReset }: Props) {
   const allSuccess = results.failed === 0;
 
@@ -20,9 +34,7 @@ export function ParseResults({ results, onReset }: Props) {
           {allSuccess ? "\u2713" : "!"}
         </span>
         <span className={styles.summaryText}>
-          {results.created} issue{results.created !== 1 ? "s" : ""} created
-          {results.failed > 0 &&
-            `, ${results.failed} failed`}
+          {summaryText(results)}
         </span>
       </div>
 
@@ -33,7 +45,7 @@ export function ParseResults({ results, onReset }: Props) {
               {r.success ? "\u2713" : "\u2717"}
             </span>
             <span className={styles.resultRepo}>
-              {r.owner}/{r.repo}
+              {r.draftId ? "draft" : `${r.owner}/${r.repo}`}
             </span>
             <div className={styles.resultSpacer} />
             {r.success && r.issueNumber !== undefined ? (
@@ -42,6 +54,13 @@ export function ParseResults({ results, onReset }: Props) {
                 className={styles.resultLink}
               >
                 #{r.issueNumber}
+              </Link>
+            ) : r.success && r.draftId ? (
+              <Link
+                href={`/drafts/${r.draftId}`}
+                className={styles.resultLink}
+              >
+                view draft
               </Link>
             ) : (
               <span className={styles.resultError}>

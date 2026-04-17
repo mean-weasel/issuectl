@@ -46,20 +46,16 @@ export function ParseReview({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const acceptedCount = cards.filter((c) => c.accepted).length;
-  const unmatchedAccepted = cards.filter(
-    (c) => c.accepted && (!c.owner || !c.repo),
-  );
+  const accepted = cards.filter((c) => c.accepted);
+  const acceptedCount = accepted.length;
+  const matchedCount = accepted.filter((c) => c.owner && c.repo).length;
+  const draftCount = accepted.filter((c) => !c.owner || !c.repo).length;
 
   function handleCardChange(updated: IssueCardState) {
     setCards((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
   }
 
   function handleCreate() {
-    if (unmatchedAccepted.length > 0) {
-      setError("All included issues must have a repository selected.");
-      return;
-    }
     setError(null);
     startTransition(async () => {
       try {
@@ -90,7 +86,8 @@ export function ParseReview({
     <div className={styles.wrapper}>
       <div className={styles.summary}>
         {parsed.issues.length} issue{parsed.issues.length !== 1 ? "s" : ""}{" "}
-        parsed &mdash; {acceptedCount} included for creation
+        parsed &mdash; {acceptedCount} included
+        {draftCount > 0 && ` (${draftCount} without repo \u2192 saved as draft${draftCount !== 1 ? "s" : ""})`}
       </div>
 
       <div className={styles.cards}>
@@ -111,20 +108,39 @@ export function ParseReview({
         </div>
       )}
 
-      <div className={styles.footer}>
-        <Button variant="ghost" onClick={onBack} disabled={isPending}>
-          Back
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleCreate}
-          disabled={isPending || acceptedCount === 0}
-        >
-          {isPending
-            ? "Creating..."
-            : `Create ${acceptedCount} Issue${acceptedCount !== 1 ? "s" : ""}`}
-        </Button>
-      </div>
+      {isPending ? (
+        <div className={styles.progressBar} role="status" aria-live="polite">
+          <div className={styles.progressTrack}>
+            <div className={styles.progressPulse} />
+          </div>
+          <span className={styles.progressLabel}>
+            {matchedCount > 0 && draftCount > 0
+              ? `Creating ${matchedCount} issue${matchedCount !== 1 ? "s" : ""} and saving ${draftCount} draft${draftCount !== 1 ? "s" : ""}...`
+              : draftCount > 0
+                ? `Saving ${draftCount} draft${draftCount !== 1 ? "s" : ""}...`
+                : `Creating ${matchedCount} issue${matchedCount !== 1 ? "s" : ""} on GitHub...`}
+          </span>
+        </div>
+      ) : (
+        <div className={styles.footer}>
+          <Button variant="ghost" onClick={onBack}>
+            Back
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            disabled={acceptedCount === 0}
+          >
+            {acceptedCount === 0
+              ? "Select issues to create"
+              : matchedCount > 0 && draftCount > 0
+                ? `Create ${matchedCount} + Draft ${draftCount}`
+                : draftCount > 0
+                  ? `Save ${draftCount} Draft${draftCount !== 1 ? "s" : ""}`
+                  : `Create ${matchedCount} Issue${matchedCount !== 1 ? "s" : ""}`}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

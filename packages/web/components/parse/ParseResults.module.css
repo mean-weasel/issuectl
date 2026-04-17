@@ -61,6 +61,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
+  min-height: 44px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
@@ -90,6 +91,9 @@
   color: var(--paper-accent);
   text-decoration: none;
   font-weight: 500;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .resultLink:hover {
