@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import withSerwistInit from "@serwist/next";
 
 // Pin the workspace root to the monorepo root so Next.js does not
 // silently pick up a stray lockfile elsewhere on disk and emit the
@@ -8,6 +9,12 @@ import { fileURLToPath } from "node:url";
 // import.meta.url indirection keeps this resilient to where the
 // command is run from.
 const WORKSPACE_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+
+const withSerwist = withSerwistInit({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+});
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -54,6 +61,11 @@ const nextConfig: NextConfig = {
     // img-src whitelists the GitHub avatar host already configured
     // under `images.remotePatterns` above. data: covers inline SVG and
     // base64 placeholders.
+    //
+    // worker-src 'self' allows the Serwist-generated service worker
+    // (sw.js) to register. Without an explicit directive, browsers
+    // fall back to script-src — adding it prevents breakage if
+    // script-src is ever tightened.
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -61,6 +73,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: https://avatars.githubusercontent.com",
       "font-src 'self'",
       "connect-src 'self'",
+      "worker-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -80,4 +93,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

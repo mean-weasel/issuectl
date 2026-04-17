@@ -1,0 +1,35 @@
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: var(--paper-brick);
+  color: #fff;
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  animation: slideDown 0.3s ease-out;
+  padding-top: calc(6px + env(safe-area-inset-top));
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

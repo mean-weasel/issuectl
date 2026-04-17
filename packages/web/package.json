@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@issuectl/core": "workspace:*",
+    "@serwist/next": "^9.5.7",
     "next": "^15.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "serwist": "^9.5.7"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^15.3.0",

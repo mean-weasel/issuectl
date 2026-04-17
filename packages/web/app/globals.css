@@ -143,3 +143,17 @@ textarea::placeholder {
   position: relative;
   z-index: 1;
 }
+
+/* ── Standalone PWA adjustments ──────────────────────────────────
+   When launched from the home screen (display: standalone), the
+   browser address bar is gone. Add top padding to account for the
+   status bar area on notched/Dynamic Island devices. */
+@media (display-mode: standalone) {
+  body {
+    /* In standalone mode the browser chrome is absent. This padding
+       prevents page content from sitting under the device status bar
+       or Dynamic Island. The offline indicator banner is position:
+       fixed and handles its own safe-area inset independently. */
+    padding-top: env(safe-area-inset-top);
+  }
+}
