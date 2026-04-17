@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import withSerwistInit from "@serwist/next";
 
 // Pin the workspace root to the monorepo root so Next.js does not
 // silently pick up a stray lockfile elsewhere on disk and emit the
@@ -8,6 +9,12 @@ import { fileURLToPath } from "node:url";
 // import.meta.url indirection keeps this resilient to where the
 // command is run from.
 const WORKSPACE_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+
+const withSerwist = withSerwistInit({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+});
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -80,4 +87,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

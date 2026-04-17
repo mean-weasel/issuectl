@@ -20,3 +20,8 @@ qa-reports/screenshots/
 qa-reports/perf-audit-r2-data/
 qa-reports/*.mjs
 qa-reports/*.json
+
+# Serwist-generated service worker (build artifact)
+packages/web/public/sw.js
+packages/web/public/sw.js.map
+packages/web/public/swe-worker-*.js
