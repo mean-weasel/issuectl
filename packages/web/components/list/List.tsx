@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { GitHubPull, Section, UnifiedList } from "@issuectl/core";
+import type { GitHubPull, Section, SortMode, UnifiedList } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
 import { REPO_COLORS } from "@/lib/constants";
 import { repoKey } from "@/lib/repo-key";
@@ -24,12 +24,21 @@ type Props = {
   data: UnifiedList;
   activeTab: "issues" | "prs";
   activeSection: Section;
+  activeSort: SortMode;
   prCount: number;
   prs: PrEntry[];
   username: string | null;
   repos: Repo[];
   activeRepo: string | null;
   mineOnly: boolean;
+};
+
+const SORT_MODES: SortMode[] = ["updated", "created", "priority"];
+
+const SORT_LABEL: Record<SortMode, string> = {
+  updated: "updated",
+  created: "created",
+  priority: "priority",
 };
 
 // Lowercase is intentional — matches the Paper mockup typography.
@@ -78,6 +87,7 @@ export function List({
   username,
   repos,
   activeRepo,
+  activeSort,
   mineOnly,
 }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
@@ -116,7 +126,7 @@ export function List({
       ? REPO_COLORS[activeRepoIndex % REPO_COLORS.length]
       : undefined;
 
-  const issuesHref = buildHref({ repo: activeRepo });
+  const issuesHref = buildHref({ repo: activeRepo, sort: activeSort });
   const prsHref = buildHref({
     tab: "prs",
     repo: activeRepo,
@@ -129,10 +139,14 @@ export function List({
       repo: repoKey,
       mine: isPrTab && mineOnly ? true : null,
       section: activeTab === "issues" ? activeSection : null,
+      sort: activeTab === "issues" ? activeSort : null,
     });
 
   const sectionHref = (section: Section) =>
-    buildHref({ repo: activeRepo, section });
+    buildHref({ repo: activeRepo, section, sort: activeSort });
+
+  const sortHref = (sort: SortMode) =>
+    buildHref({ repo: activeRepo, section: activeSection, sort });
 
   const mineHref = (mine: boolean | null) =>
     buildHref({ tab: "prs", repo: activeRepo, mine });
@@ -141,6 +155,7 @@ export function List({
     ? buildHref({
         tab: isPrTab ? "prs" : undefined,
         section: activeTab === "issues" ? activeSection : null,
+        sort: activeTab === "issues" ? activeSort : null,
       })
     : null;
 
@@ -151,6 +166,7 @@ export function List({
     tab: isPrTab ? "prs" : undefined,
     mine: isPrTab && mineOnly ? true : null,
     section: activeTab === "issues" ? activeSection : null,
+    sort: activeTab === "issues" ? activeSort : null,
   });
 
   return (
@@ -235,23 +251,38 @@ export function List({
       </div>
 
       {activeTab === "issues" && (
-        <nav className={styles.sectionTabs} aria-label="Filter by section">
-          {visibleSections.map((section) => {
-            const isActive = section === activeSection;
-            const count = sectionCounts[section];
-            return (
+        <>
+          <nav className={styles.sectionTabs} aria-label="Filter by section">
+            {visibleSections.map((section) => {
+              const isActive = section === activeSection;
+              const count = sectionCounts[section];
+              return (
+                <Link
+                  key={section}
+                  href={sectionHref(section)}
+                  className={isActive ? styles.sectionTabActive : styles.sectionTab}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {SECTION_LABEL[section]}
+                  <span className={styles.sectionTabCount}>{count}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <div className={styles.sortToggle} role="group" aria-label="Sort order">
+            <span className={styles.sortLabel}>sort:</span>
+            {SORT_MODES.map((mode) => (
               <Link
-                key={section}
-                href={sectionHref(section)}
-                className={isActive ? styles.sectionTabActive : styles.sectionTab}
-                aria-current={isActive ? "page" : undefined}
+                key={mode}
+                href={sortHref(mode)}
+                className={mode === activeSort ? styles.sortOptionActive : styles.sortOption}
+                aria-current={mode === activeSort ? "true" : undefined}
               >
-                {SECTION_LABEL[section]}
-                <span className={styles.sectionTabCount}>{count}</span>
+                {SORT_LABEL[mode]}
               </Link>
-            );
-          })}
-        </nav>
+            ))}
+          </div>
+        </>
       )}
 
       {activeTab === "prs" && repos.length > 0 && (

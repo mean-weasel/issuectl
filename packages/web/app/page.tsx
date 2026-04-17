@@ -5,8 +5,10 @@ import {
   getPulls,
   listRepos,
   dbExists,
+  SORT_MODES,
   type GitHubPull,
   type Section,
+  type SortMode,
 } from "@issuectl/core";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 import { List } from "@/components/list/List";
@@ -26,6 +28,7 @@ type Props = {
     repo?: string;
     mine?: string;
     section?: string;
+    sort?: string;
   }>;
 };
 
@@ -52,6 +55,7 @@ export default async function MainListPage({ searchParams }: Props) {
     repo: repoParam,
     mine: mineParam,
     section: sectionParam,
+    sort: sortParam,
   } = await searchParams;
   const activeTab = tab === "prs" ? "prs" : "issues";
   const activeRepo = resolveActiveRepo(repoParam, repos);
@@ -61,11 +65,16 @@ export default async function MainListPage({ searchParams }: Props) {
   )
     ? (sectionParam as Section)
     : "in_focus";
+  const activeSort: SortMode = (SORT_MODES as readonly string[]).includes(
+    sortParam ?? "",
+  )
+    ? (sortParam as SortMode)
+    : "updated";
 
   const [octokit, auth] = await Promise.all([getOctokit(), getAuthStatus()]);
 
   const [data, allPrs] = await Promise.all([
-    getUnifiedList(db, octokit),
+    getUnifiedList(db, octokit, activeSort),
     gatherPulls(db, octokit, repos),
   ]);
 
@@ -78,6 +87,7 @@ export default async function MainListPage({ searchParams }: Props) {
       data={filteredData}
       activeTab={activeTab}
       activeSection={activeSection}
+      activeSort={activeSort}
       prs={filteredPrs}
       prCount={filteredPrs.length}
       username={username}

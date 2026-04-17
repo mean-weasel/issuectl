@@ -77,6 +77,10 @@ export type IssuePriority = {
 
 export type Section = "unassigned" | "in_focus" | "in_flight" | "shipped";
 
+export type SortMode = "updated" | "created" | "priority";
+
+export const SORT_MODES: readonly SortMode[] = ["updated", "created", "priority"];
+
 // A UnifiedListItem is a discriminated union with two variants: a local
 // Draft (the caller will place it in the unassigned section) or a
 // GitHub-backed issue already assigned to one of the three issue sections.

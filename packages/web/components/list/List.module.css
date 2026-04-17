@@ -346,6 +346,52 @@
   color: var(--paper-ink-soft);
 }
 
+/* ── Sort toggle ── */
+.sortToggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 16px 10px;
+}
+
+.sortLabel {
+  font-family: var(--paper-serif);
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  margin-right: 4px;
+  font-style: italic;
+}
+
+.sortOption,
+.sortOptionActive {
+  position: relative;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--paper-serif);
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sortOption::before,
+.sortOptionActive::before {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+
+.sortOption:hover {
+  color: var(--paper-ink-soft);
+}
+
+.sortOptionActive {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+  font-weight: 500;
+  border: 1px solid var(--paper-line);
+}
+
 /* ── Filter button (mobile only) ── */
 .filterBtn {
   display: inline-flex;
