@@ -8,8 +8,10 @@ import Database from "better-sqlite3";
 
 const execFileAsync = promisify(execFile);
 
-// Use a unique port to avoid collision with other e2e specs.
-const TEST_PORT = 3851;
+// Distinct from launch-flow (3847) / quick-create (3848)
+// / audit-verification (3850) / mobile-ux-patterns (3851)
+// / launch-ui (3852) so all specs can coexist.
+const TEST_PORT = 3853;
 const BASE_URL = `http://localhost:${TEST_PORT}`;
 const TEST_OWNER = "mean-weasel";
 const TEST_REPO = "issuectl-test-repo";
@@ -17,7 +19,7 @@ const TEST_REPO = "issuectl-test-repo";
 // ── Skip conditions ─────────────────────────────────────────────────
 //
 // These tests require a production build (service worker is disabled
-// in dev mode) and gh auth for the dev server to boot.
+// in dev mode) and gh auth for the server to boot.
 
 async function canRun(): Promise<{ ok: boolean; reason?: string }> {
   try {
@@ -131,41 +133,56 @@ test.beforeAll(async () => {
   // PWA tests need a production server — the service worker is
   // disabled in dev mode via `disable: process.env.NODE_ENV === "development"`.
   // The build must have been run before these tests (pnpm turbo build).
+  //
+  // detached: true so killGroup in afterAll can signal the whole process
+  // tree (npx → next start) — without it, only the npx wrapper gets
+  // the signal and `next start` orphans on TEST_PORT across re-runs.
   server = spawn("npx", ["next", "start", "--port", String(TEST_PORT)], {
     cwd: join(import.meta.dirname, ".."),
     env: { ...process.env, ISSUECTL_DB_PATH: dbPath },
     stdio: "pipe",
+    detached: true,
   });
 
   let serverStderr = "";
+  let serverStdout = "";
   server.stderr?.on("data", (chunk: Buffer) => {
     serverStderr += chunk.toString();
   });
+  server.stdout?.on("data", (chunk: Buffer) => {
+    serverStdout += chunk.toString();
+  });
 
   await waitForServer(BASE_URL, 30000).catch((err) => {
-    throw new Error(
-      `${err.message}. Server stderr: ${serverStderr.slice(-500)}`,
-    );
+    const parts = [
+      err.message,
+      serverStderr ? `stderr: ${serverStderr.slice(-500)}` : null,
+      serverStdout ? `stdout: ${serverStdout.slice(-500)}` : null,
+    ].filter(Boolean).join(". ");
+    throw new Error(parts);
   });
 });
 
 test.afterAll(async () => {
-  if (server) {
-    const killTimeout = setTimeout(() => {
+  if (server && server.pid) {
+    // Sends SIGTERM/SIGKILL to the whole process group rather than just
+    // the npx wrapper — matches the pattern in launch-ui.spec.ts.
+    const killGroup = (signal: NodeJS.Signals) => {
       try {
-        server.kill("SIGKILL");
+        process.kill(-server.pid!, signal);
       } catch {
-        /* already dead */
+        /* already dead or orphaned */
       }
-    }, 5000);
+    };
 
-    server.kill("SIGTERM");
+    const killTimeout = setTimeout(() => killGroup("SIGKILL"), 5000);
+    killGroup("SIGTERM");
     await new Promise<void>((resolve) => {
       if (server.exitCode !== null) {
         resolve();
         return;
       }
-      server.on("exit", () => resolve());
+      server.on("close", () => resolve());
     });
     clearTimeout(killTimeout);
   }
@@ -199,11 +216,17 @@ test.describe("PWA + Offline", () => {
   test("service worker registers and activates", async ({ page }) => {
     await page.goto(BASE_URL);
 
-    // Wait for the SW to register and become active.
     const swState = await page.evaluate(async () => {
       if (!("serviceWorker" in navigator)) return "unsupported";
-      const reg = await navigator.serviceWorker.ready;
-      return reg.active ? "active" : "waiting";
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(
+            "Service worker did not activate within 10s — check sw.js build output",
+          )), 10000),
+        ),
+      ]);
+      return (reg as ServiceWorkerRegistration).active ? "active" : "waiting";
     });
 
     expect(swState).toBe("active");
@@ -217,29 +240,32 @@ test.describe("PWA + Offline", () => {
     // Wait for SW to be controlling this page.
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
-      // If the SW is active but not yet controlling, reload.
       if (!navigator.serviceWorker.controller) {
-        await new Promise<void>((resolve) => {
-          navigator.serviceWorker.addEventListener("controllerchange", () => resolve());
-        });
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            navigator.serviceWorker.addEventListener("controllerchange", () => resolve());
+          }),
+          new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error(
+              "SW never took control — does the SW call clients.claim()?",
+            )), 10000),
+          ),
+        ]);
       }
     });
 
     // Go offline and reload — the cached page should be served.
     await context.setOffline(true);
-    await page.reload({ waitUntil: "domcontentloaded" });
+    try {
+      await page.reload({ waitUntil: "domcontentloaded" });
 
-    // The page should still render (from SW cache). Check for the
-    // body element — if the SW cache missed, the page would fail to
-    // load entirely.
-    await expect(page.locator("body")).toBeVisible();
-
-    // Note: Playwright's setOffline() blocks network requests but does
-    // not fire the browser's "offline" event or change navigator.onLine,
-    // so the OfflineIndicator banner won't appear in this test. The
-    // banner is verified manually or via a separate unit test.
-
-    await context.setOffline(false);
+      // The home page should render from SW cache. Assert a
+      // page-specific element to distinguish from the offline fallback.
+      await expect(page.locator("body")).toBeVisible();
+      await expect(page.locator("h1")).not.toContainText("You're offline");
+    } finally {
+      await context.setOffline(false);
+    }
   });
 
   test("offline fallback page shows for unvisited routes", async ({ page, context }) => {
@@ -250,22 +276,30 @@ test.describe("PWA + Offline", () => {
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
       if (!navigator.serviceWorker.controller) {
-        await new Promise<void>((resolve) => {
-          navigator.serviceWorker.addEventListener("controllerchange", () => resolve());
-        });
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            navigator.serviceWorker.addEventListener("controllerchange", () => resolve());
+          }),
+          new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error(
+              "SW never took control — does the SW call clients.claim()?",
+            )), 10000),
+          ),
+        ]);
       }
     });
 
     // Go offline, then navigate to a route we never visited.
     await context.setOffline(true);
+    try {
+      // Navigate to an uncached route. The SW should serve offline.html.
+      await page.goto(`${BASE_URL}/parse`, { waitUntil: "domcontentloaded" });
 
-    // Navigate to an uncached route. The SW should serve offline.html.
-    await page.goto(`${BASE_URL}/parse`, { waitUntil: "domcontentloaded" });
-
-    // The offline fallback page should show.
-    await expect(page.locator("h1")).toContainText("You're offline");
-    await expect(page.locator(".retry")).toHaveAttribute("href", "/");
-
-    await context.setOffline(false);
+      // The offline fallback page should show.
+      await expect(page.locator("h1")).toContainText("You're offline");
+      await expect(page.locator(".retry")).toHaveAttribute("href", "/");
+    } finally {
+      await context.setOffline(false);
+    }
   });
 });
