@@ -1,0 +1,17 @@
+{
+  "name": "issuectl",
+  "short_name": "issuectl",
+  "description": "Cross-repo GitHub issue command center",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3ecd9",
+  "theme_color": "#f3ecd9",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
