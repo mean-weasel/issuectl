@@ -1,10 +1,11 @@
-import type { Section } from "@issuectl/core";
+import type { Section, SortMode } from "@issuectl/core";
 
 export type HrefParams = {
   tab?: "issues" | "prs";
   repo?: string | null;
   mine?: boolean | null;
   section?: Section | null;
+  sort?: SortMode | null;
 };
 
 /**
@@ -24,6 +25,9 @@ export function buildHref(params: HrefParams): string {
   if (params.mine === true) search.set("mine", "1");
   if (params.section && params.section !== "in_focus") {
     search.set("section", params.section);
+  }
+  if (params.sort && params.sort !== "updated") {
+    search.set("sort", params.sort);
   }
   const qs = search.toString();
   return qs ? `/?${qs}` : "/";

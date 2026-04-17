@@ -10,11 +10,13 @@ export type {
   Priority,
   IssuePriority,
   Section,
+  SortMode,
   UnifiedListItem,
   DraftListItem,
   IssueListItem,
   UnifiedList,
 } from "./types.js";
+export { SORT_MODES } from "./types.js";
 
 export { getDb, getDbPath, dbExists, closeDb } from "./db/connection.js";
 export { initSchema, getSchemaVersion } from "./db/schema.js";

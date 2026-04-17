@@ -206,7 +206,7 @@ describe("groupIntoSections", () => {
           priorities,
         },
       ],
-    });
+    }, "priority");
     const focus = result.in_focus;
     expect(focus).toHaveLength(3);
     if (focus[0].kind !== "issue") throw new Error("expected issue");
@@ -225,7 +225,7 @@ describe("groupIntoSections", () => {
     const result = groupIntoSections({
       drafts: [lowest, normalOlder, normalNewer, high],
       perRepo: [],
-    });
+    }, "priority");
     const titles = result.unassigned.map((item) => {
       if (item.kind !== "draft") throw new Error("expected draft");
       return item.draft.title;

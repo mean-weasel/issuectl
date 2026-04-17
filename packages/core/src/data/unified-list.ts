@@ -6,6 +6,7 @@ import type {
   IssuePriority,
   Deployment,
   Priority,
+  SortMode,
   UnifiedList,
   DraftListItem,
   IssueListItem,
@@ -55,17 +56,28 @@ function compareByPriorityThenUpdatedAt(
 
 export function groupIntoSections(
   input: GroupIntoSectionsInput,
+  sortMode: SortMode = "updated",
 ): UnifiedList {
-  const unassigned: DraftListItem[] = input.drafts
-    .slice()
-    .sort((a, b) =>
-      compareByPriorityThenUpdatedAt(
-        a.priority,
-        a.updatedAt,
-        b.priority,
-        b.updatedAt,
-      ),
-    )
+  const sortDrafts = (drafts: Draft[]): Draft[] => {
+    const copy = drafts.slice();
+    switch (sortMode) {
+      case "priority":
+        return copy.sort((a, b) =>
+          compareByPriorityThenUpdatedAt(a.priority, a.updatedAt, b.priority, b.updatedAt),
+        );
+      case "created":
+      case "updated": {
+        const field = sortMode === "created" ? "createdAt" : "updatedAt";
+        return copy.sort((a, b) => {
+          const aSafe = Number.isFinite(a[field]) ? a[field] : 0;
+          const bSafe = Number.isFinite(b[field]) ? b[field] : 0;
+          return bSafe - aSafe;
+        });
+      }
+    }
+  };
+
+  const unassigned: DraftListItem[] = sortDrafts(input.drafts)
     .map((draft) => ({ kind: "draft" as const, draft }));
 
   const in_focus: IssueListItem[] = [];
@@ -113,17 +125,28 @@ export function groupIntoSections(
     }
   }
 
-  const sortIssues = (items: IssueListItem[]): IssueListItem[] =>
-    items.slice().sort((a, b) => {
-      const aUpdated = new Date(a.issue.updatedAt).getTime();
-      const bUpdated = new Date(b.issue.updatedAt).getTime();
-      return compareByPriorityThenUpdatedAt(
-        a.priority,
-        aUpdated,
-        b.priority,
-        bUpdated,
-      );
-    });
+  const sortIssues = (items: IssueListItem[]): IssueListItem[] => {
+    const copy = items.slice();
+    switch (sortMode) {
+      case "priority":
+        return copy.sort((a, b) => {
+          const aUpdated = new Date(a.issue.updatedAt).getTime();
+          const bUpdated = new Date(b.issue.updatedAt).getTime();
+          return compareByPriorityThenUpdatedAt(a.priority, aUpdated, b.priority, bUpdated);
+        });
+      case "created":
+      case "updated": {
+        const field = sortMode === "created" ? "createdAt" : "updatedAt";
+        return copy.sort((a, b) => {
+          const aTime = new Date(a.issue[field]).getTime();
+          const bTime = new Date(b.issue[field]).getTime();
+          const aSafe = Number.isFinite(aTime) ? aTime : 0;
+          const bSafe = Number.isFinite(bTime) ? bTime : 0;
+          return bSafe - aSafe;
+        });
+      }
+    }
+  };
 
   return {
     unassigned,
@@ -136,6 +159,7 @@ export function groupIntoSections(
 export async function getUnifiedList(
   db: Database.Database,
   octokit: Octokit,
+  sortMode: SortMode = "updated",
 ): Promise<UnifiedList> {
   const drafts = listDrafts(db);
   const repos = listRepos(db);
@@ -167,5 +191,5 @@ export async function getUnifiedList(
     (r): r is PerRepoData => r !== null,
   );
 
-  return groupIntoSections({ drafts, perRepo });
+  return groupIntoSections({ drafts, perRepo }, sortMode);
 }
