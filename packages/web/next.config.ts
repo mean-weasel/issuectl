@@ -61,6 +61,11 @@ const nextConfig: NextConfig = {
     // img-src whitelists the GitHub avatar host already configured
     // under `images.remotePatterns` above. data: covers inline SVG and
     // base64 placeholders.
+    //
+    // worker-src 'self' allows the Serwist-generated service worker
+    // (sw.js) to register. Without an explicit directive, browsers
+    // fall back to script-src — adding it prevents breakage if
+    // script-src is ever tightened.
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",

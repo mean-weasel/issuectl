@@ -10,8 +10,16 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
+// Capture the build-injected precache manifest. Serwist's webpack plugin
+// requires exactly one reference to self.__SW_MANIFEST in the source.
+const manifest = self.__SW_MANIFEST;
+
+if (!manifest) {
+  console.warn("[issuectl-sw] No precache manifest — offline support will be limited");
+}
+
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  precacheEntries: manifest,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,

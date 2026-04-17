@@ -150,9 +150,10 @@ textarea::placeholder {
    status bar area on notched/Dynamic Island devices. */
 @media (display-mode: standalone) {
   body {
-    /* The offline indicator banner already handles its own safe-area
-       inset. This padding ensures page content doesn't collide with
-       the device status bar when the indicator is hidden (online). */
+    /* In standalone mode the browser chrome is absent. This padding
+       prevents page content from sitting under the device status bar
+       or Dynamic Island. The offline indicator banner is position:
+       fixed and handles its own safe-area inset independently. */
     padding-top: env(safe-area-inset-top);
   }
 }
