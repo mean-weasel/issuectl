@@ -18,11 +18,14 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   color: var(--paper-ink);
-  font-size: 16px;
+  font-size: var(--paper-fs-lg);
   font-family: var(--paper-serif), sans-serif;
   outline: none;
   resize: vertical;
   line-height: 1.5;
+  /* Chrome 123+ / Safari 17.4+ — grows with content, falls back to
+     resize: vertical elsewhere. */
+  field-sizing: content;
 }
 
 .textarea:focus {
@@ -39,24 +42,59 @@
   gap: 12px;
 }
 
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--paper-line);
-  border-top-color: var(--paper-accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+/* ── Progress indicator ── */
+
+.progressBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+.progressTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-line);
+  overflow: hidden;
+}
+
+.progressPulse {
+  height: 100%;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--paper-accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(300%);
+    opacity: 0.6;
   }
 }
 
-.parsingText {
-  font-size: 12px;
+.progressLabel {
+  font-size: var(--paper-fs-sm);
   color: var(--paper-ink-muted);
+  font-style: italic;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .error {
@@ -65,5 +103,11 @@
   border: 1px solid rgba(248, 81, 73, 0.2);
   border-radius: var(--paper-radius-md);
   color: var(--paper-brick);
-  font-size: 12px;
+  font-size: var(--paper-fs-sm);
+}
+
+@media (min-width: 768px) {
+  .textarea {
+    font-size: var(--paper-fs-base);
+  }
 }

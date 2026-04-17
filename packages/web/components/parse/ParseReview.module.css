@@ -22,6 +22,50 @@
   padding-top: 8px;
 }
 
+/* ── Progress indicator ── */
+
+.progressBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.progressTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-line);
+  overflow: hidden;
+}
+
+.progressPulse {
+  height: 100%;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--paper-accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(300%);
+    opacity: 0.6;
+  }
+}
+
+.progressLabel {
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  font-style: italic;
+}
+
 .error {
   padding: 8px 12px;
   background: rgba(184, 74, 46, 0.08);

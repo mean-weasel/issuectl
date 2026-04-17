@@ -7,6 +7,7 @@ import {
   listRepos,
   listLabels,
   createIssue as coreCreateIssue,
+  createDraft,
   clearCacheKey,
   parseIssues,
   formatRepoContext,
@@ -97,7 +98,7 @@ export async function batchCreateIssues(
   const accepted = issues.filter((i) => i.accepted);
 
   if (accepted.length === 0) {
-    return { created: 0, failed: 0, results: [] };
+    return { created: 0, drafted: 0, failed: 0, results: [] };
   }
 
   try {
@@ -105,14 +106,43 @@ export async function batchCreateIssues(
 
     const results = await Promise.all(
       accepted.map(async (issue) => {
-        if (!issue.owner || !issue.repo || !issue.title.trim()) {
+        if (!issue.title.trim()) {
           return {
             id: issue.id,
             success: false as const,
-            error: "Owner, repo, and title are required",
+            error: "Title is required",
             owner: issue.owner,
             repo: issue.repo,
           };
+        }
+
+        // No repo selected — save as a local draft instead
+        if (!issue.owner || !issue.repo) {
+          try {
+            const draft = createDraft(db, {
+              title: issue.title.trim(),
+              body: issue.body.trim() || undefined,
+            });
+            return {
+              id: issue.id,
+              success: true as const,
+              draftId: draft.id,
+              owner: "",
+              repo: "",
+            };
+          } catch (err) {
+            console.error(
+              `[issuectl] Failed to save draft "${issue.title}":`,
+              err,
+            );
+            return {
+              id: issue.id,
+              success: false as const,
+              error: "Failed to save draft locally. Please try again.",
+              owner: "",
+              repo: "",
+            };
+          }
         }
 
         if (!getRepo(db, issue.owner, issue.repo)) {
@@ -161,18 +191,34 @@ export async function batchCreateIssues(
 
     const affectedRepos = new Set(
       results
-        .filter((r) => r.success)
+        .filter((r) => r.success && r.owner)
         .map((r) => `/${r.owner}/${r.repo}`),
     );
+    if (results.some((r) => r.draftId)) {
+      affectedRepos.add("/");
+    }
     revalidateSafely(...affectedRepos);
 
     return {
-      created: results.filter((r) => r.success).length,
+      created: results.filter((r) => r.success && r.issueNumber).length,
+      drafted: results.filter((r) => r.success && r.draftId).length,
       failed: results.filter((r) => !r.success).length,
       results,
     };
   } catch (err) {
     console.error("[issuectl] Failed to batch create issues:", err);
-    return { created: 0, failed: accepted.length, results: [] };
+    const errorMsg = formatErrorForUser(err);
+    return {
+      created: 0,
+      drafted: 0,
+      failed: accepted.length,
+      results: accepted.map((issue) => ({
+        id: issue.id,
+        success: false as const,
+        error: errorMsg,
+        owner: issue.owner,
+        repo: issue.repo,
+      })),
+    };
   }
 }
