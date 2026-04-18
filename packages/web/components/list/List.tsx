@@ -207,7 +207,20 @@ export function List({
           onClick={() => setDrawerOpen(true)}
           aria-label="Open navigation"
         >
-          ···
+          <svg
+            width="20"
+            height="16"
+            viewBox="0 0 20 16"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M2 2h16M2 8h16M2 14h16"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
         </button>
       </div>
 

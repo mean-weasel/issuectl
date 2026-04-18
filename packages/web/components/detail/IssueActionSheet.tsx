@@ -39,7 +39,7 @@ export function IssueActionSheet({ owner, repo, number }: Props) {
         }
         setConfirmClose(false);
         showToast("Issue closed", "success");
-        router.refresh();
+        router.push("/?section=shipped");
       } catch {
         setError("Unable to reach the server. Check your connection and try again.");
       }

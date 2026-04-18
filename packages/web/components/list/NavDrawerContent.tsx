@@ -16,24 +16,24 @@ export function NavDrawerContent({ activeTab, username }: Props) {
         href="/"
         className={`${styles.item} ${activeTab === "issues" ? styles.on : ""}`}
       >
-        All issues<span className={styles.arrow}>›</span>
+        All issues<NavChevron />
       </Link>
       <Link
         href="/?tab=prs"
         className={`${styles.item} ${activeTab === "prs" ? styles.on : ""}`}
       >
-        Pull requests<span className={styles.arrow}>›</span>
+        Pull requests<NavChevron />
       </Link>
 
       <div className={styles.sectionLabel}>actions</div>
       <Link href="/new" className={styles.item}>
-        New Issue<span className={styles.arrow}>›</span>
+        New Issue<NavChevron />
       </Link>
       <Link href="/parse" className={styles.item}>
-        Quick Create<span className={styles.arrow}>›</span>
+        Quick Create<NavChevron />
       </Link>
       <Link href="/settings" className={styles.item}>
-        Settings<span className={styles.arrow}>›</span>
+        Settings<NavChevron />
       </Link>
 
       <div className={styles.footer}>
@@ -48,5 +48,26 @@ export function NavDrawerContent({ activeTab, username }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function NavChevron() {
+  return (
+    <svg
+      className={styles.arrow}
+      width="8"
+      height="14"
+      viewBox="0 0 8 14"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M1 1l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
