@@ -15,6 +15,7 @@ import { FiltersSheet } from "./FiltersSheet";
 import { FilterEdgeSwipe } from "./FilterEdgeSwipe";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
+import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 
 type Repo = { owner: string; name: string };
 type PrEntry = { repo: Repo; pull: GitHubPull };
@@ -190,6 +191,7 @@ export function List({
   });
 
   return (
+    <PullToRefreshWrapper>
     <div className={styles.container}>
       <div className={styles.topBar}>
         <h1 className={styles.brand}>
@@ -420,6 +422,7 @@ export function List({
         <NavDrawerContent activeTab={activeTab} username={username} />
       </Drawer>
     </div>
+    </PullToRefreshWrapper>
   );
 }
 
