@@ -100,9 +100,14 @@ export async function createDraftAction(
 export async function listReposAction(): Promise<
   Array<{ id: number; owner: string; name: string }>
 > {
-  const db = getDb();
-  const repos = listRepos(db);
-  return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+  try {
+    const db = getDb();
+    const repos = listRepos(db);
+    return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+  } catch (err) {
+    console.error("[issuectl] listReposAction failed", err);
+    throw err;
+  }
 }
 
 export async function updateDraftAction(
@@ -306,7 +311,8 @@ export async function getDefaultRepoIdAction(): Promise<number | null> {
     if (!value) return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  } catch {
+  } catch (err) {
+    console.error("[issuectl] getDefaultRepoIdAction failed", err);
     return null;
   }
 }

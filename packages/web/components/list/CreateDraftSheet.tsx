@@ -50,8 +50,8 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           setDefaultRepoId(null);
         }
       })
-      .catch(() => {
-        // Non-fatal: the sheet still works without repos.
+      .catch((err) => {
+        console.error("[CreateDraftSheet] Failed to load repos", err);
         setRepos([]);
       })
       .finally(() => setLoadingRepos(false));
@@ -71,7 +71,9 @@ export function CreateDraftSheet({ open, onClose }: Props) {
       // Persist the selected repo as the default for next time.
       if (selectedRepoId !== defaultRepoId) {
         // Fire-and-forget — don't block the save on this.
-        setDefaultRepoIdAction(selectedRepoId).catch(() => {});
+        setDefaultRepoIdAction(selectedRepoId).catch((err) => {
+          console.warn("[CreateDraftSheet] Failed to save default repo", err);
+        });
       }
 
       if (hasRepo) {
