@@ -22,6 +22,7 @@
   font-size: 15px;
   color: var(--paper-ink);
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .item:hover {
