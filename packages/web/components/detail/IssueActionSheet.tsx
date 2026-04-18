@@ -8,6 +8,7 @@ import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
 import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import styles from "./ActionSheet.module.css";
 import assignStyles from "../list/AssignSheet.module.css";
 
@@ -87,6 +88,7 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
         repoId,
         number,
         selectedRepo.id,
+        newIdempotencyKey(),
       );
       if (!result.success) {
         setReassignError(result.error);

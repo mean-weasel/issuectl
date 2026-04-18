@@ -201,6 +201,7 @@ export async function reassignIssueAction(
   oldRepoId: number,
   issueNumber: number,
   newRepoId: number,
+  idempotencyKey?: string,
 ): Promise<
   | {
       success: true;
@@ -242,18 +243,19 @@ export async function reassignIssueAction(
   let result: ReassignResult;
   try {
     const db = getDb();
-    const oldRepo = getRepoById(db, oldRepoId);
-    if (!oldRepo) {
-      return { success: false, error: "Old repository is not tracked" };
-    }
-    const newRepo = getRepoById(db, newRepoId);
-    if (!newRepo) {
-      return { success: false, error: "New repository is not tracked" };
-    }
 
-    result = await withAuthRetry((octokit) =>
-      coreReassignIssue(db, octokit, oldRepoId, issueNumber, newRepoId),
-    );
+    const runReassign = async () => {
+      return withAuthRetry((octokit) =>
+        coreReassignIssue(db, octokit, oldRepoId, issueNumber, newRepoId),
+      );
+    };
+
+    // Idempotency guard: a retry after partial failure (new issue
+    // created but old not yet closed) replays the stored result
+    // rather than creating a duplicate issue on the target repo.
+    result = idempotencyKey
+      ? await withIdempotency(db, "reassign-issue", idempotencyKey, runReassign)
+      : await runReassign();
   } catch (err) {
     console.error("[issuectl] Failed to re-assign issue:", err);
     return { success: false, error: formatErrorForUser(err) };
