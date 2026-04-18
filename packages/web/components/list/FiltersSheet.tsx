@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import type { SortMode } from "@issuectl/core";
 import { Sheet } from "@/components/paper";
 import { REPO_COLORS } from "@/lib/constants";
 import { repoKey } from "@/lib/repo-key";
 import styles from "./FiltersSheet.module.css";
 
 type Repo = { owner: string; name: string };
+
+const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
+  { mode: "updated", label: "Last updated" },
+  { mode: "created", label: "Date created" },
+  { mode: "priority", label: "Priority" },
+];
 
 type Props = {
   open: boolean;
@@ -19,6 +26,9 @@ type Props = {
   repoHref: (repoKey: string | null) => string;
   mineHref: (mine: boolean | null) => string;
   clearHref: string | null;
+  showSort: boolean;
+  activeSort: SortMode;
+  sortHref: (sort: SortMode) => string;
 };
 
 export function FiltersSheet({
@@ -32,6 +42,9 @@ export function FiltersSheet({
   repoHref,
   mineHref,
   clearHref,
+  showSort,
+  activeSort,
+  sortHref,
 }: Props) {
   return (
     <Sheet open={open} onClose={onClose} title="Filters">
@@ -107,6 +120,26 @@ export function FiltersSheet({
             </span>
             {mineOnly && <span className={styles.check}>✓</span>}
           </Link>
+        </>
+      )}
+
+      {showSort && (
+        <>
+          <div className={styles.groupLabel}>Sort by</div>
+          {SORT_OPTIONS.map(({ mode, label }) => {
+            const isActive = mode === activeSort;
+            return (
+              <Link
+                key={mode}
+                href={sortHref(mode)}
+                className={isActive ? styles.rowActive : styles.row}
+                onClick={onClose}
+              >
+                <span className={styles.label}>{label}</span>
+                {isActive && <span className={styles.check}>✓</span>}
+              </Link>
+            );
+          })}
         </>
       )}
     </Sheet>
