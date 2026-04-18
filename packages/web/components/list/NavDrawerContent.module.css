@@ -35,8 +35,11 @@
 
 .arrow {
   color: var(--paper-ink-faint);
-  font-size: 14px;
-  font-family: var(--paper-mono);
+  flex-shrink: 0;
+}
+
+.item:active {
+  background: var(--paper-bg-warmer);
 }
 
 .footer {
