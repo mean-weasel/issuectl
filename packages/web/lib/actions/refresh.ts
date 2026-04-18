@@ -6,6 +6,7 @@ import { revalidateSafely } from "@/lib/revalidate";
 export async function refreshAction(): Promise<{
   success: boolean;
   error?: string;
+  cacheStale?: true;
 }> {
   try {
     if (dbExists()) {
@@ -19,6 +20,6 @@ export async function refreshAction(): Promise<{
       error: err instanceof Error ? err.message : "Failed to refresh",
     };
   }
-  revalidateSafely("/", "/settings");
-  return { success: true };
+  const { stale } = revalidateSafely("/", "/settings");
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

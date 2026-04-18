@@ -37,7 +37,8 @@ export function CreateDraftSheet({ open, onClose }: Props) {
       setTitle("");
       onClose();
       router.push("/?section=unassigned");
-    } catch {
+    } catch (err) {
+      console.error("[issuectl] createDraft threw:", err);
       setError("Failed to save draft");
     } finally {
       setSaving(false);

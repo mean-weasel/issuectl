@@ -15,7 +15,10 @@ export function PullToRefreshWrapper({ children }: Props) {
   const router = useRouter();
 
   const onRefresh = useCallback(async () => {
-    await refreshAction();
+    const result = await refreshAction();
+    if (!result.success) {
+      console.warn("[issuectl] Pull-to-refresh failed:", result.error);
+    }
     router.refresh();
   }, [router]);
 

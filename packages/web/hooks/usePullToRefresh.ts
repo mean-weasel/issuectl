@@ -66,6 +66,8 @@ export function usePullToRefresh({
       pullDistanceRef.current = 0;
       try {
         await onRefresh();
+      } catch (err) {
+        console.error("[issuectl] Pull-to-refresh onRefresh threw:", err);
       } finally {
         setRefreshing(false);
       }

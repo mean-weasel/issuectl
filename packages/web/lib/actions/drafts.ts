@@ -278,8 +278,13 @@ export async function assignDraftAction(
     if (repo) {
       clearCacheKey(db, `issues:${repo.owner}/${repo.name}`);
     }
-  } catch {
+  } catch (err) {
     // Cache miss on next render is the fallback — don't fail the action.
+    console.warn(
+      "[issuectl] Failed to clear issues cache after draft assignment",
+      { repoId },
+      err,
+    );
   }
 
   const { stale } = revalidateSafely("/");
