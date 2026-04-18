@@ -2,5 +2,13 @@
 changed_files=$(git diff --name-only HEAD @{push} 2>/dev/null || git diff --name-only HEAD~1 HEAD)
 
 if echo "$changed_files" | grep -qvE '\.(md|html|txt|json|yaml|yml)$|^docs/|^\.husky/|^\.github/|CLAUDE\.md|LICENSE'; then
-  pnpm turbo build
+  # If the Next.js dev server is running, a prod build would overwrite .next/
+  # and corrupt the live server's CSS module references. Run typecheck only
+  # (which is safe) and let CI handle the full build.
+  if lsof -nP -iTCP:3847 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "⚠ Dev server detected on :3847 — skipping build (would corrupt .next/). Running typecheck only."
+    pnpm turbo typecheck
+  else
+    pnpm turbo build
+  fi
 fi
