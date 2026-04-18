@@ -93,11 +93,9 @@ describe("meetsMinVersion", () => {
 });
 
 describe("buildGhosttyArgs", () => {
-  it("produces open -na args with title and command", () => {
+  it("produces ghostty CLI args with title and command", () => {
     const args = buildGhosttyArgs("#42 — Fix auth", "cd '/tmp' && echo hello");
     expect(args).toEqual([
-      "-na", "Ghostty.app",
-      "--args",
       "--title=#42 — Fix auth",
       "-e", "/bin/bash", "-lic", "cd '/tmp' && echo hello || exec $SHELL -l",
     ]);
@@ -105,6 +103,6 @@ describe("buildGhosttyArgs", () => {
 
   it("handles em dashes in title without issue", () => {
     const args = buildGhosttyArgs("#99 — Test title", "echo test");
-    expect(args[3]).toBe("--title=#99 — Test title");
+    expect(args[0]).toBe("--title=#99 — Test title");
   });
 });
