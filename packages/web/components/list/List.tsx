@@ -373,6 +373,9 @@ export function List({
         repoHref={chipHref}
         mineHref={mineHref}
         clearHref={clearFiltersHref}
+        showSort={!isPrTab}
+        activeSort={activeSort}
+        sortHref={sortHref}
       />
 
       {!filtersOpen && (
