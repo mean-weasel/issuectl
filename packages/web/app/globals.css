@@ -45,6 +45,10 @@
   color-scheme: light;
 }
 
+html {
+  overscroll-behavior: none;
+}
+
 *,
 *::before,
 *::after {
@@ -59,6 +63,8 @@ body {
   font-family: var(--paper-sans);
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior: contain;
+  touch-action: manipulation;
 }
 
 a {

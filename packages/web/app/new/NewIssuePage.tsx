@@ -98,7 +98,21 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
     <div className={styles.container}>
       <div className={styles.topBar}>
         <Link href="/" className={styles.back} aria-label="Back to dashboard">
-          ←
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </Link>
         <span className={styles.pageTitle}>New Issue</span>
         <button

@@ -19,8 +19,6 @@
 }
 
 .back {
-  font-family: var(--paper-serif), sans-serif;
-  font-size: 22px;
   color: var(--paper-ink);
   text-decoration: none;
   display: inline-flex;
@@ -30,11 +28,16 @@
   min-height: 44px;
   margin-left: -10px;
   border-radius: var(--paper-radius-sm);
-  line-height: 1;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .back:hover {
   background: var(--paper-bg-warm);
+}
+
+.back:active {
+  background: var(--paper-bg-warmer);
 }
 
 .pageTitle {
