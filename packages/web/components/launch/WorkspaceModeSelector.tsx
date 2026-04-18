@@ -25,16 +25,19 @@ export function WorkspaceModeSelector({
   repo,
   issueNumber,
 }: Props) {
+  const noPathHint = "Requires a local path — set one in Settings";
   const options: Option[] = [
     {
       mode: "existing",
       label: "Existing repo",
-      detail: repoLocalPath ?? "No local path configured",
+      detail: repoLocalPath ?? noPathHint,
     },
     {
       mode: "worktree",
       label: "Git worktree",
-      detail: `~/.issuectl/worktrees/${repo}-issue-${issueNumber}/ · isolated, fast, shared history`,
+      detail: repoLocalPath
+        ? `~/.issuectl/worktrees/${repo}-issue-${issueNumber}/ · isolated, fast, shared history`
+        : noPathHint,
     },
     {
       mode: "clone",
@@ -49,7 +52,9 @@ export function WorkspaceModeSelector({
       <div className={styles.options}>
         {options.map((opt) => {
           const isSelected = value === opt.mode;
-          const isDisabled = opt.mode === "existing" && !repoLocalPath;
+          const isDisabled =
+            (opt.mode === "existing" || opt.mode === "worktree") &&
+            !repoLocalPath;
           return (
             <label
               key={opt.mode}
