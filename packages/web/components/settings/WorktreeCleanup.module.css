@@ -88,3 +88,23 @@
   color: var(--paper-accent);
   margin-top: 4px;
 }
+
+.showAllBtn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-accent);
+  background: transparent;
+  border: 1px dashed var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  cursor: pointer;
+  text-align: center;
+}
+
+.showAllBtn:hover {
+  background: var(--paper-accent-soft);
+}

@@ -13,22 +13,37 @@ type Props = {
   repos: Repo[];
 };
 
+const COLLAPSED_LIMIT = 5;
+
 export function TrackedRepos({ repos }: Props) {
   const [showAdd, setShowAdd] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const trackedSet = useMemo(
     () => new Set(repos.map(repoKey)),
     [repos],
   );
 
+  const visibleRepos = expanded ? repos : repos.slice(0, COLLAPSED_LIMIT);
+  const hasMore = repos.length > COLLAPSED_LIMIT;
+
   return (
     <>
-      {repos.map((repo, i) => (
+      {visibleRepos.map((repo, i) => (
         <RepoRow
           key={repo.id}
           repo={repo}
           color={REPO_COLORS[i % REPO_COLORS.length]}
         />
       ))}
+      {hasMore && !expanded && (
+        <button
+          type="button"
+          className={styles.showAllBtn}
+          onClick={() => setExpanded(true)}
+        >
+          show all {repos.length} repos
+        </button>
+      )}
       {showAdd ? (
         <AddRepoForm
           onClose={() => setShowAdd(false)}
