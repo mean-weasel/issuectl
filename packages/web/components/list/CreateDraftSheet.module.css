@@ -31,58 +31,66 @@
   font-style: italic;
 }
 
-/* ── Repo selector ─────────────────────────────────── */
+/* ── Repo chip row ────────────────────────────────── */
 
-.repoSelector {
-  margin-bottom: 10px;
+.repoSection {
+  margin-bottom: 18px;
 }
 
-.repoLabel {
-  display: block;
-  font-family: var(--paper-serif);
-  font-style: italic;
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  max-height: 72px;
+  overflow-y: auto;
+}
+
+.repoChip,
+.repoChipSelected {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--paper-radius-sm);
+  font-family: var(--paper-mono);
   font-size: var(--paper-fs-xs);
-  color: var(--paper-ink-muted);
-  margin-bottom: 4px;
-}
-
-.repoSelect {
-  width: 100%;
-  font-family: var(--paper-serif);
-  font-size: var(--paper-fs-md);
-  color: var(--paper-ink);
-  background: var(--paper-bg-warm);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.4;
   border: 1px solid var(--paper-line);
-  border-radius: var(--paper-radius-md);
-  padding: 8px 10px;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23746a50' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 30px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
-.repoSelect:focus-visible {
-  outline: 2px solid var(--paper-accent);
-  outline-offset: 1px;
+.repoChip {
+  background: transparent;
+  color: var(--paper-ink-muted);
 }
 
-.repoSelect:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.repoChip:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-soft);
 }
 
-.repoLoading {
-  font-family: var(--paper-serif);
-  font-style: italic;
-  font-size: var(--paper-fs-sm);
-  color: var(--paper-ink-faint);
-  padding: 6px 0;
+.repoChipSelected {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+  border-color: var(--paper-accent-dim);
 }
 
-/* ── Actions ───────────────────────────────────────── */
+.repoChipSelected:hover {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
+
+.repoChip:disabled,
+.repoChipSelected:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Actions / feedback ────────────────────────────── */
 
 .actions {
   display: flex;
@@ -100,6 +108,14 @@
   margin-bottom: 8px;
 }
 
+.progress {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  margin-bottom: 10px;
+}
+
 /* ── Desktop ───────────────────────────────────────── */
 
 @media (min-width: 768px) {
@@ -112,10 +128,6 @@
     letter-spacing: -0.4px;
     padding: 4px 0 16px;
     margin-bottom: 18px;
-  }
-
-  .repoSelector {
-    margin-bottom: 14px;
   }
 
   .actions {
