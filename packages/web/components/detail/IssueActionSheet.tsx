@@ -36,6 +36,7 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
   const [reassigning, setReassigning] = useState(false);
   const [reassignError, setReassignError] = useState<string | null>(null);
+  const [reassignKey, setReassignKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!reassignSheetOpen) return;
@@ -43,7 +44,10 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
     setLoadingRepos(true);
     listReposAction()
       .then(setRepos)
-      .catch(() => setReassignError("Failed to load repos"))
+      .catch((err) => {
+        console.error("[issuectl] Failed to load repos for reassign:", err);
+        setReassignError("Failed to load repos");
+      })
       .finally(() => setLoadingRepos(false));
   }, [reassignSheetOpen]);
 
@@ -64,7 +68,8 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
         setConfirmClose(false);
         showToast("Issue closed", "success");
         router.push("/?section=shipped");
-      } catch {
+      } catch (err) {
+        console.error("[issuectl] Close issue failed:", err);
         setError("Unable to reach the server. Check your connection and try again.");
       }
     });
@@ -77,10 +82,13 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
 
   function handleRepoSelect(targetRepo: Repo) {
     setSelectedRepo(targetRepo);
+    // Generate idempotency key once per intent so retries reuse
+    // the same key and don't create duplicate issues.
+    setReassignKey(newIdempotencyKey());
   }
 
   async function handleReassignConfirm() {
-    if (!selectedRepo) return;
+    if (!selectedRepo || !reassignKey) return;
     setReassigning(true);
     setReassignError(null);
     try {
@@ -88,7 +96,7 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
         repoId,
         number,
         selectedRepo.id,
-        newIdempotencyKey(),
+        reassignKey,
       );
       if (!result.success) {
         setReassignError(result.error);
@@ -96,14 +104,19 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
       }
       setSelectedRepo(null);
       setReassignSheetOpen(false);
-      showToast(
-        `Issue moved to ${result.newOwner}/${result.newRepo}#${result.newIssueNumber}`,
-        "success",
-      );
+      if (result.cleanupWarning) {
+        showToast(result.cleanupWarning, "warning");
+      } else {
+        showToast(
+          `Issue moved to ${result.newOwner}/${result.newRepo}#${result.newIssueNumber}`,
+          "success",
+        );
+      }
       router.push(
         `/issues/${result.newOwner}/${result.newRepo}/${result.newIssueNumber}`,
       );
-    } catch {
+    } catch (err) {
+      console.error("[issuectl] Reassign issue failed:", err);
       setReassignError(
         "Unable to reach the server. Check your connection and try again.",
       );

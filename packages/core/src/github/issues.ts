@@ -170,6 +170,8 @@ export type ReassignResult = {
   newIssueUrl: string;
   newOwner: string;
   newRepo: string;
+  /** Set when the new issue was created but old-issue cleanup failed. */
+  cleanupWarning?: string;
 };
 
 /**
@@ -206,12 +208,25 @@ export async function reassignIssue(
     body: oldIssue.body ?? undefined,
   });
 
-  // 3. Close the old issue with a cross-reference comment
-  const crossRef = `Moved to ${newRepo.owner}/${newRepo.name}#${newIssue.number}`;
-  await addComment(octokit, oldRepo.owner, oldRepo.name, issueNumber, crossRef);
-  await closeIssue(octokit, oldRepo.owner, oldRepo.name, issueNumber);
+  // 3. Close the old issue with a cross-reference comment.
+  // After the new issue exists, cleanup of the old issue is best-effort:
+  // if it fails, we still return the result so the caller (and the
+  // idempotency layer) record the new issue — preventing duplicates on
+  // retry.
+  let cleanupWarning: string | undefined;
+  try {
+    const crossRef = `Moved to ${newRepo.owner}/${newRepo.name}#${newIssue.number}`;
+    await addComment(octokit, oldRepo.owner, oldRepo.name, issueNumber, crossRef);
+    await closeIssue(octokit, oldRepo.owner, oldRepo.name, issueNumber);
+  } catch (cleanupErr) {
+    console.warn(
+      `[issuectl] reassignIssue: new issue created (${newRepo.owner}/${newRepo.name}#${newIssue.number}) but old issue cleanup failed`,
+      cleanupErr,
+    );
+    cleanupWarning = `Issue moved but #${issueNumber} could not be closed: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`;
+  }
 
-  // 4. Migrate local priority
+  // 4. Migrate local priority (local-only, safe to do even on cleanup failure)
   const oldPriority = getPriority(db, oldRepoId, issueNumber);
   setPriority(db, newRepoId, newIssue.number, oldPriority);
   deletePriority(db, oldRepoId, issueNumber);
@@ -228,5 +243,6 @@ export async function reassignIssue(
     newIssueUrl: newIssue.htmlUrl,
     newOwner: newRepo.owner,
     newRepo: newRepo.name,
+    cleanupWarning,
   };
 }

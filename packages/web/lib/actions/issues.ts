@@ -208,6 +208,7 @@ export async function reassignIssueAction(
       newIssueNumber: number;
       newOwner: string;
       newRepo: string;
+      cleanupWarning?: string;
       cacheStale?: true;
     }
   | { success: false; error: string }
@@ -257,6 +258,12 @@ export async function reassignIssueAction(
       ? await withIdempotency(db, "reassign-issue", idempotencyKey, runReassign)
       : await runReassign();
   } catch (err) {
+    if (err instanceof DuplicateInFlightError) {
+      return {
+        success: false,
+        error: "This issue is already being re-assigned — please wait.",
+      };
+    }
     console.error("[issuectl] Failed to re-assign issue:", err);
     return { success: false, error: formatErrorForUser(err) };
   }
@@ -267,6 +274,7 @@ export async function reassignIssueAction(
     newIssueNumber: result.newIssueNumber,
     newOwner: result.newOwner,
     newRepo: result.newRepo,
+    ...(result.cleanupWarning ? { cleanupWarning: result.cleanupWarning } : {}),
     ...(stale ? { cacheStale: true as const } : {}),
   };
 }
