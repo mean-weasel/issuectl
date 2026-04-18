@@ -1,0 +1,67 @@
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/NotFoundState.module.css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.NotFoundState_container__NrGq2 {
+  flex: 1 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60dvh;
+}
+
+.NotFoundState_inner__0VG5Z {
+  max-width: 480px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.NotFoundState_icon__n5avI {
+  width: 56px;
+  height: 56px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--paper-ink-muted);
+  font-weight: 700;
+}
+
+.NotFoundState_title__yDfrK {
+  font-family: var(--paper-serif);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.NotFoundState_message__Ikb8e {
+  color: var(--paper-ink-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.NotFoundState_actions__eDw9O {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.NotFoundState_link__fBV7i {
+  color: var(--paper-accent);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.NotFoundState_link__fBV7i:hover {
+  text-decoration: underline;
+}
+

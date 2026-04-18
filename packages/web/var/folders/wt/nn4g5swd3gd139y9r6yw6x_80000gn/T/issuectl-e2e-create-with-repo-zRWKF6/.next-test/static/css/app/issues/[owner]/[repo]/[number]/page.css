@@ -1,0 +1,1906 @@
+/*!********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Chip.module.css ***!
+  \********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Chip_chip__PWNQ7 {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--paper-radius-sm);
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.Chip_default__Lp0WW {
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-soft);
+}
+
+.Chip_dashed__p9_VW {
+  background: transparent;
+  color: var(--paper-accent);
+  border: 1px dashed var(--paper-accent);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.Chip_tinted__wnJgQ {
+  font-family: var(--paper-mono);
+  font-weight: 600;
+}
+
+.Chip_tinted__wnJgQ.Chip_brick__JM9Wp {
+  background: rgba(184, 74, 46, 0.08);
+  color: var(--paper-brick);
+}
+
+.Chip_tinted__wnJgQ.Chip_butter__82VUC {
+  background: rgba(217, 165, 77, 0.12);
+  color: #9a6b1f; /* darker butter for readability on cream */
+}
+
+.Chip_tinted__wnJgQ.Chip_accent___TExU {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
+
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Button.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Button_btn__BYA4c {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--paper-radius-md);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  border: 1px solid transparent;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.Button_btn__BYA4c:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.Button_btn__BYA4c:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.Button_btn__BYA4c:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.Button_primary__shnpj {
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+}
+
+.Button_accent__cNPr2 {
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+}
+
+.Button_ghost__JfxUs {
+  background: transparent;
+  color: var(--paper-ink-soft);
+  border-color: var(--paper-line);
+}
+
+.Button_ghost__JfxUs:hover:not(:disabled) {
+  color: var(--paper-accent);
+  border-color: var(--paper-accent);
+  opacity: 1;
+}
+
+.Button_destructive__fbdMV {
+  background: var(--paper-brick);
+  color: var(--paper-bg);
+}
+
+.Button_sm__cXy3X {
+  padding: 7px 14px;
+  font-size: var(--paper-fs-sm);
+}
+
+.Button_md__tZbbq {
+  /* default — already set on .btn */
+}
+
+.Button_lg__0UbDS {
+  padding: 13px 28px;
+  font-size: 15px;
+}
+
+.Button_fullWidth__9i_pd {
+  width: 100%;
+}
+
+/*!*********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Sheet.module.css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Sheet_scrim__xpgB1 {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 18, 0.4);
+  z-index: 1000;
+  animation: Sheet_scrimIn__BrWjC 200ms ease-out;
+}
+
+.Sheet_sheet__rxAFE {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--paper-bg);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border-top: 1px solid var(--paper-line);
+  box-shadow: var(--paper-shadow-sheet);
+  padding: 12px 0 calc(28px + env(safe-area-inset-bottom, 0px));
+  z-index: 1001;
+  max-height: 85dvh;
+  overflow-y: auto;
+  animation: Sheet_sheetIn__ZporF 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes Sheet_scrimIn__BrWjC {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes Sheet_sheetIn__ZporF {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Sheet_scrim__xpgB1,
+  .Sheet_sheet__rxAFE {
+    animation: none;
+  }
+}
+
+/* Generous invisible hit area around the visible grabber so a user can
+   initiate the drag-to-dismiss gesture with a thumb without having to
+   land on the 4px bar. Only this zone is touch-enabled for dismissal;
+   the body is left scrollable. */
+.Sheet_grabArea__uM7nt {
+  padding: 6px 0 10px;
+  cursor: -webkit-grab;
+  cursor: grab;
+  touch-action: none;
+}
+
+.Sheet_grabArea__uM7nt:active {
+  cursor: -webkit-grabbing;
+  cursor: grabbing;
+}
+
+.Sheet_grab__4SiHy {
+  width: 44px;
+  height: 4px;
+  background: var(--paper-ink-faint);
+  border-radius: 3px;
+  margin: 0 auto;
+}
+
+.Sheet_head__gkktd {
+  padding: 10px 28px 14px;
+}
+
+.Sheet_title__WuCIG {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  color: var(--paper-ink);
+  margin-bottom: 4px;
+}
+
+.Sheet_description__o_atc {
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  color: var(--paper-ink-muted);
+}
+
+.Sheet_description__o_atc em {
+  color: var(--paper-ink-soft);
+  font-style: italic;
+}
+
+.Sheet_body__tx3B4 {
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .Sheet_sheet__rxAFE {
+    left: 50%;
+    right: auto;
+    bottom: 40px;
+    transform: translateX(-50%);
+    width: 560px;
+    max-width: calc(100vw - 64px);
+    border-radius: 16px;
+    border: 1px solid var(--paper-line);
+    animation: Sheet_sheetInDesktop__W_O8e 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes Sheet_sheetInDesktop__W_O8e {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 12px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+}
+
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Drawer.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Drawer_scrim__lMPwX {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 18, 0.5);
+  z-index: 1000;
+}
+
+.Drawer_drawer__WI9HB {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--paper-bg);
+  border-left: 1px solid var(--paper-line);
+  box-shadow: var(--paper-shadow-drawer);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.Drawer_head__NVyTP {
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 22px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--paper-line);
+  flex-shrink: 0;
+}
+
+.Drawer_title__m3FwS {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+  color: var(--paper-ink);
+}
+
+.Drawer_close__vGnUK {
+  background: transparent;
+  border: none;
+  color: var(--paper-ink-muted);
+  font-size: 22px;
+  line-height: 1;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.Drawer_body__MMqB8 {
+  flex: 1 1;
+  padding: 0;
+}
+
+/*!************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Checkbox.module.css ***!
+  \************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Checkbox_box__wWA3u {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.Checkbox_box__wWA3u svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.Checkbox_box__wWA3u .Checkbox_rect__EJMI4 {
+  fill: transparent;
+  stroke: var(--paper-ink-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.Checkbox_flight__1WHd8 .Checkbox_rect__EJMI4 {
+  stroke: var(--paper-accent);
+  stroke-width: 2;
+}
+
+.Checkbox_flight__1WHd8 .Checkbox_fill__SK5_b {
+  fill: var(--paper-accent);
+  opacity: 0.35;
+  animation: Checkbox_pulse__LUJy_ 1.8s infinite;
+}
+
+@keyframes Checkbox_pulse__LUJy_ {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.Checkbox_done__z0wav .Checkbox_rect__EJMI4 {
+  fill: var(--paper-accent);
+  stroke: var(--paper-accent);
+}
+
+.Checkbox_done__z0wav .Checkbox_tick__9eem8 {
+  fill: none;
+  stroke: var(--paper-bg);
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Fab.module.css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Fab_fab__vwAKG {
+  position: fixed;
+  right: 24px;
+  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--paper-serif);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+  padding-bottom: 4px;
+  box-shadow: 0 16px 40px rgba(26, 23, 18, 0.35),
+    0 0 0 6px rgba(26, 23, 18, 0.06);
+  z-index: 100;
+  border: none;
+  cursor: pointer;
+}
+
+.Fab_fab__vwAKG:hover {
+  opacity: 0.92;
+}
+
+/* Mobile-only entry point. Desktop has the inline `+ draft` button in
+ * the tabs row (see List.module.css `.desktopDraftBtn`), so showing
+ * the FAB at the same breakpoint would create two redundant entry
+ * points for the same action. */
+@media (min-width: 768px) {
+  .Fab_fab__vwAKG {
+    display: none;
+  }
+}
+
+/*!********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/CommentComposer.module.css ***!
+  \********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.CommentComposer_composer__z7MdU {
+  margin-top: 32px;
+  border-top: 1px solid var(--paper-line);
+  padding-top: 20px;
+}
+
+.CommentComposer_label__v55vZ {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--paper-ink-soft);
+  margin-bottom: 10px;
+}
+
+.CommentComposer_textarea__ZD_Wt {
+  width: 100%;
+  font-family: var(--paper-serif);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--paper-ink-soft);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.CommentComposer_textarea__ZD_Wt:focus {
+  border-color: var(--paper-accent-dim);
+  background: var(--paper-bg);
+}
+
+.CommentComposer_textarea__ZD_Wt:disabled {
+  opacity: 0.6;
+}
+
+.CommentComposer_error__3BuCi {
+  font-family: var(--paper-serif);
+  font-size: 12px;
+  color: var(--paper-brick);
+  margin-top: 6px;
+}
+
+.CommentComposer_footer__Ajg0K {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.CommentComposer_hint__DNLzK {
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-faint);
+}
+
+/* On mobile hide the keyboard hint (touch doesn't have ⌘) */
+@media (max-width: 767px) {
+  .CommentComposer_hint__DNLzK {
+    display: none;
+  }
+
+  .CommentComposer_composer__z7MdU {
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+    margin-top: 16px;
+  }
+}
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/Modal.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Modal_overlay__ognS1 {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(26, 23, 18, 0.4);
+  animation: Modal_scrimIn__csLQ6 200ms ease-out;
+}
+
+.Modal_modal__qS60R {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 90dvh;
+  background: var(--paper-bg);
+  border-top: 1px solid var(--paper-line);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: var(--paper-shadow-sheet);
+  animation: Modal_sheetIn__QkzkL 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes Modal_scrimIn__csLQ6 {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes Modal_sheetIn__QkzkL {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Modal_overlay__ognS1,
+  .Modal_modal__qS60R {
+    animation: none;
+  }
+}
+
+.Modal_header__vbr_B {
+  flex: 0 0 auto;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--paper-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.Modal_title__SEF__ {
+  font-family: var(--paper-serif), sans-serif;
+  font-size: var(--paper-fs-xl);
+  font-weight: 700;
+}
+
+.Modal_close__uWCX2 {
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  font-size: var(--paper-fs-2xl);
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: var(--paper-radius-sm);
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.Modal_close__uWCX2:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.Modal_body__X8P8o {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.Modal_footer__eBdD3 {
+  flex: 0 0 auto;
+  padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--paper-line);
+  display: flex;
+  gap: 8px;
+}
+
+.Modal_footer__eBdD3 > * {
+  flex: 1 1;
+}
+
+@media (min-width: 768px) {
+  .Modal_overlay__ognS1 {
+    background: rgba(0, 0, 0, 0.7);
+    -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .Modal_modal__qS60R {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: var(--modal-width, 600px);
+    max-width: calc(100vw - 64px);
+    max-height: 90dvh;
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-lg);
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+    animation: Modal_modalIn__fiKp1 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes Modal_modalIn__fiKp1 {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .Modal_footer__eBdD3 {
+    padding-bottom: 16px;
+    justify-content: flex-end;
+  }
+
+  .Modal_footer__eBdD3 > * {
+    flex: 0 0 auto;
+  }
+}
+
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/Button.module.css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Button_btn__kzInP {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: var(--paper-radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.Button_secondary__uuOdH {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-soft);
+  border-color: var(--paper-line);
+}
+
+.Button_secondary__uuOdH:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+  border-color: var(--paper-accent);
+}
+
+.Button_primary__6_Dls {
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+  border: none;
+  font-weight: 600;
+}
+
+.Button_primary__6_Dls:hover {
+  background: var(--paper-accent-dim);
+}
+
+.Button_ghost__gZqlA {
+  background: transparent;
+  color: var(--paper-ink-soft);
+  border: 1px solid var(--paper-line);
+}
+
+.Button_ghost__gZqlA:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.Button_launch__GA78j {
+  background: linear-gradient(135deg, var(--paper-accent) 0%, #d05e18 100%);
+  color: var(--paper-bg);
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 0 20px rgba(232, 113, 37, 0.15);
+  padding: 8px 18px;
+}
+
+.Button_launch__GA78j:hover {
+  box-shadow: 0 0 28px rgba(232, 113, 37, 0.25);
+  transform: translateY(-1px);
+}
+
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/ConfirmDialog.module.css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.ConfirmDialog_message__sQHFy {
+  font-size: 14px;
+  color: var(--paper-ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ConfirmDialog_danger__zHdwI {
+  background: var(--paper-brick);
+  color: var(--paper-bg);
+  border-color: var(--paper-brick);
+}
+
+.ConfirmDialog_danger__zHdwI:hover {
+  background: #e5443c;
+}
+
+.ConfirmDialog_error__3an5F {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--paper-brick);
+}
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/list/FilterEdgeSwipe.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.FilterEdgeSwipe_zone__j2NRA {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: 160px;
+  padding: 18px 20px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    to top,
+    var(--paper-bg) 30%,
+    rgba(243, 236, 217, 0.85) 70%,
+    rgba(243, 236, 217, 0) 100%
+  );
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Capture vertical pan gestures so upward swipes reach our handlers
+     rather than scrolling the list behind. */
+  touch-action: none;
+}
+
+.FilterEdgeSwipe_handle__ebph_ {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-ink-faint);
+  opacity: 0.55;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .FilterEdgeSwipe_zone__j2NRA {
+    display: none;
+  }
+}
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/Toast.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Toast_toast__ETwJm {
+  position: fixed;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: calc(28px + env(safe-area-inset-right, 0px));
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  font-family: var(--paper-serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--paper-ink);
+  box-shadow: 0 12px 32px rgba(26, 23, 18, 0.28),
+    0 2px 6px rgba(26, 23, 18, 0.12);
+  animation: Toast_slideIn__tH0pF 0.22s ease-out;
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.Toast_toast__ETwJm[data-exiting="true"] {
+  animation: Toast_slideOut__Olt_y 0.18s ease-in forwards;
+}
+
+.Toast_success__uL6zu {
+  border-left: 5px solid var(--paper-accent);
+  background: var(--paper-accent-soft);
+  color: var(--paper-ink);
+}
+
+.Toast_error__kPWot {
+  border-left: 5px solid var(--paper-brick);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.Toast_warning__1C6KO {
+  border-left: 5px solid var(--paper-butter);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.Toast_message__VmdVc {
+  flex: 1 1;
+}
+
+.Toast_dismiss__Eg61e {
+  background: none;
+  border: none;
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px 4px 6px;
+  line-height: 1;
+  border-radius: var(--paper-radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.Toast_dismiss__Eg61e:hover {
+  color: var(--paper-ink);
+  background: rgba(26, 23, 18, 0.06);
+}
+
+@keyframes Toast_slideIn__tH0pF {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes Toast_slideOut__Olt_y {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/*!****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/ActionSheet.module.css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.ActionSheet_item__QrDLr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 28px;
+  font-family: var(--paper-serif);
+  font-size: 16px;
+  color: var(--paper-ink);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--paper-line-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.ActionSheet_item__QrDLr:last-child {
+  border-bottom: none;
+}
+
+.ActionSheet_item__QrDLr:hover,
+.ActionSheet_item__QrDLr:active {
+  background: var(--paper-bg-warm);
+}
+
+.ActionSheet_item__QrDLr:focus-visible {
+  outline: 2px solid var(--paper-accent);
+  outline-offset: -2px;
+}
+
+.ActionSheet_danger__n1END {
+  color: var(--paper-brick);
+}
+
+.ActionSheet_icon__o2DHu {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/*!****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/launch/BranchInput.module.css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.BranchInput_field__Sgo_N {
+  margin-bottom: 16px;
+}
+
+.BranchInput_label__Jisis {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.BranchInput_input__aNfgV {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
+  font-size: 13px;
+  font-family: var(--paper-mono), monospace;
+  outline: none;
+}
+
+.BranchInput_input__aNfgV:focus {
+  border-color: var(--paper-accent);
+}
+
+.BranchInput_hint____eN4 {
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  margin-top: 4px;
+}
+
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/launch/WorkspaceModeSelector.module.css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.WorkspaceModeSelector_field__vKiB1 {
+  margin-bottom: 16px;
+}
+
+.WorkspaceModeSelector_label__MkPXY {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.WorkspaceModeSelector_options__TqNtR {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.WorkspaceModeSelector_option__gTA0g {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  cursor: pointer;
+}
+
+.WorkspaceModeSelector_option__gTA0g.WorkspaceModeSelector_selected__7jbIA {
+  background: var(--paper-accent-soft);
+  border-color: var(--paper-accent);
+}
+
+.WorkspaceModeSelector_option__gTA0g.WorkspaceModeSelector_disabled__S6qre {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.WorkspaceModeSelector_radio__5R_aS {
+  margin-top: 2px;
+  accent-color: var(--paper-accent);
+}
+
+.WorkspaceModeSelector_optionLabel__KLI2b {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--paper-ink);
+}
+
+.WorkspaceModeSelector_optionDetail__q_IUF {
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  margin-top: 1px;
+}
+
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/launch/ContextToggles.module.css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.ContextToggles_field__IlpEs {
+  margin-bottom: 16px;
+}
+
+.ContextToggles_label__gTqnh {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.ContextToggles_list___lUcK {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ContextToggles_item__JT6FQ {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--paper-ink-soft);
+  cursor: pointer;
+}
+
+.ContextToggles_checkbox__QQqIK {
+  accent-color: var(--paper-accent);
+}
+
+.ContextToggles_hint__KeRoC {
+  color: var(--paper-ink-muted);
+  margin-left: auto;
+}
+
+.ContextToggles_divider__1jPfU {
+  height: 1px;
+  background: var(--paper-line);
+  margin: 4px 0;
+}
+
+.ContextToggles_filePath__I88Ky {
+  font-family: var(--paper-mono), monospace;
+  color: var(--paper-accent);
+  font-size: 11px;
+}
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/launch/PreambleInput.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.PreambleInput_field__nW3Q7 {
+  /* Last field in modal body — no bottom margin */
+}
+
+.PreambleInput_label__mZi7k {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.PreambleInput_optional__CT_us {
+  text-transform: none;
+  font-weight: 400;
+}
+
+.PreambleInput_textarea__QNHAW {
+  width: 100%;
+  height: 60px;
+  padding: 8px 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
+  font-size: 12px;
+  font-family: var(--paper-serif), sans-serif;
+  outline: none;
+  resize: vertical;
+}
+
+.PreambleInput_textarea__QNHAW:focus {
+  border-color: var(--paper-accent);
+}
+
+/*!****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/launch/LaunchModal.module.css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.LaunchModal_overlay__ipza_ {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.LaunchModal_modal__Ssltm {
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
+  width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+}
+
+.LaunchModal_header__ftIGx {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--paper-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.LaunchModal_title__2Pph0 {
+  font-family: var(--paper-serif), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.LaunchModal_close__YqqfI {
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  font-size: 18px;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.LaunchModal_close__YqqfI:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.LaunchModal_body__mQ8y4 {
+  padding: 20px 24px;
+}
+
+.LaunchModal_footer__nLwNX {
+  padding: 16px 24px;
+  border-top: 1px solid var(--paper-line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.LaunchModal_issueSummary__vXP_Z {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: var(--paper-bg-warm);
+  border-radius: var(--paper-radius-md);
+  border: 1px solid var(--paper-line);
+}
+
+.LaunchModal_issueDot__C2wFn {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--paper-accent);
+  flex-shrink: 0;
+}
+
+.LaunchModal_issueTitle__q4V1e {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.LaunchModal_issueRepo__ncPsj {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+}
+
+.LaunchModal_error__1Kz43 {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(184, 74, 46, 0.08);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-brick);
+  font-size: 12px;
+}
+
+/*!***********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/launch/LaunchActiveBanner.module.css ***!
+  \***********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.LaunchActiveBanner_banner__lNlVI {
+  padding: 16px 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(232, 113, 37, 0.08) 0%,
+    rgba(232, 113, 37, 0.02) 100%
+  );
+  border: 1px solid var(--paper-accent);
+  border-radius: var(--paper-radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.LaunchActiveBanner_spinner__EpO_o {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--paper-accent);
+  border-top-color: var(--paper-accent);
+  border-radius: 50%;
+  animation: LaunchActiveBanner_spin__arXYt 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes LaunchActiveBanner_spin__arXYt {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.LaunchActiveBanner_text__zELQN {
+  flex: 1 1;
+}
+
+.LaunchActiveBanner_title__BkB7G {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--paper-accent);
+}
+
+.LaunchActiveBanner_sub__tp3MH {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  margin-top: 2px;
+}
+
+.LaunchActiveBanner_bannerEnded__vOjIq {
+  padding: 16px 20px;
+  background: var(--paper-accent-soft);
+  border: 1px solid var(--paper-accent);
+  border-radius: var(--paper-radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.LaunchActiveBanner_checkmark__YTZvn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper-accent);
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.LaunchActiveBanner_titleEnded__h9sQo {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--paper-accent);
+}
+
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/LaunchCardPlaceholder.module.css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.LaunchCardPlaceholder_card__Nfp_6 {
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.LaunchCardPlaceholder_card__Nfp_6::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  background: var(--paper-accent);
+  border-radius: 2px;
+}
+
+.LaunchCardPlaceholder_card__Nfp_6 h2 {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--paper-ink);
+  margin-bottom: 4px;
+}
+
+.LaunchCardPlaceholder_card__Nfp_6 p {
+  font-family: var(--paper-serif);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.LaunchCardPlaceholder_actions__AFyll {
+  display: flex;
+  gap: 8px;
+}
+
+.LaunchCardPlaceholder_disabled__MW7i_ {
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 18px;
+  border-radius: var(--paper-radius-md);
+  border: none;
+  flex: 1 1;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.LaunchCardPlaceholder_hint__ZUBaM {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  margin-top: 8px;
+}
+
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/PriorityPicker.module.css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.PriorityPicker_trigger__rAyFH {
+  font-family: var(--paper-sans);
+  font-size: 11px;
+  color: var(--paper-ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  text-decoration: underline;
+  -webkit-text-decoration-style: dotted;
+          text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.PriorityPicker_trigger__rAyFH:hover {
+  color: var(--paper-ink);
+}
+
+.PriorityPicker_body__P1H28 {
+  padding: 0 0 8px;
+}
+
+.PriorityPicker_row__Jt5VW {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 28px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--paper-line-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.PriorityPicker_row__Jt5VW:hover {
+  background: var(--paper-bg-warm);
+}
+
+.PriorityPicker_row__Jt5VW:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.PriorityPicker_row__Jt5VW.PriorityPicker_active__gGKoj {
+  background: var(--paper-accent-soft);
+}
+
+.PriorityPicker_symbol__5vJoa {
+  font-family: var(--paper-serif);
+  font-size: 20px;
+  font-weight: 600;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.PriorityPicker_symbol__5vJoa.PriorityPicker_high__ImP5C {
+  color: var(--paper-brick);
+}
+
+.PriorityPicker_symbol__5vJoa.PriorityPicker_normal__AbO1R {
+  color: var(--paper-ink-muted);
+}
+
+.PriorityPicker_symbol__5vJoa.PriorityPicker_low__TJ7In {
+  color: var(--paper-accent-dim);
+}
+
+.PriorityPicker_text__2VG_v {
+  flex: 1 1;
+}
+
+.PriorityPicker_label__xfcwU {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--paper-ink);
+  margin-bottom: 2px;
+}
+
+.PriorityPicker_description__diW9q {
+  font-family: var(--paper-sans);
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+}
+
+.PriorityPicker_current__fRz0s {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-accent);
+}
+
+.PriorityPicker_spinner__hbcTR {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+}
+
+.PriorityPicker_error__q9lGe {
+  font-family: var(--paper-serif);
+  font-size: 12px;
+  color: var(--paper-brick);
+  padding: 10px 28px;
+}
+
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/DetailTopBar.module.css ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.DetailTopBar_bar__aMB18 {
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.DetailTopBar_back__KQUfk {
+  color: var(--paper-ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: -10px;
+  border-radius: var(--paper-radius-sm);
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.DetailTopBar_back__KQUfk:hover {
+  background: var(--paper-bg-warm);
+}
+
+.DetailTopBar_back__KQUfk:active {
+  background: var(--paper-bg-warmer);
+}
+
+.DetailTopBar_crumb__ErQ3A {
+  flex: 1 1;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.DetailTopBar_crumb__ErQ3A b {
+  color: var(--paper-ink-soft);
+  font-style: normal;
+}
+
+.DetailTopBar_menu__gdXTC {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--paper-ink-muted);
+  letter-spacing: 2px;
+}
+
+@media (min-width: 768px) {
+  .DetailTopBar_bar__aMB18 {
+    padding: 36px 40px 20px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+}
+
+/*!***************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/DetailMeta.module.css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.DetailMeta_meta__LPvOS {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: var(--paper-sans);
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  margin-bottom: 22px;
+}
+
+.DetailMeta_num__7tfiN {
+  font-family: var(--paper-mono);
+  color: var(--paper-ink-faint);
+}
+
+.DetailMeta_sep__TBeRm {
+  color: var(--paper-ink-faint);
+}
+
+.DetailMeta_state__B0fcf {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--paper-mono);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: var(--paper-radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.DetailMeta_stateGlyph__cq7C_ {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.DetailMeta_state__B0fcf.DetailMeta_open__h1xkD {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
+
+.DetailMeta_state__B0fcf.DetailMeta_closed__mk4NL {
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-muted);
+}
+
+.DetailMeta_state__B0fcf.DetailMeta_merged__gfC6m {
+  background: rgba(138, 109, 181, 0.15);
+  color: #3d2666;
+}
+
+/*!*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/BodyText.module.css ***!
+  \*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.BodyText_body__8Oyn9 {
+  font-family: var(--paper-serif);
+  font-weight: 400;
+  font-size: var(--paper-fs-lg);
+  line-height: 1.65;
+  color: var(--paper-ink-soft);
+  margin-bottom: 28px;
+}
+
+.BodyText_body__8Oyn9 h1,
+.BodyText_body__8Oyn9 h2,
+.BodyText_body__8Oyn9 h3 {
+  font-family: var(--paper-serif);
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.BodyText_body__8Oyn9 h1 { font-size: 20px; }
+.BodyText_body__8Oyn9 h2 { font-size: 17px; }
+.BodyText_body__8Oyn9 h3 { font-size: 15px; }
+
+.BodyText_body__8Oyn9 p { margin-bottom: 12px; }
+
+.BodyText_body__8Oyn9 ul,
+.BodyText_body__8Oyn9 ol {
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+
+.BodyText_body__8Oyn9 li { margin-bottom: 4px; }
+
+.BodyText_body__8Oyn9 code {
+  font-family: var(--paper-mono);
+  font-size: 13px;
+  background: var(--paper-bg-warmer);
+  padding: 1px 6px;
+  border-radius: var(--paper-radius-sm);
+}
+
+.BodyText_body__8Oyn9 pre {
+  background: var(--paper-bg-warmer);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.BodyText_body__8Oyn9 pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.BodyText_body__8Oyn9 blockquote {
+  border-left: 3px solid var(--paper-accent);
+  padding-left: 14px;
+  color: var(--paper-ink-muted);
+  margin-bottom: 12px;
+}
+
+.BodyText_body__8Oyn9 a {
+  color: var(--paper-accent);
+  text-decoration: underline;
+}
+
+.BodyText_body__8Oyn9 img {
+  max-width: 100%;
+  border-radius: var(--paper-radius-md);
+}
+
+.BodyText_empty__wCMsd {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-ink-faint);
+  margin-bottom: 28px;
+}
+
+/*!****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/CommentList.module.css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.CommentList_section__Y_Jie {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--paper-ink-soft);
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--paper-line);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.CommentList_count__hJE5J {
+  font-family: var(--paper-mono);
+  font-size: 10px;
+  color: var(--paper-ink-faint);
+  font-style: normal;
+}
+
+.CommentList_empty__SCghd {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--paper-ink-faint);
+  margin-bottom: 20px;
+}
+
+.CommentList_comment__Dc_hJ {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--paper-line-soft);
+}
+
+.CommentList_comment__Dc_hJ:last-child {
+  border-bottom: none;
+}
+
+.CommentList_head__3DHNF {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.CommentList_avi__myR1j {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--paper-bg-warmer);
+  border: 1px solid var(--paper-line);
+  font-family: var(--paper-serif);
+  font-weight: 600;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.CommentList_avi__myR1j img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.CommentList_who__9y7Uc {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--paper-ink);
+}
+
+.CommentList_time__W1QxP {
+  font-family: var(--paper-sans);
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  margin-left: auto;
+}
+
+.CommentList_body__hJuAL {
+  font-family: var(--paper-serif);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--paper-ink-soft);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./app/issues/[owner]/[repo]/[number]/loading.module.css ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+@keyframes loading_pulse__jE4na {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.loading_container__PT8f0 {
+  min-height: 100dvh;
+  background: var(--paper-bg);
+}
+
+.loading_header__bCg_z {
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.loading_breadcrumb__8NPCr {
+  width: 120px;
+  height: 14px;
+  background: var(--paper-bg-warm);
+  border-radius: 4px;
+  animation: loading_pulse__jE4na 1.5s ease-in-out infinite;
+}
+
+.loading_body__1a_Vl {
+  padding: 22px 24px 60px;
+}
+
+.loading_title__a4vUZ {
+  width: 70%;
+  height: 28px;
+  background: var(--paper-bg-warm);
+  border-radius: var(--paper-radius-md);
+  margin-bottom: 14px;
+  animation: loading_pulse__jE4na 1.5s ease-in-out infinite;
+}
+
+.loading_meta__2WLCG {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.loading_metaChip__3Bb7Y {
+  width: 60px;
+  height: 20px;
+  background: var(--paper-bg-warm);
+  border-radius: var(--paper-radius-sm);
+  animation: loading_pulse__jE4na 1.5s ease-in-out infinite 0.1s;
+}
+
+.loading_metaText__0EeGB {
+  width: 80px;
+  height: 14px;
+  background: var(--paper-bg-warm);
+  border-radius: 4px;
+  align-self: center;
+  animation: loading_pulse__jE4na 1.5s ease-in-out infinite 0.2s;
+}
+
+.loading_bodyBlock___Xmxy {
+  width: 100%;
+  height: 120px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  margin-bottom: 24px;
+  animation: loading_pulse__jE4na 1.5s ease-in-out infinite 0.3s;
+}
+
+.loading_commentBlock__xaS38 {
+  width: 100%;
+  height: 60px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  margin-bottom: 12px;
+  animation: loading_pulse__jE4na 1.5s ease-in-out infinite 0.4s;
+}
+
+@media (min-width: 768px) {
+  .loading_header__bCg_z {
+    padding: 36px 40px 20px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  .loading_body__1a_Vl {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 32px 40px 40px;
+  }
+
+  .loading_title__a4vUZ {
+    height: 36px;
+  }
+}
+
+/*!****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/detail/IssueDetail.module.css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.IssueDetail_container__aavv0 {
+  background: var(--paper-bg);
+  min-height: 100dvh;
+  padding-bottom: 60px;
+}
+
+.IssueDetail_body__nibuz {
+  padding: 22px 24px 60px;
+}
+
+.IssueDetail_title__nn5YP {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+  color: var(--paper-ink);
+  margin-bottom: 12px;
+}
+
+.IssueDetail_contentError__dmbDn {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: var(--paper-fs-base);
+  color: var(--paper-brick);
+  padding: 16px;
+  margin-top: 16px;
+  background: rgba(184, 74, 46, 0.06);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+}
+
+@media (min-width: 768px) {
+  .IssueDetail_body__nibuz {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 32px 40px 40px;
+  }
+
+  .IssueDetail_title__nn5YP {
+    font-size: 36px;
+    line-height: 1.15;
+    letter-spacing: -0.7px;
+    margin-bottom: 14px;
+  }
+}
+

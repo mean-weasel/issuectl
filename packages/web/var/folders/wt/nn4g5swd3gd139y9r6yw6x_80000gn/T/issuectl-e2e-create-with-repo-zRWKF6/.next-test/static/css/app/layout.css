@@ -1,0 +1,1055 @@
+/*!*********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[2].use[1]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[14].oneOf[2].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/font/google/target.css?{"path":"app/layout.tsx","import":"Fraunces","arguments":[{"subsets":["latin"],"style":["normal","italic"],"variable":"--font-serif","display":"swap"}],"variableName":"fraunces"} ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/* vietnamese */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/f3deaf8281908ff2-s.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/c62081b071647022-s.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/6ba5f591ae6c56f6-s.p.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/fb526027db1fc1ae-s.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/4da3161b738b07dd-s.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/af4bf8399d1aacdf-s.p.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}@font-face {font-family: 'Fraunces Fallback';src: local("Times New Roman");ascent-override: 84.71%;descent-override: 22.09%;line-gap-override: 0.00%;size-adjust: 115.45%
+}.__className_c5b148 {font-family: 'Fraunces', 'Fraunces Fallback'
+}.__variable_c5b148 {--font-serif: 'Fraunces', 'Fraunces Fallback'
+}
+
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[2].use[1]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[14].oneOf[2].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/font/google/target.css?{"path":"app/layout.tsx","import":"Inter","arguments":[{"subsets":["latin"],"variable":"--font-sans","display":"swap"}],"variableName":"inter"} ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/ba9851c3c22cd980-s.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/21350d82a1f187e9-s.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/c5fe6dc8356a8c31-s.woff2) format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/19cfc7226ec3afaa-s.woff2) format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/df0a9ae256c0569c-s.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/8e9860b6e62d6359-s.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/_next/static/media/e4af272ccee01ff0-s.p.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}@font-face {font-family: 'Inter Fallback';src: local("Arial");ascent-override: 90.44%;descent-override: 22.52%;line-gap-override: 0.00%;size-adjust: 107.12%
+}.__className_f367f3 {font-family: 'Inter', 'Inter Fallback';font-style: normal
+}.__variable_f367f3 {--font-sans: 'Inter', 'Inter Fallback'
+}
+
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[2].use[1]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[14].oneOf[2].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/font/google/target.css?{"path":"app/layout.tsx","import":"IBM_Plex_Mono","arguments":[{"subsets":["latin"],"weight":["400","600"],"variable":"--font-mono-paper","display":"swap"}],"variableName":"ibmPlexMono"} ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/_next/static/media/58f386aa6b1a2a92-s.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/_next/static/media/011e180705008d6f-s.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/_next/static/media/7ba5fb2a8c88521c-s.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/_next/static/media/92eeb95d069020cc-s.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/_next/static/media/d3ebbfd689654d3a-s.p.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/_next/static/media/73cb51aac9c97f90-s.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/_next/static/media/d26bbd13d6b70f89-s.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/_next/static/media/20535187d867b7b9-s.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/_next/static/media/5356a6a4f2c8c8d8-s.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/_next/static/media/db96af6b531dc71f-s.p.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}@font-face {font-family: 'IBM Plex Mono Fallback';src: local("Arial");ascent-override: 76.16%;descent-override: 20.43%;line-gap-override: 0.00%;size-adjust: 134.59%
+}.__className_fcc734 {font-family: 'IBM Plex Mono', 'IBM Plex Mono Fallback';font-style: normal
+}.__variable_fcc734 {--font-mono-paper: 'IBM Plex Mono', 'IBM Plex Mono Fallback'
+}
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/auth/AuthErrorScreen.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.AuthErrorScreen_container__FGtZ1 {
+  flex: 1 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+}
+
+.AuthErrorScreen_inner__O5CKi {
+  max-width: 480px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.AuthErrorScreen_icon__h0f_T {
+  width: 56px;
+  height: 56px;
+  background: rgba(184, 74, 46, 0.08);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--paper-brick);
+  font-weight: 700;
+}
+
+.AuthErrorScreen_title__T1N4E {
+  font-family: var(--paper-serif);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.AuthErrorScreen_description__cLdn9 {
+  color: var(--paper-ink-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.AuthErrorScreen_inlineCode__2h4nb {
+  font-family: var(--paper-mono);
+  background: var(--paper-bg-warm);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--paper-accent);
+  border: 1px solid var(--paper-line);
+}
+
+.AuthErrorScreen_card__unCjh {
+  width: 100%;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
+  padding: 24px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.AuthErrorScreen_cardTitle__F6Ori {
+  font-family: var(--paper-serif);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.AuthErrorScreen_step__F_l_b {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.AuthErrorScreen_stepNumber__7u8iQ {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--paper-mono);
+  color: var(--paper-ink-soft);
+  flex-shrink: 0;
+}
+
+.AuthErrorScreen_stepTitle__lTGNx {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.AuthErrorScreen_stepCommand__OYEWo {
+  display: block;
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  margin-top: 2px;
+  font-family: var(--paper-mono);
+}
+
+.AuthErrorScreen_stepDetail__hWQbZ {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  margin-top: 2px;
+}
+
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[10].use[3]!./app/globals.css ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+:root {
+  /* Paper palette — warm cream, deep ink, forest green accent */
+  --paper-bg:           #f3ecd9;
+  --paper-bg-warm:      #ede5cf;
+  --paper-bg-warmer:    #e6dec4;
+  --paper-ink:          #1a1712;
+  --paper-ink-soft:     #3a342a;
+  --paper-ink-muted:    #746a50;
+  --paper-ink-faint:    #6e644a;
+  --paper-line:         #e0d6bc;
+  --paper-line-soft:    #e9dfc6;
+  --paper-accent:       #2d5f3f;
+  --paper-accent-dim:   #4a7a5c;
+  --paper-accent-soft:  #dce8de;
+  --paper-brick:        #a8432a;
+  --paper-butter:       #d9a54d;
+
+  --paper-radius-sm:    3px;
+  --paper-radius-md:    6px;
+  --paper-radius-lg:    10px;
+  --paper-radius-xl:    14px;
+
+  /* Type scale — keep in sync with usage counts in CSS modules.
+     Consolidates 20+ font sizes down to a 9-step scale. */
+  --paper-fs-xs:        11px;
+  --paper-fs-sm:        12px;
+  --paper-fs-base:      13px;
+  --paper-fs-md:        14px;
+  --paper-fs-lg:        16px;
+  --paper-fs-xl:        18px;
+  --paper-fs-2xl:       22px;
+  --paper-fs-3xl:       26px;
+  --paper-fs-4xl:       36px;
+
+  --paper-shadow-card:   0 12px 30px rgba(26, 23, 18, 0.08);
+  --paper-shadow-modal:  0 40px 100px rgba(26, 23, 18, 0.35);
+  --paper-shadow-sheet:  0 -20px 60px rgba(0, 0, 0, 0.25);
+  --paper-shadow-drawer: -20px 0 60px rgba(0, 0, 0, 0.3);
+
+  /* Font variables injected by next/font in app/layout.tsx */
+  --paper-serif:  var(--font-serif), Georgia, serif;
+  --paper-sans:   var(--font-sans), system-ui, -apple-system, sans-serif;
+  --paper-mono:   var(--font-mono-paper), ui-monospace, SFMono-Regular, monospace;
+
+  color-scheme: light;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--paper-bg);
+  color: var(--paper-ink);
+  font-family: var(--paper-sans);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: contain;
+  touch-action: manipulation;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+/* Consistent focus-visible ring for all interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--paper-accent);
+  outline-offset: 2px;
+  border-radius: var(--paper-radius-sm);
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--paper-ink-faint);
+  font-style: italic;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--paper-line);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--paper-ink-faint);
+}
+
+/* Paper noise surface utility */
+.paperSurface {
+  position: relative;
+  background: var(--paper-bg);
+  color: var(--paper-ink);
+}
+
+.paperSurface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/></svg>");
+  background-size: 200px;
+}
+
+.paperSurface > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Standalone PWA adjustments ──────────────────────────────────
+   When launched from the home screen (display: standalone), the
+   browser address bar is gone. Add top padding to account for the
+   status bar area on notched/Dynamic Island devices. */
+@media (display-mode: standalone) {
+  body {
+    /* In standalone mode the browser chrome is absent. This padding
+       prevents page content from sitting under the device status bar
+       or Dynamic Island. The offline indicator banner is position:
+       fixed and handles its own safe-area inset independently. */
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/*!********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Chip.module.css ***!
+  \********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Chip_chip__PWNQ7 {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--paper-radius-sm);
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.Chip_default__Lp0WW {
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-soft);
+}
+
+.Chip_dashed__p9_VW {
+  background: transparent;
+  color: var(--paper-accent);
+  border: 1px dashed var(--paper-accent);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.Chip_tinted__wnJgQ {
+  font-family: var(--paper-mono);
+  font-weight: 600;
+}
+
+.Chip_tinted__wnJgQ.Chip_brick__JM9Wp {
+  background: rgba(184, 74, 46, 0.08);
+  color: var(--paper-brick);
+}
+
+.Chip_tinted__wnJgQ.Chip_butter__82VUC {
+  background: rgba(217, 165, 77, 0.12);
+  color: #9a6b1f; /* darker butter for readability on cream */
+}
+
+.Chip_tinted__wnJgQ.Chip_accent___TExU {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
+
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Button.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Button_btn__BYA4c {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--paper-radius-md);
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  border: 1px solid transparent;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.Button_btn__BYA4c:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.Button_btn__BYA4c:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.Button_btn__BYA4c:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.Button_primary__shnpj {
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+}
+
+.Button_accent__cNPr2 {
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+}
+
+.Button_ghost__JfxUs {
+  background: transparent;
+  color: var(--paper-ink-soft);
+  border-color: var(--paper-line);
+}
+
+.Button_ghost__JfxUs:hover:not(:disabled) {
+  color: var(--paper-accent);
+  border-color: var(--paper-accent);
+  opacity: 1;
+}
+
+.Button_destructive__fbdMV {
+  background: var(--paper-brick);
+  color: var(--paper-bg);
+}
+
+.Button_sm__cXy3X {
+  padding: 7px 14px;
+  font-size: var(--paper-fs-sm);
+}
+
+.Button_md__tZbbq {
+  /* default — already set on .btn */
+}
+
+.Button_lg__0UbDS {
+  padding: 13px 28px;
+  font-size: 15px;
+}
+
+.Button_fullWidth__9i_pd {
+  width: 100%;
+}
+
+/*!*********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Sheet.module.css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Sheet_scrim__xpgB1 {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 18, 0.4);
+  z-index: 1000;
+  animation: Sheet_scrimIn__BrWjC 200ms ease-out;
+}
+
+.Sheet_sheet__rxAFE {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--paper-bg);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border-top: 1px solid var(--paper-line);
+  box-shadow: var(--paper-shadow-sheet);
+  padding: 12px 0 calc(28px + env(safe-area-inset-bottom, 0px));
+  z-index: 1001;
+  max-height: 85dvh;
+  overflow-y: auto;
+  animation: Sheet_sheetIn__ZporF 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes Sheet_scrimIn__BrWjC {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes Sheet_sheetIn__ZporF {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .Sheet_scrim__xpgB1,
+  .Sheet_sheet__rxAFE {
+    animation: none;
+  }
+}
+
+/* Generous invisible hit area around the visible grabber so a user can
+   initiate the drag-to-dismiss gesture with a thumb without having to
+   land on the 4px bar. Only this zone is touch-enabled for dismissal;
+   the body is left scrollable. */
+.Sheet_grabArea__uM7nt {
+  padding: 6px 0 10px;
+  cursor: -webkit-grab;
+  cursor: grab;
+  touch-action: none;
+}
+
+.Sheet_grabArea__uM7nt:active {
+  cursor: -webkit-grabbing;
+  cursor: grabbing;
+}
+
+.Sheet_grab__4SiHy {
+  width: 44px;
+  height: 4px;
+  background: var(--paper-ink-faint);
+  border-radius: 3px;
+  margin: 0 auto;
+}
+
+.Sheet_head__gkktd {
+  padding: 10px 28px 14px;
+}
+
+.Sheet_title__WuCIG {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  color: var(--paper-ink);
+  margin-bottom: 4px;
+}
+
+.Sheet_description__o_atc {
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  color: var(--paper-ink-muted);
+}
+
+.Sheet_description__o_atc em {
+  color: var(--paper-ink-soft);
+  font-style: italic;
+}
+
+.Sheet_body__tx3B4 {
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .Sheet_sheet__rxAFE {
+    left: 50%;
+    right: auto;
+    bottom: 40px;
+    transform: translateX(-50%);
+    width: 560px;
+    max-width: calc(100vw - 64px);
+    border-radius: 16px;
+    border: 1px solid var(--paper-line);
+    animation: Sheet_sheetInDesktop__W_O8e 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes Sheet_sheetInDesktop__W_O8e {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 12px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+}
+
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Drawer.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Drawer_scrim__lMPwX {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 18, 0.5);
+  z-index: 1000;
+}
+
+.Drawer_drawer__WI9HB {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--paper-bg);
+  border-left: 1px solid var(--paper-line);
+  box-shadow: var(--paper-shadow-drawer);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.Drawer_head__NVyTP {
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 22px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--paper-line);
+  flex-shrink: 0;
+}
+
+.Drawer_title__m3FwS {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+  color: var(--paper-ink);
+}
+
+.Drawer_close__vGnUK {
+  background: transparent;
+  border: none;
+  color: var(--paper-ink-muted);
+  font-size: 22px;
+  line-height: 1;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.Drawer_body__MMqB8 {
+  flex: 1 1;
+  padding: 0;
+}
+
+/*!************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Checkbox.module.css ***!
+  \************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Checkbox_box__wWA3u {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.Checkbox_box__wWA3u svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.Checkbox_box__wWA3u .Checkbox_rect__EJMI4 {
+  fill: transparent;
+  stroke: var(--paper-ink-muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.Checkbox_flight__1WHd8 .Checkbox_rect__EJMI4 {
+  stroke: var(--paper-accent);
+  stroke-width: 2;
+}
+
+.Checkbox_flight__1WHd8 .Checkbox_fill__SK5_b {
+  fill: var(--paper-accent);
+  opacity: 0.35;
+  animation: Checkbox_pulse__LUJy_ 1.8s infinite;
+}
+
+@keyframes Checkbox_pulse__LUJy_ {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.Checkbox_done__z0wav .Checkbox_rect__EJMI4 {
+  fill: var(--paper-accent);
+  stroke: var(--paper-accent);
+}
+
+.Checkbox_done__z0wav .Checkbox_tick__9eem8 {
+  fill: none;
+  stroke: var(--paper-bg);
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/paper/Fab.module.css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Fab_fab__vwAKG {
+  position: fixed;
+  right: 24px;
+  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--paper-serif);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+  padding-bottom: 4px;
+  box-shadow: 0 16px 40px rgba(26, 23, 18, 0.35),
+    0 0 0 6px rgba(26, 23, 18, 0.06);
+  z-index: 100;
+  border: none;
+  cursor: pointer;
+}
+
+.Fab_fab__vwAKG:hover {
+  opacity: 0.92;
+}
+
+/* Mobile-only entry point. Desktop has the inline `+ draft` button in
+ * the tabs row (see List.module.css `.desktopDraftBtn`), so showing
+ * the FAB at the same breakpoint would create two redundant entry
+ * points for the same action. */
+@media (min-width: 768px) {
+  .Fab_fab__vwAKG {
+    display: none;
+  }
+}
+
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/OfflineIndicator.module.css ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.OfflineIndicator_banner__rCvHB {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: var(--paper-brick);
+  color: #fff;
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  animation: OfflineIndicator_slideDown__Y48hd 0.3s ease-out;
+  padding-top: calc(6px + env(safe-area-inset-top));
+}
+
+.OfflineIndicator_icon__lk3ta {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@keyframes OfflineIndicator_slideDown__Y48hd {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./components/ui/Toast.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.Toast_toast__ETwJm {
+  position: fixed;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: calc(28px + env(safe-area-inset-right, 0px));
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  font-family: var(--paper-serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--paper-ink);
+  box-shadow: 0 12px 32px rgba(26, 23, 18, 0.28),
+    0 2px 6px rgba(26, 23, 18, 0.12);
+  animation: Toast_slideIn__tH0pF 0.22s ease-out;
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.Toast_toast__ETwJm[data-exiting="true"] {
+  animation: Toast_slideOut__Olt_y 0.18s ease-in forwards;
+}
+
+.Toast_success__uL6zu {
+  border-left: 5px solid var(--paper-accent);
+  background: var(--paper-accent-soft);
+  color: var(--paper-ink);
+}
+
+.Toast_error__kPWot {
+  border-left: 5px solid var(--paper-brick);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.Toast_warning__1C6KO {
+  border-left: 5px solid var(--paper-butter);
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.Toast_message__VmdVc {
+  flex: 1 1;
+}
+
+.Toast_dismiss__Eg61e {
+  background: none;
+  border: none;
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px 4px 6px;
+  line-height: 1;
+  border-radius: var(--paper-radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.Toast_dismiss__Eg61e:hover {
+  color: var(--paper-ink);
+  background: rgba(26, 23, 18, 0.06);
+}
+
+@keyframes Toast_slideIn__tH0pF {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes Toast_slideOut__Olt_y {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+

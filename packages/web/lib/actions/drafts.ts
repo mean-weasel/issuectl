@@ -7,6 +7,8 @@ import {
   assignDraftToRepo,
   listRepos,
   updateDraft,
+  getSetting,
+  setSetting,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -295,4 +297,32 @@ export async function assignDraftAction(
     ...(cleanupWarning ? { cleanupWarning } : {}),
     ...(stale ? { cacheStale: true as const } : {}),
   };
+}
+
+export async function getDefaultRepoIdAction(): Promise<number | null> {
+  try {
+    const db = getDb();
+    const value = getSetting(db, "default_repo_id");
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setDefaultRepoIdAction(
+  repoId: number | null,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = getDb();
+    setSetting(db, "default_repo_id", repoId !== null ? String(repoId) : "");
+    return { success: true };
+  } catch (err) {
+    console.error("[issuectl] setDefaultRepoIdAction failed", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to update default repo",
+    };
+  }
 }

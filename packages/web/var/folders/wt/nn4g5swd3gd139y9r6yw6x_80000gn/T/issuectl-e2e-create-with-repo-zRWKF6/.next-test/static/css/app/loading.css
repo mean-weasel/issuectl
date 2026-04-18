@@ -1,0 +1,60 @@
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!../../node_modules/.pnpm/next@15.5.14_@playwright+test@1.59.1_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./app/loading.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+.loading_skeleton__blq9e {
+  padding: 20px 32px 32px;
+}
+
+.loading_headerSkeleton__vJaAV {
+  padding: 24px 32px 0;
+  margin-bottom: 16px;
+}
+
+.loading_titleBar___K347 {
+  height: 32px;
+  width: 220px;
+  background: var(--paper-bg-warm);
+  border-radius: var(--paper-radius-md);
+  animation: loading_pulse__PEObv 1.5s ease-in-out infinite;
+}
+
+.loading_cacheBarSkeleton__9SKUt {
+  height: 32px;
+  border-bottom: 1px solid var(--paper-line-soft);
+  margin-bottom: 20px;
+}
+
+.loading_grid__KtyAR {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-gap: 12px;
+  gap: 12px;
+}
+
+.loading_cardSkeleton__4MbCS {
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-lg);
+  padding: 20px;
+  height: 160px;
+  animation: loading_pulse__PEObv 1.5s ease-in-out infinite;
+}
+
+.loading_cardSkeleton__4MbCS:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading_cardSkeleton__4MbCS:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loading_pulse__PEObv {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
