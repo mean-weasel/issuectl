@@ -151,12 +151,3 @@
   color: var(--paper-ink-faint);
 }
 
-.lblBug {
-  color: var(--paper-brick);
-}
-
-.lblFeat {
-  /* Darker butter — var(--paper-butter) on cream fails WCAG AA (1.89:1).
-     #8a6914 restores >4.5:1 while keeping the warm-yellow feel. */
-  color: #8a6914;
-}
