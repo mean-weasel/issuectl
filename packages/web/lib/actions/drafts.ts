@@ -314,6 +314,12 @@ export async function getDefaultRepoIdAction(): Promise<number | null> {
 export async function setDefaultRepoIdAction(
   repoId: number | null,
 ): Promise<{ success: boolean; error?: string }> {
+  if (repoId !== null) {
+    if (typeof repoId !== "number" || !Number.isInteger(repoId) || repoId <= 0) {
+      return { success: false, error: "repoId must be a positive integer" };
+    }
+  }
+
   try {
     const db = getDb();
     setSetting(db, "default_repo_id", repoId !== null ? String(repoId) : "");

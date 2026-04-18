@@ -37,6 +37,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
   // Load repos and default repo when the sheet opens.
   useEffect(() => {
     if (!open) return;
+    setSelectedRepoId(null);
     setLoadingRepos(true);
     Promise.all([listReposAction(), getDefaultRepoIdAction()])
       .then(([repoList, defaultId]) => {
@@ -87,7 +88,12 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           idempotencyKey,
         );
         if (!assignResult.success) {
-          setError(assignResult.error);
+          // The draft was created but assignment failed. Navigate to the
+          // draft so the user can retry assignment from there, rather
+          // than leaving an invisible orphan.
+          showToast("Issue creation failed — saved as draft", "warning");
+          resetAndClose();
+          router.push(`/drafts/${createResult.id}`);
           return;
         }
         const repo = repos.find((r) => r.id === selectedRepoId);
