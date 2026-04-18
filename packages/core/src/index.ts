@@ -105,6 +105,8 @@ export {
   createIssue,
   updateIssue,
   closeIssue,
+  reassignIssue,
+  type ReassignResult,
 } from "./github/issues.js";
 export {
   LIFECYCLE_LABEL,

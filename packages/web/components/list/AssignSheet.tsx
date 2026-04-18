@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet, Button } from "@/components/paper";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { listReposAction, assignDraftAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
@@ -22,29 +23,32 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
   const { showToast } = useToast();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [assigning, setAssigning] = useState(false);
-  const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
+  const [assigning, setAssigning] = useState<number | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setSelectedRepo(null);
     setLoading(true);
-    setSelectedRepoId(null);
     listReposAction()
       .then(setRepos)
       .catch(() => setError("Failed to load repos"))
       .finally(() => setLoading(false));
   }, [open]);
 
-  const handleAssign = async () => {
-    if (selectedRepoId === null) return;
-    setAssigning(true);
+  const handleRepoTap = (repo: Repo) => {
+    setSelectedRepo(repo);
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!selectedRepo) return;
+    setAssigning(selectedRepo.id);
     setError(null);
     const idempotencyKey = newIdempotencyKey();
-    const repo = repos.find((r) => r.id === selectedRepoId);
     try {
-      const result = await assignDraftAction(draftId, selectedRepoId, idempotencyKey);
+      const result = await assignDraftAction(draftId, selectedRepo.id, idempotencyKey);
       if (!result.success) {
         setError(result.error);
         return;
@@ -54,9 +58,10 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
       } else {
         showToast(`Issue #${result.issueNumber} created`, "success");
       }
+      setSelectedRepo(null);
       onClose();
-      if (repo && result.issueNumber) {
-        router.push(`/issues/${repo.owner}/${repo.name}/${result.issueNumber}`);
+      if (result.issueNumber) {
+        router.push(`/issues/${selectedRepo.owner}/${selectedRepo.name}/${result.issueNumber}`);
       } else {
         router.push("/");
       }
@@ -64,55 +69,63 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
       console.error("[issuectl] assignDraft threw:", err);
       setError(err instanceof Error ? err.message : "Failed to assign draft");
     } finally {
-      setAssigning(false);
+      setAssigning(null);
     }
   };
 
-  const selectedRepo = repos.find((r) => r.id === selectedRepoId);
-
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="assign to repo"
-      description={<em>{draftTitle}</em>}
-    >
-      <div className={styles.body}>
-        {loading && <div className={styles.loading}>loading repos…</div>}
-        {error && <div className={styles.error}>{error}</div>}
-        {!loading && repos.length === 0 && !error && (
-          <div className={styles.empty}>
-            <em>no repos tracked yet — add one in settings</em>
-          </div>
-        )}
-        {repos.map((repo) => (
-          <button
-            key={repo.id}
-            className={
-              repo.id === selectedRepoId ? styles.rowSelected : styles.row
-            }
-            onClick={() => setSelectedRepoId(repo.id)}
-            disabled={assigning}
-          >
-            <div className={styles.repoName}>{repo.name}</div>
-            <div className={styles.repoOwner}>{repo.owner}</div>
-          </button>
-        ))}
-        <div className={styles.footer}>
-          <Button variant="ghost" onClick={onClose} disabled={assigning}>
-            cancel
-          </Button>
-          {selectedRepo && (
-            <Button
-              variant="primary"
-              onClick={handleAssign}
-              disabled={assigning}
-            >
-              {assigning ? "assigning…" : `assign to ${selectedRepo.name}`}
-            </Button>
+    <>
+      <Sheet
+        open={open}
+        onClose={onClose}
+        title="assign to repo"
+        description={<em>{draftTitle}</em>}
+      >
+        <div className={styles.body}>
+          {loading && <div className={styles.loading}>loading repos…</div>}
+          {error && !selectedRepo && <div className={styles.error}>{error}</div>}
+          {!loading && repos.length === 0 && !error && (
+            <div className={styles.empty}>
+              <em>no repos tracked yet — add one in settings</em>
+            </div>
           )}
+          {repos.map((repo) => (
+            <button
+              key={repo.id}
+              className={styles.row}
+              onClick={() => handleRepoTap(repo)}
+              disabled={assigning !== null}
+            >
+              <div className={styles.repoName}>{repo.name}</div>
+              <div className={styles.repoOwner}>{repo.owner}</div>
+              {assigning === repo.id && (
+                <div className={styles.spinner}>assigning…</div>
+              )}
+            </button>
+          ))}
+          <div className={styles.footer}>
+            <Button variant="ghost" onClick={onClose} disabled={assigning !== null}>
+              cancel
+            </Button>
+          </div>
         </div>
-      </div>
-    </Sheet>
+      </Sheet>
+
+      {selectedRepo && (
+        <ConfirmDialog
+          title="Assign to Repo"
+          message={`Assign "${draftTitle}" to ${selectedRepo.owner}/${selectedRepo.name}?`}
+          confirmLabel="Assign"
+          confirmVariant="default"
+          onConfirm={handleConfirmAssign}
+          onCancel={() => {
+            setSelectedRepo(null);
+            setError(null);
+          }}
+          isPending={assigning !== null}
+          error={error ?? undefined}
+        />
+      )}
+    </>
   );
 }
