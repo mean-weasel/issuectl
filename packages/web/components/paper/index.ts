@@ -4,3 +4,4 @@ export { Sheet } from "./Sheet";
 export { Drawer } from "./Drawer";
 export { Checkbox } from "./Checkbox";
 export { Fab } from "./Fab";
+export { LabelChip } from "./LabelChip";

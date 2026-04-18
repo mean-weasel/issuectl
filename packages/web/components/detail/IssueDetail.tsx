@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { GitHubIssue, Priority } from "@issuectl/core";
-import { Chip } from "@/components/paper";
+import { Chip, LabelChip } from "@/components/paper";
 import { timeAgo } from "@/lib/format";
 import { DetailTopBar } from "./DetailTopBar";
 import {
@@ -56,8 +56,8 @@ export function IssueDetail({
           {displayLabels.length > 0 && (
             <>
               <MetaSeparator />
-              {displayLabels.slice(0, 3).map((l) => (
-                <span key={l.name}>{l.name}</span>
+              {displayLabels.map((l) => (
+                <LabelChip key={l.name} name={l.name} color={l.color} />
               ))}
             </>
           )}

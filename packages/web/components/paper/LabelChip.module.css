@@ -1,0 +1,12 @@
+.label {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--paper-radius-sm);
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
