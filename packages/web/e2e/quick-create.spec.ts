@@ -251,6 +251,9 @@ test.describe("Quick Create flow", () => {
     // Step 3: Results — the summary says "created" or "saved" depending
     // on whether the parser matched a repo or fell back to drafts.
     await expect(page.getByText(/created|saved/)).toBeVisible({ timeout: 30000 });
+    // Ensure no partial failures slipped through — "failed" in the
+    // summary means the batch had errors we shouldn't silently accept.
+    await expect(page.getByText("failed")).not.toBeVisible();
 
     // Extract created issue numbers from links. If Claude matched a
     // repo, we get `#123` links; if it fell back to drafts, we get
