@@ -12,7 +12,7 @@ export default defineConfig({
     {
       name: "desktop-chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: /(mobile-ux-patterns|launch-ui|launch-flow)\.spec\.ts/,
+      testIgnore: /(mobile-ux-patterns|launch-ui|launch-flow|action-sheets)\.spec\.ts/,
     },
     {
       name: "mobile-chromium",
@@ -23,7 +23,7 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
-      testMatch: /(mobile-ux-patterns|launch-ui)\.spec\.ts/,
+      testMatch: /(mobile-ux-patterns|launch-ui|action-sheets)\.spec\.ts/,
     },
   ],
 });
