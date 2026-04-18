@@ -235,32 +235,33 @@ test.describe("Quick Create flow", () => {
     await expect(parseButton).toBeEnabled();
     await parseButton.click();
 
-    // Wait for parsing to complete (Claude CLI can take up to 90s)
-    await expect(
-      page.getByRole("button", { name: "Parsing..." }),
-    ).toBeVisible({ timeout: 5000 });
-    await expect(
-      page.getByRole("button", { name: "Parsing..." }),
-    ).not.toBeVisible({ timeout: 90000 });
+    // Wait for parsing to complete (Claude CLI can take up to 90s).
+    // The "Parsing..." state may be too brief to catch if the CLI
+    // responds quickly, so we wait for the result directly rather
+    // than asserting the intermediate spinner.
+    await expect(page.getByText("parsed")).toBeVisible({ timeout: 90000 });
+    await expect(page.getByText(/\d+ included/)).toBeVisible();
 
-    // Step 2: Review — should show at least one issue card
-    await expect(page.getByText("parsed")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("included for creation")).toBeVisible();
-
-    // Verify a Create button exists with a count
-    const createButton = page.getByRole("button", { name: /Create \d+ Issue/ });
+    // Verify a Create button exists with a count — text varies based
+    // on whether issues matched repos or will be saved as drafts.
+    const createButton = page.getByRole("button", { name: /Create \d+|Save \d+ Draft/ });
     await expect(createButton).toBeVisible();
     await createButton.click();
 
-    // Step 3: Results
-    await expect(page.getByText("created")).toBeVisible({ timeout: 30000 });
+    // Step 3: Results — the summary says "created" or "saved" depending
+    // on whether the parser matched a repo or fell back to drafts.
+    await expect(page.getByText(/created|saved/)).toBeVisible({ timeout: 30000 });
 
-    // Extract created issue numbers from the links
+    // Extract created issue numbers from links. If Claude matched a
+    // repo, we get `#123` links; if it fell back to drafts, we get
+    // "view draft" links instead. Either is a valid success.
     const issueLinks = page.getByRole("link", { name: /^#\d+$/ });
-    const count = await issueLinks.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    const draftLinks = page.getByRole("link", { name: "view draft" });
+    const issueCount = await issueLinks.count();
+    const draftCount = await draftLinks.count();
+    expect(issueCount + draftCount).toBeGreaterThanOrEqual(1);
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < issueCount; i++) {
       const text = await issueLinks.nth(i).textContent();
       const num = Number(text?.replace("#", ""));
       if (num > 0) {

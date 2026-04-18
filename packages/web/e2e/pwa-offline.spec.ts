@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
+import { existsSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -22,6 +23,13 @@ const TEST_REPO = "issuectl-test-repo";
 // in dev mode) and gh auth for the server to boot.
 
 async function canRun(): Promise<{ ok: boolean; reason?: string }> {
+  // next start requires a prior next build — without BUILD_ID the
+  // server crashes immediately with "Could not find a production build".
+  const buildId = join(import.meta.dirname, "..", ".next", "BUILD_ID");
+  if (!existsSync(buildId)) {
+    return { ok: false, reason: "no production build — run `pnpm turbo build` first" };
+  }
+
   try {
     await execFileAsync("gh", ["auth", "token"]);
     return { ok: true };
