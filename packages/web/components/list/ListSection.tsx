@@ -6,10 +6,9 @@ import styles from "./ListSection.module.css";
 type Props = {
   title: ReactNode | null;
   items: UnifiedListItem[];
-  onAssign?: (draftId: string, draftTitle: string) => void;
 };
 
-export function ListSection({ title, items, onAssign }: Props) {
+export function ListSection({ title, items }: Props) {
   if (items.length === 0) return null;
 
   return (
@@ -29,7 +28,6 @@ export function ListSection({ title, items, onAssign }: Props) {
               : `issue-${item.repo.id}-${item.issue.number}`
           }
           item={item}
-          onAssign={onAssign}
         />
       ))}
     </>

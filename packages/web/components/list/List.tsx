@@ -9,7 +9,6 @@ import { repoKey } from "@/lib/repo-key";
 import { ListSection } from "./ListSection";
 import { PrListRow } from "./PrListRow";
 import { CreateDraftSheet } from "./CreateDraftSheet";
-import { AssignSheet } from "./AssignSheet";
 import { NavDrawerContent } from "./NavDrawerContent";
 import { RepoFilterChips } from "./RepoFilterChips";
 import { FiltersSheet } from "./FiltersSheet";
@@ -93,11 +92,6 @@ export function List({
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [assignTarget, setAssignTarget] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
-
   const sectionCounts: Record<Section, number> = {
     unassigned: data.unassigned.length,
     in_focus: data.in_focus.length,
@@ -312,7 +306,6 @@ export function List({
         renderIssueSection({
           activeSection,
           data,
-          onAssign: (id, title) => setAssignTarget({ id, title }),
         })
       ) : prCount === 0 ? (
         <div className={styles.empty}>
@@ -353,12 +346,6 @@ export function List({
             open={createOpen}
             onClose={() => setCreateOpen(false)}
           />
-          <AssignSheet
-            open={assignTarget !== null}
-            onClose={() => setAssignTarget(null)}
-            draftId={assignTarget?.id ?? ""}
-            draftTitle={assignTarget?.title ?? ""}
-          />
         </>
       )}
 
@@ -397,11 +384,9 @@ export function List({
 function renderIssueSection({
   activeSection,
   data,
-  onAssign,
 }: {
   activeSection: Section;
   data: UnifiedList;
-  onAssign: (id: string, title: string) => void;
 }) {
   const items =
     activeSection === "unassigned"
@@ -423,7 +408,7 @@ function renderIssueSection({
     );
   }
 
-  return <ListSection title={null} items={items} onAssign={onAssign} />;
+  return <ListSection title={null} items={items} />;
 }
 
 function FilterIcon() {

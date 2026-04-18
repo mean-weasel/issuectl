@@ -1,0 +1,40 @@
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 28px;
+  font-family: var(--paper-serif);
+  font-size: 16px;
+  color: var(--paper-ink);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--paper-line-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover,
+.item:active {
+  background: var(--paper-bg-warm);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--paper-accent);
+  outline-offset: -2px;
+}
+
+.danger {
+  color: var(--paper-brick);
+}
+
+.icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}

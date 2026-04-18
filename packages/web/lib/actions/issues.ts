@@ -135,7 +135,7 @@ export async function closeIssue(
   owner: string,
   repo: string,
   number: number,
-): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
+): Promise<{ success: true; cacheStale?: true } | { success: false; error: string }> {
   if (!owner || !repo || !Number.isFinite(number) || number <= 0) {
     return { success: false, error: "Valid owner, repo, and issue number are required" };
   }

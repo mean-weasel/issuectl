@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Delete Draft + Close Issue UX Mockups</title>
+<style>
+  :root {
+    --paper-bg:           #f3ecd9;
+    --paper-bg-warm:      #ede5cf;
+    --paper-bg-warmer:    #e6dec4;
+    --paper-ink:          #1a1712;
+    --paper-ink-soft:     #3a342a;
+    --paper-ink-muted:    #746a50;
+    --paper-ink-faint:    #6e644a;
+    --paper-line:         #e0d6bc;
+    --paper-line-soft:    #e9dfc6;
+    --paper-accent:       #2d5f3f;
+    --paper-accent-dim:   #4a7a5c;
+    --paper-accent-soft:  #dce8de;
+    --paper-brick:        #a8432a;
+    --paper-butter:       #d9a54d;
+    --paper-radius-sm:    3px;
+    --paper-radius-md:    6px;
+    --paper-radius-lg:    10px;
+    --paper-radius-xl:    14px;
+    --paper-fs-xs:        11px;
+    --paper-fs-sm:        12px;
+    --paper-fs-base:      13px;
+    --paper-fs-md:        14px;
+    --paper-fs-lg:        16px;
+    --paper-fs-xl:        18px;
+    --paper-fs-2xl:       22px;
+    --paper-fs-3xl:       26px;
+    --paper-shadow-sheet: 0 -20px 60px rgba(0, 0, 0, 0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #2a2520;
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 40px 20px;
+    color: #f3ecd9;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 300;
+    text-align: center;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #a09880;
+    margin-bottom: 50px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 60px 0 8px;
+    color: #f3ecd9;
+    text-align: center;
+  }
+  .section-desc {
+    text-align: center;
+    font-size: 13px;
+    color: #a09880;
+    margin-bottom: 24px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+
+  /* Phone frame */
+  .phone-row {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+  .phone-wrapper {
+    text-align: center;
+  }
+  .phone-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #a09880;
+    margin-bottom: 12px;
+  }
+  .phone {
+    width: 393px;
+    height: 852px;
+    background: var(--paper-bg);
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    color: var(--paper-ink);
+    display: flex;
+    flex-direction: column;
+  }
+  .phone.short {
+    height: 620px;
+  }
+
+  /* Serif approximation */
+  .serif { font-family: Georgia, serif; }
+
+  /* ── Top bar ── */
+  .topbar {
+    padding: 56px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--paper-line);
+    flex-shrink: 0;
+  }
+  .topbar-back {
+    font-family: Georgia, serif;
+    font-size: 22px;
+    color: var(--paper-ink);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: -10px;
+    cursor: pointer;
+  }
+  .topbar-crumb {
+    flex: 1;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--paper-ink-muted);
+  }
+  .topbar-crumb b {
+    color: var(--paper-ink-soft);
+    font-style: normal;
+  }
+  .topbar-menu {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--paper-ink-muted);
+    cursor: pointer;
+    border-radius: var(--paper-radius-sm);
+  }
+  .topbar-menu:hover {
+    background: var(--paper-bg-warm);
+  }
+  .topbar-menu.delete-btn {
+    color: var(--paper-brick);
+    font-size: 18px;
+  }
+  .topbar-menu.close-btn {
+    font-size: 12px;
+    font-family: Georgia, serif;
+    font-weight: 500;
+    color: var(--paper-ink-muted);
+    width: auto;
+    padding: 0 8px;
+  }
+
+  /* ── Draft detail body ── */
+  .detail-body {
+    padding: 22px 24px 60px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .detail-title {
+    font-family: Georgia, serif;
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.2;
+    letter-spacing: -0.4px;
+    color: var(--paper-ink);
+    margin-bottom: 12px;
+  }
+  .detail-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--paper-ink-muted);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: var(--paper-radius-sm);
+    border: 1px dashed var(--paper-ink-faint);
+    color: var(--paper-ink-faint);
+  }
+  .chip.solid {
+    border-style: solid;
+    border-color: var(--paper-line);
+    color: var(--paper-ink-soft);
+    background: var(--paper-bg-warm);
+  }
+  .sep { color: var(--paper-ink-faint); }
+
+  .hint-box {
+    padding: 14px 16px;
+    background: var(--paper-bg-warm);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    margin-bottom: 28px;
+  }
+  .hint-text {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--paper-ink-faint);
+    line-height: 1.4;
+    margin-bottom: 12px;
+  }
+  .assign-btn {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--paper-accent);
+    background: transparent;
+    border: 1px solid var(--paper-accent-dim);
+    padding: 11px 16px;
+    border-radius: var(--paper-radius-sm);
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+  }
+  .textarea-mock {
+    width: 100%;
+    height: 160px;
+    border: 1px solid var(--paper-line);
+    border-radius: var(--paper-radius-md);
+    padding: 14px 16px;
+    font-family: Georgia, serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--paper-ink-soft);
+    background: transparent;
+    resize: none;
+  }
+
+  /* ── List rows ── */
+  .list-content {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .list-row {
+    border-bottom: 1px solid var(--paper-line-soft);
+    display: flex;
+    flex-direction: column;
+  }
+  .row-link {
+    padding: 16px 24px 8px 58px;
+    position: relative;
+    cursor: pointer;
+  }
+  .row-check {
+    position: absolute;
+    left: 24px;
+    top: 18px;
+    width: 18px;
+    height: 18px;
+    border: 1.5px dashed var(--paper-ink-faint);
+    border-radius: 3px;
+  }
+  .row-title {
+    font-family: Georgia, serif;
+    font-size: 17px;
+    line-height: 1.3;
+    color: var(--paper-ink);
+    margin-bottom: 6px;
+  }
+  .row-meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--paper-ink-muted);
+  }
+  .row-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 20px 14px 58px;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .row-assign-btn {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--paper-accent);
+    background: transparent;
+    border: 1px solid var(--paper-accent-dim);
+    padding: 11px 16px;
+    border-radius: var(--paper-radius-sm);
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .row-delete-btn {
+    font-family: Georgia, serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--paper-brick);
+    background: transparent;
+    border: 1px solid rgba(168, 67, 42, 0.3);
+    padding: 11px 14px;
+    border-radius: var(--paper-radius-sm);
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .row-more-btn {
+    font-family: Georgia, serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--paper-ink-muted);
+    background: transparent;
+    border: 1px solid var(--paper-line);
+    padding: 11px 14px;
+    border-radius: var(--paper-radius-sm);
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    letter-spacing: 2px;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--paper-line);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--paper-ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab.active {
+    color: var(--paper-ink);
+    font-weight: 600;
+    border-bottom-color: var(--paper-ink);
+  }
+  .tab-count {
+    font-size: 11px;
+    margin-left: 4px;
+    color: var(--paper-ink-faint);
+  }
+
+  /* ── Confirm dialog (bottom sheet) ── */
+  .confirm-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 23, 18, 0.4);
+    z-index: 100;
+    border-radius: 40px;
+  }
+  .confirm-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--paper-bg);
+    border-top: 1px solid var(--paper-line);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    box-shadow: var(--paper-shadow-sheet);
+    z-index: 101;
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    overflow: hidden;
+  }
+  .confirm-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--paper-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .confirm-title {
+    font-family: Georgia, serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .confirm-close {
+    color: var(--paper-ink-muted);
+    font-size: 22px;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+  }
+  .confirm-body {
+    padding: 20px 24px;
+  }
+  .confirm-msg {
+    font-size: 14px;
+    color: var(--paper-ink-soft);
+    line-height: 1.5;
+  }
+  .confirm-footer {
+    padding: 16px 24px 32px;
+    border-top: 1px solid var(--paper-line);
+    display: flex;
+    gap: 8px;
+  }
+  .confirm-footer .btn {
+    flex: 1;
+    padding: 14px 16px;
+    border-radius: var(--paper-radius-md);
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+  }
+  .btn-cancel {
+    background: var(--paper-bg-warmer);
+    color: var(--paper-ink-soft);
+    border: 1px solid var(--paper-line) !important;
+  }
+  .btn-danger {
+    background: var(--paper-brick);
+    color: var(--paper-bg);
+  }
+
+  /* ── Action sheet (bottom sheet with options) ── */
+  .action-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--paper-bg);
+    border-top: 1px solid var(--paper-line);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    box-shadow: var(--paper-shadow-sheet);
+    z-index: 101;
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    overflow: hidden;
+  }
+  .action-sheet-header {
+    padding: 20px 24px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .action-sheet-title {
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--paper-ink-muted);
+  }
+  .action-sheet-items {
+    padding: 0 0 32px;
+  }
+  .action-sheet-item {
+    padding: 16px 24px;
+    font-family: Georgia, serif;
+    font-size: 16px;
+    color: var(--paper-ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--paper-line-soft);
+  }
+  .action-sheet-item:last-child {
+    border-bottom: none;
+  }
+  .action-sheet-item.danger {
+    color: var(--paper-brick);
+  }
+  .action-sheet-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Issue detail specifics ── */
+  .issue-title {
+    font-family: Georgia, serif;
+    font-weight: 600;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--paper-ink);
+    margin-bottom: 12px;
+  }
+  .state-chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: var(--paper-radius-sm);
+    border: 1px solid var(--paper-accent-dim);
+    color: var(--paper-accent);
+    background: var(--paper-accent-soft);
+  }
+  .issue-body {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--paper-ink-soft);
+    margin-bottom: 24px;
+  }
+  .issue-num {
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    color: var(--paper-ink-faint);
+    font-size: 12px;
+  }
+  .priority-link {
+    font-size: 12px;
+    color: var(--paper-ink-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--paper-line);
+    cursor: pointer;
+  }
+
+  /* Callout / annotation */
+  .annotation {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 600;
+    color: #e8c547;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: none;
+  }
+  .annotation-arrow {
+    display: inline-block;
+    margin: 0 4px;
+  }
+
+  /* Callout bubble for pointing things out */
+  .callout {
+    background: rgba(232, 197, 71, 0.12);
+    border: 1px solid rgba(232, 197, 71, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 8px 16px;
+    font-size: 11px;
+    color: #e8c547;
+    text-align: center;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  .callout.inside {
+    position: absolute;
+    z-index: 200;
+  }
+
+  /* ── Highlight ring ── */
+  .highlight {
+    outline: 2px solid #e8c547;
+    outline-offset: 4px;
+    border-radius: 6px;
+    position: relative;
+  }
+</style>
+</head>
+<body>
+
+<h1>Issue #93 — UX Mockups (v2)</h1>
+<p class="subtitle">Delete drafts + surface close-issue &middot; mobile @ 393&times;852 &middot; thumb-zone friendly</p>
+
+<!-- ======================================================= -->
+<!-- SECTION 1: DRAFT DETAIL — REVISED PLACEMENTS             -->
+<!-- ======================================================= -->
+<div class="section-title">1. Draft Detail &mdash; Delete Button Placement</div>
+<p class="section-desc">
+  Top-right is bad thumb zone on mobile. Three alternatives that keep
+  delete reachable without shifting your grip.
+</p>
+
+<div class="phone-row">
+  <!-- 1A: Delete in the hint box -->
+  <div class="phone-wrapper">
+    <div class="phone-label">A: Delete inside hint box</div>
+    <div class="phone">
+      <div class="topbar">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb"><em>draft</em></div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-title">Add dark mode support to the dashboard</div>
+        <div class="detail-meta">
+          <span class="chip">no repo</span>
+          <span class="sep">&middot;</span>
+          <span>priority: normal</span>
+          <span class="sep">&middot;</span>
+          <span>1d old</span>
+        </div>
+        <div class="hint-box highlight">
+          <div class="hint-text">this is a local draft &mdash; it lives only on your machine until you assign it to a repo.</div>
+          <div class="assign-btn">assign to repo &rarr;</div>
+          <div style="border-top: 1px solid var(--paper-line); margin-top: 4px; padding-top: 12px;">
+            <div style="font-family: Georgia, serif; font-size: 13px; font-weight: 500; color: var(--paper-brick); cursor: pointer; text-align: center; padding: 8px 0;">delete this draft</div>
+          </div>
+        </div>
+        <textarea class="textarea-mock" readonly>## Description
+Add a dark mode theme to the issuectl web dashboard.</textarea>
+      </div>
+      <div class="callout">delete as secondary action inside the existing hint box &mdash; mid-screen, easy thumb reach</div>
+    </div>
+  </div>
+
+  <!-- 1B: Delete below textarea -->
+  <div class="phone-wrapper">
+    <div class="phone-label">B: Delete below body</div>
+    <div class="phone">
+      <div class="topbar">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb"><em>draft</em></div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-title">Add dark mode support to the dashboard</div>
+        <div class="detail-meta">
+          <span class="chip">no repo</span>
+          <span class="sep">&middot;</span>
+          <span>priority: normal</span>
+          <span class="sep">&middot;</span>
+          <span>1d old</span>
+        </div>
+        <div class="hint-box">
+          <div class="hint-text">this is a local draft &mdash; it lives only on your machine until you assign it to a repo.</div>
+          <div class="assign-btn">assign to repo &rarr;</div>
+        </div>
+        <textarea class="textarea-mock" style="height: 100px;" readonly>## Description
+Add a dark mode theme...</textarea>
+        <div class="highlight" style="margin-top: 32px; text-align: center; padding: 12px 0;">
+          <div style="font-family: Georgia, serif; font-size: 13px; color: var(--paper-brick); cursor: pointer;">delete this draft</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1C: Delete via swipe-up action sheet -->
+  <div class="phone-wrapper">
+    <div class="phone-label">C: Swipe-up action sheet</div>
+    <div class="phone">
+      <div class="topbar" style="opacity: 0.4;">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb"><em>draft</em></div>
+      </div>
+      <div class="detail-body" style="opacity: 0.4;">
+        <div class="detail-title">Add dark mode support to the dashboard</div>
+        <div class="detail-meta">
+          <span class="chip">no repo</span>
+          <span class="sep">&middot;</span>
+          <span>priority: normal</span>
+        </div>
+        <div class="hint-box">
+          <div class="hint-text">this is a local draft...</div>
+          <div class="assign-btn">assign to repo &rarr;</div>
+        </div>
+      </div>
+      <div class="confirm-scrim"></div>
+      <div class="action-sheet">
+        <div class="action-sheet-header">
+          <div class="action-sheet-title">Draft actions</div>
+          <div class="confirm-close">&times;</div>
+        </div>
+        <div class="action-sheet-items">
+          <div class="action-sheet-item">
+            <span class="action-sheet-icon">&rarr;</span>
+            Assign to repo
+          </div>
+          <div class="action-sheet-item danger">
+            <span class="action-sheet-icon">&#x1D5EB;</span>
+            Delete draft
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog (shared by all options above) -->
+<div class="section-desc" style="margin-top: 0;">
+  All three options open the same confirm bottom sheet:
+</div>
+<div class="phone-row">
+  <div class="phone-wrapper">
+    <div class="phone-label">Confirm dialog (any option)</div>
+    <div class="phone short">
+      <div class="topbar" style="opacity: 0.3; padding-top: 24px;">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb"><em>draft</em></div>
+      </div>
+      <div class="detail-body" style="opacity: 0.3;">
+        <div class="detail-title" style="font-size: 20px;">Add dark mode support to the dashboard</div>
+      </div>
+      <div class="confirm-scrim"></div>
+      <div class="confirm-sheet">
+        <div class="confirm-header">
+          <div class="confirm-title">Delete Draft</div>
+          <div class="confirm-close">&times;</div>
+        </div>
+        <div class="confirm-body">
+          <div class="confirm-msg">Delete &ldquo;Add dark mode support to the dashboard&rdquo;? This draft is local-only and cannot be recovered.</div>
+        </div>
+        <div class="confirm-footer">
+          <div class="btn btn-cancel">Cancel</div>
+          <div class="btn btn-danger">Delete Draft</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- SECTION 2: DRAFT LIST OPTIONS                            -->
+<!-- ======================================================= -->
+<div class="section-title">2. Drafts List &mdash; Three Options</div>
+<p class="section-desc">
+  How should delete appear (or not) on draft rows in the list?
+</p>
+
+<div class="phone-row">
+  <!-- Option A: No delete in list -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option A: No list delete</div>
+    <div class="phone short">
+      <div class="topbar" style="padding-top: 24px;">
+        <div style="flex:1; font-family: Georgia, serif; font-size: 20px; font-style: italic;">issuectl</div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">drafts<span class="tab-count">4</span></div>
+        <div class="tab">in focus<span class="tab-count">48</span></div>
+        <div class="tab">in flight<span class="tab-count">0</span></div>
+        <div class="tab">shipped<span class="tab-count">86</span></div>
+      </div>
+      <div class="list-content">
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">Add dark mode support to the dashboard</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>1d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-assign-btn">assign to repo &rarr;</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">blah</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>2d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-assign-btn">assign to repo &rarr;</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">Test draft for assign button visibility</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>2d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-assign-btn">assign to repo &rarr;</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout">delete only lives on draft detail page &mdash; list stays clean</div>
+    </div>
+  </div>
+
+  <!-- Option B: Delete button alongside assign -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option B: Delete + Assign buttons</div>
+    <div class="phone short">
+      <div class="topbar" style="padding-top: 24px;">
+        <div style="flex:1; font-family: Georgia, serif; font-size: 20px; font-style: italic;">issuectl</div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">drafts<span class="tab-count">4</span></div>
+        <div class="tab">in focus<span class="tab-count">48</span></div>
+        <div class="tab">in flight<span class="tab-count">0</span></div>
+        <div class="tab">shipped<span class="tab-count">86</span></div>
+      </div>
+      <div class="list-content">
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">Add dark mode support to the dashboard</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>1d</span>
+            </div>
+          </div>
+          <div class="row-actions highlight">
+            <div class="row-delete-btn">delete</div>
+            <div class="row-assign-btn">assign to repo &rarr;</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">blah</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>2d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-delete-btn">delete</div>
+            <div class="row-assign-btn">assign to repo &rarr;</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">Test draft for assign button visibility</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>2d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-delete-btn">delete</div>
+            <div class="row-assign-btn">assign to repo &rarr;</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout">both actions visible &mdash; more cluttered but no extra taps</div>
+    </div>
+  </div>
+
+  <!-- Option C: ... menu opens action sheet -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option C: &ldquo;...&rdquo; opens action sheet</div>
+    <div class="phone short">
+      <div class="topbar" style="padding-top: 24px;">
+        <div style="flex:1; font-family: Georgia, serif; font-size: 20px; font-style: italic;">issuectl</div>
+      </div>
+      <div class="tabs">
+        <div class="tab active">drafts<span class="tab-count">4</span></div>
+        <div class="tab">in focus<span class="tab-count">48</span></div>
+        <div class="tab">in flight<span class="tab-count">0</span></div>
+        <div class="tab">shipped<span class="tab-count">86</span></div>
+      </div>
+      <div class="list-content" style="opacity: 0.4;">
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">Add dark mode support to the dashboard</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>1d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-more-btn">&middot;&middot;&middot;</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="row-link">
+            <div class="row-check"></div>
+            <div class="row-title">blah</div>
+            <div class="row-meta">
+              <span class="chip">no repo</span>
+              <span class="sep">&middot;</span>
+              <span>local draft</span>
+              <span class="sep">&middot;</span>
+              <span>2d</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <div class="row-more-btn">&middot;&middot;&middot;</div>
+          </div>
+        </div>
+      </div>
+      <!-- Scrim -->
+      <div class="confirm-scrim"></div>
+      <!-- Action sheet -->
+      <div class="action-sheet">
+        <div class="action-sheet-header">
+          <div class="action-sheet-title">Add dark mode support...</div>
+          <div class="confirm-close">&times;</div>
+        </div>
+        <div class="action-sheet-items">
+          <div class="action-sheet-item">
+            <span class="action-sheet-icon">&rarr;</span>
+            Assign to repo
+          </div>
+          <div class="action-sheet-item danger">
+            <span class="action-sheet-icon">&#x1D5EB;</span>
+            Delete draft
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- SECTION 3: ISSUE DETAIL — CLOSE BUTTON PLACEMENT         -->
+<!-- ======================================================= -->
+<div class="section-title">3. Issue Detail &mdash; Close Issue Placement</div>
+<p class="section-desc">
+  Top-right is bad for mobile thumbs. Three alternatives that keep
+  close accessible without reaching.
+</p>
+
+<div class="phone-row">
+  <!-- 3A: Tappable state chip -->
+  <div class="phone-wrapper">
+    <div class="phone-label">A: Tap the state chip</div>
+    <div class="phone">
+      <div class="topbar">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb">mean-weasel/<b>issuectl</b></div>
+      </div>
+      <div class="detail-body">
+        <div class="issue-title">Add delete for drafts and surface close-issue action</div>
+        <div class="detail-meta">
+          <span class="chip solid">issuectl</span>
+          <span class="issue-num">#93</span>
+          <span class="sep">&middot;</span>
+          <span class="state-chip highlight" style="cursor: pointer;">&#x25CB; open &darr;</span>
+          <span class="sep">&middot;</span>
+          <span>today</span>
+        </div>
+        <div style="margin-top: 4px; margin-bottom: 20px;">
+          <span class="priority-link">priority: normal</span>
+        </div>
+        <div class="issue-body">
+          <strong>Original report</strong><br>
+          No way to delete an issue or a draft from the UX.<br><br>
+          <strong>Clarification</strong><br>
+          &bull; <strong>Drafts:</strong> Add delete (local-only).<br>
+          &bull; <strong>Issues:</strong> The real action is <strong>close</strong>.
+        </div>
+      </div>
+      <div class="callout">tap &ldquo;&#x25CB; open&rdquo; chip to close &mdash; contextual, mid-screen, natural</div>
+    </div>
+  </div>
+
+  <!-- 3B: Close button below body -->
+  <div class="phone-wrapper">
+    <div class="phone-label">B: Close button after body</div>
+    <div class="phone">
+      <div class="topbar">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb">mean-weasel/<b>issuectl</b></div>
+      </div>
+      <div class="detail-body">
+        <div class="issue-title">Add delete for drafts and surface close-issue action</div>
+        <div class="detail-meta">
+          <span class="chip solid">issuectl</span>
+          <span class="issue-num">#93</span>
+          <span class="sep">&middot;</span>
+          <span class="state-chip">&#x25CB; open</span>
+          <span class="sep">&middot;</span>
+          <span>today</span>
+        </div>
+        <div style="margin-top: 4px; margin-bottom: 20px;">
+          <span class="priority-link">priority: normal</span>
+        </div>
+        <div class="issue-body" style="margin-bottom: 16px;">
+          <strong>Original report</strong><br>
+          No way to delete an issue or a draft from the UX.
+        </div>
+        <div style="border-top: 1px solid var(--paper-line); padding-top: 16px; margin-bottom: 24px;">
+          <div class="highlight" style="display: inline-block;">
+            <div style="font-family: Georgia, serif; font-size: 13px; font-weight: 500; color: var(--paper-brick); cursor: pointer; padding: 10px 20px; border: 1px solid rgba(168, 67, 42, 0.3); border-radius: var(--paper-radius-sm);">close issue</div>
+          </div>
+        </div>
+        <div style="font-family: Georgia, serif; font-size: 14px; font-weight: 600; color: var(--paper-ink-muted); margin-bottom: 8px;">Ready to launch</div>
+        <div style="background: var(--paper-bg-warm); border: 1px solid var(--paper-line); border-radius: var(--paper-radius-md); padding: 14px 16px;">
+          <div style="font-family: Georgia, serif; font-size: 12px; color: var(--paper-ink-faint); line-height: 1.4;">Open a Ghostty session with Claude Code pre-loaded.</div>
+        </div>
+      </div>
+      <div class="callout">close button in content flow &mdash; scrolls naturally into thumb zone</div>
+    </div>
+  </div>
+
+  <!-- 3C: Swipe-up sheet from bottom -->
+  <div class="phone-wrapper">
+    <div class="phone-label">C: Swipe-up action sheet</div>
+    <div class="phone">
+      <div class="topbar" style="opacity: 0.4;">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb">mean-weasel/<b>issuectl</b></div>
+      </div>
+      <div class="detail-body" style="opacity: 0.4;">
+        <div class="issue-title">Add delete for drafts and surface close-issue action</div>
+        <div class="detail-meta">
+          <span class="chip solid">issuectl</span>
+          <span class="issue-num">#93</span>
+          <span class="sep">&middot;</span>
+          <span class="state-chip">&#x25CB; open</span>
+        </div>
+      </div>
+      <div class="confirm-scrim"></div>
+      <div class="action-sheet">
+        <div class="action-sheet-header">
+          <div class="action-sheet-title">Issue #93</div>
+          <div class="confirm-close">&times;</div>
+        </div>
+        <div class="action-sheet-items">
+          <div class="action-sheet-item">
+            <span class="action-sheet-icon" style="font-size: 14px;">&#x1F3F7;</span>
+            Edit labels
+          </div>
+          <div class="action-sheet-item">
+            <span class="action-sheet-icon" style="font-size: 14px;">&#x1F517;</span>
+            Copy link
+          </div>
+          <div class="action-sheet-item danger">
+            <span class="action-sheet-icon">&#x25CF;</span>
+            Close issue
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog for close -->
+<div class="section-desc" style="margin-top: 0;">
+  All three open the same confirm sheet:
+</div>
+<div class="phone-row">
+  <div class="phone-wrapper">
+    <div class="phone-label">Confirm close (any option)</div>
+    <div class="phone short">
+      <div class="topbar" style="opacity: 0.3; padding-top: 24px;">
+        <div class="topbar-back">&#x2039;</div>
+        <div class="topbar-crumb">mean-weasel/<b>issuectl</b></div>
+      </div>
+      <div class="detail-body" style="opacity: 0.3;">
+        <div class="issue-title" style="font-size: 20px;">Add delete for drafts and surface close-issue action</div>
+      </div>
+      <div class="confirm-scrim"></div>
+      <div class="confirm-sheet">
+        <div class="confirm-header">
+          <div class="confirm-title">Close Issue</div>
+          <div class="confirm-close">&times;</div>
+        </div>
+        <div class="confirm-body">
+          <div class="confirm-msg">Close issue #93? This can be reopened later from GitHub.</div>
+        </div>
+        <div class="confirm-footer">
+          <div class="btn btn-cancel">Cancel</div>
+          <div class="btn btn-danger">Close Issue</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
