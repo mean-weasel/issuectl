@@ -71,6 +71,8 @@ const DRAFT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const DRAFT_TITLE = "E2E test draft for deletion";
 const CANCEL_DRAFT_ID = "11111111-2222-3333-4444-555555555555";
 const CANCEL_DRAFT_TITLE = "Draft for cancel test";
+const ASSIGN_DRAFT_ID = "cccccccc-dddd-eeee-ffff-aaaaaaaaaaaa";
+const ASSIGN_DRAFT_TITLE = "E2E test draft for assignment";
 
 function createTestDb(dbPath: string): void {
   const db = new Database(dbPath);
@@ -109,6 +111,7 @@ function createTestDb(dbPath: string): void {
     );
     insertDraft.run(DRAFT_ID, DRAFT_TITLE, "Body for e2e test", "normal", now, now);
     insertDraft.run(CANCEL_DRAFT_ID, CANCEL_DRAFT_TITLE, "", "normal", now, now);
+    insertDraft.run(ASSIGN_DRAFT_ID, ASSIGN_DRAFT_TITLE, "", "normal", now, now);
 
     // Seed issues list cache so the index page renders from cache after
     // navigation, without needing a live GitHub fetch for the issues list.
@@ -437,5 +440,64 @@ test.describe("issue close — action sheet flow", () => {
     expect(page.url()).toContain(
       `/issues/${TEST_OWNER}/${TEST_REPO}/${cancelIssueNumber}`,
     );
+  });
+});
+
+// ── Draft assign tests ──────────────────────────────────────────────
+
+test.describe("draft assign — cache invalidation", () => {
+  test("assigning a draft to a repo shows the new issue on the index page", async ({
+    page,
+  }) => {
+    if (skipReason) test.skip(true, skipReason);
+
+    await page.goto(`${BASE_URL}/drafts/${ASSIGN_DRAFT_ID}`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      ASSIGN_DRAFT_TITLE,
+    );
+
+    // Open the action sheet via the bottom handle
+    await page.getByRole("button", { name: /Open Actions/ }).click();
+    const sheet = page.getByRole("dialog", { name: "draft actions" });
+    await expect(sheet).toBeVisible();
+
+    // Click "Assign to repo" to open the AssignSheet
+    await sheet.getByRole("button", { name: /Assign to repo/ }).click();
+
+    // The assign sheet should appear with the test repo listed
+    const assignSheet = page.getByRole("dialog", { name: /assign to repo/ });
+    await expect(assignSheet).toBeVisible();
+
+    // Select the test repo (click to select, not assign — the new two-step flow)
+    await assignSheet.getByText(TEST_REPO).click();
+
+    // Confirm the assignment
+    await assignSheet.getByRole("button", { name: /assign to/i }).click();
+
+    // Should navigate to the new issue's detail page
+    await page.waitForURL(
+      (url) => url.pathname.startsWith(`/issues/${TEST_OWNER}/${TEST_REPO}/`),
+      { timeout: 30000 },
+    );
+
+    // Extract the issue number from the URL for cleanup
+    const issueMatch = page.url().match(/\/issues\/[^/]+\/[^/]+\/(\d+)/);
+    const newIssueNumber = issueMatch ? Number(issueMatch[1]) : null;
+
+    // Navigate home and verify the issue appears in the "in focus" section
+    await page.goto(BASE_URL);
+    await expect(page.getByText(ASSIGN_DRAFT_TITLE)).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Clean up: close the created GitHub issue
+    if (newIssueNumber) {
+      await execFileAsync("gh", [
+        "issue", "close", String(newIssueNumber),
+        "--repo", `${TEST_OWNER}/${TEST_REPO}`,
+      ]).catch(() => {
+        console.warn(`Could not close test issue #${newIssueNumber}`);
+      });
+    }
   });
 });

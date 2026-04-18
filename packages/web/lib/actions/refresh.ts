@@ -1,27 +1,25 @@
 "use server";
 
-import {
-  getDb,
-  getDashboardData,
-  withAuthRetry,
-  formatErrorForUser,
-} from "@issuectl/core";
+import { getDb, clearCache, dbExists } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
-export async function refreshDashboard(): Promise<{
+export async function refreshAction(): Promise<{
   success: boolean;
   error?: string;
   cacheStale?: true;
 }> {
   try {
-    const db = getDb();
-    await withAuthRetry((octokit) =>
-      getDashboardData(db, octokit, { forceRefresh: true }),
-    );
+    if (dbExists()) {
+      const db = getDb();
+      clearCache(db);
+    }
   } catch (err) {
-    console.error("[issuectl] Dashboard refresh failed:", err);
-    return { success: false, error: formatErrorForUser(err) };
+    console.error("[issuectl] refreshAction failed to clear cache:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to refresh",
+    };
   }
-  const { stale } = revalidateSafely("/");
+  const { stale } = revalidateSafely("/", "/settings");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
