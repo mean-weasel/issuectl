@@ -22,26 +22,29 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
   const { showToast } = useToast();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [assigning, setAssigning] = useState<number | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setLoading(true);
+    setSelectedRepoId(null);
     listReposAction()
       .then(setRepos)
       .catch(() => setError("Failed to load repos"))
       .finally(() => setLoading(false));
   }, [open]);
 
-  const handleAssign = async (repoId: number) => {
-    setAssigning(repoId);
+  const handleAssign = async () => {
+    if (selectedRepoId === null) return;
+    setAssigning(true);
     setError(null);
     const idempotencyKey = newIdempotencyKey();
-    const repo = repos.find((r) => r.id === repoId);
+    const repo = repos.find((r) => r.id === selectedRepoId);
     try {
-      const result = await assignDraftAction(draftId, repoId, idempotencyKey);
+      const result = await assignDraftAction(draftId, selectedRepoId, idempotencyKey);
       if (!result.success) {
         setError(result.error);
         return;
@@ -52,9 +55,6 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
         showToast(`Issue #${result.issueNumber} created`, "success");
       }
       onClose();
-      // The draft was deleted from the DB when it was promoted; sending
-      // the user back to / avoids a stale-detail-page 404 if navigation
-      // to the new issue fails.
       if (repo && result.issueNumber) {
         router.push(`/issues/${repo.owner}/${repo.name}/${result.issueNumber}`);
       } else {
@@ -64,9 +64,11 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
       console.error("[issuectl] assignDraft threw:", err);
       setError(err instanceof Error ? err.message : "Failed to assign draft");
     } finally {
-      setAssigning(null);
+      setAssigning(false);
     }
   };
+
+  const selectedRepo = repos.find((r) => r.id === selectedRepoId);
 
   return (
     <Sheet
@@ -86,21 +88,29 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
         {repos.map((repo) => (
           <button
             key={repo.id}
-            className={styles.row}
-            onClick={() => handleAssign(repo.id)}
-            disabled={assigning !== null}
+            className={
+              repo.id === selectedRepoId ? styles.rowSelected : styles.row
+            }
+            onClick={() => setSelectedRepoId(repo.id)}
+            disabled={assigning}
           >
             <div className={styles.repoName}>{repo.name}</div>
             <div className={styles.repoOwner}>{repo.owner}</div>
-            {assigning === repo.id && (
-              <div className={styles.spinner}>assigning…</div>
-            )}
           </button>
         ))}
         <div className={styles.footer}>
-          <Button variant="ghost" onClick={onClose} disabled={assigning !== null}>
+          <Button variant="ghost" onClick={onClose} disabled={assigning}>
             cancel
           </Button>
+          {selectedRepo && (
+            <Button
+              variant="primary"
+              onClick={handleAssign}
+              disabled={assigning}
+            >
+              {assigning ? "assigning…" : `assign to ${selectedRepo.name}`}
+            </Button>
+          )}
         </div>
       </div>
     </Sheet>
