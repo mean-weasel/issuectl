@@ -1,0 +1,45 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { refreshAction } from "@/lib/actions/refresh";
+import styles from "./PullToRefreshWrapper.module.css";
+
+type Props = {
+  children: ReactNode;
+};
+
+export function PullToRefreshWrapper({ children }: Props) {
+  const router = useRouter();
+
+  const onRefresh = useCallback(async () => {
+    await refreshAction();
+    router.refresh();
+  }, [router]);
+
+  const { containerRef, pullDistance, refreshing } = usePullToRefresh({
+    onRefresh,
+  });
+
+  return (
+    <div ref={containerRef} className={styles.container}>
+      {(pullDistance > 0 || refreshing) && (
+        <div
+          className={styles.indicator}
+          style={
+            pullDistance > 0
+              ? { height: pullDistance, opacity: Math.min(pullDistance / 60, 1) }
+              : undefined
+          }
+        >
+          <div className={refreshing ? styles.spinnerActive : styles.spinner}>
+            ↻
+          </div>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
