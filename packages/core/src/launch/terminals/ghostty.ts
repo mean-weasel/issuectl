@@ -2,11 +2,11 @@ import type { TerminalLauncher, TerminalLaunchOptions, TerminalSettings } from "
 import { timedExec } from "../exec-timeout.js";
 
 // Timeout budgets for the handful of synchronous Ghostty-probing calls.
-// `open -na Ghostty.app` returns quickly once the application receives the
-// event — 10s is generous. `which` and `--version` are similarly fast.
+// `ghostty -e ...` returns quickly once the window opens — 10s is generous.
+// `which` and `--version` are similarly fast.
 const WHICH_TIMEOUT_MS = 5_000;
 const VERSION_TIMEOUT_MS = 5_000;
-const OPEN_TIMEOUT_MS = 10_000;
+const LAUNCH_TIMEOUT_MS = 10_000;
 
 export type GhosttyVersion = { readonly major: number; readonly minor: number; readonly patch: number };
 
@@ -48,8 +48,6 @@ export function buildGhosttyArgs(tabTitle: string, shellCommand: string): string
   // On failure, drop into an interactive shell so the user can see the error.
   const wrappedCommand = `${shellCommand} || exec $SHELL -l`;
   return [
-    "-na", "Ghostty.app",
-    "--args",
     `--title=${tabTitle}`,
     "-e", "/bin/bash", "-lic", wrappedCommand,
   ];
@@ -87,6 +85,9 @@ export async function resolveGhosttyBinary(): Promise<string> {
 }
 
 export function createGhosttyLauncher(settings: TerminalSettings): TerminalLauncher {
+  // Resolved once during verify(), reused by launch().
+  let resolvedBinary: string | undefined;
+
   return {
     name: "Ghostty",
 
@@ -95,8 +96,8 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
         throw new Error("Ghostty launcher is only supported on macOS");
       }
 
-      const binary = await resolveGhosttyBinary();
-      const { stdout } = await timedExec(binary, ["--version"], {
+      resolvedBinary = await resolveGhosttyBinary();
+      const { stdout } = await timedExec(resolvedBinary, ["--version"], {
         timeoutMs: VERSION_TIMEOUT_MS,
         step: "ghostty --version",
       });
@@ -110,17 +111,19 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
     },
 
     async launch(options: TerminalLaunchOptions): Promise<void> {
+      // Resolve the binary if launch() is called without a prior verify().
+      const binary = resolvedBinary ?? await resolveGhosttyBinary();
       const tabTitle = expandTabTitle(settings.tabTitlePattern, options);
       const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath, options.claudeCommand);
       const args = buildGhosttyArgs(tabTitle, shellCommand);
       try {
-        await timedExec("open", args, {
-          timeoutMs: OPEN_TIMEOUT_MS,
-          step: "open -na Ghostty.app",
+        await timedExec(binary, args, {
+          timeoutMs: LAUNCH_TIMEOUT_MS,
+          step: "ghostty -e",
         });
       } catch (err) {
         throw new Error(
-          `Failed to launch Ghostty terminal. Ensure Ghostty.app is installed and accessible. ` +
+          `Failed to launch Ghostty terminal. Ensure the ghostty CLI is installed and accessible. ` +
           `(${err instanceof Error ? err.message : String(err)})`,
           { cause: err },
         );
