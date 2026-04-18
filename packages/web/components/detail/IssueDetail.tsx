@@ -11,6 +11,7 @@ import {
 } from "./DetailMeta";
 import { BodyText } from "./BodyText";
 import { PriorityPicker } from "./PriorityPicker";
+import { IssueActionSheet } from "./IssueActionSheet";
 import styles from "./IssueDetail.module.css";
 
 type Props = {
@@ -73,6 +74,13 @@ export function IssueDetail({
         <BodyText body={issue.body} />
         {children}
       </div>
+      {issue.state !== "closed" && (
+        <IssueActionSheet
+          owner={owner}
+          repo={repoName}
+          number={issue.number}
+        />
+      )}
     </div>
   );
 }

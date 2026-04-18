@@ -3,6 +3,7 @@
 import {
   getDb,
   createDraft,
+  deleteDraft,
   assignDraftToRepo,
   listRepos,
   updateDraft,
@@ -138,6 +139,30 @@ export async function updateDraftAction(
     return { success: false, error: "Failed to update draft" };
   }
   const { stale } = revalidateSafely("/", `/drafts/${draftId}`);
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+export async function deleteDraftAction(
+  draftId: string,
+): Promise<{ success: true; cacheStale?: true } | { success: false; error: string }> {
+  if (typeof draftId !== "string" || draftId.length === 0) {
+    return { success: false, error: "draftId must be a non-empty string" };
+  }
+
+  try {
+    const db = getDb();
+    const deleted = deleteDraft(db, draftId);
+    if (!deleted) {
+      return { success: false, error: "Draft not found — it may have already been deleted." };
+    }
+  } catch (err) {
+    console.error("[issuectl] deleteDraftAction failed", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to delete draft",
+    };
+  }
+  const { stale } = revalidateSafely("/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 

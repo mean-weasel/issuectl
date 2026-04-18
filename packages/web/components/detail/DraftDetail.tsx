@@ -5,7 +5,7 @@ import type { Draft } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { DetailTopBar } from "./DetailTopBar";
 import { DetailMeta, MetaSeparator } from "./DetailMeta";
-import { AssignSheet } from "@/components/list/AssignSheet";
+import { DraftActionSheet } from "./DraftActionSheet";
 import { updateDraftAction } from "@/lib/actions/drafts";
 import styles from "./DraftDetail.module.css";
 
@@ -26,7 +26,6 @@ export function DraftDetail({ draft }: Props) {
   const [body, setBody] = useState(draft.body ?? "");
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [assignOpen, setAssignOpen] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function flashSaved() {
@@ -99,19 +98,6 @@ export function DraftDetail({ draft }: Props) {
           <MetaSeparator />
           <span>{formatUnix(draft.updatedAt)}</span>
         </DetailMeta>
-        <div className={styles.hint}>
-          <div className={styles.hintText}>
-            this is a local draft — it lives only on your machine until you
-            assign it to a repo.
-          </div>
-          <button
-            type="button"
-            className={styles.assignBtn}
-            onClick={() => setAssignOpen(true)}
-          >
-            assign to repo →
-          </button>
-        </div>
         <div className={styles.bodyEditor}>
           <textarea
             className={styles.textarea}
@@ -141,9 +127,7 @@ export function DraftDetail({ draft }: Props) {
           )}
         </div>
       </div>
-      <AssignSheet
-        open={assignOpen}
-        onClose={() => setAssignOpen(false)}
+      <DraftActionSheet
         draftId={draft.id}
         // Use the persisted title so the preview matches what gets created on
         // GitHub. Unsaved edits to `title` state only commit on blur.

@@ -5,7 +5,6 @@ import styles from "./ListRow.module.css";
 
 type Props = {
   item: UnifiedListItem;
-  onAssign?: (draftId: string, draftTitle: string) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -36,7 +35,7 @@ function labelClass(labelName: string): string | undefined {
   return undefined;
 }
 
-export function ListRow({ item, onAssign }: Props) {
+export function ListRow({ item }: Props) {
   if (item.kind === "draft") {
     return (
       <div className={styles.item}>
@@ -53,17 +52,6 @@ export function ListRow({ item, onAssign }: Props) {
             <span>{formatAge(item.draft.updatedAt)}</span>
           </div>
         </Link>
-        {onAssign && (
-          <div className={styles.draftActions}>
-            <button
-              className={styles.assignCta}
-              onClick={() => onAssign(item.draft.id, item.draft.title)}
-              aria-label="Assign draft to repo"
-            >
-              assign to repo →
-            </button>
-          </div>
-        )}
       </div>
     );
   }

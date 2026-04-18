@@ -87,41 +87,6 @@
   border-color: var(--paper-line);
 }
 
-/* ── Draft-specific assign CTA ──
- * Outlined (not filled) so drafts and issues read as different action
- * types on a mixed list — "assign" is a lifecycle transition, not the
- * state-change actions (launch/open/view) used on real issues. */
-.draftActions {
-  display: flex;
-  align-items: center;
-  padding: 0 20px 14px 58px;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.assignCta {
-  font-family: var(--paper-serif);
-  font-style: normal;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--paper-accent);
-  background: transparent;
-  border: 1px solid var(--paper-accent-dim);
-  cursor: pointer;
-  padding: 11px 16px;
-  border-radius: var(--paper-radius-sm);
-  white-space: nowrap;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.assignCta:hover {
-  background: var(--paper-accent-soft);
-  border-color: var(--paper-accent);
-}
-
 @media (min-width: 768px) and (hover: hover) {
   .item {
     flex-direction: row;
@@ -143,19 +108,7 @@
     display: flex;
   }
 
-  .draftActions {
-    padding: 0 16px;
-    opacity: 0;
-    transition: opacity 0.15s;
-  }
-
-  .item:hover .draftActions,
-  .item:focus-within .draftActions {
-    opacity: 1;
-  }
-
-  .actionBtn,
-  .assignCta {
+  .actionBtn {
     min-height: 0;
     padding: 7px 14px;
   }
