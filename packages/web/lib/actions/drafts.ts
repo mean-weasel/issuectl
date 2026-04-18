@@ -7,6 +7,8 @@ import {
   assignDraftToRepo,
   listRepos,
   updateDraft,
+  getSetting,
+  setSetting,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -98,9 +100,14 @@ export async function createDraftAction(
 export async function listReposAction(): Promise<
   Array<{ id: number; owner: string; name: string }>
 > {
-  const db = getDb();
-  const repos = listRepos(db);
-  return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+  try {
+    const db = getDb();
+    const repos = listRepos(db);
+    return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+  } catch (err) {
+    console.error("[issuectl] listReposAction failed", err);
+    throw err;
+  }
 }
 
 export async function updateDraftAction(
@@ -295,4 +302,39 @@ export async function assignDraftAction(
     ...(cleanupWarning ? { cleanupWarning } : {}),
     ...(stale ? { cacheStale: true as const } : {}),
   };
+}
+
+export async function getDefaultRepoIdAction(): Promise<number | null> {
+  try {
+    const db = getDb();
+    const value = getSetting(db, "default_repo_id");
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch (err) {
+    console.error("[issuectl] getDefaultRepoIdAction failed", err);
+    return null;
+  }
+}
+
+export async function setDefaultRepoIdAction(
+  repoId: number | null,
+): Promise<{ success: boolean; error?: string }> {
+  if (repoId !== null) {
+    if (typeof repoId !== "number" || !Number.isInteger(repoId) || repoId <= 0) {
+      return { success: false, error: "repoId must be a positive integer" };
+    }
+  }
+
+  try {
+    const db = getDb();
+    setSetting(db, "default_repo_id", repoId !== null ? String(repoId) : "");
+    return { success: true };
+  } catch (err) {
+    console.error("[issuectl] setDefaultRepoIdAction failed", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to update default repo",
+    };
+  }
 }

@@ -14,7 +14,8 @@ export type SettingKey =
   | "terminal_tab_title_pattern"
   | "cache_ttl"
   | "worktree_dir"
-  | "claude_extra_args";
+  | "claude_extra_args"
+  | "default_repo_id";
 
 export type Setting = {
   key: SettingKey;
