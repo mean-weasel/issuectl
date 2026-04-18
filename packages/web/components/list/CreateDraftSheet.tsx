@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Sheet } from "@/components/paper";
 import { createDraftAction } from "@/lib/actions/drafts";
 import styles from "./CreateDraftSheet.module.css";
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function CreateDraftSheet({ open, onClose }: Props) {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
       }
       setTitle("");
       onClose();
+      router.push("/?section=unassigned");
     } catch {
       setError("Failed to save draft");
     } finally {
