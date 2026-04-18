@@ -17,6 +17,9 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  // Allow e2e tests to use an isolated output directory so their dev
+  // server doesn't collide with the main dev server's .next/ cache.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   poweredByHeader: false,
   transpilePackages: ["@issuectl/core"],
   outputFileTracingRoot: WORKSPACE_ROOT,
