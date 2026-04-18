@@ -18,6 +18,9 @@ export function usePullToRefresh({
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef<number | null>(null);
   const pulling = useRef(false);
+  // Store pullDistance in a ref so handleTouchEnd can read the latest
+  // value without being recreated on every pixel of movement.
+  const pullDistanceRef = useRef(0);
 
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
@@ -38,10 +41,12 @@ export function usePullToRefresh({
         pulling.current = true;
         const distance = Math.min(diff * 0.5, maxPull);
         setPullDistance(distance);
+        pullDistanceRef.current = distance;
         if (distance > 10) e.preventDefault();
       } else {
         pulling.current = false;
         setPullDistance(0);
+        pullDistanceRef.current = 0;
       }
     },
     [refreshing, maxPull],
@@ -55,9 +60,10 @@ export function usePullToRefresh({
     }
     startY.current = null;
     pulling.current = false;
-    if (pullDistance >= threshold) {
+    if (pullDistanceRef.current >= threshold) {
       setRefreshing(true);
       setPullDistance(0);
+      pullDistanceRef.current = 0;
       try {
         await onRefresh();
       } finally {
@@ -65,8 +71,9 @@ export function usePullToRefresh({
       }
     } else {
       setPullDistance(0);
+      pullDistanceRef.current = 0;
     }
-  }, [pullDistance, threshold, onRefresh, refreshing]);
+  }, [threshold, onRefresh, refreshing]);
 
   useEffect(() => {
     const container = containerRef.current;
