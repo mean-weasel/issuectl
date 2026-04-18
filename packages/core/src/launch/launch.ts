@@ -135,8 +135,11 @@ export async function executeLaunch(
     : null;
 
   if (!repoPath && options.workspaceMode !== "clone") {
+    const modeLabel =
+      options.workspaceMode === "worktree" ? "Worktree mode" : "Existing-repo mode";
     throw new Error(
-      `No local path configured for ${options.owner}/${options.repo}. Set a local path in settings or use clone mode.`,
+      `${modeLabel} requires a local path for ${options.owner}/${options.repo}. ` +
+      `Set a local path in Settings, or use "Fresh clone" mode instead.`,
     );
   }
 
