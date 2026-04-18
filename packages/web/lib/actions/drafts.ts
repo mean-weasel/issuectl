@@ -12,6 +12,8 @@ import {
   DuplicateInFlightError,
   formatErrorForUser,
   DraftPartialCommitError,
+  getRepoById,
+  clearCacheKey,
   type DraftInput,
   type DraftUpdate,
   type Priority,
@@ -266,6 +268,18 @@ export async function assignDraftAction(
       err,
     );
     return { success: false, error: formatErrorForUser(err) };
+  }
+
+  // Clear the SQLite issues cache for this repo so the next page render
+  // fetches fresh data from GitHub that includes the newly created issue.
+  try {
+    const db = getDb();
+    const repo = getRepoById(db, repoId);
+    if (repo) {
+      clearCacheKey(db, `issues:${repo.owner}/${repo.name}`);
+    }
+  } catch {
+    // Cache miss on next render is the fallback — don't fail the action.
   }
 
   const { stale } = revalidateSafely("/");
