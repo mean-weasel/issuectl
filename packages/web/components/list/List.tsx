@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { GitHubPull, Section, SortMode, UnifiedList } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
@@ -119,6 +119,32 @@ export function List({
     activeRepoIndex >= 0
       ? REPO_COLORS[activeRepoIndex % REPO_COLORS.length]
       : undefined;
+
+  const PAGE_SIZE = 15;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when section changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeSection]);
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  }, []);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore();
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, activeSection]);
 
   const issuesHref = buildHref({ repo: activeRepo, sort: activeSort });
   const prsHref = buildHref({
@@ -303,10 +329,26 @@ export function List({
       )}
 
       {activeTab === "issues" ? (
-        renderIssueSection({
-          activeSection,
-          data,
-        })
+        <>
+          {renderIssueSection({
+            activeSection,
+            data,
+            visibleCount,
+          })}
+          {(() => {
+            const totalItems =
+              activeSection === "unassigned"
+                ? data.unassigned.length
+                : activeSection === "in_focus"
+                  ? data.in_focus.length
+                  : activeSection === "in_flight"
+                    ? data.in_flight.length
+                    : data.shipped.length;
+            return visibleCount < totalItems ? (
+              <div ref={sentinelRef} className={styles.sentinel} />
+            ) : null;
+          })()}
+        </>
       ) : prCount === 0 ? (
         <div className={styles.empty}>
           <div className={styles.emptyMark}>❧</div>
@@ -384,11 +426,13 @@ export function List({
 function renderIssueSection({
   activeSection,
   data,
+  visibleCount,
 }: {
   activeSection: Section;
   data: UnifiedList;
+  visibleCount: number;
 }) {
-  const items =
+  const allItems =
     activeSection === "unassigned"
       ? data.unassigned
       : activeSection === "in_focus"
@@ -397,7 +441,7 @@ function renderIssueSection({
           ? data.in_flight
           : data.shipped;
 
-  if (items.length === 0) {
+  if (allItems.length === 0) {
     const empty = SECTION_EMPTY[activeSection];
     return (
       <div className={styles.empty}>
@@ -408,6 +452,7 @@ function renderIssueSection({
     );
   }
 
+  const items = allItems.slice(0, visibleCount);
   return <ListSection title={null} items={items} />;
 }
 

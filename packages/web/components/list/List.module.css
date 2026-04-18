@@ -518,3 +518,8 @@
 .tab {
   white-space: nowrap;
 }
+
+.sentinel {
+  height: 1px;
+  width: 100%;
+}
