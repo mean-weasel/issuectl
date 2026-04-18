@@ -78,6 +78,7 @@ export function IssueDetail({
         <IssueActionSheet
           owner={owner}
           repo={repoName}
+          repoId={repoId}
           number={issue.number}
         />
       )}

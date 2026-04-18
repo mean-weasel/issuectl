@@ -1,6 +1,10 @@
 import type { Octokit } from "@octokit/rest";
+import type Database from "better-sqlite3";
 import type { GitHubIssue, GitHubComment, RawGitHubUser } from "./types.js";
 import { mapUser } from "./types.js";
+import { getRepoById } from "../db/repos.js";
+import { clearCacheKey } from "../db/cache.js";
+import { deletePriority, getPriority, setPriority } from "../db/priority.js";
 
 function mapIssue(raw: unknown): GitHubIssue {
   const r = raw as {
@@ -159,4 +163,70 @@ export async function addComment(
     body,
   });
   return mapComment(data);
+}
+
+export type ReassignResult = {
+  newIssueNumber: number;
+  newIssueUrl: string;
+  newOwner: string;
+  newRepo: string;
+};
+
+/**
+ * Re-assigns an issue from one repo to another by:
+ * 1. Fetching the issue from the old repo
+ * 2. Creating it on the new repo (preserving title and body)
+ * 3. Closing the old issue with a cross-reference comment
+ * 4. Migrating the local priority to the new repo/issue
+ * 5. Invalidating relevant caches
+ */
+export async function reassignIssue(
+  db: Database.Database,
+  octokit: Octokit,
+  oldRepoId: number,
+  issueNumber: number,
+  newRepoId: number,
+): Promise<ReassignResult> {
+  if (oldRepoId === newRepoId) {
+    throw new Error("Cannot re-assign an issue to the same repo");
+  }
+
+  const oldRepo = getRepoById(db, oldRepoId);
+  if (!oldRepo) throw new Error(`Old repo (id ${oldRepoId}) not found`);
+
+  const newRepo = getRepoById(db, newRepoId);
+  if (!newRepo) throw new Error(`New repo (id ${newRepoId}) not found`);
+
+  // 1. Fetch the existing issue
+  const oldIssue = await getIssue(octokit, oldRepo.owner, oldRepo.name, issueNumber);
+
+  // 2. Create the issue on the new repo
+  const newIssue = await createIssue(octokit, newRepo.owner, newRepo.name, {
+    title: oldIssue.title,
+    body: oldIssue.body ?? undefined,
+  });
+
+  // 3. Close the old issue with a cross-reference comment
+  const crossRef = `Moved to ${newRepo.owner}/${newRepo.name}#${newIssue.number}`;
+  await addComment(octokit, oldRepo.owner, oldRepo.name, issueNumber, crossRef);
+  await closeIssue(octokit, oldRepo.owner, oldRepo.name, issueNumber);
+
+  // 4. Migrate local priority
+  const oldPriority = getPriority(db, oldRepoId, issueNumber);
+  setPriority(db, newRepoId, newIssue.number, oldPriority);
+  deletePriority(db, oldRepoId, issueNumber);
+
+  // 5. Invalidate caches
+  clearCacheKey(db, `issues:${oldRepo.owner}/${oldRepo.name}`);
+  clearCacheKey(db, `issue-detail:${oldRepo.owner}/${oldRepo.name}#${issueNumber}`);
+  clearCacheKey(db, `issue-header:${oldRepo.owner}/${oldRepo.name}#${issueNumber}`);
+  clearCacheKey(db, `issue-content:${oldRepo.owner}/${oldRepo.name}#${issueNumber}`);
+  clearCacheKey(db, `issues:${newRepo.owner}/${newRepo.name}`);
+
+  return {
+    newIssueNumber: newIssue.number,
+    newIssueUrl: newIssue.htmlUrl,
+    newOwner: newRepo.owner,
+    newRepo: newRepo.name,
+  };
 }
