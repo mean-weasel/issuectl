@@ -1,36 +1,32 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import type { GitHubPull, Section, SortMode, UnifiedList } from "@issuectl/core";
+import type { Section, SortMode } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
-import { REPO_COLORS } from "@/lib/constants";
 import { repoKey } from "@/lib/repo-key";
-import { ListSection } from "./ListSection";
-import { PrListRow } from "./PrListRow";
+import { REPO_COLORS } from "@/lib/constants";
 import { CreateDraftSheet } from "./CreateDraftSheet";
 import { NavDrawerContent } from "./NavDrawerContent";
 import { RepoFilterChips } from "./RepoFilterChips";
 import { FiltersSheet } from "./FiltersSheet";
 import { FilterEdgeSwipe } from "./FilterEdgeSwipe";
+import { useListCounts } from "./ListCountContext";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 
 type Repo = { owner: string; name: string };
-type PrEntry = { repo: Repo; pull: GitHubPull };
 
 type Props = {
-  data: UnifiedList;
   activeTab: "issues" | "prs";
   activeSection: Section;
   activeSort: SortMode;
-  prCount: number;
-  prs: PrEntry[];
   username: string | null;
   repos: Repo[];
   activeRepo: string | null;
   mineOnly: boolean;
+  children: ReactNode;
 };
 
 const SORT_MODES: SortMode[] = ["updated", "created", "priority"];
@@ -49,25 +45,6 @@ const SECTION_LABEL: Record<Section, string> = {
   shipped: "shipped",
 };
 
-const SECTION_EMPTY: Record<Section, { title: string; body: string }> = {
-  unassigned: {
-    title: "no drafts",
-    body: "start a draft with the + button — it'll live here until you assign it to a repo.",
-  },
-  in_focus: {
-    title: "all clear",
-    body: "nothing on your plate. breathe, or draft the next one.",
-  },
-  in_flight: {
-    title: "nothing in flight",
-    body: "when you launch an issue, it lands here while you work on it.",
-  },
-  shipped: {
-    title: "nothing shipped yet",
-    body: "closed issues show up here once PRs merge and reconcile.",
-  },
-};
-
 function formatDate(d: Date): { weekday: string; short: string } {
   const weekday = d
     .toLocaleDateString("en-US", { weekday: "long" })
@@ -79,31 +56,23 @@ function formatDate(d: Date): { weekday: string; short: string } {
 }
 
 export function List({
-  data,
   activeTab,
   activeSection,
-  prCount,
-  prs,
+  activeSort,
   username,
   repos,
   activeRepo,
-  activeSort,
   mineOnly,
+  children,
 }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const sectionCounts: Record<Section, number> = {
-    unassigned: data.unassigned.length,
-    in_focus: data.in_focus.length,
-    in_flight: data.in_flight.length,
-    shipped: data.shipped.length,
-  };
-  const totalIssueCount =
-    sectionCounts.unassigned +
-    sectionCounts.in_focus +
-    sectionCounts.in_flight +
-    sectionCounts.shipped;
+
+  const counts = useListCounts();
+  const sectionCounts = counts?.sectionCounts ?? null;
+  const totalIssueCount = counts?.totalIssueCount ?? null;
+  const prCount = counts?.prCount ?? null;
 
   const { weekday, short } = formatDate(new Date());
 
@@ -121,32 +90,6 @@ export function List({
       ? REPO_COLORS[activeRepoIndex % REPO_COLORS.length]
       : undefined;
 
-  const PAGE_SIZE = 15;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // Reset visible count when section changes
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeSection]);
-
-  const loadMore = useCallback(() => {
-    setVisibleCount((prev) => prev + PAGE_SIZE);
-  }, []);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore();
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, activeSection]);
-
   const issuesHref = buildHref({ repo: activeRepo, sort: activeSort });
   const prsHref = buildHref({
     tab: "prs",
@@ -154,10 +97,10 @@ export function List({
     mine: mineOnly ? true : null,
   });
 
-  const chipHref = (repoKey: string | null) =>
+  const chipHref = (rk: string | null) =>
     buildHref({
       tab: activeTab,
-      repo: repoKey,
+      repo: rk,
       mine: isPrTab && mineOnly ? true : null,
       section: activeTab === "issues" ? activeSection : null,
       sort: activeTab === "issues" ? activeSort : null,
@@ -180,9 +123,9 @@ export function List({
       })
     : null;
 
-  // On mobile the scope pill replaces the repo chip row as the visible
-  // "you're filtered to X" indicator. Clearing the repo from the pill keeps
-  // any author filter intact (since they're orthogonal).
+  // Clearing the repo filter keeps any author filter intact — they're
+  // orthogonal (mobile scope pill replaces the chip row as the visible
+  // "you're filtered to X" indicator).
   const clearRepoHref = buildHref({
     tab: isPrTab ? "prs" : undefined,
     mine: isPrTab && mineOnly ? true : null,
@@ -229,7 +172,10 @@ export function List({
           href={issuesHref}
           className={`${styles.tab} ${activeTab === "issues" ? styles.on : ""}`}
         >
-          Issues<span className={styles.count}>{totalIssueCount}</span>
+          Issues
+          <span className={styles.count}>
+            {totalIssueCount !== null ? totalIssueCount : "·"}
+          </span>
           {activeTab === "issues" && activeRepo && (
             <ScopePill
               label={activeRepo.split("/").pop() ?? activeRepo}
@@ -244,7 +190,9 @@ export function List({
         >
           <span className={styles.tabLabelFull}>Pull requests</span>
           <span className={styles.tabLabelShort}>PRs</span>
-          <span className={styles.count}>{prCount}</span>
+          <span className={styles.count}>
+            {prCount !== null ? prCount : "·"}
+          </span>
           {activeTab === "prs" && activeRepo && (
             <ScopePill
               label={activeRepo.split("/").pop() ?? activeRepo}
@@ -290,7 +238,7 @@ export function List({
           <nav className={styles.sectionTabs} aria-label="Filter by section">
             {visibleSections.map((section) => {
               const isActive = section === activeSection;
-              const count = sectionCounts[section];
+              const count = sectionCounts?.[section] ?? null;
               return (
                 <Link
                   key={section}
@@ -299,7 +247,9 @@ export function List({
                   aria-current={isActive ? "page" : undefined}
                 >
                   {SECTION_LABEL[section]}
-                  <span className={styles.sectionTabCount}>{count}</span>
+                  <span className={styles.sectionTabCount}>
+                    {count !== null ? count : "·"}
+                  </span>
                 </Link>
               );
             })}
@@ -343,55 +293,7 @@ export function List({
         </div>
       )}
 
-      {activeTab === "issues" ? (
-        <>
-          {renderIssueSection({
-            activeSection,
-            data,
-            visibleCount,
-          })}
-          {(() => {
-            const totalItems =
-              activeSection === "unassigned"
-                ? data.unassigned.length
-                : activeSection === "in_focus"
-                  ? data.in_focus.length
-                  : activeSection === "in_flight"
-                    ? data.in_flight.length
-                    : data.shipped.length;
-            return visibleCount < totalItems ? (
-              <div ref={sentinelRef} className={styles.sentinel} />
-            ) : null;
-          })()}
-        </>
-      ) : prCount === 0 ? (
-        <div className={styles.empty}>
-          <div className={styles.emptyMark}>❧</div>
-          <h3>no pull requests</h3>
-          <p>
-            <em>
-              {activeRepo && mineOnly
-                ? `no open PRs from you in ${activeRepo}.`
-                : activeRepo
-                  ? `no open PRs in ${activeRepo}.`
-                  : mineOnly
-                    ? "no open PRs from you across your repos."
-                    : "no open PRs across your repos."}
-            </em>
-          </p>
-        </div>
-      ) : (
-        <div>
-          {prs.map(({ repo, pull }) => (
-            <PrListRow
-              key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
-              owner={repo.owner}
-              repoName={repo.name}
-              pull={pull}
-            />
-          ))}
-        </div>
-      )}
+      {children}
 
       {activeTab === "issues" && (
         <>
@@ -442,39 +344,6 @@ export function List({
   );
 }
 
-function renderIssueSection({
-  activeSection,
-  data,
-  visibleCount,
-}: {
-  activeSection: Section;
-  data: UnifiedList;
-  visibleCount: number;
-}) {
-  const allItems =
-    activeSection === "unassigned"
-      ? data.unassigned
-      : activeSection === "in_focus"
-        ? data.in_focus
-        : activeSection === "in_flight"
-          ? data.in_flight
-          : data.shipped;
-
-  if (allItems.length === 0) {
-    const empty = SECTION_EMPTY[activeSection];
-    return (
-      <div className={styles.empty}>
-        <div className={styles.emptyMark}>❧</div>
-        <h3>{empty.title}</h3>
-        <p><em>{empty.body}</em></p>
-      </div>
-    );
-  }
-
-  const items = allItems.slice(0, visibleCount);
-  return <ListSection title={null} items={items} />;
-}
-
 function FilterIcon() {
   return (
     <svg
@@ -519,7 +388,7 @@ function ScopePill({
         aria-label={`Clear ${label} filter`}
         onClick={(e) => e.stopPropagation()}
       >
-        ×
+        &times;
       </Link>
     </span>
   );

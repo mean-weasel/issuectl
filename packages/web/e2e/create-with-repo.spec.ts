@@ -244,10 +244,10 @@ test.describe("CreateDraftSheet — create with repo", () => {
     const issueTitle = `E2E test — create with repo ${timestamp}`;
     await sheet.getByPlaceholder("What needs to be done?").fill(issueTitle);
 
-    // Select the repo from the dropdown — wait for repos to load first
-    const repoSelect = sheet.locator("#create-draft-repo");
-    await expect(repoSelect).toBeEnabled({ timeout: 10000 });
-    await repoSelect.selectOption({ label: `${TEST_OWNER}/${TEST_REPO}` });
+    // Select the repo chip — wait for repos to load first
+    const repoChip = sheet.getByRole("button", { name: TEST_REPO });
+    await expect(repoChip).toBeVisible({ timeout: 10000 });
+    await repoChip.click();
 
     // Verify button text changes to "create issue"
     const createBtn = sheet.getByRole("button", { name: "create issue" });
@@ -299,15 +299,15 @@ test.describe("CreateDraftSheet — create with repo", () => {
     const draftTitle = `E2E test — local draft ${timestamp}`;
     await sheet.getByPlaceholder("What needs to be done?").fill(draftTitle);
 
-    // Wait for the repo selector to load, then verify "none" is the
-    // default (or explicitly select it)
-    const repoSelect = sheet.locator("#create-draft-repo");
-    await expect(repoSelect).toBeEnabled({ timeout: 10000 });
+    // Wait for repos to finish loading so the state is stable — a
+    // default repo from test 1 may auto-select, changing the button
+    // from "save draft" to "create issue". Deselect it if needed.
+    const repoChip = sheet.getByRole("button", { name: TEST_REPO });
+    await expect(repoChip).toBeVisible({ timeout: 10000 });
+    if ((await repoChip.getAttribute("aria-pressed")) === "true") {
+      await repoChip.click();
+    }
 
-    // Ensure "none" option is selected (no repo)
-    await repoSelect.selectOption({ value: "" });
-
-    // Verify button text is "save draft"
     const saveBtn = sheet.getByRole("button", { name: "save draft" });
     await expect(saveBtn).toBeVisible();
     await expect(saveBtn).toBeEnabled();
@@ -318,11 +318,15 @@ test.describe("CreateDraftSheet — create with repo", () => {
     // Verify the sheet closes
     await expect(sheet).not.toBeVisible({ timeout: 5000 });
 
-    // Navigate to the drafts section to verify the draft appears
+    // Navigate to the drafts section to verify the draft appears.
+    // Wait for networkidle so the Suspense streaming completes — the
+    // dashboard fetches from GitHub via an async Server Component,
+    // and the draft appears only after the stream resolves.
     await page.goto(`${BASE_URL}/?section=unassigned`);
+    await page.waitForLoadState("networkidle");
 
     // The draft title should appear in the list
-    await expect(page.getByText(draftTitle)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(draftTitle)).toBeVisible({ timeout: 30000 });
   });
 });
 
@@ -355,10 +359,15 @@ test.describe("AssignSheet — assign draft to repo", () => {
     const assignSheet = page.getByRole("dialog", { name: "assign to repo" });
     await expect(assignSheet).toBeVisible({ timeout: 10000 });
 
-    // Wait for repos to load, then click the test repo
+    // Wait for repos to load, then click the test repo — opens ConfirmDialog
     const repoButton = assignSheet.getByText(TEST_REPO);
     await expect(repoButton).toBeVisible({ timeout: 10000 });
     await repoButton.click();
+
+    // Confirm the assignment in the ConfirmDialog
+    const confirmDialog = page.getByRole("dialog", { name: "Assign to Repo", exact: true });
+    await expect(confirmDialog).toBeVisible({ timeout: 10000 });
+    await confirmDialog.getByRole("button", { name: "Assign" }).click();
 
     // Wait for navigation to the created issue's detail page.
     // The GitHub API call can take a few seconds.
