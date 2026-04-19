@@ -209,8 +209,24 @@ test.describe("PWA + Offline", () => {
     expect(manifest.name).toBe("issuectl");
     expect(manifest.display).toBe("standalone");
     expect(manifest.start_url).toBe("/");
-    expect(manifest.icons).toHaveLength(1);
+    expect(manifest.icons).toHaveLength(2);
     expect(manifest.icons[0].type).toBe("image/svg+xml");
+    expect(manifest.icons[1].type).toBe("image/png");
+    expect(manifest.icons[1].sizes).toBe("180x180");
+  });
+
+  test("Apple PWA meta tags are present", async ({ page }) => {
+    await page.goto(BASE_URL);
+
+    const capable = await page.locator(
+      'meta[name="apple-mobile-web-app-capable"]',
+    ).getAttribute("content");
+    expect(capable).toBe("yes");
+
+    const touchIcon = await page.locator(
+      'link[rel="apple-touch-icon"]',
+    ).getAttribute("href");
+    expect(touchIcon).toBe("/apple-touch-icon.png");
   });
 
   test("service worker registers and activates", async ({ page }) => {
