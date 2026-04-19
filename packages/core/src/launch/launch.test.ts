@@ -257,6 +257,115 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     }
   });
 
+  it("rolls back pending deployment when spawnTtyd fails", async () => {
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    const spawnError = new Error("ttyd process failed to start");
+    spawnTtydSpy.mockRejectedValueOnce(spawnError);
+
+    await expect(
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        issueNumber: 42,
+        branchName: "new-branch",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+      }),
+    ).rejects.toThrow("ttyd process failed to start");
+
+    // The pending deployment row must have been deleted by the rollback
+    const row = db
+      .prepare(
+        "SELECT * FROM deployments WHERE repo_id = ? AND issue_number = 42",
+      )
+      .get(repo.id);
+    expect(row).toBeUndefined();
+
+    // The slot is freed — a second launch for the same issue succeeds
+    spawnTtydSpy.mockResolvedValueOnce({ pid: 99999, port: 7700 });
+    const result = await executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 42,
+      branchName: "retry-branch",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+    });
+    expect(result.ttydPort).toBe(7700);
+  });
+
+  it("propagates spawn error even when rollback fails", async () => {
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    const spawnError = new Error("ttyd crashed");
+    spawnTtydSpy.mockRejectedValueOnce(spawnError);
+
+    const rollbackError = new Error("DB locked during rollback");
+    const deleteSpy = vi
+      .spyOn(deploymentsModule, "deletePendingDeployment")
+      .mockImplementationOnce(() => {
+        throw rollbackError;
+      });
+
+    try {
+      await expect(
+        executeLaunch(db, {} as Octokit, {
+          owner: "acme",
+          repo: "api",
+          issueNumber: 42,
+          branchName: "new-branch",
+          workspaceMode: "existing",
+          selectedComments: [],
+          selectedFiles: [],
+        }),
+        // Must rethrow the original spawn error, not the rollback error
+      ).rejects.toThrow("ttyd crashed");
+    } finally {
+      deleteSpy.mockRestore();
+    }
+  });
+
+  it("rolls back when allocatePort fails", async () => {
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    allocatePortSpy.mockRejectedValueOnce(new Error("no free ports"));
+
+    await expect(
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        issueNumber: 42,
+        branchName: "new-branch",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+      }),
+    ).rejects.toThrow("no free ports");
+
+    // Pending deployment row must be gone after the rollback
+    const row = db
+      .prepare(
+        "SELECT * FROM deployments WHERE repo_id = ? AND issue_number = 42",
+      )
+      .get(repo.id);
+    expect(row).toBeUndefined();
+  });
+
   it("allows launch when the prior deployment has ended", async () => {
     const repo = addRepo(db, {
       owner: "acme",
