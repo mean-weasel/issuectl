@@ -9,9 +9,6 @@ export type Repo = {
 
 export type SettingKey =
   | "branch_pattern"
-  | "terminal_app"
-  | "terminal_window_title"
-  | "terminal_tab_title_pattern"
   | "cache_ttl"
   | "worktree_dir"
   | "claude_extra_args"
