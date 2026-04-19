@@ -38,23 +38,28 @@ export function LabelManager({
     setError(null);
     const action = selectedNames.includes(label) ? "remove" : "add";
     startTransition(async () => {
-      const result = await tryOrQueue(
-        "toggleLabel",
-        { owner, repo, issueNumber, label, action },
-        () => toggleLabel({ owner, repo, number: issueNumber, label, action }),
-      );
+      try {
+        const result = await tryOrQueue(
+          "toggleLabel",
+          { owner, repo, issueNumber, label, action },
+          () => toggleLabel({ owner, repo, number: issueNumber, label, action }),
+        );
 
-      if (result.outcome === "queued") {
-        showToast("Label change queued — will sync when online", "warning");
-        return;
+        if (result.outcome === "queued") {
+          showToast("Label change queued — will sync when online", "warning");
+          return;
+        }
+
+        if (result.outcome === "error") {
+          setError(result.error);
+          return;
+        }
+
+        showToast("Labels updated", "success");
+      } catch (err) {
+        console.error("[issuectl] toggleLabel threw:", err);
+        setError(err instanceof Error ? err.message : "Failed to update label");
       }
-
-      if (result.outcome === "error") {
-        setError(result.error);
-        return;
-      }
-
-      showToast("Labels updated", "success");
     });
   }
 

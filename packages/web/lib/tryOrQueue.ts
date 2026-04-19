@@ -28,6 +28,20 @@ type Options = {
   isNetworkError?: (error: string) => boolean;
 };
 
+async function safeEnqueue(
+  action: QueueableAction,
+  params: Record<string, unknown>,
+  nonce: string,
+): Promise<TryOrQueueResult> {
+  try {
+    await enqueue(action, params, nonce);
+    return { outcome: "queued" };
+  } catch (enqueueErr) {
+    console.error("[issuectl] Failed to enqueue operation for offline sync:", enqueueErr);
+    return { outcome: "error", error: "Could not save operation for offline sync. Try again when you have a connection." };
+  }
+}
+
 export async function tryOrQueue(
   action: QueueableAction,
   params: Record<string, unknown>,
@@ -37,9 +51,9 @@ export async function tryOrQueue(
   const nonce = options?.nonce ?? newIdempotencyKey();
   const isNetErr = options?.isNetworkError ?? defaultIsNetworkError;
 
+  // Pre-flight: if browser says we're offline, queue immediately.
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    await enqueue(action, params, nonce);
-    return { outcome: "queued" };
+    return safeEnqueue(action, params, nonce);
   }
 
   try {
@@ -49,18 +63,19 @@ export async function tryOrQueue(
       return { outcome: "succeeded", data: result as Record<string, unknown> };
     }
 
+    // Server responded but the operation failed.
     const errorMsg = result.error ?? "Unknown error";
     if (isNetErr(errorMsg)) {
-      await enqueue(action, params, nonce);
-      return { outcome: "queued" };
+      return safeEnqueue(action, params, nonce);
     }
 
     return { outcome: "error", error: errorMsg };
   } catch (err) {
+    // Fetch-level failure — server/tunnel unreachable.
     if (err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError")) {
-      await enqueue(action, params, nonce);
-      return { outcome: "queued" };
+      return safeEnqueue(action, params, nonce);
     }
+    // Unexpected error — don't queue, surface it.
     throw err;
   }
 }

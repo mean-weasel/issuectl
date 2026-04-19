@@ -51,8 +51,8 @@ export function useOfflineAware() {
     try {
       const ops = await listAll();
       setQueue(ops);
-    } catch {
-      // IndexedDB unavailable (SSR, etc.)
+    } catch (err) {
+      console.warn("[issuectl] Failed to read offline queue:", err);
     }
   }, []);
 

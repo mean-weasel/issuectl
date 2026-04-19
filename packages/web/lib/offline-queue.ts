@@ -49,6 +49,8 @@ function withStore(
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
         tx.oncomplete = () => db.close();
+        tx.onerror = () => db.close();
+        tx.onabort = () => db.close();
       }),
   );
 }
@@ -63,6 +65,8 @@ function getAllFromStore(): Promise<QueuedOperation[]> {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
         tx.oncomplete = () => db.close();
+        tx.onerror = () => db.close();
+        tx.onabort = () => db.close();
       }),
   );
 }

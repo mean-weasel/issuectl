@@ -6,6 +6,7 @@ import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addComment } from "@/lib/actions/comments";
 import { tryOrQueue } from "@/lib/tryOrQueue";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import styles from "./CommentComposer.module.css";
 
 type Props = {
@@ -26,10 +27,12 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
     setSending(true);
     setError(null);
     try {
+      const nonce = newIdempotencyKey();
       const result = await tryOrQueue(
         "addComment",
         { owner, repo, issueNumber, body },
-        () => addComment(owner, repo, issueNumber, body),
+        () => addComment(owner, repo, issueNumber, body, nonce),
+        { nonce },
       );
 
       if (result.outcome === "queued") {

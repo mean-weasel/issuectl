@@ -34,6 +34,8 @@ export function FailureModal({ failures, onRetry, onDiscard, onClose }: Props) {
     setRetrying(op.id);
     try {
       await onRetry(op);
+    } catch (err) {
+      console.error("[issuectl] Retry failed for operation:", op.id, err);
     } finally {
       setRetrying(null);
     }
