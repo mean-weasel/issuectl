@@ -1,8 +1,11 @@
 "use server";
 
+import type { GitHubComment } from "@issuectl/core";
 import {
   getDb,
+  getOctokit,
   getRepo,
+  getIssueContent,
   addComment as coreAddComment,
   withAuthRetry,
   withIdempotency,
@@ -10,6 +13,25 @@ import {
   formatErrorForUser,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
+
+export async function getComments(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<{ success: true; comments: GitHubComment[] } | { success: false; error: string }> {
+  if (!owner || !repo || issueNumber <= 0) {
+    return { success: false, error: "Invalid input" };
+  }
+  try {
+    const db = getDb();
+    const octokit = await getOctokit();
+    const { comments } = await getIssueContent(db, octokit, owner, repo, issueNumber);
+    return { success: true, comments };
+  } catch (err) {
+    console.error("[issuectl] Failed to fetch comments:", err);
+    return { success: false, error: formatErrorForUser(err) };
+  }
+}
 
 const MAX_COMMENT_BODY = 65536;
 

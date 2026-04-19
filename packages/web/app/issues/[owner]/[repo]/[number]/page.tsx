@@ -74,15 +74,16 @@ export default async function IssueDetailPage({
         repoId={repoId}
         currentPriority={currentPriority}
         issue={issue}
+        repoLocalPath={repoRecord?.localPath ?? null}
+        deployments={deployments}
+        referencedFiles={referencedFiles}
       >
         <Suspense fallback={<ContentSkeleton />}>
           <IssueDetailContent
             owner={owner}
             repoName={repo}
-            repoLocalPath={repoRecord?.localPath ?? null}
             issue={issue}
             deployments={deployments}
-            referencedFiles={referencedFiles}
           />
         </Suspense>
       </IssueDetail>

@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type {
+  GitHubIssue,
+  GitHubComment,
+  Deployment,
+} from "@issuectl/core";
 import { Sheet, Button } from "@/components/paper";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
+import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
+import { getComments } from "@/lib/actions/comments";
 import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
@@ -19,13 +26,30 @@ type Props = {
   repo: string;
   repoId: number;
   number: number;
+  repoLocalPath: string | null;
+  issue: GitHubIssue;
+  deployments: Deployment[];
+  referencedFiles: string[];
+  hasLiveDeployment: boolean;
 };
 
-export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
+export function IssueActionSheet({
+  owner,
+  repo,
+  repoId,
+  number,
+  repoLocalPath,
+  issue,
+  deployments,
+  referencedFiles,
+  hasLiveDeployment,
+}: Props) {
   const router = useRouter();
   const { showToast } = useToast();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [launchOpen, setLaunchOpen] = useState(false);
+  const [comments, setComments] = useState<GitHubComment[]>([]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +63,27 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
   const [reassignKey, setReassignKey] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!launchOpen) return;
+    let cancelled = false;
+    getComments(owner, repo, number)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setComments(result.comments);
+        } else {
+          console.error("[issuectl] IssueActionSheet: failed to load comments:", result.error);
+          showToast("Could not load comments for context selection", "warning");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[issuectl] IssueActionSheet: comment fetch failed:", err);
+        showToast("Could not load comments for context selection", "warning");
+      });
+    return () => { cancelled = true; };
+  }, [launchOpen, owner, repo, number, showToast]);
+
+  useEffect(() => {
     if (!reassignSheetOpen) return;
     setReassignError(null);
     setLoadingRepos(true);
@@ -50,6 +95,12 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
       })
       .finally(() => setLoadingRepos(false));
   }, [reassignSheetOpen]);
+
+  function handleLaunchTap() {
+    setSheetOpen(false);
+    setComments([]);
+    setLaunchOpen(true);
+  }
 
   function handleCloseTap() {
     setSheetOpen(false);
@@ -139,6 +190,12 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
         onClose={() => setSheetOpen(false)}
         title="issue actions"
       >
+        {!hasLiveDeployment && (
+          <button className={styles.item} onClick={handleLaunchTap}>
+            <span className={styles.icon}>&#x25B6;</span>
+            Launch with Claude
+          </button>
+        )}
         <button className={styles.item} onClick={handleReassignTap}>
           <span className={styles.icon}>&harr;</span>
           Re-assign to repo
@@ -151,6 +208,19 @@ export function IssueActionSheet({ owner, repo, repoId, number }: Props) {
           Close issue
         </button>
       </Sheet>
+
+      {launchOpen && (
+        <LaunchModal
+          owner={owner}
+          repo={repo}
+          repoLocalPath={repoLocalPath}
+          issue={issue}
+          comments={comments}
+          deployments={deployments}
+          referencedFiles={referencedFiles}
+          onClose={() => setLaunchOpen(false)}
+        />
+      )}
 
       {confirmClose && (
         <ConfirmDialog
