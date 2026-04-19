@@ -115,7 +115,17 @@ export function IssueActionSheet({
         // End active terminal session before closing the issue
         const liveDeployment = deployments.find((d) => d.endedAt === null);
         if (liveDeployment) {
-          await endSession(liveDeployment.id, owner, repo, number);
+          const endResult = await endSession(liveDeployment.id, owner, repo, number);
+          if (!endResult.success) {
+            console.warn(
+              "[issuectl] Failed to end session while closing issue:",
+              endResult.error,
+            );
+            showToast(
+              "Terminal session could not be stopped cleanly — it will be cleaned up on next restart.",
+              "warning",
+            );
+          }
         }
         const result = await closeIssue(owner, repo, number);
         if (!result.success) {
