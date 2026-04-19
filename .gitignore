@@ -9,6 +9,9 @@ dist/
 .worktrees/
 .superpowers/
 
+# Screenshots (local QA/mockup references, not tracked)
+*.png
+
 # QA tool caches and run artifacts
 .playwright-cli/
 .playwright-mcp/
