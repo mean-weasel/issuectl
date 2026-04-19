@@ -7,12 +7,12 @@ import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
 
 // STATUS (2026-04): this spec exercises the full real-terminal launch
-// flow — gated on macOS + Ghostty + gh auth, never runs in CI. The route
-// paths and copy assertions below pre-date a route restructure and are
-// known stale; running this requires updating those AND a real terminal
-// launch + cleanup pass. CI-friendly UI coverage of the launch progress
-// page (poller, spinner, back link, aria) lives in launch-ui.spec.ts,
-// which seeds a deployment row directly without spawning anything.
+// flow — gated on macOS + gh auth, never runs in CI. The route paths and
+// copy assertions below pre-date a route restructure and are known stale;
+// running this requires updating those AND a real ttyd launch + cleanup
+// pass. CI-friendly UI coverage of the launch progress page (poller,
+// spinner, back link, aria) lives in launch-ui.spec.ts, which seeds a
+// deployment row directly without spawning anything.
 
 const execFileAsync = promisify(execFile);
 
@@ -23,16 +23,11 @@ async function canRun(): Promise<{ ok: boolean; reason?: string }> {
     return { ok: false, reason: "Not macOS" };
   }
 
-  // Check Ghostty installed
-  const ghosttyBin = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
+  // Check ttyd installed
   try {
-    await execFileAsync(ghosttyBin, ["--version"]);
+    await execFileAsync("which", ["ttyd"]);
   } catch {
-    try {
-      await execFileAsync("which", ["ghostty"]);
-    } catch {
-      return { ok: false, reason: "Ghostty not installed" };
-    }
+    return { ok: false, reason: "ttyd not installed" };
   }
 
   // Check gh auth
@@ -105,9 +100,9 @@ function createTestDb(dbPath: string): void {
   db.close();
 }
 
-async function getGhosttyPids(): Promise<number[]> {
+async function getTtydPids(): Promise<number[]> {
   try {
-    const { stdout } = await execFileAsync("pgrep", ["-ix", "ghostty"]);
+    const { stdout } = await execFileAsync("pgrep", ["-ix", "ttyd"]);
     return stdout.trim().split("\n").map(Number).filter(Boolean);
   } catch {
     return [];
@@ -152,7 +147,7 @@ test.beforeAll(async () => {
   dbPath = join(tmpDir, "test.db");
   createTestDb(dbPath);
 
-  pidsBefore = await getGhosttyPids();
+  pidsBefore = await getTtydPids();
 
   server = spawn("npx", ["next", "dev", "--port", "3847"], {
     cwd: join(import.meta.dirname, ".."),
@@ -183,7 +178,7 @@ test.afterAll(async () => {
   }
 
   if (pidsBefore) {
-    const pidsNow = await getGhosttyPids();
+    const pidsNow = await getTtydPids();
     const newPids = pidsNow.filter((p) => !pidsBefore.includes(p));
     for (const pid of newPids) {
       try {
@@ -232,7 +227,7 @@ test.describe("launch flow", () => {
 
     await expect(page.locator("text=Launch to Claude Code").first()).toBeVisible({ timeout: 5000 });
 
-    const pidsBeforeLaunch = await getGhosttyPids();
+    const pidsBeforeLaunch = await getTtydPids();
 
     await page.getByRole("button", { name: "Launch", exact: true }).click();
 
@@ -242,7 +237,7 @@ test.describe("launch flow", () => {
     await expect(page.getByRole("button", { name: "Back to issue", exact: true })).toBeVisible();
 
     await page.waitForTimeout(2000);
-    const pidsAfterLaunch = await getGhosttyPids();
+    const pidsAfterLaunch = await getTtydPids();
     const newPids = pidsAfterLaunch.filter((p) => !pidsBeforeLaunch.includes(p));
     expect(newPids.length).toBeGreaterThanOrEqual(1);
   });

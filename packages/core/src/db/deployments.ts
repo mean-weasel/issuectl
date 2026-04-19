@@ -195,7 +195,7 @@ export function updateTtydInfo(
 
 /**
  * Delete a "pending" deployment row. Called by executeLaunch's rollback
- * path when the terminal launch fails after the row was written. This is
+ * path when the ttyd spawn fails after the row was written. This is
  * safe because pending rows are never visible to the UI or reconciler —
  * removing one cannot leave dangling references. Throws if the row is
  * not pending (active or ended rows must go through endDeployment).

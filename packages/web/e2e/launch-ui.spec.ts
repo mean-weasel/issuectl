@@ -19,9 +19,9 @@ const TEST_ISSUE = 1;
 const TEST_DEPLOYMENT_ID = 1;
 
 // CI-friendly UI tests for the launch progress page. Seeds a deployment
-// row directly so the page renders without spawning a real terminal —
-// the existing launch-flow.spec.ts covers the full terminal-spawn path
-// but is gated on macOS + Ghostty + gh auth and only runs locally.
+// row directly so the page renders without spawning a real ttyd process —
+// the existing launch-flow.spec.ts covers the full ttyd-spawn path but
+// is gated on macOS + ttyd + gh auth and only runs locally.
 //
 // What this spec pins (R3-R7 audit wins):
 // - Launch progress page renders given a valid deployment

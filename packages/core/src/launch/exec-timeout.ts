@@ -9,7 +9,7 @@ export type TimedExecOptions = {
   timeoutMs: number;
   /**
    * Short human-readable name for the step being run (e.g. "git fetch",
-   * "ghostty open"). Included in the thrown error so the user sees *what*
+   * "ttyd spawn"). Included in the thrown error so the user sees *what*
    * timed out, not just a generic timeout.
    */
   step: string;
@@ -17,7 +17,7 @@ export type TimedExecOptions = {
 
 /**
  * Thrown when a subprocess exceeds its timeout budget. Carries the step name
- * so the classifier (and error messages) can pinpoint which git/ghostty call
+ * so the classifier (and error messages) can pinpoint which git/ttyd call
  * hung instead of saying "Launch failed."
  */
 export class SubprocessTimeoutError extends Error {

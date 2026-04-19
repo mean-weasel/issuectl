@@ -10,8 +10,7 @@ import {
   updateTtydInfo,
 } from "../db/deployments.js";
 import { getIssueDetail } from "../data/issues.js";
-import { ensureLifecycleLabels, addLabel } from "../github/labels.js";
-import { LIFECYCLE_LABEL } from "../github/labels.js";
+import { ensureLifecycleLabels, addLabel, LIFECYCLE_LABEL } from "../github/labels.js";
 import {
   assembleContext,
   writeContextFile,
@@ -66,7 +65,7 @@ export async function executeLaunch(
   options: LaunchOptions,
 ): Promise<LaunchResult> {
   // 0. Verify ttyd is installed
-  await verifyTtyd();
+  verifyTtyd();
 
   // 1. Fetch issue detail
   const detail = await getIssueDetail(
@@ -249,7 +248,7 @@ export async function executeLaunch(
     workspacePath: workspace.path,
     contextFilePath,
     ttydPort,
-    ...(labelWarning ? { labelWarning } : {}),
+    labelWarning,
   };
 }
 

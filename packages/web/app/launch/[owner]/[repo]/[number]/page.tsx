@@ -46,9 +46,8 @@ export default async function LaunchProgressPage({
   }
 
   // Once ttyd is spawned and the deployment is active, redirect to the
-  // issue page where the "Open Terminal" button is waiting. The old
-  // Ghostty flow kept the user on this page indefinitely, but with ttyd
-  // the terminal is embedded in the dashboard — no reason to stay here.
+  // issue page where the "Open Terminal" button is waiting. The terminal
+  // is embedded in the dashboard — no reason to stay on this page.
   if (deployment.ttydPort !== null && deployment.state === "active") {
     redirect(`/issues/${owner}/${repo}/${issueNumber}`);
   }

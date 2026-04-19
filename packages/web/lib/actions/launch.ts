@@ -34,9 +34,9 @@ type LaunchResponse = {
   cacheStale?: true;
   /**
    * Set when the `issuectl:deployed` label could not be applied after the
-   * retry budget. Launch still succeeded — the deployment row exists and
-   * the terminal opened — but the reconciler may not auto-advance this
-   * issue's lifecycle state.
+   * retry budget. Launch still succeeded — the deployment and ttyd process
+   * are running — but the reconciler may not auto-advance this issue's
+   * lifecycle state.
    */
   labelWarning?: string;
 };
