@@ -45,6 +45,8 @@ export type Deployment = {
   state: DeploymentState;
   launchedAt: string;
   endedAt: string | null;
+  ttydPort: number | null;
+  ttydPid: number | null;
 };
 
 export type CacheEntry<T = unknown> = {

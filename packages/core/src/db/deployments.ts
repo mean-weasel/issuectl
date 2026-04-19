@@ -12,6 +12,8 @@ type DeploymentRow = {
   state: string;
   launched_at: string;
   ended_at: string | null;
+  ttyd_port: number | null;
+  ttyd_pid: number | null;
 };
 
 function rowToDeployment(row: DeploymentRow): Deployment {
@@ -26,6 +28,8 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     state: (row.state as DeploymentState) ?? "active",
     launchedAt: row.launched_at,
     endedAt: row.ended_at,
+    ttydPort: row.ttyd_port,
+    ttydPid: row.ttyd_pid,
   };
 }
 
@@ -172,6 +176,20 @@ export function activateDeployment(
     throw new Error(
       `No pending deployment found with id ${deploymentId} to activate`,
     );
+  }
+}
+
+export function updateTtydInfo(
+  db: Database.Database,
+  deploymentId: number,
+  port: number,
+  pid: number,
+): void {
+  const result = db
+    .prepare("UPDATE deployments SET ttyd_port = ?, ttyd_pid = ? WHERE id = ?")
+    .run(port, pid, deploymentId);
+  if (result.changes === 0) {
+    throw new Error(`No deployment found with id ${deploymentId} to update ttyd info`);
   }
 }
 
