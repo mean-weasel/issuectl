@@ -3,8 +3,10 @@
 import {
   getDb,
   getRepo,
+  getDeploymentById,
   executeLaunch,
   endDeployment as coreEndDeployment,
+  killTtyd,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -130,6 +132,10 @@ export async function endSession(
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   try {
     const db = getDb();
+    const deployment = getDeploymentById(db, deploymentId);
+    if (deployment?.ttydPid) {
+      killTtyd(deployment.ttydPid);
+    }
     coreEndDeployment(db, deploymentId);
   } catch (err) {
     console.error("[issuectl] Failed to end session:", err);
