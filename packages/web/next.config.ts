@@ -69,6 +69,14 @@ const nextConfig: NextConfig = {
     // (sw.js) to register. Without an explicit directive, browsers
     // fall back to script-src — adding it prevents breakage if
     // script-src is ever tightened.
+    // ttyd terminal iframes run on localhost ports 7700-7799. CSP
+    // frame-src needs to allow these origins for the embedded terminal
+    // panel to load. Generate the allow-list programmatically.
+    const ttydFrameSources = Array.from(
+      { length: 100 },
+      (_, i) => `http://localhost:${7700 + i}`,
+    ).join(" ");
+
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -76,6 +84,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: https://avatars.githubusercontent.com",
       "font-src 'self'",
       "connect-src 'self'",
+      `frame-src ${ttydFrameSources}`,
       "worker-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",

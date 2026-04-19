@@ -39,7 +39,8 @@
   flex-shrink: 0;
 }
 
-/* Desktop inline action bar — visible only on hover-capable wide viewports */
+/* Desktop inline action bar — visible only on hover-capable wide viewports.
+   Rendered inline in the content flow, centered. */
 .desktopBar {
   display: none;
 }
@@ -47,7 +48,8 @@
 @media (min-width: 768px) and (hover: hover) {
   .desktopBar {
     display: flex;
+    justify-content: center;
     gap: 10px;
-    margin-top: 24px;
+    margin-bottom: 20px;
   }
 }
