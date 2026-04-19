@@ -192,3 +192,28 @@ test.describe("Data freshness — comment appears immediately (#135)", () => {
     await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
   });
 });
+
+// ── A2: New issue visible on dashboard after creation (#128) ────────
+
+test.describe("Data freshness — new issue visible on dashboard (#128)", () => {
+  test("issue appears on index page after creation without manual refresh", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+
+    await page.goto(`${BASE_URL}/new`);
+    await expect(page.locator('input[type="text"]').first()).toBeVisible({ timeout: 15000 });
+
+    const issueTitle = `E2E freshness test ${Date.now()}`;
+    await page.locator('input[type="text"]').first().fill(issueTitle);
+    await page.click('button:has-text("Create")');
+
+    // After creation, the app navigates to the issue detail
+    await expect(page).toHaveURL(/\/issues\//, { timeout: 15000 });
+
+    // Navigate back to dashboard
+    await page.click('a[aria-label="Back"]');
+    await page.waitForLoadState("networkidle");
+
+    // The issue should be visible without pulling to refresh
+    await expect(page.getByText(issueTitle)).toBeVisible({ timeout: 10000 });
+  });
+});
