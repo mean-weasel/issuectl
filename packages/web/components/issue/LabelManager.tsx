@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import type { GitHubLabel } from "@issuectl/core";
 import { toggleLabel } from "@/lib/actions/issues";
 import { separateLabels } from "@/lib/labels";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Badge } from "@/components/ui/Badge";
+import { SyncDot } from "@/components/ui/SyncDot";
 import { LabelSelector } from "./LabelSelector";
 import styles from "./LabelManager.module.css";
+
+const MIN_SYNC_DOT_MS = 1500;
 
 type Props = {
   owner: string;
@@ -26,8 +29,26 @@ export function LabelManager({
 }: Props) {
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [syncVisible, setSyncVisible] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const syncStartRef = useRef(0);
+
+  // Keep the syncing dot visible for at least one full pulse cycle (1.2s
+  // animation in SyncDot.module.css). The 1500ms buffer prevents mid-fade
+  // disappearance when the API responds faster than one cycle.
+  useEffect(() => {
+    if (isPending) {
+      syncStartRef.current = Date.now();
+      setSyncVisible(true);
+      return;
+    }
+    if (!syncVisible) return;
+    const elapsed = Date.now() - syncStartRef.current;
+    const remaining = Math.max(0, MIN_SYNC_DOT_MS - elapsed);
+    const timer = setTimeout(() => setSyncVisible(false), remaining);
+    return () => clearTimeout(timer);
+  }, [isPending]); // syncVisible intentionally omitted — it's a gate, not a reactive dep
 
   const { lifecycle: lifecycleLabels, regular: regularLabels } =
     separateLabels(currentLabels);
@@ -56,6 +77,7 @@ export function LabelManager({
     <div className={styles.container}>
       <div className={styles.header}>
         <span className={styles.title}>Labels</span>
+        {syncVisible && <SyncDot status="syncing" label="syncing labels" />}
         <button
           type="button"
           className={styles.editButton}

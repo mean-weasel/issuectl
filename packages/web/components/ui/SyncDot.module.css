@@ -1,0 +1,43 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Local-only: solid amber ────────────────────────────────── */
+.local {
+  background: var(--paper-butter);
+  box-shadow: 0 0 4px var(--paper-butter);
+}
+
+/* ── Syncing / in-flight: pulsing green ─────────────────────── */
+.syncing {
+  background: var(--paper-accent);
+  box-shadow: 0 0 4px var(--paper-accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .syncing {
+    animation: none;
+  }
+}
+
+.label {
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-faint);
+}
