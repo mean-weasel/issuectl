@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
 import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
+import { endSession } from "@/lib/actions/launch";
 import { getComments } from "@/lib/actions/comments";
 import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -111,6 +112,11 @@ export function IssueActionSheet({
     setError(null);
     startTransition(async () => {
       try {
+        // End active terminal session before closing the issue
+        const liveDeployment = deployments.find((d) => d.endedAt === null);
+        if (liveDeployment) {
+          await endSession(liveDeployment.id, owner, repo, number);
+        }
         const result = await closeIssue(owner, repo, number);
         if (!result.success) {
           setError(result.error);
