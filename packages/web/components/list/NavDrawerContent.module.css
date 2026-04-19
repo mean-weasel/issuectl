@@ -5,28 +5,36 @@
 }
 
 .sectionLabel {
-  font-family: var(--paper-serif);
-  font-style: italic;
-  font-size: 11px;
-  color: var(--paper-ink-faint);
-  padding: 18px 22px 6px;
+  padding: 20px 16px 8px;
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--paper-ink-muted);
 }
 
 .item {
-  padding: 16px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 14px 16px;
+  min-height: 44px;
   border-bottom: 1px solid var(--paper-line-soft);
   font-family: var(--paper-serif);
-  font-size: 15px;
+  font-size: var(--paper-fs-md);
   color: var(--paper-ink);
   text-decoration: none;
+  border-radius: var(--paper-radius-md);
+  transition: background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .item:hover {
-  background: var(--paper-bg-warm);
+  background-color: var(--paper-bg-warm);
+}
+
+.item:active {
+  background-color: var(--paper-bg-warmer);
 }
 
 .item.on {
@@ -37,10 +45,6 @@
 .arrow {
   color: var(--paper-ink-faint);
   flex-shrink: 0;
-}
-
-.item:active {
-  background: var(--paper-bg-warmer);
 }
 
 .footer {
