@@ -16,6 +16,7 @@ import { FilterEdgeSwipe } from "./FilterEdgeSwipe";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
+import { CacheAge } from "@/components/ui/CacheAge";
 
 type Repo = { owner: string; name: string };
 type PrEntry = { repo: Repo; pull: GitHubPull };
@@ -31,6 +32,7 @@ type Props = {
   repos: Repo[];
   activeRepo: string | null;
   mineOnly: boolean;
+  cachedAt?: number | null;
 };
 
 const SORT_MODES: SortMode[] = ["updated", "created", "priority"];
@@ -89,6 +91,7 @@ export function List({
   activeRepo,
   activeSort,
   mineOnly,
+  cachedAt,
 }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -197,6 +200,7 @@ export function List({
         <h1 className={styles.brand}>
           issuectl<span className={styles.dot} />
         </h1>
+        <CacheAge cachedAt={cachedAt ?? null} />
         <nav className={styles.desktopNav}>
           <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
           <span className={styles.desktopNavSep}>·</span>

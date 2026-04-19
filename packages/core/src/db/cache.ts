@@ -50,6 +50,14 @@ export function clearCacheKey(
   db.prepare("DELETE FROM cache WHERE key = ?").run(key);
 }
 
+export function getOldestCacheAge(db: Database.Database): number | null {
+  const row = db
+    .prepare("SELECT MIN(fetched_at) as oldest FROM cache")
+    .get() as { oldest: string | null } | undefined;
+  if (!row?.oldest) return null;
+  return new Date(row.oldest + "Z").getTime();
+}
+
 export function clearCache(
   db: Database.Database,
   keyPattern?: string,

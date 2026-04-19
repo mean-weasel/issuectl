@@ -5,6 +5,7 @@ import {
   getPulls,
   listRepos,
   dbExists,
+  getOldestCacheAge,
   SORT_MODES,
   type GitHubPull,
   type Section,
@@ -77,6 +78,7 @@ export default async function MainListPage({ searchParams }: Props) {
     getUnifiedList(db, octokit, activeSort),
     gatherPulls(db, octokit, repos),
   ]);
+  const cachedAt = getOldestCacheAge(db);
 
   const username = auth.authenticated ? auth.username : null;
   const filteredData = filterUnifiedList(data, activeRepo);
@@ -94,6 +96,7 @@ export default async function MainListPage({ searchParams }: Props) {
       repos={repos.map((r) => ({ owner: r.owner, name: r.name }))}
       activeRepo={activeRepo}
       mineOnly={mineOnly}
+      cachedAt={cachedAt}
     />
   );
 }
