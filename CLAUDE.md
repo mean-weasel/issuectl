@@ -24,7 +24,7 @@ Cross-repo GitHub issue command center with Claude Code launch integration.
 | GitHub API | Octokit (`@octokit/rest`) |
 | Auth | `gh auth token` (no separate login) |
 | Database | SQLite via `better-sqlite3` at `~/.issuectl/issuectl.db` |
-| Terminal | Ghostty (hard-coded for v1) |
+| Terminal | ttyd (web-based, embedded in dashboard) |
 | Styling | CSS Modules + global design tokens (no Tailwind) |
 
 ## Code conventions
