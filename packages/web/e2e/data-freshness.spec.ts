@@ -77,7 +77,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
 // ── Test suite ──────────────────────────────────────────────────────
 
 const STDERR_BUFFER_MAX_CHUNKS = 200;
-const serverStderrChunks: string[] = [];
+const serverOutputChunks: string[] = [];
 
 let tmpDir: string;
 let dbPath: string;
@@ -111,30 +111,30 @@ test.beforeAll(async () => {
   });
 
   server.stderr?.on("data", (chunk: Buffer) => {
-    serverStderrChunks.push(chunk.toString());
-    if (serverStderrChunks.length > STDERR_BUFFER_MAX_CHUNKS) {
-      serverStderrChunks.shift();
+    serverOutputChunks.push(chunk.toString());
+    if (serverOutputChunks.length > STDERR_BUFFER_MAX_CHUNKS) {
+      serverOutputChunks.shift();
     }
   });
 
   server.stdout?.on("data", (chunk: Buffer) => {
-    serverStderrChunks.push(chunk.toString());
-    if (serverStderrChunks.length > STDERR_BUFFER_MAX_CHUNKS) {
-      serverStderrChunks.shift();
+    serverOutputChunks.push(chunk.toString());
+    if (serverOutputChunks.length > STDERR_BUFFER_MAX_CHUNKS) {
+      serverOutputChunks.shift();
     }
   });
 
   await waitForServer(BASE_URL, 60000).catch((err) => {
     throw new Error(
-      `${err.message}. Server stderr: ${serverStderrChunks.join("").slice(-800)}`,
+      `${err.message}. Server stderr: ${serverOutputChunks.join("").slice(-800)}`,
     );
   });
 });
 
 test.afterEach(async ({}, testInfo) => {
-  if (testInfo.status !== testInfo.expectedStatus && serverStderrChunks.length > 0) {
-    await testInfo.attach("server-stderr", {
-      body: serverStderrChunks.join("").slice(-8000),
+  if (testInfo.status !== testInfo.expectedStatus && serverOutputChunks.length > 0) {
+    await testInfo.attach("server-output", {
+      body: serverOutputChunks.join("").slice(-8000),
       contentType: "text/plain",
     });
   }
