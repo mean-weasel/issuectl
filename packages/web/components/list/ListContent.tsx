@@ -1,0 +1,145 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Section, UnifiedList } from "@issuectl/core";
+import type { PrEntry } from "@/lib/page-filters";
+import { ListSection } from "./ListSection";
+import { PrListRow } from "./PrListRow";
+import styles from "./List.module.css";
+
+type Props = {
+  activeTab: "issues" | "prs";
+  activeSection: Section;
+  data: UnifiedList;
+  prs: PrEntry[];
+  activeRepo: string | null;
+  mineOnly: boolean;
+};
+
+const PAGE_SIZE = 15;
+
+const SECTION_EMPTY: Record<Section, { title: string; body: string }> = {
+  unassigned: {
+    title: "no drafts",
+    body: "start a draft with the + button — it'll live here until you assign it to a repo.",
+  },
+  in_focus: {
+    title: "all clear",
+    body: "nothing on your plate. breathe, or draft the next one.",
+  },
+  in_flight: {
+    title: "nothing in flight",
+    body: "when you launch an issue, it lands here while you work on it.",
+  },
+  shipped: {
+    title: "nothing shipped yet",
+    body: "closed issues show up here once PRs merge and reconcile.",
+  },
+};
+
+export function ListContent({
+  activeTab,
+  activeSection,
+  data,
+  prs,
+  activeRepo,
+  mineOnly,
+}: Props) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeSection]);
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  }, []);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore();
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, activeSection]);
+
+  if (activeTab === "issues") {
+    return (
+      <>
+        {renderIssueSection({ activeSection, data, visibleCount })}
+        {visibleCount < data[activeSection].length && (
+          <div ref={sentinelRef} className={styles.sentinel} />
+        )}
+      </>
+    );
+  }
+
+  const prCount = prs.length;
+
+  if (prCount === 0) {
+    return (
+      <div className={styles.empty}>
+        <div className={styles.emptyMark}>❧</div>
+        <h3>no pull requests</h3>
+        <p>
+          <em>
+            {activeRepo && mineOnly
+              ? `no open PRs from you in ${activeRepo}.`
+              : activeRepo
+                ? `no open PRs in ${activeRepo}.`
+                : mineOnly
+                  ? "no open PRs from you across your repos."
+                  : "no open PRs across your repos."}
+          </em>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {prs.map(({ repo, pull }) => (
+        <PrListRow
+          key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
+          owner={repo.owner}
+          repoName={repo.name}
+          pull={pull}
+        />
+      ))}
+    </div>
+  );
+}
+
+function renderIssueSection({
+  activeSection,
+  data,
+  visibleCount,
+}: {
+  activeSection: Section;
+  data: UnifiedList;
+  visibleCount: number;
+}) {
+  const allItems = data[activeSection];
+
+  if (allItems.length === 0) {
+    const empty = SECTION_EMPTY[activeSection];
+    return (
+      <div className={styles.empty}>
+        <div className={styles.emptyMark}>❧</div>
+        <h3>{empty.title}</h3>
+        <p>
+          <em>{empty.body}</em>
+        </p>
+      </div>
+    );
+  }
+
+  const items = allItems.slice(0, visibleCount);
+  return <ListSection title={null} items={items} />;
+}

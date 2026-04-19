@@ -465,11 +465,13 @@ test.describe("draft assign — cache invalidation", () => {
     const assignSheet = page.getByRole("dialog", { name: /assign to repo/ });
     await expect(assignSheet).toBeVisible();
 
-    // Select the test repo (click to select, not assign — the new two-step flow)
+    // Select the test repo — opens a ConfirmDialog
     await assignSheet.getByText(TEST_REPO).click();
 
-    // Confirm the assignment
-    await assignSheet.getByRole("button", { name: /assign to/i }).click();
+    // Confirm the assignment in the ConfirmDialog (renders as a separate dialog)
+    const confirmDialog = page.getByRole("dialog", { name: "Assign to Repo", exact: true });
+    await expect(confirmDialog).toBeVisible({ timeout: 10000 });
+    await confirmDialog.getByRole("button", { name: "Assign" }).click();
 
     // Should navigate to the new issue's detail page
     await page.waitForURL(
@@ -481,10 +483,13 @@ test.describe("draft assign — cache invalidation", () => {
     const issueMatch = page.url().match(/\/issues\/[^/]+\/[^/]+\/(\d+)/);
     const newIssueNumber = issueMatch ? Number(issueMatch[1]) : null;
 
-    // Navigate home and verify the issue appears in the "in focus" section
+    // Navigate home and verify the issue appears in the "in focus" section.
+    // Wait for networkidle so the Suspense streaming completes — the
+    // dashboard fetches from GitHub via an async Server Component.
     await page.goto(BASE_URL);
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText(ASSIGN_DRAFT_TITLE)).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Clean up: close the created GitHub issue

@@ -1,24 +1,20 @@
+import { Suspense } from "react";
 import {
   getDb,
-  getOctokit,
-  getUnifiedList,
-  getPulls,
   listRepos,
   dbExists,
+  getOldestCacheAge,
   SORT_MODES,
-  type GitHubPull,
   type Section,
   type SortMode,
 } from "@issuectl/core";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
-import { List } from "@/components/list/List";
+import { resolveActiveRepo } from "@/lib/page-filters";
 import { getAuthStatus } from "@/lib/auth";
-import {
-  filterPrs,
-  filterUnifiedList,
-  resolveActiveRepo,
-  type PrEntry,
-} from "@/lib/page-filters";
+import { List } from "@/components/list/List";
+import { ListCountProvider } from "@/components/list/ListCountContext";
+import { ContentSkeleton } from "@/components/list/ContentSkeleton";
+import { DashboardContent } from "./DashboardContent";
 
 export const dynamic = "force-dynamic";
 
@@ -71,59 +67,36 @@ export default async function MainListPage({ searchParams }: Props) {
     ? (sortParam as SortMode)
     : "updated";
 
-  const [octokit, auth] = await Promise.all([getOctokit(), getAuthStatus()]);
+  const repoList = repos.map((r) => ({ owner: r.owner, name: r.name }));
+  const cachedAt = getOldestCacheAge(db);
 
-  const [data, allPrs] = await Promise.all([
-    getUnifiedList(db, octokit, activeSort),
-    gatherPulls(db, octokit, repos),
-  ]);
-
+  const auth = await getAuthStatus();
   const username = auth.authenticated ? auth.username : null;
-  const filteredData = filterUnifiedList(data, activeRepo);
-  const filteredPrs = filterPrs(allPrs, activeRepo, mineOnly ? username : null);
 
   return (
-    <List
-      data={filteredData}
-      activeTab={activeTab}
-      activeSection={activeSection}
-      activeSort={activeSort}
-      prs={filteredPrs}
-      prCount={filteredPrs.length}
-      username={username}
-      repos={repos.map((r) => ({ owner: r.owner, name: r.name }))}
-      activeRepo={activeRepo}
-      mineOnly={mineOnly}
-    />
+    <ListCountProvider>
+      <List
+        activeTab={activeTab}
+        activeSection={activeSection}
+        activeSort={activeSort}
+        activeRepo={activeRepo}
+        mineOnly={mineOnly}
+        repos={repoList}
+        username={username}
+        cachedAt={cachedAt}
+      >
+        <Suspense fallback={<ContentSkeleton />}>
+          <DashboardContent
+            repos={repoList}
+            activeTab={activeTab}
+            activeSection={activeSection}
+            activeSort={activeSort}
+            activeRepo={activeRepo}
+            mineOnly={mineOnly}
+            username={username}
+          />
+        </Suspense>
+      </List>
+    </ListCountProvider>
   );
-}
-
-async function gatherPulls(
-  db: ReturnType<typeof getDb>,
-  octokit: Awaited<ReturnType<typeof getOctokit>>,
-  repos: ReturnType<typeof listRepos>,
-): Promise<PrEntry[]> {
-  try {
-    const prResults = await Promise.all(
-      repos.map(async (repo) => {
-        try {
-          const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
-          return pulls.map((pull) => ({
-            repo: { owner: repo.owner, name: repo.name },
-            pull,
-          }));
-        } catch (err) {
-          console.warn(
-            `[issuectl] getPulls failed for ${repo.owner}/${repo.name}:`,
-            err instanceof Error ? err.message : err,
-          );
-          return [];
-        }
-      }),
-    );
-    return prResults.flat();
-  } catch (err) {
-    console.error("[issuectl] PR gather failed:", err);
-    return [];
-  }
 }

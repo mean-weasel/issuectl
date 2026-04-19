@@ -39,6 +39,17 @@
   flex-shrink: 0;
 }
 
+.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.offlineHint {
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  margin-left: auto;
+}
+
 /* Desktop inline action bar — visible only on hover-capable wide viewports.
    Rendered inline in the content flow, centered. */
 .desktopBar {

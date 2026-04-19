@@ -37,7 +37,7 @@ export function LaunchActiveBanner({ deploymentId, branchName, endedAt, owner, r
           branch: {branchName}
         </div>
       </div>
-      {ttydPort && (
+      {ttydPort !== null && (
         <OpenTerminalButton
           ttydPort={ttydPort}
           deploymentId={deploymentId}

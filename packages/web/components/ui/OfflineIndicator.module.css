@@ -1,9 +1,12 @@
-.banner {
+.wrapper {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 10000;
+}
+
+.banner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,17 +22,38 @@
   padding-top: calc(6px + env(safe-area-inset-top));
 }
 
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: #963d26;
+}
+
 .icon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
 
+.textFull {
+  display: inline;
+}
+
+.textCompact {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .textFull {
+    display: none;
+  }
+  .textCompact {
+    display: inline;
+  }
+}
+
 @keyframes slideDown {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(0);
-  }
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
 }
