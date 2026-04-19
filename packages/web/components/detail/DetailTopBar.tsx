@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./DetailTopBar.module.css";
 
 type Props = {
@@ -13,9 +16,25 @@ export function DetailTopBar({
   crumb,
   menu,
 }: Props) {
+  const router = useRouter();
+
+  function handleBack(e: React.MouseEvent) {
+    // Use browser history when available so filter state is preserved.
+    // Fall back to the hard link when there's no history (e.g. direct URL visit).
+    if (window.history.length > 1) {
+      e.preventDefault();
+      router.back();
+    }
+  }
+
   return (
     <div className={styles.bar}>
-      <Link href={backHref} className={styles.back} aria-label="Back">
+      <Link
+        href={backHref}
+        className={styles.back}
+        aria-label="Back"
+        onClick={handleBack}
+      >
         <svg
           width="12"
           height="20"

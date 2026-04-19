@@ -217,3 +217,27 @@ test.describe("Data freshness — new issue visible on dashboard (#128)", () => 
     await expect(page.getByText(issueTitle)).toBeVisible({ timeout: 10000 });
   });
 });
+
+// ── A3: Filters persist on back-navigation (#129) ──────────────────
+
+test.describe("Data freshness — filters persist on back-nav (#129)", () => {
+  test("repo filter preserved when navigating back from issue detail", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+
+    await page.goto(`${BASE_URL}/?repo=${TEST_OWNER}/${TEST_REPO}&section=in_focus`);
+    await page.waitForLoadState("networkidle");
+
+    const issueLink = page.locator('a[href*="/issues/"]').first();
+    if (await issueLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await issueLink.click();
+      await page.waitForLoadState("networkidle");
+
+      // Click back
+      await page.click('a[aria-label="Back"]');
+      await page.waitForLoadState("networkidle");
+
+      // URL should still have the repo filter
+      expect(page.url()).toContain(`repo=${TEST_OWNER}/${TEST_REPO}`);
+    }
+  });
+});
