@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { listReposAction, assignDraftAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { tryOrQueue } from "@/lib/tryOrQueue";
 import styles from "./AssignSheet.module.css";
 
 type Repo = { id: number; owner: string; name: string };
@@ -48,20 +49,37 @@ export function AssignSheet({ open, onClose, draftId, draftTitle }: Props) {
     setError(null);
     const idempotencyKey = newIdempotencyKey();
     try {
-      const result = await assignDraftAction(draftId, selectedRepo.id, idempotencyKey);
-      if (!result.success) {
+      const result = await tryOrQueue(
+        "assignDraft",
+        { draftId, repoId: selectedRepo.id },
+        () => assignDraftAction(draftId, selectedRepo.id, idempotencyKey),
+        { nonce: idempotencyKey },
+      );
+
+      if (result.outcome === "queued") {
+        showToast("Queued — will sync when online", "warning");
+        setSelectedRepo(null);
+        onClose();
+        router.push("/?section=unassigned");
+        return;
+      }
+
+      if (result.outcome === "error") {
         setError(result.error);
         return;
       }
-      if (result.cleanupWarning) {
-        showToast(result.cleanupWarning, "warning");
+
+      // succeeded
+      const data = result.data as { issueNumber?: number; cleanupWarning?: string };
+      if (data.cleanupWarning) {
+        showToast(data.cleanupWarning as string, "warning");
       } else {
-        showToast(`Issue #${result.issueNumber} created`, "success");
+        showToast(`Issue #${data.issueNumber} created`, "success");
       }
       setSelectedRepo(null);
       onClose();
-      if (result.issueNumber) {
-        router.push(`/issues/${selectedRepo.owner}/${selectedRepo.name}/${result.issueNumber}`);
+      if (data.issueNumber) {
+        router.push(`/issues/${selectedRepo.owner}/${selectedRepo.name}/${data.issueNumber}`);
       } else {
         router.push("/");
       }
