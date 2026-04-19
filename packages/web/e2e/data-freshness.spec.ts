@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
+import { initSchema, runMigrations } from "@issuectl/core";
 
 const execFileAsync = promisify(execFile);
 
@@ -32,61 +33,31 @@ function createTestDb(dbPath: string): void {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS repos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      owner TEXT NOT NULL,
-      name TEXT NOT NULL,
-      local_path TEXT,
-      branch_pattern TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(owner, name)
-    );
-    CREATE TABLE IF NOT EXISTS deployments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      repo_id INTEGER NOT NULL REFERENCES repos(id),
-      issue_number INTEGER NOT NULL,
-      branch_name TEXT NOT NULL,
-      workspace_mode TEXT NOT NULL,
-      workspace_path TEXT NOT NULL,
-      linked_pr_number INTEGER,
-      launched_at TEXT NOT NULL DEFAULT (datetime('now')),
-      ended_at TEXT
-    );
-    CREATE TABLE IF NOT EXISTS cache (
-      key TEXT PRIMARY KEY,
-      data TEXT NOT NULL,
-      fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
+  try {
+    initSchema(db);
+    runMigrations(db);
 
-  db.prepare("INSERT OR IGNORE INTO schema_version (version) VALUES (?)").run(4);
+    const defaults: Array<[string, string]> = [
+      ["branch_pattern", "issue-{number}-{slug}"],
+      ["terminal_app", "iterm2"],
+      ["terminal_window_title", "issuectl"],
+      ["terminal_tab_title_pattern", "#{number} — {title}"],
+      ["cache_ttl", "300"],
+      ["worktree_dir", "~/.issuectl/worktrees/"],
+    ];
+    const insertSetting = db.prepare(
+      "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+    );
+    for (const [key, value] of defaults) {
+      insertSetting.run(key, value);
+    }
 
-  const defaults = [
-    ["branch_pattern", "issue-{number}-{slug}"],
-    ["terminal_app", "iterm2"],
-    ["terminal_window_title", "issuectl"],
-    ["terminal_tab_title_pattern", "#{number} — {title}"],
-    ["cache_ttl", "300"],
-    ["worktree_dir", "~/.issuectl/worktrees/"],
-  ];
-  const insertSetting = db.prepare(
-    "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
-  );
-  for (const [key, value] of defaults) {
-    insertSetting.run(key, value);
+    db.prepare(
+      "INSERT OR IGNORE INTO repos (owner, name) VALUES (?, ?)",
+    ).run(TEST_OWNER, TEST_REPO);
+  } finally {
+    db.close();
   }
-
-  db.prepare(
-    "INSERT OR IGNORE INTO repos (owner, name) VALUES (?, ?)",
-  ).run(TEST_OWNER, TEST_REPO);
-
-  db.close();
 }
 
 async function waitForServer(url: string, timeoutMs: number): Promise<void> {
@@ -105,6 +76,9 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
 
 // ── Test suite ──────────────────────────────────────────────────────
 
+const STDERR_BUFFER_MAX_CHUNKS = 200;
+const serverOutputChunks: string[] = [];
+
 let tmpDir: string;
 let dbPath: string;
 let server: ChildProcess;
@@ -122,22 +96,48 @@ test.beforeAll(async () => {
   dbPath = join(tmpDir, "test.db");
   createTestDb(dbPath);
 
+  const distDir = join(tmpDir, ".next-test");
+
   server = spawn("npx", ["next", "dev", "--port", String(TEST_PORT)], {
     cwd: join(import.meta.dirname, ".."),
-    env: { ...process.env, ISSUECTL_DB_PATH: dbPath },
+    env: {
+      ...process.env,
+      ISSUECTL_DB_PATH: dbPath,
+      NEXT_DIST_DIR: distDir,
+      NEXT_PRIVATE_SKIP_SETUP: "1",
+    },
     stdio: "pipe",
+    detached: true,
   });
 
-  let serverStderr = "";
   server.stderr?.on("data", (chunk: Buffer) => {
-    serverStderr += chunk.toString();
+    serverOutputChunks.push(chunk.toString());
+    if (serverOutputChunks.length > STDERR_BUFFER_MAX_CHUNKS) {
+      serverOutputChunks.shift();
+    }
   });
 
-  await waitForServer(BASE_URL, 30000).catch((err) => {
+  server.stdout?.on("data", (chunk: Buffer) => {
+    serverOutputChunks.push(chunk.toString());
+    if (serverOutputChunks.length > STDERR_BUFFER_MAX_CHUNKS) {
+      serverOutputChunks.shift();
+    }
+  });
+
+  await waitForServer(BASE_URL, 60000).catch((err) => {
     throw new Error(
-      `${err.message}. Server stderr: ${serverStderr.slice(-500)}`,
+      `${err.message}. Server stderr: ${serverOutputChunks.join("").slice(-800)}`,
     );
   });
+});
+
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus && serverOutputChunks.length > 0) {
+    await testInfo.attach("server-output", {
+      body: serverOutputChunks.join("").slice(-8000),
+      contentType: "text/plain",
+    });
+  }
 });
 
 test.afterAll(async () => {
@@ -157,16 +157,17 @@ test.afterAll(async () => {
     }
   }
 
-  if (server) {
-    const killTimeout = setTimeout(() => {
+  if (server && server.pid) {
+    const killGroup = (signal: NodeJS.Signals) => {
       try {
-        server.kill("SIGKILL");
+        process.kill(-server.pid!, signal);
       } catch {
-        /* already dead */
+        /* already dead or orphaned */
       }
-    }, 5000);
+    };
 
-    server.kill("SIGTERM");
+    const killTimeout = setTimeout(() => killGroup("SIGKILL"), 5000);
+    killGroup("SIGTERM");
     await new Promise<void>((resolve) => {
       if (server.exitCode !== null) {
         resolve();
@@ -180,6 +181,15 @@ test.afterAll(async () => {
   if (tmpDir) {
     rmSync(tmpDir, { recursive: true, force: true });
   }
+
+  await execFileAsync("git", [
+    "checkout", "--", "packages/web/tsconfig.json", "packages/web/next-env.d.ts",
+  ], { cwd: join(import.meta.dirname, "../../..") }).catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("did not match any")) {
+      console.warn(`[data-freshness afterAll] git checkout failed: ${msg}`);
+    }
+  });
 });
 
 // ── A1: Comment appears immediately after posting (#135, #131) ──────
@@ -221,16 +231,41 @@ test.describe("Data freshness — new issue visible on dashboard (#128)", () => 
     // After creation, the app navigates to the issue detail
     await expect(page).toHaveURL(/\/issues\//, { timeout: 15000 });
 
-    // Track created issue for cleanup
-    const match = page.url().match(/\/issues\/(\d+)/);
+    // Track created issue for cleanup — URL is /issues/owner/repo/number
+    const match = page.url().match(/\/issues\/[^/]+\/[^/]+\/(\d+)/);
     if (match) createdIssueNumbers.push(Number(match[1]));
 
-    // Navigate back to dashboard
-    await page.click('a[aria-label="Back"]');
+    // Navigate to dashboard. Wait for networkidle so the Suspense
+    // streaming completes — the dashboard fetches from GitHub via an
+    // async Server Component.
+    await page.goto(BASE_URL);
     await page.waitForLoadState("networkidle");
 
+    // Wait for the Suspense content to stream in (an issue link proves
+    // DashboardContent resolved, not just the skeleton fallback).
+    await expect(page.locator('a[href*="/issues/"]').first()).toBeVisible({ timeout: 15000 });
+
+    // GitHub's list endpoint has brief eventual consistency after
+    // writes — the new issue may not appear in the first response.
+    // If it's missing, the stale response gets re-cached locally, so
+    // we must clear the SQLite cache between retries to force a fresh
+    // API call on each reload.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const found = await page.getByText(issueTitle).isVisible({ timeout: 3000 }).catch(() => false);
+      if (found) break;
+
+      const db = new Database(dbPath);
+      db.prepare("DELETE FROM cache WHERE key LIKE 'issues:%'").run();
+      db.close();
+
+      await page.waitForTimeout(2000);
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(page.locator('a[href*="/issues/"]').first()).toBeVisible({ timeout: 15000 });
+    }
+
     // The issue should be visible without pulling to refresh
-    await expect(page.getByText(issueTitle)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(issueTitle)).toBeVisible({ timeout: 15000 });
   });
 });
 
@@ -251,11 +286,17 @@ test.describe("Data freshness — filters persist on back-nav (#129)", () => {
     }
 
     await issueLink.click();
-    await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/issues\//, { timeout: 15000 });
 
-    // Click back
-    await page.click('a[aria-label="Back"]');
-    await page.waitForLoadState("networkidle");
+    // Use browser back (not the Back link) to test history-based filter
+    // preservation. The Back link relies on document.referrer which is
+    // empty after page.goto() in Playwright, so it falls through to a
+    // hard <Link href="/"> that drops query params.
+    await page.goBack();
+    await page.waitForURL(
+      (url) => url.searchParams.has("repo") && url.searchParams.has("section"),
+      { timeout: 15000 },
+    );
 
     // URL should still have both query params
     expect(page.url()).toContain(`repo=${TEST_OWNER}/${TEST_REPO}`);

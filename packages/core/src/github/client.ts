@@ -6,7 +6,28 @@ let instance: Octokit | null = null;
 export async function getOctokit(): Promise<Octokit> {
   if (instance) return instance;
   const token = await getGhToken();
-  instance = new Octokit({ auth: token });
+  // Two layers of cache bypass:
+  //
+  // 1. `cache: "no-store"` — bypasses Next.js's patched Data Cache so our
+  //    own SQLite cache is the single source of truth for freshness.
+  //
+  // 2. `_nc` query parameter — cache-busts GitHub's CDN. Without it, a
+  //    prior GET to the same endpoint (e.g. listForRepo) can poison the
+  //    CDN for 60+ seconds, causing subsequent fetches to return stale
+  //    data even after we clear the SQLite cache on mutation.
+  //
+  // The "cache" property exists on the browser/Next.js fetch but not in
+  // Node.js's RequestInit type, so we use a type assertion.
+  const uncachedFetch: typeof globalThis.fetch = (input, init) => {
+    const method = init?.method?.toUpperCase() ?? "GET";
+    if (method === "GET") {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const sep = url.includes("?") ? "&" : "?";
+      return globalThis.fetch(`${url}${sep}_nc=${Date.now()}`, { ...init, cache: "no-store" } as RequestInit);
+    }
+    return globalThis.fetch(input, { ...init, cache: "no-store" } as RequestInit);
+  };
+  instance = new Octokit({ auth: token, request: { fetch: uncachedFetch } });
   return instance;
 }
 
