@@ -63,7 +63,7 @@ issuectl web                    # Start dashboard (localhost:3847)
 
 ### After completing a phase or major feature
 
-4. **`/pr-review-toolkit:review-pr`** — Run a comprehensive PR review before considering any phase complete. This is the final gate. It reviews all changes holistically — cross-file issues, missed edge cases, convention violations across the full diff. Use the full review, not a quick scan.
+4. **`/pr-review-toolkit:review-pr`** — Run a comprehensive PR review before considering any phase complete. This is the final gate. It reviews all changes holistically — cross-file issues, missed edge cases, convention violations across the full diff. Use the full review, not a quick scan. A `PreToolUse` hook in `hooks/enforce-pr-review.sh` enforces this — `gh pr create` is blocked until the review has run. Always run `/pr-review-toolkit:review-pr all` before creating a PR. Address every Critical and Important issue before proceeding.
 
 5. **Validate the plugin/project structure** as needed — if you've added new packages, changed the monorepo structure, or modified build config, verify that `pnpm turbo build` still succeeds and all packages resolve correctly.
 
