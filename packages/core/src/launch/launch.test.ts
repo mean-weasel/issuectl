@@ -22,12 +22,32 @@ vi.mock("./workspace.js", () => ({
   prepareWorkspace: prepareWorkspaceSpy,
 }));
 
-vi.mock("./terminal.js", () => ({
-  getTerminalLauncher: () => ({
-    verify: async () => {},
-    launch: async () => {},
-  }),
+const { verifyTtydSpy, spawnTtydSpy, allocatePortSpy } = vi.hoisted(() => ({
+  verifyTtydSpy: vi.fn(),
+  spawnTtydSpy: vi.fn(() => ({ pid: 12345, port: 7700 })),
+  allocatePortSpy: vi.fn(async () => 7700),
 }));
+
+vi.mock("./ttyd.js", () => ({
+  verifyTtyd: verifyTtydSpy,
+  spawnTtyd: spawnTtydSpy,
+  allocatePort: allocatePortSpy,
+}));
+
+const { updateTtydInfoSpy } = vi.hoisted(() => ({
+  updateTtydInfoSpy: vi.fn(),
+}));
+
+vi.mock("../db/deployments.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../db/deployments.js")>(
+      "../db/deployments.js",
+    );
+  return {
+    ...actual,
+    updateTtydInfo: updateTtydInfoSpy,
+  };
+});
 
 vi.mock("../data/issues.js", () => ({
   getIssueDetail: async () => ({
@@ -155,6 +175,10 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
 
   beforeEach(() => {
     prepareWorkspaceSpy.mockClear();
+    verifyTtydSpy.mockClear();
+    spawnTtydSpy.mockClear();
+    allocatePortSpy.mockClear();
+    updateTtydInfoSpy.mockClear();
     db = createTestDb();
   });
 
@@ -251,7 +275,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       "UPDATE deployments SET ended_at = datetime('now') WHERE id = ?",
     ).run(prior.id);
 
-    await executeLaunch(db, {} as Octokit, {
+    const result = await executeLaunch(db, {} as Octokit, {
       owner: "acme",
       repo: "api",
       issueNumber: 42,
@@ -262,5 +286,20 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     });
 
     expect(prepareWorkspaceSpy).toHaveBeenCalledTimes(1);
+    expect(spawnTtydSpy).toHaveBeenCalledTimes(1);
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        port: 7700,
+        workspacePath: "/tmp/fake-workspace",
+        claudeCommand: "claude",
+      }),
+    );
+    expect(updateTtydInfoSpy).toHaveBeenCalledWith(
+      db,
+      expect.any(Number),
+      7700,
+      12345,
+    );
+    expect(result.ttydPort).toBe(7700);
   });
 });
