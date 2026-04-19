@@ -161,7 +161,8 @@ export function IssueActionSheet({
       setSelectedRepo(null);
       setReassignSheetOpen(false);
       if (result.cleanupWarning) {
-        showToast(result.cleanupWarning, "warning");
+        const suffix = result.cacheStale ? " Reload if the list looks stale." : "";
+        showToast(`${result.cleanupWarning}${suffix}`, "warning");
       } else {
         const msg = `Issue moved to ${result.newOwner}/${result.newRepo}#${result.newIssueNumber}`;
         showToast(

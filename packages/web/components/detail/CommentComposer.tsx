@@ -31,13 +31,16 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
       } else {
         setBody("");
         router.refresh();
-        if (result.cacheStale) {
-          showToast("Comment posted — reload if it doesn't appear", "success");
-        }
+        showToast(
+          result.cacheStale
+            ? "Comment posted — reload if it doesn't appear"
+            : "Comment posted",
+          "success",
+        );
       }
     } catch (err) {
       console.error("[issuectl] addComment threw:", err);
-      setError("Failed to post comment");
+      setError(err instanceof Error ? err.message : "Failed to post comment");
     } finally {
       setSending(false);
     }
