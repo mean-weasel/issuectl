@@ -117,7 +117,12 @@ export function IssueActionSheet({
           return;
         }
         setConfirmClose(false);
-        showToast("Issue closed", "success");
+        showToast(
+          result.cacheStale
+            ? "Issue closed — reload if the list looks stale"
+            : "Issue closed",
+          "success",
+        );
         router.push("/?section=shipped");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
@@ -158,8 +163,9 @@ export function IssueActionSheet({
       if (result.cleanupWarning) {
         showToast(result.cleanupWarning, "warning");
       } else {
+        const msg = `Issue moved to ${result.newOwner}/${result.newRepo}#${result.newIssueNumber}`;
         showToast(
-          `Issue moved to ${result.newOwner}/${result.newRepo}#${result.newIssueNumber}`,
+          result.cacheStale ? `${msg} — reload if the list looks stale` : msg,
           "success",
         );
       }

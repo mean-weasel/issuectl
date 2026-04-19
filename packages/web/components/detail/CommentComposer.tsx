@@ -35,7 +35,8 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
           showToast("Comment posted — reload if it doesn't appear", "success");
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[issuectl] addComment threw:", err);
       setError("Failed to post comment");
     } finally {
       setSending(false);
