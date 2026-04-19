@@ -19,7 +19,7 @@ export function revalidateSafely(...paths: string[]): { stale: boolean } {
     try {
       revalidatePath(path);
     } catch (firstErr) {
-      console.debug("[issuectl] Cache revalidation failed, retrying", { path }, firstErr);
+      console.warn("[issuectl] Cache revalidation failed, retrying", { path }, firstErr);
       try {
         revalidatePath(path);
       } catch (err) {
