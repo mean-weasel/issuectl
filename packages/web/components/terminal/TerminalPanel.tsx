@@ -57,9 +57,14 @@ export function TerminalPanel({
     <div className={styles.overlay} data-open={open}>
       <div className={styles.backdrop} onClick={onClose} />
       <div className={styles.panel} data-open={open}>
-        <div className={styles.handle} onClick={onClose} title="Close terminal">
+        <button
+          type="button"
+          className={styles.handle}
+          onClick={onClose}
+          aria-label="Close terminal"
+        >
           <span className={styles.handleChevron}>{"\u203A"}</span>
-        </div>
+        </button>
         <div className={styles.header}>
           <button
             className={styles.closeButton}

@@ -7,6 +7,7 @@ import {
   executeLaunch,
   endDeployment as coreEndDeployment,
   killTtyd,
+  isTtydAlive,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -154,4 +155,28 @@ export async function endSession(
     `/${owner}/${repo}/issues/${issueNumber}/launch`,
   );
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+export async function checkTtydAlive(
+  deploymentId: number,
+): Promise<{ alive: boolean }> {
+  try {
+    const db = getDb();
+    const deployment = getDeploymentById(db, deploymentId);
+    if (!deployment || deployment.endedAt !== null) {
+      return { alive: false };
+    }
+    if (!deployment.ttydPid) {
+      return { alive: false };
+    }
+    const alive = isTtydAlive(deployment.ttydPid);
+    if (!alive) {
+      // Process died — clean up the deployment
+      coreEndDeployment(db, deploymentId);
+    }
+    return { alive };
+  } catch (err) {
+    console.error("[issuectl] Health check failed:", err);
+    return { alive: false };
+  }
 }

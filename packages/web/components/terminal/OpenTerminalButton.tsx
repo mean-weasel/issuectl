@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { TerminalPanel } from "./TerminalPanel";
+import { checkTtydAlive } from "@/lib/actions/launch";
+
+const HEALTH_CHECK_INTERVAL_MS = 10_000;
 
 type Props = {
   ttydPort: number;
@@ -22,6 +26,20 @@ export function OpenTerminalButton({
   issueTitle,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const { alive } = await checkTtydAlive(deploymentId);
+      if (!alive) {
+        clearInterval(timer);
+        setOpen(false);
+        router.refresh();
+      }
+    }, HEALTH_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [deploymentId, router]);
 
   return (
     <>
