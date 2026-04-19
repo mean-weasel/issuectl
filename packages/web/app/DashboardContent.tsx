@@ -111,8 +111,8 @@ async function gatherPulls(
           pull,
         }));
       } catch (err) {
-        console.warn(
-          `[issuectl] getPulls failed for ${repo.owner}/${repo.name}:`,
+        console.error(
+          `[issuectl] getPulls failed for ${repo.owner}/${repo.name} — PRs for this repo will be missing:`,
           err instanceof Error ? err.message : err,
         );
         return [];

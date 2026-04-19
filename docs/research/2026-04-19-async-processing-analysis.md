@@ -1,7 +1,7 @@
 # Async Processing Analysis — Issue #134
 
 **Date:** 2026-04-19
-**Status:** Research complete — no implementation yet
+**Status:** Research complete — items 1 (add-repo fire-and-forget) and 2 (dashboard Suspense streaming) implemented in `perf/async-suspense-streaming`
 
 ## Executive Summary
 
