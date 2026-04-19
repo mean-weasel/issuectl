@@ -1,0 +1,53 @@
+.wrapper {
+  padding: 8px 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--paper-line-soft);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--paper-bg-warm);
+  flex-shrink: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  height: 14px;
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg-warm);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sub {
+  height: 10px;
+  width: 40%;
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg-warm);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.row:nth-child(1) .title { width: 75%; }
+.row:nth-child(2) .title { width: 60%; animation-delay: 0.15s; }
+.row:nth-child(3) .title { width: 80%; animation-delay: 0.3s; }
+.row:nth-child(4) .title { width: 55%; animation-delay: 0.45s; }
+.row:nth-child(5) .title { width: 70%; animation-delay: 0.6s; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
