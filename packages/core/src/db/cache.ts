@@ -51,11 +51,16 @@ export function clearCacheKey(
 }
 
 export function getOldestCacheAge(db: Database.Database): number | null {
-  const row = db
-    .prepare("SELECT MIN(fetched_at) as oldest FROM cache")
-    .get() as { oldest: string | null } | undefined;
-  if (!row?.oldest) return null;
-  return new Date(row.oldest + "Z").getTime();
+  try {
+    const row = db
+      .prepare("SELECT MIN(fetched_at) as oldest FROM cache")
+      .get() as { oldest: string | null } | undefined;
+    if (!row?.oldest) return null;
+    return new Date(row.oldest + "Z").getTime();
+  } catch {
+    // Column may not exist in older schema versions
+    return null;
+  }
 }
 
 export function clearCache(
