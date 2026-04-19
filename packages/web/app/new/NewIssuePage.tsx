@@ -137,8 +137,8 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
       <div className={styles.form}>
         {initError && (
           <div className={styles.initError} role="alert">
-            Couldn't load labels from GitHub: {initError}. You can still create
-            the issue — label chips will be empty.
+            Couldn't load labels from GitHub: {initError}. Showing default
+            labels instead.
           </div>
         )}
 
