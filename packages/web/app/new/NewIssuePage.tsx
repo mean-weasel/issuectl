@@ -88,7 +88,12 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
           return;
         }
 
-        showToast("Issue created", "success");
+        showToast(
+          result.cacheStale
+            ? "Issue created — reload if it doesn't appear"
+            : "Issue created",
+          "success",
+        );
         router.push(
           `/issues/${selectedRepo.owner}/${selectedRepo.repo}/${result.issueNumber}`,
         );
