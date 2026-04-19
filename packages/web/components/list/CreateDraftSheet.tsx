@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Sheet } from "@/components/paper";
 import {
@@ -276,6 +277,9 @@ export function CreateDraftSheet({ open, onClose }: Props) {
             {buttonLabel(selectedRepoIds.size, saving)}
           </Button>
         </div>
+        <Link href="/new" className={styles.labelLink} onClick={onClose}>
+          or create with labels and repo →
+        </Link>
       </div>
     </Sheet>
   );
