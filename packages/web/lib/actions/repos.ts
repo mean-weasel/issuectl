@@ -71,40 +71,39 @@ export async function addRepo(
     return { success: false, error: msg };
   }
 
-  // Warm the caches for the new repo so the user lands on / with a populated
-  // dashboard rather than waiting for first-visit SSR fetches. Individual
-  // failures are logged but do not fail the add — the index page's SWR path
-  // will retry on next render.
-  try {
+  // Fire-and-forget: warm caches in the background so the dashboard is
+  // pre-populated, but don't block the response. If warming hasn't
+  // finished by the time the user visits the dashboard, the async
+  // Server Component fetches from GitHub directly (slower first load,
+  // but functionally correct).
+  withAuthRetry(async (octokit) => {
     const db = getDb();
-    await withAuthRetry(async (octokit) => {
-      await Promise.all([
-        getIssues(db, octokit, owner, name).catch((err) => {
-          console.warn(
-            `[issuectl] Warm getIssues failed for ${owner}/${name}:`,
-            errMessage(err),
-          );
-        }),
-        getPulls(db, octokit, owner, name).catch((err) => {
-          console.warn(
-            `[issuectl] Warm getPulls failed for ${owner}/${name}:`,
-            errMessage(err),
-          );
-        }),
-        listLabels(octokit, owner, name).catch((err) => {
-          console.warn(
-            `[issuectl] Warm listLabels failed for ${owner}/${name}:`,
-            errMessage(err),
-          );
-        }),
-      ]);
-    });
-  } catch (err) {
+    await Promise.all([
+      getIssues(db, octokit, owner, name).catch((err) => {
+        console.warn(
+          `[issuectl] Warm getIssues failed for ${owner}/${name}:`,
+          errMessage(err),
+        );
+      }),
+      getPulls(db, octokit, owner, name).catch((err) => {
+        console.warn(
+          `[issuectl] Warm getPulls failed for ${owner}/${name}:`,
+          errMessage(err),
+        );
+      }),
+      listLabels(octokit, owner, name).catch((err) => {
+        console.warn(
+          `[issuectl] Warm listLabels failed for ${owner}/${name}:`,
+          errMessage(err),
+        );
+      }),
+    ]);
+  }).catch((err) => {
     console.error(
       `[issuectl] Warm sync failed for ${owner}/${name}:`,
       errMessage(err),
     );
-  }
+  });
 
   const { stale } = revalidateSafely("/settings", "/");
   const addedRepo = { owner, name };
