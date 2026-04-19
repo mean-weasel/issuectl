@@ -192,6 +192,21 @@ export function IssueActionSheet({
         label="Actions"
       />
 
+      {/* Desktop inline action bar — visible only on wide viewports */}
+      <div className={styles.desktopBar}>
+        {!hasLiveDeployment && (
+          <Button variant="primary" onClick={handleLaunchTap}>
+            Launch with Claude
+          </Button>
+        )}
+        <Button variant="ghost" onClick={handleReassignTap}>
+          Re-assign
+        </Button>
+        <Button variant="ghost" onClick={handleCloseTap}>
+          Close issue
+        </Button>
+      </div>
+
       <Sheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}

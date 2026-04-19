@@ -22,6 +22,12 @@
   touch-action: none;
 }
 
+@media (min-width: 768px) and (hover: hover) {
+  .zone {
+    display: none;
+  }
+}
+
 .handle {
   width: 36px;
   height: 4px;
