@@ -40,6 +40,9 @@ export const metadata: Metadata = {
   title: "issuectl",
   description: "Cross-repo GitHub issue command center with Claude Code launch",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     title: "issuectl",

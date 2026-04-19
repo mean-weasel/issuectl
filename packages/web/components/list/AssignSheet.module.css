@@ -40,6 +40,16 @@
   cursor: not-allowed;
 }
 
+.rowSelected {
+  composes: row;
+  background: var(--paper-accent-soft);
+  border-left: 3px solid var(--paper-accent);
+}
+
+.rowSelected:hover {
+  background: var(--paper-accent-soft);
+}
+
 .repoName {
   font-family: var(--paper-serif);
   font-weight: 500;
@@ -65,4 +75,5 @@
   padding: 16px 28px 0;
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }

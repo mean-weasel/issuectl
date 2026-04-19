@@ -66,13 +66,7 @@
   }
 
   .composer {
-    position: sticky;
-    bottom: 0;
-    background: var(--paper-bg);
-    padding-top: 12px;
     padding-bottom: env(safe-area-inset-bottom, 12px);
     margin-top: 16px;
-    border-top: 1px solid var(--paper-line);
-    z-index: 10;
   }
 }

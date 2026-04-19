@@ -18,6 +18,13 @@ type Props = {
   initError?: string;
 };
 
+const STANDARD_LABELS: GitHubLabel[] = [
+  { name: "bug", color: "d73a4a", description: null },
+  { name: "enhancement", color: "a2eeef", description: null },
+  { name: "documentation", color: "0075ca", description: null },
+  { name: "question", color: "d876e3", description: null },
+];
+
 function selectedChipStyle(label: GitHubLabel): React.CSSProperties {
   if (label.color) {
     return {
@@ -42,10 +49,12 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
   const [error, setError] = useState<string | null>(null);
 
   const repoKey = `${selectedRepo.owner}/${selectedRepo.repo}`;
-  const availableLabels = useMemo(
-    () => (labelsPerRepo[repoKey] ?? []).filter((l) => !isLifecycleLabel(l.name)),
-    [labelsPerRepo, repoKey],
-  );
+  const availableLabels = useMemo(() => {
+    const repoLabels = (labelsPerRepo[repoKey] ?? []).filter(
+      (l) => !isLifecycleLabel(l.name),
+    );
+    return repoLabels.length > 0 ? repoLabels : STANDARD_LABELS;
+  }, [labelsPerRepo, repoKey]);
 
   function handleSelectRepo(repo: RepoOption) {
     setSelectedRepo(repo);
@@ -98,7 +107,21 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
     <div className={styles.container}>
       <div className={styles.topBar}>
         <Link href="/" className={styles.back} aria-label="Back to dashboard">
-          ←
+          <svg
+            width="12"
+            height="20"
+            viewBox="0 0 12 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M10 2L2 10L10 18"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </Link>
         <span className={styles.pageTitle}>New Issue</span>
         <button
@@ -114,8 +137,8 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
       <div className={styles.form}>
         {initError && (
           <div className={styles.initError} role="alert">
-            Couldn't load labels from GitHub: {initError}. You can still create
-            the issue — label chips will be empty.
+            Couldn't load labels from GitHub: {initError}. Showing default
+            labels instead.
           </div>
         )}
 

@@ -62,7 +62,7 @@ export default async function NewIssueRoute() {
           const labels = await listLabels(octokit, r.owner, r.name);
           return { key: `${r.owner}/${r.name}`, labels };
         } catch (err) {
-          // Non-fatal — repo still selectable, just renders with no label chips.
+          // Non-fatal — repo still selectable, falls back to standard labels.
           console.warn(
             `[issuectl] Failed to fetch labels for ${r.owner}/${r.name}:`,
             err instanceof Error ? err.message : err,

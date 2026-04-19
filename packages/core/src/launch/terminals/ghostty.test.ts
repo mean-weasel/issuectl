@@ -93,8 +93,8 @@ describe("meetsMinVersion", () => {
 });
 
 describe("buildGhosttyArgs", () => {
-  it("produces open -na args with title and command", () => {
-    const args = buildGhosttyArgs("#42 — Fix auth", "cd '/tmp' && echo hello");
+  it("produces open -na args with app path, title and command", () => {
+    const args = buildGhosttyArgs("Ghostty.app", "#42 — Fix auth", "cd '/tmp' && echo hello");
     expect(args).toEqual([
       "-na", "Ghostty.app",
       "--args",
@@ -103,8 +103,13 @@ describe("buildGhosttyArgs", () => {
     ]);
   });
 
+  it("handles custom app path", () => {
+    const args = buildGhosttyArgs("/Applications/Ghostty.app", "#1 — Test", "echo test");
+    expect(args[1]).toBe("/Applications/Ghostty.app");
+  });
+
   it("handles em dashes in title without issue", () => {
-    const args = buildGhosttyArgs("#99 — Test title", "echo test");
+    const args = buildGhosttyArgs("Ghostty.app", "#99 — Test title", "echo test");
     expect(args[3]).toBe("--title=#99 — Test title");
   });
 });

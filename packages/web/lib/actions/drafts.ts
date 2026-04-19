@@ -7,11 +7,15 @@ import {
   assignDraftToRepo,
   listRepos,
   updateDraft,
+  getSetting,
+  setSetting,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
   formatErrorForUser,
   DraftPartialCommitError,
+  getRepoById,
+  clearCacheKey,
   type DraftInput,
   type DraftUpdate,
   type Priority,
@@ -96,9 +100,14 @@ export async function createDraftAction(
 export async function listReposAction(): Promise<
   Array<{ id: number; owner: string; name: string }>
 > {
-  const db = getDb();
-  const repos = listRepos(db);
-  return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+  try {
+    const db = getDb();
+    const repos = listRepos(db);
+    return repos.map((r) => ({ id: r.id, owner: r.owner, name: r.name }));
+  } catch (err) {
+    console.error("[issuectl] listReposAction failed", err);
+    throw err;
+  }
 }
 
 export async function updateDraftAction(
@@ -268,6 +277,23 @@ export async function assignDraftAction(
     return { success: false, error: formatErrorForUser(err) };
   }
 
+  // Clear the SQLite issues cache for this repo so the next page render
+  // fetches fresh data from GitHub that includes the newly created issue.
+  try {
+    const db = getDb();
+    const repo = getRepoById(db, repoId);
+    if (repo) {
+      clearCacheKey(db, `issues:${repo.owner}/${repo.name}`);
+    }
+  } catch (err) {
+    // Cache miss on next render is the fallback — don't fail the action.
+    console.warn(
+      "[issuectl] Failed to clear issues cache after draft assignment",
+      { repoId },
+      err,
+    );
+  }
+
   const { stale } = revalidateSafely("/");
   return {
     success: true,
@@ -276,4 +302,39 @@ export async function assignDraftAction(
     ...(cleanupWarning ? { cleanupWarning } : {}),
     ...(stale ? { cacheStale: true as const } : {}),
   };
+}
+
+export async function getDefaultRepoIdAction(): Promise<number | null> {
+  try {
+    const db = getDb();
+    const value = getSetting(db, "default_repo_id");
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch (err) {
+    console.error("[issuectl] getDefaultRepoIdAction failed", err);
+    return null;
+  }
+}
+
+export async function setDefaultRepoIdAction(
+  repoId: number | null,
+): Promise<{ success: boolean; error?: string }> {
+  if (repoId !== null) {
+    if (typeof repoId !== "number" || !Number.isInteger(repoId) || repoId <= 0) {
+      return { success: false, error: "repoId must be a positive integer" };
+    }
+  }
+
+  try {
+    const db = getDb();
+    setSetting(db, "default_repo_id", repoId !== null ? String(repoId) : "");
+    return { success: true };
+  } catch (err) {
+    console.error("[issuectl] setDefaultRepoIdAction failed", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to update default repo",
+    };
+  }
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
-import { createGhosttyLauncher, resolveGhosttyBinary } from "./ghostty.js";
+import { createGhosttyLauncher, resolveGhostty } from "./ghostty.js";
 import type { TerminalSettings } from "../terminal.js";
 
 const execFileAsync = promisify(execFile);
@@ -35,7 +35,7 @@ async function canRunIntegrationTests(): Promise<{ ok: boolean; reason?: string 
   }
 
   try {
-    await resolveGhosttyBinary();
+    await resolveGhostty();
   } catch {
     return { ok: false, reason: "Ghostty not installed — skipping integration tests" };
   }
@@ -144,7 +144,7 @@ describe("Ghostty integration", () => {
   it("verify resolves the Ghostty binary", async ({ skip }) => {
     if (skipReason) skip(skipReason);
 
-    const binary = await resolveGhosttyBinary();
+    const { binary } = await resolveGhostty();
     expect(binary).toBeTruthy();
 
     // Verify it can actually get the version

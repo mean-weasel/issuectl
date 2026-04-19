@@ -40,10 +40,7 @@
 .menuBtn {
   background: transparent;
   border: none;
-  font-family: var(--paper-mono);
-  font-size: 18px;
   color: var(--paper-ink-muted);
-  letter-spacing: 1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -52,10 +49,17 @@
   padding: 0 12px;
   cursor: pointer;
   border-radius: var(--paper-radius-sm);
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .menuBtn:hover {
   background: var(--paper-bg-warm);
+  color: var(--paper-ink);
+}
+
+.menuBtn:active {
+  background: var(--paper-bg-warmer);
   color: var(--paper-ink);
 }
 
@@ -517,4 +521,9 @@
 
 .tab {
   white-space: nowrap;
+}
+
+.sentinel {
+  height: 1px;
+  width: 100%;
 }

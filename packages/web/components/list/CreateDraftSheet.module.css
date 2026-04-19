@@ -1,5 +1,5 @@
 .form {
-  padding: 0 28px 28px;
+  padding: 0 20px 16px;
 }
 
 .label {
@@ -8,28 +8,89 @@
   font-style: italic;
   font-size: var(--paper-fs-xs);
   color: var(--paper-ink-muted);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .input {
   width: 100%;
   font-family: var(--paper-serif);
   font-weight: 400;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.2;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.3px;
   color: var(--paper-ink);
   border: none;
   background: transparent;
-  padding: 4px 0 16px;
+  padding: 4px 0 8px;
   outline: none;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .input::placeholder {
   color: var(--paper-ink-faint);
   font-style: italic;
 }
+
+/* ── Repo chip row ────────────────────────────────── */
+
+.repoSection {
+  margin-bottom: 18px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  max-height: 72px;
+  overflow-y: auto;
+}
+
+.repoChip,
+.repoChipSelected {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--paper-radius-sm);
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.4;
+  border: 1px solid var(--paper-line);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.repoChip {
+  background: transparent;
+  color: var(--paper-ink-muted);
+}
+
+.repoChip:hover {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-soft);
+}
+
+.repoChipSelected {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+  border-color: var(--paper-accent-dim);
+}
+
+.repoChipSelected:hover {
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
+
+.repoChip:disabled,
+.repoChipSelected:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Actions / feedback ────────────────────────────── */
 
 .actions {
   display: flex;
@@ -40,7 +101,35 @@
   flex: 1 1 0;
 }
 
+.error {
+  font-family: var(--paper-serif);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-brick);
+  margin-bottom: 8px;
+}
+
+.progress {
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  margin-bottom: 10px;
+}
+
+/* ── Desktop ───────────────────────────────────────── */
+
 @media (min-width: 768px) {
+  .form {
+    padding: 0 28px 28px;
+  }
+
+  .input {
+    font-size: 26px;
+    letter-spacing: -0.4px;
+    padding: 4px 0 16px;
+    margin-bottom: 18px;
+  }
+
   .actions {
     justify-content: flex-end;
   }
@@ -50,9 +139,12 @@
   }
 }
 
-.error {
+.labelLink {
+  display: block;
+  text-align: center;
+  padding: 8px 0;
   font-family: var(--paper-serif);
   font-size: var(--paper-fs-sm);
-  color: var(--paper-brick);
-  margin-bottom: 10px;
+  color: var(--paper-ink-muted);
+  text-decoration: none;
 }

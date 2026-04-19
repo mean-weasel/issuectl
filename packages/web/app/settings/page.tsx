@@ -13,6 +13,7 @@ import { WorktreeSection } from "./WorktreeSection";
 import { AuthSection } from "./AuthSection";
 import type { Metadata } from "next";
 import styles from "./page.module.css";
+import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 
 export const metadata: Metadata = { title: "Settings — issuectl" };
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export default async function SettingsPage() {
   const claudeExtraArgs = settingMap.claude_extra_args ?? "";
 
   return (
-    <>
+    <PullToRefreshWrapper>
       <PageHeader title="Settings" breadcrumb={<Link href="/">← dashboard</Link>} />
       <div className={styles.content}>
         <section className={styles.section}>
@@ -78,6 +79,6 @@ export default async function SettingsPage() {
           </Suspense>
         </section>
       </div>
-    </>
+    </PullToRefreshWrapper>
   );
 }

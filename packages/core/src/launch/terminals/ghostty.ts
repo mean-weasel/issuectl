@@ -2,8 +2,9 @@ import type { TerminalLauncher, TerminalLaunchOptions, TerminalSettings } from "
 import { timedExec } from "../exec-timeout.js";
 
 // Timeout budgets for the handful of synchronous Ghostty-probing calls.
-// `open -na Ghostty.app` returns quickly once the application receives the
-// event — 10s is generous. `which` and `--version` are similarly fast.
+// `which` and `--version` return quickly. `open -na` is fire-and-forget
+// on macOS — it returns once the launch event is delivered, not when the
+// window closes.
 const WHICH_TIMEOUT_MS = 5_000;
 const VERSION_TIMEOUT_MS = 5_000;
 const OPEN_TIMEOUT_MS = 10_000;
@@ -42,40 +43,54 @@ export function buildShellCommand(workspacePath: string, contextFilePath: string
   return `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand}`;
 }
 
-export function buildGhosttyArgs(tabTitle: string, shellCommand: string): string[] {
+export function buildGhosttyArgs(appPath: string, tabTitle: string, shellCommand: string): string[] {
   // Use interactive login shell (-lic) so PATH includes user tools and
   // shell aliases are expanded (aliases only work in interactive mode).
   // On failure, drop into an interactive shell so the user can see the error.
   const wrappedCommand = `${shellCommand} || exec $SHELL -l`;
+  // `open -na` is macOS's fire-and-forget app launcher — it returns
+  // immediately after delivering the launch event, unlike invoking the
+  // ghostty binary directly which blocks until the window closes.
   return [
-    "-na", "Ghostty.app",
+    "-na", appPath,
     "--args",
     `--title=${tabTitle}`,
     "-e", "/bin/bash", "-lic", wrappedCommand,
   ];
 }
 
-const GHOSTTY_APP_BINARY = "/Applications/Ghostty.app/Contents/MacOS/ghostty";
+const GHOSTTY_APP_PATH = "/Applications/Ghostty.app";
+const GHOSTTY_APP_BINARY = `${GHOSTTY_APP_PATH}/Contents/MacOS/ghostty`;
 
-export async function resolveGhosttyBinary(): Promise<string> {
+export type ResolvedGhostty = {
+  /** Path to the ghostty CLI binary (for --version checks). */
+  binary: string;
+  /** Path to the .app bundle (for `open -na`). */
+  appPath: string;
+};
+
+export async function resolveGhostty(): Promise<ResolvedGhostty> {
+  // Try PATH first — if `ghostty` is in PATH, the .app bundle is at
+  // the standard location.
   try {
     await timedExec("which", ["ghostty"], {
       timeoutMs: WHICH_TIMEOUT_MS,
       step: "which ghostty",
     });
-    return "ghostty";
+    return { binary: "ghostty", appPath: "Ghostty.app" };
   } catch (err: unknown) {
     // "which" exits 1 when not found — only fall through for that case
     const code = (err as { code?: string | number }).code;
     if (code !== "ENOENT" && code !== 1) throw err;
   }
 
+  // Fall back to the standard /Applications install.
   try {
     await timedExec(GHOSTTY_APP_BINARY, ["--version"], {
       timeoutMs: VERSION_TIMEOUT_MS,
       step: "ghostty --version",
     });
-    return GHOSTTY_APP_BINARY;
+    return { binary: GHOSTTY_APP_BINARY, appPath: GHOSTTY_APP_PATH };
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     if (code !== "ENOENT") throw err;
@@ -87,6 +102,9 @@ export async function resolveGhosttyBinary(): Promise<string> {
 }
 
 export function createGhosttyLauncher(settings: TerminalSettings): TerminalLauncher {
+  // Resolved once during verify(), reused by launch().
+  let resolved: ResolvedGhostty | undefined;
+
   return {
     name: "Ghostty",
 
@@ -95,8 +113,8 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
         throw new Error("Ghostty launcher is only supported on macOS");
       }
 
-      const binary = await resolveGhosttyBinary();
-      const { stdout } = await timedExec(binary, ["--version"], {
+      resolved = await resolveGhostty();
+      const { stdout } = await timedExec(resolved.binary, ["--version"], {
         timeoutMs: VERSION_TIMEOUT_MS,
         step: "ghostty --version",
       });
@@ -110,9 +128,11 @@ export function createGhosttyLauncher(settings: TerminalSettings): TerminalLaunc
     },
 
     async launch(options: TerminalLaunchOptions): Promise<void> {
+      // Resolve if launch() is called without a prior verify().
+      const { appPath } = resolved ?? await resolveGhostty();
       const tabTitle = expandTabTitle(settings.tabTitlePattern, options);
       const shellCommand = buildShellCommand(options.workspacePath, options.contextFilePath, options.claudeCommand);
-      const args = buildGhosttyArgs(tabTitle, shellCommand);
+      const args = buildGhosttyArgs(appPath, tabTitle, shellCommand);
       try {
         await timedExec("open", args, {
           timeoutMs: OPEN_TIMEOUT_MS,

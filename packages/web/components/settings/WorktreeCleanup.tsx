@@ -10,10 +10,13 @@ type Props = {
   worktrees: WorktreeInfo[];
 };
 
+const COLLAPSED_LIMIT = 5;
+
 export function WorktreeCleanup({ worktrees }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [expanded, setExpanded] = useState(false);
 
   if (worktrees.length === 0) {
     return <div className={styles.empty}>No worktrees found</div>;
@@ -46,6 +49,9 @@ export function WorktreeCleanup({ worktrees }: Props) {
     });
   }
 
+  const visibleWorktrees = expanded ? worktrees : worktrees.slice(0, COLLAPSED_LIMIT);
+  const hasMore = worktrees.length > COLLAPSED_LIMIT;
+
   return (
     <>
       {staleCount > 0 && (
@@ -63,7 +69,7 @@ export function WorktreeCleanup({ worktrees }: Props) {
           </Button>
         </div>
       )}
-      {worktrees.map((wt) => (
+      {visibleWorktrees.map((wt) => (
         <div key={wt.path} className={wt.stale ? styles.rowStale : styles.row}>
           <span className={styles.name}>{wt.name}</span>
           <span className={wt.stale ? styles.badgeStale : styles.badgeActive}>
@@ -82,6 +88,15 @@ export function WorktreeCleanup({ worktrees }: Props) {
           </Button>
         </div>
       ))}
+      {hasMore && !expanded && (
+        <button
+          type="button"
+          className={styles.showAllBtn}
+          onClick={() => setExpanded(true)}
+        >
+          show all {worktrees.length} worktrees
+        </button>
+      )}
       {error && <div className={styles.error} role="alert">{error}</div>}
       {success && <div className={styles.success} role="status">{success}</div>}
     </>

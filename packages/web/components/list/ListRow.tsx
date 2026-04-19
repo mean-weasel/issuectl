@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
-import { Checkbox, Chip } from "@/components/paper";
+import { Checkbox, Chip, LabelChip } from "@/components/paper";
 import styles from "./ListRow.module.css";
 
 type Props = {
@@ -22,17 +22,6 @@ function formatAge(updatedAt: string | number): string {
   if (diffDays < 1) return "today";
   if (diffDays === 1) return "1d";
   return `${diffDays}d`;
-}
-
-// Case-insensitive substring match. A label like "bug-report" will match
-// "bug" — that's intentional so common variants all paint brick red.
-function labelClass(labelName: string): string | undefined {
-  const lower = labelName.toLowerCase();
-  if (lower.includes("bug")) return styles.lblBug;
-  if (lower.includes("feat") || lower.includes("enhancement")) {
-    return styles.lblFeat;
-  }
-  return undefined;
 }
 
 export function ListRow({ item }: Props) {
@@ -62,7 +51,7 @@ export function ListRow({ item }: Props) {
   const titleClass =
     section === "shipped" ? `${styles.title} ${styles.done}` : styles.title;
 
-  const firstLabel = issue.labels.find(
+  const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
   );
 
@@ -105,16 +94,22 @@ export function ListRow({ item }: Props) {
         <div className={styles.meta}>
           <Chip>{repo.name}</Chip>
           <span className={styles.num}>#{issue.number}</span>
-          {firstLabel && (
+          {displayLabels.length > 0 && (
             <>
               <span className={styles.sep}>·</span>
-              <span className={labelClass(firstLabel.name)}>
-                {firstLabel.name}
-              </span>
+              {displayLabels.map((l) => (
+                <LabelChip key={l.name} name={l.name} color={l.color} />
+              ))}
             </>
           )}
           <span className={styles.sep}>·</span>
           <span>{formatAge(issue.updatedAt)}</span>
+          {issue.user && (
+            <>
+              <span className={styles.sep}>·</span>
+              <span className={styles.author}>{issue.user.login}</span>
+            </>
+          )}
         </div>
       </Link>
       <div className={styles.actions}>

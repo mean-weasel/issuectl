@@ -139,9 +139,17 @@
 
 .name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .name {
+    white-space: normal;
+    word-break: break-word;
+  }
 }
 
 .owner {
@@ -155,6 +163,10 @@
   border-radius: var(--paper-radius-sm);
   font-family: var(--paper-sans, system-ui, sans-serif);
   flex-shrink: 0;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge {

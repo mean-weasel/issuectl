@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
+import { useToast } from "@/components/ui/ToastProvider";
 import { addComment } from "@/lib/actions/comments";
 import styles from "./CommentComposer.module.css";
 
@@ -12,6 +14,8 @@ type Props = {
 };
 
 export function CommentComposer({ owner, repo, issueNumber }: Props) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +30,10 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
         setError(result.error ?? "Failed to post comment");
       } else {
         setBody("");
+        router.refresh();
+        if (result.cacheStale) {
+          showToast("Comment posted — reload if it doesn't appear", "success");
+        }
       }
     } catch {
       setError("Failed to post comment");

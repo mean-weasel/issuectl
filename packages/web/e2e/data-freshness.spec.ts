@@ -8,19 +8,14 @@ import Database from "better-sqlite3";
 
 const execFileAsync = promisify(execFile);
 
-const TEST_PORT = 3848;
+const TEST_PORT = 3856;
+const BASE_URL = `http://localhost:${TEST_PORT}`;
 const TEST_OWNER = "mean-weasel";
 const TEST_REPO = "issuectl-test-repo";
 
 // ── Skip conditions ─────────────────────────────────────────────────
 
 async function canRun(): Promise<{ ok: boolean; reason?: string }> {
-  try {
-    await execFileAsync("claude", ["--version"]);
-  } catch {
-    return { ok: false, reason: "Claude CLI not installed" };
-  }
-
   try {
     await execFileAsync("gh", ["auth", "token"]);
   } catch {
@@ -94,23 +89,18 @@ function createTestDb(dbPath: string): void {
   db.close();
 }
 
-function waitForServer(url: string, timeoutMs: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeoutMs;
-    const check = () => {
-      fetch(url)
-        .then((res) => {
-          if (res.ok || res.status === 404) resolve();
-          else if (Date.now() > deadline) reject(new Error("Server timeout"));
-          else setTimeout(check, 500);
-        })
-        .catch(() => {
-          if (Date.now() > deadline) reject(new Error("Server timeout"));
-          else setTimeout(check, 500);
-        });
-    };
-    check();
-  });
+async function waitForServer(url: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.ok || res.status === 404) return;
+    } catch {
+      // Server not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("Server timeout");
 }
 
 // ── Test suite ──────────────────────────────────────────────────────
@@ -128,7 +118,7 @@ test.beforeAll(async () => {
     return;
   }
 
-  tmpDir = mkdtempSync(join(tmpdir(), "issuectl-e2e-qc-"));
+  tmpDir = mkdtempSync(join(tmpdir(), "issuectl-e2e-df-"));
   dbPath = join(tmpDir, "test.db");
   createTestDb(dbPath);
 
@@ -143,7 +133,7 @@ test.beforeAll(async () => {
     serverStderr += chunk.toString();
   });
 
-  await waitForServer(`http://localhost:${TEST_PORT}`, 30000).catch((err) => {
+  await waitForServer(BASE_URL, 30000).catch((err) => {
     throw new Error(
       `${err.message}. Server stderr: ${serverStderr.slice(-500)}`,
     );
@@ -151,7 +141,6 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  // Clean up created issues
   for (const num of createdIssueNumbers) {
     try {
       await execFileAsync("gh", [
@@ -193,88 +182,83 @@ test.afterAll(async () => {
   }
 });
 
-test.describe("Quick Create flow", () => {
-  test("page renders with textarea and disabled button", async ({ page }) => {
-    if (skipReason) {
-      test.skip(true, skipReason);
-    }
+// ── A1: Comment appears immediately after posting (#135, #131) ──────
 
-    await page.goto(`http://localhost:${TEST_PORT}/parse`);
+test.describe("Data freshness — comment appears immediately (#135)", () => {
+  test("comment is visible after posting without manual refresh", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
 
-    await expect(page.getByRole("heading", { name: "Quick Create" })).toBeVisible({
-      timeout: 15000,
-    });
-    await expect(
-      page.getByPlaceholder("e.g. Fix the login timeout"),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Parse with Claude" }),
-    ).toBeDisabled();
+    await page.goto(`${BASE_URL}/`);
+    const issueLink = page.locator('a[href*="/issues/"]').first();
+    await expect(issueLink).toBeVisible({ timeout: 15000 });
+    await issueLink.click();
+
+    const textarea = page.locator('textarea[aria-label="Comment body"]');
+    await expect(textarea).toBeVisible({ timeout: 15000 });
+
+    const commentText = `E2E test comment ${Date.now()}`;
+    await textarea.fill(commentText);
+    await page.click('button:has-text("comment")');
+
+    // Comment should be visible WITHOUT a manual page refresh
+    await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
   });
+});
 
-  test("full flow: parse, review, create issues", async ({ page }) => {
-    if (skipReason) {
-      test.skip(true, skipReason);
+// ── A2: New issue visible on dashboard after creation (#128) ────────
+
+test.describe("Data freshness — new issue visible on dashboard (#128)", () => {
+  test("issue appears on index page after creation without manual refresh", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+
+    await page.goto(`${BASE_URL}/new`);
+    await expect(page.locator('input[type="text"]').first()).toBeVisible({ timeout: 15000 });
+
+    const issueTitle = `E2E freshness test ${Date.now()}`;
+    await page.locator('input[type="text"]').first().fill(issueTitle);
+    await page.click('button:has-text("Create")');
+
+    // After creation, the app navigates to the issue detail
+    await expect(page).toHaveURL(/\/issues\//, { timeout: 15000 });
+
+    // Track created issue for cleanup
+    const match = page.url().match(/\/issues\/(\d+)/);
+    if (match) createdIssueNumbers.push(Number(match[1]));
+
+    // Navigate back to dashboard
+    await page.click('a[aria-label="Back"]');
+    await page.waitForLoadState("networkidle");
+
+    // The issue should be visible without pulling to refresh
+    await expect(page.getByText(issueTitle)).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// ── A3: Filters persist on back-navigation (#129) ──────────────────
+
+test.describe("Data freshness — filters persist on back-nav (#129)", () => {
+  test("repo filter preserved when navigating back from issue detail", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+
+    await page.goto(`${BASE_URL}/?repo=${TEST_OWNER}/${TEST_REPO}&section=in_focus`);
+    await page.waitForLoadState("networkidle");
+
+    const issueLink = page.locator('a[href*="/issues/"]').first();
+    const isVisible = await issueLink.isVisible({ timeout: 5000 });
+    if (!isVisible) {
+      test.skip(true, "No issues visible for filter persistence test — check test data");
+      return;
     }
 
-    await page.goto(`http://localhost:${TEST_PORT}/parse`);
+    await issueLink.click();
+    await page.waitForLoadState("networkidle");
 
-    await expect(page.getByRole("heading", { name: "Quick Create" })).toBeVisible({
-      timeout: 15000,
-    });
+    // Click back
+    await page.click('a[aria-label="Back"]');
+    await page.waitForLoadState("networkidle");
 
-    // Step 1: Input
-    const textarea = page.getByPlaceholder("e.g. Fix the login timeout");
-    await textarea.fill(
-      `Add a test health check endpoint to ${TEST_REPO}`,
-    );
-
-    const parseButton = page.getByRole("button", {
-      name: "Parse with Claude",
-    });
-    await expect(parseButton).toBeEnabled();
-    await parseButton.click();
-
-    // Wait for parsing to complete (Claude CLI can take up to 90s).
-    // The "Parsing..." state may be too brief to catch if the CLI
-    // responds quickly, so we wait for the result directly rather
-    // than asserting the intermediate spinner.
-    await expect(page.getByText("parsed")).toBeVisible({ timeout: 90000 });
-    await expect(page.getByText(/\d+ included/)).toBeVisible();
-
-    // Verify a Create button exists with a count — text varies based
-    // on whether issues matched repos or will be saved as drafts.
-    const createButton = page.getByRole("button", { name: /Create \d+|Save \d+ Draft/ });
-    await expect(createButton).toBeVisible();
-    await createButton.click();
-
-    // Step 3: Results — the summary says "created" or "saved" depending
-    // on whether the parser matched a repo or fell back to drafts.
-    await expect(page.getByText(/created|saved/)).toBeVisible({ timeout: 30000 });
-    // Ensure no partial failures slipped through — "failed" in the
-    // summary means the batch had errors we shouldn't silently accept.
-    await expect(page.getByText("failed")).not.toBeVisible();
-
-    // Extract created issue numbers from links. If Claude matched a
-    // repo, we get `#123` links; if it fell back to drafts, we get
-    // "view draft" links instead. Either is a valid success.
-    const issueLinks = page.getByRole("link", { name: /^#\d+$/ });
-    const draftLinks = page.getByRole("link", { name: "view draft" });
-    const issueCount = await issueLinks.count();
-    const draftCount = await draftLinks.count();
-    expect(issueCount + draftCount).toBeGreaterThanOrEqual(1);
-
-    for (let i = 0; i < issueCount; i++) {
-      const text = await issueLinks.nth(i).textContent();
-      const num = Number(text?.replace("#", ""));
-      if (num > 0) {
-        createdIssueNumbers.push(num);
-      }
-    }
-
-    // Verify "Create More" button exists
-    await expect(
-      page.getByRole("button", { name: "Create More" }),
-    ).toBeVisible();
+    // URL should still have both query params
+    expect(page.url()).toContain(`repo=${TEST_OWNER}/${TEST_REPO}`);
+    expect(page.url()).toContain("section=in_focus");
   });
 });

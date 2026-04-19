@@ -12,9 +12,10 @@ const VALID_KEYS = [
   "cache_ttl",
   "worktree_dir",
   "claude_extra_args",
+  "default_repo_id",
 ] as const satisfies readonly SettingKey[];
 
-const ALLOW_EMPTY = new Set<SettingKey>(["claude_extra_args"]);
+const ALLOW_EMPTY = new Set<SettingKey>(["claude_extra_args", "default_repo_id"]);
 
 export type UpdateSettingResult = {
   success: boolean;

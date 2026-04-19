@@ -8,6 +8,8 @@ type Props = {
   title: string;
   message: string;
   confirmLabel?: string;
+  /** Use "danger" (default) for destructive actions, "default" for neutral. */
+  confirmVariant?: "danger" | "default";
   onConfirm: () => void;
   onCancel: () => void;
   isPending?: boolean;
@@ -18,6 +20,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Confirm",
+  confirmVariant = "danger",
   onConfirm,
   onCancel,
   isPending,
@@ -38,7 +41,7 @@ export function ConfirmDialog({
             variant="primary"
             onClick={onConfirm}
             disabled={isPending}
-            className={styles.danger}
+            className={confirmVariant === "danger" ? styles.danger : undefined}
           >
             {isPending ? `${confirmLabel}...` : confirmLabel}
           </Button>
