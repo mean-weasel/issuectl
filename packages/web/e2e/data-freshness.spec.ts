@@ -89,23 +89,18 @@ function createTestDb(dbPath: string): void {
   db.close();
 }
 
-function waitForServer(url: string, timeoutMs: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeoutMs;
-    const check = () => {
-      fetch(url)
-        .then((res) => {
-          if (res.ok || res.status === 404) resolve();
-          else if (Date.now() > deadline) reject(new Error("Server timeout"));
-          else setTimeout(check, 500);
-        })
-        .catch(() => {
-          if (Date.now() > deadline) reject(new Error("Server timeout"));
-          else setTimeout(check, 500);
-        });
-    };
-    check();
-  });
+async function waitForServer(url: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.ok || res.status === 404) return;
+    } catch {
+      // Server not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("Server timeout");
 }
 
 // ── Test suite ──────────────────────────────────────────────────────
