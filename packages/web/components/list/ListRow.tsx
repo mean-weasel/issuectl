@@ -104,6 +104,12 @@ export function ListRow({ item }: Props) {
           )}
           <span className={styles.sep}>·</span>
           <span>{formatAge(issue.updatedAt)}</span>
+          {issue.user && (
+            <>
+              <span className={styles.sep}>·</span>
+              <span className={styles.author}>{issue.user.login}</span>
+            </>
+          )}
         </div>
       </Link>
       <div className={styles.actions}>
