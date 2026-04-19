@@ -138,3 +138,13 @@
     flex: 0 0 auto;
   }
 }
+
+.labelLink {
+  display: block;
+  text-align: center;
+  padding: 8px 0;
+  font-family: var(--paper-serif);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  text-decoration: none;
+}
