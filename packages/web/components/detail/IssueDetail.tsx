@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { GitHubIssue, Priority } from "@issuectl/core";
+import type { GitHubIssue, Priority, Deployment } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { timeAgo } from "@/lib/format";
 import { DetailTopBar } from "./DetailTopBar";
@@ -20,6 +20,9 @@ type Props = {
   repoId: number;
   currentPriority: Priority;
   issue: GitHubIssue;
+  repoLocalPath: string | null;
+  deployments: Deployment[];
+  referencedFiles: string[];
   /** Rendered after the body — used by the page to stream launch/comments. */
   children?: ReactNode;
 };
@@ -30,11 +33,16 @@ export function IssueDetail({
   repoId,
   currentPriority,
   issue,
+  repoLocalPath,
+  deployments,
+  referencedFiles,
   children,
 }: Props) {
   const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
   );
+
+  const hasLiveDeployment = deployments.some((d) => d.endedAt === null);
 
   return (
     <div className={styles.container}>
@@ -79,6 +87,11 @@ export function IssueDetail({
           owner={owner}
           repo={repoName}
           number={issue.number}
+          repoLocalPath={repoLocalPath}
+          issue={issue}
+          deployments={deployments}
+          referencedFiles={referencedFiles}
+          hasLiveDeployment={hasLiveDeployment}
         />
       )}
     </div>
