@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
 import { Checkbox, Chip, LabelChip } from "@/components/paper";
+import { SyncDot } from "@/components/ui/SyncDot";
 import styles from "./ListRow.module.css";
 
 type Props = {
@@ -36,7 +37,7 @@ export function ListRow({ item }: Props) {
           <div className={styles.meta}>
             <Chip variant="dashed">no repo</Chip>
             <span className={styles.sep}>·</span>
-            <span>local draft</span>
+            <SyncDot status="local" label="local draft" />
             <span className={styles.sep}>·</span>
             <span>{formatAge(item.draft.updatedAt)}</span>
           </div>

@@ -97,6 +97,10 @@ When the spec or plan references a file, check if it exists before assuming its 
 - Web package: integration tests for Server Actions, Playwright e2e for critical user flows
 - **Playwright CLI only.** Use `@playwright/test` via the CLI (`playwright test`). Do NOT use the Playwright MCP server or browser-in-Claude approaches. All e2e tests run headless from the terminal.
 
+## Browser access
+
+**Never use the Claude in Chrome extension.** For any browser interaction — testing, visual verification, screenshots, UI auditing — always use the Playwright CLI. This applies to all contexts, not just E2E tests.
+
 ## QA
 
 QA skills are available for targeted quality checks. All browser-based checks use the **Playwright CLI** — never the Playwright MCP server.

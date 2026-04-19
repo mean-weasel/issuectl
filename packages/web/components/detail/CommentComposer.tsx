@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
+import { SyncDot } from "@/components/ui/SyncDot";
 import { addComment } from "@/lib/actions/comments";
 import { tryOrQueue } from "@/lib/tryOrQueue";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import styles from "./CommentComposer.module.css";
+
+const MIN_SYNC_DOT_MS = 1500;
 
 type Props = {
   owner: string;
@@ -20,7 +23,25 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
   const { showToast } = useToast();
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [syncVisible, setSyncVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const syncStartRef = useRef(0);
+
+  // Keep the syncing dot visible for at least one full pulse cycle (1.2s
+  // animation in SyncDot.module.css). The 1500ms buffer prevents mid-fade
+  // disappearance when the API responds faster than one cycle.
+  useEffect(() => {
+    if (sending) {
+      syncStartRef.current = Date.now();
+      setSyncVisible(true);
+      return;
+    }
+    if (!syncVisible) return;
+    const elapsed = Date.now() - syncStartRef.current;
+    const remaining = Math.max(0, MIN_SYNC_DOT_MS - elapsed);
+    const timer = setTimeout(() => setSyncVisible(false), remaining);
+    return () => clearTimeout(timer);
+  }, [sending]); // syncVisible intentionally omitted — it's a gate, not a reactive dep
 
   const handleSubmit = async () => {
     if (body.trim().length === 0) return;
@@ -87,6 +108,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
       {error && <div className={styles.error}>{error}</div>}
       <div className={styles.footer}>
         <span className={styles.hint}>⌘↩ to send</span>
+        {syncVisible && <SyncDot status="syncing" label="syncing comment" />}
         <Button
           variant="primary"
           size="sm"
