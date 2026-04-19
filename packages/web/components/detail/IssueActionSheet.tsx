@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   GitHubIssue,
+  GitHubComment,
   Deployment,
 } from "@issuectl/core";
 import { Sheet } from "@/components/paper";
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
 import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue } from "@/lib/actions/issues";
+import { getComments } from "@/lib/actions/comments";
 import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./ActionSheet.module.css";
 
@@ -40,11 +42,27 @@ export function IssueActionSheet({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [launchOpen, setLaunchOpen] = useState(false);
+  const [comments, setComments] = useState<GitHubComment[]>([]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!launchOpen) return;
+    let cancelled = false;
+    getComments(owner, repo, number).then((result) => {
+      if (cancelled) return;
+      if (result.success) {
+        setComments(result.comments);
+      } else {
+        console.error("[issuectl] IssueActionSheet: failed to load comments:", result.error);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [launchOpen, owner, repo, number]);
+
   function handleLaunchTap() {
     setSheetOpen(false);
+    setComments([]);
     setLaunchOpen(true);
   }
 
@@ -104,7 +122,7 @@ export function IssueActionSheet({
           repo={repo}
           repoLocalPath={repoLocalPath}
           issue={issue}
-          comments={[]}
+          comments={comments}
           deployments={deployments}
           referencedFiles={referencedFiles}
           onClose={() => setLaunchOpen(false)}

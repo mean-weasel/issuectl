@@ -23,7 +23,7 @@ type Props = {
   repoLocalPath: string | null;
   deployments: Deployment[];
   referencedFiles: string[];
-  /** Rendered after the body — used by the page to stream launch/comments. */
+  /** Rendered after the body — used by the page to stream the active-deployment banner and comments. */
   children?: ReactNode;
 };
 

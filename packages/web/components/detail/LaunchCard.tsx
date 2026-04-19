@@ -1,5 +1,3 @@
-"use client";
-
 import type { Deployment } from "@issuectl/core";
 import { LaunchActiveBanner } from "@/components/launch/LaunchActiveBanner";
 
