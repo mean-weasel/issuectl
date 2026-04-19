@@ -6,9 +6,6 @@ import type { SettingKey } from "@issuectl/core";
 
 const VALID_KEYS = [
   "branch_pattern",
-  "terminal_app",
-  "terminal_window_title",
-  "terminal_tab_title_pattern",
   "cache_ttl",
   "worktree_dir",
   "claude_extra_args",
