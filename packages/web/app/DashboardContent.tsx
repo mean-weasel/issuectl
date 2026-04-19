@@ -26,13 +26,6 @@ type Props = {
   username: string | null;
 };
 
-const ZERO_COUNTS: Record<Section, number> = {
-  unassigned: 0,
-  in_focus: 0,
-  in_flight: 0,
-  shipped: 0,
-};
-
 /**
  * Async Server Component — fetches GitHub data (issues + PRs).
  * Designed to be wrapped in <Suspense> so the dashboard shell
@@ -91,19 +84,15 @@ export async function DashboardContent({
   } catch (err) {
     console.error("[issuectl] DashboardContent failed to load:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
+    // Don't push counts — leaving them null keeps the "·" placeholder
+    // in tabs, signalling "unavailable" rather than a misleading "0".
     return (
-      <ListCountUpdater
-        sectionCounts={ZERO_COUNTS}
-        totalIssueCount={0}
-        prCount={0}
-      >
-        <div style={{ padding: "80px 20px 60px", textAlign: "center" }}>
-          <h3 style={{ marginBottom: 8 }}>failed to load dashboard</h3>
-          <p style={{ color: "var(--paper-ink-muted)", maxWidth: 320, margin: "0 auto" }}>
-            <em>{message}</em>
-          </p>
-        </div>
-      </ListCountUpdater>
+      <div style={{ padding: "80px 20px 60px", textAlign: "center" }}>
+        <h3 style={{ marginBottom: 8 }}>failed to load dashboard</h3>
+        <p style={{ color: "var(--paper-ink-muted)", maxWidth: 320, margin: "0 auto" }}>
+          <em>{message}</em>
+        </p>
+      </div>
     );
   }
 }
@@ -113,27 +102,22 @@ async function gatherPulls(
   octokit: Awaited<ReturnType<typeof getOctokit>>,
   repos: Repo[],
 ): Promise<PrEntry[]> {
-  try {
-    const prResults = await Promise.all(
-      repos.map(async (repo) => {
-        try {
-          const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
-          return pulls.map((pull) => ({
-            repo: { owner: repo.owner, name: repo.name },
-            pull,
-          }));
-        } catch (err) {
-          console.warn(
-            `[issuectl] getPulls failed for ${repo.owner}/${repo.name}:`,
-            err instanceof Error ? err.message : err,
-          );
-          return [];
-        }
-      }),
-    );
-    return prResults.flat();
-  } catch (err) {
-    console.error("[issuectl] PR gather failed:", err);
-    return [];
-  }
+  const prResults = await Promise.all(
+    repos.map(async (repo) => {
+      try {
+        const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
+        return pulls.map((pull) => ({
+          repo: { owner: repo.owner, name: repo.name },
+          pull,
+        }));
+      } catch (err) {
+        console.warn(
+          `[issuectl] getPulls failed for ${repo.owner}/${repo.name}:`,
+          err instanceof Error ? err.message : err,
+        );
+        return [];
+      }
+    }),
+  );
+  return prResults.flat();
 }
