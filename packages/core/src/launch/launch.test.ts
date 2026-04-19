@@ -24,7 +24,7 @@ vi.mock("./workspace.js", () => ({
 
 const { verifyTtydSpy, spawnTtydSpy, allocatePortSpy } = vi.hoisted(() => ({
   verifyTtydSpy: vi.fn(),
-  spawnTtydSpy: vi.fn(() => ({ pid: 12345, port: 7700 })),
+  spawnTtydSpy: vi.fn(async () => ({ pid: 12345, port: 7700 })),
   allocatePortSpy: vi.fn(async () => 7700),
 }));
 

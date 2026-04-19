@@ -84,13 +84,32 @@ describe("verifyTtyd", () => {
     });
   });
 
-  it("throws with install hint when ttyd is not found", () => {
+  it("throws with install hint when which exits with status 1", () => {
     execFileSyncSpy.mockImplementation(() => {
-      throw new Error("not found");
+      throw Object.assign(new Error("not found"), { status: 1 });
     });
     expect(() => verifyTtyd()).toThrow(
       "ttyd is not installed. Run: brew install ttyd",
     );
+  });
+
+  it("throws with install hint when which binary is missing (ENOENT)", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+    });
+    expect(() => verifyTtyd()).toThrow(
+      "ttyd is not installed. Run: brew install ttyd",
+    );
+  });
+
+  it("throws a generic verification error for unexpected failures", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("permission denied"), { code: "EACCES", status: 126 });
+    });
+    expect(() => verifyTtyd()).toThrow(
+      "Failed to verify ttyd installation: permission denied",
+    );
+    expect(() => verifyTtyd()).not.toThrow("not installed");
   });
 });
 
@@ -142,6 +161,22 @@ describe("isTtydAlive", () => {
       throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
     });
     expect(isTtydAlive(99999)).toBe(false);
+    killSpy.mockRestore();
+  });
+
+  it("returns true when the process is owned by another user (EPERM)", () => {
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("EPERM"), { code: "EPERM" });
+    });
+    expect(isTtydAlive(1)).toBe(true);
+    killSpy.mockRestore();
+  });
+
+  it("re-throws unexpected errors", () => {
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("EINVAL"), { code: "EINVAL" });
+    });
+    expect(() => isTtydAlive(1)).toThrow("EINVAL");
     killSpy.mockRestore();
   });
 });
@@ -207,11 +242,13 @@ describe("spawnTtyd", () => {
     spawnSpy.mockReset();
   });
 
-  it("spawns ttyd with correct arguments and returns PID + port", () => {
+  it("spawns ttyd with correct arguments and returns PID + port", async () => {
     const unrefSpy = vi.fn();
-    spawnSpy.mockReturnValue({ pid: 42, unref: unrefSpy });
+    spawnSpy.mockReturnValue({ pid: 42, unref: unrefSpy, on: vi.fn() });
+    // Health check — isTtydAlive calls process.kill(pid, 0)
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
 
-    const result = spawnTtyd({
+    const result = await spawnTtyd({
       port: 7700,
       workspacePath: "/home/user/project",
       contextFilePath: "/tmp/ctx.md",
@@ -236,12 +273,14 @@ describe("spawnTtyd", () => {
     expect(args[6]).toContain("claude --dangerously-skip-permissions");
     expect(args[6]).toContain("; exit");
     expect(opts).toEqual({ detached: true, stdio: "ignore" });
+    killSpy.mockRestore();
   });
 
-  it("escapes paths with single quotes", () => {
-    spawnSpy.mockReturnValue({ pid: 1, unref: vi.fn() });
+  it("escapes paths with single quotes", async () => {
+    spawnSpy.mockReturnValue({ pid: 1, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
 
-    spawnTtyd({
+    await spawnTtyd({
       port: 7700,
       workspacePath: "/home/user/it's a project",
       contextFilePath: "/tmp/file.md",
@@ -250,19 +289,40 @@ describe("spawnTtyd", () => {
 
     const shellCmd = (spawnSpy.mock.calls[0] as [string, string[]])[1][6];
     expect(shellCmd).toContain("cd '/home/user/it'\\''s a project'");
+    killSpy.mockRestore();
   });
 
-  it("throws when no PID is returned", () => {
-    spawnSpy.mockReturnValue({ pid: undefined, unref: vi.fn() });
+  it("throws when no PID is returned", async () => {
+    spawnSpy.mockReturnValue({ pid: undefined, unref: vi.fn(), on: vi.fn() });
 
-    expect(() =>
+    await expect(
       spawnTtyd({
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
         claudeCommand: "claude",
       }),
-    ).toThrow("Failed to spawn ttyd: no PID returned");
+    ).rejects.toThrow("Failed to spawn ttyd: no PID returned");
+  });
+
+  it("throws when process dies immediately after spawn", async () => {
+    spawnSpy.mockReturnValue({ pid: 99, unref: vi.fn(), on: vi.fn() });
+    // Health check — process is dead
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
+    });
+
+    await expect(
+      spawnTtyd({
+        port: 7700,
+        workspacePath: "/tmp",
+        contextFilePath: "/tmp/ctx.md",
+        claudeCommand: "claude",
+      }),
+    ).rejects.toThrow(
+      "ttyd process 99 died immediately after spawn",
+    );
+    killSpy.mockRestore();
   });
 });
 

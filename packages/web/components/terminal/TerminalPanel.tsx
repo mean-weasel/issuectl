@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
@@ -28,14 +28,18 @@ export function TerminalPanel({
   issueTitle,
 }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   function handleEndSession() {
+    setError(null);
     startTransition(async () => {
       const result = await endSession(deploymentId, owner, repo, issueNumber);
       if (result.success) {
         onClose();
         router.refresh();
+      } else {
+        setError(result.error ?? "Failed to end session");
       }
     });
   }
@@ -59,6 +63,7 @@ export function TerminalPanel({
           <span className={styles.headerTitle}>
             #{issueNumber} — {issueTitle}
           </span>
+          {error && <span className={styles.headerError}>{error}</span>}
           <Button
             variant="ghost"
             onClick={handleEndSession}

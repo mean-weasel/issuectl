@@ -32,8 +32,16 @@ function shellEscape(s: string): string {
 export function verifyTtyd(): void {
   try {
     execFileSync("which", ["ttyd"], { stdio: "ignore" });
-  } catch {
-    throw new Error("ttyd is not installed. Run: brew install ttyd");
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    const status = (err as { status?: number }).status;
+    if (code === "ENOENT" || status === 1) {
+      throw new Error("ttyd is not installed. Run: brew install ttyd", { cause: err });
+    }
+    throw new Error(
+      `Failed to verify ttyd installation: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
   }
 }
 
@@ -60,14 +68,18 @@ export function killTtyd(pid: number): void {
 
 /**
  * Check whether the process with the given PID is still running.
- * Uses `kill(pid, 0)` — never throws.
+ * Uses `kill(pid, 0)`. Returns `true` for both owned and EPERM
+ * processes (EPERM means the process exists but is owned by another user).
+ * Only returns `false` when ESRCH confirms the process is dead.
  */
 export function isTtydAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ESRCH") return false;
+    if ((err as NodeJS.ErrnoException).code === "EPERM") return true;
+    throw err;
   }
 }
 
@@ -137,8 +149,12 @@ export async function allocatePort(db: Database.Database): Promise<number> {
 /**
  * Spawn a detached ttyd process that serves an interactive Claude
  * session over WebSocket. Returns the child PID and port.
+ *
+ * Includes a brief post-spawn health check — if ttyd crashes
+ * immediately (e.g. port conflict, bad path), the error is surfaced
+ * rather than silently recording a dead PID.
  */
-export function spawnTtyd(options: SpawnTtydOptions): { pid: number; port: number } {
+export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: number; port: number }> {
   const { port, workspacePath, contextFilePath, claudeCommand } = options;
 
   // Build the inner shell command that ttyd will execute inside bash:
@@ -152,10 +168,21 @@ export function spawnTtyd(options: SpawnTtydOptions): { pid: number; port: numbe
     { detached: true, stdio: "ignore" },
   );
 
+  child.on("error", (err) => {
+    console.error(`[issuectl] ttyd process ${child.pid} errored:`, err);
+  });
   child.unref();
 
   if (child.pid === undefined) {
     throw new Error("Failed to spawn ttyd: no PID returned");
+  }
+
+  // Brief health check — give ttyd a moment to crash on startup
+  await new Promise((r) => setTimeout(r, 300));
+  if (!isTtydAlive(child.pid)) {
+    throw new Error(
+      `ttyd process ${child.pid} died immediately after spawn. Check that port ${port} is available and the workspace path exists.`,
+    );
   }
 
   return { pid: child.pid, port };

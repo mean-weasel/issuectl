@@ -31,7 +31,14 @@ export function getDb(): Database.Database {
   db.pragma("foreign_keys = ON");
   initSchema(db);
   runMigrations(db);
-  reconcileOrphanedDeployments(db);
+  try {
+    reconcileOrphanedDeployments(db);
+  } catch (err) {
+    console.error(
+      "[issuectl] Failed to reconcile orphaned deployments at startup — continuing anyway",
+      err,
+    );
+  }
   instance = db;
   return db;
 }

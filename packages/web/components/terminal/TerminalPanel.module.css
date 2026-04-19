@@ -74,6 +74,12 @@
   white-space: nowrap;
 }
 
+.headerError {
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-brick);
+}
+
 .terminalFrame {
   flex: 1;
   border: none;

@@ -218,7 +218,7 @@ export async function executeLaunch(
   let ttydPort: number;
   try {
     const port = await allocatePort(db);
-    const { pid } = spawnTtyd({
+    const { pid } = await spawnTtyd({
       port,
       workspacePath: workspace.path,
       contextFilePath,

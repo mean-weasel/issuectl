@@ -134,7 +134,15 @@ export async function endSession(
     const db = getDb();
     const deployment = getDeploymentById(db, deploymentId);
     if (deployment?.ttydPid) {
-      killTtyd(deployment.ttydPid);
+      try {
+        killTtyd(deployment.ttydPid);
+      } catch (killErr) {
+        console.warn(
+          "[issuectl] Failed to kill ttyd process, proceeding with session end:",
+          { deploymentId, pid: deployment.ttydPid },
+          killErr,
+        );
+      }
     }
     coreEndDeployment(db, deploymentId);
   } catch (err) {
