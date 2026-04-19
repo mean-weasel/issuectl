@@ -84,7 +84,7 @@ export async function createIssue(data: {
     return { success: false, error: formatErrorForUser(err) };
   }
 
-  const { stale } = revalidateSafely(`/${owner}/${repo}`);
+  const { stale } = revalidateSafely("/", `/${owner}/${repo}`);
   return {
     success: true,
     issueNumber,
