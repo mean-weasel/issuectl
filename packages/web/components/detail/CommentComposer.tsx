@@ -29,6 +29,9 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
       } else {
         setBody("");
         router.refresh();
+        if (result.cacheStale) {
+          setError("Comment posted — reload the page if it doesn't appear.");
+        }
       }
     } catch {
       setError("Failed to post comment");

@@ -19,9 +19,14 @@ export function DetailTopBar({
   const router = useRouter();
 
   function handleBack(e: React.MouseEvent) {
-    // Use browser history when available so filter state is preserved.
-    // Fall back to the hard link when there's no history (e.g. direct URL visit).
-    if (window.history.length > 1) {
+    // Use browser history when the referrer is our own app, so filter
+    // state in query params is preserved. When the user arrived from an
+    // external link (Slack, email, etc.), fall through to the hard
+    // <Link> href to avoid navigating them out of the app.
+    if (
+      window.history.length > 1 &&
+      document.referrer.startsWith(window.location.origin)
+    ) {
       e.preventDefault();
       router.back();
     }

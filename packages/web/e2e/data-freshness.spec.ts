@@ -114,6 +114,7 @@ let tmpDir: string;
 let dbPath: string;
 let server: ChildProcess;
 let skipReason: string | undefined;
+const createdIssueNumbers: number[] = [];
 
 test.beforeAll(async () => {
   const check = await canRun();
@@ -145,6 +146,22 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  for (const num of createdIssueNumbers) {
+    try {
+      await execFileAsync("gh", [
+        "issue",
+        "close",
+        String(num),
+        "--repo",
+        `${TEST_OWNER}/${TEST_REPO}`,
+        "--reason",
+        "not planned",
+      ]);
+    } catch {
+      // Best-effort cleanup
+    }
+  }
+
   if (server) {
     const killTimeout = setTimeout(() => {
       try {
@@ -209,6 +226,10 @@ test.describe("Data freshness — new issue visible on dashboard (#128)", () => 
     // After creation, the app navigates to the issue detail
     await expect(page).toHaveURL(/\/issues\//, { timeout: 15000 });
 
+    // Track created issue for cleanup
+    const match = page.url().match(/\/issues\/(\d+)/);
+    if (match) createdIssueNumbers.push(Number(match[1]));
+
     // Navigate back to dashboard
     await page.click('a[aria-label="Back"]');
     await page.waitForLoadState("networkidle");
@@ -228,16 +249,21 @@ test.describe("Data freshness — filters persist on back-nav (#129)", () => {
     await page.waitForLoadState("networkidle");
 
     const issueLink = page.locator('a[href*="/issues/"]').first();
-    if (await issueLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await issueLink.click();
-      await page.waitForLoadState("networkidle");
-
-      // Click back
-      await page.click('a[aria-label="Back"]');
-      await page.waitForLoadState("networkidle");
-
-      // URL should still have the repo filter
-      expect(page.url()).toContain(`repo=${TEST_OWNER}/${TEST_REPO}`);
+    const isVisible = await issueLink.isVisible({ timeout: 5000 });
+    if (!isVisible) {
+      test.skip(true, "No issues visible for filter persistence test — check test data");
+      return;
     }
+
+    await issueLink.click();
+    await page.waitForLoadState("networkidle");
+
+    // Click back
+    await page.click('a[aria-label="Back"]');
+    await page.waitForLoadState("networkidle");
+
+    // URL should still have both query params
+    expect(page.url()).toContain(`repo=${TEST_OWNER}/${TEST_REPO}`);
+    expect(page.url()).toContain("section=in_focus");
   });
 });
