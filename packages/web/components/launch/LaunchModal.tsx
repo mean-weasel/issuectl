@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type {
   GitHubIssue,
@@ -64,6 +64,13 @@ export function LaunchModal({
     referencedFiles,
   );
   const [preamble, setPreamble] = useState("");
+
+  // Auto-select all comments when they arrive via lazy-fetch (initially empty).
+  useEffect(() => {
+    if (comments.length > 0) {
+      setSelectedComments(comments.map((_, i) => i));
+    }
+  }, [comments]);
 
   const toggleComment = useCallback((index: number) => {
     setSelectedComments((prev) =>

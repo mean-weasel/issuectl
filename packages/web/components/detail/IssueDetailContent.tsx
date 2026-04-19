@@ -13,11 +13,11 @@ type Props = {
 };
 
 /**
- * Streaming content section: fetches comments + linked PRs, then renders
- * the LaunchCard (active deployment banner only), the comment list, and the
- * comment composer. Wrapped in Suspense by the page.
+ * Streaming content section: calls getIssueContent to fetch comments,
+ * then renders the LaunchCard (active deployment banner only), the
+ * comment list, and the comment composer. Wrapped in Suspense by the page.
  *
- * Handles errors inline so a transient failure in fetchComments/findLinkedPRs
+ * Handles errors inline so a transient failure in getIssueContent
  * shows a degraded state instead of tearing down the whole page via the
  * root error boundary.
  */

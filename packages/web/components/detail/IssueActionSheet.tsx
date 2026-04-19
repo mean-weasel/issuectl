@@ -49,16 +49,23 @@ export function IssueActionSheet({
   useEffect(() => {
     if (!launchOpen) return;
     let cancelled = false;
-    getComments(owner, repo, number).then((result) => {
-      if (cancelled) return;
-      if (result.success) {
-        setComments(result.comments);
-      } else {
-        console.error("[issuectl] IssueActionSheet: failed to load comments:", result.error);
-      }
-    });
+    getComments(owner, repo, number)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setComments(result.comments);
+        } else {
+          console.error("[issuectl] IssueActionSheet: failed to load comments:", result.error);
+          showToast("Could not load comments for context selection", "warning");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[issuectl] IssueActionSheet: comment fetch failed:", err);
+        showToast("Could not load comments for context selection", "warning");
+      });
     return () => { cancelled = true; };
-  }, [launchOpen, owner, repo, number]);
+  }, [launchOpen, owner, repo, number, showToast]);
 
   function handleLaunchTap() {
     setSheetOpen(false);
