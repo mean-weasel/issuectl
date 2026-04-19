@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addComment } from "@/lib/actions/comments";
+import { tryOrQueue } from "@/lib/tryOrQueue";
 import styles from "./CommentComposer.module.css";
 
 type Props = {
@@ -25,19 +26,33 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
     setSending(true);
     setError(null);
     try {
-      const result = await addComment(owner, repo, issueNumber, body);
-      if (!result.success) {
-        setError(result.error ?? "Failed to post comment");
-      } else {
+      const result = await tryOrQueue(
+        "addComment",
+        { owner, repo, issueNumber, body },
+        () => addComment(owner, repo, issueNumber, body),
+      );
+
+      if (result.outcome === "queued") {
         setBody("");
-        router.refresh();
-        showToast(
-          result.cacheStale
-            ? "Comment posted — reload if it doesn't appear"
-            : "Comment posted",
-          "success",
-        );
+        showToast("Comment queued — will sync when online", "warning");
+        return;
       }
+
+      if (result.outcome === "error") {
+        setError(result.error);
+        return;
+      }
+
+      // succeeded
+      setBody("");
+      router.refresh();
+      const data = result.data as { cacheStale?: boolean };
+      showToast(
+        data.cacheStale
+          ? "Comment posted — reload if it doesn't appear"
+          : "Comment posted",
+        "success",
+      );
     } catch (err) {
       console.error("[issuectl] addComment threw:", err);
       setError(err instanceof Error ? err.message : "Failed to post comment");
