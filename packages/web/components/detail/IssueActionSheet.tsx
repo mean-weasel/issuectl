@@ -16,6 +16,7 @@ import { getComments } from "@/lib/actions/comments";
 import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { useOfflineAware } from "@/hooks/useOfflineAware";
 import styles from "./ActionSheet.module.css";
 import assignStyles from "../list/AssignSheet.module.css";
 
@@ -61,6 +62,8 @@ export function IssueActionSheet({
   const [reassigning, setReassigning] = useState(false);
   const [reassignError, setReassignError] = useState<string | null>(null);
   const [reassignKey, setReassignKey] = useState<string | null>(null);
+
+  const { isOffline } = useOfflineAware();
 
   useEffect(() => {
     if (!launchOpen) return;
@@ -203,16 +206,23 @@ export function IssueActionSheet({
             Launch with Claude
           </button>
         )}
-        <button className={styles.item} onClick={handleReassignTap}>
+        <button
+          className={`${styles.item} ${isOffline ? styles.disabled : ""}`}
+          onClick={isOffline ? undefined : handleReassignTap}
+          disabled={isOffline}
+        >
           <span className={styles.icon}>&harr;</span>
           Re-assign to repo
+          {isOffline && <span className={styles.offlineHint}>Requires connection</span>}
         </button>
         <button
-          className={`${styles.item} ${styles.danger}`}
-          onClick={handleCloseTap}
+          className={`${styles.item} ${styles.danger} ${isOffline ? styles.disabled : ""}`}
+          onClick={isOffline ? undefined : handleCloseTap}
+          disabled={isOffline}
         >
           <span className={styles.icon}>&bull;</span>
           Close issue
+          {isOffline && <span className={styles.offlineHint}>Requires connection</span>}
         </button>
       </Sheet>
 
