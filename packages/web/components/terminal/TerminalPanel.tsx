@@ -72,13 +72,11 @@ export function TerminalPanel({
             {isPending ? "Ending..." : "End Session"}
           </Button>
         </div>
-        {open && (
-          <iframe
-            className={styles.terminalFrame}
-            src={`http://localhost:${ttydPort}`}
-            title={`Terminal — Issue #${issueNumber}`}
-          />
-        )}
+        <iframe
+          className={styles.terminalFrame}
+          src={`http://localhost:${ttydPort}`}
+          title={`Terminal — Issue #${issueNumber}`}
+        />
       </div>
     </div>
   );
