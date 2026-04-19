@@ -9,6 +9,7 @@ import {
   getDeploymentsByRepo,
   hasLiveDeploymentForIssue,
   updateLinkedPR,
+  updateTtydInfo,
   endDeployment,
   activateDeployment,
   deletePendingDeployment,
@@ -435,6 +436,55 @@ describe("deployment state (R2: pending/active lifecycle)", () => {
     );
     // Active row should still be there
     expect(getDeploymentById(db, dep.id)).toBeDefined();
+  });
+});
+
+describe("updateTtydInfo", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    repoId = seedRepo(db).id;
+  });
+
+  it("writes port and pid to deployment", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+
+    updateTtydInfo(db, dep.id, 7700, 12345);
+
+    const updated = getDeploymentById(db, dep.id);
+    expect(updated!.ttydPort).toBe(7700);
+    expect(updated!.ttydPid).toBe(12345);
+  });
+
+  it("throws for non-existent deployment ID", () => {
+    expect(() => updateTtydInfo(db, 99999, 7700, 12345)).toThrow(
+      "No deployment found",
+    );
+  });
+
+  it("overwrites existing ttyd info", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 2,
+      branchName: "issue-2",
+      workspaceMode: "existing",
+      workspacePath: "/y",
+    });
+
+    updateTtydInfo(db, dep.id, 7700, 12345);
+    updateTtydInfo(db, dep.id, 7701, 99999);
+
+    const updated = getDeploymentById(db, dep.id);
+    expect(updated!.ttydPort).toBe(7701);
+    expect(updated!.ttydPid).toBe(99999);
   });
 });
 
