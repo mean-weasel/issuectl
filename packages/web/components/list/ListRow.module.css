@@ -151,3 +151,10 @@
   color: var(--paper-ink-faint);
 }
 
+.author {
+  color: var(--paper-ink-faint);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
