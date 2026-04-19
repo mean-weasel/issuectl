@@ -75,6 +75,7 @@ export {
   isFresh,
   clearCacheKey,
   clearCache,
+  getOldestCacheAge,
 } from "./db/cache.js";
 export {
   withIdempotency,

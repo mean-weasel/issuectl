@@ -38,3 +38,14 @@
   text-align: center;
   flex-shrink: 0;
 }
+
+.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.offlineHint {
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  margin-left: auto;
+}

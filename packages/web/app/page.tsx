@@ -3,6 +3,7 @@ import {
   getDb,
   listRepos,
   dbExists,
+  getOldestCacheAge,
   SORT_MODES,
   type Section,
   type SortMode,
@@ -67,6 +68,7 @@ export default async function MainListPage({ searchParams }: Props) {
     : "updated";
 
   const repoList = repos.map((r) => ({ owner: r.owner, name: r.name }));
+  const cachedAt = getOldestCacheAge(db);
 
   const auth = await getAuthStatus();
   const username = auth.authenticated ? auth.username : null;
@@ -81,6 +83,7 @@ export default async function MainListPage({ searchParams }: Props) {
         mineOnly={mineOnly}
         repos={repoList}
         username={username}
+        cachedAt={cachedAt}
       >
         <Suspense fallback={<ContentSkeleton />}>
           <DashboardContent

@@ -70,9 +70,11 @@ export default async function RootLayout({ children }: Props) {
       className={`${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable}`}
     >
       <body>
-        <OfflineIndicator />
         {auth.authenticated ? (
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <OfflineIndicator />
+            {children}
+          </ToastProvider>
         ) : (
           <AuthErrorScreen />
         )}
