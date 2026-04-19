@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { addComment } from "@/lib/actions/comments";
 import styles from "./CommentComposer.module.css";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function CommentComposer({ owner, repo, issueNumber }: Props) {
+  const router = useRouter();
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
         setError(result.error ?? "Failed to post comment");
       } else {
         setBody("");
+        router.refresh();
       }
     } catch {
       setError("Failed to post comment");
