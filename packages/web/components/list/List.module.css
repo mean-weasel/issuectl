@@ -139,7 +139,6 @@
 .tabs {
   padding: 18px 24px 0;
   display: flex;
-  gap: 0;
   border-bottom: 1px solid var(--paper-line);
 }
 
@@ -289,7 +288,6 @@
 
 .sectionTabs {
   display: flex;
-  gap: 0;
   padding: 0 16px;
   margin-bottom: 8px;
   overflow-x: auto;

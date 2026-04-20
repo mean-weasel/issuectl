@@ -65,6 +65,13 @@ export function ListContent({
     [router],
   );
 
+  const handleNavigate = useCallback(
+    (owner: string, repo: string, issueNumber: number) => {
+      router.push(`/issues/${owner}/${repo}/${issueNumber}`);
+    },
+    [router],
+  );
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -81,7 +88,7 @@ export function ListContent({
   if (activeTab === "issues") {
     return (
       <>
-        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch })}
+        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch, onNavigate: handleNavigate })}
         {visibleCount < data[activeSection].length && (
           <div ref={sentinelRef} className={styles.sentinel} />
         )}
@@ -89,23 +96,24 @@ export function ListContent({
     );
   }
 
-  const prCount = prs.length;
+  if (prs.length === 0) {
+    let emptyMessage: string;
+    if (activeRepo && mineOnly) {
+      emptyMessage = `no open PRs from you in ${activeRepo}.`;
+    } else if (activeRepo) {
+      emptyMessage = `no open PRs in ${activeRepo}.`;
+    } else if (mineOnly) {
+      emptyMessage = "no open PRs from you across your repos.";
+    } else {
+      emptyMessage = "no open PRs across your repos.";
+    }
 
-  if (prCount === 0) {
     return (
       <div className={styles.empty}>
         <div className={styles.emptyMark}>❧</div>
         <h3>no pull requests</h3>
         <p>
-          <em>
-            {activeRepo && mineOnly
-              ? `no open PRs from you in ${activeRepo}.`
-              : activeRepo
-                ? `no open PRs in ${activeRepo}.`
-                : mineOnly
-                  ? "no open PRs from you across your repos."
-                  : "no open PRs across your repos."}
-          </em>
+          <em>{emptyMessage}</em>
         </p>
       </div>
     );
@@ -130,11 +138,13 @@ function renderIssueSection({
   data,
   visibleCount,
   onLaunch,
+  onNavigate,
 }: {
   activeSection: Section;
   data: UnifiedList;
   visibleCount: number;
   onLaunch: (owner: string, repo: string, issueNumber: number) => void;
+  onNavigate: (owner: string, repo: string, issueNumber: number) => void;
 }) {
   const allItems = data[activeSection];
 
@@ -152,5 +162,5 @@ function renderIssueSection({
   }
 
   const items = allItems.slice(0, visibleCount);
-  return <ListSection title={null} items={items} onLaunch={onLaunch} />;
+  return <ListSection title={null} items={items} onLaunch={onLaunch} onNavigate={onNavigate} />;
 }

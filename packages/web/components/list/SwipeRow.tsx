@@ -27,7 +27,12 @@ export function SwipeRow({ children, onLaunch, onReassign, disabled }: Props) {
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       if (startX.current === null) return;
-      const delta = startX.current - e.changedTouches[0].clientX;
+      const touch = e.changedTouches[0];
+      if (!touch) {
+        startX.current = null;
+        return;
+      }
+      const delta = startX.current - touch.clientX;
       if (delta > SWIPE_THRESHOLD) {
         setSwiped(true);
       } else if (delta < -SWIPE_THRESHOLD) {
@@ -37,6 +42,10 @@ export function SwipeRow({ children, onLaunch, onReassign, disabled }: Props) {
     },
     [],
   );
+
+  const handleTouchCancel = useCallback(() => {
+    startX.current = null;
+  }, []);
 
   const close = useCallback(() => setSwiped(false), []);
 
@@ -50,6 +59,7 @@ export function SwipeRow({ children, onLaunch, onReassign, disabled }: Props) {
       data-swiped={swiped}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
       <div className={styles.actions}>
         {onLaunch && (

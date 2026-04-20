@@ -243,11 +243,14 @@ export function List({
             {visibleSections.map((section) => {
               const isActive = section === activeSection;
               const count = sectionCounts?.[section] ?? null;
-              const tabClass = isActive
-                ? section === "running"
-                  ? styles.sectionTabRunning
-                  : styles.sectionTabActive
-                : styles.sectionTab;
+              let tabClass: string;
+              if (!isActive) {
+                tabClass = styles.sectionTab;
+              } else if (section === "running") {
+                tabClass = styles.sectionTabRunning;
+              } else {
+                tabClass = styles.sectionTabActive;
+              }
               return (
                 <Link
                   key={section}

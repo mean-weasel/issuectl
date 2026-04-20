@@ -68,8 +68,11 @@ export function IssueActionSheet({
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get("launch") === "true") {
+    if (searchParams.get("launch") === "true" && !hasLiveDeployment) {
       handleLaunchTap();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("launch");
+      window.history.replaceState({}, "", url.toString());
     }
   }, []); // only run on mount
 

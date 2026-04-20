@@ -8,6 +8,7 @@ import styles from "./ListRow.module.css";
 type Props = {
   item: UnifiedListItem;
   onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
+  onNavigate?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -27,7 +28,7 @@ function formatAge(updatedAt: string | number): string {
   return `${diffDays}d`;
 }
 
-export function ListRow({ item, onLaunch }: Props) {
+export function ListRow({ item, onLaunch, onNavigate }: Props) {
   if (item.kind === "draft") {
     return (
       <div className={styles.item}>
@@ -58,7 +59,7 @@ export function ListRow({ item, onLaunch }: Props) {
     (l) => !l.name.startsWith("issuectl:"),
   );
 
-  // Label reflects what the click does: in-flight rows open an active
+  // Label reflects what the click does: running rows open an active
   // session rather than launching, so "launch" would mislead.
   // Exhaustive switch so a future addition to the Section union is a
   // compile error here instead of silently rendering "launch →" on a
@@ -85,7 +86,7 @@ export function ListRow({ item, onLaunch }: Props) {
   }
 
   const rowContent = (
-    <div className={styles.item}>
+    <div className={styles.item} data-section={section}>
       <Link
         href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
         className={styles.rowLink}
@@ -122,13 +123,23 @@ export function ListRow({ item, onLaunch }: Props) {
         </div>
       </Link>
       <div className={styles.actions}>
-        <Link
-          href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
-          className={`${styles.actionBtn} ${section === "running" ? styles.actionBtnRunning : ""}`}
-          aria-label={actionAria}
-        >
-          {actionLabel} →
-        </Link>
+        {section === "open" && onLaunch ? (
+          <button
+            className={styles.actionBtn}
+            onClick={() => onLaunch(repo.owner, repo.name, issue.number)}
+            aria-label={actionAria}
+          >
+            {actionLabel} →
+          </button>
+        ) : (
+          <Link
+            href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
+            className={`${styles.actionBtn} ${section === "running" ? styles.actionBtnRunning : ""}`}
+            aria-label={actionAria}
+          >
+            {actionLabel} →
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -137,6 +148,11 @@ export function ListRow({ item, onLaunch }: Props) {
     return (
       <SwipeRow
         onLaunch={() => onLaunch(repo.owner, repo.name, issue.number)}
+        onReassign={
+          onNavigate
+            ? () => onNavigate(repo.owner, repo.name, issue.number)
+            : undefined
+        }
       >
         {rowContent}
       </SwipeRow>
