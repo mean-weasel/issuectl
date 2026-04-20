@@ -84,7 +84,7 @@ export async function createIssue(data: {
     return { success: false, error: formatErrorForUser(err) };
   }
 
-  const { stale } = revalidateSafely("/", `/${owner}/${repo}`);
+  const { stale } = revalidateSafely("/");
   return {
     success: true,
     issueNumber,
@@ -130,7 +130,7 @@ export async function updateIssue(data: {
     console.error("[issuectl] Failed to update issue:", err);
     return { success: false, error: formatErrorForUser(err) };
   }
-  const { stale } = revalidateSafely(`/${owner}/${repo}/issues/${number}`);
+  const { stale } = revalidateSafely(`/issues/${owner}/${repo}/${number}`, "/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
@@ -157,7 +157,7 @@ export async function closeIssue(
     console.error("[issuectl] Failed to close issue:", err);
     return { success: false, error: formatErrorForUser(err) };
   }
-  const { stale } = revalidateSafely(`/${owner}/${repo}/issues/${number}`);
+  const { stale } = revalidateSafely(`/issues/${owner}/${repo}/${number}`, "/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
@@ -193,7 +193,7 @@ export async function toggleLabel(data: {
     console.error(`[issuectl] Failed to ${action} label:`, err);
     return { success: false, error: formatErrorForUser(err) };
   }
-  const { stale } = revalidateSafely(`/${owner}/${repo}/issues/${number}`);
+  const { stale } = revalidateSafely(`/issues/${owner}/${repo}/${number}`, "/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
