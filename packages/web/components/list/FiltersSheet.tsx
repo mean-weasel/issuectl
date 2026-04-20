@@ -235,6 +235,21 @@ export function FiltersSheet({
           </span>
         </button>
 
+        <Link href="/?section=open" className={styles.commandLink} onClick={onClose}>
+          <span className={`${styles.commandLinkIcon} ${styles.claudeIcon}`}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 14l2-2M5 12l4-8M9 4l4 8M13 12l2 2" />
+              <circle cx="9" cy="4" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+              <circle cx="13" cy="12" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          <span className={styles.commandLinkText}>
+            Launch Claude Code
+            <span className={styles.commandLinkDesc}>swipe an open issue to launch</span>
+          </span>
+        </Link>
+
         <Link href="/parse" className={styles.commandLink} onClick={onClose}>
           <span className={styles.commandLinkIcon}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

@@ -26,10 +26,15 @@
   opacity: 0.92;
 }
 
-/* Command sheet replaces the FAB on mobile. */
+/* Mobile: compact FAB to avoid crowding the bottom sheet handle.
+   Keeps a visible quick-create shortcut above the command sheet. */
 @media (max-width: 767px) {
   .fab {
-    display: none;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    right: 20px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }
 
