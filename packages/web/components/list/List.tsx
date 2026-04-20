@@ -140,15 +140,68 @@ export function List({
     <PullToRefreshWrapper>
     <div className={styles.container}>
       <div className={styles.topBar}>
+        {/* Brand: full on desktop, compact on mobile */}
         <h1 className={styles.brand}>
-          issuectl<span className={styles.dot} />
+          <span className={styles.brandFull}>issuectl</span>
+          <span className={styles.brandCompact}>ic</span>
+          <span className={styles.dot} />
         </h1>
+
+        {/* Mobile: context breadcrumb — tappable to open sheet */}
+        <button
+          className={styles.contextLabel}
+          onClick={() => setFiltersOpen(true)}
+          aria-label="Open command sheet"
+        >
+          {activeTab === "issues" ? "issues" : "PRs"}
+          <span className={styles.contextSep}>›</span>
+          <span className={styles.contextSection}>
+            {activeTab === "issues"
+              ? SECTION_LABEL[activeSection]
+              : mineOnly
+                ? "mine"
+                : "everyone"}
+          </span>
+          {sectionCounts && activeTab === "issues" && (
+            <span className={styles.contextCount}>
+              {sectionCounts[activeSection] ?? ""}
+            </span>
+          )}
+          {activeTab === "prs" && prCount !== null && (
+            <span className={styles.contextCount}>{prCount}</span>
+          )}
+        </button>
+
         <CacheAge cachedAt={cachedAt ?? null} />
         <nav className={styles.desktopNav}>
           <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
           <span className={styles.desktopNavSep}>·</span>
           <Link href="/settings" className={styles.desktopNavLink}>Settings</Link>
         </nav>
+
+        {/* Mobile: single menu button to open command sheet */}
+        <button
+          className={styles.sheetMenuBtn}
+          onClick={() => setFiltersOpen(true)}
+          aria-label="Open command sheet"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M2 4h14M4 9h10M7 14h4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
+        {/* Desktop: hamburger for drawer (currently hidden via display:none) */}
         <button
           className={styles.menuBtn}
           onClick={() => setDrawerOpen(true)}

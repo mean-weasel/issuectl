@@ -37,6 +37,72 @@
   vertical-align: 6px;
 }
 
+/* Mobile monogram: show "ic", hide "issuectl" */
+.brandCompact {
+  display: inline;
+}
+
+.brandFull {
+  display: none;
+}
+
+/* Mobile: context breadcrumb */
+.contextLabel {
+  margin-left: auto;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--paper-ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  min-height: 44px;
+}
+
+.contextSep {
+  color: var(--paper-ink-faint);
+  margin: 0 2px;
+}
+
+.contextSection {
+  color: var(--paper-accent);
+  font-weight: 500;
+}
+
+.contextCount {
+  font-family: var(--paper-mono);
+  font-style: normal;
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  margin-left: 2px;
+}
+
+/* Mobile: sheet menu button (filter icon) */
+.sheetMenuBtn {
+  margin-left: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--paper-ink);
+  cursor: pointer;
+  border-radius: var(--paper-radius-sm);
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.sheetMenuBtn:active {
+  background: var(--paper-bg-warmer);
+}
+
 /* Hidden — primary nav is always visible inline. The hamburger button
    and Drawer remain in the DOM but are not shown. */
 .menuBtn {
@@ -247,6 +313,22 @@
 
   .desktopDraftBtn {
     display: inline-block;
+  }
+
+  .brandCompact {
+    display: none;
+  }
+
+  .brandFull {
+    display: inline;
+  }
+
+  .contextLabel {
+    display: none;
+  }
+
+  .sheetMenuBtn {
+    display: none;
   }
 }
 
