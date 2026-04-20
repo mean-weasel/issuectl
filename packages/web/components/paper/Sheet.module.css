@@ -33,6 +33,25 @@
   to { transform: translateY(0); }
 }
 
+/* Exit animations */
+.scrim[data-closing] {
+  animation: scrimOut 220ms ease-in forwards;
+}
+
+.sheet[data-closing] {
+  animation: sheetOut 220ms cubic-bezier(0.36, 0, 0.66, -0.56) forwards;
+}
+
+@keyframes scrimOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes sheetOut {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scrim,
   .sheet {
@@ -112,6 +131,21 @@
     to {
       opacity: 1;
       transform: translate(-50%, 0);
+    }
+  }
+
+  .sheet[data-closing] {
+    animation: sheetOutDesktop 220ms ease-in forwards;
+  }
+
+  @keyframes sheetOutDesktop {
+    from {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, 12px);
     }
   }
 }

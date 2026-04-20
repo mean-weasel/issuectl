@@ -29,12 +29,30 @@ const DISMISS_DRAG_PX = 100;
 const FLICK_VELOCITY_PX_PER_MS = 0.5;
 const FLICK_MIN_DRAG_PX = 40;
 
+const EXIT_DURATION_MS = 220;
+
 export function Sheet({ open, onClose, title, description, children }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<{ y: number; t: number } | null>(null);
   const isDesktopRef = useRef(false);
+
+  // Stay mounted during exit animation so the slide-down is visible.
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+    }
+  }, [open]);
+
+  const closing = !open && visible;
+
+  useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(() => setVisible(false), EXIT_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [closing]);
 
   // Track viewport size across the sheet's open lifetime so a
   // portrait→landscape rotation mid-drag doesn't compose the wrong transform.
@@ -108,7 +126,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     }
   }, [open]);
 
-  if (!open) return null;
+  if (!visible) return null;
 
   const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (e.touches.length === 0) return;
@@ -159,6 +177,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     <>
       <div
         className={styles.scrim}
+        data-closing={closing || undefined}
         onClick={onClose}
         aria-hidden="true"
         style={scrimStyle}
@@ -166,6 +185,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
       <div
         ref={dialogRef}
         className={styles.sheet}
+        data-closing={closing || undefined}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
