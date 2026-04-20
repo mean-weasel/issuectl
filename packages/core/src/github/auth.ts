@@ -6,7 +6,7 @@ const execFileAsync = promisify(execFile);
 export async function getGhToken(): Promise<string> {
   let stdout: string;
   try {
-    ({ stdout } = await execFileAsync("gh", ["auth", "token"]));
+    ({ stdout } = await execFileAsync("gh", ["auth", "token"], { timeout: 10_000 }));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Unknown error";
@@ -36,7 +36,7 @@ export async function checkGhAuth(): Promise<{
     const { stdout, stderr } = await execFileAsync("gh", [
       "auth",
       "status",
-    ]);
+    ], { timeout: 10_000 });
     const output = stdout + stderr;
     // Matches both "Logged in to github.com as user" (old gh) and
     // "Logged in to github.com account user (keyring)" (new gh)

@@ -24,8 +24,13 @@ export async function setPriorityAction(
     return { success: false, error: "Invalid priority value" };
   }
 
-  const db = getDb();
-  setPriority(db, repoId, issueNumber, priority);
+  try {
+    const db = getDb();
+    setPriority(db, repoId, issueNumber, priority);
+  } catch (err) {
+    console.error("[issuectl] Failed to set priority:", err);
+    return { success: false, error: "Failed to update priority" };
+  }
   const { stale } = revalidateSafely("/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

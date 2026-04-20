@@ -29,6 +29,11 @@ export function getCached<T>(
   }
 }
 
+// Opportunistic pruning: run at most once every 10 minutes
+const PRUNE_INTERVAL_MS = 10 * 60 * 1000;
+const PRUNE_OLDER_THAN_SECONDS = 24 * 60 * 60; // 24 hours
+let lastPruneAt = 0;
+
 export function setCached(
   db: Database.Database,
   key: string,
@@ -37,6 +42,12 @@ export function setCached(
   db.prepare(
     "INSERT INTO cache (key, data, fetched_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET data = excluded.data, fetched_at = excluded.fetched_at",
   ).run(key, JSON.stringify(data));
+
+  const now = Date.now();
+  if (now - lastPruneAt > PRUNE_INTERVAL_MS) {
+    lastPruneAt = now;
+    setImmediate(() => pruneStaleCache(db, PRUNE_OLDER_THAN_SECONDS));
+  }
 }
 
 export function isFresh(fetchedAt: Date, ttlSeconds: number): boolean {
@@ -59,4 +70,20 @@ export function clearCache(
   } else {
     db.prepare("DELETE FROM cache").run();
   }
+}
+
+/**
+ * Delete cache entries whose fetched_at is older than the given threshold.
+ * Returns the number of rows removed.
+ */
+export function pruneStaleCache(
+  db: Database.Database,
+  olderThanSeconds: number,
+): number {
+  const result = db
+    .prepare(
+      "DELETE FROM cache WHERE fetched_at < datetime('now', ?)",
+    )
+    .run(`-${olderThanSeconds} seconds`);
+  return result.changes;
 }

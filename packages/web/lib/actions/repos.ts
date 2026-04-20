@@ -1,6 +1,7 @@
 "use server";
 
 import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import { homedir } from "node:os";
 import {
   getDb,
@@ -183,6 +184,29 @@ export async function updateRepo(
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (!id || id <= 0) {
     return { success: false, error: "Invalid repo ID" };
+  }
+
+  if (updates.localPath !== undefined && updates.localPath !== "") {
+    const lp = updates.localPath.trim();
+    if (!lp.startsWith("/") && !lp.startsWith("~")) {
+      return { success: false, error: "Local path must be absolute (start with / or ~)" };
+    }
+    const home = homedir();
+    const expanded = lp.startsWith("~/") ? home + lp.slice(1) : lp === "~" ? home : lp;
+    const resolved = resolve(expanded);
+    try {
+      const dirStat = await stat(resolved);
+      if (!dirStat.isDirectory()) {
+        return { success: false, error: "Local path is not a directory" };
+      }
+    } catch {
+      return { success: false, error: "Local path does not exist or is not accessible" };
+    }
+    try {
+      await stat(resolve(resolved, ".git"));
+    } catch {
+      return { success: false, error: "Local path does not appear to be a git repository (no .git directory)" };
+    }
   }
 
   try {

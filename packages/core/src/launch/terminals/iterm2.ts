@@ -43,7 +43,7 @@ export function createITermLauncher(settings: TerminalSettings): TerminalLaunche
       }
 
       try {
-        await execFileAsync("osascript", ["-e", 'tell application "Finder" to get application file id "com.googlecode.iterm2"']);
+        await execFileAsync("osascript", ["-e", 'tell application "Finder" to get application file id "com.googlecode.iterm2"'], { timeout: 10_000 });
       } catch (err) {
         throw new Error(
           "iTerm2 is not installed. Install from https://iterm2.com",
@@ -59,7 +59,7 @@ export function createITermLauncher(settings: TerminalSettings): TerminalLaunche
       const script = buildITermAppleScript(tabTitle, shellCommand);
 
       try {
-        await execFileAsync("osascript", ["-e", script]);
+        await execFileAsync("osascript", ["-e", script], { timeout: 15_000 });
       } catch (err) {
         throw new Error(
           `Failed to launch iTerm2. (${err instanceof Error ? err.message : String(err)})`,

@@ -146,10 +146,10 @@ export function endDeployment(
   deploymentId: number,
 ): void {
   const result = db
-    .prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?")
+    .prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ? AND ended_at IS NULL")
     .run(deploymentId);
   if (result.changes === 0) {
-    throw new Error(`No deployment found with id ${deploymentId}`);
+    throw new Error(`No active deployment found with id ${deploymentId}`);
   }
 }
 
@@ -173,6 +173,39 @@ export function activateDeployment(
       `No pending deployment found with id ${deploymentId} to activate`,
     );
   }
+}
+
+/**
+ * Clean up pending deployments older than the given age. Pending rows
+ * should transition to active within seconds — any that linger indicate
+ * a crash or bug in the launch flow.
+ */
+export function cleanupOrphanedDeployments(
+  db: Database.Database,
+  maxAgeMinutes = 10,
+): number {
+  const result = db
+    .prepare(
+      "DELETE FROM deployments WHERE state = 'pending' AND launched_at < datetime('now', ?)",
+    )
+    .run(`-${maxAgeMinutes} minutes`);
+  return result.changes;
+}
+
+/**
+ * Prune ended deployments older than the given number of days.
+ * Returns the number of rows deleted.
+ */
+export function pruneEndedDeployments(
+  db: Database.Database,
+  olderThanDays = 90,
+): number {
+  const result = db
+    .prepare(
+      "DELETE FROM deployments WHERE ended_at IS NOT NULL AND ended_at < datetime('now', ?)",
+    )
+    .run(`-${olderThanDays} days`);
+  return result.changes;
 }
 
 /**

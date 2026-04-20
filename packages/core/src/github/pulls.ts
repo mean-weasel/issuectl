@@ -117,7 +117,8 @@ export async function findLinkedPRs(
   owner: string,
   repo: string,
   issueNumber: number,
+  prefetchedPulls?: GitHubPull[],
 ): Promise<GitHubPull[]> {
-  const pulls = await listPulls(octokit, owner, repo, "all");
+  const pulls = prefetchedPulls ?? await listPulls(octokit, owner, repo, "all");
   return matchLinkedPRs(pulls, issueNumber);
 }

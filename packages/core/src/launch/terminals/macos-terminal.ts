@@ -7,9 +7,20 @@ function execAppleScript(script: string): Promise<string> {
     const proc = spawn("osascript", ["-"], { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        proc.kill("SIGTERM");
+        reject(new Error("osascript timed out after 15 seconds"));
+      }
+    }, 15_000);
     proc.stdout.on("data", (d: Buffer) => { stdout += d; });
     proc.stderr.on("data", (d: Buffer) => { stderr += d; });
     proc.on("close", (code) => {
+      clearTimeout(timer);
+      if (settled) return;
+      settled = true;
       if (code === 0) resolve(stdout.trim());
       else reject(new Error(stderr.trim() || `osascript exited with code ${code}`));
     });
