@@ -65,12 +65,24 @@ export function LaunchModal({
   );
   const [preamble, setPreamble] = useState("");
 
+  const [initialBranch] = useState(defaultBranch);
+  const [initialMode] = useState<WorkspaceMode>(
+    initialWorkspaceMode ?? (repoLocalPath ? "existing" : "clone"),
+  );
+
   // Auto-select all comments when they arrive via lazy-fetch (initially empty).
   useEffect(() => {
     if (comments.length > 0) {
       setSelectedComments(comments.map((_, i) => i));
     }
   }, [comments]);
+
+  const isDirty =
+    branchName !== initialBranch ||
+    workspaceMode !== initialMode ||
+    preamble.trim().length > 0 ||
+    selectedComments.length !== comments.length ||
+    selectedFiles.length !== referencedFiles.length;
 
   const toggleComment = useCallback((index: number) => {
     setSelectedComments((prev) =>
@@ -91,6 +103,12 @@ export function LaunchModal({
   const addFile = useCallback((path: string) => {
     setSelectedFiles((prev) => [...prev, path]);
   }, []);
+
+  const handleClose = useCallback(() => {
+    if (isPending) return;
+    if (isDirty && !window.confirm("Discard launch configuration?")) return;
+    onClose();
+  }, [isPending, isDirty, onClose]);
 
   function handleLaunch() {
     setError(null);
@@ -132,11 +150,11 @@ export function LaunchModal({
   }
 
   return (
-    <div className={styles.overlay} onClick={isPending ? undefined : onClose}>
+    <div className={styles.overlay} onClick={handleClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <span className={styles.title}>Launch to Claude Code</span>
-          <button className={styles.close} onClick={isPending ? undefined : onClose} disabled={isPending}>
+          <button className={styles.close} onClick={handleClose} disabled={isPending}>
             &times;
           </button>
         </div>
@@ -184,7 +202,7 @@ export function LaunchModal({
         </div>
 
         <div className={styles.footer}>
-          <Button variant="ghost" onClick={onClose} disabled={isPending}>
+          <Button variant="ghost" onClick={handleClose} disabled={isPending}>
             Cancel
           </Button>
           <Button
