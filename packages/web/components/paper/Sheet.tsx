@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import styles from "./Sheet.module.css";
 
 type Props = {
@@ -84,14 +85,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
   }, [open]);
 
   // Lock body scroll for the full mounted lifetime (including exit animation).
-  useEffect(() => {
-    if (!visible) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [visible]);
+  useScrollLock(visible);
 
   useEffect(() => {
     if (!open) return;
