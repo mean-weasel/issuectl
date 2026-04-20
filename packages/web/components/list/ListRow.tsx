@@ -105,7 +105,7 @@ export function ListRow({ item, onLaunch }: Props) {
               ))}
             </>
           )}
-          {issue.commentCount > 0 && (
+          {(issue.commentCount ?? 0) > 0 && (
             <>
               <span className={styles.sep}>·</span>
               <span className={styles.comments}>

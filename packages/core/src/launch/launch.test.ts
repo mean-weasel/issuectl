@@ -83,6 +83,7 @@ vi.mock("../github/labels.js", async () => {
     ...actual,
     ensureLifecycleLabels: async () => {},
     addLabel: async () => {},
+    addLabels: async () => {},
     removeLabel: async () => {},
   };
 });

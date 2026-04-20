@@ -119,12 +119,13 @@ describe("ensureLifecycleLabels", () => {
     createLabel.mockResolvedValue({});
 
     await ensureLifecycleLabels(octokit, "owner", "repo");
-    expect(createLabel).toHaveBeenCalledTimes(3);
+    expect(createLabel).toHaveBeenCalledTimes(4);
 
     const names = createLabel.mock.calls.map(
       (call: Array<Record<string, unknown>>) => call[0].name,
     );
     expect(names).toContain(LIFECYCLE_LABEL.deployed);
+    expect(names).toContain(LIFECYCLE_LABEL.inProgress);
     expect(names).toContain(LIFECYCLE_LABEL.prOpen);
     expect(names).toContain(LIFECYCLE_LABEL.done);
   });

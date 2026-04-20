@@ -90,6 +90,21 @@ export async function addLabel(
   });
 }
 
+export async function addLabels(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  labels: string[],
+): Promise<void> {
+  await octokit.rest.issues.addLabels({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    labels,
+  });
+}
+
 export async function removeLabel(
   octokit: Octokit,
   owner: string,
