@@ -160,9 +160,15 @@ export async function getUnifiedList(
   db: Database.Database,
   octokit: Octokit,
   sortMode: SortMode = "updated",
+  repoFilter?: { owner: string; name: string } | null,
 ): Promise<UnifiedList> {
-  const drafts = listDrafts(db);
-  const repos = listRepos(db);
+  const drafts = repoFilter ? [] : listDrafts(db);
+  const allRepos = listRepos(db);
+  const repos = repoFilter
+    ? allRepos.filter(
+        (r) => r.owner === repoFilter.owner && r.name === repoFilter.name,
+      )
+    : allRepos;
 
   // Per-repo failures are caught and logged so one bad repo doesn't
   // kill the whole feed — we render the remaining repos' data and
