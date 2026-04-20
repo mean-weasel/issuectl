@@ -8,7 +8,6 @@ import styles from "./ListRow.module.css";
 type Props = {
   item: UnifiedListItem;
   onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
-  onNavigate?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -28,7 +27,7 @@ function formatAge(updatedAt: string | number): string {
   return `${diffDays}d`;
 }
 
-export function ListRow({ item, onLaunch, onNavigate }: Props) {
+export function ListRow({ item, onLaunch }: Props) {
   if (item.kind === "draft") {
     return (
       <div className={styles.item}>
@@ -148,11 +147,6 @@ export function ListRow({ item, onLaunch, onNavigate }: Props) {
     return (
       <SwipeRow
         onLaunch={() => onLaunch(repo.owner, repo.name, issue.number)}
-        onReassign={
-          onNavigate
-            ? () => onNavigate(repo.owner, repo.name, issue.number)
-            : undefined
-        }
       >
         {rowContent}
       </SwipeRow>

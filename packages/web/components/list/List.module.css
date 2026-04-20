@@ -1,10 +1,9 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  /* Bottom padding clears the FAB (60px + 30px inset + 54px breathing room)
-     so the last row's trailing action button clears the floating action
-     button even when a user scrolls to the end of a dense row. */
-  padding: 12px 0 calc(144px + env(safe-area-inset-bottom, 0px));
+  /* Bottom padding provides scroll-end breathing room so the last row
+     clears the filter handle and safe-area inset. */
+  padding: 12px 0 calc(80px + env(safe-area-inset-bottom, 0px));
   background: var(--paper-bg);
   min-height: 100dvh;
   position: relative;
@@ -37,8 +36,74 @@
   vertical-align: 6px;
 }
 
-/* Hidden — primary nav is always visible inline. The hamburger button
-   and Drawer remain in the DOM but are not shown. */
+/* Mobile monogram: show "ic", hide "issuectl" */
+.brandCompact {
+  display: inline;
+}
+
+.brandFull {
+  display: none;
+}
+
+/* Mobile: context breadcrumb */
+.contextLabel {
+  margin-left: auto;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--paper-ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  min-height: 44px;
+}
+
+.contextSep {
+  color: var(--paper-ink-faint);
+  margin: 0 2px;
+}
+
+.contextSection {
+  color: var(--paper-accent);
+  font-weight: 500;
+}
+
+.contextCount {
+  font-family: var(--paper-mono);
+  font-style: normal;
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  margin-left: 2px;
+}
+
+/* Mobile: sheet menu button (filter icon) */
+.sheetMenuBtn {
+  margin-left: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--paper-ink);
+  cursor: pointer;
+  border-radius: var(--paper-radius-sm);
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.sheetMenuBtn:active {
+  background: var(--paper-bg-warmer);
+}
+
+/* Hidden — the command sheet (mobile) and inline nav (desktop) handle
+   navigation. The hamburger and Drawer remain in the DOM but are unused. */
 .menuBtn {
   background: transparent;
   border: none;
@@ -65,8 +130,8 @@
   color: var(--paper-ink);
 }
 
-/* Inline nav links — visible on all viewports so primary navigation
-   is never hidden behind a hamburger. Compact on mobile, spaced on desktop. */
+/* Desktop nav links. Hidden on mobile where the command sheet provides
+   equivalent navigation (Settings, Quick Create). */
 .desktopNav {
   display: flex;
   align-items: baseline;
@@ -108,9 +173,8 @@
   align-self: center;
 }
 
-/* Desktop-only inline draft button. The mobile FAB is hidden at the
- * same breakpoint by Fab.module.css so only one entry point is shown
- * per viewport. */
+/* Desktop-only inline draft button. On mobile, the command sheet's
+ * "Create Draft" action provides this functionality instead. */
 .desktopDraftBtn {
   display: none;
   font-family: var(--paper-serif);
@@ -235,6 +299,7 @@
 @media (min-width: 768px) {
   .topBar {
     padding: 52px 24px 12px;
+    border-bottom: none;
   }
 
   .desktopNav {
@@ -247,6 +312,22 @@
 
   .desktopDraftBtn {
     display: inline-block;
+  }
+
+  .brandCompact {
+    display: none;
+  }
+
+  .brandFull {
+    display: inline;
+  }
+
+  .contextLabel {
+    display: none;
+  }
+
+  .sheetMenuBtn {
+    display: none;
   }
 }
 
@@ -507,6 +588,22 @@
   }
   .mineToggle {
     display: none;
+  }
+  /* Command sheet handles these on mobile */
+  .tabs {
+    display: none;
+  }
+  .sectionTabs {
+    display: none;
+  }
+  .sortToggle {
+    display: none;
+  }
+  .desktopNav {
+    display: none;
+  }
+  .topBar {
+    border-bottom: 1px solid var(--paper-line);
   }
 }
 
