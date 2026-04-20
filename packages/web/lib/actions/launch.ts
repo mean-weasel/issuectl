@@ -14,6 +14,7 @@ import {
   formatErrorForUser,
   type WorkspaceMode,
 } from "@issuectl/core";
+import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
 import { revalidateSafely } from "@/lib/revalidate";
 
 type LaunchFormData = {
@@ -47,9 +48,6 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
   "worktree",
   "clone",
 ];
-
-const VALID_BRANCH_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
-const MAX_PREAMBLE = 10000;
 
 export async function launchIssue(
   formData: LaunchFormData,

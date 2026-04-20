@@ -33,6 +33,7 @@ export function DraftDetail({ draft }: Props) {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draftDeleted, setDraftDeleted] = useState(false);
+  const [savingNew, setSavingNew] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function flashSaved() {
@@ -51,7 +52,7 @@ export function DraftDetail({ draft }: Props) {
     try {
       const result = await updateDraftAction(draft.id, { title: trimmed });
       if (!result.success) {
-        if (result.error?.includes("no longer exists")) {
+        if (result.code === "NOT_FOUND") {
           setDraftDeleted(true);
         }
         setSaveError(result.error ?? "Failed to save title");
@@ -72,7 +73,7 @@ export function DraftDetail({ draft }: Props) {
     try {
       const result = await updateDraftAction(draft.id, { body });
       if (!result.success) {
-        if (result.error?.includes("no longer exists")) {
+        if (result.code === "NOT_FOUND") {
           setDraftDeleted(true);
         }
         setSaveError(result.error ?? "Failed to save");
@@ -88,6 +89,8 @@ export function DraftDetail({ draft }: Props) {
   };
 
   const handleSaveAsNew = async () => {
+    if (savingNew) return;
+    setSavingNew(true);
     setSaveError(null);
     try {
       const result = await createDraftAction({
@@ -102,6 +105,8 @@ export function DraftDetail({ draft }: Props) {
     } catch (err) {
       console.error("[issuectl] Save as new draft failed:", err);
       setSaveError("Failed to save as new draft");
+    } finally {
+      setSavingNew(false);
     }
   };
 
@@ -159,8 +164,8 @@ export function DraftDetail({ draft }: Props) {
           {draftDeleted && (
             <div className={styles.recoveryBar}>
               <span>This draft was deleted.</span>
-              <button className={styles.recoveryBtn} onClick={handleSaveAsNew}>
-                Save as new draft
+              <button className={styles.recoveryBtn} onClick={handleSaveAsNew} disabled={savingNew}>
+                {savingNew ? "Saving…" : "Save as new draft"}
               </button>
             </div>
           )}

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { VALID_BRANCH_RE } from "@/lib/constants";
 import styles from "./BranchInput.module.css";
-
-const VALID_BRANCH_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
 
 type Props = {
   value: string;

@@ -115,38 +115,45 @@ export function LaunchModal({
     setError(null);
     const idempotencyKey = newIdempotencyKey();
     startTransition(async () => {
-      const result = await launchIssue({
-        owner,
-        repo,
-        issueNumber: issue.number,
-        branchName: branchName.trim(),
-        workspaceMode,
-        selectedCommentIndices: selectedComments,
-        selectedFilePaths: selectedFiles,
-        preamble: preamble.trim() || undefined,
-        idempotencyKey,
-      });
+      try {
+        const result = await launchIssue({
+          owner,
+          repo,
+          issueNumber: issue.number,
+          branchName: branchName.trim(),
+          workspaceMode,
+          selectedCommentIndices: selectedComments,
+          selectedFilePaths: selectedFiles,
+          preamble: preamble.trim() || undefined,
+          idempotencyKey,
+        });
 
-      if (!result.success) {
-        setError(result.error ?? "Launch failed");
-        return;
+        if (!result.success) {
+          setError(result.error ?? "Launch failed");
+          return;
+        }
+
+        const deploymentId = result.deploymentId;
+        if (!deploymentId) {
+          setError("Launch succeeded but deployment ID was not returned");
+          return;
+        }
+
+        if (result.labelWarning) {
+          showToast(result.labelWarning, "warning");
+        }
+
+        const c = selectedComments.length;
+        const f = selectedFiles.length;
+        router.push(
+          `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}&c=${c}&f=${f}`,
+        );
+      } catch (err) {
+        console.error("[issuectl] Launch failed:", err);
+        setError(
+          err instanceof Error ? err.message : "Launch failed — check your connection",
+        );
       }
-
-      const deploymentId = result.deploymentId;
-      if (!deploymentId) {
-        setError("Launch succeeded but deployment ID was not returned");
-        return;
-      }
-
-      if (result.labelWarning) {
-        showToast(result.labelWarning, "warning");
-      }
-
-      const c = selectedComments.length;
-      const f = selectedFiles.length;
-      router.push(
-        `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}&c=${c}&f=${f}`,
-      );
     });
   }
 

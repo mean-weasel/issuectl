@@ -1,8 +1,7 @@
 "use client";
 
+import { MAX_PREAMBLE } from "@/lib/constants";
 import styles from "./PreambleInput.module.css";
-
-const MAX_PREAMBLE = 10000;
 
 type Props = {
   value: string;
