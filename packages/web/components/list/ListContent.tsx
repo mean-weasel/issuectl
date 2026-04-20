@@ -65,13 +65,6 @@ export function ListContent({
     [router],
   );
 
-  const handleNavigate = useCallback(
-    (owner: string, repo: string, issueNumber: number) => {
-      router.push(`/issues/${owner}/${repo}/${issueNumber}`);
-    },
-    [router],
-  );
-
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -90,7 +83,7 @@ export function ListContent({
     const showing = Math.min(visibleCount, total);
     return (
       <>
-        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch, onNavigate: handleNavigate })}
+        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch })}
         {total > PAGE_SIZE && (
           <div className={styles.pageStatus}>
             Showing {showing} of {total}
@@ -145,13 +138,11 @@ function renderIssueSection({
   data,
   visibleCount,
   onLaunch,
-  onNavigate,
 }: {
   activeSection: Section;
   data: UnifiedList;
   visibleCount: number;
   onLaunch: (owner: string, repo: string, issueNumber: number) => void;
-  onNavigate: (owner: string, repo: string, issueNumber: number) => void;
 }) {
   const allItems = data[activeSection];
 
@@ -169,5 +160,5 @@ function renderIssueSection({
   }
 
   const items = allItems.slice(0, visibleCount);
-  return <ListSection title={null} items={items} onLaunch={onLaunch} onNavigate={onNavigate} />;
+  return <ListSection title={null} items={items} onLaunch={onLaunch} />;
 }
