@@ -47,12 +47,33 @@ type SyncCallbacks = {
 
 export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
   const syncingRef = useRef(false);
+  const lastSyncRef = useRef(0);
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
   useEffect(() => {
+    const channel =
+      typeof BroadcastChannel !== "undefined"
+        ? new BroadcastChannel("issuectl-sync")
+        : null;
+
+    // Track whether another tab is already syncing
+    let peerSyncing = false;
+    channel?.addEventListener("message", (e) => {
+      if (e.data === "sync-start") peerSyncing = true;
+      if (e.data === "sync-done") {
+        peerSyncing = false;
+        callbacksRef.current?.onRefreshQueue?.();
+      }
+    });
+
     async function handleOnline() {
       if (syncingRef.current) return;
+      if (peerSyncing) return;
+
+      // Cooldown: don't re-sync within 3 seconds of last sync
+      const elapsed = Date.now() - lastSyncRef.current;
+      if (elapsed < 3000) return;
 
       let pending: QueuedOperation[];
       try {
@@ -66,7 +87,6 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
         try {
           await refreshAction();
         } catch (err) {
-          // Optimistic refresh — server may not be fully reachable despite the online event.
           console.warn("[issuectl] Post-reconnect refresh failed:", err);
         }
         return;
@@ -75,6 +95,7 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
       const healthy = await checkHealth();
       if (!healthy) return;
 
+      channel?.postMessage("sync-start");
       syncingRef.current = true;
       try {
         const result = await replayQueue(executeOperation);
@@ -84,7 +105,6 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
           try {
             await refreshAction();
           } catch (err) {
-            // Sync succeeded but revalidation failed — cached data will be stale until next refresh.
             console.warn("[issuectl] Post-sync refresh failed:", err);
           }
         }
@@ -98,10 +118,15 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
         callbacksRef.current?.onRefreshQueue?.();
       } finally {
         syncingRef.current = false;
+        lastSyncRef.current = Date.now();
+        channel?.postMessage("sync-done");
       }
     }
 
     window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      channel?.close();
+    };
   }, []);
 }
