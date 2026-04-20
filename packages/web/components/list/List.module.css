@@ -301,6 +301,7 @@
 @media (min-width: 768px) {
   .topBar {
     padding: 52px 24px 12px;
+    border-bottom: none;
   }
 
   .desktopNav {
@@ -589,6 +590,19 @@
   }
   .mineToggle {
     display: none;
+  }
+  /* Command sheet handles these on mobile */
+  .tabs {
+    display: none;
+  }
+  .sectionTabs {
+    display: none;
+  }
+  .sortToggle {
+    display: none;
+  }
+  .topBar {
+    border-bottom: 1px solid var(--paper-line);
   }
 }
 
