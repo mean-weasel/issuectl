@@ -86,10 +86,17 @@ export function ListContent({
   }, [loadMore, activeSection]);
 
   if (activeTab === "issues") {
+    const total = data[activeSection].length;
+    const showing = Math.min(visibleCount, total);
     return (
       <>
         {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch, onNavigate: handleNavigate })}
-        {visibleCount < data[activeSection].length && (
+        {total > PAGE_SIZE && (
+          <div className={styles.pageStatus}>
+            Showing {showing} of {total}
+          </div>
+        )}
+        {visibleCount < total && (
           <div ref={sentinelRef} className={styles.sentinel} />
         )}
       </>

@@ -150,6 +150,16 @@ textarea::placeholder {
   z-index: 1;
 }
 
+@media (pointer: coarse) {
+  /* Fallback floor for form elements not styled by CSS Modules.
+     Component-level min-height (set via class selectors) always wins. */
+  input,
+  textarea,
+  select {
+    min-height: 44px;
+  }
+}
+
 /* ── Standalone PWA adjustments ──────────────────────────────────
    When launched from the home screen (display: standalone), the
    browser address bar is gone. Add top padding to account for the
