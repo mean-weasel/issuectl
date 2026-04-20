@@ -248,3 +248,12 @@
   color: var(--paper-ink-muted);
   margin-top: 2px;
 }
+
+.version {
+  display: block;
+  text-align: center;
+  font-family: var(--paper-mono);
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  padding: 16px 0 4px;
+}

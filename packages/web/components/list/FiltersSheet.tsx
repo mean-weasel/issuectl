@@ -259,6 +259,10 @@ export function FiltersSheet({
             <span className={styles.commandLinkDesc}>repos, tokens, preferences</span>
           </span>
         </Link>
+
+        <span className={styles.version}>
+          v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
+        </span>
       </div>
     </Sheet>
   );
