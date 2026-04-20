@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useCommentDraft } from "@/hooks/useCommentDraft";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -21,7 +22,7 @@ type Props = {
 export function CommentComposer({ owner, repo, issueNumber }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [body, setBody] = useState("");
+  const { body, setBody, clear: clearDraft } = useCommentDraft(owner, repo, issueNumber);
   const [sending, setSending] = useState(false);
   const [syncVisible, setSyncVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
       );
 
       if (result.outcome === "queued") {
-        setBody("");
+        clearDraft();
         showToast("Comment queued — will sync when online", "warning");
         return;
       }
@@ -68,7 +69,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
       }
 
       // succeeded
-      setBody("");
+      clearDraft();
       router.refresh();
       const data = result.data as { cacheStale?: boolean };
       showToast(
@@ -104,6 +105,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
         rows={3}
         disabled={sending}
         aria-label="Comment body"
+        maxLength={65536}
       />
       {error && <div className={styles.error}>{error}</div>}
       <div className={styles.footer}>
