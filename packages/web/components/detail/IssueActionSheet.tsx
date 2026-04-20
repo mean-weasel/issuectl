@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
 import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
+import { endSession } from "@/lib/actions/launch";
 import { getComments } from "@/lib/actions/comments";
 import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -114,6 +115,21 @@ export function IssueActionSheet({
     setError(null);
     startTransition(async () => {
       try {
+        // End active terminal session before closing the issue
+        const liveDeployment = deployments.find((d) => d.endedAt === null);
+        if (liveDeployment) {
+          const endResult = await endSession(liveDeployment.id, owner, repo, number);
+          if (!endResult.success) {
+            console.warn(
+              "[issuectl] Failed to end session while closing issue:",
+              endResult.error,
+            );
+            showToast(
+              "Terminal session could not be stopped cleanly — it will be cleaned up on next restart.",
+              "warning",
+            );
+          }
+        }
         const result = await closeIssue(owner, repo, number);
         if (!result.success) {
           setError(result.error);
@@ -194,6 +210,21 @@ export function IssueActionSheet({
         onTrigger={() => setSheetOpen(true)}
         label="Actions"
       />
+
+      {/* Desktop inline action bar — visible only on wide viewports */}
+      <div className={styles.desktopBar}>
+        {!hasLiveDeployment && (
+          <Button variant="primary" onClick={handleLaunchTap}>
+            Launch with Claude
+          </Button>
+        )}
+        <Button variant="ghost" onClick={handleReassignTap}>
+          Re-assign
+        </Button>
+        <Button variant="ghost" onClick={handleCloseTap}>
+          Close issue
+        </Button>
+      </div>
 
       <Sheet
         open={sheetOpen}

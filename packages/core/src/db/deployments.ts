@@ -12,6 +12,8 @@ type DeploymentRow = {
   state: string;
   launched_at: string;
   ended_at: string | null;
+  ttyd_port: number | null;
+  ttyd_pid: number | null;
 };
 
 function rowToDeployment(row: DeploymentRow): Deployment {
@@ -26,6 +28,8 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     state: (row.state as DeploymentState) ?? "active",
     launchedAt: row.launched_at,
     endedAt: row.ended_at,
+    ttydPort: row.ttyd_port,
+    ttydPid: row.ttyd_pid,
   };
 }
 
@@ -175,9 +179,23 @@ export function activateDeployment(
   }
 }
 
+export function updateTtydInfo(
+  db: Database.Database,
+  deploymentId: number,
+  port: number,
+  pid: number,
+): void {
+  const result = db
+    .prepare("UPDATE deployments SET ttyd_port = ?, ttyd_pid = ? WHERE id = ?")
+    .run(port, pid, deploymentId);
+  if (result.changes === 0) {
+    throw new Error(`No deployment found with id ${deploymentId} to update ttyd info`);
+  }
+}
+
 /**
  * Delete a "pending" deployment row. Called by executeLaunch's rollback
- * path when the terminal launch fails after the row was written. This is
+ * path when the ttyd spawn fails after the row was written. This is
  * safe because pending rows are never visible to the UI or reconciler —
  * removing one cannot leave dangling references. Throws if the row is
  * not pending (active or ended rows must go through endDeployment).

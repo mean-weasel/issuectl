@@ -78,9 +78,6 @@ function createTestDb(dbPath: string): void {
 
   const defaults: Array<[string, string]> = [
     ["branch_pattern", "issue-{number}-{slug}"],
-    ["terminal_app", "iterm2"],
-    ["terminal_window_title", "issuectl"],
-    ["terminal_tab_title_pattern", "#{number} — {title}"],
     ["cache_ttl", "300"],
     ["worktree_dir", "~/.issuectl/worktrees/"],
   ];
@@ -322,8 +319,6 @@ test.describe("Mobile UX regressions — iOS form attrs (R3, R5)", () => {
     const writableInputs = [
       "sf-branch-pattern",
       "sf-cache-ttl",
-      "sf-window-title",
-      "sf-tab-title",
       "sf-claude-args",
     ];
 

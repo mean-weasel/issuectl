@@ -79,22 +79,22 @@ export function IssueDetail({
           />
         </DetailMeta>
 
+        {issue.state !== "closed" && (
+          <IssueActionSheet
+            owner={owner}
+            repo={repoName}
+            repoId={repoId}
+            number={issue.number}
+            repoLocalPath={repoLocalPath}
+            issue={issue}
+            deployments={deployments}
+            referencedFiles={referencedFiles}
+            hasLiveDeployment={hasLiveDeployment}
+          />
+        )}
         <BodyText body={issue.body} />
         {children}
       </div>
-      {issue.state !== "closed" && (
-        <IssueActionSheet
-          owner={owner}
-          repo={repoName}
-          repoId={repoId}
-          number={issue.number}
-          repoLocalPath={repoLocalPath}
-          issue={issue}
-          deployments={deployments}
-          referencedFiles={referencedFiles}
-          hasLiveDeployment={hasLiveDeployment}
-        />
-      )}
     </div>
   );
 }

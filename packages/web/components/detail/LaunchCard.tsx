@@ -5,10 +5,11 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  issueTitle: string;
   deployments: Deployment[];
 };
 
-export function LaunchCard({ owner, repo, issueNumber, deployments }: Props) {
+export function LaunchCard({ owner, repo, issueNumber, issueTitle, deployments }: Props) {
   const liveDeployment = deployments.find((d) => d.endedAt === null);
   if (!liveDeployment) return null;
 
@@ -20,6 +21,8 @@ export function LaunchCard({ owner, repo, issueNumber, deployments }: Props) {
       owner={owner}
       repo={repo}
       issueNumber={issueNumber}
+      issueTitle={issueTitle}
+      ttydPort={liveDeployment.ttydPort}
     />
   );
 }

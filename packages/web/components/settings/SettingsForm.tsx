@@ -16,33 +16,23 @@ const SAVED_FLASH_MS = 2500;
 type Props = {
   branchPattern: string;
   cacheTTL: string;
-  terminalApp: string;
-  windowTitle: string;
-  tabTitlePattern: string;
   claudeExtraArgs: string;
 };
 
 type FormValues = {
   branch_pattern: string;
   cache_ttl: string;
-  terminal_window_title: string;
-  terminal_tab_title_pattern: string;
   claude_extra_args: string;
 };
 
 export function SettingsForm({
   branchPattern,
   cacheTTL,
-  terminalApp,
-  windowTitle,
-  tabTitlePattern,
   claudeExtraArgs,
 }: Props) {
   const [values, setValues] = useState<FormValues>({
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
-    terminal_window_title: windowTitle,
-    terminal_tab_title_pattern: tabTitlePattern,
     claude_extra_args: claudeExtraArgs,
   });
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +50,6 @@ export function SettingsForm({
   const originals: FormValues = {
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
-    terminal_window_title: windowTitle,
-    terminal_tab_title_pattern: tabTitlePattern,
     claude_extra_args: claudeExtraArgs,
   };
 
@@ -164,56 +152,6 @@ export function SettingsForm({
               pattern="[0-9]*"
               enterKeyHint="done"
             />
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>Terminal</div>
-        <div className={styles.row}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-terminal-app">Application</label>
-            <input
-              id="sf-terminal-app"
-              className={styles.inputReadonly}
-              value={terminalApp}
-              readOnly
-            />
-          </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-window-title">Window Title</label>
-            <input
-              id="sf-window-title"
-              className={styles.input}
-              value={values.terminal_window_title}
-              onChange={(e) => handleChange("terminal_window_title", e.target.value)}
-              disabled={isPending}
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="done"
-            />
-          </div>
-        </div>
-        <div className={styles.row}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-tab-title">Tab Title Pattern</label>
-            <input
-              id="sf-tab-title"
-              className={styles.input}
-              value={values.terminal_tab_title_pattern}
-              onChange={(e) => handleChange("terminal_tab_title_pattern", e.target.value)}
-              disabled={isPending}
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="done"
-            />
-            <div className={styles.help}>
-              Placeholders: {"{number}"}, {"{title}"}, {"{repo}"}, {"{owner}"}
-            </div>
           </div>
         </div>
       </section>

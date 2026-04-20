@@ -42,9 +42,6 @@ export default async function SettingsPage() {
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
   const cacheTTL = settingMap.cache_ttl ?? "300";
-  const terminalApp = settingMap.terminal_app ?? "ghostty";
-  const windowTitle = settingMap.terminal_window_title ?? "issuectl";
-  const tabTitlePattern = settingMap.terminal_tab_title_pattern ?? "#{number} — {title}";
   const claudeExtraArgs = settingMap.claude_extra_args ?? "";
 
   return (
@@ -59,9 +56,6 @@ export default async function SettingsPage() {
         <SettingsForm
           branchPattern={branchPattern}
           cacheTTL={cacheTTL}
-          terminalApp={terminalApp}
-          windowTitle={windowTitle}
-          tabTitlePattern={tabTitlePattern}
           claudeExtraArgs={claudeExtraArgs}
         />
 

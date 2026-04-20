@@ -49,3 +49,18 @@
   color: var(--paper-ink-muted);
   margin-left: auto;
 }
+
+/* Desktop inline action bar — visible only on hover-capable wide viewports.
+   Rendered inline in the content flow, centered. */
+.desktopBar {
+  display: none;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .desktopBar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+}
