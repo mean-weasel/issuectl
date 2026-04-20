@@ -161,7 +161,8 @@ textarea::placeholder {
 }
 
 /* ── Standalone PWA safe-area ───────────────────────────────────
-   Individual page top bars (List topBar, DetailTopBar, PageHeader,
-   NewIssuePage) include env(safe-area-inset-top) in their own
-   padding, so the body does NOT add it globally — that caused
-   double safe-area spacing on notched / Dynamic Island devices. */
+   Each page/section handles env(safe-area-inset-top) in its own
+   top bar or header padding, so the body does NOT add it globally
+   — that caused double safe-area spacing on notched / Dynamic
+   Island devices. See List topBar, DetailTopBar, PageHeader,
+   NewIssuePage, Drawer head, and route loading skeletons. */

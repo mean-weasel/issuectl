@@ -40,7 +40,7 @@ export function Drawer({ open, onClose, title, children }: Props) {
     };
   }, [open]);
 
-  // Body scroll lock while the drawer is open.
+  // Body scroll lock while the drawer is open (no exit animation, so `open` suffices).
   useScrollLock(open);
 
   // Escape + Tab trap.
