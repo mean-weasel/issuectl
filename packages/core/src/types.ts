@@ -75,7 +75,7 @@ export type IssuePriority = {
   updatedAt: number; // unix seconds
 };
 
-export type Section = "unassigned" | "in_focus" | "in_flight" | "shipped";
+export type Section = "unassigned" | "open" | "running" | "closed";
 
 export type SortMode = "updated" | "created" | "priority";
 
@@ -109,7 +109,7 @@ export type IssueListItem = Extract<UnifiedListItem, { kind: "issue" }>;
 // future caller) from silently pushing an issue into unassigned.
 export type UnifiedList = {
   unassigned: DraftListItem[];
-  in_focus: IssueListItem[];
-  in_flight: IssueListItem[];
-  shipped: IssueListItem[];
+  open: IssueListItem[];
+  running: IssueListItem[];
+  closed: IssueListItem[];
 };

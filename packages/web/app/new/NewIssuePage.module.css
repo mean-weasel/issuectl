@@ -107,6 +107,7 @@
 }
 
 .fieldLabel {
+  display: block;
   font-size: var(--paper-fs-sm);
   color: var(--paper-ink-muted);
   font-weight: 600;
@@ -203,6 +204,7 @@
 .input {
   width: 100%;
   padding: 10px 12px;
+  min-height: 44px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
@@ -266,7 +268,7 @@
   border: 1px solid var(--paper-line);
   white-space: nowrap;
   flex-shrink: 0;
-  min-height: 36px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   transition: background 0.15s, color 0.15s;

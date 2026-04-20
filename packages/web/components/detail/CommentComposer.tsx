@@ -106,6 +106,10 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
         disabled={sending}
         aria-label="Comment body"
         maxLength={65536}
+        autoComplete="off"
+        autoCapitalize="sentences"
+        spellCheck={true}
+        enterKeyHint="send"
       />
       {error && <div className={styles.error}>{error}</div>}
       <div className={styles.footer}>

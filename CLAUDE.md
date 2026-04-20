@@ -75,7 +75,7 @@ issuectl web                    # Start dashboard (localhost:3847)
    - Common situations where you should ask:
      - The spec/plan doesn't cover a specific UI behavior or edge case
      - You're choosing between two reasonable implementation approaches
-     - A technical risk from the plan (Ghostty CLI, better-sqlite3 bindings, etc.) materializes and needs a decision
+     - A technical risk from the plan (ttyd, better-sqlite3 bindings, etc.) materializes and needs a decision
      - You're about to deviate from the plan (different file structure, different API shape, etc.)
      - A dependency has an unexpected API or limitation
    - **Do not ask** about things you can verify yourself (does a function exist, does a type match, does a build pass).

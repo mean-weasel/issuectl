@@ -44,13 +44,13 @@ export function ListCountUpdater({
 }: Counts & { children: ReactNode }) {
   const ctx = useContext(ListCountContext);
   const setCounts = ctx?.setCounts;
-  const { unassigned, in_focus, in_flight, shipped } = sectionCounts;
+  const { unassigned, open, running, closed } = sectionCounts;
   useEffect(() => {
     setCounts?.({
-      sectionCounts: { unassigned, in_focus, in_flight, shipped },
+      sectionCounts: { unassigned, open, running, closed },
       totalIssueCount,
       prCount,
     });
-  }, [setCounts, unassigned, in_focus, in_flight, shipped, totalIssueCount, prCount]);
+  }, [setCounts, unassigned, open, running, closed, totalIssueCount, prCount]);
   return <>{children}</>;
 }

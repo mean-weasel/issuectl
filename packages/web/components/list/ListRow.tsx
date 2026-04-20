@@ -2,10 +2,13 @@ import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
 import { Checkbox, Chip, LabelChip } from "@/components/paper";
 import { SyncDot } from "@/components/ui/SyncDot";
+import { SwipeRow } from "./SwipeRow";
 import styles from "./ListRow.module.css";
 
 type Props = {
   item: UnifiedListItem;
+  onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
+  onNavigate?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -25,7 +28,7 @@ function formatAge(updatedAt: string | number): string {
   return `${diffDays}d`;
 }
 
-export function ListRow({ item }: Props) {
+export function ListRow({ item, onLaunch, onNavigate }: Props) {
   if (item.kind === "draft") {
     return (
       <div className={styles.item}>
@@ -48,15 +51,15 @@ export function ListRow({ item }: Props) {
 
   const { issue, repo, section } = item;
   const checkState =
-    section === "shipped" ? "done" : section === "in_flight" ? "flight" : "open";
+    section === "closed" ? "done" : section === "running" ? "flight" : "open";
   const titleClass =
-    section === "shipped" ? `${styles.title} ${styles.done}` : styles.title;
+    section === "closed" ? `${styles.title} ${styles.done}` : styles.title;
 
   const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
   );
 
-  // Label reflects what the click does: in-flight rows open an active
+  // Label reflects what the click does: running rows open an active
   // session rather than launching, so "launch" would mislead.
   // Exhaustive switch so a future addition to the Section union is a
   // compile error here instead of silently rendering "launch →" on a
@@ -64,15 +67,15 @@ export function ListRow({ item }: Props) {
   let actionLabel: string;
   let actionAria: string;
   switch (section) {
-    case "in_focus":
+    case "open":
       actionLabel = "launch";
       actionAria = "Launch issue";
       break;
-    case "in_flight":
+    case "running":
       actionLabel = "open";
       actionAria = "Open active session";
       break;
-    case "shipped":
+    case "closed":
       actionLabel = "view";
       actionAria = "View issue";
       break;
@@ -82,8 +85,8 @@ export function ListRow({ item }: Props) {
     }
   }
 
-  return (
-    <div className={styles.item}>
+  const rowContent = (
+    <div className={styles.item} data-section={section}>
       <Link
         href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
         className={styles.rowLink}
@@ -111,17 +114,50 @@ export function ListRow({ item }: Props) {
               <span className={styles.author}>{issue.user.login}</span>
             </>
           )}
+          {section === "running" && (
+            <>
+              <span className={styles.sep}>·</span>
+              <span className={styles.activeLabel}>active</span>
+            </>
+          )}
         </div>
       </Link>
       <div className={styles.actions}>
-        <Link
-          href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
-          className={`${styles.actionBtn} ${section === "in_flight" ? styles.actionBtnFlight : ""}`}
-          aria-label={actionAria}
-        >
-          {actionLabel} →
-        </Link>
+        {section === "open" && onLaunch ? (
+          <button
+            className={styles.actionBtn}
+            onClick={() => onLaunch(repo.owner, repo.name, issue.number)}
+            aria-label={actionAria}
+          >
+            {actionLabel} →
+          </button>
+        ) : (
+          <Link
+            href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
+            className={`${styles.actionBtn} ${section === "running" ? styles.actionBtnRunning : ""}`}
+            aria-label={actionAria}
+          >
+            {actionLabel} →
+          </Link>
+        )}
       </div>
     </div>
   );
+
+  if (section === "open" && onLaunch) {
+    return (
+      <SwipeRow
+        onLaunch={() => onLaunch(repo.owner, repo.name, issue.number)}
+        onReassign={
+          onNavigate
+            ? () => onNavigate(repo.owner, repo.name, issue.number)
+            : undefined
+        }
+      >
+        {rowContent}
+      </SwipeRow>
+    );
+  }
+
+  return rowContent;
 }

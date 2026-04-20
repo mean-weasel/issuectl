@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type {
   GitHubIssue,
   GitHubComment,
@@ -66,6 +66,16 @@ export function IssueActionSheet({
   const [reassignKey, setReassignKey] = useState<string | null>(null);
 
   const { isOffline } = useOfflineAware();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("launch") === "true" && !hasLiveDeployment) {
+      handleLaunchTap();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("launch");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []); // only run on mount
 
   useStaleTab();
 
@@ -145,7 +155,7 @@ export function IssueActionSheet({
             : "Issue closed",
           "success",
         );
-        router.replace("/?section=shipped");
+        router.replace("/?section=closed");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
         setError("Unable to reach the server. Check your connection and try again.");
