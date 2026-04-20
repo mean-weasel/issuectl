@@ -42,9 +42,9 @@ const SORT_LABEL: Record<SortMode, string> = {
 // Lowercase is intentional — matches the Paper mockup typography.
 const SECTION_LABEL: Record<Section, string> = {
   unassigned: "drafts",
-  in_focus: "in focus",
-  in_flight: "in flight",
-  shipped: "shipped",
+  open: "open",
+  running: "running",
+  closed: "closed",
 };
 
 function formatDate(d: Date): { weekday: string; short: string } {
@@ -80,8 +80,8 @@ export function List({
   const { weekday, short } = formatDate(new Date());
 
   const visibleSections: Section[] = activeRepo
-    ? ["in_focus", "in_flight", "shipped"]
-    : ["unassigned", "in_focus", "in_flight", "shipped"];
+    ? ["open", "running", "closed"]
+    : ["unassigned", "open", "running", "closed"];
 
   const isPrTab = activeTab === "prs";
   const hasActiveFilter = activeRepo !== null || (isPrTab && mineOnly);
@@ -243,11 +243,16 @@ export function List({
             {visibleSections.map((section) => {
               const isActive = section === activeSection;
               const count = sectionCounts?.[section] ?? null;
+              const tabClass = isActive
+                ? section === "running"
+                  ? styles.sectionTabRunning
+                  : styles.sectionTabActive
+                : styles.sectionTab;
               return (
                 <Link
                   key={section}
                   href={sectionHref(section)}
-                  className={isActive ? styles.sectionTabActive : styles.sectionTab}
+                  className={tabClass}
                   aria-current={isActive ? "page" : undefined}
                 >
                   {SECTION_LABEL[section]}

@@ -12,7 +12,7 @@ export type HrefParams = {
  * Builds the dashboard URL from filter/tab/section state. Conventions:
  *   - `tab === "issues"` is default → omitted from the URL.
  *   - `mine === true` → `mine=1`; null/false → omitted (default is "everyone").
- *   - `section === "in_focus"` is default → omitted.
+ *   - `section === "open"` is default → omitted.
  *   - `repo` is passed through verbatim when non-empty.
  *
  * Keeping defaults out of the URL keeps `/` canonical and makes back-button
@@ -23,7 +23,7 @@ export function buildHref(params: HrefParams): string {
   if (params.tab === "prs") search.set("tab", "prs");
   if (params.repo) search.set("repo", params.repo);
   if (params.mine === true) search.set("mine", "1");
-  if (params.section && params.section !== "in_focus") {
+  if (params.section && params.section !== "open") {
     search.set("section", params.section);
   }
   if (params.sort && params.sort !== "updated") {

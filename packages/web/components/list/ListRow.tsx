@@ -48,9 +48,9 @@ export function ListRow({ item }: Props) {
 
   const { issue, repo, section } = item;
   const checkState =
-    section === "shipped" ? "done" : section === "in_flight" ? "flight" : "open";
+    section === "closed" ? "done" : section === "running" ? "flight" : "open";
   const titleClass =
-    section === "shipped" ? `${styles.title} ${styles.done}` : styles.title;
+    section === "closed" ? `${styles.title} ${styles.done}` : styles.title;
 
   const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
@@ -64,15 +64,15 @@ export function ListRow({ item }: Props) {
   let actionLabel: string;
   let actionAria: string;
   switch (section) {
-    case "in_focus":
+    case "open":
       actionLabel = "launch";
       actionAria = "Launch issue";
       break;
-    case "in_flight":
+    case "running":
       actionLabel = "open";
       actionAria = "Open active session";
       break;
-    case "shipped":
+    case "closed":
       actionLabel = "view";
       actionAria = "View issue";
       break;
@@ -111,12 +111,18 @@ export function ListRow({ item }: Props) {
               <span className={styles.author}>{issue.user.login}</span>
             </>
           )}
+          {section === "running" && (
+            <>
+              <span className={styles.sep}>·</span>
+              <span className={styles.activeLabel}>active</span>
+            </>
+          )}
         </div>
       </Link>
       <div className={styles.actions}>
         <Link
           href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
-          className={`${styles.actionBtn} ${section === "in_flight" ? styles.actionBtnFlight : ""}`}
+          className={`${styles.actionBtn} ${section === "running" ? styles.actionBtnRunning : ""}`}
           aria-label={actionAria}
         >
           {actionLabel} →

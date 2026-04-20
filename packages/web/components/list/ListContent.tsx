@@ -23,16 +23,16 @@ const SECTION_EMPTY: Record<Section, { title: string; body: string }> = {
     title: "no drafts",
     body: "start a draft with the + button — it'll live here until you assign it to a repo.",
   },
-  in_focus: {
+  open: {
     title: "all clear",
     body: "nothing on your plate. breathe, or draft the next one.",
   },
-  in_flight: {
-    title: "nothing in flight",
-    body: "when you launch an issue, it lands here while you work on it.",
+  running: {
+    title: "no running sessions",
+    body: "when you launch an issue with Claude Code, it lands here while the session is active.",
   },
-  shipped: {
-    title: "nothing shipped yet",
+  closed: {
+    title: "nothing closed yet",
     body: "closed issues show up here once PRs merge and reconcile.",
   },
 };

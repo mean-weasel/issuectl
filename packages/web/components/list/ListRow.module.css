@@ -76,12 +76,12 @@
 /* In-flight variant — visually distinct from the launch CTA so a row
  * with an active session reads as "go to existing" rather than
  * "start something new". */
-.actionBtnFlight {
+.actionBtnRunning {
   color: var(--paper-ink-soft);
   background: var(--paper-bg-warmer);
 }
 
-.actionBtnFlight:hover {
+.actionBtnRunning:hover {
   color: var(--paper-ink);
   background: var(--paper-bg);
   border-color: var(--paper-line);
@@ -157,4 +157,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.activeLabel {
+  color: var(--paper-accent);
+  font-weight: 600;
 }
