@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import withSerwistInit from "@serwist/next";
 
@@ -17,13 +18,24 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV === "development",
 });
 
-// NEXT_PUBLIC_APP_VERSION can be set externally (e.g. in a release workflow
-// using the semantic-release tag like "v0.2.0"). Strip the leading "v" for
-// display. In dev, fall back to the root package.json version.
-const rawVersion =
-  process.env.NEXT_PUBLIC_APP_VERSION ??
-  JSON.parse(readFileSync(join(WORKSPACE_ROOT, "package.json"), "utf-8")).version;
-const appVersion = rawVersion.replace(/^v/, "");
+// Resolve the app version. Priority:
+// 1. NEXT_PUBLIC_APP_VERSION env var (set in CI/deploy workflows)
+// 2. Latest git tag (accurate in dev as long as tags are fetched)
+// 3. Root package.json version (last-resort fallback)
+function resolveVersion(): string {
+  if (process.env.NEXT_PUBLIC_APP_VERSION) {
+    return process.env.NEXT_PUBLIC_APP_VERSION.replace(/^v/, "");
+  }
+  try {
+    return execFileSync("git", ["tag", "--sort=-v:refname", "-l", "v*"], {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf-8",
+    }).split("\n")[0].trim().replace(/^v/, "");
+  } catch {
+    return JSON.parse(readFileSync(join(WORKSPACE_ROOT, "package.json"), "utf-8")).version;
+  }
+}
+const appVersion = resolveVersion();
 
 const nextConfig: NextConfig = {
   env: {
