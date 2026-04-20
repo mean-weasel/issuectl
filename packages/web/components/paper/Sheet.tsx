@@ -50,7 +50,11 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
 
   useEffect(() => {
     if (!closing) return;
-    const timer = setTimeout(() => setVisible(false), EXIT_DURATION_MS);
+    const prefersReduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const duration = prefersReduced ? 0 : EXIT_DURATION_MS;
+    const timer = setTimeout(() => setVisible(false), duration);
     return () => clearTimeout(timer);
   }, [closing]);
 
@@ -79,14 +83,15 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     };
   }, [open]);
 
+  // Lock body scroll for the full mounted lifetime (including exit animation).
   useEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [open]);
+  }, [visible]);
 
   useEffect(() => {
     if (!open) return;

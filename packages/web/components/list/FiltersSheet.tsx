@@ -9,6 +9,13 @@ import styles from "./FiltersSheet.module.css";
 
 type Repo = { owner: string; name: string };
 
+const SECTIONS = [
+  "unassigned",
+  "open",
+  "running",
+  "closed",
+] as const satisfies readonly Section[];
+
 const SORT_OPTIONS: { mode: SortMode; label: string }[] = [
   { mode: "updated", label: "Last updated" },
   { mode: "created", label: "Date created" },
@@ -29,7 +36,7 @@ type Props = {
   showSort: boolean;
   activeSort: SortMode;
   sortHref: (sort: SortMode) => string;
-  // New: command sheet sections (mobile only)
+  // Command sheet sections (mobile only)
   activeTab: "issues" | "prs";
   tabHref: (tab: "issues" | "prs") => string;
   activeSection: Section;
@@ -89,7 +96,7 @@ export function FiltersSheet({
           <div className={styles.commandSection}>
             <span className={styles.commandLabel}>section</span>
             <div className={styles.sectionChips}>
-              {(["unassigned", "open", "running", "closed"] as Section[]).map(
+              {SECTIONS.map(
                 (section) => (
                   <Link
                     key={section}

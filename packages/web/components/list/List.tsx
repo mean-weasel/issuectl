@@ -145,6 +145,11 @@ export function List({
     sort: activeTab === "issues" ? activeSort : null,
   });
 
+  const contextSectionLabel =
+    activeTab === "issues"
+      ? SECTION_LABEL[activeSection]
+      : mineOnly ? "mine" : "everyone";
+
   return (
     <PullToRefreshWrapper>
     <div className={styles.container}>
@@ -165,11 +170,7 @@ export function List({
           {activeTab === "issues" ? "issues" : "PRs"}
           <span className={styles.contextSep}>›</span>
           <span className={styles.contextSection}>
-            {activeTab === "issues"
-              ? SECTION_LABEL[activeSection]
-              : mineOnly
-                ? "mine"
-                : "everyone"}
+            {contextSectionLabel}
           </span>
           {sectionCounts && activeTab === "issues" && (
             <span className={styles.contextCount}>
@@ -192,7 +193,7 @@ export function List({
         <button
           className={styles.sheetMenuBtn}
           onClick={() => setFiltersOpen(true)}
-          aria-label="Open command sheet"
+          aria-label="Filters and navigation"
         >
           <svg
             width="18"
@@ -403,7 +404,9 @@ export function List({
         sectionCounts={sectionCounts}
         onCreateDraft={() => {
           setFiltersOpen(false);
-          setCreateOpen(true);
+          // Delay opening CreateDraftSheet until the FiltersSheet exit
+          // animation finishes (220ms) to avoid overlapping modals.
+          setTimeout(() => setCreateOpen(true), 220);
         }}
       />
 
