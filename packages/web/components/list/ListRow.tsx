@@ -148,11 +148,6 @@ export function ListRow({ item, onLaunch, onNavigate }: Props) {
     return (
       <SwipeRow
         onLaunch={() => onLaunch(repo.owner, repo.name, issue.number)}
-        onReassign={
-          onNavigate
-            ? () => onNavigate(repo.owner, repo.name, issue.number)
-            : undefined
-        }
       >
         {rowContent}
       </SwipeRow>

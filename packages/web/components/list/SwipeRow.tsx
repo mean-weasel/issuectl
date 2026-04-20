@@ -8,11 +8,10 @@ const SWIPE_THRESHOLD = 60;
 type Props = {
   children: ReactNode;
   onLaunch?: () => void;
-  onReassign?: () => void;
   disabled?: boolean;
 };
 
-export function SwipeRow({ children, onLaunch, onReassign, disabled }: Props) {
+export function SwipeRow({ children, onLaunch, disabled }: Props) {
   const [swiped, setSwiped] = useState(false);
   const startX = useRef<number | null>(null);
 
@@ -71,17 +70,6 @@ export function SwipeRow({ children, onLaunch, onReassign, disabled }: Props) {
             }}
           >
             Launch
-          </button>
-        )}
-        {onReassign && (
-          <button
-            className={`${styles.actionBtn} ${styles.reassignBtn}`}
-            onClick={() => {
-              close();
-              onReassign();
-            }}
-          >
-            Re-assign
           </button>
         )}
       </div>
