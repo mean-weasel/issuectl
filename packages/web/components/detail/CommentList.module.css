@@ -14,7 +14,7 @@
 
 .count {
   font-family: var(--paper-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--paper-ink-faint);
   font-style: normal;
 }

@@ -119,7 +119,7 @@
   font-family: var(--paper-serif);
   font-weight: 400;
   font-size: 17px;
-  line-height: 1.3;
+  line-height: 1.5;
   color: var(--paper-ink);
   margin-bottom: 6px;
   letter-spacing: -0.1px;
@@ -139,6 +139,7 @@
   flex-wrap: wrap;
   font-family: var(--paper-sans);
   font-size: 12px;
+  line-height: 1.5;
   color: var(--paper-ink-muted);
 }
 

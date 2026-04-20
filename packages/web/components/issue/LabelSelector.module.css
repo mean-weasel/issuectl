@@ -1,11 +1,14 @@
 .chips {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .chip {
-  padding: 4px 12px;
+  padding: 10px 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
@@ -22,13 +25,8 @@
 }
 
 .chipSelected {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  composes: chip;
   border: 1px solid;
-  transition: background 0.15s, color 0.15s;
 }
 
 .chipSelected:hover:not(:disabled) {
