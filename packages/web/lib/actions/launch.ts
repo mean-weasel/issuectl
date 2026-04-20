@@ -79,6 +79,21 @@ export async function launchIssue(
     };
   }
 
+  for (const filePath of formData.selectedFilePaths) {
+    if (typeof filePath !== "string") {
+      return { success: false, error: "Invalid file path" };
+    }
+    if (filePath.includes("\0")) {
+      return { success: false, error: "File path contains invalid characters" };
+    }
+    if (filePath.startsWith("/") || filePath.includes("..")) {
+      return {
+        success: false,
+        error: "File paths must be relative to the repository and cannot contain '..'",
+      };
+    }
+  }
+
   let deploymentId: number;
   let labelWarning: string | undefined;
   try {

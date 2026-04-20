@@ -88,6 +88,10 @@ export function LaunchModal({
     );
   }, []);
 
+  const addFile = useCallback((path: string) => {
+    setSelectedFiles((prev) => [...prev, path]);
+  }, []);
+
   function handleLaunch() {
     setError(null);
     const idempotencyKey = newIdempotencyKey();
@@ -167,6 +171,7 @@ export function LaunchModal({
             selectedFiles={selectedFiles}
             onToggleComment={toggleComment}
             onToggleFile={toggleFile}
+            onAddFile={addFile}
           />
 
           <PreambleInput value={preamble} onChange={setPreamble} />

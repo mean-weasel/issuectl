@@ -2,6 +2,7 @@
 
 import type { GitHubComment } from "@issuectl/core";
 import { timeAgo } from "@/lib/format";
+import { FileSelector } from "./FileSelector";
 import styles from "./ContextToggles.module.css";
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
   selectedFiles: string[];
   onToggleComment: (index: number) => void;
   onToggleFile: (path: string) => void;
+  onAddFile: (path: string) => void;
 };
 
 function commentLabel(comment: GitHubComment): string {
@@ -27,6 +29,7 @@ export function ContextToggles({
   selectedFiles,
   onToggleComment,
   onToggleFile,
+  onAddFile,
 }: Props) {
   return (
     <div className={styles.field}>
@@ -59,17 +62,12 @@ export function ContextToggles({
           <div className={styles.divider} />
         )}
 
-        {referencedFiles.map((file) => (
-          <label key={file} className={styles.item}>
-            <input
-              type="checkbox"
-              className={styles.checkbox}
-              checked={selectedFiles.includes(file)}
-              onChange={() => onToggleFile(file)}
-            />
-            <span className={styles.filePath}>{file}</span>
-          </label>
-        ))}
+        <FileSelector
+          referencedFiles={referencedFiles}
+          selectedFiles={selectedFiles}
+          onToggleFile={onToggleFile}
+          onAddFile={onAddFile}
+        />
       </div>
     </div>
   );
