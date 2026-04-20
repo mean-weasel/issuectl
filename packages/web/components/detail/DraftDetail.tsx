@@ -7,6 +7,7 @@ import { DetailTopBar } from "./DetailTopBar";
 import { DetailMeta, MetaSeparator } from "./DetailMeta";
 import { DraftActionSheet } from "./DraftActionSheet";
 import { updateDraftAction } from "@/lib/actions/drafts";
+import { useUnsavedWarning } from "@/hooks/useUnsavedWarning";
 import styles from "./DraftDetail.module.css";
 
 type Props = {
@@ -24,6 +25,9 @@ function formatUnix(updatedAt: number): string {
 export function DraftDetail({ draft }: Props) {
   const [title, setTitle] = useState(draft.title);
   const [body, setBody] = useState(draft.body ?? "");
+  const titleDirty = title !== draft.title;
+  const bodyDirty = body !== (draft.body ?? "");
+  useUnsavedWarning(titleDirty || bodyDirty);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
