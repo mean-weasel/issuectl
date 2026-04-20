@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type {
   GitHubIssue,
   GitHubComment,
@@ -65,6 +65,14 @@ export function IssueActionSheet({
   const [reassignKey, setReassignKey] = useState<string | null>(null);
 
   const { isOffline } = useOfflineAware();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("launch") === "true") {
+      handleLaunchTap();
+    }
+  // eslint-disable-next-line -- only run on mount
+  }, []);
 
   useEffect(() => {
     if (!launchOpen) return;

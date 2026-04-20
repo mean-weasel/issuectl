@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
 import { Checkbox, Chip, LabelChip } from "@/components/paper";
 import { SyncDot } from "@/components/ui/SyncDot";
+import { SwipeRow } from "./SwipeRow";
 import styles from "./ListRow.module.css";
 
 type Props = {
   item: UnifiedListItem;
+  onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -25,7 +27,7 @@ function formatAge(updatedAt: string | number): string {
   return `${diffDays}d`;
 }
 
-export function ListRow({ item }: Props) {
+export function ListRow({ item, onLaunch }: Props) {
   if (item.kind === "draft") {
     return (
       <div className={styles.item}>
@@ -82,7 +84,7 @@ export function ListRow({ item }: Props) {
     }
   }
 
-  return (
+  const rowContent = (
     <div className={styles.item}>
       <Link
         href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
@@ -130,4 +132,16 @@ export function ListRow({ item }: Props) {
       </div>
     </div>
   );
+
+  if (section === "open" && onLaunch) {
+    return (
+      <SwipeRow
+        onLaunch={() => onLaunch(repo.owner, repo.name, issue.number)}
+      >
+        {rowContent}
+      </SwipeRow>
+    );
+  }
+
+  return rowContent;
 }

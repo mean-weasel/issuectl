@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { Section, UnifiedList } from "@issuectl/core";
 import type { PrEntry } from "@/lib/page-filters";
 import { ListSection } from "./ListSection";
@@ -45,6 +46,7 @@ export function ListContent({
   activeRepo,
   mineOnly,
 }: Props) {
+  const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,13 @@ export function ListContent({
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
   }, []);
+
+  const handleLaunch = useCallback(
+    (owner: string, repo: string, issueNumber: number) => {
+      router.push(`/issues/${owner}/${repo}/${issueNumber}?launch=true`);
+    },
+    [router],
+  );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -72,7 +81,7 @@ export function ListContent({
   if (activeTab === "issues") {
     return (
       <>
-        {renderIssueSection({ activeSection, data, visibleCount })}
+        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch })}
         {visibleCount < data[activeSection].length && (
           <div ref={sentinelRef} className={styles.sentinel} />
         )}
@@ -120,10 +129,12 @@ function renderIssueSection({
   activeSection,
   data,
   visibleCount,
+  onLaunch,
 }: {
   activeSection: Section;
   data: UnifiedList;
   visibleCount: number;
+  onLaunch: (owner: string, repo: string, issueNumber: number) => void;
 }) {
   const allItems = data[activeSection];
 
@@ -141,5 +152,5 @@ function renderIssueSection({
   }
 
   const items = allItems.slice(0, visibleCount);
-  return <ListSection title={null} items={items} />;
+  return <ListSection title={null} items={items} onLaunch={onLaunch} />;
 }
