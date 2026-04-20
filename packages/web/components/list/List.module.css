@@ -601,6 +601,9 @@
   .sortToggle {
     display: none;
   }
+  .desktopNav {
+    display: none;
+  }
   .topBar {
     border-bottom: 1px solid var(--paper-line);
   }

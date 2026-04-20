@@ -35,7 +35,9 @@
 }
 
 /* Row actions (launch / open / view). Inline below the link on mobile;
- * right-aligned floating on desktop hover. */
+ * right-aligned floating on desktop hover. For open-section rows the
+ * SwipeRow component provides the actions via swipe-to-reveal, so inline
+ * actions are hidden on mobile touch devices. */
 .actions {
   display: flex;
   align-items: center;
@@ -43,6 +45,13 @@
   gap: 8px;
   justify-content: flex-end;
   flex-shrink: 0;
+}
+
+/* Hide inline actions on mobile for open rows — SwipeRow reveals them */
+@media (max-width: 767px), (hover: none) {
+  .item[data-section="open"] .actions {
+    display: none;
+  }
 }
 
 .actionBtn {
