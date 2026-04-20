@@ -82,7 +82,8 @@ export function LaunchModal({
     workspaceMode !== initialMode ||
     preamble.trim().length > 0 ||
     selectedComments.length !== comments.length ||
-    selectedFiles.length !== referencedFiles.length;
+    selectedFiles.length !== referencedFiles.length ||
+    selectedFiles.some((f) => !referencedFiles.includes(f));
 
   const toggleComment = useCallback((index: number) => {
     setSelectedComments((prev) =>

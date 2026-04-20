@@ -17,7 +17,8 @@ export function useCommentDraft(
     if (typeof window === "undefined") return "";
     try {
       return localStorage.getItem(key) ?? "";
-    } catch {
+    } catch (err) {
+      console.warn("[issuectl] Failed to read comment draft from localStorage:", err);
       return "";
     }
   });
@@ -29,8 +30,8 @@ export function useCommentDraft(
       } else {
         localStorage.removeItem(key);
       }
-    } catch {
-      // localStorage may be full or unavailable — silently ignore
+    } catch (err) {
+      console.warn("[issuectl] Failed to persist comment draft:", err);
     }
   }, [body, key]);
 
@@ -38,8 +39,8 @@ export function useCommentDraft(
     setBody("");
     try {
       localStorage.removeItem(key);
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.warn("[issuectl] Failed to remove comment draft from localStorage:", err);
     }
   }, [key]);
 

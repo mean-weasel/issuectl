@@ -23,6 +23,10 @@ export function FileSelector({
   const handleAdd = useCallback(() => {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
+    if (trimmed.includes("\0")) {
+      setError("Path contains invalid characters");
+      return;
+    }
     if (trimmed.startsWith("/") || trimmed.includes("..")) {
       setError("Path must be relative (no leading / or ..)");
       return;

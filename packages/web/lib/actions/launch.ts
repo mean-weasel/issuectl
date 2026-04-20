@@ -80,7 +80,7 @@ export async function launchIssue(
   }
 
   for (const filePath of formData.selectedFilePaths) {
-    if (typeof filePath !== "string") {
+    if (typeof filePath !== "string" || filePath.length === 0) {
       return { success: false, error: "Invalid file path" };
     }
     if (filePath.includes("\0")) {

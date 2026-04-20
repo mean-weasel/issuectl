@@ -95,7 +95,7 @@ export function DraftDetail({ draft }: Props) {
         body: body || undefined,
       });
       if (!result.success) {
-        setSaveError(result.error);
+        setSaveError(result.error ?? "Failed to save as new draft");
         return;
       }
       router.replace(`/drafts/${result.id}`);

@@ -59,10 +59,21 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
 
     // Track whether another tab is already syncing
     let peerSyncing = false;
+    let peerSyncTimeout: ReturnType<typeof setTimeout> | null = null;
     channel?.addEventListener("message", (e) => {
-      if (e.data === "sync-start") peerSyncing = true;
-      if (e.data === "sync-done") {
+      if (e.data === "sync-start") {
+        peerSyncing = true;
+        if (peerSyncTimeout) clearTimeout(peerSyncTimeout);
+        // Safety valve: if peer tab crashes mid-sync, unblock after 30s
+        peerSyncTimeout = setTimeout(() => {
+          peerSyncing = false;
+          peerSyncTimeout = null;
+        }, 30_000);
+      }
+      if (e.data === "sync-done" || e.data === "sync-error") {
         peerSyncing = false;
+        if (peerSyncTimeout) clearTimeout(peerSyncTimeout);
+        peerSyncTimeout = null;
         callbacksRef.current?.onRefreshQueue?.();
       }
     });
@@ -112,20 +123,22 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
         if (result.failed > 0) {
           callbacksRef.current?.onSyncFailed?.(result.failed);
         }
+        lastSyncRef.current = Date.now();
+        channel?.postMessage("sync-done");
       } catch (err) {
         console.error("[issuectl] Queue replay failed:", err);
         callbacksRef.current?.onSyncFailed?.(0);
         callbacksRef.current?.onRefreshQueue?.();
+        channel?.postMessage("sync-error");
       } finally {
         syncingRef.current = false;
-        lastSyncRef.current = Date.now();
-        channel?.postMessage("sync-done");
       }
     }
 
     window.addEventListener("online", handleOnline);
     return () => {
       window.removeEventListener("online", handleOnline);
+      if (peerSyncTimeout) clearTimeout(peerSyncTimeout);
       channel?.close();
     };
   }, []);
