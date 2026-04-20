@@ -13,9 +13,9 @@ import { ListContent } from "@/components/list/ListContent";
 import { DashboardError } from "@/components/ui/DashboardError";
 import {
   filterPrs,
-  filterUnifiedList,
   type PrEntry,
 } from "@/lib/page-filters";
+import { parseRepoKey } from "@/lib/repo-key";
 
 type Repo = { owner: string; name: string };
 
@@ -47,19 +47,25 @@ export async function DashboardContent({
     const db = getDb();
     const octokit = await getOctokit();
 
+    const repoFilter = activeRepo ? parseRepoKey(activeRepo) : null;
+    const targetRepos = repoFilter
+      ? repos.filter(
+          (r) => r.owner === repoFilter.owner && r.name === repoFilter.name,
+        )
+      : repos;
+
     const [data, allPrs] = await Promise.all([
-      getUnifiedList(db, octokit, activeSort),
-      gatherPulls(db, octokit, repos),
+      getUnifiedList(db, octokit, activeSort, repoFilter),
+      gatherPulls(db, octokit, targetRepos),
     ]);
 
-    const filteredData = filterUnifiedList(data, activeRepo);
-    const filteredPrs = filterPrs(allPrs, activeRepo, mineOnly ? username : null);
+    const filteredPrs = filterPrs(allPrs, null, mineOnly ? username : null);
 
     const sectionCounts: Record<Section, number> = {
-      unassigned: filteredData.unassigned.length,
-      open: filteredData.open.length,
-      running: filteredData.running.length,
-      closed: filteredData.closed.length,
+      unassigned: data.unassigned.length,
+      open: data.open.length,
+      running: data.running.length,
+      closed: data.closed.length,
     };
 
     const totalIssueCount =
@@ -77,7 +83,7 @@ export async function DashboardContent({
         <ListContent
           activeTab={activeTab}
           activeSection={activeSection}
-          data={filteredData}
+          data={data}
           prs={filteredPrs}
           activeRepo={activeRepo}
           mineOnly={mineOnly}

@@ -10,6 +10,8 @@ import {
 } from "@issuectl/core";
 import { IssueDetail } from "@/components/detail/IssueDetail";
 import { IssueDetailContent } from "@/components/detail/IssueDetailContent";
+import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
+import { refreshIssueAction } from "@/lib/actions/refresh";
 import styles from "./loading.module.css";
 
 export const dynamic = "force-dynamic";
@@ -67,26 +69,35 @@ export default async function IssueDetailPage({
       ? getPriority(db, repoId, issueNumber)
       : "normal";
 
+    const boundRefresh = refreshIssueAction.bind(
+      null,
+      owner,
+      repo,
+      issueNumber,
+    );
+
     return (
-      <IssueDetail
-        owner={owner}
-        repoName={repo}
-        repoId={repoId}
-        currentPriority={currentPriority}
-        issue={issue}
-        repoLocalPath={repoRecord?.localPath ?? null}
-        deployments={deployments}
-        referencedFiles={referencedFiles}
-      >
-        <Suspense fallback={<ContentSkeleton />}>
-          <IssueDetailContent
-            owner={owner}
-            repoName={repo}
-            issue={issue}
-            deployments={deployments}
-          />
-        </Suspense>
-      </IssueDetail>
+      <PullToRefreshWrapper action={boundRefresh}>
+        <IssueDetail
+          owner={owner}
+          repoName={repo}
+          repoId={repoId}
+          currentPriority={currentPriority}
+          issue={issue}
+          repoLocalPath={repoRecord?.localPath ?? null}
+          deployments={deployments}
+          referencedFiles={referencedFiles}
+        >
+          <Suspense fallback={<ContentSkeleton />}>
+            <IssueDetailContent
+              owner={owner}
+              repoName={repo}
+              issue={issue}
+              deployments={deployments}
+            />
+          </Suspense>
+        </IssueDetail>
+      </PullToRefreshWrapper>
     );
   } catch (err) {
     const status = err !== null && err !== undefined && typeof err === "object" && "status" in err

@@ -1,4 +1,4 @@
-import type { GitHubPull, UnifiedList } from "@issuectl/core";
+import type { GitHubPull } from "@issuectl/core";
 import { repoKey } from "./repo-key";
 
 export type PrEntry = {
@@ -19,25 +19,6 @@ export function resolveActiveRepo(
   if (!param) return null;
   const exists = repos.some((r) => repoKey(r) === param);
   return exists ? param : null;
-}
-
-/**
- * Filter a unified list to a single repo. Drafts (`unassigned`) are dropped
- * entirely when a repo filter is active because drafts have no repo.
- */
-export function filterUnifiedList(
-  data: UnifiedList,
-  activeRepo: string | null,
-): UnifiedList {
-  if (!activeRepo) return data;
-  const match = (item: { repo: { owner: string; name: string } }) =>
-    repoKey(item.repo) === activeRepo;
-  return {
-    unassigned: [],
-    open: data.open.filter(match),
-    running: data.running.filter(match),
-    closed: data.closed.filter(match),
-  };
 }
 
 /**

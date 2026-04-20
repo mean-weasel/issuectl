@@ -9,18 +9,20 @@ import styles from "./PullToRefreshWrapper.module.css";
 
 type Props = {
   children: ReactNode;
+  /** Override the default global cache-clear with a targeted action. */
+  action?: () => Promise<{ success: boolean; error?: string }>;
 };
 
-export function PullToRefreshWrapper({ children }: Props) {
+export function PullToRefreshWrapper({ children, action }: Props) {
   const router = useRouter();
 
   const onRefresh = useCallback(async () => {
-    const result = await refreshAction();
+    const result = await (action ?? refreshAction)();
     if (!result.success) {
       console.warn("[issuectl] Pull-to-refresh failed:", result.error);
     }
     router.refresh();
-  }, [router]);
+  }, [router, action]);
 
   const { containerRef, pullDistance, refreshing } = usePullToRefresh({
     onRefresh,

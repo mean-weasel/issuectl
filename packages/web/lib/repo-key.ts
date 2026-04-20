@@ -7,3 +7,15 @@
 export function repoKey(r: { owner: string; name: string }): string {
   return `${r.owner}/${r.name}`;
 }
+
+/**
+ * Inverse of `repoKey` — parse `"owner/name"` back into its parts.
+ * Returns `null` for malformed input (missing slash, empty owner or name).
+ */
+export function parseRepoKey(
+  key: string,
+): { owner: string; name: string } | null {
+  const idx = key.indexOf("/");
+  if (idx < 1 || idx >= key.length - 1) return null;
+  return { owner: key.slice(0, idx), name: key.slice(idx + 1) };
+}
