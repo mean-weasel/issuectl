@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import withSerwistInit from "@serwist/next";
 
@@ -16,7 +17,18 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV === "development",
 });
 
+// NEXT_PUBLIC_APP_VERSION can be set externally (e.g. in a release workflow
+// using the semantic-release tag like "v0.2.0"). Strip the leading "v" for
+// display. In dev, fall back to the root package.json version.
+const rawVersion =
+  process.env.NEXT_PUBLIC_APP_VERSION ??
+  JSON.parse(readFileSync(join(WORKSPACE_ROOT, "package.json"), "utf-8")).version;
+const appVersion = rawVersion.replace(/^v/, "");
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+  },
   // Allow e2e tests to use an isolated output directory so their dev
   // server doesn't collide with the main dev server's .next/ cache.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),

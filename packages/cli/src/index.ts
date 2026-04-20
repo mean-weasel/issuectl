@@ -8,12 +8,14 @@ import {
   repoUpdateCommand,
 } from "./commands/repo.js";
 
+declare const __APP_VERSION__: string;
+
 const program = new Command();
 
 program
   .name("issuectl")
   .description("Cross-repo GitHub issue command center")
-  .version("0.1.0");
+  .version(__APP_VERSION__);
 
 program
   .command("init")
