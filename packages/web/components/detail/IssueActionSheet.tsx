@@ -18,6 +18,7 @@ import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { useOfflineAware } from "@/hooks/useOfflineAware";
+import { useStaleTab } from "@/hooks/useStaleTab";
 import styles from "./ActionSheet.module.css";
 import assignStyles from "../list/AssignSheet.module.css";
 
@@ -65,6 +66,8 @@ export function IssueActionSheet({
   const [reassignKey, setReassignKey] = useState<string | null>(null);
 
   const { isOffline } = useOfflineAware();
+
+  useStaleTab();
 
   useEffect(() => {
     if (!launchOpen) return;
