@@ -12,6 +12,7 @@ import {
   withIdempotency,
   DuplicateInFlightError,
   formatErrorForUser,
+  cleanupStaleContextFiles,
   type WorkspaceMode,
 } from "@issuectl/core";
 import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
@@ -151,10 +152,33 @@ export async function endSession(
   repo: string,
   issueNumber: number,
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
+  if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
+    return { success: false, error: "Invalid deployment ID" };
+  }
+  if (!owner || !repo) {
+    return { success: false, error: "Invalid repository reference" };
+  }
+  if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+    return { success: false, error: "Invalid issue number" };
+  }
+
   try {
     const db = getDb();
     const deployment = getDeploymentById(db, deploymentId);
-    if (deployment?.ttydPid) {
+    if (!deployment) {
+      return { success: false, error: "Deployment not found" };
+    }
+
+    const repoRecord = getRepo(db, owner, repo);
+    if (!repoRecord) {
+      return { success: false, error: "Repository not found" };
+    }
+
+    if (deployment.repoId !== repoRecord.id || deployment.issueNumber !== issueNumber) {
+      return { success: false, error: "Deployment does not match the specified issue" };
+    }
+
+    if (deployment.ttydPid) {
       try {
         killTtyd(deployment.ttydPid);
       } catch (killErr) {
@@ -166,6 +190,9 @@ export async function endSession(
       }
     }
     coreEndDeployment(db, deploymentId);
+
+    // Best-effort cleanup of stale context temp files
+    cleanupStaleContextFiles().catch(() => { /* best-effort */ });
   } catch (err) {
     console.error("[issuectl] Failed to end session:", err);
     return { success: false, error: formatErrorForUser(err) };

@@ -290,7 +290,7 @@ describe("endDeployment", () => {
 
   it("throws when deployment does not exist", () => {
     expect(() => endDeployment(db, 999)).toThrow(
-      "No deployment found with id 999",
+      "No active deployment found with id 999",
     );
   });
 });

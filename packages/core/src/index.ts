@@ -67,6 +67,8 @@ export {
   endDeployment,
   activateDeployment,
   deletePendingDeployment,
+  cleanupOrphanedDeployments,
+  pruneEndedDeployments,
 } from "./db/deployments.js";
 export {
   getCacheTtl,
@@ -75,6 +77,7 @@ export {
   isFresh,
   clearCacheKey,
   clearCache,
+  pruneStaleCache,
   getOldestCacheAge,
 } from "./db/cache.js";
 export {
@@ -166,6 +169,7 @@ export {
 export {
   assembleContext,
   writeContextFile,
+  cleanupStaleContextFiles,
 } from "./launch/context.js";
 export { prepareWorkspace } from "./launch/workspace.js";
 export {
@@ -185,6 +189,8 @@ export {
 } from "./launch/claude-args.js";
 
 // Lifecycle label reconciliation
+export { mapLimit, DEFAULT_REPO_FANOUT } from "./data/map-limit.js";
+
 export { matchLinkedPRs } from "./lifecycle/detect.js";
 export {
   reconcileIssueLifecycle,

@@ -3,6 +3,8 @@ import {
   getOctokit,
   getUnifiedList,
   getPulls,
+  mapLimit,
+  DEFAULT_REPO_FANOUT,
   type Section,
   type SortMode,
 } from "@issuectl/core";
@@ -96,22 +98,20 @@ async function gatherPulls(
   octokit: Awaited<ReturnType<typeof getOctokit>>,
   repos: Repo[],
 ): Promise<PrEntry[]> {
-  const prResults = await Promise.all(
-    repos.map(async (repo) => {
-      try {
-        const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
-        return pulls.map((pull) => ({
-          repo: { owner: repo.owner, name: repo.name },
-          pull,
-        }));
-      } catch (err) {
-        console.error(
-          `[issuectl] getPulls failed for ${repo.owner}/${repo.name} — PRs for this repo will be missing:`,
-          err instanceof Error ? err.message : err,
-        );
-        return [];
-      }
-    }),
-  );
+  const prResults = await mapLimit(repos, DEFAULT_REPO_FANOUT, async (repo) => {
+    try {
+      const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
+      return pulls.map((pull) => ({
+        repo: { owner: repo.owner, name: repo.name },
+        pull,
+      }));
+    } catch (err) {
+      console.error(
+        `[issuectl] getPulls failed for ${repo.owner}/${repo.name} — PRs for this repo will be missing:`,
+        err instanceof Error ? err.message : err,
+      );
+      return [];
+    }
+  });
   return prResults.flat();
 }

@@ -238,8 +238,32 @@ export async function executeLaunch(
     throw err;
   }
 
-  // 9b. Flip pending -> active.
-  activateDeployment(db, deployment.id);
+  // 9b. Flip pending → active. The deployment is now visible to the UI
+  // and reconciler. If activation fails after the terminal opened, delete
+  // the pending row so it doesn't block future launches for this issue.
+  // The terminal is already open — the user must close it manually.
+  try {
+    activateDeployment(db, deployment.id);
+  } catch (err) {
+    console.error(
+      "[issuectl] Failed to activate deployment after terminal opened — deleting pending row",
+      { deploymentId: deployment.id },
+      err,
+    );
+    try {
+      deletePendingDeployment(db, deployment.id);
+    } catch (deleteErr) {
+      console.error(
+        "[issuectl] Failed to clean up orphaned pending deployment",
+        { deploymentId: deployment.id },
+        deleteErr,
+      );
+    }
+    throw new Error(
+      `Launch failed: terminal opened but deployment could not be activated (id=${deployment.id}). Close the terminal manually.`,
+      { cause: err },
+    );
+  }
 
   // 10. Return result
   return {

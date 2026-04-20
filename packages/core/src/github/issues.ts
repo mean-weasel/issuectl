@@ -228,8 +228,10 @@ export async function reassignIssue(
 
   // 4. Migrate local priority (local-only, safe to do even on cleanup failure)
   const oldPriority = getPriority(db, oldRepoId, issueNumber);
-  setPriority(db, newRepoId, newIssue.number, oldPriority);
-  deletePriority(db, oldRepoId, issueNumber);
+  db.transaction(() => {
+    setPriority(db, newRepoId, newIssue.number, oldPriority);
+    deletePriority(db, oldRepoId, issueNumber);
+  })();
 
   // 5. Invalidate caches
   clearCacheKey(db, `issues:${oldRepo.owner}/${oldRepo.name}`);

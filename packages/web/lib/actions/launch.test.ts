@@ -9,17 +9,21 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 // vi.mock() factory functions (which are also hoisted).
 const getDb = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
+const getRepo = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
+const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
+  getRepo: (...args: unknown[]) => getRepo(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
+  cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
   // The rest of the exports used only by launchIssue — provide stubs so
   // TypeScript/vitest don't trip over missing exports.
-  getRepo: vi.fn(),
+  isTtydAlive: vi.fn(),
   executeLaunch: vi.fn(),
   withAuthRetry: vi.fn(),
   withIdempotency: vi.fn(),
@@ -53,6 +57,10 @@ function makeDeployment(ttydPid: number | null = 42) {
   };
 }
 
+function makeRepoRecord() {
+  return { id: 1, owner: "owner", name: "repo", localPath: "/tmp/repo" };
+}
+
 const ARGS = [1, "owner", "repo", 7] as const;
 
 // ---------------------------------------------------------------------------
@@ -63,13 +71,17 @@ beforeEach(() => {
   revalidatePath.mockReset();
   getDb.mockReset();
   getDeploymentById.mockReset();
+  getRepo.mockReset();
   killTtyd.mockReset();
   coreEndDeployment.mockReset();
+  cleanupStaleContextFiles.mockReset();
 
-  // Sensible defaults: DB exists, deployment found with a PID.
+  // Sensible defaults: DB exists, deployment found with a PID, repo found.
   getDb.mockReturnValue({});
   getDeploymentById.mockReturnValue(makeDeployment(42));
+  getRepo.mockReturnValue(makeRepoRecord());
   coreEndDeployment.mockReturnValue(undefined);
+  cleanupStaleContextFiles.mockReturnValue(Promise.resolve());
 });
 
 // ---------------------------------------------------------------------------
@@ -108,16 +120,27 @@ describe("endSession", () => {
   });
 
   it("handles missing deployment gracefully", async () => {
-    // No deployment found — coreEndDeployment will be attempted and may throw.
     getDeploymentById.mockReturnValue(undefined);
-    coreEndDeployment.mockImplementation(() => {
-      throw new Error("Deployment not found");
-    });
 
     const result = await endSession(...ARGS);
 
-    // The outer catch converts the error to a { success: false } response.
-    expect(coreEndDeployment).toHaveBeenCalled();
-    expect(result.success).toBe(false);
+    // Deployment not found returns early — no kill or end attempted.
+    expect(killTtyd).not.toHaveBeenCalled();
+    expect(coreEndDeployment).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ success: false, error: "Deployment not found" });
+  });
+
+  it("rejects when deployment does not match the specified issue", async () => {
+    // Deployment belongs to a different repo.
+    getRepo.mockReturnValue({ id: 99, owner: "owner", name: "repo", localPath: "/tmp/repo" });
+
+    const result = await endSession(...ARGS);
+
+    expect(killTtyd).not.toHaveBeenCalled();
+    expect(coreEndDeployment).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      success: false,
+      error: "Deployment does not match the specified issue",
+    });
   });
 });

@@ -104,6 +104,8 @@ export async function reconcileIssueLifecycle(
  * Accepts pre-fetched issues and pulls to avoid redundant API calls.
  * Ensures lifecycle labels exist on the repo first.
  */
+const inflightRepos = new Set<string>();
+
 export async function reconcileRepoLifecycle(
   db: Database.Database,
   octokit: Octokit,
@@ -112,33 +114,40 @@ export async function reconcileRepoLifecycle(
   issues: GitHubIssue[],
   pulls: GitHubPull[],
 ): Promise<void> {
-  const repoRecord = getRepo(db, owner, repo);
-  if (!repoRecord) {
-    console.warn(`[issuectl] Repo ${owner}/${repo} not found in DB during reconciliation — skipping`);
-    return;
+  const key = `${owner}/${repo}`;
+  if (inflightRepos.has(key)) return;
+  inflightRepos.add(key);
+  try {
+    const repoRecord = getRepo(db, owner, repo);
+    if (!repoRecord) {
+      console.warn(`[issuectl] Repo ${owner}/${repo} not found in DB during reconciliation — skipping`);
+      return;
+    }
+
+    const deployments = getDeploymentsByRepo(db, repoRecord.id);
+    if (deployments.length === 0) return;
+
+    await ensureLifecycleLabels(octokit, owner, repo);
+
+    const deployedIssueNumbers = new Set(deployments.map((d) => d.issueNumber));
+    const deployedIssues = issues.filter((i) =>
+      deployedIssueNumbers.has(i.number),
+    );
+
+    await Promise.all(
+      deployedIssues.map(async (issue) => {
+        try {
+          const linked = matchLinkedPRs(pulls, issue.number);
+          await reconcileIssueLifecycle(db, octokit, owner, repo, issue, linked);
+        } catch (err) {
+          console.warn(
+            `[issuectl] Failed to reconcile issue #${issue.number}:`,
+            err,
+          );
+        }
+      }),
+    );
+  } finally {
+    inflightRepos.delete(key);
   }
-
-  const deployments = getDeploymentsByRepo(db, repoRecord.id);
-  if (deployments.length === 0) return;
-
-  await ensureLifecycleLabels(octokit, owner, repo);
-
-  const deployedIssueNumbers = new Set(deployments.map((d) => d.issueNumber));
-  const deployedIssues = issues.filter((i) =>
-    deployedIssueNumbers.has(i.number),
-  );
-
-  await Promise.all(
-    deployedIssues.map(async (issue) => {
-      try {
-        const linked = matchLinkedPRs(pulls, issue.number);
-        await reconcileIssueLifecycle(db, octokit, owner, repo, issue, linked);
-      } catch (err) {
-        console.warn(
-          `[issuectl] Failed to reconcile issue #${issue.number}:`,
-          err,
-        );
-      }
-    }),
-  );
 }

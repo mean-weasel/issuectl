@@ -29,7 +29,7 @@ export async function branchExists(
     await execFileAsync(
       "git",
       ["rev-parse", "--verify", `refs/heads/${branchName}`],
-      { cwd: repoPath },
+      { cwd: repoPath, timeout: 10_000 },
     );
     return true;
   } catch (err) {
@@ -49,11 +49,11 @@ export async function createOrCheckoutBranch(
 ): Promise<void> {
   const exists = await branchExists(repoPath, branchName);
   if (exists) {
-    await execFileAsync("git", ["checkout", branchName], { cwd: repoPath });
+    await execFileAsync("git", ["checkout", branchName], { cwd: repoPath, timeout: 10_000 });
   } else {
     const args = ["checkout", "-b", branchName];
     if (baseBranch) args.push(baseBranch);
-    await execFileAsync("git", args, { cwd: repoPath });
+    await execFileAsync("git", args, { cwd: repoPath, timeout: 10_000 });
   }
 }
 
@@ -61,7 +61,7 @@ export async function isWorkingTreeClean(repoPath: string): Promise<boolean> {
   const { stdout } = await execFileAsync(
     "git",
     ["status", "--porcelain"],
-    { cwd: repoPath },
+    { cwd: repoPath, timeout: 10_000 },
   );
   return stdout.trim() === "";
 }
@@ -71,7 +71,7 @@ export async function getDefaultBranch(repoPath: string): Promise<string> {
     const { stdout } = await execFileAsync(
       "git",
       ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
-      { cwd: repoPath },
+      { cwd: repoPath, timeout: 10_000 },
     );
     return stdout.trim();
   } catch (err) {
