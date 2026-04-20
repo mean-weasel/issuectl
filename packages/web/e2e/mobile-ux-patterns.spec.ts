@@ -217,13 +217,13 @@ async function expectTouchTarget(
 // ── Tests ───────────────────────────────────────────────────────────
 
 test.describe("Mobile UX regressions — touch targets (R3-R6)", () => {
-  test("dashboard nav overflow is 44x44", async ({ page }) => {
+  test("dashboard inline nav links are 44px tall", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/`);
     await expectTouchTarget(
       page,
-      'button[aria-label="Open navigation"]',
-      "dashboard nav overflow",
+      'nav a[href="/parse"]',
+      "inline nav Quick Create",
     );
   });
 

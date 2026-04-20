@@ -219,6 +219,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
             disabled={isPending}
             maxLength={65536}
             rows={4}
+            autoComplete="off"
             autoCapitalize="sentences"
             autoCorrect="on"
             spellCheck

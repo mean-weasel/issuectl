@@ -37,11 +37,13 @@
   vertical-align: 6px;
 }
 
+/* Hidden — primary nav is always visible inline. The hamburger button
+   and Drawer remain in the DOM but are not shown. */
 .menuBtn {
   background: transparent;
   border: none;
   color: var(--paper-ink-muted);
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   min-width: 44px;
@@ -63,12 +65,13 @@
   color: var(--paper-ink);
 }
 
-/* Desktop: inline nav links (hidden on mobile, where the drawer handles nav) */
+/* Inline nav links — visible on all viewports so primary navigation
+   is never hidden behind a hamburger. Compact on mobile, spaced on desktop. */
 .desktopNav {
-  display: none;
+  display: flex;
   align-items: baseline;
   margin-left: auto;
-  margin-right: 12px;
+  margin-right: 4px;
 }
 
 .desktopNavLink {
@@ -78,6 +81,9 @@
   color: var(--paper-ink-muted);
   cursor: pointer;
   padding: 4px 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .desktopNavLink:hover {
@@ -151,6 +157,7 @@
   color: var(--paper-ink-muted);
   padding: 12px 2px 14px;
   margin-right: 26px;
+  min-width: 44px;
   position: relative;
   cursor: default;
 }
@@ -231,12 +238,8 @@
     padding: 52px 24px 12px;
   }
 
-  .menuBtn {
-    display: none;
-  }
-
   .desktopNav {
-    display: flex;
+    margin-right: 12px;
   }
 
   .desktopDate {
@@ -308,8 +311,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
-  min-height: 40px;
+  padding: 12px 14px;
+  min-height: 44px;
   font-family: var(--paper-serif);
   font-size: 13px;
   color: var(--paper-ink-muted);
@@ -320,20 +323,13 @@
   flex-shrink: 0;
 }
 
-/* Extend hit area to 44px (40 + 2 + 2) for WCAG 2.5.5 compliance. */
-.sectionTab::before,
-.sectionTabActive::before {
-  content: "";
-  position: absolute;
-  inset: -2px 0;
-}
-
-.sectionTab:hover {
+.sectionTab:hover,
+.sectionTab:focus-visible {
   color: var(--paper-ink-soft);
+  outline: none;
 }
 
 .sectionTab:focus-visible {
-  color: var(--paper-ink-soft);
   outline: 2px solid var(--paper-accent);
   outline-offset: -2px;
 }
@@ -358,7 +354,7 @@
 .sortToggle {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   padding: 4px 16px 10px;
 }
 
@@ -373,20 +369,16 @@
 .sortOption,
 .sortOptionActive {
   position: relative;
-  padding: 4px 10px;
+  padding: 6px 10px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   font-family: var(--paper-serif);
   font-size: 11px;
   color: var(--paper-ink-muted);
   text-decoration: none;
   white-space: nowrap;
-}
-
-.sortOption::before,
-.sortOptionActive::before {
-  content: "";
-  position: absolute;
-  inset: -4px 0;
 }
 
 .sortOption:hover {
@@ -531,6 +523,15 @@
 
 .tab {
   white-space: nowrap;
+}
+
+.pageStatus {
+  padding: 12px 24px;
+  text-align: center;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-faint);
 }
 
 .sentinel {
