@@ -131,6 +131,7 @@ function seedIssueCache(dbPath: string, issueNumber: number, title: string): voi
       state: "open",
       labels: [],
       user: { login: "test-bot", avatarUrl: "" },
+      commentCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       closedAt: null,

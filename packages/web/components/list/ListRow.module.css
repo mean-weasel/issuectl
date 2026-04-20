@@ -173,6 +173,18 @@
   white-space: nowrap;
 }
 
+.comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--paper-ink-faint);
+}
+
+.commentIcon {
+  width: 12px;
+  height: 12px;
+}
+
 .activeLabel {
   color: var(--paper-accent);
   font-weight: 600;

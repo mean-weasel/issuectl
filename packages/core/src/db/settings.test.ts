@@ -71,9 +71,9 @@ describe("seedDefaults", () => {
     expect(keys).toContain("claude_extra_args");
   });
 
-  it("seedDefaults sets claude_extra_args to empty string by default", () => {
+  it("seedDefaults sets claude_extra_args to --dangerously-skip-permissions by default", () => {
     seedDefaults(db);
-    expect(getSetting(db, "claude_extra_args")).toBe("");
+    expect(getSetting(db, "claude_extra_args")).toBe("--dangerously-skip-permissions");
   });
 
   it("uses INSERT OR IGNORE — does not overwrite existing values", () => {

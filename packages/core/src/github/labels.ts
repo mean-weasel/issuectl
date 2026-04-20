@@ -3,6 +3,7 @@ import type { GitHubLabel } from "./types.js";
 
 export const LIFECYCLE_LABEL = {
   deployed: "issuectl:deployed",
+  inProgress: "issuectl:in-progress",
   prOpen: "issuectl:pr-open",
   done: "issuectl:done",
 } as const;
@@ -12,6 +13,11 @@ const LIFECYCLE_LABELS = [
     name: LIFECYCLE_LABEL.deployed,
     color: "d29922",
     description: "Launched to Claude Code via issuectl",
+  },
+  {
+    name: LIFECYCLE_LABEL.inProgress,
+    color: "fbca04",
+    description: "Issue is actively being worked on",
   },
   {
     name: LIFECYCLE_LABEL.prOpen,

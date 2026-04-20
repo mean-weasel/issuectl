@@ -77,12 +77,18 @@ export async function reconcileIssueLifecycle(
     if (hasLabel(LIFECYCLE_LABEL.prOpen)) {
       toRemove.push(LIFECYCLE_LABEL.prOpen);
     }
+    if (hasLabel(LIFECYCLE_LABEL.inProgress)) {
+      toRemove.push(LIFECYCLE_LABEL.inProgress);
+    }
     if (issue.state === "closed" && !hasLabel(LIFECYCLE_LABEL.done)) {
       toAdd.push(LIFECYCLE_LABEL.done);
     }
   } else if (linkedPR.state === "open") {
     if (!hasLabel(LIFECYCLE_LABEL.prOpen)) {
       toAdd.push(LIFECYCLE_LABEL.prOpen);
+    }
+    if (hasLabel(LIFECYCLE_LABEL.inProgress)) {
+      toRemove.push(LIFECYCLE_LABEL.inProgress);
     }
   }
 

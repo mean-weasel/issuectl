@@ -157,7 +157,7 @@ export async function executeLaunch(
   // Workspace cleanup is not attempted since the branch/files may be valuable.
   let labelWarning: string | undefined;
   try {
-    // 7. Apply issuectl:deployed label. Retry up to 3 times because label
+    // 7. Apply lifecycle labels. Retry up to 3 times because label
     // failures are usually transient (rate limit, network blip) and a
     // dropped label leaves the reconciler unable to advance this issue.
     await ensureLifecycleLabels(octokit, options.owner, options.repo);
@@ -168,6 +168,15 @@ export async function executeLaunch(
         options.repo,
         options.issueNumber,
         LIFECYCLE_LABEL.deployed,
+      ),
+    );
+    await retryLabel(() =>
+      addLabel(
+        octokit,
+        options.owner,
+        options.repo,
+        options.issueNumber,
+        LIFECYCLE_LABEL.inProgress,
       ),
     );
   } catch (err) {
