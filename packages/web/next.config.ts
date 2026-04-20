@@ -17,7 +17,7 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV === "development",
 });
 
-// NEXT_PUBLIC_APP_VERSION can be set externally (e.g. in a deploy workflow
+// NEXT_PUBLIC_APP_VERSION can be set externally (e.g. in a release workflow
 // using the semantic-release tag like "v0.2.0"). Strip the leading "v" for
 // display. In dev, fall back to the root package.json version.
 const rawVersion =

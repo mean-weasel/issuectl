@@ -74,7 +74,7 @@ export default async function SettingsPage() {
         </section>
 
         <div className={styles.versionFooter}>
-          issuectl v{process.env.NEXT_PUBLIC_APP_VERSION}
+          issuectl v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
         </div>
       </div>
     </PullToRefreshWrapper>
