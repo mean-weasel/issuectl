@@ -203,15 +203,7 @@ export async function batchCreateIssues(
       }
     });
 
-    const affectedRepos = new Set(
-      results
-        .filter((r) => r.success && r.owner)
-        .map((r) => `/${r.owner}/${r.repo}`),
-    );
-    if (results.some((r) => r.draftId)) {
-      affectedRepos.add("/");
-    }
-    revalidateSafely(...affectedRepos);
+    revalidateSafely("/");
 
     return {
       created: results.filter((r) => r.success && r.issueNumber).length,
