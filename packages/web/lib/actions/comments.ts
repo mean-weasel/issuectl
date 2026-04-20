@@ -3,7 +3,6 @@
 import type { GitHubComment } from "@issuectl/core";
 import {
   getDb,
-  getOctokit,
   getRepo,
   getIssueContent,
   addComment as coreAddComment,
@@ -24,8 +23,9 @@ export async function getComments(
   }
   try {
     const db = getDb();
-    const octokit = await getOctokit();
-    const { comments } = await getIssueContent(db, octokit, owner, repo, issueNumber);
+    const { comments } = await withAuthRetry((octokit) =>
+      getIssueContent(db, octokit, owner, repo, issueNumber),
+    );
     return { success: true, comments };
   } catch (err) {
     console.error("[issuectl] Failed to fetch comments:", err);

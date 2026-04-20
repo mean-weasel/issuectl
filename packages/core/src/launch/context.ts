@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { writeFile, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -60,4 +60,31 @@ export async function writeContextFile(
   const filePath = join(tmpdir(), `issuectl-launch-${issueNumber}-${Date.now()}.md`);
   await writeFile(filePath, context, "utf-8");
   return filePath;
+}
+
+/**
+ * Remove stale context files older than 24 hours from the temp directory.
+ * Best-effort — failures are silently ignored.
+ */
+export async function cleanupStaleContextFiles(): Promise<number> {
+  const dir = tmpdir();
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  let cleaned = 0;
+  try {
+    const files = await readdir(dir);
+    for (const file of files) {
+      const match = file.match(/^issuectl-launch-\d+-(\d+)\.md$/);
+      if (match && Number(match[1]) < cutoff) {
+        try {
+          await unlink(join(dir, file));
+          cleaned++;
+        } catch (err) {
+          console.warn(`[issuectl] cleanupStaleContextFiles: failed to delete ${file}:`, err);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[issuectl] cleanupStaleContextFiles: readdir failed:", err);
+  }
+  return cleaned;
 }

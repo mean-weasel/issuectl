@@ -10,6 +10,8 @@ import {
   getSetting,
   listRepos,
   withAuthRetry,
+  mapLimit,
+  DEFAULT_REPO_FANOUT,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
@@ -90,39 +92,37 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
   // Check staleness via GitHub API — a closed issue means the worktree is stale.
   // Each issue lookup goes through withAuthRetry so a rotated token doesn't
   // leave the entire staleness check in the dark.
-  await Promise.all(
-    worktrees.map(async (wt) => {
-      if (!wt.owner || !wt.repo || !wt.issueNumber) return;
+  await mapLimit(worktrees, DEFAULT_REPO_FANOUT, async (wt) => {
+    if (!wt.owner || !wt.repo || !wt.issueNumber) return;
 
-      const repoName = repos.find(
-        (r) => r.name === wt.repo || `${r.owner}-${r.name}` === wt.repo,
-      )?.name;
-      if (!repoName) return;
+    const repoName = repos.find(
+      (r) => r.name === wt.repo || `${r.owner}-${r.name}` === wt.repo,
+    )?.name;
+    if (!repoName) return;
 
-      try {
-        const { data } = await withAuthRetry((octokit) =>
-          octokit.rest.issues.get({
-            owner: wt.owner!,
-            repo: repoName,
-            issue_number: wt.issueNumber!,
-          }),
-        );
-        wt.stale = data.state === "closed";
-      } catch (err) {
-        if (err && typeof err === "object" && "status" in err) {
-          const status = (err as { status: number }).status;
-          if (status === 404 || status === 410) {
-            wt.stale = true;
-            return;
-          }
+    try {
+      const { data } = await withAuthRetry((octokit) =>
+        octokit.rest.issues.get({
+          owner: wt.owner!,
+          repo: repoName,
+          issue_number: wt.issueNumber!,
+        }),
+      );
+      wt.stale = data.state === "closed";
+    } catch (err) {
+      if (err && typeof err === "object" && "status" in err) {
+        const status = (err as { status: number }).status;
+        if (status === 404 || status === 410) {
+          wt.stale = true;
+          return;
         }
-        console.warn(
-          `[issuectl] Failed to check staleness for ${wt.owner}/${repoName}#${wt.issueNumber}:`,
-          err,
-        );
       }
-    }),
-  );
+      console.warn(
+        `[issuectl] Failed to check staleness for ${wt.owner}/${repoName}#${wt.issueNumber}:`,
+        err,
+      );
+    }
+  });
 
   return worktrees;
 }
@@ -159,7 +159,7 @@ export async function cleanupWorktree(
   // can clean it up manually.
   let gitWarning: string | null = null;
   try {
-    await execFileAsync("git", ["worktree", "remove", resolved, "--force"], { cwd });
+    await execFileAsync("git", ["worktree", "remove", resolved, "--force"], { cwd, timeout: 15_000 });
   } catch (err) {
     gitWarning =
       err instanceof Error ? err.message : "git worktree remove failed";
@@ -167,7 +167,7 @@ export async function cleanupWorktree(
   }
   if (cwd) {
     try {
-      await execFileAsync("git", ["worktree", "prune"], { cwd });
+      await execFileAsync("git", ["worktree", "prune"], { cwd, timeout: 15_000 });
     } catch (err) {
       console.warn(
         "[issuectl] git worktree prune failed:",
