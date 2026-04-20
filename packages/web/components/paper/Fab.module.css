@@ -26,10 +26,16 @@
   opacity: 0.92;
 }
 
-/* Command sheet replaces the FAB on mobile. */
+/* Mobile: compact FAB so it doesn't crowd the bottom sheet handle.
+   The "Create issue" action in the sheet is too far down on mobile,
+   so this provides a quick shortcut. */
 @media (max-width: 767px) {
   .fab {
-    display: none;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    right: 20px;
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   }
 }
 
