@@ -15,14 +15,9 @@ import {
   filterPrs,
   type PrEntry,
 } from "@/lib/page-filters";
+import { parseRepoKey } from "@/lib/repo-key";
 
 type Repo = { owner: string; name: string };
-
-function parseRepoKey(key: string): { owner: string; name: string } | null {
-  const idx = key.indexOf("/");
-  if (idx < 1) return null;
-  return { owner: key.slice(0, idx), name: key.slice(idx + 1) };
-}
 
 type Props = {
   repos: Repo[];
