@@ -79,8 +79,8 @@ export async function addComment(
     return { success: false, error: formatErrorForUser(err) };
   }
   const { stale } = revalidateSafely(
-    `/${owner}/${repo}/issues/${issueNumber}`,
-    `/${owner}/${repo}/pulls/${issueNumber}`,
+    `/issues/${owner}/${repo}/${issueNumber}`,
+    `/pulls/${owner}/${repo}/${issueNumber}`,
   );
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

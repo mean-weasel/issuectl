@@ -160,16 +160,9 @@ textarea::placeholder {
   }
 }
 
-/* ── Standalone PWA adjustments ──────────────────────────────────
-   When launched from the home screen (display: standalone), the
-   browser address bar is gone. Add top padding to account for the
-   status bar area on notched/Dynamic Island devices. */
-@media (display-mode: standalone) {
-  body {
-    /* In standalone mode the browser chrome is absent. This padding
-       prevents page content from sitting under the device status bar
-       or Dynamic Island. The offline indicator banner is position:
-       fixed and handles its own safe-area inset independently. */
-    padding-top: env(safe-area-inset-top);
-  }
-}
+/* ── Standalone PWA safe-area ───────────────────────────────────
+   Each page/section handles env(safe-area-inset-top) in its own
+   top bar or header padding, so the body does NOT add it globally
+   — that caused double safe-area spacing on notched / Dynamic
+   Island devices. See List topBar, DetailTopBar, PageHeader,
+   NewIssuePage, Drawer head, and route loading skeletons. */

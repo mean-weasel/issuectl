@@ -249,6 +249,12 @@
   margin-top: 2px;
 }
 
+/* Claude Code launch icon — distinct warm accent to make it feel app-specific */
+.claudeIcon {
+  background: var(--paper-bg-warmer, #e6dec4);
+  color: var(--paper-ink);
+}
+
 .version {
   display: block;
   text-align: center;

@@ -86,6 +86,11 @@ export async function reconcileIssueLifecycle(
     }
   }
 
+  // Both transitions (merged, pr-open) move past the in-progress phase.
+  if (hasLabel(LIFECYCLE_LABEL.inProgress)) {
+    toRemove.push(LIFECYCLE_LABEL.inProgress);
+  }
+
   if (toAdd.length > 0 || toRemove.length > 0) {
     await ensureLifecycleLabels(octokit, owner, repo);
     await Promise.all([

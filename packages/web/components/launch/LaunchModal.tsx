@@ -55,7 +55,7 @@ export function LaunchModal({
 
   const [branchName, setBranchName] = useState(defaultBranch);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(
-    initialWorkspaceMode ?? (repoLocalPath ? "existing" : "clone"),
+    initialWorkspaceMode ?? (repoLocalPath ? "worktree" : "clone"),
   );
   const [selectedComments, setSelectedComments] = useState<number[]>(
     comments.map((_, i) => i),
@@ -67,7 +67,7 @@ export function LaunchModal({
 
   const [initialBranch] = useState(defaultBranch);
   const [initialMode] = useState<WorkspaceMode>(
-    initialWorkspaceMode ?? (repoLocalPath ? "existing" : "clone"),
+    initialWorkspaceMode ?? (repoLocalPath ? "worktree" : "clone"),
   );
 
   // Auto-select all comments when they arrive via lazy-fetch (initially empty).

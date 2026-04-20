@@ -117,6 +117,7 @@ export {
   listLabels,
   ensureLifecycleLabels,
   addLabel,
+  addLabels,
   removeLabel,
 } from "./github/labels.js";
 export { listAccessibleRepos } from "./github/repos.js";

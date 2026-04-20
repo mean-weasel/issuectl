@@ -3,7 +3,7 @@
   margin: 0 auto;
   /* Bottom padding provides scroll-end breathing room so the last row
      clears the filter handle and safe-area inset. */
-  padding: 12px 0 calc(80px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 0 calc(80px + env(safe-area-inset-bottom, 0px));
   background: var(--paper-bg);
   min-height: 100dvh;
   position: relative;

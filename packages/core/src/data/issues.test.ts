@@ -54,6 +54,7 @@ function makeIssue(overrides: Partial<GitHubIssue> = {}): GitHubIssue {
     state: "open",
     labels: [],
     user: null,
+    commentCount: 0,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     closedAt: null,

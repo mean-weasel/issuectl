@@ -17,6 +17,7 @@ function makeIssue(overrides: Partial<GitHubIssue> = {}): GitHubIssue {
     state: "open",
     labels: [],
     user: null,
+    commentCount: 0,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     closedAt: null,
@@ -163,6 +164,37 @@ describe("reconcileIssueLifecycle", () => {
     // Verify the deployment was updated with the PR number
     const rows = db.prepare("SELECT linked_pr_number FROM deployments WHERE issue_number = 1").all() as Array<{ linked_pr_number: number | null }>;
     expect(rows[0].linked_pr_number).toBe(42);
+  });
+
+  it("removes inProgress label when PR is open", async () => {
+    const octokit = fakeOctokit();
+    const issue = makeIssue({
+      labels: [
+        { name: LIFECYCLE_LABEL.deployed, color: "", description: null },
+        { name: LIFECYCLE_LABEL.inProgress, color: "", description: null },
+      ],
+    });
+    const linkedPRs = [makePR({ state: "open", merged: false })];
+    const result = await reconcileIssueLifecycle(db, octokit, "owner", "repo", issue, linkedPRs);
+    expect(result.labelsAdded).toContain(LIFECYCLE_LABEL.prOpen);
+    expect(result.labelsRemoved).toContain(LIFECYCLE_LABEL.inProgress);
+  });
+
+  it("removes inProgress label when PR is merged", async () => {
+    const octokit = fakeOctokit();
+    const issue = makeIssue({
+      state: "closed",
+      labels: [
+        { name: LIFECYCLE_LABEL.deployed, color: "", description: null },
+        { name: LIFECYCLE_LABEL.inProgress, color: "", description: null },
+        { name: LIFECYCLE_LABEL.prOpen, color: "", description: null },
+      ],
+    });
+    const linkedPRs = [makePR({ state: "closed", merged: true, mergedAt: "2026-01-02T00:00:00Z" })];
+    const result = await reconcileIssueLifecycle(db, octokit, "owner", "repo", issue, linkedPRs);
+    expect(result.labelsAdded).toContain(LIFECYCLE_LABEL.done);
+    expect(result.labelsRemoved).toContain(LIFECYCLE_LABEL.prOpen);
+    expect(result.labelsRemoved).toContain(LIFECYCLE_LABEL.inProgress);
   });
 
   it("returns correct ReconcileResult shape", async () => {
