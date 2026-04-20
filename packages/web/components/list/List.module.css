@@ -1,5 +1,5 @@
 .container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   /* Bottom padding clears the FAB (60px + 30px inset + 54px breathing room)
      so the last row's trailing action button clears the floating action
@@ -145,7 +145,6 @@
 .tabs {
   padding: 18px 24px 0;
   display: flex;
-  gap: 0;
   border-bottom: 1px solid var(--paper-line);
 }
 
@@ -292,7 +291,6 @@
 
 .sectionTabs {
   display: flex;
-  gap: 0;
   padding: 0 16px;
   margin-bottom: 8px;
   overflow-x: auto;
@@ -338,6 +336,18 @@
   color: var(--paper-ink);
   font-weight: 500;
   border-bottom-color: var(--paper-ink);
+}
+
+.sectionTabRunning {
+  composes: sectionTabActive;
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+  border-radius: var(--paper-radius-sm) var(--paper-radius-sm) 0 0;
+}
+
+.sectionTabRunning .sectionTabCount {
+  color: var(--paper-bg);
+  opacity: 0.8;
 }
 
 .sectionTabCount {

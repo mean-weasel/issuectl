@@ -59,7 +59,7 @@ function makeUnifiedList(): UnifiedList {
       htmlUrl: "",
     },
     priority: "normal" as const,
-    section: "in_focus" as const,
+    section: "open" as const,
   });
   return {
     unassigned: [
@@ -75,9 +75,9 @@ function makeUnifiedList(): UnifiedList {
         },
       },
     ],
-    in_focus: [issueItem(alpha, 1), issueItem(beta, 2)],
-    in_flight: [],
-    shipped: [],
+    open: [issueItem(alpha, 1), issueItem(beta, 2)],
+    running: [],
+    closed: [],
   };
 }
 
@@ -96,8 +96,8 @@ describe("filterUnifiedList", () => {
   it("keeps only items matching the active repo", () => {
     const list = makeUnifiedList();
     const filtered = filterUnifiedList(list, "acme/alpha");
-    expect(filtered.in_focus).toHaveLength(1);
-    expect(filtered.in_focus[0].repo.name).toBe("alpha");
+    expect(filtered.open).toHaveLength(1);
+    expect(filtered.open[0].repo.name).toBe("alpha");
   });
 });
 

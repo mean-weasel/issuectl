@@ -14,13 +14,13 @@ describe("buildHref", () => {
     expect(buildHref({ tab: "prs" })).toBe("/?tab=prs");
   });
 
-  it("section=in_focus is the default and is omitted", () => {
-    expect(buildHref({ section: "in_focus" })).toBe("/");
+  it("section=open is the default and is omitted", () => {
+    expect(buildHref({ section: "open" })).toBe("/");
   });
 
   it("non-default sections are serialized", () => {
-    expect(buildHref({ section: "shipped" })).toBe("/?section=shipped");
-    expect(buildHref({ section: "in_flight" })).toBe("/?section=in_flight");
+    expect(buildHref({ section: "closed" })).toBe("/?section=closed");
+    expect(buildHref({ section: "running" })).toBe("/?section=running");
     expect(buildHref({ section: "unassigned" })).toBe("/?section=unassigned");
   });
 
@@ -47,8 +47,8 @@ describe("buildHref", () => {
         tab: "prs",
         repo: "acme/alpha",
         mine: true,
-        section: "shipped",
+        section: "closed",
       }),
-    ).toBe("/?tab=prs&repo=acme%2Falpha&mine=1&section=shipped");
+    ).toBe("/?tab=prs&repo=acme%2Falpha&mine=1&section=closed");
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { Section, UnifiedList } from "@issuectl/core";
 import type { PrEntry } from "@/lib/page-filters";
 import { ListSection } from "./ListSection";
@@ -23,16 +24,16 @@ const SECTION_EMPTY: Record<Section, { title: string; body: string }> = {
     title: "no drafts",
     body: "start a draft with the + button — it'll live here until you assign it to a repo.",
   },
-  in_focus: {
+  open: {
     title: "all clear",
     body: "nothing on your plate. breathe, or draft the next one.",
   },
-  in_flight: {
-    title: "nothing in flight",
-    body: "when you launch an issue, it lands here while you work on it.",
+  running: {
+    title: "no running sessions",
+    body: "when you launch an issue with Claude Code, it lands here while the session is active.",
   },
-  shipped: {
-    title: "nothing shipped yet",
+  closed: {
+    title: "nothing closed yet",
     body: "closed issues show up here once PRs merge and reconcile.",
   },
 };
@@ -45,6 +46,7 @@ export function ListContent({
   activeRepo,
   mineOnly,
 }: Props) {
+  const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,20 @@ export function ListContent({
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
   }, []);
+
+  const handleLaunch = useCallback(
+    (owner: string, repo: string, issueNumber: number) => {
+      router.push(`/issues/${owner}/${repo}/${issueNumber}?launch=true`);
+    },
+    [router],
+  );
+
+  const handleNavigate = useCallback(
+    (owner: string, repo: string, issueNumber: number) => {
+      router.push(`/issues/${owner}/${repo}/${issueNumber}`);
+    },
+    [router],
+  );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -74,7 +90,7 @@ export function ListContent({
     const showing = Math.min(visibleCount, total);
     return (
       <>
-        {renderIssueSection({ activeSection, data, visibleCount })}
+        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch, onNavigate: handleNavigate })}
         {total > PAGE_SIZE && (
           <div className={styles.pageStatus}>
             Showing {showing} of {total}
@@ -87,23 +103,24 @@ export function ListContent({
     );
   }
 
-  const prCount = prs.length;
+  if (prs.length === 0) {
+    let emptyMessage: string;
+    if (activeRepo && mineOnly) {
+      emptyMessage = `no open PRs from you in ${activeRepo}.`;
+    } else if (activeRepo) {
+      emptyMessage = `no open PRs in ${activeRepo}.`;
+    } else if (mineOnly) {
+      emptyMessage = "no open PRs from you across your repos.";
+    } else {
+      emptyMessage = "no open PRs across your repos.";
+    }
 
-  if (prCount === 0) {
     return (
       <div className={styles.empty}>
         <div className={styles.emptyMark}>❧</div>
         <h3>no pull requests</h3>
         <p>
-          <em>
-            {activeRepo && mineOnly
-              ? `no open PRs from you in ${activeRepo}.`
-              : activeRepo
-                ? `no open PRs in ${activeRepo}.`
-                : mineOnly
-                  ? "no open PRs from you across your repos."
-                  : "no open PRs across your repos."}
-          </em>
+          <em>{emptyMessage}</em>
         </p>
       </div>
     );
@@ -127,10 +144,14 @@ function renderIssueSection({
   activeSection,
   data,
   visibleCount,
+  onLaunch,
+  onNavigate,
 }: {
   activeSection: Section;
   data: UnifiedList;
   visibleCount: number;
+  onLaunch: (owner: string, repo: string, issueNumber: number) => void;
+  onNavigate: (owner: string, repo: string, issueNumber: number) => void;
 }) {
   const allItems = data[activeSection];
 
@@ -148,5 +169,5 @@ function renderIssueSection({
   }
 
   const items = allItems.slice(0, visibleCount);
-  return <ListSection title={null} items={items} />;
+  return <ListSection title={null} items={items} onLaunch={onLaunch} onNavigate={onNavigate} />;
 }
