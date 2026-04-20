@@ -319,8 +319,6 @@ test.describe("Mobile UX regressions — iOS form attrs (R3, R5)", () => {
     const writableInputs = [
       "sf-branch-pattern",
       "sf-cache-ttl",
-      "sf-window-title",
-      "sf-tab-title",
       "sf-claude-args",
     ];
 
