@@ -187,8 +187,9 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
         </div>
 
         <div className={styles.field}>
-          <div className={styles.fieldLabel}>Title</div>
+          <label htmlFor="new-issue-title" className={styles.fieldLabel}>Title</label>
           <input
+            id="new-issue-title"
             type="text"
             className={styles.input}
             value={title}
@@ -206,10 +207,11 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
         </div>
 
         <div className={styles.field}>
-          <div className={styles.fieldLabel}>
+          <label htmlFor="new-issue-body" className={styles.fieldLabel}>
             Description <span className={styles.fieldHint}>(markdown)</span>
-          </div>
+          </label>
           <textarea
+            id="new-issue-body"
             className={styles.textarea}
             value={body}
             onChange={(e) => setBody(e.target.value)}

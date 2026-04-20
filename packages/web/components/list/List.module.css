@@ -328,10 +328,14 @@
   inset: -2px 0;
 }
 
-.sectionTab:hover,
+.sectionTab:hover {
+  color: var(--paper-ink-soft);
+}
+
 .sectionTab:focus-visible {
   color: var(--paper-ink-soft);
-  outline: none;
+  outline: 2px solid var(--paper-accent);
+  outline-offset: -2px;
 }
 
 .sectionTabActive {
@@ -413,10 +417,14 @@
   flex-shrink: 0;
 }
 
-.filterBtn:hover,
+.filterBtn:hover {
+  color: var(--paper-accent);
+}
+
 .filterBtn:focus-visible {
   color: var(--paper-accent);
-  outline: none;
+  outline: 2px solid var(--paper-accent);
+  outline-offset: -2px;
 }
 
 .filterBtnDot {
@@ -481,10 +489,12 @@
   inset: -6px;
 }
 
-.scopePillClear:hover,
+.scopePillClear:hover {
+  color: var(--paper-ink);
+}
+
 .scopePillClear:focus-visible {
   color: var(--paper-ink);
-  outline: none;
 }
 
 /* ── Responsive: desktop shows chip row + inline mine toggle, hides filter

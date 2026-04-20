@@ -107,6 +107,7 @@
 }
 
 .fieldLabel {
+  display: block;
   font-size: var(--paper-fs-sm);
   color: var(--paper-ink-muted);
   font-weight: 600;
