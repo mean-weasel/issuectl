@@ -10,6 +10,7 @@ import {
   reassignIssue as coreReassignIssue,
   addLabel as coreAddLabel,
   removeLabel as coreRemoveLabel,
+  addComment as coreAddComment,
   clearCacheKey,
   withAuthRetry,
   withIdempotency,
@@ -138,6 +139,7 @@ export async function closeIssue(
   owner: string,
   repo: string,
   number: number,
+  comment?: string,
 ): Promise<{ success: true; cacheStale?: true } | { success: false; error: string }> {
   if (!owner || !repo || !Number.isFinite(number) || number <= 0) {
     return { success: false, error: "Valid owner, repo, and issue number are required" };
@@ -148,6 +150,15 @@ export async function closeIssue(
     if (!getRepo(db, owner, repo)) {
       return { success: false, error: "Repository is not tracked" };
     }
+
+    // Post closing comment first — abort if this fails so the issue
+    // isn't closed without the user's intended comment.
+    if (comment && comment.trim()) {
+      await withAuthRetry((octokit) =>
+        coreAddComment(db, octokit, owner, repo, number, comment.trim()),
+      );
+    }
+
     await withAuthRetry((octokit) =>
       coreCloseIssue(octokit, owner, repo, number),
     );
