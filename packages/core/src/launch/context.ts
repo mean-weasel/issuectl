@@ -73,15 +73,18 @@ export async function cleanupStaleContextFiles(): Promise<number> {
   try {
     const files = await readdir(dir);
     for (const file of files) {
-      if (!file.startsWith("issuectl-launch-")) continue;
-      const match = file.match(/issuectl-launch-\d+-(\d+)\.md$/);
+      const match = file.match(/^issuectl-launch-\d+-(\d+)\.md$/);
       if (match && Number(match[1]) < cutoff) {
         try {
           await unlink(join(dir, file));
           cleaned++;
-        } catch { /* ignore */ }
+        } catch (err) {
+          console.warn(`[issuectl] cleanupStaleContextFiles: failed to delete ${file}:`, err);
+        }
       }
     }
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.warn("[issuectl] cleanupStaleContextFiles: readdir failed:", err);
+  }
   return cleaned;
 }

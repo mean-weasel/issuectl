@@ -41,7 +41,7 @@ export function recordDeployment(
      * Optional initial state. Defaults to "active" for callers that want
      * the legacy one-shot write. The launch flow passes "pending" so the
      * row stays invisible to the UI and reconciler until `activateDeployment`
-     * flips it after the terminal opens — or `deleteDeployment` unwinds
+     * flips it after the terminal opens — or `deletePendingDeployment` unwinds
      * it after a launch failure.
      */
     state?: DeploymentState;

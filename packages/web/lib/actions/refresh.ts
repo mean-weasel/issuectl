@@ -18,8 +18,6 @@ export async function refreshAction(): Promise<{
       error: "Please wait a few seconds before refreshing again",
     };
   }
-  lastRefreshAt = now;
-
   try {
     if (dbExists()) {
       const db = getDb();
@@ -32,6 +30,7 @@ export async function refreshAction(): Promise<{
       error: err instanceof Error ? err.message : "Failed to refresh",
     };
   }
+  lastRefreshAt = now;
   const { stale } = revalidateSafely("/", "/settings");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

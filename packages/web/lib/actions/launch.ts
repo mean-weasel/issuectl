@@ -133,7 +133,7 @@ export async function endSession(
   if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
     return { success: false, error: "Invalid deployment ID" };
   }
-  if (!owner || typeof owner !== "string" || !repo || typeof repo !== "string") {
+  if (!owner || !repo) {
     return { success: false, error: "Invalid repository reference" };
   }
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {

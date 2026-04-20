@@ -192,7 +192,14 @@ export async function updateRepo(
       return { success: false, error: "Local path must be absolute (start with / or ~)" };
     }
     const home = homedir();
-    const expanded = lp.startsWith("~/") ? home + lp.slice(1) : lp === "~" ? home : lp;
+    let expanded: string;
+    if (lp.startsWith("~/")) {
+      expanded = home + lp.slice(1);
+    } else if (lp === "~") {
+      expanded = home;
+    } else {
+      expanded = lp;
+    }
     const resolved = resolve(expanded);
     try {
       const dirStat = await stat(resolved);

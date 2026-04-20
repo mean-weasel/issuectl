@@ -46,7 +46,13 @@ export function setCached(
   const now = Date.now();
   if (now - lastPruneAt > PRUNE_INTERVAL_MS) {
     lastPruneAt = now;
-    setImmediate(() => pruneStaleCache(db, PRUNE_OLDER_THAN_SECONDS));
+    setImmediate(() => {
+      try {
+        pruneStaleCache(db, PRUNE_OLDER_THAN_SECONDS);
+      } catch (err) {
+        console.error("[issuectl] Background cache prune failed:", err);
+      }
+    });
   }
 }
 
