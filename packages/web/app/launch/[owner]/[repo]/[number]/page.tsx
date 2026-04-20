@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getDb, getDeploymentById } from "@issuectl/core";
 import { DetailTopBar } from "@/components/detail/DetailTopBar";
 import { LaunchProgress } from "@/components/launch/LaunchProgress";
@@ -36,7 +36,7 @@ export default async function LaunchProgressPage({
 
   const deploymentId = idStr ? Number(idStr) : null;
   if (!deploymentId || !Number.isInteger(deploymentId) || deploymentId <= 0) {
-    notFound();
+    redirect(`/issues/${owner}/${repo}/${issueNumber}`);
   }
 
   const db = getDb();
