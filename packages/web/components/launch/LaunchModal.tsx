@@ -65,12 +65,25 @@ export function LaunchModal({
   );
   const [preamble, setPreamble] = useState("");
 
+  const [initialBranch] = useState(defaultBranch);
+  const [initialMode] = useState<WorkspaceMode>(
+    initialWorkspaceMode ?? (repoLocalPath ? "existing" : "clone"),
+  );
+
   // Auto-select all comments when they arrive via lazy-fetch (initially empty).
   useEffect(() => {
     if (comments.length > 0) {
       setSelectedComments(comments.map((_, i) => i));
     }
   }, [comments]);
+
+  const isDirty =
+    branchName !== initialBranch ||
+    workspaceMode !== initialMode ||
+    preamble.trim().length > 0 ||
+    selectedComments.length !== comments.length ||
+    selectedFiles.length !== referencedFiles.length ||
+    selectedFiles.some((f) => !referencedFiles.includes(f));
 
   const toggleComment = useCallback((index: number) => {
     setSelectedComments((prev) =>
@@ -88,51 +101,68 @@ export function LaunchModal({
     );
   }, []);
 
+  const addFile = useCallback((path: string) => {
+    setSelectedFiles((prev) => [...prev, path]);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (isPending) return;
+    if (isDirty && !window.confirm("Discard launch configuration?")) return;
+    onClose();
+  }, [isPending, isDirty, onClose]);
+
   function handleLaunch() {
     setError(null);
     const idempotencyKey = newIdempotencyKey();
     startTransition(async () => {
-      const result = await launchIssue({
-        owner,
-        repo,
-        issueNumber: issue.number,
-        branchName: branchName.trim(),
-        workspaceMode,
-        selectedCommentIndices: selectedComments,
-        selectedFilePaths: selectedFiles,
-        preamble: preamble.trim() || undefined,
-        idempotencyKey,
-      });
+      try {
+        const result = await launchIssue({
+          owner,
+          repo,
+          issueNumber: issue.number,
+          branchName: branchName.trim(),
+          workspaceMode,
+          selectedCommentIndices: selectedComments,
+          selectedFilePaths: selectedFiles,
+          preamble: preamble.trim() || undefined,
+          idempotencyKey,
+        });
 
-      if (!result.success) {
-        setError(result.error ?? "Launch failed");
-        return;
+        if (!result.success) {
+          setError(result.error ?? "Launch failed");
+          return;
+        }
+
+        const deploymentId = result.deploymentId;
+        if (!deploymentId) {
+          setError("Launch succeeded but deployment ID was not returned");
+          return;
+        }
+
+        if (result.labelWarning) {
+          showToast(result.labelWarning, "warning");
+        }
+
+        const c = selectedComments.length;
+        const f = selectedFiles.length;
+        router.push(
+          `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}&c=${c}&f=${f}`,
+        );
+      } catch (err) {
+        console.error("[issuectl] Launch failed:", err);
+        setError(
+          err instanceof Error ? err.message : "Launch failed — check your connection",
+        );
       }
-
-      const deploymentId = result.deploymentId;
-      if (!deploymentId) {
-        setError("Launch succeeded but deployment ID was not returned");
-        return;
-      }
-
-      if (result.labelWarning) {
-        showToast(result.labelWarning, "warning");
-      }
-
-      const c = selectedComments.length;
-      const f = selectedFiles.length;
-      router.push(
-        `/launch/${owner}/${repo}/${issue.number}?deploymentId=${deploymentId}&c=${c}&f=${f}`,
-      );
     });
   }
 
   return (
-    <div className={styles.overlay} onClick={isPending ? undefined : onClose}>
+    <div className={styles.overlay} onClick={handleClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <span className={styles.title}>Launch to Claude Code</span>
-          <button className={styles.close} onClick={isPending ? undefined : onClose} disabled={isPending}>
+          <button className={styles.close} onClick={handleClose} disabled={isPending}>
             &times;
           </button>
         </div>
@@ -167,6 +197,7 @@ export function LaunchModal({
             selectedFiles={selectedFiles}
             onToggleComment={toggleComment}
             onToggleFile={toggleFile}
+            onAddFile={addFile}
           />
 
           <PreambleInput value={preamble} onChange={setPreamble} />
@@ -179,7 +210,7 @@ export function LaunchModal({
         </div>
 
         <div className={styles.footer}>
-          <Button variant="ghost" onClick={onClose} disabled={isPending}>
+          <Button variant="ghost" onClick={handleClose} disabled={isPending}>
             Cancel
           </Button>
           <Button

@@ -8,6 +8,7 @@ import {
 } from "@issuectl/core";
 import { ListCountUpdater } from "@/components/list/ListCountContext";
 import { ListContent } from "@/components/list/ListContent";
+import { DashboardError } from "@/components/ui/DashboardError";
 import {
   filterPrs,
   filterUnifiedList,
@@ -86,14 +87,7 @@ export async function DashboardContent({
     const message = err instanceof Error ? err.message : "Unknown error";
     // Don't push counts — leaving them null keeps the "·" placeholder
     // in tabs, signalling "unavailable" rather than a misleading "0".
-    return (
-      <div style={{ padding: "80px 20px 60px", textAlign: "center" }}>
-        <h3 style={{ marginBottom: 8 }}>failed to load dashboard</h3>
-        <p style={{ color: "var(--paper-ink-muted)", maxWidth: 320, margin: "0 auto" }}>
-          <em>{message}</em>
-        </p>
-      </div>
-    );
+    return <DashboardError message={message} />;
   }
 }
 

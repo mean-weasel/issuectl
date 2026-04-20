@@ -47,12 +47,44 @@ type SyncCallbacks = {
 
 export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
   const syncingRef = useRef(false);
+  const lastSyncRef = useRef(0);
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
   useEffect(() => {
+    const channel =
+      typeof BroadcastChannel !== "undefined"
+        ? new BroadcastChannel("issuectl-sync")
+        : null;
+
+    // Track whether another tab is already syncing
+    let peerSyncing = false;
+    let peerSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+    channel?.addEventListener("message", (e) => {
+      if (e.data === "sync-start") {
+        peerSyncing = true;
+        if (peerSyncTimeout) clearTimeout(peerSyncTimeout);
+        // Safety valve: if peer tab crashes mid-sync, unblock after 30s
+        peerSyncTimeout = setTimeout(() => {
+          peerSyncing = false;
+          peerSyncTimeout = null;
+        }, 30_000);
+      }
+      if (e.data === "sync-done" || e.data === "sync-error") {
+        peerSyncing = false;
+        if (peerSyncTimeout) clearTimeout(peerSyncTimeout);
+        peerSyncTimeout = null;
+        callbacksRef.current?.onRefreshQueue?.();
+      }
+    });
+
     async function handleOnline() {
       if (syncingRef.current) return;
+      if (peerSyncing) return;
+
+      // Cooldown: don't re-sync within 3 seconds of last sync
+      const elapsed = Date.now() - lastSyncRef.current;
+      if (elapsed < 3000) return;
 
       let pending: QueuedOperation[];
       try {
@@ -66,7 +98,6 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
         try {
           await refreshAction();
         } catch (err) {
-          // Optimistic refresh — server may not be fully reachable despite the online event.
           console.warn("[issuectl] Post-reconnect refresh failed:", err);
         }
         return;
@@ -75,6 +106,7 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
       const healthy = await checkHealth();
       if (!healthy) return;
 
+      channel?.postMessage("sync-start");
       syncingRef.current = true;
       try {
         const result = await replayQueue(executeOperation);
@@ -84,7 +116,6 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
           try {
             await refreshAction();
           } catch (err) {
-            // Sync succeeded but revalidation failed — cached data will be stale until next refresh.
             console.warn("[issuectl] Post-sync refresh failed:", err);
           }
         }
@@ -92,16 +123,23 @@ export function useSyncOnReconnect(callbacks?: SyncCallbacks) {
         if (result.failed > 0) {
           callbacksRef.current?.onSyncFailed?.(result.failed);
         }
+        lastSyncRef.current = Date.now();
+        channel?.postMessage("sync-done");
       } catch (err) {
         console.error("[issuectl] Queue replay failed:", err);
         callbacksRef.current?.onSyncFailed?.(0);
         callbacksRef.current?.onRefreshQueue?.();
+        channel?.postMessage("sync-error");
       } finally {
         syncingRef.current = false;
       }
     }
 
     window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      if (peerSyncTimeout) clearTimeout(peerSyncTimeout);
+      channel?.close();
+    };
   }, []);
 }

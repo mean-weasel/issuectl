@@ -45,8 +45,9 @@ export function DraftActionSheet({ draftId, draftTitle }: Props) {
         }
         setConfirmDelete(false);
         showToast("Draft deleted", "success");
-        router.push("/?section=unassigned");
-      } catch {
+        router.replace("/?section=unassigned");
+      } catch (err) {
+        console.error("[issuectl] deleteDraftAction threw:", err);
         setError("Unable to reach the server. Check your connection and try again.");
       }
     });

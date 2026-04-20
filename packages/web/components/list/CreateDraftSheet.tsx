@@ -144,27 +144,44 @@ export function CreateDraftSheet({ open, onClose }: Props) {
       }
 
       // Multiple repos — create one draft+issue per selected repo.
+      // Keys are generated upfront so each assign uses a stable key within
+      // this submission attempt (not across separate button presses).
+      const keys = selected.map(() => newIdempotencyKey());
       let created = 0;
       let lastWarning: string | undefined;
+
       for (let i = 0; i < selected.length; i++) {
         setProgress(`Creating ${i + 1} of ${selected.length}\u2026`);
         const draftResult = await createDraftAction({ title });
         if (!draftResult.success) {
-          setError(
-            `Failed on repo ${i + 1} of ${selected.length}: ${draftResult.error}`,
-          );
+          if (created > 0) {
+            showToast(
+              `Created ${created}/${selected.length} issues. Failed on repo ${i + 1}: ${draftResult.error}`,
+              "warning",
+            );
+            resetAndClose();
+            router.push("/");
+            return;
+          }
+          setError(draftResult.error);
           return;
         }
-        const idempotencyKey = newIdempotencyKey();
         const assignResult = await assignDraftAction(
           draftResult.id,
           selected[i],
-          idempotencyKey,
+          keys[i],
         );
         if (!assignResult.success) {
-          setError(
-            `Failed on repo ${i + 1} of ${selected.length}: ${assignResult.error}`,
-          );
+          if (created > 0) {
+            showToast(
+              `Created ${created}/${selected.length} issues. Failed on repo ${i + 1}: ${assignResult.error}`,
+              "warning",
+            );
+            resetAndClose();
+            router.push("/");
+            return;
+          }
+          setError(assignResult.error);
           return;
         }
         if (assignResult.cleanupWarning) {
@@ -197,14 +214,6 @@ export function CreateDraftSheet({ open, onClose }: Props) {
     onClose();
   };
 
-  const handleClose = () => {
-    setTitle("");
-    setError(null);
-    setProgress(null);
-    setSelectedRepoIds(new Set());
-    onClose();
-  };
-
   const description =
     selectedRepoIds.size === 0 ? (
       <em>a local draft without a repo — assign it later</em>
@@ -215,7 +224,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
     );
 
   return (
-    <Sheet open={open} onClose={handleClose} title="New issue" description={description}>
+    <Sheet open={open} onClose={resetAndClose} title="New issue" description={description}>
       <div className={styles.form}>
         <label htmlFor="create-draft-title" className={styles.label}>
           Title
@@ -266,7 +275,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
         {progress && <div className={styles.progress}>{progress}</div>}
         {error && <div className={styles.error}>{error}</div>}
         <div className={styles.actions}>
-          <Button variant="ghost" onClick={handleClose} disabled={saving}>
+          <Button variant="ghost" onClick={resetAndClose} disabled={saving}>
             cancel
           </Button>
           <Button

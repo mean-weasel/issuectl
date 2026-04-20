@@ -34,3 +34,10 @@
 .textarea:focus {
   border-color: var(--paper-accent);
 }
+
+.counter {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--paper-ink-muted);
+  text-align: right;
+  margin-top: 4px;
+}

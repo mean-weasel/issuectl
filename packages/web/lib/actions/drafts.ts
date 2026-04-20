@@ -113,7 +113,7 @@ export async function listReposAction(): Promise<
 export async function updateDraftAction(
   draftId: string,
   update: DraftUpdate,
-): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
+): Promise<{ success: boolean; error?: string; code?: "NOT_FOUND"; cacheStale?: true }> {
   if (typeof draftId !== "string" || draftId.length === 0) {
     return { success: false, error: "draftId must be a non-empty string" };
   }
@@ -140,6 +140,7 @@ export async function updateDraftAction(
     if (!updated) {
       return {
         success: false,
+        code: "NOT_FOUND",
         error: "Draft no longer exists — it may have been deleted.",
       };
     }

@@ -91,6 +91,32 @@
   border: 0;
 }
 
+.recoveryBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--paper-amber-light, #fff3cd);
+  border-radius: 6px;
+  font-size: var(--font-size-sm, 13px);
+  margin-top: 8px;
+}
+
+.recoveryBtn {
+  background: none;
+  border: 1px solid var(--paper-border);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-size-sm, 13px);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.recoveryBtn:hover {
+  background: var(--paper-surface-hover, rgba(0, 0, 0, 0.04));
+}
+
 @media (min-width: 768px) {
   .body {
     max-width: 820px;

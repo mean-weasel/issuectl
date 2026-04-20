@@ -14,6 +14,7 @@ import {
   formatErrorForUser,
   type WorkspaceMode,
 } from "@issuectl/core";
+import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
 import { revalidateSafely } from "@/lib/revalidate";
 
 type LaunchFormData = {
@@ -48,8 +49,6 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
   "clone",
 ];
 
-const VALID_BRANCH_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
-
 export async function launchIssue(
   formData: LaunchFormData,
 ): Promise<LaunchResponse> {
@@ -70,6 +69,27 @@ export async function launchIssue(
   }
   if (formData.selectedCommentIndices.some((i) => !Number.isInteger(i) || i < 0)) {
     return { success: false, error: "Invalid comment selection" };
+  }
+  if (formData.preamble && formData.preamble.length > MAX_PREAMBLE) {
+    return {
+      success: false,
+      error: `Preamble must be ${MAX_PREAMBLE} characters or fewer`,
+    };
+  }
+
+  for (const filePath of formData.selectedFilePaths) {
+    if (typeof filePath !== "string" || filePath.length === 0) {
+      return { success: false, error: "Invalid file path" };
+    }
+    if (filePath.includes("\0")) {
+      return { success: false, error: "File path contains invalid characters" };
+    }
+    if (filePath.startsWith("/") || filePath.includes("..")) {
+      return {
+        success: false,
+        error: "File paths must be relative to the repository and cannot contain '..'",
+      };
+    }
   }
 
   let deploymentId: number;

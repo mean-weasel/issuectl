@@ -1,5 +1,11 @@
 export const DEFAULT_BRANCH_PATTERN = "issue-{number}-{slug}";
 
+/** Must match server-side validation in launch.ts — shared to prevent drift. */
+export const VALID_BRANCH_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
+
+/** Max preamble length enforced client- and server-side. */
+export const MAX_PREAMBLE = 10000;
+
 export const REPO_COLORS = [
   "#f85149",
   "#58a6ff",

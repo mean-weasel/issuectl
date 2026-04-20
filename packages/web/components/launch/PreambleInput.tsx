@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_PREAMBLE } from "@/lib/constants";
 import styles from "./PreambleInput.module.css";
 
 type Props = {
@@ -8,6 +9,9 @@ type Props = {
 };
 
 export function PreambleInput({ value, onChange }: Props) {
+  const remaining = MAX_PREAMBLE - value.length;
+  const nearLimit = remaining < 500;
+
   return (
     <div className={styles.field}>
       <label className={styles.label}>
@@ -18,7 +22,13 @@ export function PreambleInput({ value, onChange }: Props) {
         placeholder="Additional instructions for Claude Code..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        maxLength={MAX_PREAMBLE}
       />
+      {nearLimit && (
+        <div className={styles.counter} aria-live="polite">
+          {remaining} characters remaining
+        </div>
+      )}
     </div>
   );
 }

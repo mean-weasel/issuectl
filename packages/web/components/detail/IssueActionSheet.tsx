@@ -18,6 +18,7 @@ import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { useOfflineAware } from "@/hooks/useOfflineAware";
+import { useStaleTab } from "@/hooks/useStaleTab";
 import styles from "./ActionSheet.module.css";
 import assignStyles from "../list/AssignSheet.module.css";
 
@@ -75,6 +76,8 @@ export function IssueActionSheet({
       window.history.replaceState({}, "", url.toString());
     }
   }, []); // only run on mount
+
+  useStaleTab();
 
   useEffect(() => {
     if (!launchOpen) return;
@@ -152,7 +155,7 @@ export function IssueActionSheet({
             : "Issue closed",
           "success",
         );
-        router.push("/?section=closed");
+        router.replace("/?section=closed");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
         setError("Unable to reach the server. Check your connection and try again.");
