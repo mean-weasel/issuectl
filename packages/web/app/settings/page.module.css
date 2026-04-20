@@ -29,3 +29,13 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+.versionFooter {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--paper-line);
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  text-align: center;
+}
