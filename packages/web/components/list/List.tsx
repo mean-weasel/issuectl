@@ -100,6 +100,15 @@ export function List({
     mine: mineOnly ? true : null,
   });
 
+  const tabHref = (tab: "issues" | "prs") =>
+    buildHref({
+      tab: tab === "prs" ? "prs" : undefined,
+      repo: activeRepo,
+      section: tab === "issues" ? activeSection : null,
+      sort: tab === "issues" ? activeSort : null,
+      mine: tab === "prs" && mineOnly ? true : null,
+    });
+
   const chipHref = (rk: string | null) =>
     buildHref({
       tab: activeTab,
@@ -387,6 +396,15 @@ export function List({
         showSort={!isPrTab}
         activeSort={activeSort}
         sortHref={sortHref}
+        activeTab={activeTab}
+        tabHref={tabHref}
+        activeSection={activeSection}
+        sectionHref={sectionHref}
+        sectionCounts={sectionCounts}
+        onCreateDraft={() => {
+          setFiltersOpen(false);
+          setCreateOpen(true);
+        }}
       />
 
       {!filtersOpen && (

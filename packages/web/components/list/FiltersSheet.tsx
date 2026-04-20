@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { SortMode } from "@issuectl/core";
+import type { Section, SortMode } from "@issuectl/core";
 import { Sheet } from "@/components/paper";
 import { REPO_COLORS } from "@/lib/constants";
 import { repoKey } from "@/lib/repo-key";
@@ -29,6 +29,13 @@ type Props = {
   showSort: boolean;
   activeSort: SortMode;
   sortHref: (sort: SortMode) => string;
+  // New: command sheet sections (mobile only)
+  activeTab: "issues" | "prs";
+  tabHref: (tab: "issues" | "prs") => string;
+  activeSection: Section;
+  sectionHref: (section: Section) => string;
+  sectionCounts: Record<Section, number | null> | null;
+  onCreateDraft: () => void;
 };
 
 export function FiltersSheet({
@@ -45,9 +52,65 @@ export function FiltersSheet({
   showSort,
   activeSort,
   sortHref,
+  activeTab,
+  tabHref,
+  activeSection,
+  sectionHref,
+  sectionCounts,
+  onCreateDraft,
 }: Props) {
   return (
     <Sheet open={open} onClose={onClose} title="Filters">
+      {/* ── Mobile command sections ── */}
+      <div className={styles.mobileOnly}>
+        {/* View toggle: Issues / PRs */}
+        <div className={styles.commandSection}>
+          <span className={styles.commandLabel}>view</span>
+          <div className={styles.viewToggle}>
+            <Link
+              href={tabHref("issues")}
+              className={`${styles.viewOption} ${activeTab === "issues" ? styles.viewOptionActive : ""}`}
+              onClick={onClose}
+            >
+              Issues
+            </Link>
+            <Link
+              href={tabHref("prs")}
+              className={`${styles.viewOption} ${activeTab === "prs" ? styles.viewOptionActive : ""}`}
+              onClick={onClose}
+            >
+              PRs
+            </Link>
+          </div>
+        </div>
+
+        {/* Section chips: drafts / open / running / closed (issues only) */}
+        {activeTab === "issues" && (
+          <div className={styles.commandSection}>
+            <span className={styles.commandLabel}>section</span>
+            <div className={styles.sectionChips}>
+              {(["unassigned", "open", "running", "closed"] as Section[]).map(
+                (section) => (
+                  <Link
+                    key={section}
+                    href={sectionHref(section)}
+                    className={`${styles.sectionChip} ${section === activeSection ? styles.sectionChipActive : ""}`}
+                    onClick={onClose}
+                  >
+                    {section === "unassigned" ? "drafts" : section}
+                    {sectionCounts !== null && sectionCounts[section] !== null && (
+                      <span className={styles.sectionChipCount}>
+                        {sectionCounts[section]}
+                      </span>
+                    )}
+                  </Link>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className={styles.clearBar}>
         {clearHref ? (
           <Link
@@ -142,6 +205,54 @@ export function FiltersSheet({
           })}
         </>
       )}
+
+      {/* ── Mobile action links ── */}
+      <div className={styles.mobileOnly}>
+        <div className={styles.commandDivider} />
+
+        <button
+          className={styles.commandLink}
+          onClick={() => {
+            onClose();
+            onCreateDraft();
+          }}
+        >
+          <span className={styles.commandLinkIcon}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 3v12M3 9h12" />
+            </svg>
+          </span>
+          <span className={styles.commandLinkText}>
+            Create Draft
+            <span className={styles.commandLinkDesc}>start a new issue draft</span>
+          </span>
+        </button>
+
+        <Link href="/parse" className={styles.commandLink} onClick={onClose}>
+          <span className={styles.commandLinkIcon}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 3l2 2-8 8H5v-2l8-8z" />
+            </svg>
+          </span>
+          <span className={styles.commandLinkText}>
+            Quick Create
+            <span className={styles.commandLinkDesc}>paste a GitHub URL to create an issue</span>
+          </span>
+        </Link>
+
+        <Link href="/settings" className={styles.commandLink} onClick={onClose}>
+          <span className={styles.commandLinkIcon}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="9" r="3" />
+              <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4" />
+            </svg>
+          </span>
+          <span className={styles.commandLinkText}>
+            Settings
+            <span className={styles.commandLinkDesc}>repos, tokens, preferences</span>
+          </span>
+        </Link>
+      </div>
     </Sheet>
   );
 }
