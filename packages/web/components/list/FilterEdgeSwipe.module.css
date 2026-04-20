@@ -1,8 +1,8 @@
 .zone {
   position: fixed;
   left: 50%;
-  /* Offset above Safari's bottom toolbar / home indicator so the
-     grab handle never overlaps the browser's back/forward buttons. */
+  /* Offset above the home indicator and Safari's bottom toolbar so the
+     grab handle stays above system UI and remains easily tappable. */
   bottom: env(safe-area-inset-bottom, 0px);
   transform: translateX(-50%);
   z-index: 40;
