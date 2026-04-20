@@ -144,27 +144,43 @@ export function CreateDraftSheet({ open, onClose }: Props) {
       }
 
       // Multiple repos — create one draft+issue per selected repo.
+      // Pre-generate all idempotency keys so retries reuse them.
+      const keys = selected.map(() => newIdempotencyKey());
       let created = 0;
       let lastWarning: string | undefined;
+
       for (let i = 0; i < selected.length; i++) {
         setProgress(`Creating ${i + 1} of ${selected.length}\u2026`);
         const draftResult = await createDraftAction({ title });
         if (!draftResult.success) {
-          setError(
-            `Failed on repo ${i + 1} of ${selected.length}: ${draftResult.error}`,
-          );
+          if (created > 0) {
+            showToast(
+              `Created ${created}/${selected.length} issues. Failed on repo ${i + 1}: ${draftResult.error}`,
+              "warning",
+            );
+            resetAndClose();
+            router.push("/");
+            return;
+          }
+          setError(draftResult.error);
           return;
         }
-        const idempotencyKey = newIdempotencyKey();
         const assignResult = await assignDraftAction(
           draftResult.id,
           selected[i],
-          idempotencyKey,
+          keys[i],
         );
         if (!assignResult.success) {
-          setError(
-            `Failed on repo ${i + 1} of ${selected.length}: ${assignResult.error}`,
-          );
+          if (created > 0) {
+            showToast(
+              `Created ${created}/${selected.length} issues. Failed on repo ${i + 1}: ${assignResult.error}`,
+              "warning",
+            );
+            resetAndClose();
+            router.push("/");
+            return;
+          }
+          setError(assignResult.error);
           return;
         }
         if (assignResult.cleanupWarning) {
