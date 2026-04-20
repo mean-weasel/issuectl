@@ -9,6 +9,7 @@ import type {
 } from "@issuectl/core";
 import { Sheet, Button } from "@/components/paper";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
 import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
 import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
@@ -124,7 +125,7 @@ export function IssueActionSheet({
     setConfirmClose(true);
   }
 
-  function handleCloseConfirm() {
+  function handleCloseConfirm(comment: string) {
     setError(null);
     startTransition(async () => {
       try {
@@ -143,7 +144,7 @@ export function IssueActionSheet({
             );
           }
         }
-        const result = await closeIssue(owner, repo, number);
+        const result = await closeIssue(owner, repo, number, comment || undefined);
         if (!result.success) {
           setError(result.error);
           return;
@@ -284,10 +285,8 @@ export function IssueActionSheet({
       )}
 
       {confirmClose && (
-        <ConfirmDialog
-          title="Close Issue"
-          message={`Close issue #${number}? This can be reopened later from GitHub.`}
-          confirmLabel="Close Issue"
+        <CloseIssueModal
+          issueNumber={number}
           onConfirm={handleCloseConfirm}
           onCancel={() => setConfirmClose(false)}
           isPending={isPending}
