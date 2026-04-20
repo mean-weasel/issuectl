@@ -58,6 +58,7 @@ vi.mock("../data/issues.js", () => ({
       state: "open",
       labels: [],
       user: null,
+      commentCount: 0,
       createdAt: "2026-04-12T00:00:00Z",
       updatedAt: "2026-04-12T00:00:00Z",
       closedAt: null,
@@ -82,6 +83,7 @@ vi.mock("../github/labels.js", async () => {
     ...actual,
     ensureLifecycleLabels: async () => {},
     addLabel: async () => {},
+    addLabels: async () => {},
     removeLabel: async () => {},
   };
 });

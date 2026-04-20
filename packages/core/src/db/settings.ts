@@ -5,7 +5,7 @@ const DEFAULT_SETTINGS: Setting[] = [
   { key: "branch_pattern", value: "issue-{number}-{slug}" },
   { key: "cache_ttl", value: "300" },
   { key: "worktree_dir", value: "~/.issuectl/worktrees/" },
-  { key: "claude_extra_args", value: "" },
+  { key: "claude_extra_args", value: "--dangerously-skip-permissions" },
 ];
 
 export function getSetting(

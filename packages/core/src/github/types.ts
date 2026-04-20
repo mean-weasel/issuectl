@@ -16,6 +16,7 @@ export type GitHubIssue = {
   state: "open" | "closed";
   labels: GitHubLabel[];
   user: GitHubUser | null;
+  commentCount: number;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;

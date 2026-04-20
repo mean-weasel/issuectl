@@ -14,6 +14,7 @@ function mapIssue(raw: unknown): GitHubIssue {
     state: string;
     labels: Array<{ name?: string; color?: string; description?: string | null } | string>;
     user: RawGitHubUser;
+    comments: number;
     created_at: string;
     updated_at: string;
     closed_at: string | null;
@@ -32,6 +33,7 @@ function mapIssue(raw: unknown): GitHubIssue {
         description: l.description ?? null,
       })),
     user: mapUser(r.user),
+    commentCount: r.comments ?? 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     closedAt: r.closed_at,
