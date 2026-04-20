@@ -217,24 +217,24 @@ async function expectTouchTarget(
 // ── Tests ───────────────────────────────────────────────────────────
 
 test.describe("Mobile UX regressions — touch targets (R3-R6)", () => {
-  test("dashboard inline nav links are 44px tall", async ({ page }) => {
+  test("command sheet button meets 44px touch target", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/`);
     await expectTouchTarget(
       page,
-      'nav a[href="/parse"]',
-      "inline nav Quick Create",
+      'button[aria-label="Open command sheet"]',
+      "command sheet menu button",
     );
   });
 
-  test("dashboard FAB is 44x44 and reachable", async ({ page }) => {
+  test("command sheet button is 44x44 and reachable", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/`);
-    // FAB is intentional on this app — we pin its presence + size.
+    // Command sheet button replaces the FAB on mobile viewports.
     await expectTouchTarget(
       page,
-      'button[aria-label="Create a new draft"]',
-      "create-draft FAB",
+      'button[aria-label="Open command sheet"]',
+      "command sheet button",
     );
   });
 
@@ -372,11 +372,11 @@ test.describe("Mobile UX regressions — iOS form attrs (R3, R5)", () => {
 });
 
 test.describe("Mobile UX regressions — motion and a11y (R3, R5)", () => {
-  test("FAB opens sheet with a real animation", async ({ page }) => {
+  test("command sheet opens with a real animation", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/`);
 
-    await page.click('button[aria-label="Create a new draft"]');
+    await page.click('button[aria-label="Open command sheet"]');
 
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();
@@ -404,7 +404,7 @@ test.describe("Mobile UX regressions — motion and a11y (R3, R5)", () => {
     const page = await context.newPage();
     try {
       await page.goto(`${BASE_URL}/`);
-      await page.click('button[aria-label="Create a new draft"]');
+      await page.click('button[aria-label="Open command sheet"]');
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible();
       const animation = await dialog.evaluate(
