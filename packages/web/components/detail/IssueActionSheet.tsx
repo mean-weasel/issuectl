@@ -142,7 +142,7 @@ export function IssueActionSheet({
             : "Issue closed",
           "success",
         );
-        router.push("/?section=shipped");
+        router.replace("/?section=shipped");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
         setError("Unable to reach the server. Check your connection and try again.");
