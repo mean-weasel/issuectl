@@ -80,6 +80,8 @@ export function ListContent({
     [],
   );
 
+  // Note: unlike IssueActionSheet, we don't end active sessions here.
+  // Running-row sessions are cleaned up on next app restart.
   const handleCloseConfirm = useCallback(
     (comment: string) => {
       if (!closeTarget) return;
