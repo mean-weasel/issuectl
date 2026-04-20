@@ -49,6 +49,7 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
 ];
 
 const VALID_BRANCH_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
+const MAX_PREAMBLE = 10000;
 
 export async function launchIssue(
   formData: LaunchFormData,
@@ -70,6 +71,12 @@ export async function launchIssue(
   }
   if (formData.selectedCommentIndices.some((i) => !Number.isInteger(i) || i < 0)) {
     return { success: false, error: "Invalid comment selection" };
+  }
+  if (formData.preamble && formData.preamble.length > MAX_PREAMBLE) {
+    return {
+      success: false,
+      error: `Preamble must be ${MAX_PREAMBLE} characters or fewer`,
+    };
   }
 
   let deploymentId: number;
