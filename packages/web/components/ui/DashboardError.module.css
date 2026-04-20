@@ -1,0 +1,28 @@
+.container {
+  padding: 80px 20px 60px;
+  text-align: center;
+}
+
+.title {
+  margin-bottom: 8px;
+}
+
+.message {
+  color: var(--paper-ink-muted);
+  max-width: 320px;
+  margin: 0 auto 16px;
+}
+
+.retry {
+  background: none;
+  border: 1px solid var(--paper-border);
+  border-radius: 6px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: var(--font-size-sm, 13px);
+  color: var(--paper-ink);
+}
+
+.retry:hover {
+  background: var(--paper-surface-hover, rgba(0, 0, 0, 0.04));
+}
