@@ -71,8 +71,7 @@ export function IssueActionSheet({
     if (searchParams.get("launch") === "true") {
       handleLaunchTap();
     }
-  // eslint-disable-next-line -- only run on mount
-  }, []);
+  }, []); // only run on mount
 
   useEffect(() => {
     if (!launchOpen) return;
