@@ -36,7 +36,7 @@ export default async function LaunchProgressPage({
 
   const deploymentId = idStr ? Number(idStr) : null;
   if (!deploymentId || !Number.isInteger(deploymentId) || deploymentId <= 0) {
-    notFound();
+    redirect(`/issues/${owner}/${repo}/${issueNumber}`);
   }
 
   const db = getDb();

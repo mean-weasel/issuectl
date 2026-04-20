@@ -54,12 +54,6 @@
   color: var(--paper-ink-muted);
 }
 
-.deleteBtn {
-  font-size: 11px;
-  padding: 4px 8px;
-  color: var(--paper-brick);
-}
-
 .bulkBar {
   display: flex;
   align-items: center;
@@ -75,6 +69,25 @@
 .cleanAllBtn {
   font-size: 12px;
   padding: 4px 12px;
+}
+
+.confirmInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.confirmText {
+  font-size: 12px;
+  color: var(--paper-ink-muted);
+  font-style: italic;
+}
+
+.dangerBtn {
+  font-size: 11px;
+  padding: 4px 8px;
+  color: var(--paper-brick);
 }
 
 .error {
