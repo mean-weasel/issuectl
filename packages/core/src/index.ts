@@ -78,6 +78,7 @@ export {
   clearCacheKey,
   clearCache,
   pruneStaleCache,
+  getOldestCacheAge,
 } from "./db/cache.js";
 export {
   withIdempotency,
@@ -172,12 +173,15 @@ export {
 } from "./launch/context.js";
 export { prepareWorkspace } from "./launch/workspace.js";
 export {
-  getTerminalLauncher,
-  type TerminalLauncher,
-  type TerminalLaunchOptions,
-  type TerminalSettings,
-  type SupportedTerminal,
-} from "./launch/terminal.js";
+  verifyTtyd,
+  spawnTtyd,
+  killTtyd,
+  isTtydAlive,
+  allocatePort,
+  reconcileOrphanedDeployments,
+  type SpawnTtydOptions,
+} from "./launch/ttyd.js";
+export { updateTtydInfo } from "./db/deployments.js";
 export {
   validateClaudeArgs,
   KNOWN_CLAUDE_FLAGS,

@@ -4,6 +4,7 @@ import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { initSchema } from "./schema.js";
 import { runMigrations } from "./migrations.js";
+import { reconcileOrphanedDeployments } from "../launch/ttyd.js";
 
 const DEFAULT_DB_PATH = join(homedir(), ".issuectl", "issuectl.db");
 
@@ -30,6 +31,14 @@ export function getDb(): Database.Database {
   db.pragma("foreign_keys = ON");
   initSchema(db);
   runMigrations(db);
+  try {
+    reconcileOrphanedDeployments(db);
+  } catch (err) {
+    console.error(
+      "[issuectl] Failed to reconcile orphaned deployments at startup — continuing anyway",
+      err,
+    );
+  }
   instance = db;
   return db;
 }

@@ -183,11 +183,11 @@ describe("updateSettings (batch)", () => {
   it("applies all updates in one transaction", async () => {
     const result = await updateSettings({
       branch_pattern: "main",
-      terminal_window_title: "hello",
+      cache_ttl: "600",
     });
     expect(result.success).toBe(true);
     expect(fakeDb.settings.get("branch_pattern")).toBe("main");
-    expect(fakeDb.settings.get("terminal_window_title")).toBe("hello");
+    expect(fakeDb.settings.get("cache_ttl")).toBe("600");
   });
 
   it("rejects the whole batch if any key fails validation (no partial writes)", async () => {
@@ -228,12 +228,12 @@ describe("updateSettings (batch)", () => {
 
     const result = await updateSettings({
       branch_pattern: "main",
-      terminal_window_title: "hello",
+      cache_ttl: "600",
     });
 
     expect(result.success).toBe(false);
     // Neither write should survive — the transaction rolls back the first.
     expect(fakeDb.settings.has("branch_pattern")).toBe(false);
-    expect(fakeDb.settings.has("terminal_window_title")).toBe(false);
+    expect(fakeDb.settings.has("cache_ttl")).toBe(false);
   });
 });

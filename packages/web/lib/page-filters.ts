@@ -34,9 +34,9 @@ export function filterUnifiedList(
     repoKey(item.repo) === activeRepo;
   return {
     unassigned: [],
-    in_focus: data.in_focus.filter(match),
-    in_flight: data.in_flight.filter(match),
-    shipped: data.shipped.filter(match),
+    open: data.open.filter(match),
+    running: data.running.filter(match),
+    closed: data.closed.filter(match),
   };
 }
 

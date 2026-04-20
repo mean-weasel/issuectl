@@ -78,9 +78,6 @@ function createTestDb(dbPath: string): void {
 
   const defaults: Array<[string, string]> = [
     ["branch_pattern", "issue-{number}-{slug}"],
-    ["terminal_app", "iterm2"],
-    ["terminal_window_title", "issuectl"],
-    ["terminal_tab_title_pattern", "#{number} — {title}"],
     ["cache_ttl", "300"],
     ["worktree_dir", "~/.issuectl/worktrees/"],
   ];
@@ -220,13 +217,13 @@ async function expectTouchTarget(
 // ── Tests ───────────────────────────────────────────────────────────
 
 test.describe("Mobile UX regressions — touch targets (R3-R6)", () => {
-  test("dashboard nav overflow is 44x44", async ({ page }) => {
+  test("dashboard inline nav links are 44px tall", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/`);
     await expectTouchTarget(
       page,
-      'button[aria-label="Open navigation"]',
-      "dashboard nav overflow",
+      'nav a[href="/parse"]',
+      "inline nav Quick Create",
     );
   });
 
@@ -322,8 +319,6 @@ test.describe("Mobile UX regressions — iOS form attrs (R3, R5)", () => {
     const writableInputs = [
       "sf-branch-pattern",
       "sf-cache-ttl",
-      "sf-window-title",
-      "sf-tab-title",
       "sf-claude-args",
     ];
 

@@ -22,7 +22,8 @@
   border: none;
   border-bottom: 1px solid transparent;
   outline: none;
-  padding: 0;
+  padding: 6px 0;
+  min-height: 44px;
   transition: border-color 0.15s;
 }
 

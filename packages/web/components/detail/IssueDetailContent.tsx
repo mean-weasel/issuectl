@@ -44,6 +44,7 @@ export async function IssueDetailContent({
           owner={owner}
           repo={repoName}
           issueNumber={issue.number}
+          issueTitle={issue.title}
           deployments={deployments}
         />
         <div className={styles.contentError} role="alert">
@@ -59,6 +60,7 @@ export async function IssueDetailContent({
         owner={owner}
         repo={repoName}
         issueNumber={issue.number}
+        issueTitle={issue.title}
         deployments={deployments}
       />
       <CommentList comments={comments} />

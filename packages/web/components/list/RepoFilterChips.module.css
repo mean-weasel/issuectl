@@ -40,10 +40,12 @@
   inset: -6px 0;
 }
 
-.chip:hover,
+.chip:hover {
+  background: var(--paper-bg-warm);
+}
+
 .chip:focus-visible {
   background: var(--paper-bg-warm);
-  outline: none;
 }
 
 .chipActive {

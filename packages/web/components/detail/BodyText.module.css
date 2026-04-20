@@ -58,6 +58,29 @@
   margin-bottom: 12px;
 }
 
+.body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.body th,
+.body td {
+  border: 1px solid var(--paper-line);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.body th {
+  background: var(--paper-bg-warm);
+  font-weight: 600;
+}
+
+.body tr:nth-child(even) td {
+  background: var(--paper-bg-warm);
+}
+
 .body a {
   color: var(--paper-accent);
   text-decoration: underline;

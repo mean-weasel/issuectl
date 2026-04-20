@@ -9,9 +9,6 @@ export type Repo = {
 
 export type SettingKey =
   | "branch_pattern"
-  | "terminal_app"
-  | "terminal_window_title"
-  | "terminal_tab_title_pattern"
   | "cache_ttl"
   | "worktree_dir"
   | "claude_extra_args"
@@ -45,6 +42,8 @@ export type Deployment = {
   state: DeploymentState;
   launchedAt: string;
   endedAt: string | null;
+  ttydPort: number | null;
+  ttydPid: number | null;
 };
 
 export type CacheEntry<T = unknown> = {
@@ -76,7 +75,7 @@ export type IssuePriority = {
   updatedAt: number; // unix seconds
 };
 
-export type Section = "unassigned" | "in_focus" | "in_flight" | "shipped";
+export type Section = "unassigned" | "open" | "running" | "closed";
 
 export type SortMode = "updated" | "created" | "priority";
 
@@ -110,7 +109,7 @@ export type IssueListItem = Extract<UnifiedListItem, { kind: "issue" }>;
 // future caller) from silently pushing an issue into unassigned.
 export type UnifiedList = {
   unassigned: DraftListItem[];
-  in_focus: IssueListItem[];
-  in_flight: IssueListItem[];
-  shipped: IssueListItem[];
+  open: IssueListItem[];
+  running: IssueListItem[];
+  closed: IssueListItem[];
 };

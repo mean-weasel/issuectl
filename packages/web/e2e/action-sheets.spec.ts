@@ -30,7 +30,7 @@ test.use({
 // action sheets (swipe-up → Sheet → ConfirmDialog). Specifically:
 //
 // - Draft delete navigates to /?section=unassigned
-// - Issue close navigates to /?section=shipped
+// - Issue close navigates to /?section=closed
 // - Cancelling either confirmation stays on the detail page
 //
 // These were broken in an earlier PR where router.refresh() was used
@@ -85,9 +85,6 @@ function createTestDb(dbPath: string): void {
 
     const defaults: Array<[string, string]> = [
       ["branch_pattern", "issue-{number}-{slug}"],
-      ["terminal_app", "iterm2"],
-      ["terminal_window_title", "issuectl"],
-      ["terminal_tab_title_pattern", "#{number} — {title}"],
       ["cache_ttl", "300"],
       ["worktree_dir", "~/.issuectl/worktrees/"],
     ];
@@ -380,7 +377,7 @@ test.describe("draft delete — action sheet flow", () => {
 // ── Issue close tests ─────────────────────────────────────────────────
 
 test.describe("issue close — action sheet flow", () => {
-  test("closing an issue navigates to /?section=shipped", async ({
+  test("closing an issue navigates to /?section=closed", async ({
     page,
   }) => {
     if (skipReason) test.skip(true, skipReason);
@@ -406,11 +403,11 @@ test.describe("issue close — action sheet flow", () => {
     // Confirm the close
     await confirm.getByRole("button", { name: "Close Issue" }).click();
 
-    // Should navigate to the index page with shipped section active.
+    // Should navigate to the index page with closed section active.
     // The GitHub API call takes a moment, so allow a generous timeout.
     await page.waitForURL((url) => {
       const u = new URL(url);
-      return u.pathname === "/" && u.searchParams.get("section") === "shipped";
+      return u.pathname === "/" && u.searchParams.get("section") === "closed";
     }, { timeout: 30000 });
   });
 
@@ -486,7 +483,7 @@ test.describe("draft assign — cache invalidation", () => {
     const issueMatch = page.url().match(/\/issues\/[^/]+\/[^/]+\/(\d+)/);
     const newIssueNumber = issueMatch ? Number(issueMatch[1]) : null;
 
-    // Navigate home and verify the issue appears in the "in focus" section.
+    // Navigate home and verify the issue appears in the "open" section.
     // Wait for networkidle so the Suspense streaming completes — the
     // dashboard fetches from GitHub via an async Server Component.
     await page.goto(BASE_URL);

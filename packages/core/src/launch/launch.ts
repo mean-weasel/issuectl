@@ -7,17 +7,17 @@ import {
   activateDeployment,
   deletePendingDeployment,
   hasLiveDeploymentForIssue,
+  updateTtydInfo,
 } from "../db/deployments.js";
 import { getIssueDetail } from "../data/issues.js";
-import { ensureLifecycleLabels, addLabel } from "../github/labels.js";
-import { LIFECYCLE_LABEL } from "../github/labels.js";
+import { ensureLifecycleLabels, addLabel, LIFECYCLE_LABEL } from "../github/labels.js";
 import {
   assembleContext,
   writeContextFile,
   type LaunchContext,
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
-import { getTerminalLauncher, type SupportedTerminal } from "./terminal.js";
+import { verifyTtyd, spawnTtyd, allocatePort } from "./ttyd.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -35,6 +35,7 @@ export interface LaunchResult {
   branchName: string;
   workspacePath: string;
   contextFilePath: string;
+  ttydPort: number;
   /**
    * Set when the `issuectl:deployed` label could not be applied after the
    * retry budget was exhausted. Launch continues in that case — the workspace
@@ -63,14 +64,8 @@ export async function executeLaunch(
   octokit: Octokit,
   options: LaunchOptions,
 ): Promise<LaunchResult> {
-  // 0. Build terminal launcher and verify
-  const terminalSettings = {
-    terminal: (getSetting(db, "terminal_app") ?? "ghostty") as SupportedTerminal,
-    windowTitle: getSetting(db, "terminal_window_title") ?? "issuectl",
-    tabTitlePattern: getSetting(db, "terminal_tab_title_pattern") ?? "#{number} — {title}",
-  };
-  const launcher = getTerminalLauncher(terminalSettings);
-  await launcher.verify();
+  // 0. Verify ttyd is installed
+  verifyTtyd();
 
   // 1. Fetch issue detail
   const detail = await getIssueDetail(
@@ -216,34 +211,26 @@ export async function executeLaunch(
     throw err;
   }
 
-  // 9. Open terminal
-  //
-  // claude_extra_args is validated at save time by validateClaudeArgs in the
-  // Server Action. We don't re-validate here — but we DO a cheap metachar
-  // sanity check as defense-in-depth against a tampered DB. If the stored
-  // value looks dangerous, we fall back to plain "claude" and log a warning.
+  // 9. Spawn ttyd
   const claudeCommand = buildClaudeCommand(getSetting(db, "claude_extra_args"));
   console.warn(`[issuectl] launching: ${claudeCommand}`);
+  let ttydPort: number;
   try {
-    await launcher.launch({
+    const port = await allocatePort(db);
+    const { pid } = await spawnTtyd({
+      port,
       workspacePath: workspace.path,
       contextFilePath,
-      issueNumber: options.issueNumber,
-      issueTitle: detail.issue.title,
-      owner: options.owner,
-      repo: options.repo,
       claudeCommand,
     });
+    updateTtydInfo(db, deployment.id, port, pid);
+    ttydPort = port;
   } catch (err) {
-    // Terminal launch failed — unwind the pending deployment row so the
-    // UI doesn't show a phantom active session. The workspace artifacts
-    // (branch, worktree/clone directory) stay put since they may be
-    // valuable; only the DB state is rolled back.
     try {
       deletePendingDeployment(db, deployment.id);
     } catch (rollbackErr) {
       console.error(
-        "[issuectl] Failed to roll back pending deployment after launch failure",
+        "[issuectl] Failed to roll back pending deployment after ttyd spawn failure",
         { deploymentId: deployment.id },
         rollbackErr,
       );
@@ -284,7 +271,8 @@ export async function executeLaunch(
     branchName: options.branchName,
     workspacePath: workspace.path,
     contextFilePath,
-    ...(labelWarning ? { labelWarning } : {}),
+    ttydPort,
+    labelWarning,
   };
 }
 

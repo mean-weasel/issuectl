@@ -39,9 +39,6 @@ function createTestDb(dbPath: string): void {
 
     const defaults: Array<[string, string]> = [
       ["branch_pattern", "issue-{number}-{slug}"],
-      ["terminal_app", "iterm2"],
-      ["terminal_window_title", "issuectl"],
-      ["terminal_tab_title_pattern", "#{number} — {title}"],
       ["cache_ttl", "300"],
       ["worktree_dir", "~/.issuectl/worktrees/"],
     ];
@@ -275,7 +272,7 @@ test.describe("Data freshness — filters persist on back-nav (#129)", () => {
   test("repo filter preserved when navigating back from issue detail", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
 
-    await page.goto(`${BASE_URL}/?repo=${TEST_OWNER}/${TEST_REPO}&section=in_focus`);
+    await page.goto(`${BASE_URL}/?repo=${TEST_OWNER}/${TEST_REPO}&section=open`);
     await page.waitForLoadState("networkidle");
 
     const issueLink = page.locator('a[href*="/issues/"]').first();
@@ -300,6 +297,6 @@ test.describe("Data freshness — filters persist on back-nav (#129)", () => {
 
     // URL should still have both query params
     expect(page.url()).toContain(`repo=${TEST_OWNER}/${TEST_REPO}`);
-    expect(page.url()).toContain("section=in_focus");
+    expect(page.url()).toContain("section=open");
   });
 });

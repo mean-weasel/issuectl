@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getDb, getDeploymentById } from "@issuectl/core";
 import { DetailTopBar } from "@/components/detail/DetailTopBar";
 import { LaunchProgress } from "@/components/launch/LaunchProgress";
@@ -36,13 +36,20 @@ export default async function LaunchProgressPage({
 
   const deploymentId = idStr ? Number(idStr) : null;
   if (!deploymentId || !Number.isInteger(deploymentId) || deploymentId <= 0) {
-    notFound();
+    redirect(`/issues/${owner}/${repo}/${issueNumber}`);
   }
 
   const db = getDb();
   const deployment = getDeploymentById(db, deploymentId);
   if (!deployment) {
     notFound();
+  }
+
+  // Once ttyd is spawned and the deployment is active, redirect to the
+  // issue page where the "Open Terminal" button is waiting. The terminal
+  // is embedded in the dashboard — no reason to stay on this page.
+  if (deployment.ttydPort !== null && deployment.state === "active") {
+    redirect(`/issues/${owner}/${repo}/${issueNumber}`);
   }
 
   const commentCount = parseCount(c);

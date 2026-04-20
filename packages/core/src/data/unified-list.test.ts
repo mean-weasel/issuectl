@@ -57,6 +57,8 @@ function makeDeployment(issueNumber: number, ended = false): Deployment {
     state: "active",
     launchedAt: "2026-04-01T00:00:00Z",
     endedAt: ended ? "2026-04-02T00:00:00Z" : null,
+    ttydPort: null,
+    ttydPid: null,
   };
 }
 
@@ -70,12 +72,12 @@ describe("groupIntoSections", () => {
     });
     expect(result.unassigned).toHaveLength(2);
     expect(result.unassigned.every((item) => item.kind === "draft")).toBe(true);
-    expect(result.in_focus).toEqual([]);
-    expect(result.in_flight).toEqual([]);
-    expect(result.shipped).toEqual([]);
+    expect(result.open).toEqual([]);
+    expect(result.running).toEqual([]);
+    expect(result.closed).toEqual([]);
   });
 
-  it("puts closed issues in shipped", () => {
+  it("puts closed issues in closed", () => {
     const closed = makeIssue({ number: 1, state: "closed" });
     const result = groupIntoSections({
       drafts: [],
@@ -88,11 +90,11 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    expect(result.shipped).toHaveLength(1);
-    expect(result.in_focus).toEqual([]);
+    expect(result.closed).toHaveLength(1);
+    expect(result.open).toEqual([]);
   });
 
-  it("puts open issues with an active deployment in in_flight", () => {
+  it("puts open issues with an active deployment in running", () => {
     const issue = makeIssue({ number: 2 });
     const result = groupIntoSections({
       drafts: [],
@@ -105,11 +107,11 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    expect(result.in_flight).toHaveLength(1);
-    expect(result.in_focus).toEqual([]);
+    expect(result.running).toHaveLength(1);
+    expect(result.open).toEqual([]);
   });
 
-  it("treats an issue with only ended deployments as in_focus", () => {
+  it("treats an issue with only ended deployments as open", () => {
     const issue = makeIssue({ number: 3 });
     const result = groupIntoSections({
       drafts: [],
@@ -122,11 +124,11 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    expect(result.in_focus).toHaveLength(1);
-    expect(result.in_flight).toEqual([]);
+    expect(result.open).toHaveLength(1);
+    expect(result.running).toEqual([]);
   });
 
-  it("puts open issues with no deployment in in_focus", () => {
+  it("puts open issues with no deployment in open", () => {
     const issue = makeIssue({ number: 4 });
     const result = groupIntoSections({
       drafts: [],
@@ -139,7 +141,7 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    expect(result.in_focus).toHaveLength(1);
+    expect(result.open).toHaveLength(1);
   });
 
   it("enriches issues with their priority from the repo's priority map", () => {
@@ -163,7 +165,7 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    const item = result.in_focus[0];
+    const item = result.open[0];
     if (item.kind !== "issue") throw new Error("expected issue");
     expect(item.priority).toBe("high");
   });
@@ -181,7 +183,7 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    const item = result.in_focus[0];
+    const item = result.open[0];
     if (item.kind !== "issue") throw new Error("expected issue");
     expect(item.priority).toBe("normal");
   });
@@ -207,7 +209,7 @@ describe("groupIntoSections", () => {
         },
       ],
     }, "priority");
-    const focus = result.in_focus;
+    const focus = result.open;
     expect(focus).toHaveLength(3);
     if (focus[0].kind !== "issue") throw new Error("expected issue");
     if (focus[1].kind !== "issue") throw new Error("expected issue");
@@ -236,31 +238,31 @@ describe("groupIntoSections", () => {
 
   it("item.section matches the bucket an issue lands in", () => {
     const openIssue = makeIssue({ number: 1, state: "open" });
-    const shippedIssue = makeIssue({ number: 2, state: "closed" });
-    const flightIssue = makeIssue({ number: 3, state: "open" });
+    const closedIssue = makeIssue({ number: 2, state: "closed" });
+    const runningIssue = makeIssue({ number: 3, state: "open" });
     const result = groupIntoSections({
       drafts: [],
       perRepo: [
         {
           repo,
-          issues: [openIssue, shippedIssue, flightIssue],
+          issues: [openIssue, closedIssue, runningIssue],
           deployments: [makeDeployment(3, false)],
           priorities: [],
         },
       ],
     });
 
-    for (const item of result.in_focus) {
+    for (const item of result.open) {
       if (item.kind !== "issue") throw new Error("expected issue");
-      expect(item.section).toBe("in_focus");
+      expect(item.section).toBe("open");
     }
-    for (const item of result.in_flight) {
+    for (const item of result.running) {
       if (item.kind !== "issue") throw new Error("expected issue");
-      expect(item.section).toBe("in_flight");
+      expect(item.section).toBe("running");
     }
-    for (const item of result.shipped) {
+    for (const item of result.closed) {
       if (item.kind !== "issue") throw new Error("expected issue");
-      expect(item.section).toBe("shipped");
+      expect(item.section).toBe("closed");
     }
   });
 
@@ -290,9 +292,9 @@ describe("groupIntoSections", () => {
       ],
     });
 
-    expect(result.in_focus).toHaveLength(3);
+    expect(result.open).toHaveLength(3);
     // Verify both repos are represented by looking at the item.repo.name
-    const repoNames = result.in_focus.map((item) => {
+    const repoNames = result.open.map((item) => {
       if (item.kind !== "issue") throw new Error("expected issue");
       return item.repo.name;
     });
@@ -330,7 +332,7 @@ describe("groupIntoSections", () => {
       ],
     });
 
-    for (const item of result.in_focus) {
+    for (const item of result.open) {
       if (item.kind !== "issue") throw new Error("expected issue");
       if (item.repo.name === "api") {
         expect(item.priority).toBe("normal");
@@ -340,10 +342,10 @@ describe("groupIntoSections", () => {
     }
   });
 
-  it("a closed issue with an active deployment still lands in shipped", () => {
-    // Precedence test: closed → shipped wins over active deployment → in_flight.
+  it("a closed issue with an active deployment still lands in closed", () => {
+    // Precedence test: closed → closed wins over active deployment → running.
     // Pins the branch order in groupIntoSections so a future refactor can't
-    // silently move closed-with-deployment issues into in_flight.
+    // silently move closed-with-deployment issues into running.
     const issue = makeIssue({ number: 7, state: "closed" });
     const result = groupIntoSections({
       drafts: [],
@@ -356,15 +358,15 @@ describe("groupIntoSections", () => {
         },
       ],
     });
-    expect(result.shipped).toHaveLength(1);
-    expect(result.in_flight).toHaveLength(0);
+    expect(result.closed).toHaveLength(1);
+    expect(result.running).toHaveLength(0);
   });
 
   it("handles empty input cleanly", () => {
     const result = groupIntoSections({ drafts: [], perRepo: [] });
     expect(result.unassigned).toEqual([]);
-    expect(result.in_focus).toEqual([]);
-    expect(result.in_flight).toEqual([]);
-    expect(result.shipped).toEqual([]);
+    expect(result.open).toEqual([]);
+    expect(result.running).toEqual([]);
+    expect(result.closed).toEqual([]);
   });
 });

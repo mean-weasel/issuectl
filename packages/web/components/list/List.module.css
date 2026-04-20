@@ -1,5 +1,5 @@
 .container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   /* Bottom padding clears the FAB (60px + 30px inset + 54px breathing room)
      so the last row's trailing action button clears the floating action
@@ -37,11 +37,13 @@
   vertical-align: 6px;
 }
 
+/* Hidden — primary nav is always visible inline. The hamburger button
+   and Drawer remain in the DOM but are not shown. */
 .menuBtn {
   background: transparent;
   border: none;
   color: var(--paper-ink-muted);
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   min-width: 44px;
@@ -63,12 +65,13 @@
   color: var(--paper-ink);
 }
 
-/* Desktop: inline nav links (hidden on mobile, where the drawer handles nav) */
+/* Inline nav links — visible on all viewports so primary navigation
+   is never hidden behind a hamburger. Compact on mobile, spaced on desktop. */
 .desktopNav {
-  display: none;
+  display: flex;
   align-items: baseline;
   margin-left: auto;
-  margin-right: 12px;
+  margin-right: 4px;
 }
 
 .desktopNavLink {
@@ -78,6 +81,9 @@
   color: var(--paper-ink-muted);
   cursor: pointer;
   padding: 4px 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .desktopNavLink:hover {
@@ -139,7 +145,6 @@
 .tabs {
   padding: 18px 24px 0;
   display: flex;
-  gap: 0;
   border-bottom: 1px solid var(--paper-line);
 }
 
@@ -151,6 +156,7 @@
   color: var(--paper-ink-muted);
   padding: 12px 2px 14px;
   margin-right: 26px;
+  min-width: 44px;
   position: relative;
   cursor: default;
 }
@@ -231,12 +237,8 @@
     padding: 52px 24px 12px;
   }
 
-  .menuBtn {
-    display: none;
-  }
-
   .desktopNav {
-    display: flex;
+    margin-right: 12px;
   }
 
   .desktopDate {
@@ -289,7 +291,6 @@
 
 .sectionTabs {
   display: flex;
-  gap: 0;
   padding: 0 16px;
   margin-bottom: 8px;
   overflow-x: auto;
@@ -308,8 +309,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
-  min-height: 40px;
+  padding: 12px 14px;
+  min-height: 44px;
   font-family: var(--paper-serif);
   font-size: 13px;
   color: var(--paper-ink-muted);
@@ -320,24 +321,33 @@
   flex-shrink: 0;
 }
 
-/* Extend hit area to 44px (40 + 2 + 2) for WCAG 2.5.5 compliance. */
-.sectionTab::before,
-.sectionTabActive::before {
-  content: "";
-  position: absolute;
-  inset: -2px 0;
-}
-
 .sectionTab:hover,
 .sectionTab:focus-visible {
   color: var(--paper-ink-soft);
   outline: none;
 }
 
+.sectionTab:focus-visible {
+  outline: 2px solid var(--paper-accent);
+  outline-offset: -2px;
+}
+
 .sectionTabActive {
   color: var(--paper-ink);
   font-weight: 500;
   border-bottom-color: var(--paper-ink);
+}
+
+.sectionTabRunning {
+  composes: sectionTabActive;
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+  border-radius: var(--paper-radius-sm) var(--paper-radius-sm) 0 0;
+}
+
+.sectionTabRunning .sectionTabCount {
+  color: var(--paper-bg);
+  opacity: 0.8;
 }
 
 .sectionTabCount {
@@ -354,7 +364,7 @@
 .sortToggle {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   padding: 4px 16px 10px;
 }
 
@@ -369,20 +379,16 @@
 .sortOption,
 .sortOptionActive {
   position: relative;
-  padding: 4px 10px;
+  padding: 6px 10px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   font-family: var(--paper-serif);
   font-size: 11px;
   color: var(--paper-ink-muted);
   text-decoration: none;
   white-space: nowrap;
-}
-
-.sortOption::before,
-.sortOptionActive::before {
-  content: "";
-  position: absolute;
-  inset: -4px 0;
 }
 
 .sortOption:hover {
@@ -413,10 +419,14 @@
   flex-shrink: 0;
 }
 
-.filterBtn:hover,
+.filterBtn:hover {
+  color: var(--paper-accent);
+}
+
 .filterBtn:focus-visible {
   color: var(--paper-accent);
-  outline: none;
+  outline: 2px solid var(--paper-accent);
+  outline-offset: -2px;
 }
 
 .filterBtnDot {
@@ -481,10 +491,12 @@
   inset: -6px;
 }
 
-.scopePillClear:hover,
+.scopePillClear:hover {
+  color: var(--paper-ink);
+}
+
 .scopePillClear:focus-visible {
   color: var(--paper-ink);
-  outline: none;
 }
 
 /* ── Responsive: desktop shows chip row + inline mine toggle, hides filter
@@ -521,6 +533,15 @@
 
 .tab {
   white-space: nowrap;
+}
+
+.pageStatus {
+  padding: 12px 24px;
+  text-align: center;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-faint);
 }
 
 .sentinel {

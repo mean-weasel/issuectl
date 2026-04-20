@@ -15,6 +15,7 @@ import { useListCounts } from "./ListCountContext";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
+import { CacheAge } from "@/components/ui/CacheAge";
 
 type Repo = { owner: string; name: string };
 
@@ -27,6 +28,7 @@ type Props = {
   activeRepo: string | null;
   mineOnly: boolean;
   children: ReactNode;
+  cachedAt?: number | null;
 };
 
 const SORT_MODES: SortMode[] = ["updated", "created", "priority"];
@@ -40,9 +42,9 @@ const SORT_LABEL: Record<SortMode, string> = {
 // Lowercase is intentional — matches the Paper mockup typography.
 const SECTION_LABEL: Record<Section, string> = {
   unassigned: "drafts",
-  in_focus: "in focus",
-  in_flight: "in flight",
-  shipped: "shipped",
+  open: "open",
+  running: "running",
+  closed: "closed",
 };
 
 function formatDate(d: Date): { weekday: string; short: string } {
@@ -64,6 +66,7 @@ export function List({
   activeRepo,
   mineOnly,
   children,
+  cachedAt,
 }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -77,8 +80,8 @@ export function List({
   const { weekday, short } = formatDate(new Date());
 
   const visibleSections: Section[] = activeRepo
-    ? ["in_focus", "in_flight", "shipped"]
-    : ["unassigned", "in_focus", "in_flight", "shipped"];
+    ? ["open", "running", "closed"]
+    : ["unassigned", "open", "running", "closed"];
 
   const isPrTab = activeTab === "prs";
   const hasActiveFilter = activeRepo !== null || (isPrTab && mineOnly);
@@ -140,6 +143,7 @@ export function List({
         <h1 className={styles.brand}>
           issuectl<span className={styles.dot} />
         </h1>
+        <CacheAge cachedAt={cachedAt ?? null} />
         <nav className={styles.desktopNav}>
           <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
           <span className={styles.desktopNavSep}>·</span>
@@ -239,11 +243,19 @@ export function List({
             {visibleSections.map((section) => {
               const isActive = section === activeSection;
               const count = sectionCounts?.[section] ?? null;
+              let tabClass: string;
+              if (!isActive) {
+                tabClass = styles.sectionTab;
+              } else if (section === "running") {
+                tabClass = styles.sectionTabRunning;
+              } else {
+                tabClass = styles.sectionTabActive;
+              }
               return (
                 <Link
                   key={section}
                   href={sectionHref(section)}
-                  className={isActive ? styles.sectionTabActive : styles.sectionTab}
+                  className={tabClass}
                   aria-current={isActive ? "page" : undefined}
                 >
                   {SECTION_LABEL[section]}

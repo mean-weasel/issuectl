@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type {
   GitHubIssue,
   GitHubComment,
@@ -12,10 +12,12 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
 import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
+import { endSession } from "@/lib/actions/launch";
 import { getComments } from "@/lib/actions/comments";
 import { listReposAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { useOfflineAware } from "@/hooks/useOfflineAware";
 import styles from "./ActionSheet.module.css";
 import assignStyles from "../list/AssignSheet.module.css";
 
@@ -61,6 +63,18 @@ export function IssueActionSheet({
   const [reassigning, setReassigning] = useState(false);
   const [reassignError, setReassignError] = useState<string | null>(null);
   const [reassignKey, setReassignKey] = useState<string | null>(null);
+
+  const { isOffline } = useOfflineAware();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("launch") === "true" && !hasLiveDeployment) {
+      handleLaunchTap();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("launch");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []); // only run on mount
 
   useEffect(() => {
     if (!launchOpen) return;
@@ -111,6 +125,21 @@ export function IssueActionSheet({
     setError(null);
     startTransition(async () => {
       try {
+        // End active terminal session before closing the issue
+        const liveDeployment = deployments.find((d) => d.endedAt === null);
+        if (liveDeployment) {
+          const endResult = await endSession(liveDeployment.id, owner, repo, number);
+          if (!endResult.success) {
+            console.warn(
+              "[issuectl] Failed to end session while closing issue:",
+              endResult.error,
+            );
+            showToast(
+              "Terminal session could not be stopped cleanly — it will be cleaned up on next restart.",
+              "warning",
+            );
+          }
+        }
         const result = await closeIssue(owner, repo, number);
         if (!result.success) {
           setError(result.error);
@@ -123,7 +152,7 @@ export function IssueActionSheet({
             : "Issue closed",
           "success",
         );
-        router.push("/?section=shipped");
+        router.push("/?section=closed");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
         setError("Unable to reach the server. Check your connection and try again.");
@@ -192,6 +221,21 @@ export function IssueActionSheet({
         label="Actions"
       />
 
+      {/* Desktop inline action bar — visible only on wide viewports */}
+      <div className={styles.desktopBar}>
+        {!hasLiveDeployment && (
+          <Button variant="primary" onClick={handleLaunchTap}>
+            Launch with Claude
+          </Button>
+        )}
+        <Button variant="ghost" onClick={handleReassignTap}>
+          Re-assign
+        </Button>
+        <Button variant="ghost" onClick={handleCloseTap}>
+          Close issue
+        </Button>
+      </div>
+
       <Sheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -203,16 +247,23 @@ export function IssueActionSheet({
             Launch with Claude
           </button>
         )}
-        <button className={styles.item} onClick={handleReassignTap}>
+        <button
+          className={`${styles.item} ${isOffline ? styles.disabled : ""}`}
+          onClick={isOffline ? undefined : handleReassignTap}
+          disabled={isOffline}
+        >
           <span className={styles.icon}>&harr;</span>
           Re-assign to repo
+          {isOffline && <span className={styles.offlineHint}>Requires connection</span>}
         </button>
         <button
-          className={`${styles.item} ${styles.danger}`}
-          onClick={handleCloseTap}
+          className={`${styles.item} ${styles.danger} ${isOffline ? styles.disabled : ""}`}
+          onClick={isOffline ? undefined : handleCloseTap}
+          disabled={isOffline}
         >
           <span className={styles.icon}>&bull;</span>
           Close issue
+          {isOffline && <span className={styles.offlineHint}>Requires connection</span>}
         </button>
       </Sheet>
 

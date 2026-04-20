@@ -83,6 +83,7 @@ export function ParseInput({ onParsed }: Props) {
         autoComplete="off"
         autoCapitalize="sentences"
         spellCheck={true}
+        enterKeyHint="done"
         aria-label="Issue description for Claude to parse"
         maxLength={8192}
       />

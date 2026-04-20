@@ -229,6 +229,15 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 11,
+    up(db) {
+      db.exec(`
+        ALTER TABLE deployments ADD COLUMN ttyd_port INTEGER;
+        ALTER TABLE deployments ADD COLUMN ttyd_pid INTEGER;
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

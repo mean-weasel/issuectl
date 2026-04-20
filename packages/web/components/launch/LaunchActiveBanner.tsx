@@ -1,4 +1,5 @@
 import { EndSessionButton } from "./EndSessionButton";
+import { OpenTerminalButton } from "@/components/terminal/OpenTerminalButton";
 import styles from "./LaunchActiveBanner.module.css";
 
 type Props = {
@@ -8,9 +9,11 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  issueTitle: string;
+  ttydPort: number | null;
 };
 
-export function LaunchActiveBanner({ deploymentId, branchName, endedAt, owner, repo, issueNumber }: Props) {
+export function LaunchActiveBanner({ deploymentId, branchName, endedAt, owner, repo, issueNumber, issueTitle, ttydPort }: Props) {
   if (endedAt) {
     return (
       <div className={styles.bannerEnded}>
@@ -34,6 +37,16 @@ export function LaunchActiveBanner({ deploymentId, branchName, endedAt, owner, r
           branch: {branchName}
         </div>
       </div>
+      {ttydPort !== null && (
+        <OpenTerminalButton
+          ttydPort={ttydPort}
+          deploymentId={deploymentId}
+          owner={owner}
+          repo={repo}
+          issueNumber={issueNumber}
+          issueTitle={issueTitle}
+        />
+      )}
       <EndSessionButton
         deploymentId={deploymentId}
         owner={owner}

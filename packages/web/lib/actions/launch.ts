@@ -6,6 +6,8 @@ import {
   getDeploymentById,
   executeLaunch,
   endDeployment as coreEndDeployment,
+  killTtyd,
+  isTtydAlive,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -34,9 +36,9 @@ type LaunchResponse = {
   cacheStale?: true;
   /**
    * Set when the `issuectl:deployed` label could not be applied after the
-   * retry budget. Launch still succeeded — the deployment row exists and
-   * the terminal opened — but the reconciler may not auto-advance this
-   * issue's lifecycle state.
+   * retry budget. Launch still succeeded — the deployment and ttyd process
+   * are running — but the reconciler may not auto-advance this issue's
+   * lifecycle state.
    */
   labelWarning?: string;
 };
@@ -142,7 +144,6 @@ export async function endSession(
 
   try {
     const db = getDb();
-
     const deployment = getDeploymentById(db, deploymentId);
     if (!deployment) {
       return { success: false, error: "Deployment not found" };
@@ -157,6 +158,17 @@ export async function endSession(
       return { success: false, error: "Deployment does not match the specified issue" };
     }
 
+    if (deployment.ttydPid) {
+      try {
+        killTtyd(deployment.ttydPid);
+      } catch (killErr) {
+        console.warn(
+          "[issuectl] Failed to kill ttyd process, proceeding with session end:",
+          { deploymentId, pid: deployment.ttydPid },
+          killErr,
+        );
+      }
+    }
     coreEndDeployment(db, deploymentId);
 
     // Best-effort cleanup of stale context temp files
@@ -170,4 +182,28 @@ export async function endSession(
     `/${owner}/${repo}/issues/${issueNumber}/launch`,
   );
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+export async function checkTtydAlive(
+  deploymentId: number,
+): Promise<{ alive: boolean }> {
+  try {
+    const db = getDb();
+    const deployment = getDeploymentById(db, deploymentId);
+    if (!deployment || deployment.endedAt !== null) {
+      return { alive: false };
+    }
+    if (!deployment.ttydPid) {
+      return { alive: false };
+    }
+    const alive = isTtydAlive(deployment.ttydPid);
+    if (!alive) {
+      // Process died — clean up the deployment
+      coreEndDeployment(db, deploymentId);
+    }
+    return { alive };
+  } catch (err) {
+    console.error("[issuectl] Health check failed:", err);
+    return { alive: false };
+  }
 }

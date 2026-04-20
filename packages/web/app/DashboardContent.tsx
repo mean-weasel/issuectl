@@ -56,16 +56,16 @@ export async function DashboardContent({
 
     const sectionCounts: Record<Section, number> = {
       unassigned: filteredData.unassigned.length,
-      in_focus: filteredData.in_focus.length,
-      in_flight: filteredData.in_flight.length,
-      shipped: filteredData.shipped.length,
+      open: filteredData.open.length,
+      running: filteredData.running.length,
+      closed: filteredData.closed.length,
     };
 
     const totalIssueCount =
       sectionCounts.unassigned +
-      sectionCounts.in_focus +
-      sectionCounts.in_flight +
-      sectionCounts.shipped;
+      sectionCounts.open +
+      sectionCounts.running +
+      sectionCounts.closed;
 
     return (
       <ListCountUpdater

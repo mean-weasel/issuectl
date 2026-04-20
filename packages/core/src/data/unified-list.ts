@@ -80,9 +80,9 @@ export function groupIntoSections(
   const unassigned: DraftListItem[] = sortDrafts(input.drafts)
     .map((draft) => ({ kind: "draft" as const, draft }));
 
-  const in_focus: IssueListItem[] = [];
-  const in_flight: IssueListItem[] = [];
-  const shipped: IssueListItem[] = [];
+  const open: IssueListItem[] = [];
+  const running: IssueListItem[] = [];
+  const closed: IssueListItem[] = [];
 
   for (const { repo, issues, deployments, priorities } of input.perRepo) {
     // A deployment row with ended_at IS NULL means there's a live
@@ -101,14 +101,14 @@ export function groupIntoSections(
       const priority = priorityMap.get(issue.number) ?? "normal";
 
       // Closed wins over an active deployment (a stale deployment shouldn't
-      // keep a closed issue out of shipped). See the dedicated test.
-      let section: "in_focus" | "in_flight" | "shipped";
+      // keep a closed issue out of closed). See the dedicated test.
+      let section: "open" | "running" | "closed";
       if (issue.state === "closed") {
-        section = "shipped";
+        section = "closed";
       } else if (activeLaunchSet.has(issue.number)) {
-        section = "in_flight";
+        section = "running";
       } else {
-        section = "in_focus";
+        section = "open";
       }
 
       const item: IssueListItem = {
@@ -119,9 +119,9 @@ export function groupIntoSections(
         section,
       };
 
-      if (section === "in_focus") in_focus.push(item);
-      else if (section === "in_flight") in_flight.push(item);
-      else shipped.push(item);
+      if (section === "open") open.push(item);
+      else if (section === "running") running.push(item);
+      else closed.push(item);
     }
   }
 
@@ -150,9 +150,9 @@ export function groupIntoSections(
 
   return {
     unassigned,
-    in_focus: sortIssues(in_focus),
-    in_flight: sortIssues(in_flight),
-    shipped: sortIssues(shipped),
+    open: sortIssues(open),
+    running: sortIssues(running),
+    closed: sortIssues(closed),
   };
 }
 
