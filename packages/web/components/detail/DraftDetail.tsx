@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type { Draft } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { DetailTopBar } from "./DetailTopBar";
 import { DetailMeta, MetaSeparator } from "./DetailMeta";
 import { DraftActionSheet } from "./DraftActionSheet";
-import { updateDraftAction } from "@/lib/actions/drafts";
+import { createDraftAction, updateDraftAction } from "@/lib/actions/drafts";
 import { useUnsavedWarning } from "@/hooks/useUnsavedWarning";
 import styles from "./DraftDetail.module.css";
 
@@ -23,6 +24,7 @@ function formatUnix(updatedAt: number): string {
 }
 
 export function DraftDetail({ draft }: Props) {
+  const router = useRouter();
   const [title, setTitle] = useState(draft.title);
   const [body, setBody] = useState(draft.body ?? "");
   const titleDirty = title !== draft.title;
@@ -30,6 +32,7 @@ export function DraftDetail({ draft }: Props) {
   useUnsavedWarning(titleDirty || bodyDirty);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [draftDeleted, setDraftDeleted] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function flashSaved() {
@@ -48,6 +51,9 @@ export function DraftDetail({ draft }: Props) {
     try {
       const result = await updateDraftAction(draft.id, { title: trimmed });
       if (!result.success) {
+        if (result.error?.includes("no longer exists")) {
+          setDraftDeleted(true);
+        }
         setSaveError(result.error ?? "Failed to save title");
         return;
       }
@@ -66,6 +72,9 @@ export function DraftDetail({ draft }: Props) {
     try {
       const result = await updateDraftAction(draft.id, { body });
       if (!result.success) {
+        if (result.error?.includes("no longer exists")) {
+          setDraftDeleted(true);
+        }
         setSaveError(result.error ?? "Failed to save");
         return;
       }
@@ -75,6 +84,24 @@ export function DraftDetail({ draft }: Props) {
       setSaveError(
         err instanceof Error ? err.message : "Failed to save — try again",
       );
+    }
+  };
+
+  const handleSaveAsNew = async () => {
+    setSaveError(null);
+    try {
+      const result = await createDraftAction({
+        title: title.trim() || "Untitled draft",
+        body: body || undefined,
+      });
+      if (!result.success) {
+        setSaveError(result.error);
+        return;
+      }
+      router.replace(`/drafts/${result.id}`);
+    } catch (err) {
+      console.error("[issuectl] Save as new draft failed:", err);
+      setSaveError("Failed to save as new draft");
     }
   };
 
@@ -127,6 +154,14 @@ export function DraftDetail({ draft }: Props) {
           {saveError && (
             <div className={styles.saveError} role="alert">
               {saveError}
+            </div>
+          )}
+          {draftDeleted && (
+            <div className={styles.recoveryBar}>
+              <span>This draft was deleted.</span>
+              <button className={styles.recoveryBtn} onClick={handleSaveAsNew}>
+                Save as new draft
+              </button>
             </div>
           )}
         </div>
