@@ -57,3 +57,15 @@
 .breadcrumb a:hover {
   color: var(--paper-ink);
 }
+
+.versionBadge {
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  background: var(--paper-accent-soft);
+  padding: 1px 6px;
+  border-radius: var(--paper-radius-sm);
+  margin-left: 8px;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
