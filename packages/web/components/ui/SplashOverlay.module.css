@@ -1,0 +1,54 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--paper-bg);
+  animation: fadeOut 0.5s ease-out 1s forwards;
+  pointer-events: auto;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.logoMark {
+  width: 56px;
+  height: 56px;
+  background: var(--paper-accent);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--paper-mono);
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--paper-bg);
+  letter-spacing: -1px;
+}
+
+.title {
+  font-family: var(--paper-serif);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--paper-ink);
+}
+
+.version {
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  letter-spacing: 0.5px;
+}
