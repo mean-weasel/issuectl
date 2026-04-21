@@ -72,8 +72,6 @@ export default async function SettingsPage() {
             <AuthSection />
           </Suspense>
         </section>
-
-
       </div>
     </PullToRefreshWrapper>
   );

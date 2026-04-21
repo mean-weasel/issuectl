@@ -23,6 +23,14 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
 .logoMark {
   width: 56px;
   height: 56px;

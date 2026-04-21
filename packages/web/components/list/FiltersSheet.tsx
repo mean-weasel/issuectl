@@ -274,8 +274,6 @@ export function FiltersSheet({
             <span className={styles.commandLinkDesc}>repos, tokens, preferences</span>
           </span>
         </Link>
-
-
       </div>
     </Sheet>
   );

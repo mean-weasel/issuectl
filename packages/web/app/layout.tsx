@@ -71,9 +71,9 @@ export default async function RootLayout({ children }: Props) {
       className={`${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable}`}
     >
       <body>
-        <SplashOverlay />
         {auth.authenticated ? (
           <ToastProvider>
+            <SplashOverlay />
             <OfflineIndicator />
             {children}
           </ToastProvider>
