@@ -551,13 +551,15 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
 
       await page.locator('[aria-hidden="true"]').first().click({ force: true });
       await expect(dialog).not.toBeVisible({ timeout: 5000 });
-      await page.waitForTimeout(300);
 
-      const scrollAfter = await page.evaluate(() => window.scrollY);
-      expect(
-        scrollAfter,
-        "scroll position should be restored after sheet closes",
-      ).toBe(scrollBefore);
+      // Poll until the scroll lock cleanup restores the position.
+      // The unlock runs in a React effect cleanup which may settle
+      // a frame or two after the dialog DOM disappears.
+      await page.waitForFunction(
+        (expected) => window.scrollY === expected,
+        scrollBefore,
+        { timeout: 5000 },
+      );
     });
   });
 
