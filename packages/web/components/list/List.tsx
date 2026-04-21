@@ -14,8 +14,9 @@ import { FilterEdgeSwipe } from "./FilterEdgeSwipe";
 import { useListCounts } from "./ListCountContext";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
-import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 import { CacheAge } from "@/components/ui/CacheAge";
+import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
+import { VersionBadge } from "@/components/ui/VersionBadge";
 
 type Repo = { owner: string; name: string };
 
@@ -159,9 +160,7 @@ export function List({
           <span className={styles.brandFull}>issuectl</span>
           <span className={styles.brandCompact}>ic</span>
           <span className={styles.dot} />
-          <span className={styles.versionBadge}>
-            v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
-          </span>
+          <VersionBadge className={styles.versionBadge} />
         </h1>
 
         {/* Mobile: context breadcrumb — tappable to open sheet */}

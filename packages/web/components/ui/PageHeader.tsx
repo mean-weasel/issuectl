@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { VersionBadge } from "@/components/ui/VersionBadge";
 import styles from "./PageHeader.module.css";
 
 type Props = {
@@ -14,9 +15,7 @@ export function PageHeader({ title, actions, breadcrumb }: Props) {
       <div className={styles.titleRow}>
         <h1 className={styles.title}>
           {title}
-          <span className={styles.versionBadge}>
-            v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
-          </span>
+          <VersionBadge className={styles.versionBadge} />
         </h1>
         {actions && <div className={styles.actions}>{actions}</div>}
       </div>
