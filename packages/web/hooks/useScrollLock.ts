@@ -69,10 +69,13 @@ function unlock() {
     document.removeEventListener("touchmove", preventTouchMove);
     setLockStyles(document.documentElement, null);
     setLockStyles(document.body, null);
-    // Force a synchronous reflow so the browser processes the
-    // position:fixed removal before we attempt to restore scroll.
-    void document.documentElement.offsetHeight;
-    window.scrollTo(0, savedScrollY);
+    const y = savedScrollY;
+    // Restore scroll position after the browser processes the
+    // position:fixed removal. A synchronous scrollTo can race
+    // the layout pass in headless Chromium, so we also schedule
+    // a deferred attempt via requestAnimationFrame.
+    window.scrollTo(0, y);
+    requestAnimationFrame(() => window.scrollTo(0, y));
   }
 }
 
