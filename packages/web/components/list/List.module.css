@@ -2,8 +2,8 @@
   max-width: 1200px;
   margin: 0 auto;
   /* Bottom padding provides scroll-end breathing room so the last row
-     clears the filter handle, FAB, and safe-area inset. Desktop has
-     no fixed bottom elements, so a smaller value suffices. */
+     clears the FAB and safe-area inset. Desktop has no fixed bottom
+     elements, so a smaller value suffices. */
   padding: 4px 0 80px;
   background: var(--paper-bg);
   min-height: 100dvh;
@@ -585,10 +585,9 @@
      button + scope pill. Mobile inverts. ── */
 @media (max-width: 767px) {
   .container {
-    /* Mobile: the FilterEdgeSwipe handle sits ~54px above the safe-area
-       inset (to clear Safari's toolbar). Add enough padding so the last
-       list row clears the handle gradient and is readable past the FAB. */
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    /* Mobile: enough padding so the last list row scrolls clear of the
+       FAB and Safari's bottom toolbar. */
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   }
   .desktopChipRow {
     display: none;

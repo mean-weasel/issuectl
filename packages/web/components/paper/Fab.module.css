@@ -26,16 +26,15 @@
   opacity: 0.92;
 }
 
-/* Mobile: compact FAB positioned above the FilterEdgeSwipe handle
-   (which itself sits above Safari's toolbar). Keeps a visible
-   quick-create shortcut that doesn't crowd the handle. */
+/* Mobile: compact FAB above Safari's toolbar. The gesture zone is
+   invisible, so the FAB only needs to clear the toolbar. */
 @media (max-width: 767px) {
   .fab {
     width: 52px;
     height: 52px;
     font-size: 30px;
     right: 20px;
-    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }
 

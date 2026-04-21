@@ -1,3 +1,5 @@
 port: 3847
 start: pnpm --filter @issuectl/web start
-install: pnpm install && pnpm turbo build
+install: pnpm install
+build: pnpm turbo build
+force_build: pnpm turbo build --force
