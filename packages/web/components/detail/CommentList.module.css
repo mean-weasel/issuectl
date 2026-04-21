@@ -81,11 +81,6 @@
   margin-left: auto;
 }
 
-.body {
-  font-family: var(--paper-serif);
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--paper-ink-soft);
-  white-space: pre-wrap;
-  word-wrap: break-word;
+.commentBody {
+  font-size: var(--paper-fs-md);
 }

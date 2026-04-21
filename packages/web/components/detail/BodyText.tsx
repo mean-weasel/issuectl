@@ -6,9 +6,10 @@ const REMARK_PLUGINS = [remarkGfm];
 
 type Props = {
   body: string | null | undefined;
+  className?: string;
 };
 
-export function BodyText({ body }: Props) {
+export function BodyText({ body, className }: Props) {
   if (!body || body.trim().length === 0) {
     return (
       <div className={styles.empty}>
@@ -17,7 +18,7 @@ export function BodyText({ body }: Props) {
     );
   }
   return (
-    <div className={styles.body}>
+    <div className={`${styles.body}${className ? ` ${className}` : ""}`}>
       <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>{body}</ReactMarkdown>
     </div>
   );
