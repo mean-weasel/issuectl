@@ -154,19 +154,16 @@ export function ListRow({ item, onLaunch, onClose }: Props) {
 
   // Wrap in SwipeRow for open (launch + close) and running (close only)
   if (section === "open" || section === "running") {
+    const bindClose = onClose
+      ? () => onClose(repo.owner, repo.name, issue.number)
+      : undefined;
+    const bindLaunch =
+      section === "open" && onLaunch
+        ? () => onLaunch(repo.owner, repo.name, issue.number)
+        : undefined;
+
     return (
-      <SwipeRow
-        onLaunch={
-          section === "open" && onLaunch
-            ? () => onLaunch(repo.owner, repo.name, issue.number)
-            : undefined
-        }
-        onClose={
-          onClose
-            ? () => onClose(repo.owner, repo.name, issue.number)
-            : undefined
-        }
-      >
+      <SwipeRow onLaunch={bindLaunch} onClose={bindClose}>
         {rowContent}
       </SwipeRow>
     );

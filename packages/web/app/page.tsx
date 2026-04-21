@@ -16,8 +16,6 @@ import { ListCountProvider } from "@/components/list/ListCountContext";
 import { ContentSkeleton } from "@/components/list/ContentSkeleton";
 import { DashboardContent } from "./DashboardContent";
 
-export const dynamic = "force-dynamic";
-
 type Props = {
   searchParams: Promise<{
     tab?: string;

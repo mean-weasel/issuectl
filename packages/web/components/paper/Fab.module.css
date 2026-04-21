@@ -26,15 +26,16 @@
   opacity: 0.92;
 }
 
-/* Mobile: compact FAB to avoid crowding the bottom sheet handle.
-   Keeps a visible quick-create shortcut above the command sheet. */
+/* Mobile: compact FAB positioned above the FilterEdgeSwipe handle
+   (which itself sits above Safari's toolbar). Keeps a visible
+   quick-create shortcut that doesn't crowd the handle. */
 @media (max-width: 767px) {
   .fab {
     width: 52px;
     height: 52px;
     font-size: 30px;
     right: 20px;
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
   }
 }
 
