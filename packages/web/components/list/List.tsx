@@ -159,6 +159,9 @@ export function List({
           <span className={styles.brandFull}>issuectl</span>
           <span className={styles.brandCompact}>ic</span>
           <span className={styles.dot} />
+          <span className={styles.versionBadge}>
+            v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
+          </span>
         </h1>
 
         {/* Mobile: context breadcrumb — tappable to open sheet */}
