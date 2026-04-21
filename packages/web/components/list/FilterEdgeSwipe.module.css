@@ -1,9 +1,11 @@
 .zone {
   position: fixed;
   left: 50%;
-  /* Offset above the home indicator and Safari's bottom toolbar so the
-     grab handle stays above system UI and remains easily tappable. */
-  bottom: env(safe-area-inset-bottom, 0px);
+  /* In-browser: Safari's compact bottom toolbar (~49px) sits above the
+     home-indicator safe area. Push the handle above both so it stays
+     visible and tappable. In standalone PWA mode the toolbar is gone,
+     so a lower override restores the tighter position. */
+  bottom: calc(54px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 40;
   width: 160px;
@@ -24,6 +26,12 @@
   /* Capture vertical pan gestures so upward swipes reach our handlers
      rather than scrolling the list behind. */
   touch-action: none;
+}
+
+@media (display-mode: standalone) {
+  .zone {
+    bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @media (min-width: 768px) and (hover: hover) {
