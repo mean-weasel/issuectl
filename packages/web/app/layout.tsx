@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import { AuthErrorScreen } from "@/components/auth/AuthErrorScreen";
 import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
+import { SplashOverlay } from "@/components/ui/SplashOverlay";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { getAuthStatus } from "@/lib/auth";
 import "./globals.css";
@@ -70,6 +71,7 @@ export default async function RootLayout({ children }: Props) {
       className={`${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable}`}
     >
       <body>
+        <SplashOverlay />
         {auth.authenticated ? (
           <ToastProvider>
             <OfflineIndicator />
