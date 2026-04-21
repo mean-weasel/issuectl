@@ -1,0 +1,10 @@
+.badge {
+  font-family: var(--paper-mono);
+  font-style: normal;
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  background: var(--paper-accent-soft);
+  padding: 1px 6px;
+  border-radius: var(--paper-radius-sm);
+  letter-spacing: 0.3px;
+}

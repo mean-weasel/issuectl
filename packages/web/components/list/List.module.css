@@ -37,6 +37,11 @@
   vertical-align: 6px;
 }
 
+.versionBadge {
+  margin-left: 6px;
+  vertical-align: 6px;
+}
+
 /* Mobile monogram: show "ic", hide "issuectl" */
 .brandCompact {
   display: inline;

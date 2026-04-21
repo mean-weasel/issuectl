@@ -57,3 +57,8 @@
 .breadcrumb a:hover {
   color: var(--paper-ink);
 }
+
+.versionBadge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
