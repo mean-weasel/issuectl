@@ -5,14 +5,17 @@ import styles from "./SwipeRow.module.css";
 
 const SWIPE_THRESHOLD = 60;
 
+type SwipeState = "idle" | "left" | "right";
+
 type Props = {
   children: ReactNode;
   onLaunch?: () => void;
+  onClose?: () => void;
   disabled?: boolean;
 };
 
-export function SwipeRow({ children, onLaunch, disabled }: Props) {
-  const [swiped, setSwiped] = useState(false);
+export function SwipeRow({ children, onLaunch, onClose, disabled }: Props) {
+  const [swiped, setSwiped] = useState<SwipeState>("idle");
   const startX = useRef<number | null>(null);
 
   const handleTouchStart = useCallback(
@@ -31,22 +34,27 @@ export function SwipeRow({ children, onLaunch, disabled }: Props) {
         startX.current = null;
         return;
       }
-      const delta = startX.current - touch.clientX;
-      if (delta > SWIPE_THRESHOLD) {
-        setSwiped(true);
-      } else if (delta < -SWIPE_THRESHOLD) {
-        setSwiped(false);
+      const delta = touch.clientX - startX.current;
+      if (delta > SWIPE_THRESHOLD && onClose) {
+        // Swiped right — reveal close on left
+        setSwiped("right");
+      } else if (delta < -SWIPE_THRESHOLD && onLaunch) {
+        // Swiped left — reveal launch on right
+        setSwiped("left");
+      } else if (Math.abs(delta) > SWIPE_THRESHOLD) {
+        // Swipe in a direction with no handler — dismiss
+        setSwiped("idle");
       }
       startX.current = null;
     },
-    [],
+    [onLaunch, onClose],
   );
 
   const handleTouchCancel = useCallback(() => {
     startX.current = null;
   }, []);
 
-  const close = useCallback(() => setSwiped(false), []);
+  const dismiss = useCallback(() => setSwiped("idle"), []);
 
   if (disabled) {
     return <>{children}</>;
@@ -60,19 +68,32 @@ export function SwipeRow({ children, onLaunch, disabled }: Props) {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
     >
-      <div className={styles.actions}>
-        {onLaunch && (
+      {onClose && (
+        <div className={styles.actionsLeft}>
+          <button
+            className={`${styles.actionBtn} ${styles.closeBtn}`}
+            onClick={() => {
+              dismiss();
+              onClose();
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
+      {onLaunch && (
+        <div className={styles.actionsRight}>
           <button
             className={`${styles.actionBtn} ${styles.launchBtn}`}
             onClick={() => {
-              close();
+              dismiss();
               onLaunch();
             }}
           >
             Launch
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <div className={styles.content}>{children}</div>
     </div>
   );

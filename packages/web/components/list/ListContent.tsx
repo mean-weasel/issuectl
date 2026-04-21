@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, UnifiedList } from "@issuectl/core";
 import type { PrEntry } from "@/lib/page-filters";
 import { ListSection } from "./ListSection";
 import { PrListRow } from "./PrListRow";
+import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
+import { closeIssue } from "@/lib/actions/issues";
+import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./List.module.css";
 
 type Props = {
@@ -49,6 +52,10 @@ export function ListContent({
   const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
+  const [closeTarget, setCloseTarget] = useState<{ owner: string; repo: string; number: number } | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -64,6 +71,50 @@ export function ListContent({
     },
     [router],
   );
+
+  const handleCloseRequest = useCallback(
+    (owner: string, repo: string, issueNumber: number) => {
+      setCloseError(null);
+      setCloseTarget({ owner, repo, number: issueNumber });
+    },
+    [],
+  );
+
+  // Unlike IssueActionSheet (which has access to deployments), the list
+  // view does not track live sessions — so we skip session termination
+  // and only close the GitHub issue.
+  const handleCloseConfirm = useCallback(
+    (comment: string) => {
+      if (!closeTarget) return;
+      const { owner, repo, number } = closeTarget;
+      startTransition(async () => {
+        try {
+          const result = await closeIssue(owner, repo, number, comment || undefined);
+          if (!result.success) {
+            setCloseError(result.error);
+            return;
+          }
+          setCloseTarget(null);
+          showToast(
+            result.cacheStale
+              ? "Issue closed — reload if the list looks stale"
+              : "Issue closed",
+            "success",
+          );
+          router.replace("/?section=closed");
+        } catch (err) {
+          console.error("[issuectl] Close issue from list failed:", err);
+          setCloseError("Something went wrong while closing the issue. Please try again.");
+        }
+      });
+    },
+    [closeTarget, showToast, router],
+  );
+
+  const handleCloseCancel = useCallback(() => {
+    setCloseTarget(null);
+    setCloseError(null);
+  }, []);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -83,7 +134,7 @@ export function ListContent({
     const showing = Math.min(visibleCount, total);
     return (
       <>
-        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch })}
+        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch, onClose: handleCloseRequest })}
         {total > PAGE_SIZE && (
           <div className={styles.pageStatus}>
             Showing {showing} of {total}
@@ -91,6 +142,15 @@ export function ListContent({
         )}
         {visibleCount < total && (
           <div ref={sentinelRef} className={styles.sentinel} />
+        )}
+        {closeTarget && (
+          <CloseIssueModal
+            issueNumber={closeTarget.number}
+            onConfirm={handleCloseConfirm}
+            onCancel={handleCloseCancel}
+            isPending={isPending}
+            error={closeError ?? undefined}
+          />
         )}
       </>
     );
@@ -138,11 +198,13 @@ function renderIssueSection({
   data,
   visibleCount,
   onLaunch,
+  onClose,
 }: {
   activeSection: Section;
   data: UnifiedList;
   visibleCount: number;
   onLaunch: (owner: string, repo: string, issueNumber: number) => void;
+  onClose: (owner: string, repo: string, issueNumber: number) => void;
 }) {
   const allItems = data[activeSection];
 
@@ -160,5 +222,5 @@ function renderIssueSection({
   }
 
   const items = allItems.slice(0, visibleCount);
-  return <ListSection title={null} items={items} onLaunch={onLaunch} />;
+  return <ListSection title={null} items={items} onLaunch={onLaunch} onClose={onClose} />;
 }

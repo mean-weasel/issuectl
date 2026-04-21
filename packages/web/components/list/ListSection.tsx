@@ -7,9 +7,10 @@ type Props = {
   title: ReactNode | null;
   items: UnifiedListItem[];
   onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
+  onClose?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
-export function ListSection({ title, items, onLaunch }: Props) {
+export function ListSection({ title, items, onLaunch, onClose }: Props) {
   if (items.length === 0) return null;
 
   return (
@@ -30,6 +31,7 @@ export function ListSection({ title, items, onLaunch }: Props) {
           }
           item={item}
           onLaunch={onLaunch}
+          onClose={onClose}
         />
       ))}
     </>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
-import { Checkbox, Chip, LabelChip } from "@/components/paper";
+import { Chip, LabelChip } from "@/components/paper";
 import { SyncDot } from "@/components/ui/SyncDot";
 import { SwipeRow } from "./SwipeRow";
 import styles from "./ListRow.module.css";
@@ -8,6 +8,7 @@ import styles from "./ListRow.module.css";
 type Props = {
   item: UnifiedListItem;
   onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
+  onClose?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
@@ -27,14 +28,11 @@ function formatAge(updatedAt: string | number): string {
   return `${diffDays}d`;
 }
 
-export function ListRow({ item, onLaunch }: Props) {
+export function ListRow({ item, onLaunch, onClose }: Props) {
   if (item.kind === "draft") {
     return (
       <div className={styles.item}>
         <Link href={`/drafts/${item.draft.id}`} className={styles.rowLink}>
-          <span className={styles.check}>
-            <Checkbox state="draft" />
-          </span>
           <div className={styles.title}>{item.draft.title}</div>
           <div className={styles.meta}>
             <Chip variant="dashed">no repo</Chip>
@@ -49,8 +47,6 @@ export function ListRow({ item, onLaunch }: Props) {
   }
 
   const { issue, repo, section } = item;
-  const checkState =
-    section === "closed" ? "done" : section === "running" ? "flight" : "open";
   const titleClass =
     section === "closed" ? `${styles.title} ${styles.done}` : styles.title;
 
@@ -90,9 +86,6 @@ export function ListRow({ item, onLaunch }: Props) {
         href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
         className={styles.rowLink}
       >
-        <span className={styles.check}>
-          <Checkbox state={checkState} />
-        </span>
         <div className={titleClass}>{issue.title}</div>
         <div className={styles.meta}>
           <Chip>{repo.name}</Chip>
@@ -159,10 +152,20 @@ export function ListRow({ item, onLaunch }: Props) {
     </div>
   );
 
-  if (section === "open" && onLaunch) {
+  // Wrap in SwipeRow for open (launch + close) and running (close only)
+  if (section === "open" || section === "running") {
     return (
       <SwipeRow
-        onLaunch={() => onLaunch(repo.owner, repo.name, issue.number)}
+        onLaunch={
+          section === "open" && onLaunch
+            ? () => onLaunch(repo.owner, repo.name, issue.number)
+            : undefined
+        }
+        onClose={
+          onClose
+            ? () => onClose(repo.owner, repo.name, issue.number)
+            : undefined
+        }
       >
         {rowContent}
       </SwipeRow>
