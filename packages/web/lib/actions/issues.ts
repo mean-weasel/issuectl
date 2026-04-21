@@ -144,6 +144,9 @@ export async function closeIssue(
   if (!owner || !repo || !Number.isFinite(number) || number <= 0) {
     return { success: false, error: "Valid owner, repo, and issue number are required" };
   }
+  if (comment && comment.length > MAX_BODY) {
+    return { success: false, error: `Comment must be ${MAX_BODY} characters or fewer` };
+  }
 
   try {
     const db = getDb();
@@ -153,15 +156,27 @@ export async function closeIssue(
 
     // Post closing comment first — abort if this fails so the issue
     // isn't closed without the user's intended comment.
+    let commentPosted = false;
     if (comment && comment.trim()) {
       await withAuthRetry((octokit) =>
         coreAddComment(db, octokit, owner, repo, number, comment.trim()),
       );
+      commentPosted = true;
     }
 
-    await withAuthRetry((octokit) =>
-      coreCloseIssue(octokit, owner, repo, number),
-    );
+    try {
+      await withAuthRetry((octokit) =>
+        coreCloseIssue(octokit, owner, repo, number),
+      );
+    } catch (closeErr) {
+      console.error("[issuectl] Failed to close issue (comment was posted):", closeErr);
+      return {
+        success: false,
+        error: commentPosted
+          ? "Your comment was posted, but the issue could not be closed. Try closing again without re-entering your comment."
+          : formatErrorForUser(closeErr),
+      };
+    }
     clearCacheKey(db, `issue-detail:${owner}/${repo}#${number}`);
     clearCacheKey(db, `issues:${owner}/${repo}`);
   } catch (err) {

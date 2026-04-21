@@ -159,7 +159,7 @@ export function IssueActionSheet({
         router.replace("/?section=closed");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
-        setError("Unable to reach the server. Check your connection and try again.");
+        setError("Something went wrong while closing the issue. Please try again.");
       }
     });
   }

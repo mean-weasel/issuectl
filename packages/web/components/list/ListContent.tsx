@@ -80,8 +80,9 @@ export function ListContent({
     [],
   );
 
-  // Note: unlike IssueActionSheet, we don't end active sessions here.
-  // Running-row sessions are cleaned up on next app restart.
+  // Unlike IssueActionSheet (which has access to deployments), the list
+  // view does not track live sessions — so we skip session termination
+  // and only close the GitHub issue.
   const handleCloseConfirm = useCallback(
     (comment: string) => {
       if (!closeTarget) return;
@@ -103,7 +104,7 @@ export function ListContent({
           router.replace("/?section=closed");
         } catch (err) {
           console.error("[issuectl] Close issue from list failed:", err);
-          setCloseError("Unable to reach the server. Check your connection and try again.");
+          setCloseError("Something went wrong while closing the issue. Please try again.");
         }
       });
     },

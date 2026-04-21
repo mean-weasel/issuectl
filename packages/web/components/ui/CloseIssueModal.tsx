@@ -54,6 +54,7 @@ export function CloseIssueModal({
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           disabled={isPending}
+          maxLength={65536}
           rows={3}
         />
         {error && (
