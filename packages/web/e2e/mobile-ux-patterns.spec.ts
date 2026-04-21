@@ -529,6 +529,16 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
   }) => {
     if (skipReason) test.skip(true, skipReason);
     await withMobilePage(browser, "/", async (page) => {
+      // Ensure the page is tall enough to scroll, regardless of how many
+      // issues the test DB has.  Inject a spacer if needed.
+      await page.evaluate(() => {
+        if (document.body.scrollHeight <= window.innerHeight) {
+          const spacer = document.createElement("div");
+          spacer.style.height = "2000px";
+          document.body.appendChild(spacer);
+        }
+      });
+
       // Scroll down first.
       await page.evaluate(() => window.scrollTo(0, 200));
       const scrollBefore = await page.evaluate(() => window.scrollY);
