@@ -43,6 +43,17 @@ export function Drawer({ open, onClose, title, children }: Props) {
   // Body scroll lock while the drawer is open (no exit animation, so `open` suffices).
   useScrollLock(open);
 
+  // Allow native touch scrolling inside the drawer. The scroll lock adds
+  // a blanket document-level touchmove prevention; stopPropagation keeps
+  // drawer events from reaching it so the browser scrolls natively.
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!open || !el) return;
+    const allow = (e: TouchEvent) => e.stopPropagation();
+    el.addEventListener("touchmove", allow, { passive: true });
+    return () => el.removeEventListener("touchmove", allow);
+  }, [open]);
+
   // Escape + Tab trap.
   useEffect(() => {
     if (!open) return;

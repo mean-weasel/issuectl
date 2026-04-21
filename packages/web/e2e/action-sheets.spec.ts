@@ -19,7 +19,7 @@ const TEST_REPO = "issuectl-test-repo";
 
 // FilterEdgeSwipe is hidden when both min-width >= 768px AND the pointer
 // supports hover (CSS media: hover:hover). Use a mobile viewport with
-// isMobile:true so both conditions are unmet and the handle is visible.
+// isMobile:true so both conditions are unmet and the gesture zone is active.
 test.use({
   viewport: { width: 393, height: 852 },
   isMobile: true,
@@ -323,7 +323,7 @@ test.describe("draft delete — action sheet flow", () => {
       DRAFT_TITLE,
     );
 
-    // Open the action sheet via the bottom handle
+    // Open the action sheet via the bottom gesture zone
     await page.getByRole("button", { name: /Open Actions/ }).click();
 
     // Sheet dialog opens — click the delete action
@@ -385,8 +385,8 @@ test.describe("issue close — action sheet flow", () => {
     const issueUrl = `${BASE_URL}/issues/${TEST_OWNER}/${TEST_REPO}/${closeIssueNumber}`;
     await page.goto(issueUrl);
 
-    // Verify the issue detail page rendered with the action sheet handle
-    // (only shown for open issues)
+    // Verify the issue detail page rendered with the action sheet gesture zone
+    // (only present for open issues)
     const handle = page.getByRole("button", { name: /Open Actions/ });
     await expect(handle).toBeVisible({ timeout: 15000 });
 
@@ -454,7 +454,7 @@ test.describe("draft assign — cache invalidation", () => {
       ASSIGN_DRAFT_TITLE,
     );
 
-    // Open the action sheet via the bottom handle
+    // Open the action sheet via the bottom gesture zone
     await page.getByRole("button", { name: /Open Actions/ }).click();
     const sheet = page.getByRole("dialog", { name: "draft actions" });
     await expect(sheet).toBeVisible();

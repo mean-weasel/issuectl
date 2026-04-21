@@ -1,37 +1,20 @@
 .zone {
   position: fixed;
-  left: 50%;
-  /* In-browser: Safari's compact bottom toolbar (~49px) sits above the
-     home-indicator safe area. Push the handle above both so it stays
-     visible and tappable. In standalone PWA mode the toolbar is gone,
-     so a lower override restores the tighter position. */
-  bottom: calc(54px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
+  left: 0;
+  /* Invisible gesture zone flush with the bottom of the viewport.
+     Sits just above the safe-area inset so swipe-up gestures are
+     captured before they reach Safari's toolbar. */
+  bottom: env(safe-area-inset-bottom, 0px);
   z-index: 40;
-  width: 160px;
-  min-height: 44px;
-  padding: 18px 20px 10px;
-  background: linear-gradient(
-    to top,
-    var(--paper-bg) 30%,
-    rgba(243, 236, 217, 0.85) 70%,
-    rgba(243, 236, 217, 0) 100%
-  );
+  width: 100%;
+  min-height: 20px;
+  padding: 0;
+  background: transparent;
   border: none;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  cursor: default;
   /* Capture vertical pan gestures so upward swipes reach our handlers
      rather than scrolling the list behind. */
   touch-action: none;
-}
-
-@media (display-mode: standalone) {
-  .zone {
-    bottom: env(safe-area-inset-bottom, 0px);
-  }
 }
 
 @media (min-width: 768px) and (hover: hover) {
@@ -39,12 +22,3 @@
     display: none;
   }
 }
-
-.handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--paper-ink-faint);
-  opacity: 0.55;
-}
-

@@ -47,8 +47,6 @@ export function FilterEdgeSwipe({ onTrigger, label = "Filters" }: Props) {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       aria-label={`Open ${label} — swipe up or tap`}
-    >
-      <span className={styles.handle} aria-hidden />
-    </button>
+    />
   );
 }
