@@ -19,13 +19,14 @@ export async function webCommand(options: { port: string }): Promise<void> {
   await requireAuth();
 
   const webPath = getWebPackagePath();
-  const nextBin = resolve(webPath, "node_modules", ".bin", "next");
+  const serverPath = resolve(webPath, "server.ts");
 
   log.info(`Starting dashboard on http://localhost:${port}`);
 
-  const child = spawn(nextBin, ["dev", "--turbopack", "--port", port], {
+  const child = spawn("node", ["--import", "tsx", serverPath, "--dev"], {
     cwd: webPath,
     stdio: "inherit",
+    env: { ...process.env, PORT: port },
   });
 
   // Auto-open browser after a short delay (macOS only for v1)
