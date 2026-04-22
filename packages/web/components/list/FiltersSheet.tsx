@@ -237,11 +237,9 @@ export function FiltersSheet({
 
         <Link href="/?section=open" className={styles.commandLink} onClick={onClose}>
           <span className={`${styles.commandLinkIcon} ${styles.claudeIcon}`}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 14l2-2M5 12l4-8M9 4l4 8M13 12l2 2" />
-              <circle cx="9" cy="4" r="1.5" fill="currentColor" stroke="none" />
-              <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
-              <circle cx="13" cy="12" r="1" fill="currentColor" stroke="none" />
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M8 2Q8.7 7 15 8Q8.7 9 8 15Q7.3 9 1 8Q7.3 7 8 2Z" fill="currentColor" />
+              <path d="M14 2Q14.3 4.5 17 5Q14.3 5.3 14 8Q13.7 5.3 11 5Q13.7 4.7 14 2Z" fill="currentColor" opacity="0.5" />
             </svg>
           </span>
           <span className={styles.commandLinkText}>

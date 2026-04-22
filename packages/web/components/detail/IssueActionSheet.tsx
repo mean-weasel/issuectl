@@ -247,7 +247,12 @@ export function IssueActionSheet({
       >
         {!hasLiveDeployment && (
           <button className={styles.item} onClick={handleLaunchTap}>
-            <span className={styles.icon}>&#x25B6;</span>
+            <span className={styles.icon}>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path d="M8 2Q8.7 7 15 8Q8.7 9 8 15Q7.3 9 1 8Q7.3 7 8 2Z" fill="currentColor" />
+                <path d="M14 2Q14.3 4.5 17 5Q14.3 5.3 14 8Q13.7 5.3 11 5Q13.7 4.7 14 2Z" fill="currentColor" opacity="0.5" />
+              </svg>
+            </span>
             Launch with Claude
           </button>
         )}
