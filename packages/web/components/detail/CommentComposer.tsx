@@ -18,9 +18,10 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  onCommentPosted?: (body: string) => void;
 };
 
-export function CommentComposer({ owner, repo, issueNumber }: Props) {
+export function CommentComposer({ owner, repo, issueNumber, onCommentPosted }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
   const { body, setBody, clear: clearDraft } = useCommentDraft(owner, repo, issueNumber);
@@ -86,7 +87,11 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
         return;
       }
 
-      // succeeded
+      // succeeded — notify parent outside try so a callback bug
+      // doesn't produce a misleading "Failed to post comment" error
+      try { onCommentPosted?.(body); } catch (e) {
+        console.error("[issuectl] onCommentPosted callback failed:", e);
+      }
       clearDraft();
       router.refresh();
       const data = result.data as { cacheStale?: boolean };

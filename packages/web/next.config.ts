@@ -39,15 +39,13 @@ const appVersion = resolveVersion();
 
 const nextConfig: NextConfig = {
   experimental: {
-    // Next.js 15 defaults the client Router Cache for dynamic pages to
-    // 0 seconds, so every back-navigation re-renders the page on the
-    // server. Raising this to 30 seconds lets the client reuse the
-    // cached RSC payload when navigating back from an issue detail to
-    // the list, making back-nav feel instant. Data freshness is still
-    // handled by the core layer's stale-while-revalidate cache, and
-    // users can pull-to-refresh to force a reload.
+    // Keep Next.js 15's default of 0 seconds for the client Router
+    // Cache on dynamic pages. This ensures mutations (create issue,
+    // add comment, close issue) are immediately visible when
+    // navigating back to the list. The Suspense skeleton provides
+    // perceived performance during the server re-render.
     staleTimes: {
-      dynamic: 30,
+      dynamic: 0,
     },
   },
   env: {

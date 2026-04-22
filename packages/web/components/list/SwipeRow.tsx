@@ -56,6 +56,16 @@ export function SwipeRow({ children, onLaunch, onClose, disabled }: Props) {
 
   const dismiss = useCallback(() => setSwiped("idle"), []);
 
+  const handleContentClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (swiped === "idle") return;
+      e.preventDefault();
+      e.stopPropagation();
+      dismiss();
+    },
+    [swiped, dismiss],
+  );
+
   if (disabled) {
     return <>{children}</>;
   }
@@ -94,7 +104,9 @@ export function SwipeRow({ children, onLaunch, onClose, disabled }: Props) {
           </button>
         </div>
       )}
-      <div className={styles.content}>{children}</div>
+      <div className={styles.content} onClick={handleContentClick}>
+        {children}
+      </div>
     </div>
   );
 }

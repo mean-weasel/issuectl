@@ -9,7 +9,7 @@ import {
   MetaSeparator,
   MetaNum,
 } from "./DetailMeta";
-import { LightboxBodyText } from "./LightboxBodyText";
+import { EditableBody } from "./EditableBody";
 import { PriorityPicker } from "./PriorityPicker";
 import { IssueActionSheet } from "./IssueActionSheet";
 import styles from "./IssueDetail.module.css";
@@ -92,7 +92,12 @@ export function IssueDetail({
             hasLiveDeployment={hasLiveDeployment}
           />
         )}
-        <LightboxBodyText body={issue.body} />
+        <EditableBody
+          owner={owner}
+          repo={repoName}
+          issueNumber={issue.number}
+          initialBody={issue.body}
+        />
         {children}
       </div>
     </div>

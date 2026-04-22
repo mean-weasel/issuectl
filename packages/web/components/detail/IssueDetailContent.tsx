@@ -1,8 +1,7 @@
 import { getDb, getOctokit, getIssueContent } from "@issuectl/core";
 import type { Deployment, GitHubIssue } from "@issuectl/core";
 import { LaunchCard } from "./LaunchCard";
-import { CommentList } from "./CommentList";
-import { CommentComposer } from "./CommentComposer";
+import { CommentSection } from "./CommentSection";
 import styles from "./IssueDetail.module.css";
 
 type Props = {
@@ -14,8 +13,9 @@ type Props = {
 
 /**
  * Streaming content section: calls getIssueContent to fetch comments,
- * then renders the LaunchCard (active deployment banner only), the
- * comment list, and the comment composer. Wrapped in Suspense by the page.
+ * then renders the LaunchCard (active deployment banner) and the
+ * CommentSection (comment list + composer with optimistic updates).
+ * Wrapped in Suspense by the page.
  *
  * Handles errors inline so a transient failure in getIssueContent
  * shows a degraded state instead of tearing down the whole page via the
@@ -63,8 +63,8 @@ export async function IssueDetailContent({
         issueTitle={issue.title}
         deployments={deployments}
       />
-      <CommentList comments={comments} />
-      <CommentComposer
+      <CommentSection
+        initialComments={comments}
         owner={owner}
         repo={repoName}
         issueNumber={issue.number}
