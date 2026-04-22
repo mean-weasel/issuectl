@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -76,18 +77,45 @@ type LightboxProps = {
 };
 
 function ImageLightbox({ images, index, onClose, onPrev, onNext }: LightboxProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    // Focus the dialog container
+    dialogRef.current?.focus();
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "ArrowRight") onNext();
+
+      // Trap Tab within the dialog
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
+
     const prevOverflow = document.body.style.overflow;
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus();
     };
   }, [onClose, onPrev, onNext]);
 
@@ -95,7 +123,15 @@ function ImageLightbox({ images, index, onClose, onPrev, onNext }: LightboxProps
   const total = images.length;
 
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div
+      ref={dialogRef}
+      tabIndex={-1}
+      className={styles.backdrop}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
+    >
       <button className={styles.close} onClick={onClose} aria-label="Close">
         &times;
       </button>
