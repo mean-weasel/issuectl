@@ -59,6 +59,47 @@
   color: var(--paper-ink-faint);
 }
 
+.textareaWrap {
+  position: relative;
+}
+
+.textareaDragging {
+  border-color: var(--paper-accent);
+  border-style: dashed;
+  background: var(--paper-accent-soft);
+}
+
+.attachBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--paper-ink-faint);
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-sm);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.attachBtn:hover:not(:disabled) {
+  color: var(--paper-ink-soft);
+}
+
+.attachBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 /* On mobile hide the keyboard hint (touch doesn't have ⌘) */
 @media (max-width: 767px) {
   .hint {

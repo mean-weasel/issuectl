@@ -8,6 +8,7 @@ import { createIssue } from "@/lib/actions/issues";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { isLifecycleLabel } from "@/lib/labels";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import type { RepoOption } from "@/lib/types";
 import styles from "./NewIssuePage.module.css";
 
@@ -47,6 +48,24 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
   const [body, setBody] = useState("");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    uploading,
+    dragging,
+    fileInputRef,
+    handleDragEnter,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handlePaste,
+    openFilePicker,
+    handleFileSelect,
+  } = useImageUpload({
+    setBody,
+    owner: selectedRepo.owner,
+    repo: selectedRepo.repo,
+    onError: (msg) => showToast(msg, "error"),
+  });
 
   const repoKey = `${selectedRepo.owner}/${selectedRepo.repo}`;
   const availableLabels = useMemo(() => {
@@ -106,7 +125,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
     });
   }
 
-  const canSubmit = title.trim().length > 0 && !isPending;
+  const canSubmit = title.trim().length > 0 && !isPending && !uploading;
 
   return (
     <div className={styles.container}>
@@ -210,21 +229,52 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
           <label htmlFor="new-issue-body" className={styles.fieldLabel}>
             Description <span className={styles.fieldHint}>(markdown)</span>
           </label>
-          <textarea
-            id="new-issue-body"
-            className={styles.textarea}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Describe the issue..."
-            disabled={isPending}
-            maxLength={65536}
-            rows={4}
-            autoComplete="off"
-            autoCapitalize="sentences"
-            autoCorrect="on"
-            spellCheck
-            enterKeyHint="enter"
-          />
+          <div className={`${styles.textareaWrap} ${dragging ? styles.textareaDragging : ""}`}>
+            <textarea
+              id="new-issue-body"
+              className={styles.textarea}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onPaste={handlePaste}
+              placeholder="Describe the issue..."
+              disabled={isPending}
+              maxLength={65536}
+              rows={4}
+              autoComplete="off"
+              autoCapitalize="sentences"
+              autoCorrect="on"
+              spellCheck
+              enterKeyHint="enter"
+            />
+            <div className={styles.attachFooter}>
+              <button
+                type="button"
+                className={styles.attachBtn}
+                onClick={openFilePicker}
+                disabled={isPending || uploading}
+                aria-label="Attach image"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3M11 5l-3-3-3 3M8 2v9" />
+                </svg>
+                {uploading ? "uploading…" : "attach image"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                multiple
+                onChange={handleFileSelect}
+                className={styles.hiddenInput}
+                tabIndex={-1}
+              />
+              <span className={styles.attachHint}>drop or paste images</span>
+            </div>
+          </div>
         </div>
 
         {availableLabels.length > 0 && (

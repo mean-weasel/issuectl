@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useCommentDraft } from "@/hooks/useCommentDraft";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -27,6 +28,23 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
   const [syncVisible, setSyncVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const syncStartRef = useRef(0);
+  const {
+    uploading,
+    dragging,
+    fileInputRef,
+    handleDragEnter,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handlePaste,
+    openFilePicker,
+    handleFileSelect,
+  } = useImageUpload({
+    setBody,
+    owner,
+    repo,
+    onError: (msg) => showToast(msg, "error"),
+  });
 
   // Keep the syncing dot visible for at least one full pulse cycle (1.2s
   // animation in SyncDot.module.css). The 1500ms buffer prevents mid-fade
@@ -96,30 +114,58 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
   return (
     <div className={styles.composer}>
       <div className={styles.label}>add a comment</div>
-      <textarea
-        className={styles.textarea}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="write a comment…"
-        rows={3}
-        disabled={sending}
-        aria-label="Comment body"
-        maxLength={65536}
-        autoComplete="off"
-        autoCapitalize="sentences"
-        spellCheck={true}
-        enterKeyHint="send"
-      />
+      <div className={`${styles.textareaWrap} ${dragging ? styles.textareaDragging : ""}`}>
+        <textarea
+          className={styles.textarea}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onPaste={handlePaste}
+          placeholder="write a comment…"
+          rows={3}
+          disabled={sending}
+          aria-label="Comment body"
+          maxLength={65536}
+          autoComplete="off"
+          autoCapitalize="sentences"
+          spellCheck={true}
+          enterKeyHint="send"
+        />
+      </div>
       {error && <div className={styles.error}>{error}</div>}
       <div className={styles.footer}>
+        <button
+          type="button"
+          className={styles.attachBtn}
+          onClick={openFilePicker}
+          disabled={sending || uploading}
+          aria-label="Attach image"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3M11 5l-3-3-3 3M8 2v9" />
+          </svg>
+          {uploading ? "uploading…" : "attach"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          multiple
+          onChange={handleFileSelect}
+          className={styles.hiddenInput}
+          tabIndex={-1}
+        />
         <span className={styles.hint}>⌘↩ to send</span>
         {syncVisible && <SyncDot status="syncing" label="syncing comment" />}
         <Button
           variant="primary"
           size="sm"
           onClick={handleSubmit}
-          disabled={sending || body.trim().length === 0}
+          disabled={sending || uploading || body.trim().length === 0}
         >
           {sending ? "sending…" : "comment"}
         </Button>

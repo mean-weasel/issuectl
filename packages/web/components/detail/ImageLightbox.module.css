@@ -1,0 +1,87 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  cursor: pointer;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 1;
+}
+
+.close:hover {
+  color: white;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--paper-radius-md);
+  cursor: default;
+}
+
+.navPrev,
+.navNext {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 48px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 16px;
+  z-index: 1;
+}
+
+.navPrev:hover,
+.navNext:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.navPrev {
+  left: 8px;
+}
+
+.navNext {
+  right: 8px;
+}
+
+.counter {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-sm);
+}
+
+@media (max-width: 767px) {
+  .backdrop {
+    padding: 20px;
+  }
+
+  .navPrev,
+  .navNext {
+    font-size: 36px;
+    padding: 12px;
+  }
+}

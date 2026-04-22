@@ -218,6 +218,70 @@
   border-color: var(--paper-accent);
 }
 
+.textareaWrap {
+  position: relative;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  overflow: hidden;
+}
+
+.textareaWrap .textarea {
+  border: none;
+  border-radius: 0;
+}
+
+.textareaDragging {
+  border-color: var(--paper-accent) !important;
+  border-style: dashed !important;
+}
+
+.attachFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--paper-line-soft);
+  background: var(--paper-bg-warm);
+}
+
+.attachBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--paper-ink-faint);
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-sm);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.attachBtn:hover:not(:disabled) {
+  color: var(--paper-ink-soft);
+}
+
+.attachBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attachHint {
+  margin-left: auto;
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-faint);
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 .textarea {
   width: 100%;
   min-height: 140px;

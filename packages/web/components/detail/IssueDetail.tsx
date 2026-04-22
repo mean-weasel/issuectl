@@ -9,7 +9,7 @@ import {
   MetaSeparator,
   MetaNum,
 } from "./DetailMeta";
-import { BodyText } from "./BodyText";
+import { LightboxBodyText } from "./LightboxBodyText";
 import { PriorityPicker } from "./PriorityPicker";
 import { IssueActionSheet } from "./IssueActionSheet";
 import styles from "./IssueDetail.module.css";
@@ -45,7 +45,7 @@ export function IssueDetail({
   const hasLiveDeployment = deployments.some((d) => d.endedAt === null);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-lightbox-root>
       <DetailTopBar
         backHref="/"
         crumb={
@@ -92,7 +92,7 @@ export function IssueDetail({
             hasLiveDeployment={hasLiveDeployment}
           />
         )}
-        <BodyText body={issue.body} />
+        <LightboxBodyText body={issue.body} />
         {children}
       </div>
     </div>

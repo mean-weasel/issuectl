@@ -10,6 +10,7 @@ import {
 } from "@issuectl/core";
 import { IssueDetail } from "@/components/detail/IssueDetail";
 import { IssueDetailContent } from "@/components/detail/IssueDetailContent";
+import { LightboxProvider } from "@/components/detail/ImageLightbox";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 import { refreshIssueAction } from "@/lib/actions/refresh";
 import styles from "./loading.module.css";
@@ -77,27 +78,29 @@ export default async function IssueDetailPage({
     );
 
     return (
-      <PullToRefreshWrapper action={boundRefresh}>
-        <IssueDetail
-          owner={owner}
-          repoName={repo}
-          repoId={repoId}
-          currentPriority={currentPriority}
-          issue={issue}
-          repoLocalPath={repoRecord?.localPath ?? null}
-          deployments={deployments}
-          referencedFiles={referencedFiles}
-        >
-          <Suspense fallback={<ContentSkeleton />}>
-            <IssueDetailContent
-              owner={owner}
-              repoName={repo}
-              issue={issue}
-              deployments={deployments}
-            />
-          </Suspense>
-        </IssueDetail>
-      </PullToRefreshWrapper>
+      <LightboxProvider>
+        <PullToRefreshWrapper action={boundRefresh}>
+          <IssueDetail
+            owner={owner}
+            repoName={repo}
+            repoId={repoId}
+            currentPriority={currentPriority}
+            issue={issue}
+            repoLocalPath={repoRecord?.localPath ?? null}
+            deployments={deployments}
+            referencedFiles={referencedFiles}
+          >
+            <Suspense fallback={<ContentSkeleton />}>
+              <IssueDetailContent
+                owner={owner}
+                repoName={repo}
+                issue={issue}
+                deployments={deployments}
+              />
+            </Suspense>
+          </IssueDetail>
+        </PullToRefreshWrapper>
+      </LightboxProvider>
     );
   } catch (err) {
     const status = err !== null && err !== undefined && typeof err === "object" && "status" in err
