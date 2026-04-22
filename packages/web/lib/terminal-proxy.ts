@@ -69,7 +69,10 @@ export function handleUpgrade(
   }
 
   wss.handleUpgrade(req, socket, head, (clientWs) => {
-    const upstream = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+    // Forward the subprotocol (ttyd requires "tty") so the upstream
+    // handshake succeeds and the terminal session initializes.
+    const protocols = req.headers["sec-websocket-protocol"]?.split(",").map((s) => s.trim());
+    const upstream = new WebSocket(`ws://127.0.0.1:${port}/ws`, protocols);
 
     // Buffer client messages that arrive before upstream is ready.
     // ttyd's client-side JS sends the handshake (token + terminal size)
