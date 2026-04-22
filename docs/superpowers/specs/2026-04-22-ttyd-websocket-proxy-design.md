@@ -99,17 +99,16 @@ Responses are streamed, not buffered.
 
 ## Section 6: ttyd Spawn Flag Changes
 
-**Before:** `-W -i 0.0.0.0 -O -m 1 -p {port} -q`
-**After:** `-W -i 127.0.0.1 -m 1 -p {port} -q`
+**Before:** `-W -p {port} -q`
+**After:** `-W -i 127.0.0.1 -p {port} -q`
 
 | Change | Reason |
 |---|---|
-| Remove `-O` | Proxy is the security boundary; origin checking is redundant and spoofable |
-| Bind `127.0.0.1` instead of `0.0.0.0` | Only the local proxy connects; no external interface exposure needed |
+| Add `-i 127.0.0.1` | Only the local proxy connects; binding to loopback prevents direct external access to ttyd |
 
-Unchanged: `-W` (WebSocket only), `-m 1` (max 1 client), `-p {port}`, `-q` (quiet).
+Unchanged: `-W` (write mode), `-p {port}`, `-q` (quiet).
 
-Binding to loopback is stronger than `-O` — it's enforced by the OS network stack, not a browser convention.
+Binding to loopback is enforced by the OS network stack — stronger than any application-level origin check.
 
 ## Section 7: Error Handling and Edge Cases
 
