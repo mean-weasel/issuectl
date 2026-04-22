@@ -2,7 +2,18 @@
 
 import { useCallback, useRef, useState } from "react";
 import { uploadImage } from "@/lib/actions/uploads";
-import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "@issuectl/core";
+
+// Client-side validation constants — must match core/github/uploads.ts.
+// Cannot import from @issuectl/core in a "use client" file because core
+// re-exports Node-only modules (better-sqlite3, child_process).
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+]);
+
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 type UseImageUploadOptions = {
   /** Setter for the textarea value */
