@@ -30,6 +30,13 @@ const DISMISS_DRAG_PX = 100;
 const FLICK_VELOCITY_PX_PER_MS = 0.5;
 const FLICK_MIN_DRAG_PX = 40;
 
+// Rubber-band + snap-back animation tuning.
+// Higher RUBBER_BAND_C = looser feel; lower = stiffer.
+const RUBBER_BAND_C = 200;
+const SNAP_BACK_MS = 350;
+const SNAP_SPRING = `transform ${SNAP_BACK_MS / 1000}s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+const SNAP_SCRIM = `opacity ${SNAP_BACK_MS / 1000}s ease-out`;
+
 const EXIT_DURATION_MS = 220;
 
 export function Sheet({ open, onClose, title, description, children }: Props) {
@@ -37,6 +44,18 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const isDesktopRef = useRef(false);
+  const isSnappingRef = useRef(false);
+  const snapTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  function clearSnapTimer() {
+    if (snapTimerRef.current !== undefined) {
+      clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = undefined;
+    }
+    isSnappingRef.current = false;
+  }
 
   // Stable ref for onClose so native handlers always see the latest callback.
   const onCloseRef = useRef(onClose);
@@ -96,8 +115,9 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
   // chain overscroll to the page. Scrolling is driven manually via
   // el.scrollTop. When the sheet is at scrollTop === 0 and the user
   // drags down, we transition into "dismiss mode" — the sheet slides
-  // down following the finger and dismisses on release if the threshold
-  // is met.
+  // down following the finger (with rubber-band resistance) and dismisses
+  // on release if the threshold is met. If the drag falls short, the
+  // sheet spring-animates back to rest.
   useEffect(() => {
     const el = dialogRef.current;
     if (!visible || !el) return;
@@ -109,6 +129,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 0) return;
+      clearSnapTimer();
       startTime = Date.now();
       lastY = e.touches[0].clientY;
       mode = "idle";
@@ -136,7 +157,10 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
 
       if (mode === "dismiss") {
         accumulatedDragY = Math.max(0, accumulatedDragY + moveDelta);
-        setDragY(accumulatedDragY);
+        const visual =
+          (accumulatedDragY * RUBBER_BAND_C) /
+          (accumulatedDragY + RUBBER_BAND_C);
+        setDragY(visual);
       } else {
         // Scroll mode — drive scrollTop manually.
         const { scrollTop, scrollHeight, clientHeight } = el;
@@ -154,21 +178,29 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     };
 
     const handleTouchEnd = () => {
-      if (mode === "dismiss" && accumulatedDragY > 0) {
-        const elapsed = Math.max(1, Date.now() - startTime);
-        const velocity = accumulatedDragY / elapsed;
-        const shouldDismiss =
-          accumulatedDragY > DISMISS_DRAG_PX ||
-          (accumulatedDragY > FLICK_MIN_DRAG_PX &&
-            velocity > FLICK_VELOCITY_PX_PER_MS);
-        if (shouldDismiss) {
-          onCloseRef.current();
-        } else {
-          setDragY(0);
+      try {
+        if (mode === "dismiss" && accumulatedDragY > 0) {
+          const elapsed = Math.max(1, Date.now() - startTime);
+          const velocity = accumulatedDragY / elapsed;
+          const shouldDismiss =
+            accumulatedDragY > DISMISS_DRAG_PX ||
+            (accumulatedDragY > FLICK_MIN_DRAG_PX &&
+              velocity > FLICK_VELOCITY_PX_PER_MS);
+          if (shouldDismiss) {
+            onCloseRef.current();
+          } else {
+            isSnappingRef.current = true;
+            setDragY(0);
+            snapTimerRef.current = setTimeout(() => {
+              isSnappingRef.current = false;
+              snapTimerRef.current = undefined;
+            }, SNAP_BACK_MS);
+          }
         }
+      } finally {
+        mode = "idle";
+        accumulatedDragY = 0;
       }
-      mode = "idle";
-      accumulatedDragY = 0;
     };
 
     el.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -180,6 +212,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
       el.removeEventListener("touchcancel", handleTouchEnd);
+      clearSnapTimer();
     };
   }, [visible]);
 
@@ -212,31 +245,50 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  // Reset drag state when the sheet closes so a stale dragY doesn't leak
-  // into the next open.
+  // Reset drag and snap state when the sheet closes so stale values don't
+  // leak into the next open.
   useEffect(() => {
     if (!open) {
       setDragY(0);
+      clearSnapTimer();
     }
   }, [open]);
 
   if (!visible) return null;
 
-  // Preserve the existing desktop centered transform by composing the two.
-  // On mobile the sheet is edge-aligned so only translateY matters.
-  const sheetTransform =
+  // On desktop the sheet is centered with translate(-50%), so drag/snap
+  // styles must preserve that X offset. On mobile the sheet is edge-aligned
+  // so only translateY matters.
+  //
+  // Three visual states:
+  //   1. dragY > 0               → following finger, no transition
+  //   2. isSnappingRef.current   → spring-animating back to rest
+  //   3. neither                 → at rest, no inline style
+  //
+  // Note: state 2 works because setDragY(0) triggers the re-render that
+  // reads isSnappingRef.current — the ref must be set before setDragY.
+  const sheetStyle: CSSProperties | undefined =
     dragY > 0
-      ? isDesktopRef.current
-        ? `translate(-50%, ${dragY}px)`
-        : `translate3d(0, ${dragY}px, 0)`
-      : undefined;
-  const sheetStyle: CSSProperties | undefined = sheetTransform
-    ? { transform: sheetTransform, transition: "none" }
-    : undefined;
+      ? {
+          transform: isDesktopRef.current
+            ? `translate(-50%, ${dragY}px)`
+            : `translate3d(0, ${dragY}px, 0)`,
+          transition: "none",
+        }
+      : isSnappingRef.current
+        ? {
+            transform: isDesktopRef.current
+              ? "translate(-50%, 0)"
+              : "translate3d(0, 0, 0)",
+            transition: SNAP_SPRING,
+          }
+        : undefined;
   const scrimStyle: CSSProperties | undefined =
     dragY > 0
       ? { opacity: Math.max(0.1, 1 - dragY / 400), transition: "none" }
-      : undefined;
+      : isSnappingRef.current
+        ? { opacity: 1, transition: SNAP_SCRIM }
+        : undefined;
 
   return (
     <>
