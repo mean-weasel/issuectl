@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { GitHubComment } from "@issuectl/core";
 import { timeAgo } from "@/lib/format";
-import { BodyText } from "./BodyText";
+import { LightboxBodyText } from "./LightboxBodyText";
 import styles from "./CommentList.module.css";
 
 type Props = {
@@ -37,7 +37,7 @@ export function CommentList({ comments }: Props) {
               <div className={styles.who}>{c.user?.login ?? "unknown"}</div>
               <div className={styles.time}>{timeAgo(c.updatedAt)}</div>
             </div>
-            <BodyText body={c.body} className={styles.commentBody} />
+            <LightboxBodyText body={c.body} className={styles.commentBody} />
           </div>
         ))
       )}
