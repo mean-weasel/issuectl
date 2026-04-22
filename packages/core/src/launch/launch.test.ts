@@ -372,7 +372,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
   });
 
   it("reserves the port in the DB before spawning ttyd (#198 race fix)", async () => {
-    const repo = addRepo(db, {
+    addRepo(db, {
       owner: "acme",
       name: "api",
       localPath: "/tmp/fake",
