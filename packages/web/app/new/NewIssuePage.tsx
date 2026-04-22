@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { GitHubLabel } from "@issuectl/core";
@@ -49,8 +49,6 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   const {
     uploading,
     dragging,
@@ -62,7 +60,6 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
     openFilePicker,
     handleFileSelect,
   } = useImageUpload({
-    body,
     setBody,
     owner: selectedRepo.owner,
     repo: selectedRepo.repo,
@@ -231,11 +228,10 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
           <label htmlFor="new-issue-body" className={styles.fieldLabel}>
             Description <span className={styles.fieldHint}>(markdown)</span>
           </label>
-          <div className={styles.textareaWrap}>
+          <div className={`${styles.textareaWrap} ${dragging ? styles.textareaDragging : ""}`}>
             <textarea
-              ref={textareaRef}
               id="new-issue-body"
-              className={`${styles.textarea} ${dragging ? styles.textareaDragging : ""}`}
+              className={styles.textarea}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onDragOver={handleDragOver}
@@ -269,6 +265,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
                 ref={fileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/gif,image/webp"
+                multiple
                 onChange={handleFileSelect}
                 className={styles.hiddenInput}
                 tabIndex={-1}

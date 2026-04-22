@@ -13,8 +13,6 @@ const ALLOWED_TYPES = new Set([
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 type UseImageUploadOptions = {
-  /** Current textarea value */
-  body: string;
   /** Setter for the textarea value */
   setBody: (value: string | ((prev: string) => string)) => void;
   /** Repo context for upload endpoint */
@@ -46,7 +44,6 @@ type UseImageUploadReturn = {
 };
 
 export function useImageUpload({
-  body,
   setBody,
   owner,
   repo,
@@ -65,44 +62,46 @@ export function useImageUpload({
         return;
       }
 
-      for (const file of imageFiles) {
-        if (file.size > MAX_SIZE) {
-          onError?.(`${file.name} is too large (max 10 MB).`);
-          continue;
-        }
+      setUploading(true);
+      try {
+        for (const file of imageFiles) {
+          if (file.size > MAX_SIZE) {
+            onError?.(`${file.name} is too large (max 10 MB).`);
+            continue;
+          }
 
-        const placeholder = `![Uploading ${file.name}…]()`;
-        setBody((prev) => {
-          const needsNewline = prev.length > 0 && !prev.endsWith("\n");
-          return prev + (needsNewline ? "\n" : "") + placeholder;
-        });
+          const placeholder = `![Uploading ${file.name}…]()`;
+          setBody((prev) => {
+            const needsNewline = prev.length > 0 && !prev.endsWith("\n");
+            return prev + (needsNewline ? "\n" : "") + placeholder;
+          });
 
-        setUploading(true);
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("owner", owner);
-          formData.append("repo", repo);
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("owner", owner);
+            formData.append("repo", repo);
 
-          const result = await uploadImage(formData);
+            const result = await uploadImage(formData);
 
-          if (result.success) {
-            const markdown = `![${file.name}](${result.url})`;
-            setBody((prev) => prev.replace(placeholder, markdown));
-          } else {
+            if (result.success) {
+              const markdown = `![${file.name}](${result.url})`;
+              setBody((prev) => prev.replace(placeholder, markdown));
+            } else {
+              const failureMark = `![Upload failed: ${file.name}]()`;
+              setBody((prev) => prev.replace(placeholder, failureMark));
+              onError?.(result.error);
+            }
+          } catch (err) {
             const failureMark = `![Upload failed: ${file.name}]()`;
             setBody((prev) => prev.replace(placeholder, failureMark));
-            onError?.(result.error);
+            onError?.(
+              err instanceof Error ? err.message : "Upload failed",
+            );
           }
-        } catch (err) {
-          const failureMark = `![Upload failed: ${file.name}]()`;
-          setBody((prev) => prev.replace(placeholder, failureMark));
-          onError?.(
-            err instanceof Error ? err.message : "Upload failed",
-          );
-        } finally {
-          setUploading(false);
         }
+      } finally {
+        setUploading(false);
       }
     },
     [owner, repo, setBody, onError],

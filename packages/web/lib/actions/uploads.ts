@@ -8,6 +8,13 @@ import {
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
+const ALLOWED_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+]);
+
 export async function uploadImage(
   formData: FormData,
 ): Promise<{ success: true; url: string } | { success: false; error: string }> {
@@ -23,6 +30,9 @@ export async function uploadImage(
   }
   if (file.size > MAX_SIZE) {
     return { success: false, error: "Image must be 10 MB or smaller" };
+  }
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return { success: false, error: "Only PNG, JPG, GIF, and WEBP images are supported" };
   }
 
   try {

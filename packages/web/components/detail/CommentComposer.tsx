@@ -28,8 +28,6 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
   const [syncVisible, setSyncVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const syncStartRef = useRef(0);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   const {
     uploading,
     dragging,
@@ -41,7 +39,6 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
     openFilePicker,
     handleFileSelect,
   } = useImageUpload({
-    body,
     setBody,
     owner,
     repo,
@@ -116,10 +113,9 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
   return (
     <div className={styles.composer}>
       <div className={styles.label}>add a comment</div>
-      <div className={styles.textareaWrap}>
+      <div className={`${styles.textareaWrap} ${dragging ? styles.textareaDragging : ""}`}>
         <textarea
-          ref={textareaRef}
-          className={`${styles.textarea} ${dragging ? styles.textareaDragging : ""}`}
+          className={styles.textarea}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -156,6 +152,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
           ref={fileInputRef}
           type="file"
           accept="image/png,image/jpeg,image/gif,image/webp"
+          multiple
           onChange={handleFileSelect}
           className={styles.hiddenInput}
           tabIndex={-1}

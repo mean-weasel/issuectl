@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -15,13 +15,6 @@ type Props = {
 };
 
 export function BodyText({ body, className, onImageClick }: Props) {
-  const handleClick = useCallback(
-    (src: string) => {
-      onImageClick?.(src);
-    },
-    [onImageClick],
-  );
-
   const components: Components | undefined = useMemo(() => {
     if (!onImageClick) return undefined;
     return {
@@ -31,12 +24,12 @@ export function BodyText({ body, className, onImageClick }: Props) {
           {...rest}
           src={src}
           alt={alt ?? ""}
-          onClick={() => typeof src === "string" && src && handleClick(src)}
+          onClick={() => typeof src === "string" && onImageClick(src)}
           style={{ cursor: "pointer" }}
         />
       ),
     };
-  }, [onImageClick, handleClick]);
+  }, [onImageClick]);
 
   if (!body || body.trim().length === 0) {
     return (
