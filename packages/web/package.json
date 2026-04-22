@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "start": "next start --port 3847",
+    "start": "node --import tsx server.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app/ components/ lib/",
-    "dev": "next dev --port 3847",
+    "dev": "node --import tsx server.ts --dev",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
@@ -30,6 +30,7 @@
     "@types/react-dom": "^19.1.0",
     "@types/ws": "^8.18.1",
     "fake-indexeddb": "^6.2.5",
+    "tsx": "^4.21.0",
     "vitest": "^4.1.3"
   }
 }
