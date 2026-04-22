@@ -130,6 +130,23 @@ export function hasLiveDeploymentForIssue(
   return row !== undefined;
 }
 
+/**
+ * Look up the active (non-ended, non-pending) deployment that owns a
+ * given ttyd port. Used by the WebSocket proxy to validate that a port
+ * belongs to a real session before forwarding traffic.
+ */
+export function getActiveDeploymentByPort(
+  db: Database.Database,
+  port: number,
+): Deployment | undefined {
+  const row = db
+    .prepare(
+      "SELECT * FROM deployments WHERE ttyd_port = ? AND state = 'active' AND ended_at IS NULL LIMIT 1",
+    )
+    .get(port) as DeploymentRow | undefined;
+  return row ? rowToDeployment(row) : undefined;
+}
+
 export function updateLinkedPR(
   db: Database.Database,
   deploymentId: number,
@@ -176,6 +193,25 @@ export function activateDeployment(
     throw new Error(
       `No pending deployment found with id ${deploymentId} to activate`,
     );
+  }
+}
+
+/**
+ * Claim a port for a pending deployment so concurrent `allocatePort` calls
+ * see the reservation before ttyd is actually spawned. Without this,
+ * two concurrent launches can both read "no ports in use" and pick the
+ * same port — a classic TOCTOU race.
+ */
+export function reserveTtydPort(
+  db: Database.Database,
+  deploymentId: number,
+  port: number,
+): void {
+  const result = db
+    .prepare("UPDATE deployments SET ttyd_port = ? WHERE id = ?")
+    .run(port, deploymentId);
+  if (result.changes === 0) {
+    throw new Error(`No deployment found with id ${deploymentId} to reserve port`);
   }
 }
 

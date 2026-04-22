@@ -162,16 +162,12 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   const shellCommand =
     `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand} ; exit`;
 
-  // Bind to all interfaces so mobile/LAN devices can reach the
-  // terminal when accessing the dashboard over the network.
-  // Security: -O rejects WebSocket upgrades from a different origin,
-  // -m 1 limits each terminal to a single client. Full auth is not
-  // practical with ttyd iframes (browsers block basic-auth in iframe
-  // URLs), so access control relies on the trusted-LAN model. Use
-  // --local-only on untrusted networks (see spec §5.2).
+  // Bind to loopback only — the Next.js custom server proxies
+  // terminal traffic through same-origin routes (/api/terminal/{port}),
+  // so ttyd never needs to be reachable from the network directly.
   const child = spawn(
     "ttyd",
-    ["-W", "-i", "0.0.0.0", "-O", "-m", "1", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
+    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
     { detached: true, stdio: "ignore" },
   );
 

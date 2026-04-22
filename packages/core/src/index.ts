@@ -63,6 +63,7 @@ export {
   getDeploymentsForIssue,
   getDeploymentsByRepo,
   hasLiveDeploymentForIssue,
+  getActiveDeploymentByPort,
   updateLinkedPR,
   endDeployment,
   activateDeployment,

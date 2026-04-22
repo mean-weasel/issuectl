@@ -263,7 +263,7 @@ describe("spawnTtyd", () => {
     const [bin, args, opts] = spawnSpy.mock.calls[0] as [string, string[], Record<string, unknown>];
     expect(bin).toBe("ttyd");
     expect(args.slice(0, -3)).toEqual([
-      "-W", "-i", "0.0.0.0", "-O", "-m", "1", "-p", "7700", "-q",
+      "-W", "-i", "127.0.0.1", "-p", "7700", "-q",
     ]);
     expect(args.slice(-3, -1)).toEqual(["/bin/bash", "-lic"]);
     const shellCmd = args.at(-1)!;
@@ -272,6 +272,26 @@ describe("spawnTtyd", () => {
     expect(shellCmd).toContain("claude --dangerously-skip-permissions");
     expect(shellCmd).toContain("; exit");
     expect(opts).toEqual({ detached: true, stdio: "ignore" });
+    killSpy.mockRestore();
+  });
+
+  it("binds ttyd to loopback interface (-i 127.0.0.1)", async () => {
+    spawnSpy.mockReturnValue({ pid: 42, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    await spawnTtyd({
+      port: 7700,
+      workspacePath: "/tmp/ws",
+      contextFilePath: "/tmp/ctx.md",
+      claudeCommand: "claude",
+    });
+
+    const args = (spawnSpy.mock.calls[0] as [string, string[]])[1];
+    const iIdx = args.indexOf("-i");
+    expect(iIdx).toBeGreaterThan(-1);
+    expect(args[iIdx + 1]).toBe("127.0.0.1");
+    // Must appear before the port flag
+    expect(iIdx).toBeLessThan(args.indexOf("-p"));
     killSpy.mockRestore();
   });
 

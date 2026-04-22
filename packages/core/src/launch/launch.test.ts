@@ -34,7 +34,8 @@ vi.mock("./ttyd.js", () => ({
   allocatePort: allocatePortSpy,
 }));
 
-const { updateTtydInfoSpy } = vi.hoisted(() => ({
+const { reserveTtydPortSpy, updateTtydInfoSpy } = vi.hoisted(() => ({
+  reserveTtydPortSpy: vi.fn(),
   updateTtydInfoSpy: vi.fn(),
 }));
 
@@ -45,6 +46,7 @@ vi.mock("../db/deployments.js", async () => {
     );
   return {
     ...actual,
+    reserveTtydPort: reserveTtydPortSpy,
     updateTtydInfo: updateTtydInfoSpy,
   };
 });
@@ -180,6 +182,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     verifyTtydSpy.mockClear();
     spawnTtydSpy.mockClear();
     allocatePortSpy.mockClear();
+    reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
     db = createTestDb();
   });
@@ -366,6 +369,41 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       )
       .get(repo.id);
     expect(row).toBeUndefined();
+  });
+
+  it("reserves the port in the DB before spawning ttyd (#198 race fix)", async () => {
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    // Track call order to prove reservation happens before spawn.
+    const callOrder: string[] = [];
+    reserveTtydPortSpy.mockImplementation(() => {
+      callOrder.push("reserveTtydPort");
+    });
+    spawnTtydSpy.mockImplementation(async () => {
+      callOrder.push("spawnTtyd");
+      return { pid: 12345, port: 7700 };
+    });
+
+    await executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 42,
+      branchName: "new-branch",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+    });
+
+    expect(callOrder).toEqual(["reserveTtydPort", "spawnTtyd"]);
+    expect(reserveTtydPortSpy).toHaveBeenCalledWith(
+      db,
+      expect.any(Number),
+      7700,
+    );
   });
 
   it("allows launch when the prior deployment has ended", async () => {

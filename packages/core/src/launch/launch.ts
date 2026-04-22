@@ -7,6 +7,7 @@ import {
   activateDeployment,
   deletePendingDeployment,
   hasLiveDeploymentForIssue,
+  reserveTtydPort,
   updateTtydInfo,
 } from "../db/deployments.js";
 import { getIssueDetail } from "../data/issues.js";
@@ -219,6 +220,9 @@ export async function executeLaunch(
   let ttydPort: number;
   try {
     const port = await allocatePort(db);
+    // Reserve the port in the DB *before* spawning so concurrent launches
+    // see it and pick a different port (fixes #198 TOCTOU race).
+    reserveTtydPort(db, deployment.id, port);
     const { pid } = await spawnTtyd({
       port,
       workspacePath: workspace.path,
