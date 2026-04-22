@@ -381,7 +381,7 @@ test.describe("CloseIssueModal — detail page", () => {
     await page.goto(issueUrl);
 
     // The detail page should render for the seeded issue.
-    // The action sheet gesture zone is present for open issues.
+    // The action sheet bottom handle is present for open issues.
     const handle = page.getByRole("button", { name: /Open Actions/ });
     await expect(handle).toBeVisible({ timeout: 15000 });
 

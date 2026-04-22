@@ -26,8 +26,7 @@
   opacity: 0.92;
 }
 
-/* Mobile: compact FAB above Safari's toolbar. The gesture zone is
-   invisible, so the FAB only needs to clear the toolbar. */
+/* Mobile: compact FAB above the bottom handle and Safari's toolbar. */
 @media (max-width: 767px) {
   .fab {
     width: 52px;

@@ -1,0 +1,41 @@
+.handle {
+  position: fixed;
+  left: 50%;
+  bottom: env(safe-area-inset-bottom, 0px);
+  transform: translateX(-50%);
+  z-index: 40;
+  width: 160px;
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* rgba stops must match --paper-bg (#f3ecd9) */
+  background: linear-gradient(
+    to top,
+    var(--paper-bg) 30%,
+    rgba(243, 236, 217, 0.85) 70%,
+    rgba(243, 236, 217, 0) 100%
+  );
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pill {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-ink-faint);
+  opacity: 0.55;
+}
+
+.handle:active .pill {
+  opacity: 0.85;
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .handle {
+    display: none;
+  }
+}
