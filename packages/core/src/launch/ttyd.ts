@@ -164,7 +164,7 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
 
   const child = spawn(
     "ttyd",
-    ["-W", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
+    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
     { detached: true, stdio: "ignore" },
   );
 
