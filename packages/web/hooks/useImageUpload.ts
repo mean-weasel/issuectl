@@ -2,15 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { uploadImage } from "@/lib/actions/uploads";
-
-const ALLOWED_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-]);
-
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "@issuectl/core";
 
 type UseImageUploadOptions = {
   /** Setter for the textarea value */
@@ -58,7 +50,7 @@ export function useImageUpload({
 
   const processFiles = useCallback(
     async (files: File[]) => {
-      const imageFiles = files.filter((f) => ALLOWED_TYPES.has(f.type));
+      const imageFiles = files.filter((f) => ALLOWED_IMAGE_TYPES.has(f.type));
       if (imageFiles.length === 0) {
         onError("Only PNG, JPG, GIF, and WEBP images are supported.");
         return;
@@ -67,7 +59,7 @@ export function useImageUpload({
       setUploading(true);
       try {
         for (const file of imageFiles) {
-          if (file.size > MAX_SIZE) {
+          if (file.size > MAX_IMAGE_SIZE) {
             const failureMark = `![Too large: ${file.name}]()`;
             setBody((prev) => {
               const needsNewline = prev.length > 0 && !prev.endsWith("\n");

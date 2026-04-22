@@ -1,11 +1,11 @@
-const ALLOWED_TYPES = new Set([
+export const ALLOWED_IMAGE_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "image/gif",
   "image/webp",
 ]);
 
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export type UploadResult = {
   url: string;
@@ -29,13 +29,13 @@ export async function uploadImageToGitHub(
     data: Buffer | Uint8Array;
   },
 ): Promise<UploadResult> {
-  if (!ALLOWED_TYPES.has(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error(
       `Unsupported image type: ${file.type}. Allowed: PNG, JPG, GIF, WEBP.`,
     );
   }
 
-  if (file.data.byteLength > MAX_SIZE) {
+  if (file.data.byteLength > MAX_IMAGE_SIZE) {
     const sizeMB = (file.data.byteLength / 1024 / 1024).toFixed(1);
     throw new Error(
       `Image too large: ${sizeMB} MB. Maximum is 10 MB.`,
