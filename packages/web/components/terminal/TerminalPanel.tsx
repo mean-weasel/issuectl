@@ -88,7 +88,7 @@ export function TerminalPanel({
         </div>
         <iframe
           className={styles.terminalFrame}
-          src={`http://localhost:${ttydPort}`}
+          src={`/api/terminal/${ttydPort}/`}
           title={`Terminal — Issue #${issueNumber}`}
         />
       </div>
