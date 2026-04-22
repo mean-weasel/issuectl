@@ -120,12 +120,40 @@ const nextConfig: NextConfig = {
       "form-action 'self'",
     ].join("; ");
 
+    // Terminal proxy routes serve ttyd HTML inside an iframe on the
+    // dashboard. They need frame-ancestors 'self' (not 'none') and must
+    // omit X-Frame-Options: DENY, otherwise the browser blocks the embed.
+    const terminalCsp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "font-src 'self'",
+      "connect-src 'self'",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ");
+
     return [
       {
         source: "/(.*)",
         headers: [
           { key: "Content-Security-Policy", value: csp },
           { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      {
+        // Terminal proxy routes serve ttyd HTML inside an iframe on the
+        // dashboard. The later position overrides the catch-all above:
+        // frame-ancestors changes from 'none' to 'self' and X-Frame-Options
+        // is omitted, otherwise the browser blocks the iframe embed.
+        source: "/api/terminal/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: terminalCsp },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
