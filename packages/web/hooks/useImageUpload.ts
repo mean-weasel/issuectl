@@ -19,7 +19,7 @@ type UseImageUploadOptions = {
   owner: string;
   repo: string;
   /** Called on validation or upload error */
-  onError?: (message: string) => void;
+  onError: (message: string) => void;
 };
 
 type UseImageUploadReturn = {
@@ -29,6 +29,8 @@ type UseImageUploadReturn = {
   dragging: boolean;
   /** Ref to the hidden file input */
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  /** Attach to the textarea's onDragEnter */
+  handleDragEnter: (e: React.DragEvent) => void;
   /** Attach to the textarea's onDragOver */
   handleDragOver: (e: React.DragEvent) => void;
   /** Attach to the textarea's onDragLeave */
@@ -58,7 +60,7 @@ export function useImageUpload({
     async (files: File[]) => {
       const imageFiles = files.filter((f) => ALLOWED_TYPES.has(f.type));
       if (imageFiles.length === 0) {
-        onError?.("Only PNG, JPG, GIF, and WEBP images are supported.");
+        onError("Only PNG, JPG, GIF, and WEBP images are supported.");
         return;
       }
 
@@ -66,11 +68,17 @@ export function useImageUpload({
       try {
         for (const file of imageFiles) {
           if (file.size > MAX_SIZE) {
-            onError?.(`${file.name} is too large (max 10 MB).`);
+            const failureMark = `![Too large: ${file.name}]()`;
+            setBody((prev) => {
+              const needsNewline = prev.length > 0 && !prev.endsWith("\n");
+              return prev + (needsNewline ? "\n" : "") + failureMark;
+            });
+            onError(`${file.name} is too large (max 10 MB).`);
             continue;
           }
 
-          const placeholder = `![Uploading ${file.name}…]()`;
+          const id = Math.random().toString(36).slice(2, 8);
+          const placeholder = `![Uploading ${file.name} (${id})…]()`;
           setBody((prev) => {
             const needsNewline = prev.length > 0 && !prev.endsWith("\n");
             return prev + (needsNewline ? "\n" : "") + placeholder;
@@ -90,12 +98,12 @@ export function useImageUpload({
             } else {
               const failureMark = `![Upload failed: ${file.name}]()`;
               setBody((prev) => prev.replace(placeholder, failureMark));
-              onError?.(result.error);
+              onError(result.error);
             }
           } catch (err) {
             const failureMark = `![Upload failed: ${file.name}]()`;
             setBody((prev) => prev.replace(placeholder, failureMark));
-            onError?.(
+            onError(
               err instanceof Error ? err.message : "Upload failed",
             );
           }
@@ -107,11 +115,16 @@ export function useImageUpload({
     [owner, repo, setBody, onError],
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCountRef.current++;
     setDragging(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -171,6 +184,7 @@ export function useImageUpload({
     uploading,
     dragging,
     fileInputRef,
+    handleDragEnter,
     handleDragOver,
     handleDragLeave,
     handleDrop,

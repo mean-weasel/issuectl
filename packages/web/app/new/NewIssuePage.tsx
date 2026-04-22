@@ -53,6 +53,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
     uploading,
     dragging,
     fileInputRef,
+    handleDragEnter,
     handleDragOver,
     handleDragLeave,
     handleDrop,
@@ -234,6 +235,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
               className={styles.textarea}
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}

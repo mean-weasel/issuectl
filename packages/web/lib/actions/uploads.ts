@@ -25,7 +25,8 @@ export async function uploadImage(
   if (!(file instanceof File)) {
     return { success: false, error: "No file provided" };
   }
-  if (typeof owner !== "string" || typeof repo !== "string" || !owner || !repo) {
+  if (typeof owner !== "string" || !/^[\w.-]+$/.test(owner) ||
+      typeof repo !== "string" || !/^[\w.-]+$/.test(repo)) {
     return { success: false, error: "Missing repository context" };
   }
   if (file.size > MAX_SIZE) {

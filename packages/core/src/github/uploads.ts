@@ -13,12 +13,11 @@ export type UploadResult = {
 };
 
 /**
- * Upload an image to GitHub's CDN via the issue-uploads endpoint.
+ * Upload an image to GitHub's CDN via the undocumented issue-uploads endpoint.
  *
- * This uses the same undocumented (but stable) endpoint that GitHub.com uses
- * when you paste or drag an image into an issue textarea. The endpoint has
- * been stable for years and is relied on by GitHub CLI, GitHub Desktop, and
- * many extensions.
+ * This is the same endpoint GitHub.com's web UI uses when you paste or drag
+ * an image into an issue/PR textarea. While undocumented, this endpoint has
+ * been stable for years and is widely relied on by third-party tools.
  */
 export async function uploadImageToGitHub(
   token: string,
@@ -69,10 +68,15 @@ export async function uploadImageToGitHub(
     );
   }
 
-  const result = (await response.json()) as {
-    href?: string;
-    asset?: { href?: string; name?: string };
-  };
+  let result: { href?: string; asset?: { href?: string; name?: string } };
+  try {
+    result = (await response.json()) as typeof result;
+  } catch {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `GitHub returned invalid JSON after upload (status ${response.status}). Body: ${text.slice(0, 200)}`,
+    );
+  }
 
   const url = result.href ?? result.asset?.href;
   if (!url) {

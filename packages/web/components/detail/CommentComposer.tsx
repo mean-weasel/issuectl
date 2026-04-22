@@ -32,6 +32,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
     uploading,
     dragging,
     fileInputRef,
+    handleDragEnter,
     handleDragOver,
     handleDragLeave,
     handleDrop,
@@ -119,6 +120,7 @@ export function CommentComposer({ owner, repo, issueNumber }: Props) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
+          onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}

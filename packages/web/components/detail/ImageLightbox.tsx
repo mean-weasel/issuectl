@@ -30,6 +30,7 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LightboxState>(null);
 
   const open = useCallback((src: string, allImages: string[]) => {
+    if (allImages.length === 0) return;
     const index = allImages.indexOf(src);
     setState({ images: allImages, index: index >= 0 ? index : 0 });
   }, []);
@@ -81,11 +82,12 @@ function ImageLightbox({ images, index, onClose, onPrev, onNext }: LightboxProps
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "ArrowRight") onNext();
     };
+    const prevOverflow = document.body.style.overflow;
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = prevOverflow;
     };
   }, [onClose, onPrev, onNext]);
 
