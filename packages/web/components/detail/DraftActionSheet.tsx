@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/paper";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
+import { BottomHandle } from "@/components/list/BottomHandle";
 import { AssignSheet } from "@/components/list/AssignSheet";
 import { deleteDraftAction } from "@/lib/actions/drafts";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -55,7 +55,7 @@ export function DraftActionSheet({ draftId, draftTitle }: Props) {
 
   return (
     <>
-      <FilterEdgeSwipe
+      <BottomHandle
         onTrigger={() => setSheetOpen(true)}
         label="Actions"
       />

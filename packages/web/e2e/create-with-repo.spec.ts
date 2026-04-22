@@ -17,7 +17,7 @@ const BASE_URL = `http://localhost:${TEST_PORT}`;
 const TEST_OWNER = "mean-weasel";
 const TEST_REPO = "issuectl-test-repo";
 
-// Use mobile viewport so the FAB is visible and the action-sheet gesture zone is active.
+// Use mobile viewport so the FAB is visible and the action-sheet bottom handle is active.
 test.use({
   viewport: { width: 393, height: 852 },
   isMobile: true,
@@ -344,7 +344,7 @@ test.describe("AssignSheet — assign draft to repo", () => {
       { timeout: 15000 },
     );
 
-    // Open the action sheet via the bottom gesture zone
+    // Open the action sheet via the bottom handle
     await page.getByRole("button", { name: /Open Actions/ }).click();
 
     // Sheet dialog opens — click the assign action

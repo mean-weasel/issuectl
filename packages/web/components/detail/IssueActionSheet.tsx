@@ -10,7 +10,7 @@ import type {
 import { Sheet, Button } from "@/components/paper";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
-import { FilterEdgeSwipe } from "@/components/list/FilterEdgeSwipe";
+import { BottomHandle } from "@/components/list/BottomHandle";
 import { LaunchModal } from "@/components/launch/LaunchModal";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
 import { endSession } from "@/lib/actions/launch";
@@ -220,7 +220,7 @@ export function IssueActionSheet({
 
   return (
     <>
-      <FilterEdgeSwipe
+      <BottomHandle
         onTrigger={() => setSheetOpen(true)}
         label="Actions"
       />
