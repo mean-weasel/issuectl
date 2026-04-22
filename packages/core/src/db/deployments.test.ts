@@ -9,6 +9,7 @@ import {
   getDeploymentsByRepo,
   hasLiveDeploymentForIssue,
   updateLinkedPR,
+  reserveTtydPort,
   updateTtydInfo,
   endDeployment,
   activateDeployment,
@@ -436,6 +437,62 @@ describe("deployment state (R2: pending/active lifecycle)", () => {
     );
     // Active row should still be there
     expect(getDeploymentById(db, dep.id)).toBeDefined();
+  });
+});
+
+describe("reserveTtydPort", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    repoId = seedRepo(db).id;
+  });
+
+  it("writes port to deployment row without requiring a PID", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+      state: "pending",
+    });
+
+    reserveTtydPort(db, dep.id, 7700);
+
+    const updated = getDeploymentById(db, dep.id);
+    expect(updated!.ttydPort).toBe(7700);
+    expect(updated!.ttydPid).toBeNull();
+  });
+
+  it("makes the reserved port visible to allocatePort's DB query", () => {
+    // This is the core fix for #198: after reserveTtydPort writes the
+    // port, a subsequent SELECT for active ports must see it — closing
+    // the TOCTOU window that let concurrent launches pick the same port.
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+      state: "pending",
+    });
+
+    reserveTtydPort(db, dep.id, 7700);
+
+    const rows = db
+      .prepare(
+        "SELECT ttyd_port FROM deployments WHERE ended_at IS NULL AND ttyd_port IS NOT NULL",
+      )
+      .all() as { ttyd_port: number }[];
+    expect(rows.map((r) => r.ttyd_port)).toContain(7700);
+  });
+
+  it("throws for non-existent deployment ID", () => {
+    expect(() => reserveTtydPort(db, 99999, 7700)).toThrow(
+      "No deployment found",
+    );
   });
 });
 

@@ -179,6 +179,25 @@ export function activateDeployment(
   }
 }
 
+/**
+ * Claim a port for a pending deployment so concurrent `allocatePort` calls
+ * see the reservation before ttyd is actually spawned. Without this,
+ * two concurrent launches can both read "no ports in use" and pick the
+ * same port — a classic TOCTOU race.
+ */
+export function reserveTtydPort(
+  db: Database.Database,
+  deploymentId: number,
+  port: number,
+): void {
+  const result = db
+    .prepare("UPDATE deployments SET ttyd_port = ? WHERE id = ?")
+    .run(port, deploymentId);
+  if (result.changes === 0) {
+    throw new Error(`No deployment found with id ${deploymentId} to reserve port`);
+  }
+}
+
 export function updateTtydInfo(
   db: Database.Database,
   deploymentId: number,
