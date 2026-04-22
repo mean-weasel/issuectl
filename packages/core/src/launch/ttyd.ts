@@ -162,9 +162,11 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   const shellCommand =
     `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand} ; exit`;
 
+  // Bind to all interfaces so mobile/LAN devices can reach the
+  // terminal when accessing the dashboard over the network.
   const child = spawn(
     "ttyd",
-    ["-W", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
+    ["-W", "-i", "0.0.0.0", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
     { detached: true, stdio: "ignore" },
   );
 

@@ -262,16 +262,18 @@ describe("spawnTtyd", () => {
     const [bin, args, opts] = spawnSpy.mock.calls[0] as [string, string[], Record<string, unknown>];
     expect(bin).toBe("ttyd");
     expect(args[0]).toBe("-W");
-    expect(args[1]).toBe("-p");
-    expect(args[2]).toBe("7700");
-    expect(args[3]).toBe("-q");
-    expect(args[4]).toBe("/bin/bash");
-    expect(args[5]).toBe("-lic");
+    expect(args[1]).toBe("-i");
+    expect(args[2]).toBe("0.0.0.0");
+    expect(args[3]).toBe("-p");
+    expect(args[4]).toBe("7700");
+    expect(args[5]).toBe("-q");
+    expect(args[6]).toBe("/bin/bash");
+    expect(args[7]).toBe("-lic");
     // Shell command should contain escaped paths and the claude command.
-    expect(args[6]).toContain("cd '/home/user/project'");
-    expect(args[6]).toContain("cat '/tmp/ctx.md'");
-    expect(args[6]).toContain("claude --dangerously-skip-permissions");
-    expect(args[6]).toContain("; exit");
+    expect(args[8]).toContain("cd '/home/user/project'");
+    expect(args[8]).toContain("cat '/tmp/ctx.md'");
+    expect(args[8]).toContain("claude --dangerously-skip-permissions");
+    expect(args[8]).toContain("; exit");
     expect(opts).toEqual({ detached: true, stdio: "ignore" });
     killSpy.mockRestore();
   });
@@ -287,7 +289,7 @@ describe("spawnTtyd", () => {
       claudeCommand: "claude",
     });
 
-    const shellCmd = (spawnSpy.mock.calls[0] as [string, string[]])[1][6];
+    const shellCmd = (spawnSpy.mock.calls[0] as [string, string[]])[1][8];
     expect(shellCmd).toContain("cd '/home/user/it'\\''s a project'");
     killSpy.mockRestore();
   });

@@ -103,9 +103,13 @@ const nextConfig: NextConfig = {
     // (sw.js) to register. Without an explicit directive, browsers
     // fall back to script-src — adding it prevents breakage if
     // script-src is ever tightened.
-    // ttyd terminal iframes run on localhost ports 7700-7799. CSP
-    // frame-src needs to allow these origins for the embedded terminal
-    // panel to load. A single wildcard origin covers the entire range.
+    // ttyd terminal iframes run on ports 7700-7799. The dashboard may
+    // be accessed from localhost or from a LAN device (phone/tablet) via
+    // the host's IP, so the iframe origin matches whatever hostname the
+    // user navigated to. CSP cannot express "same host, different port",
+    // so we allow any http origin for frames. This is acceptable for a
+    // single-user local tool — frame-ancestors 'none' still prevents
+    // the dashboard itself from being embedded elsewhere.
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -113,7 +117,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: https://avatars.githubusercontent.com",
       "font-src 'self'",
       "connect-src 'self'",
-      "frame-src http://localhost:*",
+      "frame-src http://*:*",
       "worker-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
