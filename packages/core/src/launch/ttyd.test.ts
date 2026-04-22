@@ -258,22 +258,19 @@ describe("spawnTtyd", () => {
     expect(result).toEqual({ pid: 42, port: 7700 });
     expect(unrefSpy).toHaveBeenCalled();
 
-    // Verify spawn arguments.
+    // Verify spawn arguments — use slice assertions so adding flags
+    // only requires updating the toEqual array, not re-indexing every line.
     const [bin, args, opts] = spawnSpy.mock.calls[0] as [string, string[], Record<string, unknown>];
     expect(bin).toBe("ttyd");
-    expect(args[0]).toBe("-W");
-    expect(args[1]).toBe("-i");
-    expect(args[2]).toBe("0.0.0.0");
-    expect(args[3]).toBe("-p");
-    expect(args[4]).toBe("7700");
-    expect(args[5]).toBe("-q");
-    expect(args[6]).toBe("/bin/bash");
-    expect(args[7]).toBe("-lic");
-    // Shell command should contain escaped paths and the claude command.
-    expect(args[8]).toContain("cd '/home/user/project'");
-    expect(args[8]).toContain("cat '/tmp/ctx.md'");
-    expect(args[8]).toContain("claude --dangerously-skip-permissions");
-    expect(args[8]).toContain("; exit");
+    expect(args.slice(0, -3)).toEqual([
+      "-W", "-i", "0.0.0.0", "-O", "-m", "1", "-p", "7700", "-q",
+    ]);
+    expect(args.slice(-3, -1)).toEqual(["/bin/bash", "-lic"]);
+    const shellCmd = args.at(-1)!;
+    expect(shellCmd).toContain("cd '/home/user/project'");
+    expect(shellCmd).toContain("cat '/tmp/ctx.md'");
+    expect(shellCmd).toContain("claude --dangerously-skip-permissions");
+    expect(shellCmd).toContain("; exit");
     expect(opts).toEqual({ detached: true, stdio: "ignore" });
     killSpy.mockRestore();
   });
@@ -289,7 +286,7 @@ describe("spawnTtyd", () => {
       claudeCommand: "claude",
     });
 
-    const shellCmd = (spawnSpy.mock.calls[0] as [string, string[]])[1][8];
+    const shellCmd = (spawnSpy.mock.calls[0] as [string, string[]])[1].at(-1)!;
     expect(shellCmd).toContain("cd '/home/user/it'\\''s a project'");
     killSpy.mockRestore();
   });

@@ -106,10 +106,12 @@ const nextConfig: NextConfig = {
     // ttyd terminal iframes run on ports 7700-7799. The dashboard may
     // be accessed from localhost or from a LAN device (phone/tablet) via
     // the host's IP, so the iframe origin matches whatever hostname the
-    // user navigated to. CSP cannot express "same host, different port",
-    // so we allow any http origin for frames. This is acceptable for a
-    // single-user local tool — frame-ancestors 'none' still prevents
-    // the dashboard itself from being embedded elsewhere.
+    // user navigated to. CSP cannot express "same host, different port"
+    // and does not support wildcards within IP addresses, so we allow
+    // any http origin for frames. Mitigations:
+    //   - ttyd uses -O (check-origin) to reject cross-origin WebSocket
+    //   - ttyd uses -m 1 (max 1 client) to limit terminal hijacking
+    //   - frame-ancestors 'none' prevents the dashboard from being embedded
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",

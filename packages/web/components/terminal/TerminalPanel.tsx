@@ -29,7 +29,15 @@ export function TerminalPanel({
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [ttydHost, setTtydHost] = useState<string | null>(null);
   const router = useRouter();
+
+  // Resolve the ttyd hostname on the client to avoid SSR/hydration
+  // mismatch (server would render "localhost", client renders the
+  // actual hostname the user navigated to).
+  useEffect(() => {
+    setTtydHost(window.location.hostname);
+  }, []);
 
   function handleEndSession() {
     setError(null);
@@ -86,11 +94,15 @@ export function TerminalPanel({
             {isPending ? "Ending..." : "End Session"}
           </Button>
         </div>
-        <iframe
-          className={styles.terminalFrame}
-          src={`http://${typeof window !== "undefined" ? window.location.hostname : "localhost"}:${ttydPort}`}
-          title={`Terminal — Issue #${issueNumber}`}
-        />
+        {ttydHost ? (
+          <iframe
+            className={styles.terminalFrame}
+            src={`http://${ttydHost}:${ttydPort}`}
+            title={`Terminal — Issue #${issueNumber}`}
+          />
+        ) : (
+          <div className={styles.terminalFrame} />
+        )}
       </div>
     </div>
   );
