@@ -162,6 +162,9 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   const shellCommand =
     `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand} ; exit`;
 
+  // Bind to loopback only — the Next.js custom server proxies
+  // terminal traffic through same-origin routes (/api/terminal/{port}),
+  // so ttyd never needs to be reachable from the network directly.
   const child = spawn(
     "ttyd",
     ["-W", "-i", "127.0.0.1", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],

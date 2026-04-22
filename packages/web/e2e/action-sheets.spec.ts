@@ -17,9 +17,9 @@ const BASE_URL = `http://localhost:${TEST_PORT}`;
 const TEST_OWNER = "mean-weasel";
 const TEST_REPO = "issuectl-test-repo";
 
-// FilterEdgeSwipe is hidden when both min-width >= 768px AND the pointer
+// BottomHandle is hidden when both min-width >= 768px AND the pointer
 // supports hover (CSS media: hover:hover). Use a mobile viewport with
-// isMobile:true so both conditions are unmet and the gesture zone is active.
+// isMobile:true so both conditions are unmet and the bottom handle is visible.
 test.use({
   viewport: { width: 393, height: 852 },
   isMobile: true,
@@ -27,7 +27,7 @@ test.use({
 });
 
 // Pins the navigation behavior after destructive actions performed via
-// action sheets (swipe-up → Sheet → ConfirmDialog). Specifically:
+// action sheets (bottom handle tap → Sheet → ConfirmDialog). Specifically:
 //
 // - Draft delete navigates to /?section=unassigned
 // - Issue close navigates to /?section=closed
@@ -323,7 +323,7 @@ test.describe("draft delete — action sheet flow", () => {
       DRAFT_TITLE,
     );
 
-    // Open the action sheet via the bottom gesture zone
+    // Open the action sheet via the bottom handle
     await page.getByRole("button", { name: /Open Actions/ }).click();
 
     // Sheet dialog opens — click the delete action
@@ -385,7 +385,7 @@ test.describe("issue close — action sheet flow", () => {
     const issueUrl = `${BASE_URL}/issues/${TEST_OWNER}/${TEST_REPO}/${closeIssueNumber}`;
     await page.goto(issueUrl);
 
-    // Verify the issue detail page rendered with the action sheet gesture zone
+    // Verify the issue detail page rendered with the action sheet handle
     // (only present for open issues)
     const handle = page.getByRole("button", { name: /Open Actions/ });
     await expect(handle).toBeVisible({ timeout: 15000 });
@@ -454,7 +454,7 @@ test.describe("draft assign — cache invalidation", () => {
       ASSIGN_DRAFT_TITLE,
     );
 
-    // Open the action sheet via the bottom gesture zone
+    // Open the action sheet via the bottom handle
     await page.getByRole("button", { name: /Open Actions/ }).click();
     const sheet = page.getByRole("dialog", { name: "draft actions" });
     await expect(sheet).toBeVisible();

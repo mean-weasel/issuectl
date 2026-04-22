@@ -10,7 +10,7 @@ import { CreateDraftSheet } from "./CreateDraftSheet";
 import { NavDrawerContent } from "./NavDrawerContent";
 import { RepoFilterChips } from "./RepoFilterChips";
 import { FiltersSheet } from "./FiltersSheet";
-import { FilterEdgeSwipe } from "./FilterEdgeSwipe";
+import { BottomHandle } from "./BottomHandle";
 import { useListCounts } from "./ListCountContext";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
@@ -413,7 +413,7 @@ export function List({
       />
 
       {!filtersOpen && (
-        <FilterEdgeSwipe onTrigger={() => setFiltersOpen(true)} />
+        <BottomHandle onTrigger={() => setFiltersOpen(true)} />
       )}
 
       <Drawer
