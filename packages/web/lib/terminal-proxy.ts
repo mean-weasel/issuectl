@@ -30,10 +30,7 @@ export async function proxyHttpRequest(
   const url = `http://127.0.0.1:${port}${path}`;
   const res = await fetch(url);
   const body = Buffer.from(await res.arrayBuffer());
-  const headers: Record<string, string> = {};
-  res.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
+  const headers = Object.fromEntries(res.headers.entries());
   return { status: res.status, headers, body };
 }
 

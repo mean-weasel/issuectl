@@ -26,35 +26,29 @@ const server = createServer((req, res) => {
 // listeners check that Symbol to no-op.
 const HANDLED = Symbol("terminalHandled");
 
-const origOn = server.on.bind(server);
-const origAddListener = server.addListener.bind(server);
+type UpgradeListener = (req: IncomingMessage, socket: Duplex, head: Buffer) => void;
 
-function wrapUpgradeListener(
-  fn: (req: IncomingMessage, socket: Duplex, head: Buffer) => void,
-) {
-  return function wrappedUpgrade(
-    req: IncomingMessage,
-    socket: Duplex & { [HANDLED]?: boolean },
-    head: Buffer,
-  ) {
+function wrapUpgradeListener(fn: UpgradeListener): UpgradeListener {
+  return function wrappedUpgrade(req, socket: Duplex & { [HANDLED]?: boolean }, head) {
     if (socket[HANDLED]) return;
     fn(req, socket, head);
   };
 }
 
-server.on = function (event: string, listener: (...args: unknown[]) => void) {
-  if (event === "upgrade") {
-    return origOn(event, wrapUpgradeListener(listener as Parameters<typeof wrapUpgradeListener>[0]));
-  }
-  return origOn(event, listener);
-} as typeof server.on;
+function interceptUpgradeRegistrations(
+  method: "on" | "addListener",
+): void {
+  const orig = server[method].bind(server);
+  server[method] = function (event: string, listener: (...args: unknown[]) => void) {
+    if (event === "upgrade") {
+      return orig(event, wrapUpgradeListener(listener as UpgradeListener));
+    }
+    return orig(event, listener);
+  } as typeof server.on;
+}
 
-server.addListener = function (event: string, listener: (...args: unknown[]) => void) {
-  if (event === "upgrade") {
-    return origAddListener(event, wrapUpgradeListener(listener as Parameters<typeof wrapUpgradeListener>[0]));
-  }
-  return origAddListener(event, listener);
-} as typeof server.addListener;
+interceptUpgradeRegistrations("on");
+interceptUpgradeRegistrations("addListener");
 
 // Our terminal handler runs first (prepend). It marks the socket so
 // any later upgrade listeners (Next.js HMR, etc.) are no-ops.
