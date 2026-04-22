@@ -19,14 +19,13 @@ export function DetailTopBar({
   const router = useRouter();
 
   function handleBack(e: React.MouseEvent) {
-    // Use browser history when the referrer is our own app, so filter
-    // state in query params is preserved. When the user arrived from an
-    // external link (Slack, email, etc.), fall through to the hard
-    // <Link> href to avoid navigating them out of the app.
-    if (
-      window.history.length > 1 &&
-      document.referrer.startsWith(window.location.origin)
-    ) {
+    // Prefer browser history so filter state in query params is
+    // preserved. We intentionally skip the old document.referrer check
+    // because it never updates during SPA navigations, causing the
+    // fallback <Link> to fire and drop all filters. If the user arrived
+    // from an external link, router.back() simply takes them back there
+    // — standard back-button behavior.
+    if (window.history.length > 1) {
       e.preventDefault();
       router.back();
     }

@@ -285,10 +285,7 @@ test.describe("Data freshness — filters persist on back-nav (#129)", () => {
     await issueLink.click();
     await expect(page).toHaveURL(/\/issues\//, { timeout: 15000 });
 
-    // Use browser back (not the Back link) to test history-based filter
-    // preservation. The Back link relies on document.referrer which is
-    // empty after page.goto() in Playwright, so it falls through to a
-    // hard <Link href="/"> that drops query params.
+    // Use browser back to test history-based filter preservation.
     await page.goBack();
     await page.waitForURL(
       (url) => url.searchParams.has("repo") && url.searchParams.has("section"),

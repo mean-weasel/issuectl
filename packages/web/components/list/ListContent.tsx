@@ -9,6 +9,7 @@ import { PrListRow } from "./PrListRow";
 import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
 import { closeIssue } from "@/lib/actions/issues";
 import { useToast } from "@/components/ui/ToastProvider";
+import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 
 type Props = {
@@ -101,14 +102,14 @@ export function ListContent({
               : "Issue closed",
             "success",
           );
-          router.replace("/?section=closed");
+          router.replace(buildHref({ section: "closed", repo: activeRepo }));
         } catch (err) {
           console.error("[issuectl] Close issue from list failed:", err);
           setCloseError("Something went wrong while closing the issue. Please try again.");
         }
       });
     },
-    [closeTarget, showToast, router],
+    [closeTarget, showToast, router, activeRepo],
   );
 
   const handleCloseCancel = useCallback(() => {
