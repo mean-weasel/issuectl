@@ -71,12 +71,23 @@ export function handleUpgrade(
   wss.handleUpgrade(req, socket, head, (clientWs) => {
     const upstream = new WebSocket(`ws://127.0.0.1:${port}/ws`);
 
+    // Buffer client messages that arrive before upstream is ready.
+    // ttyd's JS sends the handshake (token + terminal size) immediately
+    // on open, which often arrives while upstream is still CONNECTING.
+    const pendingClientMsgs: { data: Buffer | ArrayBuffer | Buffer[]; isBinary: boolean }[] = [];
+    clientWs.on("message", (data, isBinary) => {
+      if (upstream.readyState === WebSocket.OPEN) {
+        upstream.send(data, { binary: isBinary });
+      } else {
+        pendingClientMsgs.push({ data, isBinary });
+      }
+    });
+
     upstream.on("open", () => {
-      clientWs.on("message", (data, isBinary) => {
-        if (upstream.readyState === WebSocket.OPEN) {
-          upstream.send(data, { binary: isBinary });
-        }
-      });
+      for (const msg of pendingClientMsgs) {
+        upstream.send(msg.data, { binary: msg.isBinary });
+      }
+      pendingClientMsgs.length = 0;
 
       upstream.on("message", (data, isBinary) => {
         if (clientWs.readyState === WebSocket.OPEN) {

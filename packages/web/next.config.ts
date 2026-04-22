@@ -129,7 +129,7 @@ const nextConfig: NextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self'",
-      "connect-src 'self'",
+      "connect-src 'self' ws: wss:",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",

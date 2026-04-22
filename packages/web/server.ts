@@ -1,4 +1,5 @@
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage } from "node:http";
+import type { Duplex } from "node:stream";
 import next from "next";
 import { handleUpgrade } from "./lib/terminal-proxy.js";
 
@@ -16,13 +17,52 @@ const server = createServer((req, res) => {
   handle(req, res);
 });
 
-server.on("upgrade", (req, socket, head) => {
+// Next.js attaches its HMR upgrade listener lazily (after the first
+// request, not at app.prepare() time). We can't capture it at startup.
+// Instead, intercept server.on/addListener so that whenever Next.js
+// (or anything else) registers an upgrade listener, we wrap it to skip
+// terminal WebSocket paths. Our handler runs first via prependListener
+// and marks the socket as handled so wrapped listeners no-op.
+const HANDLED = Symbol("terminalHandled");
+
+const origOn = server.on.bind(server);
+const origAddListener = server.addListener.bind(server);
+
+function wrapUpgradeListener(
+  fn: (req: IncomingMessage, socket: Duplex, head: Buffer) => void,
+) {
+  return function wrappedUpgrade(
+    req: IncomingMessage,
+    socket: Duplex & { [HANDLED]?: boolean },
+    head: Buffer,
+  ) {
+    if (socket[HANDLED]) return;
+    fn(req, socket, head);
+  };
+}
+
+server.on = function (event: string, listener: (...args: unknown[]) => void) {
+  if (event === "upgrade") {
+    return origOn(event, wrapUpgradeListener(listener as Parameters<typeof wrapUpgradeListener>[0]));
+  }
+  return origOn(event, listener);
+} as typeof server.on;
+
+server.addListener = function (event: string, listener: (...args: unknown[]) => void) {
+  if (event === "upgrade") {
+    return origAddListener(event, wrapUpgradeListener(listener as Parameters<typeof wrapUpgradeListener>[0]));
+  }
+  return origAddListener(event, listener);
+} as typeof server.addListener;
+
+// Our terminal handler runs first (prepend). It marks the socket so
+// any later upgrade listeners (Next.js HMR, etc.) are no-ops.
+server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HANDLED]?: boolean }, head: Buffer) => {
   const match = req.url?.match(TERMINAL_WS_RE);
   if (match) {
+    socket[HANDLED] = true;
     handleUpgrade(req, socket, head, Number(match[1]));
   }
-  // Non-terminal upgrades (HMR, etc.) fall through to Next.js's
-  // internally attached upgrade handler — no action needed here.
 });
 
 server.listen(port, () => {
