@@ -466,10 +466,46 @@ describe("reserveTtydPort", () => {
     expect(updated!.ttydPid).toBeNull();
   });
 
-  it("makes the reserved port visible to allocatePort's DB query", () => {
-    // This is the core fix for #198: after reserveTtydPort writes the
-    // port, a subsequent SELECT for active ports must see it — closing
-    // the TOCTOU window that let concurrent launches pick the same port.
+  it("makes the reserved port visible to concurrent allocatePort calls (#198)", () => {
+    // Core fix for #198: after reserveTtydPort writes the port, a
+    // concurrent allocatePort's SELECT must see it — closing the TOCTOU
+    // window that let two launches pick the same port.
+    const dep1 = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+      state: "pending",
+    });
+    // Simulate a second concurrent launch for a different issue
+    const dep2 = recordDeployment(db, {
+      repoId,
+      issueNumber: 2,
+      branchName: "issue-2",
+      workspaceMode: "existing",
+      workspacePath: "/y",
+      state: "pending",
+    });
+
+    // First launch reserves port 7700
+    reserveTtydPort(db, dep1.id, 7700);
+
+    // Second launch's allocatePort reads claimed ports — must see 7700.
+    // This is the exact query allocatePort uses (ttyd.ts:126-130).
+    const rows = db
+      .prepare(
+        "SELECT ttyd_port FROM deployments WHERE ended_at IS NULL AND ttyd_port IS NOT NULL",
+      )
+      .all() as { ttyd_port: number }[];
+    const claimedPorts = new Set(rows.map((r) => r.ttyd_port));
+
+    expect(claimedPorts.has(7700)).toBe(true);
+    // dep2 has no port yet — it would pick the next free one (7701+)
+    expect(dep2.ttydPort).toBeNull();
+  });
+
+  it("reserved port is freed when pending deployment is rolled back", () => {
     const dep = recordDeployment(db, {
       repoId,
       issueNumber: 1,
@@ -481,12 +517,16 @@ describe("reserveTtydPort", () => {
 
     reserveTtydPort(db, dep.id, 7700);
 
+    // Simulate spawn failure → rollback deletes the pending row
+    deletePendingDeployment(db, dep.id);
+
+    // Port 7700 should no longer appear in claimed ports
     const rows = db
       .prepare(
         "SELECT ttyd_port FROM deployments WHERE ended_at IS NULL AND ttyd_port IS NOT NULL",
       )
       .all() as { ttyd_port: number }[];
-    expect(rows.map((r) => r.ttyd_port)).toContain(7700);
+    expect(rows.map((r) => r.ttyd_port)).not.toContain(7700);
   });
 
   it("throws for non-existent deployment ID", () => {
