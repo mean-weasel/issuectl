@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import type { Components } from "react-markdown";
 import { BodyText } from "./BodyText";
 import { useLightbox } from "./ImageLightbox";
 
@@ -15,7 +16,15 @@ export function LightboxBodyText({ body, className }: Props) {
 
   const handleImageClick = useCallback(
     (src: string) => {
-      if (!lightbox || !containerRef.current) return;
+      if (!lightbox) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "[LightboxBodyText] No LightboxProvider found. Image click will not open lightbox.",
+          );
+        }
+        return;
+      }
+      if (!containerRef.current) return;
       const page = containerRef.current.closest("[data-lightbox-root]");
       const root = page ?? document;
       const imgs = Array.from(root.querySelectorAll("img"))
@@ -26,9 +35,25 @@ export function LightboxBodyText({ body, className }: Props) {
     [lightbox],
   );
 
+  const components: Components | undefined = useMemo(() => {
+    if (!lightbox) return undefined;
+    return {
+      img: ({ src, alt, ...rest }) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          {...rest}
+          src={src}
+          alt={alt ?? ""}
+          onClick={() => typeof src === "string" && handleImageClick(src)}
+          style={{ cursor: "pointer" }}
+        />
+      ),
+    };
+  }, [lightbox, handleImageClick]);
+
   return (
     <div ref={containerRef}>
-      <BodyText body={body} className={className} onImageClick={handleImageClick} />
+      <BodyText body={body} className={className} components={components} />
     </div>
   );
 }
