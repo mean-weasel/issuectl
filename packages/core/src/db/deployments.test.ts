@@ -8,6 +8,7 @@ import {
   getDeploymentsForIssue,
   getDeploymentsByRepo,
   hasLiveDeploymentForIssue,
+  getActiveDeploymentByPort,
   updateLinkedPR,
   reserveTtydPort,
   updateTtydInfo,
@@ -582,6 +583,65 @@ describe("updateTtydInfo", () => {
     const updated = getDeploymentById(db, dep.id);
     expect(updated!.ttydPort).toBe(7701);
     expect(updated!.ttydPid).toBe(99999);
+  });
+});
+
+describe("getActiveDeploymentByPort", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("returns the deployment when port matches an active row", () => {
+    const repo = addRepo(db, { owner: "acme", name: "api", localPath: "/tmp/fake" });
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 10,
+      branchName: "test-branch",
+      workspaceMode: "existing",
+      workspacePath: "/tmp/ws",
+    });
+    db.prepare("UPDATE deployments SET ttyd_port = ? WHERE id = ?").run(7700, dep.id);
+
+    const found = getActiveDeploymentByPort(db, 7700);
+    expect(found).toBeDefined();
+    expect(found!.id).toBe(dep.id);
+    expect(found!.ttydPort).toBe(7700);
+  });
+
+  it("returns undefined when no deployment uses the port", () => {
+    expect(getActiveDeploymentByPort(db, 7700)).toBeUndefined();
+  });
+
+  it("returns undefined for an ended deployment's port", () => {
+    const repo = addRepo(db, { owner: "acme", name: "api", localPath: "/tmp/fake" });
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 11,
+      branchName: "ended-branch",
+      workspaceMode: "existing",
+      workspacePath: "/tmp/ws",
+    });
+    db.prepare("UPDATE deployments SET ttyd_port = ? WHERE id = ?").run(7701, dep.id);
+    db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(dep.id);
+
+    expect(getActiveDeploymentByPort(db, 7701)).toBeUndefined();
+  });
+
+  it("returns undefined for a pending deployment's port", () => {
+    const repo = addRepo(db, { owner: "acme", name: "api", localPath: "/tmp/fake" });
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 12,
+      branchName: "pending-branch",
+      workspaceMode: "existing",
+      workspacePath: "/tmp/ws",
+      state: "pending",
+    });
+    db.prepare("UPDATE deployments SET ttyd_port = ? WHERE id = ?").run(7702, dep.id);
+
+    expect(getActiveDeploymentByPort(db, 7702)).toBeUndefined();
   });
 });
 

@@ -130,6 +130,23 @@ export function hasLiveDeploymentForIssue(
   return row !== undefined;
 }
 
+/**
+ * Look up the active (non-ended, non-pending) deployment that owns a
+ * given ttyd port. Used by the WebSocket proxy to validate that a port
+ * belongs to a real session before forwarding traffic.
+ */
+export function getActiveDeploymentByPort(
+  db: Database.Database,
+  port: number,
+): Deployment | undefined {
+  const row = db
+    .prepare(
+      "SELECT * FROM deployments WHERE ttyd_port = ? AND state = 'active' AND ended_at IS NULL LIMIT 1",
+    )
+    .get(port) as DeploymentRow | undefined;
+  return row ? rowToDeployment(row) : undefined;
+}
+
 export function updateLinkedPR(
   db: Database.Database,
   deploymentId: number,
