@@ -48,6 +48,14 @@ const nextConfig: NextConfig = {
       dynamic: 0,
     },
   },
+  serverActions: {
+    // Next.js defaults to 1 MB for server action request bodies.
+    // Image uploads from mobile phones are typically 3-8 MB, so the
+    // default silently rejects them before the action code runs. This
+    // matches the explicit 10 MB limit enforced in useImageUpload and
+    // the uploadImage server action.
+    bodySizeLimit: "10mb",
+  },
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
