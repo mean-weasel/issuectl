@@ -51,6 +51,9 @@ export function rewriteHtml(html: string, port: number): string {
 }
 
 const wss = new WebSocketServer({ noServer: true });
+wss.on("error", (err) => {
+  console.error("[issuectl] WebSocketServer error:", err.message);
+});
 
 /**
  * Handle an HTTP upgrade request for a terminal WebSocket. Called from
@@ -72,8 +75,9 @@ export function handleUpgrade(
     const upstream = new WebSocket(`ws://127.0.0.1:${port}/ws`);
 
     // Buffer client messages that arrive before upstream is ready.
-    // ttyd's JS sends the handshake (token + terminal size) immediately
-    // on open, which often arrives while upstream is still CONNECTING.
+    // ttyd's client-side JS sends the handshake (token + terminal size)
+    // immediately on open, which often arrives while upstream is still
+    // CONNECTING.
     const pendingClientMsgs: { data: Buffer | ArrayBuffer | Buffer[]; isBinary: boolean }[] = [];
     clientWs.on("message", (data, isBinary) => {
       if (upstream.readyState === WebSocket.OPEN) {
@@ -85,6 +89,7 @@ export function handleUpgrade(
 
     upstream.on("open", () => {
       for (const msg of pendingClientMsgs) {
+        if (upstream.readyState !== WebSocket.OPEN) break;
         upstream.send(msg.data, { binary: msg.isBinary });
       }
       pendingClientMsgs.length = 0;
@@ -106,12 +111,16 @@ export function handleUpgrade(
 
     upstream.on("error", (err) => {
       console.error(`[issuectl] upstream WS error for port ${port}:`, err.message);
+      if (pendingClientMsgs.length > 0) {
+        console.error(`[issuectl] ${pendingClientMsgs.length} buffered message(s) dropped for port ${port}`);
+      }
       if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
+      upstream.terminate();
     });
 
     clientWs.on("error", (err) => {
       console.error(`[issuectl] client WS error for port ${port}:`, err.message);
-      if (upstream.readyState === WebSocket.OPEN) upstream.close();
+      upstream.terminate();
     });
   });
 }

@@ -14,6 +14,10 @@ export async function GET(
     return new NextResponse("Not Found", { status: 404 });
   }
 
+  if (path.some((seg) => seg === ".." || seg === ".")) {
+    return new NextResponse("Bad Request", { status: 400 });
+  }
+
   const upstreamPath = "/" + path.join("/");
 
   try {
@@ -23,6 +27,7 @@ export async function GET(
       headers: { "content-type": upstream.headers["content-type"] ?? "application/octet-stream" },
     });
   } catch (err) {
+    console.error(`[issuectl] HTTP proxy error for port ${port} path ${upstreamPath}:`, err);
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("ECONNREFUSED")) {
       return new NextResponse("Terminal not available", { status: 502 });

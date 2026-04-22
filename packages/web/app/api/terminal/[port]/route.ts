@@ -31,6 +31,7 @@ export async function GET(
       headers: { "content-type": contentType },
     });
   } catch (err) {
+    console.error(`[issuectl] HTTP proxy error for port ${port}:`, err);
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("ECONNREFUSED")) {
       return new NextResponse("Terminal not available", { status: 502 });

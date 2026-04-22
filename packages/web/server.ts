@@ -21,8 +21,9 @@ const server = createServer((req, res) => {
 // request, not at app.prepare() time). We can't capture it at startup.
 // Instead, intercept server.on/addListener so that whenever Next.js
 // (or anything else) registers an upgrade listener, we wrap it to skip
-// terminal WebSocket paths. Our handler runs first via prependListener
-// and marks the socket as handled so wrapped listeners no-op.
+// sockets already handled by us. Our handler runs first via
+// prependListener, marks the socket with a Symbol, and wrapped
+// listeners check that Symbol to no-op.
 const HANDLED = Symbol("terminalHandled");
 
 const origOn = server.on.bind(server);
@@ -61,7 +62,13 @@ server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HAN
   const match = req.url?.match(TERMINAL_WS_RE);
   if (match) {
     socket[HANDLED] = true;
-    handleUpgrade(req, socket, head, Number(match[1]));
+    try {
+      handleUpgrade(req, socket, head, Number(match[1]));
+    } catch (err) {
+      console.error("[issuectl] terminal upgrade handler failed:", err);
+      socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+      socket.destroy();
+    }
   }
 });
 
