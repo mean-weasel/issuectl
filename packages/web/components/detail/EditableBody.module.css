@@ -1,0 +1,55 @@
+.bodyWrap {
+  position: relative;
+}
+
+.editBtn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  padding: 2px 10px;
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+  z-index: 1;
+}
+
+.editBtn:hover {
+  color: var(--paper-ink);
+  border-color: var(--paper-ink-muted);
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink);
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--paper-ink-muted);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

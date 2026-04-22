@@ -45,14 +45,14 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 28px;
+  width: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--paper-ink-muted);
-  background: linear-gradient(90deg, var(--paper-bg-warm) 0%, transparent 100%);
-  transition: color 0.15s ease, background 0.15s ease;
+  background: transparent;
+  transition: color 0.15s ease;
   z-index: 1;
   user-select: none;
   border: none;
@@ -62,12 +62,13 @@
 
 .handle:hover {
   color: var(--paper-ink);
-  background: linear-gradient(90deg, var(--paper-bg-warmer) 0%, transparent 100%);
+  background: transparent;
 }
 
 .handleChevron {
   font-size: 16px;
   font-weight: 700;
+  opacity: 0;
 }
 
 .header {
