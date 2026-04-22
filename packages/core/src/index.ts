@@ -99,6 +99,8 @@ export type {
 } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit, withAuthRetry } from "./github/client.js";
+export { uploadImageToGitHub } from "./github/uploads.js";
+export type { UploadResult } from "./github/uploads.js";
 export {
   classifyGitHubError,
   formatErrorForUser,
