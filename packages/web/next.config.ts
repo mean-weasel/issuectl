@@ -103,9 +103,9 @@ const nextConfig: NextConfig = {
     // (sw.js) to register. Without an explicit directive, browsers
     // fall back to script-src — adding it prevents breakage if
     // script-src is ever tightened.
-    // ttyd terminal iframes run on localhost ports 7700-7799. CSP
-    // frame-src needs to allow these origins for the embedded terminal
-    // panel to load. A single wildcard origin covers the entire range.
+    // Terminal iframes now route through the same-origin proxy at
+    // /api/terminal/{port}/, so frame-src 'self' is sufficient.
+    // connect-src 'self' covers the proxied WebSocket upgrades.
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -113,7 +113,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: https://avatars.githubusercontent.com",
       "font-src 'self'",
       "connect-src 'self'",
-      "frame-src http://localhost:*",
+      "frame-src 'self'",
       "worker-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
