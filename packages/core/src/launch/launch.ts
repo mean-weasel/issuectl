@@ -18,7 +18,7 @@ import {
   type LaunchContext,
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
-import { verifyTtyd, spawnTtyd, allocatePort } from "./ttyd.js";
+import { verifyTtyd, spawnTtyd, allocatePort, tmuxSessionName } from "./ttyd.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -228,6 +228,7 @@ export async function executeLaunch(
       workspacePath: workspace.path,
       contextFilePath,
       claudeCommand,
+      sessionName: tmuxSessionName(options.repo, options.issueNumber),
     });
     updateTtydInfo(db, deployment.id, port, pid);
     ttydPort = port;

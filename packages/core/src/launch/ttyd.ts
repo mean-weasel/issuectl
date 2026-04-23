@@ -11,6 +11,10 @@ export interface SpawnTtydOptions {
   workspacePath: string;
   contextFilePath: string;
   claudeCommand: string;
+  /** Stable session name for tmux (e.g. "issuectl-167"). Multiple
+   *  clients connecting to the same ttyd instance will share the
+   *  terminal view via this tmux session. */
+  sessionName: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -21,27 +25,42 @@ function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;
 }
 
+const TMUX_TIMEOUT_MS = 10_000;
+const TMUX_SESSION_RE = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * Build a tmux-safe session name from repo + issue number. Dots, colons,
+ * and other characters that tmux interprets as session:window.pane
+ * delimiters are replaced with underscores.
+ */
+export function tmuxSessionName(repo: string, issueNumber: number): string {
+  const raw = `issuectl-${repo}-${issueNumber}`;
+  return raw.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
 /* ------------------------------------------------------------------ */
 /*  verifyTtyd                                                         */
 /* ------------------------------------------------------------------ */
 
 /**
- * Verify that ttyd is installed and reachable via PATH.
- * Throws with an install hint when it is not found.
+ * Verify that ttyd and tmux are installed and reachable via PATH.
+ * Throws with an install hint when either is not found.
  */
 export function verifyTtyd(): void {
-  try {
-    execFileSync("which", ["ttyd"], { stdio: "ignore" });
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    const status = (err as { status?: number }).status;
-    if (code === "ENOENT" || status === 1) {
-      throw new Error("ttyd is not installed. Run: brew install ttyd", { cause: err });
+  for (const bin of ["ttyd", "tmux"] as const) {
+    try {
+      execFileSync("which", [bin], { stdio: "ignore" });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      const status = (err as { status?: number }).status;
+      if (code === "ENOENT" || status === 1) {
+        throw new Error(`${bin} is not installed. Run: brew install ${bin}`, { cause: err });
+      }
+      throw new Error(
+        `Failed to verify ${bin} installation: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
     }
-    throw new Error(
-      `Failed to verify ttyd installation: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
   }
 }
 
@@ -50,15 +69,29 @@ export function verifyTtyd(): void {
 /* ------------------------------------------------------------------ */
 
 /**
- * Send SIGTERM to a ttyd process. Silently ignores ESRCH (process
- * already dead) — all other errors are re-thrown.
+ * Send SIGTERM to a ttyd process and kill its tmux session.
+ * Silently ignores ESRCH (process already dead) and non-existent
+ * tmux sessions — all other errors are re-thrown. The tmux session
+ * is always cleaned up when a `sessionName` is provided, even if
+ * the ttyd process is already dead.
  */
-export function killTtyd(pid: number): void {
+export function killTtyd(pid: number, sessionName?: string): void {
   try {
     process.kill(pid, "SIGTERM");
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ESRCH") return;
-    throw err;
+    if ((err as NodeJS.ErrnoException).code !== "ESRCH") throw err;
+    // ESRCH: process already dead — fall through to tmux cleanup
+  }
+
+  if (sessionName) {
+    try {
+      execFileSync("tmux", ["kill-session", "-t", sessionName], {
+        stdio: "ignore",
+        timeout: TMUX_TIMEOUT_MS,
+      });
+    } catch {
+      // Session may already be gone — that's fine.
+    }
   }
 }
 
@@ -147,27 +180,57 @@ export async function allocatePort(db: Database.Database): Promise<number> {
 /* ------------------------------------------------------------------ */
 
 /**
- * Spawn a detached ttyd process that serves an interactive Claude
- * session over WebSocket. Returns the child PID and port.
+ * Create a tmux session running an interactive Claude command, then
+ * spawn a detached ttyd process that serves the session over WebSocket.
+ * Returns the child PID and port.
  *
  * Includes a brief post-spawn health check — if ttyd crashes
  * immediately (e.g. port conflict, bad path), the error is surfaced
- * rather than silently recording a dead PID.
+ * rather than silently recording a dead PID. On any failure after the
+ * tmux session is created, the session is cleaned up to prevent orphans.
  */
 export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: number; port: number }> {
-  const { port, workspacePath, contextFilePath, claudeCommand } = options;
+  const { port, workspacePath, contextFilePath, claudeCommand, sessionName } = options;
 
-  // Build the inner shell command that ttyd will execute inside bash:
+  if (!TMUX_SESSION_RE.test(sessionName)) {
+    throw new Error(
+      `Invalid tmux session name: ${JSON.stringify(sessionName)}. Only alphanumeric, hyphens, and underscores are allowed.`,
+    );
+  }
+
+  // Build the inner shell command that runs inside tmux:
   //   cd <workspace> && cat <context> | <claudeCommand> ; exit
-  const shellCommand =
+  const innerCommand =
     `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand} ; exit`;
+
+  // Create a detached tmux session that runs the Claude command.
+  // This is step 1 of 2 — ttyd will then serve `tmux attach` so
+  // every WebSocket client shares the same terminal view.
+  execFileSync("tmux", [
+    "new-session", "-d", "-s", sessionName,
+    `bash -lic ${shellEscape(innerCommand)}`,
+  ], { timeout: TMUX_TIMEOUT_MS });
+
+  try {
+    execFileSync("tmux", ["set-option", "-t", sessionName, "status", "off"],
+      { timeout: TMUX_TIMEOUT_MS });
+    // "largest" sizing ensures the session expands to the biggest attached
+    // client instead of shrinking to the smallest — critical for shared
+    // viewing where desktop and mobile connect simultaneously.
+    execFileSync("tmux", ["set-option", "-t", sessionName, "window-size", "largest"],
+      { timeout: TMUX_TIMEOUT_MS });
+  } catch (err) {
+    killTmuxSession(sessionName);
+    throw err;
+  }
 
   // Bind to loopback only — the Next.js custom server proxies
   // terminal traffic through same-origin routes (/api/terminal/{port}),
   // so ttyd never needs to be reachable from the network directly.
   const child = spawn(
     "ttyd",
-    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
+    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q",
+     "tmux", "attach-session", "-t", sessionName],
     { detached: true, stdio: "ignore" },
   );
 
@@ -177,18 +240,30 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   child.unref();
 
   if (child.pid === undefined) {
+    killTmuxSession(sessionName);
     throw new Error("Failed to spawn ttyd: no PID returned");
   }
 
   // Brief health check — give ttyd a moment to crash on startup
   await new Promise((r) => setTimeout(r, 300));
   if (!isTtydAlive(child.pid)) {
+    killTmuxSession(sessionName);
     throw new Error(
       `ttyd process ${child.pid} died immediately after spawn. Check that port ${port} is available and the workspace path exists.`,
     );
   }
 
   return { pid: child.pid, port };
+}
+
+/** Best-effort cleanup of a tmux session. */
+function killTmuxSession(name: string): void {
+  try {
+    execFileSync("tmux", ["kill-session", "-t", name], {
+      stdio: "ignore",
+      timeout: TMUX_TIMEOUT_MS,
+    });
+  } catch { /* best effort */ }
 }
 
 /* ------------------------------------------------------------------ */

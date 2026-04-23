@@ -21,6 +21,8 @@ vi.mock("@issuectl/core", () => ({
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
+  tmuxSessionName: (repo: string, issueNumber: number) =>
+    `issuectl-${repo}-${issueNumber}`,
   // The rest of the exports used only by launchIssue — provide stubs so
   // TypeScript/vitest don't trip over missing exports.
   isTtydAlive: vi.fn(),
@@ -92,7 +94,7 @@ describe("endSession", () => {
   it("kills ttyd before ending deployment", async () => {
     const result = await endSession(...ARGS);
 
-    expect(killTtyd).toHaveBeenCalledWith(42);
+    expect(killTtyd).toHaveBeenCalledWith(42, "issuectl-repo-7");
     expect(coreEndDeployment).toHaveBeenCalled();
     expect(result).toMatchObject({ success: true });
   });

@@ -52,6 +52,31 @@ wss.on("error", (err) => {
   console.error("[issuectl] WebSocketServer error:", err.message);
 });
 
+// ---------------------------------------------------------------------------
+// Diagnostic: per-connection frame stats (logged every DIAG_INTERVAL_MS)
+// ---------------------------------------------------------------------------
+const DIAG_INTERVAL_MS = 5_000;
+
+interface WsStats {
+  clientIp: string;
+  port: number;
+  framesFromTtyd: number;
+  framesToClient: number;
+  bytesToClient: number;
+  peakBufferedAmount: number;
+  droppedFrames: number;
+  connectedAt: number;
+}
+
+function logStats(s: WsStats, label: string): void {
+  const uptimeSec = ((Date.now() - s.connectedAt) / 1000).toFixed(1);
+  console.log(
+    `[issuectl:diag] ${label} port=${s.port} client=${s.clientIp} ` +
+    `uptime=${uptimeSec}s frames_in=${s.framesFromTtyd} frames_out=${s.framesToClient} ` +
+    `bytes_out=${s.bytesToClient} peak_buffered=${s.peakBufferedAmount} dropped=${s.droppedFrames}`,
+  );
+}
+
 /**
  * Handle an HTTP upgrade request for a terminal WebSocket. Called from
  * `server.ts`'s `upgrade` event listener.
@@ -69,6 +94,26 @@ export function handleUpgrade(
   }
 
   wss.handleUpgrade(req, socket, head, (clientWs) => {
+    const clientIp =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+      ?? req.socket.remoteAddress
+      ?? "unknown";
+
+    const stats: WsStats = {
+      clientIp,
+      port,
+      framesFromTtyd: 0,
+      framesToClient: 0,
+      bytesToClient: 0,
+      peakBufferedAmount: 0,
+      droppedFrames: 0,
+      connectedAt: Date.now(),
+    };
+
+    console.log(`[issuectl:diag] ws_connect port=${port} client=${clientIp}`);
+
+    const diagTimer = setInterval(() => logStats(stats, "ws_tick"), DIAG_INTERVAL_MS);
+
     // Forward the subprotocol (ttyd requires "tty") so the upstream
     // handshake succeeds and the terminal session initializes.
     const protocols = req.headers["sec-websocket-protocol"]?.split(",").map((s) => s.trim());
@@ -95,17 +140,43 @@ export function handleUpgrade(
       pendingClientMsgs.length = 0;
 
       upstream.on("message", (data, isBinary) => {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(data, { binary: isBinary });
+        stats.framesFromTtyd++;
+
+        if (clientWs.readyState !== WebSocket.OPEN) {
+          stats.droppedFrames++;
+          return;
         }
+
+        const buffered = clientWs.bufferedAmount;
+        if (buffered > stats.peakBufferedAmount) {
+          stats.peakBufferedAmount = buffered;
+        }
+
+        const len = data instanceof Buffer ? data.length
+          : data instanceof ArrayBuffer ? data.byteLength
+          : (data as Buffer[]).reduce((acc, b) => acc + b.length, 0);
+        stats.bytesToClient += len;
+        stats.framesToClient++;
+
+        clientWs.send(data, { binary: isBinary });
       });
     });
 
+    let cleanedUp = false;
+    function cleanup() {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      clearInterval(diagTimer);
+      logStats(stats, "ws_close");
+    }
+
     clientWs.on("close", () => {
+      cleanup();
       if (upstream.readyState === WebSocket.OPEN) upstream.close();
     });
 
     upstream.on("close", () => {
+      cleanup();
       if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
     });
 
@@ -114,12 +185,14 @@ export function handleUpgrade(
       if (pendingClientMsgs.length > 0) {
         console.error(`[issuectl] ${pendingClientMsgs.length} buffered message(s) dropped for port ${port}`);
       }
+      cleanup();
       if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
       upstream.terminate();
     });
 
     clientWs.on("error", (err) => {
       console.error(`[issuectl] client WS error for port ${port}:`, err.message);
+      cleanup();
       upstream.terminate();
     });
   });
