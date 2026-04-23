@@ -19,6 +19,8 @@ import { WorkspaceModeSelector } from "./WorkspaceModeSelector";
 import { ContextToggles } from "./ContextToggles";
 import { PreambleInput } from "./PreambleInput";
 import styles from "./LaunchModal.module.css";
+import { checkWorktreeStatusAction } from "@/lib/actions/worktrees";
+import { DirtyWorktreeBanner } from "./DirtyWorktreeBanner";
 
 type Props = {
   owner: string;
@@ -64,6 +66,11 @@ export function LaunchModal({
     referencedFiles,
   );
   const [preamble, setPreamble] = useState("");
+  const [dirtyWorktree, setDirtyWorktree] = useState<{
+    dirty: boolean;
+    path: string;
+  } | null>(null);
+  const [forceResume, setForceResume] = useState(false);
 
   const [initialBranch] = useState(defaultBranch);
   const [initialMode] = useState<WorkspaceMode>(
@@ -76,6 +83,25 @@ export function LaunchModal({
       setSelectedComments(comments.map((_, i) => i));
     }
   }, [comments]);
+
+  useEffect(() => {
+    if (workspaceMode !== "worktree" && workspaceMode !== "clone") {
+      setDirtyWorktree(null);
+      return;
+    }
+
+    let cancelled = false;
+    checkWorktreeStatusAction(owner, repo, issue.number).then((status) => {
+      if (cancelled) return;
+      if (status.exists && status.dirty) {
+        setDirtyWorktree({ dirty: true, path: status.path });
+      } else {
+        setDirtyWorktree(null);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [owner, repo, issue.number, workspaceMode]);
 
   const isDirty =
     branchName !== initialBranch ||
@@ -126,6 +152,7 @@ export function LaunchModal({
           selectedFilePaths: selectedFiles,
           preamble: preamble.trim() || undefined,
           idempotencyKey,
+          forceResume,
         });
 
         if (!result.success) {
@@ -179,6 +206,17 @@ export function LaunchModal({
               </div>
             </div>
           </div>
+
+          {dirtyWorktree?.dirty && !forceResume && (
+            <DirtyWorktreeBanner
+              owner={owner}
+              repo={repo}
+              issueNumber={issue.number}
+              worktreePath={dirtyWorktree.path}
+              onDiscard={() => setDirtyWorktree(null)}
+              onResume={() => setForceResume(true)}
+            />
+          )}
 
           <BranchInput value={branchName} onChange={setBranchName} />
 
