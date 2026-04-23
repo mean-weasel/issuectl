@@ -177,6 +177,11 @@ export {
 } from "./launch/context.js";
 export { prepareWorkspace } from "./launch/workspace.js";
 export {
+  checkWorktreeStatus,
+  resetWorktree,
+  type WorktreeStatus,
+} from "./launch/worktree-status.js";
+export {
   verifyTtyd,
   spawnTtyd,
   killTtyd,
