@@ -31,8 +31,14 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<"normal" | "editing">("normal");
+  const [displayBody, setDisplayBody] = useState(comment.body);
   const [editBody, setEditBody] = useState(comment.body);
   const [saving, setSaving] = useState(false);
+
+  // Sync displayBody when the server data changes (e.g. after router.refresh())
+  useEffect(() => {
+    setDisplayBody(comment.body);
+  }, [comment.body]);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -48,7 +54,7 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
   }, []);
 
   const handleEdit = () => {
-    setEditBody(comment.body);
+    setEditBody(displayBody);
     setMode("editing");
   };
 
@@ -59,10 +65,10 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
   const handleSaveEdit = async () => {
     if (saving || !editBody.trim()) return;
     setSaving(true);
-    const originalBody = comment.body;
+    const originalBody = displayBody;
 
     // Optimistic: switch back to normal mode with new body
-    comment.body = editBody;
+    setDisplayBody(editBody);
     setMode("normal");
 
     const result = await editComment(owner, repo, issueNumber, comment.id, editBody);
@@ -70,7 +76,7 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
 
     if (!result.success) {
       // Rollback
-      comment.body = originalBody;
+      setDisplayBody(originalBody);
       setMode("editing");
       showToast(result.error ?? "Failed to edit comment", "error");
       return;
@@ -139,6 +145,7 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
               type="button"
               className={`${styles.actionBtn} ${confirmingDelete ? styles.deleteConfirm : ""}`}
               onClick={handleDeleteClick}
+              aria-label={confirmingDelete ? "Confirm delete" : "Delete comment"}
             >
               {confirmingDelete ? "confirm?" : "delete"}
             </button>
@@ -180,7 +187,7 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
           </div>
         </>
       ) : (
-        <LightboxBodyText body={comment.body} className={styles.commentBody} />
+        <LightboxBodyText body={displayBody} className={styles.commentBody} />
       )}
     </div>
   );

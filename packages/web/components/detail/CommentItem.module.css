@@ -156,10 +156,6 @@
   background: var(--paper-bg-warmer);
 }
 
-.hidden {
-  display: none;
-}
-
 @media (max-width: 767px) {
   .editHint {
     display: none;

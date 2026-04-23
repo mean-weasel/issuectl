@@ -15,12 +15,19 @@ import {
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
+const OWNER_REPO_RE = /^[a-zA-Z0-9_.-]+$/;
+const MAX_COMMENT_BODY = 65536;
+
 export async function getComments(
   owner: string,
   repo: string,
   issueNumber: number,
 ): Promise<{ success: true; comments: GitHubComment[] } | { success: false; error: string }> {
-  if (!owner || !repo || issueNumber <= 0) {
+  if (
+    !owner || !repo ||
+    !OWNER_REPO_RE.test(owner) || !OWNER_REPO_RE.test(repo) ||
+    !Number.isInteger(issueNumber) || issueNumber <= 0
+  ) {
     return { success: false, error: "Invalid input" };
   }
   try {
@@ -35,8 +42,6 @@ export async function getComments(
   }
 }
 
-const MAX_COMMENT_BODY = 65536;
-
 export async function addComment(
   owner: string,
   repo: string,
@@ -44,7 +49,12 @@ export async function addComment(
   body: string,
   idempotencyKey?: string,
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
-  if (!owner || !repo || issueNumber <= 0 || !body.trim()) {
+  if (
+    !owner || !repo ||
+    !OWNER_REPO_RE.test(owner) || !OWNER_REPO_RE.test(repo) ||
+    !Number.isInteger(issueNumber) || issueNumber <= 0 ||
+    !body.trim()
+  ) {
     return { success: false, error: "Invalid input" };
   }
   if (body.length > MAX_COMMENT_BODY) {
@@ -86,8 +96,6 @@ export async function addComment(
   );
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
-
-const OWNER_REPO_RE = /^[a-zA-Z0-9_.-]+$/;
 
 export async function editComment(
   owner: string,

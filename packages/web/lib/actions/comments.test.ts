@@ -66,6 +66,12 @@ describe("editComment action", () => {
     expect(result.error).toMatch(/Invalid input/i);
   });
 
+  it("rejects non-integer issueNumber", async () => {
+    const result = await editComment("acme", "web", 1.5, 100, "hello");
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Invalid input/i);
+  });
+
   it("succeeds with valid input", async () => {
     editCommentMock.mockResolvedValue({
       id: 100,
