@@ -117,7 +117,9 @@ export function handleUpgrade(
       console.log(`[issuectl:diag] ws_connect port=${port} client=${clientIp}`);
     }
 
-    const diagTimer = setInterval(() => logStats(stats, "ws_tick"), DIAG_INTERVAL_MS);
+    const diagTimer = DIAG_ENABLED
+      ? setInterval(() => logStats(stats, "ws_tick"), DIAG_INTERVAL_MS)
+      : undefined;
 
     // Forward the subprotocol (ttyd requires "tty") so the upstream
     // handshake succeeds and the terminal session initializes.
@@ -171,7 +173,7 @@ export function handleUpgrade(
     function cleanup() {
       if (cleanedUp) return;
       cleanedUp = true;
-      clearInterval(diagTimer);
+      if (diagTimer !== undefined) clearInterval(diagTimer);
       logStats(stats, "ws_close");
     }
 
