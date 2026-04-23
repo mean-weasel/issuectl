@@ -7,6 +7,18 @@ export const ALLOWED_IMAGE_TYPES = new Set([
 
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+/**
+ * Sanitize a filename for use in a GitHub repo path.
+ * Keeps alphanumeric, hyphens, dots, and underscores.
+ */
+export function sanitizeFilename(name: string): string {
+  const sanitized = name
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .replace(/-{2,}/g, "-");
+  return sanitized || "image";
+}
+
 export type UploadResult = {
   url: string;
   fileName: string;
