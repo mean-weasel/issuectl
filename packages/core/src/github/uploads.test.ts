@@ -94,6 +94,9 @@ describe("uploadImageToGitHub", () => {
     expect((init.headers as Record<string, string>)["Accept"]).toBe(
       "application/vnd.github+json",
     );
+    expect((init.headers as Record<string, string>)["Content-Type"]).toBe(
+      "application/json",
+    );
 
     const body = JSON.parse(init.body as string) as { message: string; content: string };
     expect(body.message).toMatch(/^chore\(issuectl\): upload image test\.png$/);

@@ -79,10 +79,10 @@ export async function uploadImageToGitHub(
   let result: { content?: { download_url?: string } };
   try {
     result = (await response.json()) as typeof result;
-  } catch {
-    const text = await response.text().catch(() => "");
+  } catch (err) {
     throw new Error(
-      `GitHub returned invalid JSON after upload (status ${response.status}). Body: ${text.slice(0, 200)}`,
+      `GitHub returned invalid JSON after upload (status ${response.status}): ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 
