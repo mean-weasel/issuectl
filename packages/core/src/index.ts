@@ -146,7 +146,10 @@ export {
 export {
   getComments,
   addComment,
+  editComment,
+  removeComment,
 } from "./data/comments.js";
+export { getCurrentUserLogin } from "./data/user.js";
 export {
   getUnifiedList,
   groupIntoSections,
