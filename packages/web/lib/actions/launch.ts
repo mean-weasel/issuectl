@@ -194,7 +194,9 @@ export async function endSession(
     coreEndDeployment(db, deploymentId);
 
     // Best-effort cleanup of stale context temp files
-    cleanupStaleContextFiles().catch(() => { /* best-effort */ });
+    cleanupStaleContextFiles().catch((err) => {
+      console.warn("[issuectl] Failed to clean up stale context files:", err);
+    });
   } catch (err) {
     console.error("[issuectl] Failed to end session:", err);
     return { success: false, error: formatErrorForUser(err) };
@@ -209,7 +211,7 @@ export async function endSession(
 
 export async function checkTtydAlive(
   deploymentId: number,
-): Promise<{ alive: boolean }> {
+): Promise<{ alive: boolean; error?: string }> {
   try {
     const db = getDb();
     const deployment = getDeploymentById(db, deploymentId);
@@ -227,6 +229,6 @@ export async function checkTtydAlive(
     return { alive };
   } catch (err) {
     console.error("[issuectl] Health check failed:", err);
-    return { alive: false };
+    return { alive: false, error: "Health check failed" };
   }
 }
