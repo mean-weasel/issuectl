@@ -1,4 +1,4 @@
-import { getDb, getOctokit, getIssueContent } from "@issuectl/core";
+import { getDb, getOctokit, getIssueContent, getCurrentUserLogin } from "@issuectl/core";
 import type { Deployment, GitHubIssue } from "@issuectl/core";
 import { LaunchCard } from "./LaunchCard";
 import { CommentSection } from "./CommentSection";
@@ -28,11 +28,19 @@ export async function IssueDetailContent({
   deployments,
 }: Props) {
   let comments;
+  let currentUser: string | null;
   try {
     const db = getDb();
     const octokit = await getOctokit();
-    const result = await getIssueContent(db, octokit, owner, repoName, issue.number);
+    const [result, login] = await Promise.all([
+      getIssueContent(db, octokit, owner, repoName, issue.number),
+      getCurrentUserLogin(db, octokit).catch((err) => {
+        console.warn("[issuectl] Failed to fetch current user:", err);
+        return null;
+      }),
+    ]);
     comments = result.comments;
+    currentUser = login;
   } catch (err) {
     console.error(
       `[issuectl] IssueDetailContent: failed to load comments for ${owner}/${repoName}#${issue.number}`,
@@ -65,6 +73,7 @@ export async function IssueDetailContent({
       />
       <CommentSection
         initialComments={comments}
+        currentUser={currentUser}
         owner={owner}
         repo={repoName}
         issueNumber={issue.number}
