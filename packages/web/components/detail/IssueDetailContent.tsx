@@ -12,14 +12,15 @@ type Props = {
 };
 
 /**
- * Streaming content section: calls getIssueContent to fetch comments,
- * then renders the LaunchCard (active deployment banner) and the
- * CommentSection (comment list + composer with optimistic updates).
- * Wrapped in Suspense by the page.
+ * Streaming content section: calls getIssueContent and getCurrentUserLogin
+ * in parallel to fetch comments and identify the authenticated user,
+ * then renders the LaunchCard and CommentSection (comment list with
+ * inline edit/delete for own comments + composer). Wrapped in Suspense.
  *
- * Handles errors inline so a transient failure in getIssueContent
- * shows a degraded state instead of tearing down the whole page via the
- * root error boundary.
+ * Handles errors inline so a transient failure shows a degraded state
+ * instead of tearing down the whole page. getCurrentUserLogin failures
+ * are caught independently — comments still render, but edit/delete
+ * buttons are hidden.
  */
 export async function IssueDetailContent({
   owner,

@@ -103,7 +103,7 @@ export async function editComment(
   issueNumber: number,
   commentId: number,
   body: string,
-): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
+): Promise<{ success: true; cacheStale?: true } | { success: false; error: string }> {
   if (
     !owner || !repo ||
     !OWNER_REPO_RE.test(owner) || !OWNER_REPO_RE.test(repo) ||
@@ -144,7 +144,7 @@ export async function deleteComment(
   repo: string,
   issueNumber: number,
   commentId: number,
-): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
+): Promise<{ success: true; cacheStale?: true } | { success: false; error: string }> {
   if (
     !owner || !repo ||
     !OWNER_REPO_RE.test(owner) || !OWNER_REPO_RE.test(repo) ||

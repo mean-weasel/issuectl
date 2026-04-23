@@ -67,23 +67,31 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
     setSaving(true);
     const originalBody = displayBody;
 
-    // Optimistic: switch back to normal mode with new body
+    // Optimistic: show new body immediately; rolled back in the error handler below
     setDisplayBody(editBody);
     setMode("normal");
 
-    const result = await editComment(owner, repo, issueNumber, comment.id, editBody);
-    setSaving(false);
-
-    if (!result.success) {
-      // Rollback
+    try {
+      const result = await editComment(owner, repo, issueNumber, comment.id, editBody);
+      if (!result.success) {
+        setDisplayBody(originalBody);
+        setMode("editing");
+        showToast(result.error, "error");
+        return;
+      }
+      router.refresh();
+      showToast(
+        result.cacheStale ? "Comment updated — reload if the page looks stale" : "Comment updated",
+        "success",
+      );
+    } catch (err) {
+      console.error("[issuectl] Edit comment failed unexpectedly:", err);
       setDisplayBody(originalBody);
       setMode("editing");
-      showToast(result.error ?? "Failed to edit comment", "error");
-      return;
+      showToast("Failed to edit comment", "error");
+    } finally {
+      setSaving(false);
     }
-
-    router.refresh();
-    showToast("Comment updated", "success");
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -112,14 +120,23 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
     setDeleted(true);
 
     void (async () => {
-      const result = await deleteComment(owner, repo, issueNumber, comment.id);
-      if (!result.success) {
+      try {
+        const result = await deleteComment(owner, repo, issueNumber, comment.id);
+        if (!result.success) {
+          setDeleted(false);
+          showToast(result.error, "error");
+          return;
+        }
+        router.refresh();
+        showToast(
+          result.cacheStale ? "Comment deleted — reload if the page looks stale" : "Comment deleted",
+          "success",
+        );
+      } catch (err) {
+        console.error("[issuectl] Delete comment failed unexpectedly:", err);
         setDeleted(false);
-        showToast(result.error ?? "Failed to delete comment", "error");
-        return;
+        showToast("Failed to delete comment", "error");
       }
-      router.refresh();
-      showToast("Comment deleted", "success");
     })();
   };
 

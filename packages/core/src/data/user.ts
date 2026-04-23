@@ -4,6 +4,8 @@ import { getCached, setCached } from "../db/cache.js";
 
 const CACHE_KEY = "current-user";
 
+// No isFresh/TTL check: user login doesn't change within a session.
+// The entry is still pruned by pruneStaleCache after 24h.
 export async function getCurrentUserLogin(
   db: Database.Database,
   octokit: Octokit,
