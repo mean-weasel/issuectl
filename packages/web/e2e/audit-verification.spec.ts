@@ -182,7 +182,7 @@ test.describe("Adv-R2 #4 — Content-Security-Policy header", () => {
   // just pins the load-bearing directives.
   const REQUIRED_DIRECTIVES = [
     "default-src 'self'",
-    "img-src 'self' data: https://avatars.githubusercontent.com",
+    "img-src 'self' data: https://avatars.githubusercontent.com https://raw.githubusercontent.com https://user-images.githubusercontent.com https://github.com",
     "frame-ancestors 'none'",
   ];
 
