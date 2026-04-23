@@ -1,19 +1,16 @@
-import Image from "next/image";
 import type { GitHubComment } from "@issuectl/core";
-import { timeAgo } from "@/lib/format";
-import { LightboxBodyText } from "./LightboxBodyText";
+import { CommentItem } from "./CommentItem";
 import styles from "./CommentList.module.css";
 
 type Props = {
   comments: GitHubComment[];
+  currentUser: string | null;
+  owner: string;
+  repo: string;
+  issueNumber: number;
 };
 
-function initials(login: string | undefined): string {
-  if (!login) return "??";
-  return login.slice(0, 2).toLowerCase();
-}
-
-export function CommentList({ comments }: Props) {
+export function CommentList({ comments, currentUser, owner, repo, issueNumber }: Props) {
   return (
     <>
       <h2 className={styles.section}>
@@ -25,20 +22,14 @@ export function CommentList({ comments }: Props) {
         </div>
       ) : (
         comments.map((c) => (
-          <div key={c.id} className={styles.comment}>
-            <div className={styles.head}>
-              <div className={styles.avi}>
-                {c.user?.avatarUrl ? (
-                  <Image src={c.user.avatarUrl} alt="" width={26} height={26} />
-                ) : (
-                  initials(c.user?.login)
-                )}
-              </div>
-              <div className={styles.who}>{c.user?.login ?? "unknown"}</div>
-              <div className={styles.time}>{timeAgo(c.updatedAt)}</div>
-            </div>
-            <LightboxBodyText body={c.body} className={styles.commentBody} />
-          </div>
+          <CommentItem
+            key={c.id}
+            comment={c}
+            currentUser={currentUser}
+            owner={owner}
+            repo={repo}
+            issueNumber={issueNumber}
+          />
         ))
       )}
     </>

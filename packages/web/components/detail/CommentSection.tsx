@@ -7,12 +7,13 @@ import { CommentComposer } from "./CommentComposer";
 
 type Props = {
   initialComments: GitHubComment[];
+  currentUser: string | null;
   owner: string;
   repo: string;
   issueNumber: number;
 };
 
-export function CommentSection({ initialComments, owner, repo, issueNumber }: Props) {
+export function CommentSection({ initialComments, currentUser, owner, repo, issueNumber }: Props) {
   const [pendingComments, setPendingComments] = useState<GitHubComment[]>([]);
   const prevCountRef = useRef(initialComments.length);
 
@@ -41,7 +42,13 @@ export function CommentSection({ initialComments, owner, repo, issueNumber }: Pr
 
   return (
     <>
-      <CommentList comments={allComments} />
+      <CommentList
+        comments={allComments}
+        currentUser={currentUser}
+        owner={owner}
+        repo={repo}
+        issueNumber={issueNumber}
+      />
       <CommentComposer
         owner={owner}
         repo={repo}
