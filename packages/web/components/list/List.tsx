@@ -194,8 +194,6 @@ export function List({
 
         <CacheAge cachedAt={cachedAt ?? null} />
         <nav className={styles.desktopNav}>
-          <Link href="/new" className={styles.desktopNavLink}>New Issue</Link>
-          <span className={styles.desktopNavSep}>·</span>
           <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
           <span className={styles.desktopNavSep}>·</span>
           <Link href={settingsHref} className={styles.desktopNavLink}>Settings</Link>
@@ -284,13 +282,18 @@ export function List({
           {weekday} · <b>{short}</b>
         </div>
         {activeTab === "issues" && (
-          <button
-            type="button"
-            className={styles.desktopDraftBtn}
-            onClick={() => setCreateOpen(true)}
-          >
-            + draft
-          </button>
+          <>
+            <Link href="/new" className={styles.desktopNewIssueBtn}>
+              + new issue
+            </Link>
+            <button
+              type="button"
+              className={styles.desktopDraftBtn}
+              onClick={() => setCreateOpen(true)}
+            >
+              + draft
+            </button>
+          </>
         )}
         <button
           type="button"
