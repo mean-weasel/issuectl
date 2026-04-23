@@ -4,6 +4,8 @@ import type { GitHubComment } from "../github/types.js";
 import {
   getComments as fetchComments,
   addComment as postComment,
+  updateComment as patchComment,
+  deleteComment as destroyComment,
 } from "../github/issues.js";
 import { getCacheTtl, getCached, setCached, isFresh, clearCacheKey } from "../db/cache.js";
 
@@ -55,4 +57,36 @@ export async function addComment(
   clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
   clearCacheKey(db, `pull-detail:${owner}/${repo}#${issueNumber}`);
   return comment;
+}
+
+export async function editComment(
+  db: Database.Database,
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  commentId: number,
+  body: string,
+): Promise<GitHubComment> {
+  const comment = await patchComment(octokit, owner, repo, commentId, body);
+  clearCacheKey(db, `comments:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-content:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `pull-detail:${owner}/${repo}#${issueNumber}`);
+  return comment;
+}
+
+export async function removeComment(
+  db: Database.Database,
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  commentId: number,
+): Promise<void> {
+  await destroyComment(octokit, owner, repo, commentId);
+  clearCacheKey(db, `comments:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-content:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `pull-detail:${owner}/${repo}#${issueNumber}`);
 }
