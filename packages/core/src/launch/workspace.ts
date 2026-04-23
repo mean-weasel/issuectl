@@ -57,6 +57,7 @@ export async function prepareWorkspace(options: {
   branchName: string;
   issueNumber: number;
   worktreeDir: string;
+  forceResume?: boolean;
 }): Promise<WorkspaceResult> {
   switch (options.mode) {
     case "existing":
@@ -104,6 +105,7 @@ async function prepareWorktree(options: {
   repo: string;
   issueNumber: number;
   worktreeDir: string;
+  forceResume?: boolean;
 }): Promise<WorkspaceResult> {
   const worktreeName = `${options.repo}-issue-${options.issueNumber}`;
   const worktreePath = join(options.worktreeDir, worktreeName);
@@ -120,6 +122,9 @@ async function prepareWorktree(options: {
     if (await isGitRepo(worktreePath)) {
       const clean = await isWorkingTreeClean(worktreePath);
       if (!clean) {
+        if (options.forceResume) {
+          return { path: worktreePath, mode: "worktree", created: false };
+        }
         throw new Error(
           `Worktree at ${worktreePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the worktree with \`git worktree remove\`) before launching again.`,
         );

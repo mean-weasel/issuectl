@@ -121,6 +121,33 @@ describe("prepareWorkspace — worktree mode", () => {
     ).rejects.toThrow(/uncommitted changes/);
     expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
   });
+
+  it("skips dirty-worktree error when forceResume is true", async () => {
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    const result = await prepareWorkspace({
+      ...BASE_OPTIONS,
+      mode: "worktree",
+      forceResume: true,
+    });
+
+    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
+    expect(result.mode).toBe("worktree");
+    expect(result.created).toBe(false);
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
+  });
+
+  it("still throws on dirty worktree when forceResume is not set", async () => {
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "worktree" }),
+    ).rejects.toThrow("uncommitted changes");
+  });
 });
 
 /* ---------- clone mode ---------- */
