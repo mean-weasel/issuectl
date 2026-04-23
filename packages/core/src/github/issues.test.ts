@@ -9,6 +9,8 @@ import {
   closeIssue,
   getComments,
   addComment,
+  updateComment,
+  deleteComment,
   reassignIssue,
 } from "./issues.js";
 import { createTestDb } from "../db/test-helpers.js";
@@ -50,16 +52,18 @@ function makeOctokit() {
   const update = vi.fn() as MockFn;
   const listComments = vi.fn() as MockFn;
   const createComment = vi.fn() as MockFn;
+  const updateComment = vi.fn() as MockFn;
+  const deleteComment = vi.fn() as MockFn;
   const listForRepo = vi.fn() as MockFn;
 
   const octokit = {
     paginate,
     rest: {
-      issues: { listForRepo, get, create, update, listComments, createComment },
+      issues: { listForRepo, get, create, update, listComments, createComment, updateComment, deleteComment },
     },
   } as unknown as Octokit;
 
-  return { octokit, paginate, get, create, update, listComments, createComment, listForRepo };
+  return { octokit, paginate, get, create, update, listComments, createComment, updateComment, deleteComment, listForRepo };
 }
 
 /* ---------- listIssues ---------- */
@@ -247,6 +251,61 @@ describe("addComment", () => {
       issue_number: 1,
       body: "A comment",
     });
+  });
+});
+
+/* ---------- updateComment ---------- */
+
+describe("updateComment", () => {
+  it("updates a comment and returns mapped result", async () => {
+    const { octokit, updateComment: updateCommentMock } = makeOctokit();
+    const updatedRaw = { ...RAW_COMMENT, body: "Updated body" };
+    updateCommentMock.mockResolvedValue({ data: updatedRaw });
+
+    const result = await updateComment(octokit, "owner", "repo", 100, "Updated body");
+    expect(result.body).toBe("Updated body");
+    expect(result.id).toBe(100);
+    expect(result.user?.login).toBe("bob");
+    expect(updateCommentMock).toHaveBeenCalledWith({
+      owner: "owner",
+      repo: "repo",
+      comment_id: 100,
+      body: "Updated body",
+    });
+  });
+
+  it("propagates API errors", async () => {
+    const { octokit, updateComment: updateCommentMock } = makeOctokit();
+    updateCommentMock.mockRejectedValue(
+      Object.assign(new Error("Not Found"), { status: 404 }),
+    );
+
+    await expect(updateComment(octokit, "owner", "repo", 999, "body")).rejects.toThrow("Not Found");
+  });
+});
+
+/* ---------- deleteComment ---------- */
+
+describe("deleteComment", () => {
+  it("deletes a comment", async () => {
+    const { octokit, deleteComment: deleteCommentMock } = makeOctokit();
+    deleteCommentMock.mockResolvedValue(undefined);
+
+    await deleteComment(octokit, "owner", "repo", 100);
+    expect(deleteCommentMock).toHaveBeenCalledWith({
+      owner: "owner",
+      repo: "repo",
+      comment_id: 100,
+    });
+  });
+
+  it("propagates API errors", async () => {
+    const { octokit, deleteComment: deleteCommentMock } = makeOctokit();
+    deleteCommentMock.mockRejectedValue(
+      Object.assign(new Error("Not Found"), { status: 404 }),
+    );
+
+    await expect(deleteComment(octokit, "owner", "repo", 999)).rejects.toThrow("Not Found");
   });
 });
 

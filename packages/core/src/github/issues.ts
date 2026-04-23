@@ -167,6 +167,35 @@ export async function addComment(
   return mapComment(data);
 }
 
+export async function updateComment(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  commentId: number,
+  body: string,
+): Promise<GitHubComment> {
+  const { data } = await octokit.rest.issues.updateComment({
+    owner,
+    repo,
+    comment_id: commentId,
+    body,
+  });
+  return mapComment(data);
+}
+
+export async function deleteComment(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  commentId: number,
+): Promise<void> {
+  await octokit.rest.issues.deleteComment({
+    owner,
+    repo,
+    comment_id: commentId,
+  });
+}
+
 export type ReassignResult = {
   newIssueNumber: number;
   newIssueUrl: string;

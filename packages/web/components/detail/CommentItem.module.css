@@ -1,0 +1,163 @@
+.comment {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--paper-line-soft);
+  position: relative;
+}
+
+.comment:last-child {
+  border-bottom: none;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.avi {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--paper-bg-warmer);
+  border: 1px solid var(--paper-line);
+  font-family: var(--paper-serif);
+  font-weight: 600;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--paper-ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.avi img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.who {
+  font-family: var(--paper-serif);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--paper-ink);
+}
+
+.time {
+  font-family: var(--paper-sans);
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  margin-left: auto;
+}
+
+.commentBody {
+  font-size: var(--paper-fs-md);
+}
+
+/* --- Action buttons --- */
+
+.actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.actionBtn {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-family: var(--paper-sans);
+  font-size: 11px;
+  color: var(--paper-ink-faint);
+  border-radius: var(--paper-radius-sm, 3px);
+  transition: color 0.15s, background 0.15s;
+}
+
+.actionBtn:hover {
+  color: var(--paper-ink-soft);
+  background: var(--paper-bg-warmer);
+}
+
+.deleteConfirm {
+  color: var(--paper-brick);
+}
+
+.deleteConfirm:hover {
+  color: #fff;
+  background: var(--paper-brick);
+}
+
+/* Desktop: hide actions until hover */
+@media (min-width: 768px) {
+  .actions {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .comment:hover .actions {
+    opacity: 1;
+  }
+}
+
+/* --- Edit mode --- */
+
+.editTextarea {
+  width: 100%;
+  font-family: var(--paper-serif);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--paper-ink-soft);
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.editTextarea:focus {
+  border-color: var(--paper-accent-dim);
+  background: var(--paper-bg);
+}
+
+.editFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.editHint {
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-faint);
+  margin-right: auto;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid var(--paper-line);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-soft);
+  border-radius: var(--paper-radius-md);
+}
+
+.cancelBtn:hover {
+  background: var(--paper-bg-warmer);
+}
+
+@media (max-width: 767px) {
+  .editHint {
+    display: none;
+  }
+}
