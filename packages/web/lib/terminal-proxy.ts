@@ -68,7 +68,10 @@ interface WsStats {
   connectedAt: number;
 }
 
+const DIAG_ENABLED = !!process.env.ISSUECTL_DIAG;
+
 function logStats(s: WsStats, label: string): void {
+  if (!DIAG_ENABLED) return;
   const uptimeSec = ((Date.now() - s.connectedAt) / 1000).toFixed(1);
   console.log(
     `[issuectl:diag] ${label} port=${s.port} client=${s.clientIp} ` +
@@ -110,7 +113,9 @@ export function handleUpgrade(
       connectedAt: Date.now(),
     };
 
-    console.log(`[issuectl:diag] ws_connect port=${port} client=${clientIp}`);
+    if (DIAG_ENABLED) {
+      console.log(`[issuectl:diag] ws_connect port=${port} client=${clientIp}`);
+    }
 
     const diagTimer = setInterval(() => logStats(stats, "ws_tick"), DIAG_INTERVAL_MS);
 
