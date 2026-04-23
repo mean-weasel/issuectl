@@ -123,6 +123,7 @@ async function prepareWorktree(options: {
       const clean = await isWorkingTreeClean(worktreePath);
       if (!clean) {
         if (options.forceResume) {
+          // Skip branch switch — the user chose to resume from the current state
           return { path: worktreePath, mode: "worktree", created: false };
         }
         throw new Error(
@@ -183,6 +184,7 @@ async function prepareClone(options: {
   branchName: string;
   issueNumber: number;
   worktreeDir: string;
+  forceResume?: boolean;
 }): Promise<WorkspaceResult> {
   const cloneName = `${options.repo}-issue-${options.issueNumber}`;
   const clonePath = join(options.worktreeDir, cloneName);
@@ -198,6 +200,10 @@ async function prepareClone(options: {
     if (await isGitRepo(clonePath)) {
       const clean = await isWorkingTreeClean(clonePath);
       if (!clean) {
+        if (options.forceResume) {
+          // Skip branch switch — the user chose to resume from the current state
+          return { path: clonePath, mode: "clone", created: false };
+        }
         throw new Error(
           `Clone at ${clonePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the directory) before launching again.`,
         );
