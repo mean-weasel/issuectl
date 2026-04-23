@@ -179,6 +179,32 @@
   align-self: center;
 }
 
+/* Desktop-only primary create button. Links to /new for the full
+ * issue creation form with labels, body, and repo selection. */
+.desktopNewIssueBtn {
+  display: none;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: #fff;
+  background: var(--paper-accent);
+  border: 1px solid var(--paper-accent);
+  border-radius: var(--paper-radius-sm);
+  padding: 6px 14px;
+  margin-left: 12px;
+  align-self: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.desktopNewIssueBtn:hover {
+  background: var(--paper-accent-dim);
+  border-color: var(--paper-accent-dim);
+}
+
 /* Desktop-only inline draft button. On mobile, the command sheet's
  * "Create Draft" action provides this functionality instead. */
 .desktopDraftBtn {
@@ -191,7 +217,7 @@
   border: 1px solid var(--paper-accent-soft);
   border-radius: var(--paper-radius-sm);
   padding: 6px 12px;
-  margin-left: 16px;
+  margin-left: 8px;
   align-self: center;
   cursor: pointer;
   transition:
@@ -314,6 +340,10 @@
 
   .desktopDate {
     display: block;
+  }
+
+  .desktopNewIssueBtn {
+    display: inline-flex;
   }
 
   .desktopDraftBtn {

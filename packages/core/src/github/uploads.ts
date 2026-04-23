@@ -7,18 +7,23 @@ export const ALLOWED_IMAGE_TYPES = new Set([
 
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+/**
+ * Sanitize a filename for use in a GitHub repo path.
+ * Keeps alphanumeric, hyphens, dots, and underscores.
+ */
+export function sanitizeFilename(name: string): string {
+  const sanitized = name
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .replace(/-{2,}/g, "-");
+  return sanitized || "image";
+}
+
 export type UploadResult = {
   url: string;
   fileName: string;
 };
 
-/**
- * Upload an image to GitHub's CDN via the undocumented issue-uploads endpoint.
- *
- * This is the same endpoint GitHub.com's web UI uses when you paste or drag
- * an image into an issue/PR textarea. While undocumented, this endpoint has
- * been stable for years and is widely relied on by third-party tools.
- */
 export async function uploadImageToGitHub(
   token: string,
   owner: string,
@@ -42,22 +47,25 @@ export async function uploadImageToGitHub(
     );
   }
 
-  const formData = new FormData();
-  formData.append(
-    "file",
-    new Blob([file.data], { type: file.type }),
-    file.name,
-  );
+  const sanitized = sanitizeFilename(file.name);
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).slice(2, 8);
+  const path = `.github/issuectl/uploads/${timestamp}-${random}-${sanitized}`;
+  const content = Buffer.from(file.data).toString("base64");
 
   const response = await fetch(
-    `https://uploads.github.com/repos/${owner}/${repo}/issues/uploads`,
+    `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
     {
-      method: "POST",
+      method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: "application/json",
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
       },
-      body: formData,
+      body: JSON.stringify({
+        message: `chore(issuectl): upload image ${sanitized}`,
+        content,
+      }),
     },
   );
 
@@ -68,17 +76,17 @@ export async function uploadImageToGitHub(
     );
   }
 
-  let result: { href?: string; asset?: { href?: string; name?: string } };
+  let result: { content?: { download_url?: string } };
   try {
     result = (await response.json()) as typeof result;
-  } catch {
-    const text = await response.text().catch(() => "");
+  } catch (err) {
     throw new Error(
-      `GitHub returned invalid JSON after upload (status ${response.status}). Body: ${text.slice(0, 200)}`,
+      `GitHub returned invalid JSON after upload (status ${response.status}): ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 
-  const url = result.href ?? result.asset?.href;
+  const url = result.content?.download_url;
   if (!url) {
     throw new Error(
       "GitHub image upload succeeded but returned no URL. Response: " +
