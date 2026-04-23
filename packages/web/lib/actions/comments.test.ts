@@ -106,6 +106,18 @@ describe("deleteComment action", () => {
     expect(result.error).toMatch(/Invalid input/i);
   });
 
+  it("rejects invalid repo", async () => {
+    const result = await deleteComment("acme", "../bad", 1, 100);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Invalid input/i);
+  });
+
+  it("rejects non-integer issueNumber", async () => {
+    const result = await deleteComment("acme", "web", 1.5, 100);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/Invalid input/i);
+  });
+
   it("rejects non-positive commentId", async () => {
     const result = await deleteComment("acme", "web", 1, -5);
     expect(result.success).toBe(false);

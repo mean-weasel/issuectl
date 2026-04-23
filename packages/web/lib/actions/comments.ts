@@ -99,7 +99,8 @@ export async function editComment(
   if (
     !owner || !repo ||
     !OWNER_REPO_RE.test(owner) || !OWNER_REPO_RE.test(repo) ||
-    issueNumber <= 0 || commentId <= 0 ||
+    !Number.isInteger(issueNumber) || issueNumber <= 0 ||
+    !Number.isInteger(commentId) || commentId <= 0 ||
     !body.trim()
   ) {
     return { success: false, error: "Invalid input" };
@@ -139,7 +140,8 @@ export async function deleteComment(
   if (
     !owner || !repo ||
     !OWNER_REPO_RE.test(owner) || !OWNER_REPO_RE.test(repo) ||
-    issueNumber <= 0 || commentId <= 0
+    !Number.isInteger(issueNumber) || issueNumber <= 0 ||
+    !Number.isInteger(commentId) || commentId <= 0
   ) {
     return { success: false, error: "Invalid input" };
   }
