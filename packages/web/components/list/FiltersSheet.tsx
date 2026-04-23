@@ -42,6 +42,7 @@ type Props = {
   activeSection: Section;
   sectionHref: (section: Section) => string;
   sectionCounts: Record<Section, number | null> | null;
+  settingsHref: string;
   onCreateDraft: () => void;
 };
 
@@ -64,6 +65,7 @@ export function FiltersSheet({
   activeSection,
   sectionHref,
   sectionCounts,
+  settingsHref,
   onCreateDraft,
 }: Props) {
   return (
@@ -260,7 +262,7 @@ export function FiltersSheet({
           </span>
         </Link>
 
-        <Link href="/settings" className={styles.commandLink} onClick={onClose}>
+        <Link href={settingsHref} className={styles.commandLink} onClick={onClose}>
           <span className={styles.commandLinkIcon}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="9" r="3" />

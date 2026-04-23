@@ -22,11 +22,20 @@ function SectionSkeleton() {
   return <div className={styles.sectionSkeleton} />;
 }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const { from } = await searchParams;
+  // Validate the return URL: only allow relative paths starting with "/"
+  // to prevent open-redirect attacks via absolute or protocol-relative URLs.
+  const returnHref = from && from.startsWith("/") && !from.startsWith("//") ? from : "/";
+
   if (!dbExists()) {
     return (
       <>
-        <PageHeader title="Settings" breadcrumb={<Link href="/">← dashboard</Link>} />
+        <PageHeader title="Settings" breadcrumb={<Link href={returnHref}>← dashboard</Link>} />
         <div className={styles.content}>
           <p style={{ color: "var(--text-secondary)" }}>
             Run <code>issuectl init</code> to get started.
@@ -46,7 +55,7 @@ export default async function SettingsPage() {
 
   return (
     <PullToRefreshWrapper>
-      <PageHeader title="Settings" breadcrumb={<Link href="/">← dashboard</Link>} />
+      <PageHeader title="Settings" breadcrumb={<Link href={returnHref}>← dashboard</Link>} />
       <div className={styles.content}>
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Tracked Repositories</div>

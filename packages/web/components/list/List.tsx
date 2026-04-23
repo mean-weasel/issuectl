@@ -119,6 +119,14 @@ export function List({
       sort: activeTab === "issues" ? activeSort : null,
     });
 
+  // Build the canonical URL for the current dashboard view and pass it as
+  // `from` to settings, so the settings breadcrumb returns to this filtered view.
+  const currentHref = chipHref(activeRepo);
+  const settingsHref =
+    currentHref === "/"
+      ? "/settings"
+      : `/settings?from=${encodeURIComponent(currentHref)}`;
+
   const sectionHref = (section: Section) =>
     buildHref({ repo: activeRepo, section, sort: activeSort });
 
@@ -186,9 +194,11 @@ export function List({
 
         <CacheAge cachedAt={cachedAt ?? null} />
         <nav className={styles.desktopNav}>
+          <Link href="/new" className={styles.desktopNavLink}>New Issue</Link>
+          <span className={styles.desktopNavSep}>·</span>
           <Link href="/parse" className={styles.desktopNavLink}>Quick Create</Link>
           <span className={styles.desktopNavSep}>·</span>
-          <Link href="/settings" className={styles.desktopNavLink}>Settings</Link>
+          <Link href={settingsHref} className={styles.desktopNavLink}>Settings</Link>
         </nav>
 
         {/* Mobile: single menu button to open command sheet */}
@@ -404,6 +414,7 @@ export function List({
         activeSection={activeSection}
         sectionHref={sectionHref}
         sectionCounts={sectionCounts}
+        settingsHref={settingsHref}
         onCreateDraft={() => {
           setFiltersOpen(false);
           // Delay opening CreateDraftSheet until the FiltersSheet exit
