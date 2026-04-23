@@ -183,6 +183,7 @@ export {
   isTtydAlive,
   allocatePort,
   reconcileOrphanedDeployments,
+  tmuxSessionName,
   type SpawnTtydOptions,
 } from "./launch/ttyd.js";
 export { updateTtydInfo } from "./db/deployments.js";

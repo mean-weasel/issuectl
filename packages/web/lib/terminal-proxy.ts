@@ -162,7 +162,10 @@ export function handleUpgrade(
       });
     });
 
+    let cleanedUp = false;
     function cleanup() {
+      if (cleanedUp) return;
+      cleanedUp = true;
       clearInterval(diagTimer);
       logStats(stats, "ws_close");
     }

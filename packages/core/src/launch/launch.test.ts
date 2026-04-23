@@ -32,6 +32,8 @@ vi.mock("./ttyd.js", () => ({
   verifyTtyd: verifyTtydSpy,
   spawnTtyd: spawnTtydSpy,
   allocatePort: allocatePortSpy,
+  tmuxSessionName: (repo: string, issueNumber: number) =>
+    `issuectl-${repo}-${issueNumber}`,
 }));
 
 const { reserveTtydPortSpy, updateTtydInfoSpy } = vi.hoisted(() => ({
@@ -441,6 +443,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
         port: 7700,
         workspacePath: "/tmp/fake-workspace",
         claudeCommand: "claude",
+        sessionName: "issuectl-api-42",
       }),
     );
     expect(updateTtydInfoSpy).toHaveBeenCalledWith(

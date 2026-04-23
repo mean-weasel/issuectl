@@ -8,7 +8,8 @@ import WebSocket from "ws";
  * same ttyd instance see the same terminal output via a shared tmux
  * session. This validates the core shared-viewing feature.
  *
- * Requirements: macOS, tmux, ttyd. Skipped in CI.
+ * Requirements: macOS, tmux, ttyd. Skipped on non-macOS or when
+ * binaries are unavailable.
  */
 
 const execFileAsync = promisify(execFile);

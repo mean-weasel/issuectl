@@ -34,6 +34,7 @@ import {
   allocatePort,
   spawnTtyd,
   reconcileOrphanedDeployments,
+  tmuxSessionName,
 } from "./ttyd.js";
 
 /* ------------------------------------------------------------------ */
@@ -66,6 +67,28 @@ function fakeSocket(behavior: "connect" | "error") {
   });
   return socket;
 }
+
+/* ------------------------------------------------------------------ */
+/*  tmuxSessionName                                                    */
+/* ------------------------------------------------------------------ */
+
+describe("tmuxSessionName", () => {
+  it("produces a predictable name from repo and issue number", () => {
+    expect(tmuxSessionName("api", 42)).toBe("issuectl-api-42");
+  });
+
+  it("replaces dots with underscores (tmux interprets dots as pane delimiters)", () => {
+    expect(tmuxSessionName("my.project", 7)).toBe("issuectl-my_project-7");
+  });
+
+  it("replaces colons with underscores (tmux interprets colons as window delimiters)", () => {
+    expect(tmuxSessionName("my:repo", 1)).toBe("issuectl-my_repo-1");
+  });
+
+  it("passes through hyphens and underscores unchanged", () => {
+    expect(tmuxSessionName("my-repo_v2", 99)).toBe("issuectl-my-repo_v2-99");
+  });
+});
 
 /* ------------------------------------------------------------------ */
 /*  verifyTtyd                                                         */
@@ -166,7 +189,7 @@ describe("killTtyd", () => {
     expect(killSpy).toHaveBeenCalledWith(12345, "SIGTERM");
     expect(execFileSyncSpy).toHaveBeenCalledWith("tmux", [
       "kill-session", "-t", "issuectl-repo-42",
-    ], { stdio: "ignore" });
+    ], { stdio: "ignore", timeout: 10_000 });
     killSpy.mockRestore();
   });
 
@@ -188,6 +211,22 @@ describe("killTtyd", () => {
 
     // Should not throw despite tmux failure
     expect(() => killTtyd(12345, "issuectl-repo-42")).not.toThrow();
+    killSpy.mockRestore();
+  });
+
+  it("cleans up tmux session even when process is already dead (ESRCH)", () => {
+    const err = Object.assign(new Error("No such process"), { code: "ESRCH" });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+      throw err;
+    });
+    execFileSyncSpy.mockReturnValue(Buffer.from(""));
+
+    expect(() => killTtyd(99999, "issuectl-repo-42")).not.toThrow();
+    expect(execFileSyncSpy).toHaveBeenCalledWith(
+      "tmux",
+      ["kill-session", "-t", "issuectl-repo-42"],
+      expect.objectContaining({ stdio: "ignore" }),
+    );
     killSpy.mockRestore();
   });
 });
@@ -325,13 +364,13 @@ describe("spawnTtyd", () => {
     expect(tmuxCmd).toContain("claude --dangerously-skip-permissions");
     expect(tmuxCmd).toContain("; exit");
 
-    // tmux session options
+    // tmux session options (with timeout)
     expect(execFileSyncSpy).toHaveBeenCalledWith("tmux", [
       "set-option", "-t", "issuectl-myrepo-42", "status", "off",
-    ]);
+    ], { timeout: 10_000 });
     expect(execFileSyncSpy).toHaveBeenCalledWith("tmux", [
       "set-option", "-t", "issuectl-myrepo-42", "window-size", "largest",
-    ]);
+    ], { timeout: 10_000 });
 
     // ttyd serves tmux attach (not bash -lic)
     const [bin, args, opts] = spawnSpy.mock.calls[0] as [string, string[], Record<string, unknown>];
@@ -453,6 +492,75 @@ describe("spawnTtyd", () => {
     expect(args.slice(-3)).toEqual([
       "attach-session", "-t", "issuectl-special-chars-99",
     ]);
+    killSpy.mockRestore();
+  });
+
+  it("rejects invalid session names containing dots or colons", async () => {
+    await expect(
+      spawnTtyd({
+        port: 7700,
+        workspacePath: "/tmp",
+        contextFilePath: "/tmp/ctx.md",
+        claudeCommand: "claude",
+        sessionName: "issuectl-my.project-42",
+      }),
+    ).rejects.toThrow("Invalid tmux session name");
+
+    expect(execFileSyncSpy).not.toHaveBeenCalledWith(
+      "tmux", expect.arrayContaining(["new-session"]), expect.anything(),
+    );
+  });
+
+  it("cleans up tmux session when set-option fails", async () => {
+    const tmuxCalls: string[][] = [];
+    execFileSyncSpy.mockImplementation((cmd: string, args: string[]) => {
+      if (cmd === "tmux") {
+        tmuxCalls.push(args);
+        if (args[0] === "set-option" && args[3] === "status") {
+          throw new Error("tmux set-option failed");
+        }
+      }
+      return Buffer.from("");
+    });
+
+    await expect(
+      spawnTtyd({
+        port: 7700,
+        workspacePath: "/tmp",
+        contextFilePath: "/tmp/ctx.md",
+        claudeCommand: "claude",
+        sessionName: "issuectl-test-cleanup",
+      }),
+    ).rejects.toThrow("tmux set-option failed");
+
+    // tmux kill-session should have been called for cleanup
+    const killCall = tmuxCalls.find((args) => args[0] === "kill-session");
+    expect(killCall).toBeDefined();
+    expect(killCall![2]).toBe("issuectl-test-cleanup");
+    expect(spawnSpy).not.toHaveBeenCalled();
+  });
+
+  it("cleans up tmux session when health check fails (ttyd dies)", async () => {
+    spawnSpy.mockReturnValue({ pid: 99, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
+    });
+
+    await expect(
+      spawnTtyd({
+        port: 7700,
+        workspacePath: "/tmp",
+        contextFilePath: "/tmp/ctx.md",
+        claudeCommand: "claude",
+        sessionName: "issuectl-test-health",
+      }),
+    ).rejects.toThrow("ttyd process 99 died immediately after spawn");
+
+    // tmux kill-session should have been called for cleanup
+    expect(execFileSyncSpy).toHaveBeenCalledWith(
+      "tmux", ["kill-session", "-t", "issuectl-test-health"],
+      expect.objectContaining({ stdio: "ignore" }),
+    );
     killSpy.mockRestore();
   });
 
