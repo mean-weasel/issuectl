@@ -29,6 +29,7 @@ type LaunchFormData = {
   selectedFilePaths: string[];
   preamble?: string;
   idempotencyKey?: string;
+  forceResume?: boolean;
 };
 
 type LaunchResponse = {
@@ -113,6 +114,7 @@ export async function launchIssue(
           selectedComments: formData.selectedCommentIndices,
           selectedFiles: formData.selectedFilePaths,
           preamble: formData.preamble || undefined,
+          forceResume: formData.forceResume,
         }),
       );
       return {

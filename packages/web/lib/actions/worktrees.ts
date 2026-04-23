@@ -12,6 +12,10 @@ import {
   withAuthRetry,
   mapLimit,
   DEFAULT_REPO_FANOUT,
+  getRepo,
+  checkWorktreeStatus as coreCheckWorktreeStatus,
+  resetWorktree as coreResetWorktree,
+  type WorktreeStatus,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
@@ -243,4 +247,62 @@ export async function cleanupStaleWorktrees(): Promise<{
     removed,
     ...(cacheStale ? { cacheStale: true as const } : {}),
   };
+}
+
+export async function checkWorktreeStatusAction(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<WorktreeStatus> {
+  if (!owner || !repo || !Number.isInteger(issueNumber) || issueNumber <= 0) {
+    return { exists: false, dirty: false, path: "" };
+  }
+
+  try {
+    const db = getDb();
+    const repoRecord = getRepo(db, owner, repo);
+    if (!repoRecord) {
+      return { exists: false, dirty: false, path: "" };
+    }
+
+    const worktreeDir = getWorktreeDir();
+    return await coreCheckWorktreeStatus(worktreeDir, repo, issueNumber);
+  } catch (err) {
+    console.error("[issuectl] Worktree status check failed:", err);
+    return { exists: false, dirty: false, path: "" };
+  }
+}
+
+export async function resetWorktreeAction(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<{ success: boolean; error?: string }> {
+  if (!owner || !repo || !Number.isInteger(issueNumber) || issueNumber <= 0) {
+    return { success: false, error: "Invalid parameters" };
+  }
+
+  try {
+    const db = getDb();
+    const repoRecord = getRepo(db, owner, repo);
+    if (!repoRecord) {
+      return { success: false, error: "Repository not found" };
+    }
+
+    const repoLocalPath = repoRecord.localPath;
+    if (!repoLocalPath) {
+      return { success: false, error: "Repository has no local path" };
+    }
+
+    const worktreeDir = getWorktreeDir();
+    const worktreeName = `${repo}-issue-${issueNumber}`;
+    const worktreePath = join(worktreeDir, worktreeName);
+
+    await coreResetWorktree(worktreePath, expandHome(repoLocalPath));
+    return { success: true };
+  } catch (err) {
+    console.error("[issuectl] Worktree reset failed:", err);
+    const message = err instanceof Error ? err.message : "Failed to reset worktree";
+    return { success: false, error: message };
+  }
 }
