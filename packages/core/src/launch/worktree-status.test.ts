@@ -86,4 +86,13 @@ describe("resetWorktree", () => {
     await expect(resetWorktree("/worktrees/myrepo-issue-42", "/repos/myrepo"))
       .rejects.toThrow("EPERM");
   });
+
+  it("does not throw when prune fails (non-fatal)", async () => {
+    rmMock.mockResolvedValue(undefined);
+    execFileMock.mockRejectedValue(new Error("git not found"));
+
+    await expect(resetWorktree("/worktrees/myrepo-issue-42", "/repos/myrepo"))
+      .resolves.toBeUndefined();
+    expect(rmMock).toHaveBeenCalledWith("/worktrees/myrepo-issue-42", { recursive: true, force: true });
+  });
 });
