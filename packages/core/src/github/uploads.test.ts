@@ -98,9 +98,10 @@ describe("uploadImageToGitHub", () => {
       "application/json",
     );
 
-    const body = JSON.parse(init.body as string) as { message: string; content: string };
+    const body = JSON.parse(init.body as string) as { message: string; content: string; branch: string };
     expect(body.message).toMatch(/^chore\(issuectl\): upload image test\.png$/);
     expect(body.content).toBe(Buffer.from(VALID_FILE.data).toString("base64"));
+    expect(body.branch).toBe("issuectl-assets");
   });
 
   // 2. Invalid file type
@@ -204,7 +205,47 @@ describe("uploadImageToGitHub", () => {
     ).rejects.toThrow("invalid JSON");
   });
 
-  // 7. Filename sanitization in the request URL
+  // 7. Branch creation retry on 404
+  it("creates the upload branch and retries when branch does not exist", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    // First PUT returns 404 (branch doesn't exist)
+    const notFoundResponse = {
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      json: vi.fn().mockResolvedValue({}),
+      text: vi.fn().mockResolvedValue(""),
+    } as unknown as Response;
+    // Git Data API calls for branch creation (blob, tree, commit, ref)
+    const gitOkResponse = (sha: string) => ({
+      ok: true,
+      status: 201,
+      statusText: "Created",
+      json: vi.fn().mockResolvedValue({ sha }),
+      text: vi.fn().mockResolvedValue(""),
+    } as unknown as Response);
+    // Retry PUT succeeds
+    const successResponse = makeContentsApiOkResponse(
+      "https://raw.githubusercontent.com/test-owner/test-repo/issuectl-assets/.github/issuectl/uploads/test.png",
+    ) as unknown as Response;
+
+    fetchMock
+      .mockResolvedValueOnce(notFoundResponse)       // 1st PUT → 404
+      .mockResolvedValueOnce(gitOkResponse("blob1"))  // create blob
+      .mockResolvedValueOnce(gitOkResponse("tree1"))  // create tree
+      .mockResolvedValueOnce(gitOkResponse("cmt1"))   // create commit
+      .mockResolvedValueOnce(gitOkResponse("ref1"))   // create ref
+      .mockResolvedValueOnce(successResponse);         // 2nd PUT → 201
+
+    const result = await uploadImageToGitHub(TOKEN, OWNER, REPO, VALID_FILE);
+
+    expect(result.url).toBe(
+      "https://raw.githubusercontent.com/test-owner/test-repo/issuectl-assets/.github/issuectl/uploads/test.png",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  // 8. Filename sanitization in the request URL
   it("sanitizes the filename in the upload path", async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValue(
