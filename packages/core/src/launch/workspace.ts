@@ -57,6 +57,7 @@ export async function prepareWorkspace(options: {
   branchName: string;
   issueNumber: number;
   worktreeDir: string;
+  forceResume?: boolean;
 }): Promise<WorkspaceResult> {
   switch (options.mode) {
     case "existing":
@@ -104,6 +105,7 @@ async function prepareWorktree(options: {
   repo: string;
   issueNumber: number;
   worktreeDir: string;
+  forceResume?: boolean;
 }): Promise<WorkspaceResult> {
   const worktreeName = `${options.repo}-issue-${options.issueNumber}`;
   const worktreePath = join(options.worktreeDir, worktreeName);
@@ -120,6 +122,10 @@ async function prepareWorktree(options: {
     if (await isGitRepo(worktreePath)) {
       const clean = await isWorkingTreeClean(worktreePath);
       if (!clean) {
+        if (options.forceResume) {
+          // Skip branch switch — the user chose to resume from the current state
+          return { path: worktreePath, mode: "worktree", created: false };
+        }
         throw new Error(
           `Worktree at ${worktreePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the worktree with \`git worktree remove\`) before launching again.`,
         );
@@ -178,6 +184,7 @@ async function prepareClone(options: {
   branchName: string;
   issueNumber: number;
   worktreeDir: string;
+  forceResume?: boolean;
 }): Promise<WorkspaceResult> {
   const cloneName = `${options.repo}-issue-${options.issueNumber}`;
   const clonePath = join(options.worktreeDir, cloneName);
@@ -193,6 +200,10 @@ async function prepareClone(options: {
     if (await isGitRepo(clonePath)) {
       const clean = await isWorkingTreeClean(clonePath);
       if (!clean) {
+        if (options.forceResume) {
+          // Skip branch switch — the user chose to resume from the current state
+          return { path: clonePath, mode: "clone", created: false };
+        }
         throw new Error(
           `Clone at ${clonePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the directory) before launching again.`,
         );

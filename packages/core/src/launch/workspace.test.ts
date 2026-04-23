@@ -78,6 +78,13 @@ describe("prepareWorkspace — existing mode", () => {
       prepareWorkspace({ ...BASE_OPTIONS, mode: "existing" }),
     ).rejects.toThrow("uncommitted changes");
   });
+
+  it("still throws on dirty existing repo even when forceResume is true", async () => {
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "existing", forceResume: true }),
+    ).rejects.toThrow("uncommitted changes");
+  });
 });
 
 /* ---------- worktree mode ---------- */
@@ -121,6 +128,33 @@ describe("prepareWorkspace — worktree mode", () => {
     ).rejects.toThrow(/uncommitted changes/);
     expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
   });
+
+  it("skips dirty-worktree error when forceResume is true", async () => {
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    const result = await prepareWorkspace({
+      ...BASE_OPTIONS,
+      mode: "worktree",
+      forceResume: true,
+    });
+
+    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
+    expect(result.mode).toBe("worktree");
+    expect(result.created).toBe(false);
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
+  });
+
+  it("still throws on dirty worktree when forceResume is not set", async () => {
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "worktree" }),
+    ).rejects.toThrow("uncommitted changes");
+  });
 });
 
 /* ---------- clone mode ---------- */
@@ -146,6 +180,23 @@ describe("prepareWorkspace — clone mode", () => {
       prepareWorkspace({ ...BASE_OPTIONS, mode: "clone" }),
     ).rejects.toThrow("clone failed");
     expect(rmMock).toHaveBeenCalled();
+  });
+
+  it("skips dirty-clone error when forceResume is true", async () => {
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: ".git\n", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+
+    const result = await prepareWorkspace({
+      ...BASE_OPTIONS,
+      mode: "clone",
+      forceResume: true,
+    });
+
+    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
+    expect(result.mode).toBe("clone");
+    expect(result.created).toBe(false);
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
   });
 
   it("refuses to reuse a dirty existing clone", async () => {

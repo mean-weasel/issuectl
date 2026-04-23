@@ -29,6 +29,7 @@ export interface LaunchOptions {
   selectedComments: number[];
   selectedFiles: string[];
   preamble?: string;
+  forceResume?: boolean;
 }
 
 export interface LaunchResult {
@@ -153,6 +154,7 @@ export async function executeLaunch(
     branchName: options.branchName,
     issueNumber: options.issueNumber,
     worktreeDir,
+    forceResume: options.forceResume,
   });
 
   // Steps 7-9 have side effects — if one fails, earlier artifacts remain.
