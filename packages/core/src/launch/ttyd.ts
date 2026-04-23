@@ -11,6 +11,10 @@ export interface SpawnTtydOptions {
   workspacePath: string;
   contextFilePath: string;
   claudeCommand: string;
+  /** Stable session name for tmux (e.g. "issuectl-167"). Multiple
+   *  clients connecting to the same ttyd instance will share the
+   *  terminal view via this tmux session. */
+  sessionName: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -26,22 +30,24 @@ function shellEscape(s: string): string {
 /* ------------------------------------------------------------------ */
 
 /**
- * Verify that ttyd is installed and reachable via PATH.
- * Throws with an install hint when it is not found.
+ * Verify that ttyd and tmux are installed and reachable via PATH.
+ * Throws with an install hint when either is not found.
  */
 export function verifyTtyd(): void {
-  try {
-    execFileSync("which", ["ttyd"], { stdio: "ignore" });
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    const status = (err as { status?: number }).status;
-    if (code === "ENOENT" || status === 1) {
-      throw new Error("ttyd is not installed. Run: brew install ttyd", { cause: err });
+  for (const bin of ["ttyd", "tmux"] as const) {
+    try {
+      execFileSync("which", [bin], { stdio: "ignore" });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      const status = (err as { status?: number }).status;
+      if (code === "ENOENT" || status === 1) {
+        throw new Error(`${bin} is not installed. Run: brew install ${bin}`, { cause: err });
+      }
+      throw new Error(
+        `Failed to verify ${bin} installation: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
     }
-    throw new Error(
-      `Failed to verify ttyd installation: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
   }
 }
 
@@ -50,15 +56,24 @@ export function verifyTtyd(): void {
 /* ------------------------------------------------------------------ */
 
 /**
- * Send SIGTERM to a ttyd process. Silently ignores ESRCH (process
- * already dead) — all other errors are re-thrown.
+ * Send SIGTERM to a ttyd process and kill its tmux session.
+ * Silently ignores ESRCH (process already dead) and non-existent
+ * tmux sessions — all other errors are re-thrown.
  */
-export function killTtyd(pid: number): void {
+export function killTtyd(pid: number, sessionName?: string): void {
   try {
     process.kill(pid, "SIGTERM");
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ESRCH") return;
     throw err;
+  }
+
+  if (sessionName) {
+    try {
+      execFileSync("tmux", ["kill-session", "-t", sessionName], { stdio: "ignore" });
+    } catch {
+      // Session may already be gone — that's fine.
+    }
   }
 }
 
@@ -155,19 +170,31 @@ export async function allocatePort(db: Database.Database): Promise<number> {
  * rather than silently recording a dead PID.
  */
 export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: number; port: number }> {
-  const { port, workspacePath, contextFilePath, claudeCommand } = options;
+  const { port, workspacePath, contextFilePath, claudeCommand, sessionName } = options;
 
-  // Build the inner shell command that ttyd will execute inside bash:
+  // Build the inner shell command that runs inside tmux:
   //   cd <workspace> && cat <context> | <claudeCommand> ; exit
-  const shellCommand =
+  const innerCommand =
     `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand} ; exit`;
+
+  // Create a detached tmux session that runs the Claude command.
+  // This is step 1 of 2 — ttyd will then serve `tmux attach` so
+  // every WebSocket client shares the same terminal view.
+  execFileSync("tmux", [
+    "new-session", "-d", "-s", sessionName,
+    `bash -lic ${shellEscape(innerCommand)}`,
+  ]);
+  execFileSync("tmux", ["set-option", "-t", sessionName, "status", "off"]);
+  execFileSync("tmux", ["set-option", "-t", sessionName, "window-size", "largest"]);
 
   // Bind to loopback only — the Next.js custom server proxies
   // terminal traffic through same-origin routes (/api/terminal/{port}),
   // so ttyd never needs to be reachable from the network directly.
+  // ttyd serves `tmux attach` so each client joins the shared session.
   const child = spawn(
     "ttyd",
-    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q", "/bin/bash", "-lic", shellCommand],
+    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q",
+     "tmux", "attach-session", "-t", sessionName],
     { detached: true, stdio: "ignore" },
   );
 

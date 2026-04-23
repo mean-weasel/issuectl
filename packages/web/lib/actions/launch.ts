@@ -181,7 +181,7 @@ export async function endSession(
 
     if (deployment.ttydPid) {
       try {
-        killTtyd(deployment.ttydPid);
+        killTtyd(deployment.ttydPid, `issuectl-${repo}-${issueNumber}`);
       } catch (killErr) {
         console.warn(
           "[issuectl] Failed to kill ttyd process, proceeding with session end:",

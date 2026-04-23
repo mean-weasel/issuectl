@@ -228,6 +228,7 @@ export async function executeLaunch(
       workspacePath: workspace.path,
       contextFilePath,
       claudeCommand,
+      sessionName: `issuectl-${options.repo}-${options.issueNumber}`,
     });
     updateTtydInfo(db, deployment.id, port, pid);
     ttydPort = port;

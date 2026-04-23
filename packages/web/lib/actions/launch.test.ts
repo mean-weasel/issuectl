@@ -92,7 +92,7 @@ describe("endSession", () => {
   it("kills ttyd before ending deployment", async () => {
     const result = await endSession(...ARGS);
 
-    expect(killTtyd).toHaveBeenCalledWith(42);
+    expect(killTtyd).toHaveBeenCalledWith(42, "issuectl-repo-7");
     expect(coreEndDeployment).toHaveBeenCalled();
     expect(result).toMatchObject({ success: true });
   });
