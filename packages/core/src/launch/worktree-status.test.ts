@@ -65,6 +65,15 @@ describe("checkWorktreeStatus", () => {
     const result = await checkWorktreeStatus("/worktrees", "myrepo", 42);
     expect(result).toEqual({ exists: false, dirty: false, path: "/worktrees/myrepo-issue-42" });
   });
+
+  it("returns dirty: true when isWorkingTreeClean throws", async () => {
+    accessMock.mockResolvedValue(undefined);
+    execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
+    branchMocks.isWorkingTreeClean.mockRejectedValue(new Error("git status timed out"));
+
+    const result = await checkWorktreeStatus("/worktrees", "myrepo", 42);
+    expect(result).toEqual({ exists: true, dirty: true, path: "/worktrees/myrepo-issue-42" });
+  });
 });
 
 describe("resetWorktree", () => {

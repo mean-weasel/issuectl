@@ -14,13 +14,13 @@ import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { checkWorktreeStatusAction } from "@/lib/actions/worktrees";
 import { BranchInput } from "./BranchInput";
 import { WorkspaceModeSelector } from "./WorkspaceModeSelector";
 import { ContextToggles } from "./ContextToggles";
 import { PreambleInput } from "./PreambleInput";
-import styles from "./LaunchModal.module.css";
-import { checkWorktreeStatusAction } from "@/lib/actions/worktrees";
 import { DirtyWorktreeBanner } from "./DirtyWorktreeBanner";
+import styles from "./LaunchModal.module.css";
 
 type Props = {
   owner: string;
@@ -85,20 +85,26 @@ export function LaunchModal({
   }, [comments]);
 
   useEffect(() => {
+    setForceResume(false);
     if (workspaceMode !== "worktree" && workspaceMode !== "clone") {
       setDirtyWorktree(null);
       return;
     }
 
     let cancelled = false;
-    checkWorktreeStatusAction(owner, repo, issue.number).then((status) => {
-      if (cancelled) return;
-      if (status.exists && status.dirty) {
-        setDirtyWorktree({ dirty: true, path: status.path });
-      } else {
-        setDirtyWorktree(null);
-      }
-    });
+    checkWorktreeStatusAction(owner, repo, issue.number)
+      .then((status) => {
+        if (cancelled) return;
+        if (status.exists && status.dirty) {
+          setDirtyWorktree({ dirty: true, path: status.path });
+        } else {
+          setDirtyWorktree(null);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[issuectl] Pre-flight worktree check failed:", err);
+      });
 
     return () => { cancelled = true; };
   }, [owner, repo, issue.number, workspaceMode]);

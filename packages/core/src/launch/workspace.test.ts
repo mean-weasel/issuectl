@@ -78,6 +78,13 @@ describe("prepareWorkspace — existing mode", () => {
       prepareWorkspace({ ...BASE_OPTIONS, mode: "existing" }),
     ).rejects.toThrow("uncommitted changes");
   });
+
+  it("still throws on dirty existing repo even when forceResume is true", async () => {
+    branchMocks.isWorkingTreeClean.mockResolvedValue(false);
+    await expect(
+      prepareWorkspace({ ...BASE_OPTIONS, mode: "existing", forceResume: true }),
+    ).rejects.toThrow("uncommitted changes");
+  });
 });
 
 /* ---------- worktree mode ---------- */

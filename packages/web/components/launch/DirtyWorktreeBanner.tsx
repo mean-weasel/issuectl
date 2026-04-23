@@ -27,11 +27,16 @@ export function DirtyWorktreeBanner({
   function handleDiscard() {
     setError(null);
     startTransition(async () => {
-      const result = await resetWorktreeAction(owner, repo, issueNumber);
-      if (result.success) {
-        onDiscard();
-      } else {
-        setError(result.error ?? `Failed to clean worktree — try manually removing ${worktreePath}`);
+      try {
+        const result = await resetWorktreeAction(owner, repo, issueNumber);
+        if (result.success) {
+          onDiscard();
+        } else {
+          setError(result.error ?? `Failed to clean worktree — try manually removing ${worktreePath}`);
+        }
+      } catch (err) {
+        console.error("[issuectl] Worktree reset request failed:", err);
+        setError(`Failed to reach server — try manually removing ${worktreePath}`);
       }
     });
   }

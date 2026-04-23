@@ -266,7 +266,7 @@ export async function checkWorktreeStatusAction(
     }
 
     const worktreeDir = getWorktreeDir();
-    return await coreCheckWorktreeStatus(worktreeDir, repo, issueNumber);
+    return await coreCheckWorktreeStatus(worktreeDir, repoRecord.name, issueNumber);
   } catch (err) {
     console.error("[issuectl] Worktree status check failed:", err);
     return { exists: false, dirty: false, path: "" };
@@ -295,10 +295,15 @@ export async function resetWorktreeAction(
     }
 
     const worktreeDir = getWorktreeDir();
-    const worktreeName = `${repo}-issue-${issueNumber}`;
+    const worktreeName = `${repoRecord.name}-issue-${issueNumber}`;
     const worktreePath = join(worktreeDir, worktreeName);
 
-    await coreResetWorktree(worktreePath, expandHome(repoLocalPath));
+    const resolved = resolve(worktreePath);
+    if (!resolved.startsWith(resolve(worktreeDir))) {
+      return { success: false, error: "Invalid worktree path" };
+    }
+
+    await coreResetWorktree(resolved, expandHome(repoLocalPath));
     return { success: true };
   } catch (err) {
     console.error("[issuectl] Worktree reset failed:", err);

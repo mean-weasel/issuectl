@@ -39,8 +39,13 @@ export async function checkWorktreeStatus(
     return { exists: false, dirty: false, path: worktreePath };
   }
 
-  const clean = await isWorkingTreeClean(worktreePath);
-  return { exists: true, dirty: !clean, path: worktreePath };
+  try {
+    const clean = await isWorkingTreeClean(worktreePath);
+    return { exists: true, dirty: !clean, path: worktreePath };
+  } catch (err) {
+    console.warn("[issuectl] isWorkingTreeClean failed, assuming dirty:", (err as Error).message);
+    return { exists: true, dirty: true, path: worktreePath };
+  }
 }
 
 /**
