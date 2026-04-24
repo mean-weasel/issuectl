@@ -1,7 +1,7 @@
 .clearBar {
   display: flex;
   justify-content: flex-end;
-  padding: 0 4px 4px;
+  padding: 0 20px 4px;
   min-height: 32px;
 }
 
@@ -33,7 +33,7 @@
   letter-spacing: 0.5px;
   font-weight: 600;
   color: var(--paper-ink-muted);
-  padding: 12px 4px 6px;
+  padding: 12px 20px 6px;
 }
 
 .row,
@@ -41,7 +41,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 8px;
+  padding: 14px 20px;
   min-height: 56px;
   border-bottom: 1px solid var(--paper-line-soft);
   text-decoration: none;
@@ -49,9 +49,6 @@
   font-family: var(--paper-serif);
   font-size: 16px;
   border-radius: var(--paper-radius-md);
-  margin: 0 -8px;
-  padding-left: 16px;
-  padding-right: 16px;
 }
 
 .row:hover,
@@ -97,6 +94,7 @@
 /* ── Mobile-only command sections ── */
 .mobileOnly {
   display: block;
+  padding: 0 20px;
 }
 
 @media (min-width: 768px) and (hover: hover) {
