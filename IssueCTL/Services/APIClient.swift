@@ -157,6 +157,24 @@ final class APIClient {
         return try decoder.decode(EndSessionResponse.self, from: data)
     }
 
+    func mergePull(owner: String, repo: String, number: Int, body: MergeRequestBody) async throws -> MergeResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/pulls/\(owner)/\(repo)/\(number)/merge", method: "POST", body: bodyData)
+        return try decoder.decode(MergeResponse.self, from: data)
+    }
+
+    func reviewPull(owner: String, repo: String, number: Int, body: ReviewRequestBody) async throws -> ReviewResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/pulls/\(owner)/\(repo)/\(number)/review", method: "POST", body: bodyData)
+        return try decoder.decode(ReviewResponse.self, from: data)
+    }
+
+    func commentOnPull(owner: String, repo: String, number: Int, body: PullCommentRequestBody) async throws -> PullCommentResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/pulls/\(owner)/\(repo)/\(number)/comments", method: "POST", body: bodyData)
+        return try decoder.decode(PullCommentResponse.self, from: data)
+    }
+
     // MARK: - Private
 
     private let decoder: JSONDecoder = {
