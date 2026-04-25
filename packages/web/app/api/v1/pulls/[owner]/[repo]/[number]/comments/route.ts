@@ -6,17 +6,15 @@ import {
   getRepo,
   clearCacheKey,
   withAuthRetry,
-  mergePull,
+  createPullComment,
   formatErrorForUser,
-  type MergeMethod,
 } from "@issuectl/core";
+import { MAX_COMMENT_BODY } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
-const VALID_MERGE_METHODS: MergeMethod[] = ["merge", "squash", "rebase"];
-
-type MergeBody = {
-  mergeMethod: MergeMethod;
+type CommentBody = {
+  body: string;
 };
 
 export async function POST(
@@ -32,15 +30,21 @@ export async function POST(
     return NextResponse.json({ error: "Invalid pull request number" }, { status: 400 });
   }
 
-  let body: MergeBody;
+  let body: CommentBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!VALID_MERGE_METHODS.includes(body.mergeMethod)) {
-    return NextResponse.json({ error: "Invalid merge method" }, { status: 400 });
+  if (typeof body.body !== "string" || !body.body.trim()) {
+    return NextResponse.json({ error: "Comment body is required" }, { status: 400 });
+  }
+  if (body.body.length > MAX_COMMENT_BODY) {
+    return NextResponse.json(
+      { error: `Comment must be ${MAX_COMMENT_BODY} characters or fewer` },
+      { status: 400 },
+    );
   }
 
   try {
@@ -49,23 +53,15 @@ export async function POST(
       return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
     }
 
-    const result = await withAuthRetry((octokit) =>
-      mergePull(octokit, owner, repo, pullNumber, body.mergeMethod),
+    const comment = await withAuthRetry((octokit) =>
+      createPullComment(octokit, owner, repo, pullNumber, body.body),
     );
 
-    if (!result.merged) {
-      return NextResponse.json(
-        { success: false, error: result.message || "Merge did not complete" },
-        { status: 409 },
-      );
-    }
-
     clearCacheKey(db, `pull-detail:${owner}/${repo}#${pullNumber}`);
-    clearCacheKey(db, `pulls-open:${owner}/${repo}`);
 
-    return NextResponse.json({ success: true, sha: result.sha });
+    return NextResponse.json({ success: true, commentId: comment.id });
   } catch (err) {
-    log.error({ err, msg: "api_merge_pull_failed", owner, repo, pullNumber });
+    log.error({ err, msg: "api_comment_pull_failed", owner, repo, pullNumber });
     return NextResponse.json(
       { success: false, error: formatErrorForUser(err) },
       { status: 500 },
