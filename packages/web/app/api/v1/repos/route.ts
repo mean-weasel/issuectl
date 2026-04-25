@@ -14,9 +14,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ repos });
   } catch (err) {
     console.error("[issuectl] GET /api/v1/repos failed:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

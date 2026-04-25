@@ -130,6 +130,13 @@ describe("updateSetting", () => {
     expect(result.error).toMatch(/invalid/i);
   });
 
+  it("rejects api_token as a user-editable key", async () => {
+    const result = await updateSetting("api_token" as never, "attacker-controlled");
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/invalid/i);
+    expect(fakeDb.settings.has("api_token")).toBe(false);
+  });
+
   it("rejects non-numeric cache_ttl", async () => {
     const result = await updateSetting("cache_ttl", "abc");
     expect(result.success).toBe(false);

@@ -19,11 +19,19 @@ export function validateApiToken(headers: Headers): boolean {
 }
 
 export function requireAuth(request: NextRequest): NextResponse | null {
-  if (!validateApiToken(request.headers)) {
+  try {
+    if (!validateApiToken(request.headers)) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+    return null;
+  } catch (err) {
+    console.error("[issuectl] Auth check failed:", err);
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
-  return null;
 }

@@ -36,7 +36,15 @@ export async function initCommand(): Promise<void> {
   }
   log.success("Database created and defaults seeded.");
 
-  const token = generateApiToken(db);
+  let token: string;
+  try {
+    token = generateApiToken(db);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.error(`Failed to generate API token: ${message}`);
+    log.info("The database was created successfully. Try running `issuectl init` again.");
+    process.exit(1);
+  }
   log.success("API token generated for mobile access.");
   log.info(`Token: ${token}`);
   log.info("Use this token in the iOS app to connect to this server.");
