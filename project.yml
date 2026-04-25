@@ -4,13 +4,6 @@ options:
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
-schemes:
-  IssueCTL:
-    build:
-      targets:
-        IssueCTL: all
-    run:
-      config: Debug
 targets:
   IssueCTL:
     type: application
@@ -20,11 +13,12 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.0"
-        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
-        SUPPORTS_MACCATALYST: false
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         GENERATE_INFOPLIST_FILE: true
         PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.ios
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
