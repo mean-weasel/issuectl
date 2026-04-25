@@ -1,5 +1,5 @@
 import { confirm, input } from "@inquirer/prompts";
-import { dbExists, getDb, closeDb, seedDefaults, addRepo } from "@issuectl/core";
+import { dbExists, getDb, closeDb, seedDefaults, addRepo, generateApiToken } from "@issuectl/core";
 import * as log from "../utils/logger.js";
 import { requireAuth } from "../utils/auth.js";
 import { validateOwnerRepo, parseOwnerRepo } from "../utils/validation.js";
@@ -35,6 +35,11 @@ export async function initCommand(): Promise<void> {
     process.exit(1);
   }
   log.success("Database created and defaults seeded.");
+
+  const token = generateApiToken(db);
+  log.success("API token generated for mobile access.");
+  log.info(`Token: ${token}`);
+  log.info("Use this token in the iOS app to connect to this server.");
 
   const addFirst = await confirm({
     message: "Add your first repository?",
