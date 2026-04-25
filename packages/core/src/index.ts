@@ -71,7 +71,9 @@ export {
   deletePendingDeployment,
   cleanupOrphanedDeployments,
   pruneEndedDeployments,
+  getActiveDeployments,
 } from "./db/deployments.js";
+export type { ActiveDeploymentWithRepo } from "./db/deployments.js";
 export {
   getCacheTtl,
   getCached,

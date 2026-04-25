@@ -282,3 +282,31 @@ export function deletePendingDeployment(
     );
   }
 }
+
+export type ActiveDeploymentWithRepo = Omit<Deployment, "state" | "endedAt"> & {
+  state: "active";
+  endedAt: null;
+  owner: string;
+  repoName: string;
+};
+
+export function getActiveDeployments(
+  db: Database.Database,
+): ActiveDeploymentWithRepo[] {
+  const rows = db
+    .prepare(
+      `SELECT d.*, r.owner, r.name as repo_name
+       FROM deployments d
+       JOIN repos r ON d.repo_id = r.id
+       WHERE d.state = 'active' AND d.ended_at IS NULL
+       ORDER BY d.launched_at DESC`,
+    )
+    .all() as Array<DeploymentRow & { owner: string; repo_name: string }>;
+  return rows.map((row) => ({
+    ...rowToDeployment(row),
+    state: "active" as const,
+    endedAt: null,
+    owner: row.owner,
+    repoName: row.repo_name,
+  }));
+}
