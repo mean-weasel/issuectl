@@ -172,7 +172,8 @@ function crashExit(label: string, err: Error): void {
   log.fatal({ err, msg: label });
   try {
     log.flush(() => process.exit(1));
-  } catch {
+  } catch (flushErr) {
+    console.error("Failed to flush logs during crash:", flushErr);
     process.exit(1);
   }
   setTimeout(() => process.exit(1), 1000).unref();

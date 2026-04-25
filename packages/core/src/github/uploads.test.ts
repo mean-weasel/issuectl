@@ -313,6 +313,26 @@ describe("uploadImageToGitHub", () => {
     expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
+  // 8c. Malformed SHA from Git Data API is rejected
+  it("throws when Git Data API returns a malformed SHA", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false, status: 404, statusText: "Not Found",
+        json: vi.fn().mockResolvedValue({}),
+        text: vi.fn().mockResolvedValue(""),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true, status: 201, statusText: "Created",
+        json: vi.fn().mockResolvedValue({ sha: "short" }),
+        text: vi.fn().mockResolvedValue(""),
+      } as unknown as Response);
+
+    await expect(
+      uploadImageToGitHub(TOKEN, OWNER, REPO, VALID_FILE),
+    ).rejects.toThrow("missing or malformed 'sha' field");
+  });
+
   // 9. 422 for non-branch reasons does NOT retry
   it("throws immediately on 422 unrelated to missing branch", async () => {
     vi.mocked(globalThis.fetch).mockResolvedValue({

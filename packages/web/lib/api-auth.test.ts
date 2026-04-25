@@ -43,4 +43,20 @@ describe("validateApiToken", () => {
     const headers = new Headers({ Authorization: "Basic abc123" });
     expect(validateApiToken(headers)).toBe(false);
   });
+
+  it("returns false when getDb() throws (DB unavailable)", () => {
+    vi.mocked(getDb).mockImplementation(() => {
+      throw new Error("SQLITE_CANTOPEN");
+    });
+    const headers = new Headers({ Authorization: "Bearer abc123" });
+    expect(validateApiToken(headers)).toBe(false);
+  });
+
+  it("returns false when getSetting() throws", () => {
+    vi.mocked(getSetting).mockImplementation(() => {
+      throw new Error("SQLITE_CORRUPT");
+    });
+    const headers = new Headers({ Authorization: "Bearer abc123" });
+    expect(validateApiToken(headers)).toBe(false);
+  });
 });

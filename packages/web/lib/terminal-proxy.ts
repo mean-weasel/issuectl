@@ -112,7 +112,7 @@ interface WsStats {
   bytesToClient: number;
   /** High-water mark of clientWs.bufferedAmount. */
   peakBufferedAmount: number;
-  /** Frames dropped because client was not OPEN or safeSend failed (disjoint from backpressureDrops). */
+  /** Frames dropped in either direction because the destination was not OPEN or safeSend failed (disjoint from backpressureDrops). */
   droppedFrames: number;
   /** Frames dropped due to backpressure (buffer > threshold). Disjoint from droppedFrames; cumulative across episodes. */
   backpressureDrops: number;
