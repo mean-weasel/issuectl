@@ -31,6 +31,7 @@ import {
   verifyTtyd,
   killTtyd,
   isTtydAlive,
+  isTmuxSessionAlive,
   allocatePort,
   spawnTtyd,
   reconcileOrphanedDeployments,
@@ -265,6 +266,46 @@ describe("isTtydAlive", () => {
     });
     expect(() => isTtydAlive(1)).toThrow("EINVAL");
     killSpy.mockRestore();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  isTmuxSessionAlive                                                 */
+/* ------------------------------------------------------------------ */
+
+describe("isTmuxSessionAlive", () => {
+  beforeEach(() => {
+    execFileSyncSpy.mockReset();
+  });
+
+  it("returns true when tmux session exists (exit code 0)", () => {
+    execFileSyncSpy.mockReturnValue(Buffer.from(""));
+    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(true);
+    expect(execFileSyncSpy).toHaveBeenCalledWith(
+      "tmux", ["has-session", "-t", "issuectl-repo-42"],
+      expect.objectContaining({ stdio: "ignore", timeout: 10_000 }),
+    );
+  });
+
+  it("returns false when tmux session does not exist (exit code 1)", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("session not found"), { status: 1 });
+    });
+    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
+  });
+
+  it("returns false when tmux command times out", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("timed out"), { code: "ETIMEDOUT" });
+    });
+    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
+  });
+
+  it("returns false when tmux is not installed", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("not found"), { code: "ENOENT" });
+    });
+    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
   });
 });
 

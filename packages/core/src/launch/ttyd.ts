@@ -117,6 +117,27 @@ export function isTtydAlive(pid: number): boolean {
 }
 
 /* ------------------------------------------------------------------ */
+/*  isTmuxSessionAlive                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Check whether a tmux session with the given name still exists.
+ * This is the deployment liveness signal — tmux hosts the actual
+ * work (Claude Code), while ttyd is just a disposable web frontend.
+ */
+export function isTmuxSessionAlive(sessionName: string): boolean {
+  try {
+    execFileSync("tmux", ["has-session", "-t", sessionName], {
+      stdio: "ignore",
+      timeout: TMUX_TIMEOUT_MS,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  allocatePort                                                       */
 /* ------------------------------------------------------------------ */
 
