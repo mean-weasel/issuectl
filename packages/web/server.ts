@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
 import { handleUpgrade } from "./lib/terminal-proxy.js";
+import { refreshNetworkInfo, getPublicIp, getLanIp } from "./lib/network-info.js";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -66,9 +67,23 @@ server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HAN
   }
 });
 
+// Detect network IPs for LAN auto-switch (non-blocking — failure disables the feature).
+await refreshNetworkInfo();
+
 server.listen(port, () => {
+  const lanIp = getLanIp();
+  const publicIp = getPublicIp();
   console.log(`> issuectl dashboard on http://localhost:${port} (${dev ? "dev" : "prod"})`);
+  if (lanIp && publicIp) {
+    console.log(`> LAN auto-switch: public=${publicIp}, lan=${lanIp}`);
+  } else {
+    console.log("> LAN auto-switch: disabled (could not detect IPs)");
+  }
 });
+
+// Refresh IPs every 30 minutes to handle DHCP/ISP changes.
+const IP_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
+setInterval(refreshNetworkInfo, IP_REFRESH_INTERVAL_MS).unref();
 
 // Graceful shutdown
 function shutdown() {
