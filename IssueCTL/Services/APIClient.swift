@@ -13,8 +13,25 @@ final class APIClient: @unchecked Sendable {
     }
 
     init() {
-        self.serverURL = KeychainService.load(key: "serverURL") ?? ""
-        self.apiToken = KeychainService.load(key: "apiToken") ?? ""
+        // Support launch arguments for automated testing:
+        // -serverURL http://... -apiToken abc123
+        let args = ProcessInfo.processInfo.arguments
+        if let urlIndex = args.firstIndex(of: "-serverURL"),
+           urlIndex + 1 < args.count {
+            let url = args[urlIndex + 1]
+            self.serverURL = url
+            KeychainService.save(key: "serverURL", value: url)
+        } else {
+            self.serverURL = KeychainService.load(key: "serverURL") ?? ""
+        }
+        if let tokenIndex = args.firstIndex(of: "-apiToken"),
+           tokenIndex + 1 < args.count {
+            let token = args[tokenIndex + 1]
+            self.apiToken = token
+            KeychainService.save(key: "apiToken", value: token)
+        } else {
+            self.apiToken = KeychainService.load(key: "apiToken") ?? ""
+        }
     }
 
     private var baseURL: URL? {
