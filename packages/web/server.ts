@@ -1,7 +1,8 @@
-import { createServer, type IncomingMessage } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
-import { handleUpgrade } from "./lib/terminal-proxy.js";
+import log, { logPath } from "./lib/logger.js";
+import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy.js";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -13,9 +14,34 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
+// ---------------------------------------------------------------------------
+// HTTP request logging
+// ---------------------------------------------------------------------------
+
+function requestLogger(req: IncomingMessage, res: ServerResponse, next: () => void): void {
+  const start = Date.now();
+  const { method, url } = req;
+
+  res.on("finish", () => {
+    log.debug({
+      msg: "http_request",
+      method,
+      url,
+      status: res.statusCode,
+      ms: Date.now() - start,
+    });
+  });
+
+  next();
+}
+
 const server = createServer((req, res) => {
-  handle(req, res);
+  requestLogger(req, res, () => handle(req, res));
 });
+
+// ---------------------------------------------------------------------------
+// WebSocket upgrade handling
+// ---------------------------------------------------------------------------
 
 // Next.js attaches its HMR upgrade listener lazily (after the first
 // request, not at app.prepare() time). We can't capture it at startup.
@@ -59,20 +85,54 @@ server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HAN
     try {
       handleUpgrade(req, socket, head, Number(match[1]));
     } catch (err) {
-      console.error("[issuectl] terminal upgrade handler failed:", err);
+      log.error({ err, msg: "terminal_upgrade_failed" });
       socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
       socket.destroy();
     }
   }
 });
 
+// ---------------------------------------------------------------------------
+// Process health heartbeat
+// ---------------------------------------------------------------------------
+
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+function heartbeat(): void {
+  const mem = process.memoryUsage();
+  log.debug({
+    msg: "heartbeat",
+    heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+    heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+    rssMB: Math.round(mem.rss / 1024 / 1024),
+    activeWs: activeWsCount(),
+  });
+}
+
+const heartbeatTimer = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
+heartbeatTimer.unref();
+
+// ---------------------------------------------------------------------------
+// Startup
+// ---------------------------------------------------------------------------
+
 server.listen(port, () => {
+  log.info({
+    msg: "server_start",
+    port,
+    mode: dev ? "dev" : "prod",
+    logFile: logPath,
+  });
   console.log(`> issuectl dashboard on http://localhost:${port} (${dev ? "dev" : "prod"})`);
+  console.log(`> logs: ${logPath}`);
 });
 
+// ---------------------------------------------------------------------------
 // Graceful shutdown
+// ---------------------------------------------------------------------------
+
 function shutdown() {
-  console.log("[issuectl] shutting down...");
+  log.info({ msg: "server_shutdown" });
   server.close(() => {
     process.exit(0);
   });
@@ -83,3 +143,20 @@ function shutdown() {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+// ---------------------------------------------------------------------------
+// Crash handlers — last resort, writes synchronously before exit
+// ---------------------------------------------------------------------------
+
+process.on("uncaughtException", (err) => {
+  log.fatal({ err, msg: "uncaught_exception" });
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  log.fatal({
+    err: reason instanceof Error ? reason : new Error(String(reason)),
+    msg: "unhandled_rejection",
+  });
+  process.exit(1);
+});
