@@ -6,6 +6,7 @@ import {
   setSetting,
   getSettings,
   seedDefaults,
+  generateApiToken,
 } from "./settings.js";
 
 describe("getSetting / setSetting", () => {
@@ -87,5 +88,25 @@ describe("seedDefaults", () => {
     const countAfterFirst = getSettings(db).length;
     seedDefaults(db);
     expect(getSettings(db)).toHaveLength(countAfterFirst);
+  });
+});
+
+describe("generateApiToken", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("generates and stores a 64-char hex token", () => {
+    const token = generateApiToken(db);
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    expect(getSetting(db, "api_token")).toBe(token);
+  });
+
+  it("returns existing token if already set", () => {
+    const first = generateApiToken(db);
+    const second = generateApiToken(db);
+    expect(second).toBe(first);
   });
 });

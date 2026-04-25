@@ -1,6 +1,6 @@
-import { getDb, getSetting } from "@issuectl/core";
-import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { getDb, getSetting } from "@issuectl/core";
 
 /**
  * Validate a bearer token from request headers against the stored api_token.
@@ -11,6 +11,7 @@ export function validateApiToken(headers: Headers): boolean {
   if (!authHeader?.startsWith("Bearer ")) return false;
 
   const provided = authHeader.slice(7);
+  if (!provided) return false;
   const db = getDb();
   const stored = getSetting(db, "api_token");
   if (!stored) return false;
@@ -31,11 +32,19 @@ export function validateApiToken(headers: Headers): boolean {
  *   if (denied) return denied;
  */
 export function requireAuth(request: NextRequest): NextResponse | null {
-  if (!validateApiToken(request.headers)) {
+  try {
+    if (!validateApiToken(request.headers)) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+    return null;
+  } catch (err) {
+    console.error("[issuectl] Auth check failed:", err);
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
-  return null;
 }
