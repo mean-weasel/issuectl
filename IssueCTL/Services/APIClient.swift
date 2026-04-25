@@ -139,6 +139,24 @@ final class APIClient {
         return try decoder.decode(PullDetailResponse.self, from: data)
     }
 
+    func activeDeployments() async throws -> ActiveDeploymentsResponse {
+        let (data, _) = try await request(path: "/api/v1/deployments")
+        return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
+    }
+
+    func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/launch/\(owner)/\(repo)/\(number)", method: "POST", body: bodyData)
+        return try decoder.decode(LaunchResponse.self, from: data)
+    }
+
+    func endSession(deploymentId: Int, owner: String, repo: String, issueNumber: Int) async throws -> EndSessionResponse {
+        let body = EndSessionRequestBody(owner: owner, repo: repo, issueNumber: issueNumber)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/deployments/\(deploymentId)/end", method: "POST", body: bodyData)
+        return try decoder.decode(EndSessionResponse.self, from: data)
+    }
+
     // MARK: - Private
 
     private let decoder: JSONDecoder = {

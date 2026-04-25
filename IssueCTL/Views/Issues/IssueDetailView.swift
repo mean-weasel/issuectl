@@ -9,6 +9,7 @@ struct IssueDetailView: View {
     @State private var detail: IssueDetailResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showLaunchSheet = false
 
     var body: some View {
         Group {
@@ -44,6 +45,29 @@ struct IssueDetailView: View {
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if detail != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showLaunchSheet = true
+                    } label: {
+                        Label("Launch", systemImage: "play.fill")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showLaunchSheet) {
+            if let detail {
+                LaunchView(
+                    owner: owner,
+                    repo: repo,
+                    issueNumber: number,
+                    issueTitle: detail.issue.title,
+                    comments: detail.comments,
+                    referencedFiles: detail.referencedFiles
+                )
+            }
+        }
         .task { await load() }
     }
 

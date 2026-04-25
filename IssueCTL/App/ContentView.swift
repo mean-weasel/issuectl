@@ -13,9 +13,7 @@ struct ContentView: View {
                     PRListView()
                 }
                 Tab("Active", systemImage: "play.circle") {
-                    Text("Active Sessions")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+                    SessionListView()
                 }
                 Tab("Settings", systemImage: "gearshape") {
                     SettingsView()
