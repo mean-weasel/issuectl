@@ -7,7 +7,7 @@ import {
   executeLaunch,
   endDeployment as coreEndDeployment,
   killTtyd,
-  isTtydAlive,
+  isTmuxSessionAlive,
   tmuxSessionName,
   withAuthRetry,
   withIdempotency,
@@ -211,7 +211,7 @@ export async function endSession(
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
-export async function checkTtydAlive(
+export async function checkSessionAlive(
   deploymentId: number,
 ): Promise<{ alive: boolean; error?: string }> {
   try {
@@ -220,17 +220,24 @@ export async function checkTtydAlive(
     if (!deployment || deployment.endedAt !== null) {
       return { alive: false };
     }
-    if (!deployment.ttydPid) {
+
+    const repo = db
+      .prepare("SELECT name FROM repos WHERE id = ?")
+      .get(deployment.repoId) as { name: string } | undefined;
+    if (!repo) {
       return { alive: false };
     }
-    const alive = isTtydAlive(deployment.ttydPid);
-    if (!alive) {
-      // Process died — clean up the deployment
-      coreEndDeployment(db, deploymentId);
+
+    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    if (isTmuxSessionAlive(sessionName)) {
+      return { alive: true };
     }
-    return { alive };
+
+    // Tmux session is gone — the work is truly done. End the deployment.
+    coreEndDeployment(db, deploymentId);
+    return { alive: false };
   } catch (err) {
-    console.error("[issuectl] Health check failed:", err);
+    console.error("[issuectl] Session health check failed:", err);
     return { alive: false, error: "Health check failed" };
   }
 }

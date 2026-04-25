@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { TerminalPanel } from "./TerminalPanel";
-import { checkTtydAlive } from "@/lib/actions/launch";
+import { checkSessionAlive } from "@/lib/actions/launch";
 
 const HEALTH_CHECK_INTERVAL_MS = 10_000;
 
@@ -30,7 +30,7 @@ export function OpenTerminalButton({
 
   useEffect(() => {
     const timer = setInterval(async () => {
-      const { alive } = await checkTtydAlive(deploymentId);
+      const { alive } = await checkSessionAlive(deploymentId);
       if (!alive) {
         clearInterval(timer);
         setOpen(false);
