@@ -46,6 +46,26 @@ export async function refreshNetworkInfo(): Promise<void> {
   publicIp = await detectPublicIp();
 }
 
+/**
+ * Check if an incoming request should be redirected to the LAN URL.
+ * Returns the redirect URL if the client is on the same network, null otherwise.
+ */
+const SKIP_REDIRECT_RE = /^\/((_next|api|favicon|icon|apple-touch-icon|manifest|sw|offline)\b)/;
+
+export function getLanRedirectUrl(
+  clientIp: string | undefined,
+  pathname: string,
+  search: string,
+  port: number,
+): string | null {
+  if (!process.env.ISSUECTL_TUNNEL_URL) return null;
+  if (!clientIp) return null;
+  if (!publicIp || !lanIp) return null;
+  if (clientIp !== publicIp) return null;
+  if (SKIP_REDIRECT_RE.test(pathname)) return null;
+  return `http://${lanIp}:${port}${pathname}${search}`;
+}
+
 /** Reset cached state — test-only. */
 export function resetForTesting(): void {
   publicIp = null;

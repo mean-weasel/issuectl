@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
 import { handleUpgrade } from "./lib/terminal-proxy.js";
-import { refreshNetworkInfo, getPublicIp, getLanIp } from "./lib/network-info.js";
+import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -15,6 +15,16 @@ const handle = app.getRequestHandler();
 await app.prepare();
 
 const server = createServer((req, res) => {
+  // LAN auto-switch: redirect tunnel requests from same-network clients.
+  const clientIp = req.headers["cf-connecting-ip"] as string | undefined;
+  const parsed = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const redirectUrl = getLanRedirectUrl(clientIp, parsed.pathname, parsed.search, port);
+  if (redirectUrl) {
+    res.writeHead(302, { Location: redirectUrl });
+    res.end();
+    return;
+  }
+
   handle(req, res);
 });
 

@@ -10,7 +10,7 @@ const mockNetworkInterfaces = vi.mocked(os.networkInterfaces);
 
 // Dynamic import so mocks are in place before the module loads.
 // Re-import per test group via resetModules if needed.
-const { getLanIp, getPublicIp, resetForTesting } = await import("./network-info.js");
+const { getLanIp, getPublicIp, getLanRedirectUrl, resetForTesting } = await import("./network-info.js");
 
 const originalFetch = globalThis.fetch;
 
@@ -125,5 +125,84 @@ describe("getPublicIp", () => {
     await refresh();
 
     expect(getPublicIp()).toBeNull();
+  });
+});
+
+describe("getLanRedirectUrl", () => {
+  const savedEnv = process.env.ISSUECTL_TUNNEL_URL;
+
+  beforeEach(() => {
+    resetForTesting();
+    mockNetworkInterfaces.mockReturnValue({
+      en0: [
+        { address: "192.168.1.30", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "", cidr: null },
+      ],
+    });
+    process.env.ISSUECTL_TUNNEL_URL = "https://issuectl.neonwatty.com";
+  });
+
+  afterEach(() => {
+    if (savedEnv === undefined) {
+      delete process.env.ISSUECTL_TUNNEL_URL;
+    } else {
+      process.env.ISSUECTL_TUNNEL_URL = savedEnv;
+    }
+    globalThis.fetch = originalFetch;
+  });
+
+  async function setupIps(pub: string | null): Promise<void> {
+    if (pub) {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(pub),
+      });
+    } else {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error("no network"));
+    }
+    const { refreshNetworkInfo: refresh } = await import("./network-info.js");
+    await refresh();
+  }
+
+  it("returns null when ISSUECTL_TUNNEL_URL is not set", async () => {
+    delete process.env.ISSUECTL_TUNNEL_URL;
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/", "", 3847)).toBeNull();
+  });
+
+  it("returns null when clientIp is undefined", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl(undefined, "/", "", 3847)).toBeNull();
+  });
+
+  it("returns null when public IP is unknown", async () => {
+    await setupIps(null);
+    expect(getLanRedirectUrl("203.0.113.42", "/", "", 3847)).toBeNull();
+  });
+
+  it("returns null when client IP does not match server public IP", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("198.51.100.99", "/issues", "", 3847)).toBeNull();
+  });
+
+  it("returns null for API routes", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/api/health", "", 3847)).toBeNull();
+  });
+
+  it("returns null for _next assets", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/_next/static/chunk.js", "", 3847)).toBeNull();
+  });
+
+  it("redirects to LAN IP when client IP matches server public IP", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/issues", "?label=bug", 3847))
+      .toBe("http://192.168.1.30:3847/issues?label=bug");
+  });
+
+  it("preserves the root path in redirect", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/", "", 3847))
+      .toBe("http://192.168.1.30:3847/");
   });
 });
