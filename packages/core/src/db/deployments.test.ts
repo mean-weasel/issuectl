@@ -15,6 +15,8 @@ import {
   endDeployment,
   activateDeployment,
   deletePendingDeployment,
+  setIdleSince,
+  clearIdleSince,
 } from "./deployments.js";
 
 function seedRepo(db: Database.Database) {
@@ -702,5 +704,53 @@ describe("hasLiveDeploymentForIssue", () => {
       workspacePath: "/x",
     });
     expect(hasLiveDeploymentForIssue(db, repoId, 99)).toBe(false);
+  });
+});
+
+describe("setIdleSince / clearIdleSince", () => {
+  let db: Database.Database;
+  let repoId: number;
+
+  beforeEach(() => {
+    db = createTestDb();
+    repoId = seedRepo(db).id;
+  });
+
+  it("deployment starts with idleSince null", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1",
+      workspaceMode: "existing",
+      workspacePath: "/tmp",
+    });
+    expect(dep.idleSince).toBeNull();
+  });
+
+  it("setIdleSince marks a deployment as idle", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 2,
+      branchName: "issue-2",
+      workspaceMode: "existing",
+      workspacePath: "/tmp",
+    });
+    setIdleSince(db, dep.id);
+    const updated = getDeploymentById(db, dep.id)!;
+    expect(updated.idleSince).toBeTruthy();
+  });
+
+  it("clearIdleSince removes idle marker", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 3,
+      branchName: "issue-3",
+      workspaceMode: "existing",
+      workspacePath: "/tmp",
+    });
+    setIdleSince(db, dep.id);
+    clearIdleSince(db, dep.id);
+    const updated = getDeploymentById(db, dep.id)!;
+    expect(updated.idleSince).toBeNull();
   });
 });

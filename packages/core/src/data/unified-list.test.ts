@@ -60,6 +60,7 @@ function makeDeployment(issueNumber: number, ended = false): Deployment {
     endedAt: ended ? "2026-04-02T00:00:00Z" : null,
     ttydPort: null,
     ttydPid: null,
+    idleSince: null,
   };
 }
 

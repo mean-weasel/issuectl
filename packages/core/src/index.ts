@@ -72,6 +72,8 @@ export {
   cleanupOrphanedDeployments,
   pruneEndedDeployments,
   getActiveDeployments,
+  setIdleSince,
+  clearIdleSince,
 } from "./db/deployments.js";
 export type { ActiveDeploymentWithRepo } from "./db/deployments.js";
 export {
