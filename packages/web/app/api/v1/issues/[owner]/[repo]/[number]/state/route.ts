@@ -65,17 +65,37 @@ export async function POST(
       return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
     }
 
-    // Post comment first (if provided), then change state
+    // Post comment before changing state so the closing rationale appears
+    // in the timeline first. If the comment fails, state is left unchanged.
+    let commentPosted = false;
     if (body.comment?.trim()) {
       await withAuthRetry((octokit) =>
         addComment(db, octokit, owner, repo, issueNumber, body.comment!),
       );
+      commentPosted = true;
     }
 
-    if (body.state === "closed") {
-      await withAuthRetry((octokit) => closeIssue(octokit, owner, repo, issueNumber));
-    } else {
-      await withAuthRetry((octokit) => reopenIssue(octokit, owner, repo, issueNumber));
+    try {
+      if (body.state === "closed") {
+        await withAuthRetry((octokit) => closeIssue(octokit, owner, repo, issueNumber));
+      } else {
+        await withAuthRetry((octokit) => reopenIssue(octokit, owner, repo, issueNumber));
+      }
+    } catch (stateErr) {
+      // addComment clears its own comment/content caches; clear state caches here
+      clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
+      clearCacheKey(db, `issues:${owner}/${repo}`);
+      log.error({ err: stateErr, msg: "api_issue_state_failed", owner, repo, issueNumber, state: body.state, commentPosted });
+      return NextResponse.json(
+        {
+          success: false,
+          commentPosted,
+          error: commentPosted
+            ? "Your comment was posted, but the issue state could not be changed."
+            : formatErrorForUser(stateErr),
+        },
+        { status: 500 },
+      );
     }
 
     clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
@@ -84,7 +104,7 @@ export async function POST(
     log.info({ msg: "api_issue_state_changed", owner, repo, issueNumber, state: body.state });
     return NextResponse.json({ success: true });
   } catch (err) {
-    log.error({ err, msg: "api_issue_state_failed", owner, repo, issueNumber });
+    log.error({ err, msg: "api_issue_state_failed", owner, repo, issueNumber, state: body.state });
     return NextResponse.json(
       { success: false, error: formatErrorForUser(err) },
       { status: 500 },
