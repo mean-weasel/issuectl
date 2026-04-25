@@ -149,7 +149,7 @@
 
 .repoCheck {
   color: var(--paper-accent);
-  font-size: 18px;
+  font-size: var(--paper-fs-xl);
   flex-shrink: 0;
 }
 

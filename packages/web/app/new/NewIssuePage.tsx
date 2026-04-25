@@ -168,17 +168,24 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
 
         <div className={styles.field}>
           <div className={styles.fieldLabel}>Repository</div>
-          <button
-            type="button"
-            className={styles.repoToggle}
-            onClick={() => setShowRepoPicker(!showRepoPicker)}
-          >
-            <span className={styles.repoDot} />
-            <span className={styles.repoName}>{selectedRepo.owner}/{selectedRepo.repo}</span>
-            {repos.length > 1 && (
+          {repos.length <= 1 ? (
+            <div className={styles.repoDisplay}>
+              <span className={styles.repoDot} />
+              <span className={styles.repoName}>{selectedRepo.owner}/{selectedRepo.repo}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.repoToggle}
+              onClick={() => setShowRepoPicker(!showRepoPicker)}
+              disabled={isPending}
+              aria-expanded={showRepoPicker}
+            >
+              <span className={styles.repoDot} />
+              <span className={styles.repoName}>{selectedRepo.owner}/{selectedRepo.repo}</span>
               <span className={styles.repoChevron} data-open={showRepoPicker}>&#x25BE;</span>
-            )}
-          </button>
+            </button>
+          )}
           {showRepoPicker && repos.length > 1 && (
             <div className={styles.repoList}>
               {repos.map((r) => {

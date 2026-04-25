@@ -46,6 +46,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) return;
     setSelectedRepoIds(new Set());
+    setShowRepos(false);
     setLoadingRepos(true);
     Promise.all([listReposAction(), getDefaultRepoIdAction()])
       .then(([repoList, defaultId]) => {
@@ -257,6 +258,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
               className={styles.repoToggle}
               onClick={() => setShowRepos(!showRepos)}
               disabled={saving}
+              aria-expanded={showRepos}
             >
               <span className={styles.repoSummary}>
                 {selectedRepoIds.size === 0
