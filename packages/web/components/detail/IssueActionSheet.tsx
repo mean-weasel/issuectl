@@ -156,7 +156,11 @@ export function IssueActionSheet({
             : "Issue closed",
           "success",
         );
-        router.replace("/?section=closed");
+        if (window.history.length > 1) {
+          router.back();
+        } else {
+          router.replace("/");
+        }
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
         setError("Something went wrong while closing the issue. Please try again.");
