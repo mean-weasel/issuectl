@@ -194,6 +194,37 @@ describe("getLanRedirectUrl", () => {
     expect(getLanRedirectUrl("203.0.113.42", "/_next/static/chunk.js", "", 3847)).toBeNull();
   });
 
+  it("returns null for dotted infra paths (favicon.ico, sw.js, manifest.json)", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/favicon.ico", "", 3847)).toBeNull();
+    expect(getLanRedirectUrl("203.0.113.42", "/sw.js", "", 3847)).toBeNull();
+    expect(getLanRedirectUrl("203.0.113.42", "/manifest.json", "", 3847)).toBeNull();
+    expect(getLanRedirectUrl("203.0.113.42", "/icon.png", "", 3847)).toBeNull();
+  });
+
+  it("redirects hyphenated paths that only share a skip-prefix (e.g. /api-docs)", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/api-docs", "", 3847))
+      .toBe("http://192.168.1.30:3847/api-docs");
+  });
+
+  it("returns null for exact skip paths without trailing slash", async () => {
+    await setupIps("203.0.113.42");
+    expect(getLanRedirectUrl("203.0.113.42", "/api", "", 3847)).toBeNull();
+    expect(getLanRedirectUrl("203.0.113.42", "/offline", "", 3847)).toBeNull();
+  });
+
+  it("returns null when LAN IP is unknown but public IP is present", async () => {
+    mockNetworkInterfaces.mockReturnValue({});
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("203.0.113.42"),
+    });
+    const { refreshNetworkInfo: refresh } = await import("./network-info.js");
+    await refresh();
+    expect(getLanRedirectUrl("203.0.113.42", "/issues", "", 3847)).toBeNull();
+  });
+
   it("redirects to LAN IP when client IP matches server public IP", async () => {
     await setupIps("203.0.113.42");
     expect(getLanRedirectUrl("203.0.113.42", "/issues", "?label=bug", 3847))

@@ -14,15 +14,24 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
+// Extract tunnel hostname for LAN auto-switch Host header validation.
+const tunnelHost = process.env.ISSUECTL_TUNNEL_URL
+  ? new URL(process.env.ISSUECTL_TUNNEL_URL).host
+  : null;
+
 const server = createServer((req, res) => {
   // LAN auto-switch: redirect tunnel requests from same-network clients.
-  const clientIp = req.headers["cf-connecting-ip"] as string | undefined;
-  const parsed = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
-  const redirectUrl = getLanRedirectUrl(clientIp, parsed.pathname, parsed.search, port);
-  if (redirectUrl) {
-    res.writeHead(302, { Location: redirectUrl });
-    res.end();
-    return;
+  // Only process CF header when Host matches the tunnel — prevents spoofing on direct LAN requests.
+  const cfHeader = req.headers["cf-connecting-ip"];
+  const clientIp = typeof cfHeader === "string" ? cfHeader : undefined;
+  if (clientIp && tunnelHost && req.headers.host === tunnelHost) {
+    const parsed = new URL(req.url ?? "/", `http://${req.headers.host}`);
+    const redirectUrl = getLanRedirectUrl(clientIp, parsed.pathname, parsed.search, port);
+    if (redirectUrl) {
+      res.writeHead(302, { Location: redirectUrl });
+      res.end();
+      return;
+    }
   }
 
   handle(req, res);
@@ -77,7 +86,7 @@ server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HAN
   }
 });
 
-// Detect network IPs for LAN auto-switch (non-blocking — failure disables the feature).
+// Detect network IPs for LAN auto-switch (blocks up to 5s; failure disables the feature).
 await refreshNetworkInfo();
 
 server.listen(port, () => {
@@ -93,7 +102,20 @@ server.listen(port, () => {
 
 // Refresh IPs every 30 minutes to handle DHCP/ISP changes.
 const IP_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-setInterval(refreshNetworkInfo, IP_REFRESH_INTERVAL_MS).unref();
+setInterval(async () => {
+  const prevPublic = getPublicIp();
+  const prevLan = getLanIp();
+  await refreshNetworkInfo();
+  const newPublic = getPublicIp();
+  const newLan = getLanIp();
+  if (newPublic !== prevPublic || newLan !== prevLan) {
+    if (newPublic && newLan) {
+      console.log(`[issuectl] LAN auto-switch IPs updated: public=${newPublic}, lan=${newLan}`);
+    } else {
+      console.warn("[issuectl] LAN auto-switch disabled after refresh (IPs unavailable)");
+    }
+  }
+}, IP_REFRESH_INTERVAL_MS).unref();
 
 // Graceful shutdown
 function shutdown() {

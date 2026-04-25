@@ -2,6 +2,7 @@ import os from "node:os";
 
 let publicIp: string | null = null;
 let lanIp: string | null = null;
+let refreshing = false;
 
 export function getPublicIp(): string | null {
   return publicIp;
@@ -11,7 +12,7 @@ export function getLanIp(): string | null {
   return lanIp;
 }
 
-/** Detect the first non-internal IPv4 address. */
+/** Detect the first routable (non-internal, non-link-local) IPv4 address. */
 function detectLanIp(): string | null {
   const interfaces = os.networkInterfaces();
   for (const addrs of Object.values(interfaces)) {
@@ -33,24 +34,38 @@ async function detectPublicIp(): Promise<string | null> {
     const res = await fetch(IPIFY_URL, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[issuectl] Public IP detection failed: ipify returned HTTP ${res.status}`);
+      return null;
+    }
     const text = await res.text();
     return text.trim() || null;
-  } catch {
+  } catch (err) {
+    console.warn("[issuectl] Public IP detection failed:", err instanceof Error ? err.message : err);
     return null;
   }
 }
 
 export async function refreshNetworkInfo(): Promise<void> {
-  lanIp = detectLanIp();
-  publicIp = await detectPublicIp();
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const newLan = detectLanIp();
+    const newPublic = await detectPublicIp();
+    lanIp = newLan;
+    publicIp = newPublic;
+  } catch (err) {
+    console.warn("[issuectl] Network info refresh failed:", err instanceof Error ? err.message : err);
+    lanIp = null;
+    publicIp = null;
+  } finally {
+    refreshing = false;
+  }
 }
 
-/**
- * Check if an incoming request should be redirected to the LAN URL.
- * Returns the redirect URL if the client is on the same network, null otherwise.
- */
-const SKIP_REDIRECT_RE = /^\/((_next|api|favicon|icon|apple-touch-icon|manifest|sw|offline)\b)/;
+// Skip static/infra routes that don't need the LAN redirect.
+// Lookahead matches segment boundary: /api/..., /favicon.ico, /sw.js, /manifest (end-of-path).
+const SKIP_REDIRECT_RE = /^\/((_next|api|favicon|icon|apple-touch-icon|manifest|sw|offline)(?=\/|\.|$))/;
 
 export function getLanRedirectUrl(
   clientIp: string | undefined,
@@ -70,4 +85,5 @@ export function getLanRedirectUrl(
 export function resetForTesting(): void {
   publicIp = null;
   lanIp = null;
+  refreshing = false;
 }
