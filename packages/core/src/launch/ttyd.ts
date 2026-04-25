@@ -117,6 +117,39 @@ export function isTtydAlive(pid: number): boolean {
 }
 
 /* ------------------------------------------------------------------ */
+/*  isTmuxSessionAlive                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Check whether a tmux session with the given name still exists.
+ * This is the deployment liveness signal — tmux hosts the actual
+ * work (Claude Code), while ttyd is just a disposable web frontend.
+ */
+export function isTmuxSessionAlive(sessionName: string): boolean {
+  try {
+    execFileSync("tmux", ["has-session", "-t", sessionName], {
+      stdio: "ignore",
+      timeout: TMUX_TIMEOUT_MS,
+    });
+    return true;
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    const code = (err as NodeJS.ErrnoException).code;
+    // Exit code 1 = "no such session" — normal, silent.
+    if (status === 1) return false;
+    // ENOENT = tmux not installed — no sessions possible.
+    if (code === "ENOENT") return false;
+    // Anything else (ETIMEDOUT, EPERM, etc.) is a transient failure.
+    // Throwing prevents callers from treating "unknown" as "dead",
+    // which would cascade into permanently ending live deployments.
+    throw new Error(
+      `tmux has-session failed unexpectedly for "${sessionName}"`,
+      { cause: err },
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  allocatePort                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -256,6 +289,52 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   return { pid: child.pid, port };
 }
 
+/* ------------------------------------------------------------------ */
+/*  respawnTtyd                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Respawn a ttyd process against an existing tmux session. Used when
+ * ttyd has exited (e.g. `-q` exit-on-disconnect) but the tmux session
+ * is still alive. Unlike `spawnTtyd`, this does NOT create a new tmux
+ * session — it attaches to the one that already exists.
+ */
+export async function respawnTtyd(
+  port: number,
+  sessionName: string,
+): Promise<{ pid: number }> {
+  if (!TMUX_SESSION_RE.test(sessionName)) {
+    throw new Error(
+      `Invalid tmux session name: ${JSON.stringify(sessionName)}. Only alphanumeric, hyphens, and underscores are allowed.`,
+    );
+  }
+
+  const child = spawn(
+    "ttyd",
+    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q",
+     "tmux", "attach-session", "-t", sessionName],
+    { detached: true, stdio: "ignore" },
+  );
+
+  child.on("error", (err) => {
+    console.error(`[issuectl] ttyd respawn process ${child.pid} errored:`, err);
+  });
+  child.unref();
+
+  if (child.pid === undefined) {
+    throw new Error("Failed to respawn ttyd: no PID returned");
+  }
+
+  await new Promise((r) => setTimeout(r, 300));
+  if (!isTtydAlive(child.pid)) {
+    throw new Error(
+      `ttyd process ${child.pid} died immediately after respawn. Check that port ${port} is available.`,
+    );
+  }
+
+  return { pid: child.pid };
+}
+
 /** Best-effort cleanup of a tmux session. */
 function killTmuxSession(name: string): void {
   try {
@@ -271,25 +350,42 @@ function killTmuxSession(name: string): void {
 /* ------------------------------------------------------------------ */
 
 /**
- * Find active deployments whose ttyd process has died and mark them
+ * Find active deployments whose tmux session has ended and mark them
  * as ended. Called during startup so the UI never shows a phantom
- * session.
+ * session. Uses tmux session existence (not ttyd PID) as the liveness
+ * signal — ttyd may have exited due to `-q` while the session was
+ * still active.
  */
 export function reconcileOrphanedDeployments(db: Database.Database): void {
-  const rows = db
-    .prepare(
-      "SELECT id, ttyd_pid FROM deployments WHERE ended_at IS NULL AND ttyd_pid IS NOT NULL",
-    )
-    .all() as { id: number; ttyd_pid: number }[];
+  let rows: { id: number; issue_number: number; repo_name: string }[];
+  try {
+    rows = db
+      .prepare(
+        `SELECT d.id, d.issue_number, r.name AS repo_name
+         FROM deployments d
+         JOIN repos r ON r.id = d.repo_id
+         WHERE d.ended_at IS NULL
+           AND d.ttyd_pid IS NOT NULL`,
+      )
+      .all() as typeof rows;
+  } catch (err) {
+    console.error("[issuectl] Failed to query deployments for reconciliation:", err);
+    return;
+  }
 
   for (const row of rows) {
-    if (!isTtydAlive(row.ttyd_pid)) {
-      db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
-        row.id,
-      );
-      console.warn(
-        `[issuectl] Reconciled orphaned deployment ${row.id} (ttyd pid ${row.ttyd_pid} is dead)`,
-      );
+    try {
+      const sessionName = tmuxSessionName(row.repo_name, row.issue_number);
+      if (!isTmuxSessionAlive(sessionName)) {
+        db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
+          row.id,
+        );
+        console.warn(
+          `[issuectl] Reconciled orphaned deployment ${row.id} (tmux session ${sessionName} is gone)`,
+        );
+      }
+    } catch (err) {
+      console.error(`[issuectl] Failed to reconcile deployment ${row.id}:`, err);
     }
   }
 }

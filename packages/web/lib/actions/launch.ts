@@ -3,12 +3,16 @@
 import {
   getDb,
   getRepo,
+  getRepoById,
   getDeploymentById,
   executeLaunch,
   endDeployment as coreEndDeployment,
   killTtyd,
   isTtydAlive,
+  isTmuxSessionAlive,
+  respawnTtyd,
   tmuxSessionName,
+  updateTtydInfo,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -211,26 +215,83 @@ export async function endSession(
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
-export async function checkTtydAlive(
+export async function checkSessionAlive(
   deploymentId: number,
 ): Promise<{ alive: boolean; error?: string }> {
+  if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
+    return { alive: false };
+  }
   try {
     const db = getDb();
     const deployment = getDeploymentById(db, deploymentId);
     if (!deployment || deployment.endedAt !== null) {
       return { alive: false };
     }
-    if (!deployment.ttydPid) {
+
+    const repo = getRepoById(db, deployment.repoId);
+    if (!repo) {
       return { alive: false };
     }
-    const alive = isTtydAlive(deployment.ttydPid);
-    if (!alive) {
-      // Process died — clean up the deployment
-      coreEndDeployment(db, deploymentId);
+
+    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    if (isTmuxSessionAlive(sessionName)) {
+      return { alive: true };
     }
-    return { alive };
+
+    // Tmux session is gone — the work is truly done. End the deployment.
+    coreEndDeployment(db, deploymentId);
+    return { alive: false };
   } catch (err) {
-    console.error("[issuectl] Health check failed:", err);
+    console.error("[issuectl] Session health check failed:", err);
     return { alive: false, error: "Health check failed" };
+  }
+}
+
+type EnsureTtydResult =
+  | { port: number; respawned?: true; alive?: never }
+  | { alive: false; error?: string };
+
+export async function ensureTtyd(
+  deploymentId: number,
+): Promise<EnsureTtydResult> {
+  if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
+    return { alive: false };
+  }
+  try {
+    const db = getDb();
+    const deployment = getDeploymentById(db, deploymentId);
+    if (!deployment || deployment.endedAt !== null) {
+      return { alive: false };
+    }
+    if (!deployment.ttydPid || deployment.ttydPort === null) {
+      return { alive: false };
+    }
+    const port = deployment.ttydPort;
+
+    // ttyd is still running — return immediately
+    if (isTtydAlive(deployment.ttydPid)) {
+      return { port };
+    }
+
+    // ttyd is dead — check if the tmux session is still alive
+    const repo = getRepoById(db, deployment.repoId);
+    if (!repo) {
+      return { alive: false };
+    }
+
+    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    if (!isTmuxSessionAlive(sessionName)) {
+      // Both dead — session is truly over
+      coreEndDeployment(db, deploymentId);
+      return { alive: false };
+    }
+
+    // Tmux alive, ttyd dead — respawn ttyd
+    const { pid } = await respawnTtyd(port, sessionName);
+    updateTtydInfo(db, deploymentId, port, pid);
+    return { port, respawned: true };
+  } catch (err) {
+    console.error("[issuectl] ensureTtyd failed:", err);
+    return { alive: false, error: formatErrorForUser(err) };
   }
 }

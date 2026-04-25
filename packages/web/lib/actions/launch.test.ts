@@ -10,22 +10,29 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 const getDb = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
+const getRepoById = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
+const isTtydAlive = vi.hoisted(() => vi.fn());
+const isTmuxSessionAlive = vi.hoisted(() => vi.fn());
+const respawnTtyd = vi.hoisted(() => vi.fn());
+const updateTtydInfo = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
   getRepo: (...args: unknown[]) => getRepo(...args),
+  getRepoById: (...args: unknown[]) => getRepoById(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
   tmuxSessionName: (repo: string, issueNumber: number) =>
     `issuectl-${repo}-${issueNumber}`,
-  // The rest of the exports used only by launchIssue — provide stubs so
-  // TypeScript/vitest don't trip over missing exports.
-  isTtydAlive: vi.fn(),
+  isTtydAlive: (...args: unknown[]) => isTtydAlive(...args),
+  isTmuxSessionAlive: (...args: unknown[]) => isTmuxSessionAlive(...args),
+  respawnTtyd: (...args: unknown[]) => respawnTtyd(...args),
+  updateTtydInfo: (...args: unknown[]) => updateTtydInfo(...args),
   executeLaunch: vi.fn(),
   withAuthRetry: vi.fn(),
   withIdempotency: vi.fn(),
@@ -35,7 +42,7 @@ vi.mock("@issuectl/core", () => ({
 }));
 
 // Import AFTER mocks so the mocked module is in place.
-import { endSession } from "./launch.js";
+import { endSession, checkSessionAlive, ensureTtyd } from "./launch.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,19 +76,34 @@ const ARGS = [1, "owner", "repo", 7] as const;
 // Setup
 // ---------------------------------------------------------------------------
 
+let dbRunSpy: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   revalidatePath.mockReset();
   getDb.mockReset();
   getDeploymentById.mockReset();
   getRepo.mockReset();
+  getRepoById.mockReset();
   killTtyd.mockReset();
   coreEndDeployment.mockReset();
   cleanupStaleContextFiles.mockReset();
 
+  isTtydAlive.mockReset();
+  isTmuxSessionAlive.mockReset();
+  respawnTtyd.mockReset();
+  updateTtydInfo.mockReset();
+
   // Sensible defaults: DB exists, deployment found with a PID, repo found.
-  getDb.mockReturnValue({});
+  dbRunSpy = vi.fn();
+  getDb.mockReturnValue({
+    prepare: vi.fn(() => ({
+      get: vi.fn(() => ({ name: "repo" })),
+      run: dbRunSpy,
+    })),
+  });
   getDeploymentById.mockReturnValue(makeDeployment(42));
   getRepo.mockReturnValue(makeRepoRecord());
+  getRepoById.mockReturnValue(makeRepoRecord());
   coreEndDeployment.mockReturnValue(undefined);
   cleanupStaleContextFiles.mockReturnValue(Promise.resolve());
 });
@@ -144,5 +166,148 @@ describe("endSession", () => {
       success: false,
       error: "Deployment does not match the specified issue",
     });
+  });
+});
+
+describe("checkSessionAlive", () => {
+  it("returns alive when tmux session exists (even if ttyd is dead)", async () => {
+    isTmuxSessionAlive.mockReturnValue(true);
+
+    const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: true });
+    expect(coreEndDeployment).not.toHaveBeenCalled();
+  });
+
+  it("ends deployment and returns not alive when tmux session is gone", async () => {
+    isTmuxSessionAlive.mockReturnValue(false);
+
+    const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(coreEndDeployment).toHaveBeenCalled();
+  });
+
+  it("returns not alive when deployment is already ended", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), endedAt: "2026-01-01" });
+
+    const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(isTmuxSessionAlive).not.toHaveBeenCalled();
+  });
+
+  it("returns not alive when deployment does not exist", async () => {
+    getDeploymentById.mockReturnValue(undefined);
+
+    const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: false });
+  });
+
+  it("returns not alive when repo is not found", async () => {
+    getRepoById.mockReturnValue(undefined);
+
+    const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(isTmuxSessionAlive).not.toHaveBeenCalled();
+    expect(coreEndDeployment).not.toHaveBeenCalled();
+  });
+
+  it("returns error when health check throws", async () => {
+    getDeploymentById.mockImplementation(() => {
+      throw new Error("DB locked");
+    });
+
+    const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: false, error: "Health check failed" });
+  });
+});
+
+describe("ensureTtyd", () => {
+  it("returns port immediately when ttyd is alive", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(true);
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ port: 7700 });
+    expect(respawnTtyd).not.toHaveBeenCalled();
+  });
+
+  it("respawns ttyd when dead but tmux alive", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    respawnTtyd.mockResolvedValue({ pid: 99 });
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ port: 7700, respawned: true });
+    expect(respawnTtyd).toHaveBeenCalledWith(7700, "issuectl-repo-7");
+  });
+
+  it("returns alive false when both ttyd and tmux are dead", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(false);
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(respawnTtyd).not.toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalled();
+  });
+
+  it("returns alive false when deployment already ended", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), endedAt: "2026-01-01" });
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+  });
+
+  it("returns alive false when deployment has no ttydPid", async () => {
+    getDeploymentById.mockReturnValue(makeDeployment(null));
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+  });
+
+  it("calls updateTtydInfo with new PID after respawn", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    respawnTtyd.mockResolvedValue({ pid: 99 });
+
+    await ensureTtyd(1);
+
+    expect(updateTtydInfo).toHaveBeenCalledWith(expect.anything(), 1, 7700, 99);
+  });
+
+  it("returns formatted error when respawnTtyd throws", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    respawnTtyd.mockRejectedValue(new Error("port conflict"));
+
+    const result = await ensureTtyd(1);
+
+    // formatErrorForUser passes through Error.message
+    expect(result).toEqual({ alive: false, error: "port conflict" });
+  });
+
+  it("returns alive false when repo is not found", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    getRepoById.mockReturnValue(undefined);
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(isTmuxSessionAlive).not.toHaveBeenCalled();
   });
 });

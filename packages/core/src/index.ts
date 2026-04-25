@@ -190,8 +190,10 @@ export {
 export {
   verifyTtyd,
   spawnTtyd,
+  respawnTtyd,
   killTtyd,
   isTtydAlive,
+  isTmuxSessionAlive,
   allocatePort,
   reconcileOrphanedDeployments,
   tmuxSessionName,
