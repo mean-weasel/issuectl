@@ -48,6 +48,15 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 767px) {
+  .header {
+    gap: 8px;
+    padding-right: 12px;
+    padding-left: 4px;
+    flex-wrap: wrap;
+  }
+}
+
 /* Mobile: back arrow button */
 .backButton {
   display: inline-flex;
@@ -112,6 +121,7 @@
 
 .headerTitle {
   flex: 1;
+  min-width: 0;
   font-family: var(--paper-mono);
   font-size: var(--paper-fs-sm);
   color: var(--paper-ink-muted);

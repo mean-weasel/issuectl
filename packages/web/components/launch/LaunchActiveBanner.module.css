@@ -12,6 +12,18 @@
   gap: 14px;
 }
 
+@media (max-width: 767px) {
+  .banner {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .text {
+    min-width: 0;
+    flex-basis: calc(100% - 30px);
+  }
+}
+
 .spinner {
   width: 20px;
   height: 20px;
