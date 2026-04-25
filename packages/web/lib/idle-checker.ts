@@ -10,7 +10,7 @@ import log from "./logger";
 
 const DEFAULT_GRACE_SECONDS = 300;
 const DEFAULT_THRESHOLD_SECONDS = 300;
-const CHECK_INTERVAL_MS = 60_000; // check every 60s
+const CHECK_INTERVAL_MS = 60_000;
 
 let timer: ReturnType<typeof setInterval> | null = null;
 
