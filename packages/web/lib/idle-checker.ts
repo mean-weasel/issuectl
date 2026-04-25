@@ -16,20 +16,20 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Inspect all registered WS connections and update idle_since in the DB.
- * Exported for testing — the interval calls this internally.
+ * Called on a 60s interval by startIdleChecker; exported so tests can
+ * invoke it directly.
  */
 export function checkIdleDeployments(): void {
-  const db = getDb();
-  const rawGrace = getSetting(db, "idle_grace_period");
-  const graceSec =
-    rawGrace !== null && rawGrace !== undefined
-      ? Number(rawGrace)
-      : DEFAULT_GRACE_SECONDS;
-  const rawThreshold = getSetting(db, "idle_threshold");
-  const thresholdSec =
-    rawThreshold !== null && rawThreshold !== undefined
-      ? Number(rawThreshold)
-      : DEFAULT_THRESHOLD_SECONDS;
+  let db;
+  try {
+    db = getDb();
+  } catch (err) {
+    log.error({ msg: "idle_check_db_unavailable", err });
+    return;
+  }
+
+  const graceSec = parseSetting(db, "idle_grace_period", DEFAULT_GRACE_SECONDS);
+  const thresholdSec = parseSetting(db, "idle_threshold", DEFAULT_THRESHOLD_SECONDS);
   const now = Date.now();
 
   for (const port of getRegisteredPorts()) {
@@ -42,6 +42,10 @@ export function checkIdleDeployments(): void {
 
       // Skip if still within grace period after launch
       const launchedAtMs = new Date(deployment.launchedAt).getTime();
+      if (!Number.isFinite(launchedAtMs)) {
+        log.warn({ msg: "idle_check_invalid_launch_date", port, deploymentId: deployment.id, launchedAt: deployment.launchedAt });
+        continue;
+      }
       if (now - launchedAtMs < graceSec * 1000) continue;
 
       const silentMs = now - lastOutput;
@@ -67,6 +71,21 @@ export function checkIdleDeployments(): void {
       log.error({ msg: "idle_check_error", port, err });
     }
   }
+}
+
+function parseSetting(
+  db: Parameters<typeof getSetting>[0],
+  key: Parameters<typeof getSetting>[1],
+  defaultValue: number,
+): number {
+  const raw = getSetting(db, key);
+  if (raw === undefined) return defaultValue;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    log.warn({ msg: "idle_setting_invalid", key, rawValue: raw, usingDefault: defaultValue });
+    return defaultValue;
+  }
+  return parsed;
 }
 
 export function startIdleChecker(): void {

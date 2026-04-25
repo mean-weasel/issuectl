@@ -292,6 +292,24 @@ describe("endDeployment", () => {
     expect(updated!.endedAt).toBeTruthy();
   });
 
+  it("clears idle_since when ending an idle deployment", () => {
+    const repo = seedRepo(db);
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 2,
+      branchName: "idle-branch",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+    setIdleSince(db, dep.id);
+    expect(getDeploymentById(db, dep.id)!.idleSince).toBeTruthy();
+
+    endDeployment(db, dep.id);
+    const ended = getDeploymentById(db, dep.id)!;
+    expect(ended.endedAt).toBeTruthy();
+    expect(ended.idleSince).toBeNull();
+  });
+
   it("throws when deployment does not exist", () => {
     expect(() => endDeployment(db, 999)).toThrow(
       "No active deployment found with id 999",

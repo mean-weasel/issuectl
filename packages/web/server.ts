@@ -186,7 +186,11 @@ server.listen(port, () => {
   } else {
     console.log("> LAN auto-switch: disabled (could not detect IPs)");
   }
-  startIdleChecker();
+  try {
+    startIdleChecker();
+  } catch (err) {
+    log.error({ msg: "idle_checker_start_failed", err });
+  }
 });
 
 // Refresh IPs every 30 minutes to handle DHCP/ISP changes.

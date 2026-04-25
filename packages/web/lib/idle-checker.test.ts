@@ -123,6 +123,37 @@ describe("checkIdleDeployments", () => {
     expect(mockSetIdleSince).not.toHaveBeenCalled();
   });
 
+  it("continues checking remaining ports when one port throws", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    mockGetRegisteredPorts.mockReturnValue([7700, 7701]);
+    mockGetLastPtyOutput.mockReturnValue(now - 400_000);
+    // First port throws, second returns a valid deployment
+    mockGetActiveDeploymentByPort
+      .mockImplementationOnce(() => { throw new Error("SQLITE_BUSY"); })
+      .mockReturnValueOnce({
+        id: 2,
+        repoId: 1,
+        issueNumber: 2,
+        branchName: "issue-2",
+        workspaceMode: "existing" as const,
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active" as const,
+        launchedAt: new Date(now - 600_000).toISOString(),
+        endedAt: null,
+        ttydPort: 7701,
+        ttydPid: 5678,
+        idleSince: null,
+      });
+
+    checkIdleDeployments();
+
+    // Second port should still be processed
+    expect(mockSetIdleSince).toHaveBeenCalledWith(fakeDb, 2);
+  });
+
   it("skips deployments still in grace period", () => {
     const now = Date.now();
     vi.setSystemTime(now);

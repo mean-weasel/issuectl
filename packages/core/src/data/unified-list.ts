@@ -86,8 +86,7 @@ export function groupIntoSections(
 
   for (const { repo, issues, deployments, priorities } of input.perRepo) {
     // Map issue number → idleSince for active (non-ended) deployments.
-    // Also doubles as the "has active deployment" check (idleSinceMap.has),
-    // replacing the old activeLaunchSet.
+    // Also used as the "has active deployment" check via .has().
     const idleSinceMap = new Map<number, string | null>(
       deployments
         .filter((d) => d.endedAt === null)
