@@ -1,12 +1,13 @@
-import { getDb, getSetting } from "@issuectl/core";
-import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { getDb, getSetting } from "@issuectl/core";
 
 export function validateApiToken(headers: Headers): boolean {
   const authHeader = headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return false;
 
   const provided = authHeader.slice(7);
+  if (!provided) return false;
   const db = getDb();
   const stored = getSetting(db, "api_token");
   if (!stored) return false;
