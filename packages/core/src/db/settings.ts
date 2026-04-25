@@ -7,6 +7,8 @@ const DEFAULT_SETTINGS: Setting[] = [
   { key: "cache_ttl", value: "300" },
   { key: "worktree_dir", value: "~/.issuectl/worktrees/" },
   { key: "claude_extra_args", value: "--dangerously-skip-permissions" },
+  { key: "idle_grace_period", value: "300" },
+  { key: "idle_threshold", value: "300" },
 ];
 
 export function getSetting(
