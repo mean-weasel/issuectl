@@ -709,54 +709,66 @@ describe("respawnTtyd", () => {
 /* ------------------------------------------------------------------ */
 
 describe("reconcileOrphanedDeployments", () => {
-  it("marks dead deployments as ended", () => {
-    // pid 111 is dead, pid 222 is alive.
-    const killSpy = vi.spyOn(process, "kill").mockImplementation((pid) => {
-      if (pid === 111) throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
-      return true;
+  beforeEach(() => {
+    execFileSyncSpy.mockReset();
+  });
+
+  it("marks deployments as ended only when tmux session is gone", () => {
+    // Session "issuectl-repoA-10" is alive, "issuectl-repoB-20" is dead.
+    execFileSyncSpy.mockImplementation((_cmd: string, args: string[]) => {
+      if (args[0] === "has-session" && args[2] === "issuectl-repoA-10") {
+        return Buffer.from("");
+      }
+      throw Object.assign(new Error("session not found"), { status: 1 });
     });
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const runSpy = vi.fn();
     const db = {
-      prepare: vi.fn(() => ({
-        all: vi.fn(() => [
-          { id: 1, ttyd_pid: 111 },
-          { id: 2, ttyd_pid: 222 },
-        ]),
-        run: runSpy,
-      })),
+      prepare: vi.fn((sql: string) => {
+        if (sql.includes("SELECT")) {
+          return {
+            all: vi.fn(() => [
+              { id: 1, issue_number: 10, repo_name: "repoA" },
+              { id: 2, issue_number: 20, repo_name: "repoB" },
+            ]),
+          };
+        }
+        return { run: runSpy };
+      }),
     } as unknown as Database.Database;
 
     reconcileOrphanedDeployments(db);
 
-    // The UPDATE should be called once for the dead process (id=1).
+    // Only deployment 2 should be ended (tmux session gone).
     expect(runSpy).toHaveBeenCalledTimes(1);
-    expect(runSpy).toHaveBeenCalledWith(1);
+    expect(runSpy).toHaveBeenCalledWith(2);
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Reconciled orphaned deployment 1"),
+      expect.stringContaining("Reconciled orphaned deployment 2"),
     );
 
-    killSpy.mockRestore();
     warnSpy.mockRestore();
   });
 
-  it("does nothing when all deployments are alive", () => {
-    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+  it("does nothing when all tmux sessions are alive", () => {
+    execFileSyncSpy.mockReturnValue(Buffer.from(""));
 
     const runSpy = vi.fn();
     const db = {
-      prepare: vi.fn(() => ({
-        all: vi.fn(() => [{ id: 1, ttyd_pid: 100 }]),
-        run: runSpy,
-      })),
+      prepare: vi.fn((sql: string) => {
+        if (sql.includes("SELECT")) {
+          return {
+            all: vi.fn(() => [
+              { id: 1, issue_number: 10, repo_name: "repoA" },
+            ]),
+          };
+        }
+        return { run: runSpy };
+      }),
     } as unknown as Database.Database;
 
     reconcileOrphanedDeployments(db);
 
-    // run should never be called because the process is alive
     expect(runSpy).not.toHaveBeenCalled();
-
-    killSpy.mockRestore();
   });
 });

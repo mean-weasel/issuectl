@@ -332,24 +332,30 @@ function killTmuxSession(name: string): void {
 /* ------------------------------------------------------------------ */
 
 /**
- * Find active deployments whose ttyd process has died and mark them
+ * Find active deployments whose tmux session has ended and mark them
  * as ended. Called during startup so the UI never shows a phantom
- * session.
+ * session. Uses tmux session existence (not ttyd PID) as the liveness
+ * signal — ttyd may have exited due to `-q` while the session was
+ * still active.
  */
 export function reconcileOrphanedDeployments(db: Database.Database): void {
   const rows = db
     .prepare(
-      "SELECT id, ttyd_pid FROM deployments WHERE ended_at IS NULL AND ttyd_pid IS NOT NULL",
+      `SELECT d.id, d.issue_number, r.name AS repo_name
+       FROM deployments d
+       JOIN repos r ON r.id = d.repo_id
+       WHERE d.ended_at IS NULL`,
     )
-    .all() as { id: number; ttyd_pid: number }[];
+    .all() as { id: number; issue_number: number; repo_name: string }[];
 
   for (const row of rows) {
-    if (!isTtydAlive(row.ttyd_pid)) {
+    const sessionName = tmuxSessionName(row.repo_name, row.issue_number);
+    if (!isTmuxSessionAlive(sessionName)) {
       db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
         row.id,
       );
       console.warn(
-        `[issuectl] Reconciled orphaned deployment ${row.id} (ttyd pid ${row.ttyd_pid} is dead)`,
+        `[issuectl] Reconciled orphaned deployment ${row.id} (tmux session ${sessionName} is gone)`,
       );
     }
   }
