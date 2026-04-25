@@ -18,6 +18,3 @@ export const REPO_COLORS = [
   "#39d0d6",
   "#e87125",
 ];
-
-/** Max comment/review body length — matches GitHub's limit. */
-export const MAX_COMMENT_BODY = 65536;
