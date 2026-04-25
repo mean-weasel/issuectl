@@ -25,9 +25,25 @@ function detectLanIp(): string | null {
   return null;
 }
 
+const IPIFY_URL = "https://api.ipify.org";
+const FETCH_TIMEOUT_MS = 5_000;
+
+async function detectPublicIp(): Promise<string | null> {
+  try {
+    const res = await fetch(IPIFY_URL, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function refreshNetworkInfo(): Promise<void> {
   lanIp = detectLanIp();
-  // Public IP fetch added in Task 2.
+  publicIp = await detectPublicIp();
 }
 
 /** Reset cached state — test-only. */

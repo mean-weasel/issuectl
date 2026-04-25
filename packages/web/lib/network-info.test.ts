@@ -10,7 +10,7 @@ const mockNetworkInterfaces = vi.mocked(os.networkInterfaces);
 
 // Dynamic import so mocks are in place before the module loads.
 // Re-import per test group via resetModules if needed.
-const { getLanIp, resetForTesting } = await import("./network-info.js");
+const { getLanIp, getPublicIp, resetForTesting } = await import("./network-info.js");
 
 const originalFetch = globalThis.fetch;
 
@@ -72,5 +72,58 @@ describe("getLanIp", () => {
     await refresh();
 
     expect(getLanIp()).toBeNull();
+  });
+});
+
+describe("getPublicIp", () => {
+  beforeEach(() => {
+    resetForTesting();
+    mockNetworkInterfaces.mockReturnValue({});
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("returns null before refresh", () => {
+    expect(getPublicIp()).toBeNull();
+  });
+
+  it("returns the public IP after a successful refresh", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("203.0.113.42"),
+    });
+
+    const { refreshNetworkInfo: refresh } = await import("./network-info.js");
+    await refresh();
+
+    expect(getPublicIp()).toBe("203.0.113.42");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://api.ipify.org",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("returns null when ipify returns a non-ok response", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve("error"),
+    });
+
+    const { refreshNetworkInfo: refresh } = await import("./network-info.js");
+    await refresh();
+
+    expect(getPublicIp()).toBeNull();
+  });
+
+  it("returns null when fetch throws (no network)", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("fetch failed"));
+
+    const { refreshNetworkInfo: refresh } = await import("./network-info.js");
+    await refresh();
+
+    expect(getPublicIp()).toBeNull();
   });
 });
