@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPublicIp, getLanIp } from "./lib/network-info.js";
 
-const port = Number(process.env.PORT ?? 3847);
-
 export function middleware(request: NextRequest): NextResponse {
   if (!process.env.ISSUECTL_TUNNEL_URL) {
     return NextResponse.next();
@@ -23,6 +21,7 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
+  const port = Number(process.env.PORT) || 3847;
   const url = request.nextUrl.clone();
   const lanUrl = `http://${serverLanIp}:${port}${url.pathname}${url.search}`;
   return NextResponse.redirect(lanUrl, 302);

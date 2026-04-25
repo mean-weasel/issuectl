@@ -81,6 +81,10 @@ describe("middleware", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  // Redirect tests verify the default port (3847). The PORT env var is read
+  // per-request inside middleware(), so a custom port would be testable by
+  // setting process.env.PORT before calling middleware().
+
   it("redirects to LAN IP when client IP matches server public IP", () => {
     mockGetPublicIp.mockReturnValue("203.0.113.42");
     mockGetLanIp.mockReturnValue("192.168.1.30");
