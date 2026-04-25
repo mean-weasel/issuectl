@@ -16,8 +16,9 @@ const execFileAsync = promisify(execFile);
 
 // Distinct port from all other specs:
 // quick-create (3848), audit-verification (3850), mobile-ux-patterns (3851),
-// launch-ui (3852), pwa-offline (3853), action-sheets (3854).
-const TEST_PORT = 3855;
+// launch-ui (3852), pwa-offline (3853), action-sheets/pull-to-refresh (3854),
+// create-with-repo (3855), data-freshness (3856), issue-close (3857).
+const TEST_PORT = 3858;
 const BASE_URL = `http://localhost:${TEST_PORT}`;
 const TEST_OWNER = "mean-weasel";
 const TEST_REPO = "issuectl-test-repo";
@@ -290,7 +291,7 @@ test.describe("Viewport health — no horizontal overflow", () => {
     });
   }
 
-  test("issue detail (/issues/mean-weasel/issuectl-test-repo/1) — no horizontal overflow at any iPhone size", async ({
+  test(`issue detail (/issues/${TEST_OWNER}/${TEST_REPO}/1) — no horizontal overflow at any iPhone size`, async ({
     browser,
   }) => {
     if (skipReason) test.skip(true, skipReason);
@@ -299,7 +300,7 @@ test.describe("Viewport health — no horizontal overflow", () => {
     });
   });
 
-  test("draft detail (/drafts/viewport-test-draft) — no horizontal overflow at any iPhone size", async ({
+  test(`draft detail (/drafts/${DRAFT_ID}) — no horizontal overflow at any iPhone size`, async ({
     browser,
   }) => {
     if (skipReason) test.skip(true, skipReason);
@@ -319,7 +320,7 @@ test.describe("Viewport health — no element bleed", () => {
     });
   });
 
-  test("issue detail (/issues/mean-weasel/issuectl-test-repo/1) — no element bleed at any iPhone size", async ({
+  test(`issue detail (/issues/${TEST_OWNER}/${TEST_REPO}/1) — no element bleed at any iPhone size`, async ({
     browser,
   }) => {
     if (skipReason) test.skip(true, skipReason);
@@ -348,7 +349,7 @@ test.describe("Viewport health — no dead whitespace (#223)", () => {
     });
   });
 
-  test("issue detail (/issues/mean-weasel/issuectl-test-repo/1) — no dead whitespace at any iPhone size", async ({
+  test(`issue detail (/issues/${TEST_OWNER}/${TEST_REPO}/1) — no dead whitespace at any iPhone size`, async ({
     browser,
   }) => {
     if (skipReason) test.skip(true, skipReason);

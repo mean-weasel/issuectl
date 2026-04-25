@@ -94,9 +94,7 @@ export async function assertScrollContainerScrollable(
   }, selector);
 
   if (!result.found) {
-    expect
-      .soft(false, `${label}: selector "${selector}" not found`)
-      .toBe(true);
+    expect(false, `${label}: selector "${selector}" not found`).toBe(true);
     return;
   }
 
