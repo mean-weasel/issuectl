@@ -1,5 +1,5 @@
 import type { Octokit } from "@octokit/rest";
-import type { GitHubPull, GitHubCheck, GitHubPullFile, RawGitHubUser } from "./types.js";
+import type { GitHubPull, GitHubCheck, GitHubPullFile, GitHubPullReview, GitHubComment, RawGitHubUser } from "./types.js";
 import { mapUser } from "./types.js";
 import { matchLinkedPRs } from "../lifecycle/detect.js";
 
@@ -121,4 +121,91 @@ export async function findLinkedPRs(
 ): Promise<GitHubPull[]> {
   const pulls = prefetchedPulls ?? await listPulls(octokit, owner, repo, "all");
   return matchLinkedPRs(pulls, issueNumber);
+}
+
+export async function listReviews(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<GitHubPullReview[]> {
+  const { data } = await octokit.rest.pulls.listReviews({
+    owner,
+    repo,
+    pull_number: number,
+  });
+  return data.map((r) => ({
+    id: r.id,
+    user: mapUser(r.user as RawGitHubUser),
+    state: r.state.toLowerCase() as GitHubPullReview["state"],
+    body: r.body ?? "",
+    submittedAt: r.submitted_at ?? null,
+  }));
+}
+
+export type ReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
+
+export async function createReview(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+  event: ReviewEvent,
+  body?: string,
+): Promise<GitHubPullReview> {
+  const { data } = await octokit.rest.pulls.createReview({
+    owner,
+    repo,
+    pull_number: number,
+    event,
+    body: body || undefined,
+  });
+  return {
+    id: data.id,
+    user: mapUser(data.user as RawGitHubUser),
+    state: data.state.toLowerCase() as GitHubPullReview["state"],
+    body: data.body ?? "",
+    submittedAt: data.submitted_at ?? null,
+  };
+}
+
+export type MergeMethod = "merge" | "squash" | "rebase";
+
+export async function mergePull(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+  mergeMethod: MergeMethod,
+): Promise<{ sha: string; merged: boolean; message: string }> {
+  const { data } = await octokit.rest.pulls.merge({
+    owner,
+    repo,
+    pull_number: number,
+    merge_method: mergeMethod,
+  });
+  return { sha: data.sha, merged: data.merged, message: data.message };
+}
+
+export async function createPullComment(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+  body: string,
+): Promise<GitHubComment> {
+  const { data } = await octokit.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: number,
+    body,
+  });
+  return {
+    id: data.id,
+    body: data.body ?? "",
+    user: mapUser(data.user as RawGitHubUser),
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+    htmlUrl: data.html_url,
+  };
 }

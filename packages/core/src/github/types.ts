@@ -80,3 +80,11 @@ export type GitHubAccessibleRepo = {
   private: boolean;
   pushedAt: string | null;
 };
+
+export type GitHubPullReview = {
+  id: number;
+  user: GitHubUser | null;
+  state: "approved" | "changes_requested" | "commented" | "dismissed";
+  body: string;
+  submittedAt: string | null;
+};
