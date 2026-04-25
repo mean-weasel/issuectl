@@ -20,7 +20,6 @@
   border-radius: var(--paper-radius-md);
   padding: 10px 12px;
   min-height: 44px;
-  outline: none;
 }
 
 .input::placeholder {
@@ -29,6 +28,7 @@
 }
 
 .input:focus {
+  outline: none;
   border-color: var(--paper-accent);
 }
 

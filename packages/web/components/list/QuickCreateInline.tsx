@@ -26,12 +26,14 @@ export function QuickCreateInline({ onCreated }: Props) {
     if (!trimmed) return;
 
     startTransition(async () => {
+      let draftCreated = false;
       try {
         const draftResult = await createDraftAction({ title: trimmed });
         if (!draftResult.success) {
           showToast(draftResult.error, "error");
           return;
         }
+        draftCreated = true;
 
         const defaultRepoId = await getDefaultRepoIdAction();
         if (defaultRepoId) {
@@ -43,27 +45,28 @@ export function QuickCreateInline({ onCreated }: Props) {
           );
           if (!assignResult.success) {
             showToast("Draft saved but assignment failed \u2014 assign it manually", "warning");
-            setTitle("");
-            router.refresh();
-            onCreated();
-            return;
+          } else {
+            const msg = assignResult.cleanupWarning
+              ?? `Issue #${assignResult.issueNumber} created`;
+            showToast(msg, assignResult.cleanupWarning ? "warning" : "success");
           }
-          const msg = assignResult.cleanupWarning
-            ?? `Issue #${assignResult.issueNumber} created`;
-          showToast(msg, assignResult.cleanupWarning ? "warning" : "success");
-          setTitle("");
-          router.refresh();
-          onCreated();
-          return;
+        } else {
+          showToast("Draft saved", "success");
         }
 
-        showToast("Draft saved", "success");
         setTitle("");
         router.refresh();
         onCreated();
       } catch (err) {
         console.error("[issuectl] Quick create failed:", err);
-        showToast("Failed to create", "error");
+        if (draftCreated) {
+          showToast("Draft saved but something went wrong \u2014 assign it manually", "warning");
+          setTitle("");
+          router.refresh();
+          onCreated();
+        } else {
+          showToast("Failed to create", "error");
+        }
       }
     });
   }
