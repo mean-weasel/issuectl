@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import next from "next";
 import log, { logPath } from "./lib/logger";
 import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
+import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -13,6 +14,22 @@ const app = next({ dev, port });
 const handle = app.getRequestHandler();
 
 await app.prepare();
+
+// ---------------------------------------------------------------------------
+// LAN auto-switch: extract tunnel hostname for Host header validation.
+// ---------------------------------------------------------------------------
+
+let tunnelHost: string | null = null;
+if (process.env.ISSUECTL_TUNNEL_URL) {
+  try {
+    tunnelHost = new URL(process.env.ISSUECTL_TUNNEL_URL).host;
+  } catch {
+    log.warn({
+      msg: "lan_autoswitch_invalid_tunnel_url",
+      url: process.env.ISSUECTL_TUNNEL_URL,
+    });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // HTTP request logging
@@ -38,6 +55,25 @@ function logRequest(req: IncomingMessage, res: ServerResponse): void {
 
 const server = createServer((req, res) => {
   logRequest(req, res);
+
+  // LAN auto-switch: redirect tunnel requests from same-network clients.
+  // Only process CF header when Host matches the tunnel — prevents spoofing on direct LAN requests.
+  const cfHeader = req.headers["cf-connecting-ip"];
+  const clientIp = typeof cfHeader === "string" ? cfHeader : undefined;
+  if (clientIp && tunnelHost && req.headers.host === tunnelHost) {
+    try {
+      const parsed = new URL(req.url ?? "/", `http://${req.headers.host}`);
+      const redirectUrl = getLanRedirectUrl(clientIp, parsed.pathname, parsed.search, port);
+      if (redirectUrl) {
+        res.writeHead(302, { Location: redirectUrl });
+        res.end();
+        return;
+      }
+    } catch {
+      // Malformed URL — skip redirect, let Next.js handle the request.
+    }
+  }
+
   handle(req, res);
 });
 
@@ -116,19 +152,51 @@ const heartbeatTimer = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
 heartbeatTimer.unref();
 
 // ---------------------------------------------------------------------------
+// LAN auto-switch: detect network IPs (blocks up to 5s; failure disables the feature).
+// ---------------------------------------------------------------------------
+
+await refreshNetworkInfo();
+
+// ---------------------------------------------------------------------------
 // Startup
 // ---------------------------------------------------------------------------
 
 server.listen(port, () => {
+  const lanIp = getLanIp();
+  const publicIp = getPublicIp();
   log.info({
     msg: "server_start",
     port,
     mode: dev ? "dev" : "prod",
     logFile: logPath,
+    lanAutoSwitch: !!(lanIp && publicIp),
+    ...(lanIp && publicIp ? { publicIp, lanIp } : {}),
   });
   console.log(`> issuectl dashboard on http://localhost:${port} (${dev ? "dev" : "prod"})`);
   console.log(`> logs: ${logPath}`);
+  if (lanIp && publicIp) {
+    console.log(`> LAN auto-switch: public=${publicIp}, lan=${lanIp}`);
+  } else {
+    console.log("> LAN auto-switch: disabled (could not detect IPs)");
+  }
 });
+
+// Refresh IPs every 30 minutes to handle DHCP/ISP changes.
+const IP_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
+setInterval(async () => {
+  const prevPublic = getPublicIp();
+  const prevLan = getLanIp();
+  await refreshNetworkInfo();
+  const newPublic = getPublicIp();
+  const newLan = getLanIp();
+  if (newPublic !== prevPublic || newLan !== prevLan) {
+    if (newPublic && newLan) {
+      log.info({ msg: "lan_autoswitch_ips_updated", publicIp: newPublic, lanIp: newLan });
+    } else {
+      log.warn({ msg: "lan_autoswitch_disabled", reason: "ips_unavailable" });
+    }
+  }
+}, IP_REFRESH_INTERVAL_MS).unref();
 
 // ---------------------------------------------------------------------------
 // Graceful shutdown
@@ -141,33 +209,8 @@ function shutdown() {
   });
   // Force exit after 5s if connections don't drain; unref so a clean
   // shutdown before the deadline doesn't hold the event loop open.
-  setTimeout(() => {
-    log.flush(() => process.exit(1));
-  }, 5000).unref();
+  setTimeout(() => process.exit(1), 5000).unref();
 }
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-
-// ---------------------------------------------------------------------------
-// Crash handlers
-// ---------------------------------------------------------------------------
-// Pino's flush() is async (callback-based). Use the callback to
-// delay process.exit() until the buffer drains, with a safety-net
-// timeout in case the callback never fires. The console.error
-// fallback guarantees the crash is visible on stderr regardless.
-
-process.on("uncaughtException", (err) => {
-  console.error("FATAL uncaught_exception:", err);
-  log.fatal({ err, msg: "uncaught_exception" });
-  log.flush(() => process.exit(1));
-  setTimeout(() => process.exit(1), 1000).unref();
-});
-
-process.on("unhandledRejection", (reason) => {
-  const err = reason instanceof Error ? reason : new Error(String(reason));
-  console.error("FATAL unhandled_rejection:", err);
-  log.fatal({ err, msg: "unhandled_rejection" });
-  log.flush(() => process.exit(1));
-  setTimeout(() => process.exit(1), 1000).unref();
-});
