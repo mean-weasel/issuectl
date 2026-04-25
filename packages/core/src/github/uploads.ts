@@ -27,13 +27,26 @@ export type UploadResult = {
 /** Dedicated branch for image uploads — writes to the default branch would fail under branch protection rules. */
 const UPLOAD_BRANCH = "issuectl-assets";
 
+const SHA_RE = /^[0-9a-f]{40}$/;
+
 /** Extract and validate the `sha` field from a GitHub Git Data API response. */
 function extractSha(json: unknown, context: string): string {
   const obj = json as Record<string, unknown>;
-  if (typeof obj?.sha !== "string" || obj.sha.length === 0) {
-    throw new Error(`${context}: response missing 'sha' field`);
+  if (typeof obj?.sha !== "string" || !SHA_RE.test(obj.sha)) {
+    throw new Error(`${context}: response missing or malformed 'sha' field`);
   }
   return obj.sha;
+}
+
+/** Build and throw a descriptive error for a failed GitHub API call. */
+async function throwApiError(res: Response, context: string): Promise<never> {
+  const body = await res.text().catch((e) => {
+    console.error(`[uploads] failed to read ${context} error body:`, e);
+    return "";
+  });
+  const err = new Error(`${context} (${res.status}): ${body || res.statusText}`);
+  Object.assign(err, { status: res.status });
+  throw err;
 }
 
 /**
@@ -69,10 +82,7 @@ async function createUploadBranch(
     }),
   });
   if (!blobRes.ok) {
-    const body = await blobRes.text().catch(() => "");
-    const err = new Error(`Failed to create upload branch blob (${blobRes.status}): ${body || blobRes.statusText}`);
-    Object.assign(err, { status: blobRes.status });
-    throw err;
+    await throwApiError(blobRes, "Failed to create upload branch blob");
   }
   const blobSha = extractSha(await blobRes.json(), "Blob creation");
 
@@ -85,10 +95,7 @@ async function createUploadBranch(
     }),
   });
   if (!treeRes.ok) {
-    const body = await treeRes.text().catch(() => "");
-    const err = new Error(`Failed to create upload branch tree (${treeRes.status}): ${body || treeRes.statusText}`);
-    Object.assign(err, { status: treeRes.status });
-    throw err;
+    await throwApiError(treeRes, "Failed to create upload branch tree");
   }
   const treeSha = extractSha(await treeRes.json(), "Tree creation");
 
@@ -103,28 +110,25 @@ async function createUploadBranch(
     }),
   });
   if (!commitRes.ok) {
-    const body = await commitRes.text().catch(() => "");
-    const err = new Error(`Failed to create upload branch commit (${commitRes.status}): ${body || commitRes.statusText}`);
-    Object.assign(err, { status: commitRes.status });
-    throw err;
+    await throwApiError(commitRes, "Failed to create upload branch commit");
   }
   const commitSha = extractSha(await commitRes.json(), "Commit creation");
 
   // 4. Create the branch ref
-  const refRes = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/git/refs`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        ref: `refs/heads/${UPLOAD_BRANCH}`,
-        sha: commitSha,
-      }),
-    },
-  );
+  const refRes = await fetch(`${api}/refs`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      ref: `refs/heads/${UPLOAD_BRANCH}`,
+      sha: commitSha,
+    }),
+  });
   if (!refRes.ok) {
     if (refRes.status === 422) {
-      const refBody = await refRes.text().catch(() => "");
+      const refBody = await refRes.text().catch((e) => {
+        console.error("[uploads] failed to read ref error body:", e);
+        return "";
+      });
       // 422 with "Reference already exists" means a concurrent upload already created the branch — safe to ignore
       if (!refBody.includes("Reference already exists")) {
         const err = new Error(`Failed to create upload branch ref (422): ${refBody || refRes.statusText}`);
@@ -132,10 +136,7 @@ async function createUploadBranch(
         throw err;
       }
     } else {
-      const body = await refRes.text().catch(() => "");
-      const err = new Error(`Failed to create upload branch ref (${refRes.status}): ${body || refRes.statusText}`);
-      Object.assign(err, { status: refRes.status });
-      throw err;
+      await throwApiError(refRes, "Failed to create upload branch ref");
     }
   }
 }
@@ -189,7 +190,10 @@ export async function uploadImageToGitHub(
 
   // 404 or 422 may indicate the upload branch doesn't exist — check response body and create if needed
   if (response.status === 404 || response.status === 422) {
-    const text = await response.text().catch(() => "");
+    const text = await response.text().catch((e) => {
+      console.error("[uploads] failed to read upload error body:", e);
+      return "";
+    });
     const branchMissing =
       response.status === 404 ||
       text.includes("Branch not found") ||
@@ -210,7 +214,10 @@ export async function uploadImageToGitHub(
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
+    const text = await response.text().catch((e) => {
+      console.error("[uploads] failed to read upload error body:", e);
+      return "";
+    });
     throw new Error(
       `GitHub image upload failed (${response.status}): ${text || response.statusText}`,
     );

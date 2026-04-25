@@ -231,10 +231,10 @@ describe("uploadImageToGitHub", () => {
 
     fetchMock
       .mockResolvedValueOnce(notFoundResponse)       // 1st PUT → 404
-      .mockResolvedValueOnce(gitOkResponse("blob1"))  // create blob
-      .mockResolvedValueOnce(gitOkResponse("tree1"))  // create tree
-      .mockResolvedValueOnce(gitOkResponse("cmt1"))   // create commit
-      .mockResolvedValueOnce(gitOkResponse("ref1"))   // create ref
+      .mockResolvedValueOnce(gitOkResponse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))  // create blob
+      .mockResolvedValueOnce(gitOkResponse("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))  // create tree
+      .mockResolvedValueOnce(gitOkResponse("cccccccccccccccccccccccccccccccccccccccc"))   // create commit
+      .mockResolvedValueOnce(gitOkResponse("dddddddddddddddddddddddddddddddddddddddd"))   // create ref
       .mockResolvedValueOnce(successResponse);         // 2nd PUT → 201
 
     const result = await uploadImageToGitHub(TOKEN, OWNER, REPO, VALID_FILE);
@@ -268,10 +268,44 @@ describe("uploadImageToGitHub", () => {
 
     fetchMock
       .mockResolvedValueOnce(branchNotFoundResponse)   // 1st PUT → 422 "Branch not found"
-      .mockResolvedValueOnce(gitOkResponse("blob1"))
-      .mockResolvedValueOnce(gitOkResponse("tree1"))
-      .mockResolvedValueOnce(gitOkResponse("cmt1"))
-      .mockResolvedValueOnce(gitOkResponse("ref1"))
+      .mockResolvedValueOnce(gitOkResponse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+      .mockResolvedValueOnce(gitOkResponse("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+      .mockResolvedValueOnce(gitOkResponse("cccccccccccccccccccccccccccccccccccccccc"))
+      .mockResolvedValueOnce(gitOkResponse("dddddddddddddddddddddddddddddddddddddddd"))
+      .mockResolvedValueOnce(successResponse);
+
+    const result = await uploadImageToGitHub(TOKEN, OWNER, REPO, VALID_FILE);
+    expect(result.url).toContain("issuectl-assets");
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  // 8b. 422 with "No commit found" triggers retry
+  it("retries when 422 body contains 'No commit found'", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const noCommitResponse = {
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: vi.fn().mockResolvedValue({}),
+      text: vi.fn().mockResolvedValue('{"message":"No commit found for the ref issuectl-assets"}'),
+    } as unknown as Response;
+    const gitOkResponse = (sha: string) => ({
+      ok: true,
+      status: 201,
+      statusText: "Created",
+      json: vi.fn().mockResolvedValue({ sha }),
+      text: vi.fn().mockResolvedValue(""),
+    } as unknown as Response);
+    const successResponse = makeContentsApiOkResponse(
+      "https://raw.githubusercontent.com/o/r/issuectl-assets/f.png",
+    ) as unknown as Response;
+
+    fetchMock
+      .mockResolvedValueOnce(noCommitResponse)            // 1st PUT → 422 "No commit found"
+      .mockResolvedValueOnce(gitOkResponse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+      .mockResolvedValueOnce(gitOkResponse("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+      .mockResolvedValueOnce(gitOkResponse("cccccccccccccccccccccccccccccccccccccccc"))
+      .mockResolvedValueOnce(gitOkResponse("dddddddddddddddddddddddddddddddddddddddd"))
       .mockResolvedValueOnce(successResponse);
 
     const result = await uploadImageToGitHub(TOKEN, OWNER, REPO, VALID_FILE);
@@ -332,9 +366,9 @@ describe("uploadImageToGitHub", () => {
         json: vi.fn().mockResolvedValue({}),
         text: vi.fn().mockResolvedValue(""),
       } as unknown as Response)                          // 1st PUT → 404
-      .mockResolvedValueOnce(gitOkResponse("blob1"))
-      .mockResolvedValueOnce(gitOkResponse("tree1"))
-      .mockResolvedValueOnce(gitOkResponse("cmt1"))
+      .mockResolvedValueOnce(gitOkResponse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+      .mockResolvedValueOnce(gitOkResponse("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+      .mockResolvedValueOnce(gitOkResponse("cccccccccccccccccccccccccccccccccccccccc"))
       .mockResolvedValueOnce({
         ok: false, status: 422, statusText: "Unprocessable Entity",
         json: vi.fn().mockResolvedValue({}),
@@ -361,9 +395,9 @@ describe("uploadImageToGitHub", () => {
         json: vi.fn().mockResolvedValue({}),
         text: vi.fn().mockResolvedValue(""),
       } as unknown as Response)
-      .mockResolvedValueOnce(gitOkResponse("blob1"))
-      .mockResolvedValueOnce(gitOkResponse("tree1"))
-      .mockResolvedValueOnce(gitOkResponse("cmt1"))
+      .mockResolvedValueOnce(gitOkResponse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+      .mockResolvedValueOnce(gitOkResponse("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+      .mockResolvedValueOnce(gitOkResponse("cccccccccccccccccccccccccccccccccccccccc"))
       .mockResolvedValueOnce({
         ok: false, status: 422, statusText: "Unprocessable Entity",
         json: vi.fn().mockResolvedValue({}),

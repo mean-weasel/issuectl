@@ -38,7 +38,13 @@ function logRequest(req: IncomingMessage, res: ServerResponse): void {
 
 const server = createServer((req, res) => {
   logRequest(req, res);
-  handle(req, res);
+  handle(req, res).catch((err) => {
+    log.error({ err, msg: "next_request_handler_error", url: req.url });
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+    }
+    res.end("Internal Server Error");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -134,7 +140,11 @@ server.listen(port, () => {
 // Graceful shutdown
 // ---------------------------------------------------------------------------
 
+let shuttingDown = false;
+
 function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
   log.info({ msg: "server_shutdown" });
   server.close(() => {
     log.flush(() => process.exit(0));
@@ -157,17 +167,22 @@ process.on("SIGTERM", shutdown);
 // timeout in case the callback never fires. The console.error
 // fallback guarantees the crash is visible on stderr regardless.
 
-process.on("uncaughtException", (err) => {
-  console.error("FATAL uncaught_exception:", err);
-  log.fatal({ err, msg: "uncaught_exception" });
-  log.flush(() => process.exit(1));
+function crashExit(label: string, err: Error): void {
+  console.error(`FATAL ${label}:`, err);
+  log.fatal({ err, msg: label });
+  try {
+    log.flush(() => process.exit(1));
+  } catch {
+    process.exit(1);
+  }
   setTimeout(() => process.exit(1), 1000).unref();
+}
+
+process.on("uncaughtException", (err) => {
+  crashExit("uncaught_exception", err);
 });
 
 process.on("unhandledRejection", (reason) => {
   const err = reason instanceof Error ? reason : new Error(String(reason));
-  console.error("FATAL unhandled_rejection:", err);
-  log.fatal({ err, msg: "unhandled_rejection" });
-  log.flush(() => process.exit(1));
-  setTimeout(() => process.exit(1), 1000).unref();
+  crashExit("unhandled_rejection", err);
 });

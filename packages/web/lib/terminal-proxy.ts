@@ -190,7 +190,9 @@ export function handleUpgrade(
     const pendingClientMsgs: { data: Buffer | ArrayBuffer | Buffer[]; isBinary: boolean }[] = [];
     clientWs.on("message", (data, isBinary) => {
       if (upstream.readyState === WebSocket.OPEN) {
-        safeSend(upstream, data, { binary: isBinary }, "client_to_upstream", port);
+        if (!safeSend(upstream, data, { binary: isBinary }, "client_to_upstream", port)) {
+          stats.droppedFrames++;
+        }
       } else if (upstream.readyState === WebSocket.CONNECTING) {
         pendingClientMsgs.push({ data, isBinary });
       }
