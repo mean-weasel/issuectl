@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
@@ -66,6 +67,33 @@ export function TerminalPanel({
           <span className={styles.handleChevron}>{"\u203A"}</span>
         </button>
         <div className={styles.header}>
+          <Link
+            href={`/${owner}/${repo}/${issueNumber}`}
+            className={styles.backButton}
+            aria-label="Back"
+            onClick={(e) => {
+              if (window.history.length > 1) {
+                e.preventDefault();
+                onClose();
+              }
+            }}
+          >
+            <svg
+              width="12"
+              height="20"
+              viewBox="0 0 12 20"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M10 2L2 10L10 18"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
           <button
             className={styles.closeButton}
             onClick={onClose}

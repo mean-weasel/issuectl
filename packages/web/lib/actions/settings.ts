@@ -46,7 +46,7 @@ function validateOne(
   key: SettingKey,
   value: string,
 ): { ok: true; trimmed: string } | { ok: false; error: string } {
-  if (!VALID_KEYS.includes(key)) {
+  if (!(VALID_KEYS as readonly string[]).includes(key)) {
     return { ok: false, error: "Invalid setting key" };
   }
   const trimmed = value.trim();

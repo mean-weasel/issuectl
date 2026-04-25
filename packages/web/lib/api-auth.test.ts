@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+// Mock @issuectl/core before importing the module under test
 vi.mock("@issuectl/core", () => ({
   getDb: vi.fn(),
   getSetting: vi.fn(),

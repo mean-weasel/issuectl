@@ -1,7 +1,8 @@
-import { createServer, type IncomingMessage } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
-import { handleUpgrade } from "./lib/terminal-proxy.js";
+import log, { logPath } from "./lib/logger";
+import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -13,9 +14,36 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
+// ---------------------------------------------------------------------------
+// HTTP request logging
+// ---------------------------------------------------------------------------
+
+function logRequest(req: IncomingMessage, res: ServerResponse): void {
+  const start = Date.now();
+  const { method, url } = req;
+
+  // `close` fires on every response (including aborted ones), unlike
+  // `finish` which only fires when the response was fully sent.
+  res.on("close", () => {
+    log.debug({
+      msg: "http_request",
+      method,
+      url,
+      status: res.statusCode,
+      ms: Date.now() - start,
+      aborted: !res.writableFinished,
+    });
+  });
+}
+
 const server = createServer((req, res) => {
+  logRequest(req, res);
   handle(req, res);
 });
+
+// ---------------------------------------------------------------------------
+// WebSocket upgrade handling
+// ---------------------------------------------------------------------------
 
 // Next.js attaches its HMR upgrade listener lazily (after the first
 // request, not at app.prepare() time). We can't capture it at startup.
@@ -55,31 +83,91 @@ interceptUpgradeRegistrations("addListener");
 server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HANDLED]?: boolean }, head: Buffer) => {
   const match = req.url?.match(TERMINAL_WS_RE);
   if (match) {
+    const terminalPort = Number(match[1]);
     socket[HANDLED] = true;
     try {
-      handleUpgrade(req, socket, head, Number(match[1]));
+      handleUpgrade(req, socket, head, terminalPort);
     } catch (err) {
-      console.error("[issuectl] terminal upgrade handler failed:", err);
+      log.error({ err, msg: "terminal_upgrade_failed", port: terminalPort });
       socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
       socket.destroy();
     }
   }
 });
 
+// ---------------------------------------------------------------------------
+// Process health heartbeat
+// ---------------------------------------------------------------------------
+
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+function heartbeat(): void {
+  const mem = process.memoryUsage();
+  log.debug({
+    msg: "heartbeat",
+    heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+    heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+    rssMB: Math.round(mem.rss / 1024 / 1024),
+    activeWs: activeWsCount(),
+  });
+}
+
+const heartbeatTimer = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
+heartbeatTimer.unref();
+
+// ---------------------------------------------------------------------------
+// Startup
+// ---------------------------------------------------------------------------
+
 server.listen(port, () => {
+  log.info({
+    msg: "server_start",
+    port,
+    mode: dev ? "dev" : "prod",
+    logFile: logPath,
+  });
   console.log(`> issuectl dashboard on http://localhost:${port} (${dev ? "dev" : "prod"})`);
+  console.log(`> logs: ${logPath}`);
 });
 
+// ---------------------------------------------------------------------------
 // Graceful shutdown
+// ---------------------------------------------------------------------------
+
 function shutdown() {
-  console.log("[issuectl] shutting down...");
+  log.info({ msg: "server_shutdown" });
   server.close(() => {
-    process.exit(0);
+    log.flush(() => process.exit(0));
   });
   // Force exit after 5s if connections don't drain; unref so a clean
   // shutdown before the deadline doesn't hold the event loop open.
-  setTimeout(() => process.exit(1), 5000).unref();
+  setTimeout(() => {
+    log.flush(() => process.exit(1));
+  }, 5000).unref();
 }
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+// ---------------------------------------------------------------------------
+// Crash handlers
+// ---------------------------------------------------------------------------
+// Pino's flush() is async (callback-based). Use the callback to
+// delay process.exit() until the buffer drains, with a safety-net
+// timeout in case the callback never fires. The console.error
+// fallback guarantees the crash is visible on stderr regardless.
+
+process.on("uncaughtException", (err) => {
+  console.error("FATAL uncaught_exception:", err);
+  log.fatal({ err, msg: "uncaught_exception" });
+  log.flush(() => process.exit(1));
+  setTimeout(() => process.exit(1), 1000).unref();
+});
+
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  console.error("FATAL unhandled_rejection:", err);
+  log.fatal({ err, msg: "unhandled_rejection" });
+  log.flush(() => process.exit(1));
+  setTimeout(() => process.exit(1), 1000).unref();
+});

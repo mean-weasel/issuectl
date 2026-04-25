@@ -113,11 +113,13 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
   //
   // All touchmove events are preventDefault'd so iOS Safari can never
   // chain overscroll to the page. Scrolling is driven manually via
-  // el.scrollTop. When the sheet is at scrollTop === 0 and the user
-  // drags down, we transition into "dismiss mode" — the sheet slides
-  // down following the finger (with rubber-band resistance) and dismisses
-  // on release if the threshold is met. If the drag falls short, the
-  // sheet spring-animates back to rest.
+  // scrollTop. When a nested scrollable element exists (e.g. a filter
+  // list inside the sheet body), it is scrolled first; any unconsumed
+  // delta propagates up to the sheet. When the sheet is at
+  // scrollTop === 0 and the user drags down, we transition into
+  // "dismiss mode" — the sheet slides down following the finger (with
+  // rubber-band resistance) and dismisses on release if the threshold
+  // is met. If the drag falls short, the sheet spring-animates back.
   useEffect(() => {
     const el = dialogRef.current;
     if (!visible || !el) return;
@@ -126,6 +128,34 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
     let lastY = 0;
     let mode: "idle" | "scroll" | "dismiss" = "idle";
     let accumulatedDragY = 0;
+    let scrollTarget: HTMLElement = el;
+
+    /** Find the innermost scrollable ancestor of `start` up to `root`. */
+    function findScrollTarget(start: EventTarget | null): HTMLElement {
+      let node = start as HTMLElement | null;
+      while (node && node !== el) {
+        const style = getComputedStyle(node);
+        if (
+          (style.overflowY === "auto" || style.overflowY === "scroll") &&
+          node.scrollHeight > node.clientHeight
+        ) {
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return el!;
+    }
+
+    /** Drive a container's scrollTop by `delta` px; return unconsumed remainder. */
+    function driveScroll(target: HTMLElement, delta: number): number {
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      const maxScroll = scrollHeight - clientHeight;
+      if (maxScroll <= 0) return delta;
+      const newTop = Math.max(0, Math.min(maxScroll, scrollTop - delta));
+      const consumed = scrollTop - newTop;
+      target.scrollTop = newTop;
+      return delta - consumed;
+    }
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 0) return;
@@ -134,6 +164,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
       lastY = e.touches[0].clientY;
       mode = "idle";
       accumulatedDragY = 0;
+      scrollTarget = findScrollTarget(e.target);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -147,8 +178,8 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
 
       if (mode === "idle") {
         // First movement decides the mode.
-        if (moveDelta > 0 && el.scrollTop <= 0) {
-          // At top, dragging down → dismiss mode.
+        if (moveDelta > 0 && scrollTarget.scrollTop <= 0 && el.scrollTop <= 0) {
+          // All scroll containers at top, dragging down → dismiss mode.
           mode = "dismiss";
         } else {
           mode = "scroll";
@@ -162,15 +193,17 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
           (accumulatedDragY + RUBBER_BAND_C);
         setDragY(visual);
       } else {
-        // Scroll mode — drive scrollTop manually.
-        const { scrollTop, scrollHeight, clientHeight } = el;
-        const maxScroll = scrollHeight - clientHeight;
-        if (maxScroll > 0) {
-          el.scrollTop = Math.max(0, Math.min(maxScroll, scrollTop - moveDelta));
+        // Scroll mode — drive the nested target first, then the sheet.
+        let remaining = moveDelta;
+        if (scrollTarget !== el) {
+          remaining = driveScroll(scrollTarget, remaining);
         }
-        // If we scrolled to the top and the user is now dragging down,
+        if (remaining !== 0) {
+          remaining = driveScroll(el, remaining);
+        }
+        // If all scroll is exhausted and the user is dragging down,
         // switch to dismiss mode mid-gesture.
-        if (el.scrollTop <= 0 && moveDelta > 0) {
+        if (remaining > 0 && el.scrollTop <= 0) {
           mode = "dismiss";
           accumulatedDragY = 0;
         }
