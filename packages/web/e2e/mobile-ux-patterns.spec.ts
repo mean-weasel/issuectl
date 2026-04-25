@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { assertNoHorizontalOverflow } from "./helpers/viewport.js";
 import { promisify } from "node:util";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -330,14 +331,7 @@ test.describe("Mobile UX regressions — iOS Safari viewport (R3)", () => {
   test("no horizontal overflow on dashboard", async ({ page }) => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(`${BASE_URL}/`);
-    const scrollWidth = await page.evaluate(() => document.body.scrollWidth);
-    const clientWidth = await page.evaluate(
-      () => document.documentElement.clientWidth,
-    );
-    expect(
-      scrollWidth,
-      `body scrollWidth ${scrollWidth} > clientWidth ${clientWidth}`,
-    ).toBeLessThanOrEqual(clientWidth);
+    await assertNoHorizontalOverflow(page);
   });
 });
 
