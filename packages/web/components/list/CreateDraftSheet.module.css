@@ -91,8 +91,7 @@
   margin-top: 6px;
 }
 
-.repoRow,
-.repoRowSelected {
+.repoRow {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -109,8 +108,7 @@
   width: 100%;
 }
 
-.repoRow:last-child,
-.repoRowSelected:last-child {
+.repoRow:last-child {
   border-bottom: none;
 }
 
@@ -118,18 +116,18 @@
   background: var(--paper-bg-warmer);
 }
 
+.repoRow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .repoRowSelected {
+  composes: repoRow;
   background: var(--paper-accent-soft);
 }
 
 .repoRowSelected:hover {
   background: var(--paper-accent-soft);
-}
-
-.repoRow:disabled,
-.repoRowSelected:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .repoDot {

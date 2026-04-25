@@ -138,18 +138,7 @@
 }
 
 .repoToggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  min-height: 44px;
-  background: var(--paper-bg-warm);
-  border: 1px solid var(--paper-line);
-  border-radius: var(--paper-radius-md);
-  color: var(--paper-ink);
-  font-family: var(--paper-serif), sans-serif;
-  font-size: var(--paper-fs-md);
+  composes: repoDisplay;
   cursor: pointer;
   text-align: left;
 }

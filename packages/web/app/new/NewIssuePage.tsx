@@ -186,7 +186,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
               <span className={styles.repoChevron} data-open={showRepoPicker}>&#x25BE;</span>
             </button>
           )}
-          {showRepoPicker && repos.length > 1 && (
+          {showRepoPicker && (
             <div className={styles.repoList}>
               {repos.map((r) => {
                 const isSelected =
