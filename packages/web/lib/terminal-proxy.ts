@@ -3,6 +3,7 @@ import { Duplex } from "node:stream";
 import { WebSocketServer, WebSocket } from "ws";
 import { getDb, getActiveDeploymentByPort } from "@issuectl/core";
 import log from "./logger";
+import { registerPort, unregisterPort, recordPtyOutput } from "./idle-registry";
 
 const PORT_MIN = 7700;
 const PORT_MAX = 7799;
@@ -141,6 +142,7 @@ export function handleUpgrade(
 
   wss.handleUpgrade(req, socket, head, (clientWs) => {
     _activeWsCount++;
+    registerPort(port, Date.now());
 
     const clientIp =
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
@@ -208,6 +210,7 @@ export function handleUpgrade(
 
       upstream.on("message", (data, isBinary) => {
         stats.framesFromTtyd++;
+        recordPtyOutput(port, Date.now());
 
         if (clientWs.readyState !== WebSocket.OPEN) {
           stats.droppedFrames++;
@@ -259,6 +262,7 @@ export function handleUpgrade(
       cleanedUp = true;
       _activeWsCount--;
       clearInterval(tickTimer);
+      unregisterPort(port);
 
       const uptimeSec = ((Date.now() - stats.connectedAt) / 1000).toFixed(1);
       log.info({
