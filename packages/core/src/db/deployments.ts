@@ -169,7 +169,7 @@ export function endDeployment(
   deploymentId: number,
 ): void {
   const result = db
-    .prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ? AND ended_at IS NULL")
+    .prepare("UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL WHERE id = ? AND ended_at IS NULL")
     .run(deploymentId);
   if (result.changes === 0) {
     throw new Error(`No active deployment found with id ${deploymentId}`);

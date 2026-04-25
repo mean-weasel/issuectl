@@ -4,7 +4,7 @@ import next from "next";
 import log, { logPath } from "./lib/logger";
 import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
-import { startIdleChecker } from "./lib/idle-checker";
+import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -215,6 +215,7 @@ let shuttingDown = false;
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
+  stopIdleChecker();
   log.info({ msg: "server_shutdown" });
   server.close(() => {
     log.flush(() => process.exit(0));

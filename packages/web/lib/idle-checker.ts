@@ -20,41 +20,51 @@ let timer: ReturnType<typeof setInterval> | null = null;
  */
 export function checkIdleDeployments(): void {
   const db = getDb();
+  const rawGrace = getSetting(db, "idle_grace_period");
   const graceSec =
-    Number(getSetting(db, "idle_grace_period")) || DEFAULT_GRACE_SECONDS;
+    rawGrace !== null && rawGrace !== undefined
+      ? Number(rawGrace)
+      : DEFAULT_GRACE_SECONDS;
+  const rawThreshold = getSetting(db, "idle_threshold");
   const thresholdSec =
-    Number(getSetting(db, "idle_threshold")) || DEFAULT_THRESHOLD_SECONDS;
+    rawThreshold !== null && rawThreshold !== undefined
+      ? Number(rawThreshold)
+      : DEFAULT_THRESHOLD_SECONDS;
   const now = Date.now();
 
   for (const port of getRegisteredPorts()) {
-    const lastOutput = getLastPtyOutput(port);
-    if (lastOutput === undefined) continue;
+    try {
+      const lastOutput = getLastPtyOutput(port);
+      if (lastOutput === undefined) continue;
 
-    const deployment = getActiveDeploymentByPort(db, port);
-    if (!deployment) continue;
+      const deployment = getActiveDeploymentByPort(db, port);
+      if (!deployment) continue;
 
-    // Skip if still within grace period after launch
-    const launchedAtMs = new Date(deployment.launchedAt).getTime();
-    if (now - launchedAtMs < graceSec * 1000) continue;
+      // Skip if still within grace period after launch
+      const launchedAtMs = new Date(deployment.launchedAt).getTime();
+      if (now - launchedAtMs < graceSec * 1000) continue;
 
-    const silentMs = now - lastOutput;
-    const isIdle = silentMs > thresholdSec * 1000;
+      const silentMs = now - lastOutput;
+      const isIdle = silentMs > thresholdSec * 1000;
 
-    if (isIdle && !deployment.idleSince) {
-      setIdleSince(db, deployment.id);
-      log.info({
-        msg: "idle_detected",
-        port,
-        deploymentId: deployment.id,
-        silentSec: Math.round(silentMs / 1000),
-      });
-    } else if (!isIdle && deployment.idleSince) {
-      clearIdleSince(db, deployment.id);
-      log.info({
-        msg: "idle_cleared",
-        port,
-        deploymentId: deployment.id,
-      });
+      if (isIdle && !deployment.idleSince) {
+        setIdleSince(db, deployment.id);
+        log.info({
+          msg: "idle_detected",
+          port,
+          deploymentId: deployment.id,
+          silentSec: Math.round(silentMs / 1000),
+        });
+      } else if (!isIdle && deployment.idleSince) {
+        clearIdleSince(db, deployment.id);
+        log.info({
+          msg: "idle_cleared",
+          port,
+          deploymentId: deployment.id,
+        });
+      }
+    } catch (err) {
+      log.error({ msg: "idle_check_error", port, err });
     }
   }
 }
