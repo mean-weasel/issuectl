@@ -10,6 +10,7 @@ import {
   MetaNum,
 } from "./DetailMeta";
 import { EditableBody } from "./EditableBody";
+import { EditableTitle } from "./EditableTitle";
 import { PriorityPicker } from "./PriorityPicker";
 import { IssueActionSheet } from "./IssueActionSheet";
 import styles from "./IssueDetail.module.css";
@@ -55,7 +56,12 @@ export function IssueDetail({
         }
       />
       <div className={styles.body}>
-        <h1 className={styles.title}>{issue.title}</h1>
+        <EditableTitle
+          owner={owner}
+          repo={repoName}
+          issueNumber={issue.number}
+          initialTitle={issue.title}
+        />
         <DetailMeta>
           <Chip>{repoName}</Chip>
           <MetaNum>#{issue.number}</MetaNum>
