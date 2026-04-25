@@ -15,9 +15,16 @@ const handle = app.getRequestHandler();
 await app.prepare();
 
 // Extract tunnel hostname for LAN auto-switch Host header validation.
-const tunnelHost = process.env.ISSUECTL_TUNNEL_URL
-  ? new URL(process.env.ISSUECTL_TUNNEL_URL).host
-  : null;
+let tunnelHost: string | null = null;
+if (process.env.ISSUECTL_TUNNEL_URL) {
+  try {
+    tunnelHost = new URL(process.env.ISSUECTL_TUNNEL_URL).host;
+  } catch {
+    console.warn(
+      `[issuectl] ISSUECTL_TUNNEL_URL is not a valid URL: "${process.env.ISSUECTL_TUNNEL_URL}" — LAN auto-switch disabled`,
+    );
+  }
+}
 
 const server = createServer((req, res) => {
   // LAN auto-switch: redirect tunnel requests from same-network clients.
@@ -25,12 +32,16 @@ const server = createServer((req, res) => {
   const cfHeader = req.headers["cf-connecting-ip"];
   const clientIp = typeof cfHeader === "string" ? cfHeader : undefined;
   if (clientIp && tunnelHost && req.headers.host === tunnelHost) {
-    const parsed = new URL(req.url ?? "/", `http://${req.headers.host}`);
-    const redirectUrl = getLanRedirectUrl(clientIp, parsed.pathname, parsed.search, port);
-    if (redirectUrl) {
-      res.writeHead(302, { Location: redirectUrl });
-      res.end();
-      return;
+    try {
+      const parsed = new URL(req.url ?? "/", `http://${req.headers.host}`);
+      const redirectUrl = getLanRedirectUrl(clientIp, parsed.pathname, parsed.search, port);
+      if (redirectUrl) {
+        res.writeHead(302, { Location: redirectUrl });
+        res.end();
+        return;
+      }
+    } catch {
+      // Malformed URL — skip redirect, let Next.js handle the request.
     }
   }
 
