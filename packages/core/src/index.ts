@@ -39,6 +39,7 @@ export {
   setSetting,
   getSettings,
   seedDefaults,
+  generateApiToken,
 } from "./db/settings.js";
 export {
   createDraft,

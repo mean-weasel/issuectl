@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { getDb, setSetting, validateClaudeArgs } from "@issuectl/core";
 import type { SettingKey } from "@issuectl/core";
 
-const VALID_KEYS = [
+// User-editable keys only — api_token is managed internally and excluded.
+const VALID_KEYS: readonly SettingKey[] = [
   "branch_pattern",
   "cache_ttl",
   "worktree_dir",
   "claude_extra_args",
   "default_repo_id",
-] as const satisfies readonly SettingKey[];
+];
 
 const ALLOW_EMPTY = new Set<SettingKey>(["claude_extra_args", "default_repo_id"]);
 

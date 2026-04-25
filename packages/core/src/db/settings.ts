@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Setting, SettingKey } from "../types.js";
 
@@ -30,6 +31,15 @@ export function setSetting(
 
 export function getSettings(db: Database.Database): Setting[] {
   return db.prepare("SELECT key, value FROM settings ORDER BY key").all() as Setting[];
+}
+
+export function generateApiToken(db: Database.Database): string {
+  const existing = getSetting(db, "api_token");
+  if (existing) return existing;
+
+  const token = randomBytes(32).toString("hex");
+  setSetting(db, "api_token", token);
+  return token;
 }
 
 export function seedDefaults(db: Database.Database): void {
