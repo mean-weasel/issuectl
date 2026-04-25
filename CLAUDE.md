@@ -49,6 +49,54 @@ issuectl init                   # First-time setup (creates DB)
 issuectl web                    # Start dashboard (localhost:3847)
 ```
 
+## Logging
+
+The web server writes structured JSON logs via pino to **two destinations simultaneously**:
+
+| Destination | Purpose |
+|---|---|
+| stdout | Live view in the terminal running `issuectl web` |
+| `~/.issuectl/logs/web.log` | Durable file — survives terminal close, process crash |
+
+The log file rotates at **10 MB**, keeping one backup (named `YYYYMMDD-HHMM-01-web.log`).
+
+**Key log events:**
+
+| `msg` field | Level | What it tells you |
+|---|---|---|
+| `server_start` | info | Server boot with port, mode, log file path |
+| `server_shutdown` | info | Graceful shutdown initiated |
+| `http_request` | debug | Every HTTP request: method, url, status, duration (ms) |
+| `heartbeat` | debug | Every 30s: heap/RSS memory (MB), active WebSocket count |
+| `ws_connect` | info | WebSocket proxy opened: port, client IP, active count |
+| `ws_close` | info | WebSocket proxy closed: reason, duration, frame stats |
+| `ws_tick` | debug | Per-connection frame stats every 5s |
+| `ws_backpressure_start` | warn | Client send buffer exceeded threshold — shedding frames |
+| `ws_backpressure_clear` | warn | Client send buffer drained — resuming normal forwarding |
+| `ws_upstream_error` | error | ttyd WebSocket errored |
+| `ws_client_error` | error | Client-side WebSocket errored |
+| `wss_error` | error | WebSocketServer-level error |
+| `ws_send_error` | error | Failed to send a frame (logged by safeSend helper) |
+| `terminal_upgrade_failed` | error | Uncaught exception during WebSocket upgrade |
+| `uncaught_exception` | fatal | Unhandled error — logged before process exits |
+| `unhandled_rejection` | fatal | Unhandled promise rejection — logged before process exits |
+
+**Reading logs:**
+
+```bash
+# Tail live (raw JSON)
+tail -f ~/.issuectl/logs/web.log
+
+# Pretty-print with jq
+tail -f ~/.issuectl/logs/web.log | jq .
+
+# Filter for errors and fatals
+cat ~/.issuectl/logs/web.log | jq 'select(.level >= 50)'
+
+# Show only WebSocket events
+cat ~/.issuectl/logs/web.log | jq 'select(.msg | startswith("ws_"))'
+```
+
 ## Quality gates
 
 ### After writing code — ALWAYS run these

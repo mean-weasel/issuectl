@@ -12,7 +12,8 @@ export type SettingKey =
   | "cache_ttl"
   | "worktree_dir"
   | "claude_extra_args"
-  | "default_repo_id";
+  | "default_repo_id"
+  | "api_token";
 
 export type Setting = {
   key: SettingKey;

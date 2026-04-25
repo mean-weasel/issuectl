@@ -1,7 +1,8 @@
-import { createServer, type IncomingMessage } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
-import { handleUpgrade } from "./lib/terminal-proxy.js";
+import log, { logPath } from "./lib/logger";
+import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
@@ -14,19 +15,47 @@ const handle = app.getRequestHandler();
 
 await app.prepare();
 
-// Extract tunnel hostname for LAN auto-switch Host header validation.
+// ---------------------------------------------------------------------------
+// LAN auto-switch: extract tunnel hostname for Host header validation.
+// ---------------------------------------------------------------------------
+
 let tunnelHost: string | null = null;
 if (process.env.ISSUECTL_TUNNEL_URL) {
   try {
     tunnelHost = new URL(process.env.ISSUECTL_TUNNEL_URL).host;
   } catch {
-    console.warn(
-      `[issuectl] ISSUECTL_TUNNEL_URL is not a valid URL: "${process.env.ISSUECTL_TUNNEL_URL}" — LAN auto-switch disabled`,
-    );
+    log.warn({
+      msg: "lan_autoswitch_invalid_tunnel_url",
+      url: process.env.ISSUECTL_TUNNEL_URL,
+    });
   }
 }
 
+// ---------------------------------------------------------------------------
+// HTTP request logging
+// ---------------------------------------------------------------------------
+
+function logRequest(req: IncomingMessage, res: ServerResponse): void {
+  const start = Date.now();
+  const { method, url } = req;
+
+  // `close` fires on every response (including aborted ones), unlike
+  // `finish` which only fires when the response was fully sent.
+  res.on("close", () => {
+    log.debug({
+      msg: "http_request",
+      method,
+      url,
+      status: res.statusCode,
+      ms: Date.now() - start,
+      aborted: !res.writableFinished,
+    });
+  });
+}
+
 const server = createServer((req, res) => {
+  logRequest(req, res);
+
   // LAN auto-switch: redirect tunnel requests from same-network clients.
   // Only process CF header when Host matches the tunnel — prevents spoofing on direct LAN requests.
   const cfHeader = req.headers["cf-connecting-ip"];
@@ -47,6 +76,10 @@ const server = createServer((req, res) => {
 
   handle(req, res);
 });
+
+// ---------------------------------------------------------------------------
+// WebSocket upgrade handling
+// ---------------------------------------------------------------------------
 
 // Next.js attaches its HMR upgrade listener lazily (after the first
 // request, not at app.prepare() time). We can't capture it at startup.
@@ -86,24 +119,61 @@ interceptUpgradeRegistrations("addListener");
 server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HANDLED]?: boolean }, head: Buffer) => {
   const match = req.url?.match(TERMINAL_WS_RE);
   if (match) {
+    const terminalPort = Number(match[1]);
     socket[HANDLED] = true;
     try {
-      handleUpgrade(req, socket, head, Number(match[1]));
+      handleUpgrade(req, socket, head, terminalPort);
     } catch (err) {
-      console.error("[issuectl] terminal upgrade handler failed:", err);
+      log.error({ err, msg: "terminal_upgrade_failed", port: terminalPort });
       socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
       socket.destroy();
     }
   }
 });
 
-// Detect network IPs for LAN auto-switch (blocks up to 5s; failure disables the feature).
+// ---------------------------------------------------------------------------
+// Process health heartbeat
+// ---------------------------------------------------------------------------
+
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+function heartbeat(): void {
+  const mem = process.memoryUsage();
+  log.debug({
+    msg: "heartbeat",
+    heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+    heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+    rssMB: Math.round(mem.rss / 1024 / 1024),
+    activeWs: activeWsCount(),
+  });
+}
+
+const heartbeatTimer = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
+heartbeatTimer.unref();
+
+// ---------------------------------------------------------------------------
+// LAN auto-switch: detect network IPs (blocks up to 5s; failure disables the feature).
+// ---------------------------------------------------------------------------
+
 await refreshNetworkInfo();
+
+// ---------------------------------------------------------------------------
+// Startup
+// ---------------------------------------------------------------------------
 
 server.listen(port, () => {
   const lanIp = getLanIp();
   const publicIp = getPublicIp();
+  log.info({
+    msg: "server_start",
+    port,
+    mode: dev ? "dev" : "prod",
+    logFile: logPath,
+    lanAutoSwitch: !!(lanIp && publicIp),
+    ...(lanIp && publicIp ? { publicIp, lanIp } : {}),
+  });
   console.log(`> issuectl dashboard on http://localhost:${port} (${dev ? "dev" : "prod"})`);
+  console.log(`> logs: ${logPath}`);
   if (lanIp && publicIp) {
     console.log(`> LAN auto-switch: public=${publicIp}, lan=${lanIp}`);
   } else {
@@ -121,18 +191,21 @@ setInterval(async () => {
   const newLan = getLanIp();
   if (newPublic !== prevPublic || newLan !== prevLan) {
     if (newPublic && newLan) {
-      console.log(`[issuectl] LAN auto-switch IPs updated: public=${newPublic}, lan=${newLan}`);
+      log.info({ msg: "lan_autoswitch_ips_updated", publicIp: newPublic, lanIp: newLan });
     } else {
-      console.warn("[issuectl] LAN auto-switch disabled after refresh (IPs unavailable)");
+      log.warn({ msg: "lan_autoswitch_disabled", reason: "ips_unavailable" });
     }
   }
 }, IP_REFRESH_INTERVAL_MS).unref();
 
+// ---------------------------------------------------------------------------
 // Graceful shutdown
+// ---------------------------------------------------------------------------
+
 function shutdown() {
-  console.log("[issuectl] shutting down...");
+  log.info({ msg: "server_shutdown" });
   server.close(() => {
-    process.exit(0);
+    log.flush(() => process.exit(0));
   });
   // Force exit after 5s if connections don't drain; unref so a clean
   // shutdown before the deadline doesn't hold the event loop open.

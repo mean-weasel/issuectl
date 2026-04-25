@@ -120,100 +120,102 @@ export function FiltersSheet({
         )}
       </div>
 
-      <div className={styles.clearBar}>
-        {clearHref ? (
-          <Link
-            href={clearHref}
-            className={styles.clearBtn}
-            onClick={onClose}
-          >
-            clear all
-          </Link>
-        ) : (
-          <span className={styles.clearPlaceholder} />
+      <div className={styles.filterScroll}>
+        <div className={styles.clearBar}>
+          {clearHref ? (
+            <Link
+              href={clearHref}
+              className={styles.clearBtn}
+              onClick={onClose}
+            >
+              clear all
+            </Link>
+          ) : (
+            <span className={styles.clearPlaceholder} />
+          )}
+        </div>
+
+        <div className={styles.groupLabel}>Repository</div>
+        <Link
+          href={repoHref(null)}
+          className={activeRepo === null ? styles.rowActive : styles.row}
+          onClick={onClose}
+        >
+          <span className={styles.label}>All repos</span>
+          {activeRepo === null && <span className={styles.check}>✓</span>}
+        </Link>
+        {repos.map((repo, i) => {
+          const key = repoKey(repo);
+          const isActive = key === activeRepo;
+          const color = REPO_COLORS[i % REPO_COLORS.length];
+          return (
+            <Link
+              key={key}
+              href={repoHref(key)}
+              className={isActive ? styles.rowActive : styles.row}
+              onClick={onClose}
+            >
+              <span
+                className={styles.dot}
+                style={{ background: color }}
+                aria-hidden
+              />
+              <span className={styles.label}>
+                <span className={styles.labelOwner}>{repo.owner}/</span>
+                {repo.name}
+              </span>
+              {isActive && <span className={styles.check}>✓</span>}
+            </Link>
+          );
+        })}
+
+        {showAuthor && (
+          <>
+            <div className={styles.groupLabel}>Author</div>
+            <Link
+              href={mineHref(null)}
+              className={!mineOnly ? styles.rowActive : styles.row}
+              onClick={onClose}
+            >
+              <span className={styles.label}>Everyone</span>
+              {!mineOnly && <span className={styles.check}>✓</span>}
+            </Link>
+            <Link
+              href={mineHref(true)}
+              className={mineOnly ? styles.rowActive : styles.row}
+              onClick={onClose}
+            >
+              <span className={styles.label}>
+                Just me
+                {username && (
+                  <span className={styles.labelSub}> (@{username})</span>
+                )}
+              </span>
+              {mineOnly && <span className={styles.check}>✓</span>}
+            </Link>
+          </>
+        )}
+
+        {showSort && (
+          <>
+            <div className={styles.groupLabel}>Sort by</div>
+            {SORT_OPTIONS.map(({ mode, label }) => {
+              const isActive = mode === activeSort;
+              return (
+                <Link
+                  key={mode}
+                  href={sortHref(mode)}
+                  className={isActive ? styles.rowActive : styles.row}
+                  onClick={onClose}
+                >
+                  <span className={styles.label}>{label}</span>
+                  {isActive && <span className={styles.check}>✓</span>}
+                </Link>
+              );
+            })}
+          </>
         )}
       </div>
-
-      <div className={styles.groupLabel}>Repository</div>
-      <Link
-        href={repoHref(null)}
-        className={activeRepo === null ? styles.rowActive : styles.row}
-        onClick={onClose}
-      >
-        <span className={styles.label}>All repos</span>
-        {activeRepo === null && <span className={styles.check}>✓</span>}
-      </Link>
-      {repos.map((repo, i) => {
-        const key = repoKey(repo);
-        const isActive = key === activeRepo;
-        const color = REPO_COLORS[i % REPO_COLORS.length];
-        return (
-          <Link
-            key={key}
-            href={repoHref(key)}
-            className={isActive ? styles.rowActive : styles.row}
-            onClick={onClose}
-          >
-            <span
-              className={styles.dot}
-              style={{ background: color }}
-              aria-hidden
-            />
-            <span className={styles.label}>
-              <span className={styles.labelOwner}>{repo.owner}/</span>
-              {repo.name}
-            </span>
-            {isActive && <span className={styles.check}>✓</span>}
-          </Link>
-        );
-      })}
-
-      {showAuthor && (
-        <>
-          <div className={styles.groupLabel}>Author</div>
-          <Link
-            href={mineHref(null)}
-            className={!mineOnly ? styles.rowActive : styles.row}
-            onClick={onClose}
-          >
-            <span className={styles.label}>Everyone</span>
-            {!mineOnly && <span className={styles.check}>✓</span>}
-          </Link>
-          <Link
-            href={mineHref(true)}
-            className={mineOnly ? styles.rowActive : styles.row}
-            onClick={onClose}
-          >
-            <span className={styles.label}>
-              Just me
-              {username && (
-                <span className={styles.labelSub}> (@{username})</span>
-              )}
-            </span>
-            {mineOnly && <span className={styles.check}>✓</span>}
-          </Link>
-        </>
-      )}
-
-      {showSort && (
-        <>
-          <div className={styles.groupLabel}>Sort by</div>
-          {SORT_OPTIONS.map(({ mode, label }) => {
-            const isActive = mode === activeSort;
-            return (
-              <Link
-                key={mode}
-                href={sortHref(mode)}
-                className={isActive ? styles.rowActive : styles.row}
-                onClick={onClose}
-              >
-                <span className={styles.label}>{label}</span>
-                {isActive && <span className={styles.check}>✓</span>}
-              </Link>
-            );
-          })}
-        </>
-      )}
 
       {/* ── Mobile action links ── */}
       <div className={styles.mobileOnly}>
