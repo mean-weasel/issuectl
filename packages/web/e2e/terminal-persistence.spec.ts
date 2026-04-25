@@ -13,7 +13,7 @@ import { initSchema, runMigrations, tmuxSessionName } from "@issuectl/core";
  * Exercises the full browser flow:
  *   1. Issue detail page renders with "Open Terminal" button
  *   2. Click → terminal panel opens (ensureTtyd confirms ttyd alive)
- *   3. Close panel → kill ttyd (simulating -q exit-on-disconnect)
+ *   3. Close panel, then explicitly kill ttyd (simulates the -q exit-on-disconnect race)
  *   4. Navigate to list page ("/") and back to issue detail
  *   5. Click "Open Terminal" again → ensureTtyd respawns ttyd → panel opens
  *
@@ -93,15 +93,55 @@ function killPid(pid: number): void {
   try { process.kill(pid, "SIGTERM"); } catch { /* already dead */ }
 }
 
-/** Kill any process listening on TTYD_PORT — covers respawned ttyd. */
+/** Kill any process listening on TTYD_PORT — covers respawned ttyd.
+ *  Uses `-sTCP:LISTEN` to only match the listener, not clients that
+ *  happen to have outbound connections to this port (e.g. the Next.js
+ *  dev server's HTTP proxy connection pool). */
 function cleanupTtydPort(): void {
   try {
-    const output = execFileSync("lsof", ["-ti", `tcp:${TTYD_PORT}`], { encoding: "utf-8" });
+    const output = execFileSync(
+      "lsof", ["-ti", `tcp:${TTYD_PORT}`, "-sTCP:LISTEN"],
+      { encoding: "utf-8" },
+    );
     for (const line of output.trim().split("\n")) {
       const pid = Number(line.trim());
       if (pid > 0) killPid(pid);
     }
   } catch { /* no process on port */ }
+}
+
+/**
+ * Reset tmux/ttyd/DB state so the next test starts from a known-good
+ * baseline: live tmux session, live ttyd, active deployment row.
+ * Called at the start of each test after the first.
+ */
+async function resetTestState(): Promise<void> {
+  cleanupTtydPort();
+  cleanupTmuxSession();
+
+  execFileSync("tmux", [
+    "new-session", "-d", "-s", SESSION_NAME, "-x", "120", "-y", "40",
+    "bash -c 'echo TERMINAL_PERSIST_TEST; sleep 600'",
+  ]);
+
+  ttydProc = spawnTtyd();
+  await new Promise((r) => setTimeout(r, 1000));
+
+  if (!ttydProc?.pid || !isTtydAlive(ttydProc.pid)) {
+    throw new Error("ttyd failed to start during state reset");
+  }
+
+  const db = new Database(dbPath);
+  try {
+    const result = db.prepare(
+      "UPDATE deployments SET ended_at = NULL, ttyd_port = ?, ttyd_pid = ? WHERE id = 1",
+    ).run(TTYD_PORT, ttydProc.pid);
+    if (result.changes === 0) {
+      throw new Error("resetTestState: deployment id=1 missing from DB — cannot reset");
+    }
+  } finally {
+    db.close();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -379,5 +419,74 @@ test.describe("terminal persistence across panel close and navigation", () => {
     // respawns, and returns the port so the panel opens.
     await openBtn.click();
     await expect(panel).toBeVisible({ timeout: 15000 });
+  });
+
+  test("End Session button ends deployment and removes terminal UI", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+    await resetTestState();
+
+    await page.goto(ISSUE_URL);
+    const activeBanner = page.getByText("Claude Code session active");
+    await expect(activeBanner).toBeVisible({ timeout: 30000 });
+
+    // Open terminal panel
+    const openBtn = page.getByRole("button", { name: "Open Terminal" });
+    await openBtn.click();
+    const panel = page.locator('[data-open="true"] iframe[title*="Terminal"]');
+    await expect(panel).toBeVisible({ timeout: 10000 });
+
+    // Click "End Session" inside the panel (scoped to avoid the banner's button)
+    const endBtn = page.locator('[data-open="true"]').getByRole("button", { name: "End Session" });
+    await endBtn.click();
+
+    // endSession kills ttyd + tmux, ends deployment, then onClose() + router.refresh().
+    // Panel closes and the active banner disappears once the page re-renders.
+    await expect(panel).not.toBeVisible({ timeout: 10000 });
+    await expect(activeBanner).not.toBeVisible({ timeout: 10000 });
+  });
+
+  test("Open Terminal when both ttyd and tmux are dead ends deployment", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+    await resetTestState();
+
+    await page.goto(ISSUE_URL);
+    const activeBanner = page.getByText("Claude Code session active");
+    await expect(activeBanner).toBeVisible({ timeout: 30000 });
+
+    // Kill both ttyd and tmux before clicking
+    cleanupTtydPort();
+    cleanupTmuxSession();
+
+    // Click "Open Terminal" — ensureTtyd detects both dead, calls
+    // coreEndDeployment, returns { alive: false }. handleOpen triggers
+    // router.refresh() and the page re-renders without the deployment.
+    const openBtn = page.getByRole("button", { name: "Open Terminal" });
+    await openBtn.click();
+    await expect(activeBanner).not.toBeVisible({ timeout: 15000 });
+  });
+
+  test("health check polling detects dead session and closes panel", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+    await resetTestState();
+
+    await page.goto(ISSUE_URL);
+    const activeBanner = page.getByText("Claude Code session active");
+    await expect(activeBanner).toBeVisible({ timeout: 30000 });
+
+    // Open terminal panel
+    const openBtn = page.getByRole("button", { name: "Open Terminal" });
+    await openBtn.click();
+    const panel = page.locator('[data-open="true"] iframe[title*="Terminal"]');
+    await expect(panel).toBeVisible({ timeout: 10000 });
+
+    // Kill tmux — this is the liveness signal. ttyd may still be alive
+    // but checkSessionAlive uses tmux, not ttyd, as the source of truth.
+    cleanupTmuxSession();
+
+    // The health check fires every 10s. When it detects the dead session
+    // it ends the deployment, closes the panel, and refreshes the page.
+    // Allow up to 20s (two polling cycles) for the detection.
+    await expect(panel).not.toBeVisible({ timeout: 20000 });
+    await expect(activeBanner).not.toBeVisible({ timeout: 5000 });
   });
 });
