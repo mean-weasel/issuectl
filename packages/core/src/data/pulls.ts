@@ -110,7 +110,9 @@ export async function getPullDetail(
           console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
         });
       }
-      return { ...cached.data, fromCache: true, cachedAt: cached.fetchedAt };
+      const data = cached.data;
+      data.reviews ??= [];
+      return { ...data, fromCache: true, cachedAt: cached.fetchedAt };
     }
   }
 

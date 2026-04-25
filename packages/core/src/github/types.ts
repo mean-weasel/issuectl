@@ -84,7 +84,7 @@ export type GitHubAccessibleRepo = {
 export type GitHubPullReview = {
   id: number;
   user: GitHubUser | null;
-  state: "approved" | "changes_requested" | "commented" | "dismissed";
+  state: "approved" | "changes_requested" | "commented" | "dismissed" | "pending";
   body: string;
   submittedAt: string | null;
 };

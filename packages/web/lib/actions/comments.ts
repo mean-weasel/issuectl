@@ -14,9 +14,9 @@ import {
   formatErrorForUser,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
+import { MAX_COMMENT_BODY } from "@/lib/constants";
 
 const OWNER_REPO_RE = /^[a-zA-Z0-9_.-]+$/;
-const MAX_COMMENT_BODY = 65536;
 
 export async function getComments(
   owner: string,
