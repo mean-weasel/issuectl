@@ -58,7 +58,8 @@ struct IssueCommentSheet: View {
         isSubmitting = true
         errorMessage = nil
         do {
-            let requestBody = IssueCommentRequestBody(body: commentBody)
+            let trimmed = commentBody.trimmingCharacters(in: .whitespacesAndNewlines)
+            let requestBody = IssueCommentRequestBody(body: trimmed)
             let response = try await api.commentOnIssue(owner: owner, repo: repo, number: number, body: requestBody)
             if response.success {
                 onSuccess()

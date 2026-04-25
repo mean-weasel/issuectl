@@ -67,12 +67,13 @@ struct IssueDetailResponse: Codable, Sendable {
 }
 
 struct IssueStateRequestBody: Encodable, Sendable {
-    let state: String
+    let state: String // "open" or "closed"
     let comment: String?
 }
 
 struct IssueStateResponse: Codable, Sendable {
     let success: Bool
+    let commentPosted: Bool?
     let error: String?
 }
 

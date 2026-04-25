@@ -45,15 +45,18 @@ struct IssueDetailView: View {
                             if !detail.comments.isEmpty {
                                 commentsSection(detail.comments)
                             }
-                            if let actionError {
-                                Label(actionError, systemImage: "exclamationmark.triangle")
-                                    .foregroundStyle(.red)
-                                    .font(.subheadline)
-                            }
                         }
                         .padding()
                     }
                     .refreshable { await load(refresh: true) }
+
+                    if let actionError {
+                        Label(actionError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                            .font(.subheadline)
+                            .padding(.horizontal)
+                            .padding(.vertical, 6)
+                    }
 
                     actionBar(for: detail.issue)
                 }
