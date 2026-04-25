@@ -122,14 +122,25 @@
 }
 
 /* ── Repo picker ── */
-.repoDisplay {
+.repoToggle {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 10px 12px;
+  min-height: 44px;
   background: var(--paper-bg-warm);
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
+  font-family: var(--paper-serif), sans-serif;
+  font-size: var(--paper-fs-md);
+  cursor: pointer;
+  text-align: left;
+}
+
+.repoToggle:hover {
+  background: var(--paper-bg-warmer);
 }
 
 .repoDot {
@@ -141,25 +152,23 @@
 }
 
 .repoName {
+  flex: 1;
   font-size: var(--paper-fs-md);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.repoChange {
-  margin-left: auto;
-  font-size: var(--paper-fs-base);
+.repoChevron {
+  font-size: var(--paper-fs-md);
   color: var(--paper-ink-muted);
-  background: none;
-  border: none;
-  padding: 8px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
 }
 
-.repoChange:hover {
-  color: var(--paper-ink-soft);
+.repoChevron[data-open="true"] {
+  transform: rotate(180deg);
 }
 
 .repoList {
@@ -168,17 +177,18 @@
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   overflow: hidden;
+  margin-top: 6px;
 }
 
 .repoOption {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px 12px;
   min-height: 44px;
   background: var(--paper-bg-warm);
   border: none;
-  border-bottom: 1px solid var(--paper-line);
+  border-bottom: 1px solid var(--paper-line-soft);
   color: var(--paper-ink);
   font-family: var(--paper-serif), sans-serif;
   font-size: var(--paper-fs-md);
@@ -196,8 +206,20 @@
 
 .repoOptionSelected {
   composes: repoOption;
+  background: var(--paper-accent-soft);
+}
+
+.repoOptionLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repoCheck {
   color: var(--paper-accent);
-  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 /* ── Text inputs — 16px on mobile kills iOS auto-zoom on focus. ── */
