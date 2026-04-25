@@ -26,6 +26,7 @@ export function OpenTerminalButton({
   issueTitle,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -43,9 +44,13 @@ export function OpenTerminalButton({
   }, [deploymentId, router]);
 
   function handleOpen() {
+    setError(null);
     startTransition(async () => {
       const result = await ensureTtyd(deploymentId);
       if ("alive" in result && !result.alive) {
+        if (result.error) {
+          setError(result.error);
+        }
         router.refresh();
         return;
       }
@@ -58,6 +63,7 @@ export function OpenTerminalButton({
       <Button variant="primary" onClick={handleOpen} disabled={isPending}>
         {isPending ? "Connecting..." : "Open Terminal"}
       </Button>
+      {error && <p role="alert" style={{ color: "var(--color-error, #c62828)", marginTop: "0.5rem", fontSize: "0.875rem" }}>{error}</p>}
       <TerminalPanel
         open={open}
         onClose={() => setOpen(false)}

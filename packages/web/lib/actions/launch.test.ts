@@ -10,6 +10,7 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 const getDb = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
+const getRepoById = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
@@ -21,6 +22,7 @@ vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
   getRepo: (...args: unknown[]) => getRepo(...args),
+  getRepoById: (...args: unknown[]) => getRepoById(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
@@ -72,11 +74,14 @@ const ARGS = [1, "owner", "repo", 7] as const;
 // Setup
 // ---------------------------------------------------------------------------
 
+let dbRunSpy: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   revalidatePath.mockReset();
   getDb.mockReset();
   getDeploymentById.mockReset();
   getRepo.mockReset();
+  getRepoById.mockReset();
   killTtyd.mockReset();
   coreEndDeployment.mockReset();
   cleanupStaleContextFiles.mockReset();
@@ -86,14 +91,16 @@ beforeEach(() => {
   respawnTtyd.mockReset();
 
   // Sensible defaults: DB exists, deployment found with a PID, repo found.
+  dbRunSpy = vi.fn();
   getDb.mockReturnValue({
     prepare: vi.fn(() => ({
       get: vi.fn(() => ({ name: "repo" })),
-      run: vi.fn(),
+      run: dbRunSpy,
     })),
   });
   getDeploymentById.mockReturnValue(makeDeployment(42));
   getRepo.mockReturnValue(makeRepoRecord());
+  getRepoById.mockReturnValue(makeRepoRecord());
   coreEndDeployment.mockReturnValue(undefined);
   cleanupStaleContextFiles.mockReturnValue(Promise.resolve());
 });
@@ -245,5 +252,38 @@ describe("ensureTtyd", () => {
     const result = await ensureTtyd(1);
 
     expect(result).toEqual({ alive: false });
+  });
+
+  it("updates DB with new PID after respawn", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    respawnTtyd.mockResolvedValue({ pid: 99 });
+
+    await ensureTtyd(1);
+
+    expect(dbRunSpy).toHaveBeenCalledWith(99, 1);
+  });
+
+  it("returns error when respawnTtyd throws", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    respawnTtyd.mockRejectedValue(new Error("port conflict"));
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false, error: "Failed to ensure terminal" });
+  });
+
+  it("returns alive false when repo is not found", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    getRepoById.mockReturnValue(undefined);
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(isTmuxSessionAlive).not.toHaveBeenCalled();
   });
 });

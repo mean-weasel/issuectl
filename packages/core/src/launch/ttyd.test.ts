@@ -308,6 +308,33 @@ describe("isTmuxSessionAlive", () => {
     });
     expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
   });
+
+  it("logs unexpected errors (not exit code 1)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("not found"), { code: "ENOENT" });
+    });
+
+    isTmuxSessionAlive("issuectl-repo-42");
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[issuectl] tmux has-session failed unexpectedly:",
+      expect.any(Error),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("does not log when exit code is 1 (normal 'session not found')", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("session not found"), { status: 1 });
+    });
+
+    isTmuxSessionAlive("issuectl-repo-42");
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -702,6 +729,15 @@ describe("respawnTtyd", () => {
       "Failed to respawn ttyd: no PID returned",
     );
   });
+
+  it("rejects invalid session names containing dots or colons", async () => {
+    await expect(respawnTtyd(7700, "issuectl-my.project-42")).rejects.toThrow(
+      "Invalid tmux session name",
+    );
+
+    // spawn should never have been called
+    expect(spawnSpy).not.toHaveBeenCalled();
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -770,5 +806,42 @@ describe("reconcileOrphanedDeployments", () => {
     reconcileOrphanedDeployments(db);
 
     expect(runSpy).not.toHaveBeenCalled();
+  });
+
+  it("only queries deployments that have a ttyd_pid (excludes pending)", () => {
+    execFileSyncSpy.mockReturnValue(Buffer.from(""));
+
+    const prepareSpy = vi.fn((sql: string) => {
+      if (sql.includes("SELECT")) {
+        return { all: vi.fn(() => []) };
+      }
+      return { run: vi.fn() };
+    });
+    const db = { prepare: prepareSpy } as unknown as Database.Database;
+
+    reconcileOrphanedDeployments(db);
+
+    const selectCall = prepareSpy.mock.calls.find(
+      (c: unknown[]) => (c[0] as string).includes("SELECT"),
+    );
+    expect(selectCall).toBeDefined();
+    expect(selectCall![0]).toContain("ttyd_pid IS NOT NULL");
+  });
+
+  it("logs error and does not throw when reconcile fails", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = {
+      prepare: vi.fn(() => {
+        throw new Error("DB locked");
+      }),
+    } as unknown as Database.Database;
+
+    // Should not throw
+    expect(() => reconcileOrphanedDeployments(db)).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[issuectl] Failed to reconcile orphaned deployments:",
+      expect.any(Error),
+    );
+    errorSpy.mockRestore();
   });
 });

@@ -132,7 +132,13 @@ export function isTmuxSessionAlive(sessionName: string): boolean {
       timeout: TMUX_TIMEOUT_MS,
     });
     return true;
-  } catch {
+  } catch (err) {
+    // Exit code 1 means "no such session" — expected and silent.
+    // Anything else (ENOENT, ETIMEDOUT, etc.) is unexpected and logged.
+    const status = (err as { status?: number }).status;
+    if (status !== 1) {
+      console.warn("[issuectl] tmux has-session failed unexpectedly:", err);
+    }
     return false;
   }
 }
@@ -291,6 +297,12 @@ export async function respawnTtyd(
   port: number,
   sessionName: string,
 ): Promise<{ pid: number }> {
+  if (!TMUX_SESSION_RE.test(sessionName)) {
+    throw new Error(
+      `Invalid tmux session name: ${JSON.stringify(sessionName)}. Only alphanumeric, hyphens, and underscores are allowed.`,
+    );
+  }
+
   const child = spawn(
     "ttyd",
     ["-W", "-i", "127.0.0.1", "-p", String(port), "-q",
@@ -339,24 +351,29 @@ function killTmuxSession(name: string): void {
  * still active.
  */
 export function reconcileOrphanedDeployments(db: Database.Database): void {
-  const rows = db
-    .prepare(
-      `SELECT d.id, d.issue_number, r.name AS repo_name
-       FROM deployments d
-       JOIN repos r ON r.id = d.repo_id
-       WHERE d.ended_at IS NULL`,
-    )
-    .all() as { id: number; issue_number: number; repo_name: string }[];
+  try {
+    const rows = db
+      .prepare(
+        `SELECT d.id, d.issue_number, r.name AS repo_name
+         FROM deployments d
+         JOIN repos r ON r.id = d.repo_id
+         WHERE d.ended_at IS NULL
+           AND d.ttyd_pid IS NOT NULL`,
+      )
+      .all() as { id: number; issue_number: number; repo_name: string }[];
 
-  for (const row of rows) {
-    const sessionName = tmuxSessionName(row.repo_name, row.issue_number);
-    if (!isTmuxSessionAlive(sessionName)) {
-      db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
-        row.id,
-      );
-      console.warn(
-        `[issuectl] Reconciled orphaned deployment ${row.id} (tmux session ${sessionName} is gone)`,
-      );
+    for (const row of rows) {
+      const sessionName = tmuxSessionName(row.repo_name, row.issue_number);
+      if (!isTmuxSessionAlive(sessionName)) {
+        db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
+          row.id,
+        );
+        console.warn(
+          `[issuectl] Reconciled orphaned deployment ${row.id} (tmux session ${sessionName} is gone)`,
+        );
+      }
     }
+  } catch (err) {
+    console.error("[issuectl] Failed to reconcile orphaned deployments:", err);
   }
 }

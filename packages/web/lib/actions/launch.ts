@@ -3,6 +3,7 @@
 import {
   getDb,
   getRepo,
+  getRepoById,
   getDeploymentById,
   executeLaunch,
   endDeployment as coreEndDeployment,
@@ -226,9 +227,7 @@ export async function checkSessionAlive(
       return { alive: false };
     }
 
-    const repo = db
-      .prepare("SELECT name FROM repos WHERE id = ?")
-      .get(deployment.repoId) as { name: string } | undefined;
+    const repo = getRepoById(db, deployment.repoId);
     if (!repo) {
       return { alive: false };
     }
@@ -274,9 +273,7 @@ export async function ensureTtyd(
     }
 
     // ttyd is dead — check if the tmux session is still alive
-    const repo = db
-      .prepare("SELECT name FROM repos WHERE id = ?")
-      .get(deployment.repoId) as { name: string } | undefined;
+    const repo = getRepoById(db, deployment.repoId);
     if (!repo) {
       return { alive: false };
     }
