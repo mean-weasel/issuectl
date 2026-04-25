@@ -5,6 +5,7 @@ import type { Section, SortMode } from "@issuectl/core";
 import { Sheet } from "@/components/paper";
 import { REPO_COLORS } from "@/lib/constants";
 import { repoKey } from "@/lib/repo-key";
+import { QuickCreateInline } from "./QuickCreateInline";
 import styles from "./FiltersSheet.module.css";
 
 type Repo = { owner: string; name: string };
@@ -221,6 +222,8 @@ export function FiltersSheet({
       <div className={styles.mobileOnly}>
         <div className={styles.commandDivider} />
 
+        <QuickCreateInline onCreated={onClose} />
+
         <button
           className={styles.commandLink}
           onClick={() => {
@@ -259,8 +262,8 @@ export function FiltersSheet({
             </svg>
           </span>
           <span className={styles.commandLinkText}>
-            Quick Create
-            <span className={styles.commandLinkDesc}>paste a GitHub URL to create an issue</span>
+            Create from URL
+            <span className={styles.commandLinkDesc}>paste a GitHub issue URL to import</span>
           </span>
         </Link>
 
