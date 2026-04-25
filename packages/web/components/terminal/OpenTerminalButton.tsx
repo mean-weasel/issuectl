@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { TerminalPanel } from "./TerminalPanel";
-import { checkSessionAlive } from "@/lib/actions/launch";
+import { checkSessionAlive, ensureTtyd } from "@/lib/actions/launch";
 
 const HEALTH_CHECK_INTERVAL_MS = 10_000;
 
@@ -26,6 +26,7 @@ export function OpenTerminalButton({
   issueTitle,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   useEffect(() => {
@@ -41,10 +42,21 @@ export function OpenTerminalButton({
     return () => clearInterval(timer);
   }, [deploymentId, router]);
 
+  function handleOpen() {
+    startTransition(async () => {
+      const result = await ensureTtyd(deploymentId);
+      if ("alive" in result && !result.alive) {
+        router.refresh();
+        return;
+      }
+      setOpen(true);
+    });
+  }
+
   return (
     <>
-      <Button variant="primary" onClick={() => setOpen(true)}>
-        Open Terminal
+      <Button variant="primary" onClick={handleOpen} disabled={isPending}>
+        {isPending ? "Connecting..." : "Open Terminal"}
       </Button>
       <TerminalPanel
         open={open}

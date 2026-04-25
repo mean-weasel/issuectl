@@ -7,7 +7,9 @@ import {
   executeLaunch,
   endDeployment as coreEndDeployment,
   killTtyd,
+  isTtydAlive,
   isTmuxSessionAlive,
+  respawnTtyd,
   tmuxSessionName,
   withAuthRetry,
   withIdempotency,
@@ -239,5 +241,52 @@ export async function checkSessionAlive(
   } catch (err) {
     console.error("[issuectl] Session health check failed:", err);
     return { alive: false, error: "Health check failed" };
+  }
+}
+
+type EnsureTtydResult =
+  | { port: number; respawned?: true }
+  | { alive: false; error?: string };
+
+export async function ensureTtyd(
+  deploymentId: number,
+): Promise<EnsureTtydResult> {
+  try {
+    const db = getDb();
+    const deployment = getDeploymentById(db, deploymentId);
+    if (!deployment || deployment.endedAt !== null) {
+      return { alive: false };
+    }
+    if (!deployment.ttydPid) {
+      return { alive: false };
+    }
+
+    // ttyd is still running — return immediately
+    if (isTtydAlive(deployment.ttydPid)) {
+      return { port: deployment.ttydPort! };
+    }
+
+    // ttyd is dead — check if the tmux session is still alive
+    const repo = db
+      .prepare("SELECT name FROM repos WHERE id = ?")
+      .get(deployment.repoId) as { name: string } | undefined;
+    if (!repo) {
+      return { alive: false };
+    }
+
+    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    if (!isTmuxSessionAlive(sessionName)) {
+      // Both dead — session is truly over
+      coreEndDeployment(db, deploymentId);
+      return { alive: false };
+    }
+
+    // Tmux alive, ttyd dead — respawn ttyd
+    const { pid } = await respawnTtyd(deployment.ttydPort!, sessionName);
+    db.prepare("UPDATE deployments SET ttyd_pid = ? WHERE id = ?").run(pid, deploymentId);
+    return { port: deployment.ttydPort!, respawned: true };
+  } catch (err) {
+    console.error("[issuectl] ensureTtyd failed:", err);
+    return { alive: false, error: "Failed to ensure terminal" };
   }
 }

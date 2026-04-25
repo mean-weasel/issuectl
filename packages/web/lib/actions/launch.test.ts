@@ -38,7 +38,7 @@ vi.mock("@issuectl/core", () => ({
 }));
 
 // Import AFTER mocks so the mocked module is in place.
-import { endSession, checkSessionAlive } from "./launch.js";
+import { endSession, checkSessionAlive, ensureTtyd } from "./launch.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -191,6 +191,58 @@ describe("checkSessionAlive", () => {
     getDeploymentById.mockReturnValue(undefined);
 
     const result = await checkSessionAlive(1);
+
+    expect(result).toEqual({ alive: false });
+  });
+});
+
+describe("ensureTtyd", () => {
+  it("returns port immediately when ttyd is alive", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(true);
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ port: 7700 });
+    expect(respawnTtyd).not.toHaveBeenCalled();
+  });
+
+  it("respawns ttyd when dead but tmux alive", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    respawnTtyd.mockResolvedValue({ pid: 99 });
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ port: 7700, respawned: true });
+    expect(respawnTtyd).toHaveBeenCalledWith(7700, "issuectl-repo-7");
+  });
+
+  it("returns alive false when both ttyd and tmux are dead", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(false);
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+    expect(respawnTtyd).not.toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalled();
+  });
+
+  it("returns alive false when deployment already ended", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), endedAt: "2026-01-01" });
+
+    const result = await ensureTtyd(1);
+
+    expect(result).toEqual({ alive: false });
+  });
+
+  it("returns alive false when deployment has no ttydPid", async () => {
+    getDeploymentById.mockReturnValue(makeDeployment(null));
+
+    const result = await ensureTtyd(1);
 
     expect(result).toEqual({ alive: false });
   });
