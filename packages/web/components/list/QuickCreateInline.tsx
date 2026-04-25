@@ -41,19 +41,23 @@ export function QuickCreateInline({ onCreated }: Props) {
             defaultRepoId,
             key,
           );
-          if (assignResult.success) {
-            showToast(`Issue #${assignResult.issueNumber} created`, "success");
-            setTitle("");
-            onCreated();
-            router.refresh();
+          if (!assignResult.success) {
+            showToast(assignResult.error, "error");
             return;
           }
+          const msg = assignResult.cleanupWarning
+            ?? `Issue #${assignResult.issueNumber} created`;
+          showToast(msg, assignResult.cleanupWarning ? "warning" : "success");
+          setTitle("");
+          router.refresh();
+          onCreated();
+          return;
         }
 
         showToast("Draft saved", "success");
         setTitle("");
-        onCreated();
         router.refresh();
+        onCreated();
       } catch (err) {
         console.error("[issuectl] Quick create failed:", err);
         showToast("Failed to create", "error");
@@ -83,12 +87,14 @@ export function QuickCreateInline({ onCreated }: Props) {
           autoComplete="off"
           autoCapitalize="sentences"
           enterKeyHint="done"
+          aria-label="Issue title"
         />
         <button
           type="button"
           className={styles.createBtn}
           onClick={handleSubmit}
           disabled={isPending || !title.trim()}
+          aria-label={isPending ? "Creating\u2026" : "Create issue"}
         >
           {isPending ? "\u2026" : "+"}
         </button>
