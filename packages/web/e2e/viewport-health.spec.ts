@@ -1,4 +1,4 @@
-import { test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -356,5 +356,55 @@ test.describe("Viewport health — no dead whitespace (#223)", () => {
     await forEachViewport(browser, `/issues/${TEST_OWNER}/${TEST_REPO}/1`, async (page) => {
       await assertNoDeadWhitespace(page);
     });
+  });
+});
+
+test.describe("Viewport health — sheet content overflow (#222, #224)", () => {
+  test("command sheet contents stay within viewport", async ({ browser }) => {
+    if (skipReason) test.skip(true, skipReason);
+    await forEachViewport(browser, "/", async (page, vp) => {
+      // Open the command sheet
+      await page.click('button[aria-label="Open command sheet"]');
+      const dialog = page.locator('[role="dialog"]');
+      await expect(dialog).toBeVisible();
+
+      // Wait for entrance animation
+      await page.waitForTimeout(300);
+
+      // Check that the dialog itself doesn't extend past the viewport bottom
+      const dialogBox = await dialog.boundingBox();
+      expect(dialogBox).not.toBeNull();
+      expect(
+        dialogBox!.y + dialogBox!.height,
+        `Sheet extends past viewport bottom at ${vp.name}: bottom=${Math.round(dialogBox!.y + dialogBox!.height)}px > viewport=${vp.height}px`,
+      ).toBeLessThanOrEqual(vp.height + 1);
+
+      // Check no horizontal overflow with sheet open
+      await assertNoHorizontalOverflow(page);
+    });
+  });
+
+  test("command sheet with open sheet — no element bleed", async ({
+    browser,
+  }) => {
+    if (skipReason) test.skip(true, skipReason);
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      deviceScaleFactor: 3,
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`${BASE_URL}/`);
+      await page.waitForLoadState("networkidle");
+      await page.click('button[aria-label="Open command sheet"]');
+      const dialog = page.locator('[role="dialog"]');
+      await expect(dialog).toBeVisible();
+      await page.waitForTimeout(300);
+      await assertNoElementBleed(page);
+    } finally {
+      await context.close();
+    }
   });
 });
