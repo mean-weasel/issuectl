@@ -111,6 +111,34 @@ final class APIClient {
         return response.repos
     }
 
+    func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
+        var path = "/api/v1/issues/\(owner)/\(repo)"
+        if refresh { path += "?refresh=true" }
+        let (data, _) = try await request(path: path)
+        return try decoder.decode(IssuesResponse.self, from: data)
+    }
+
+    func issueDetail(owner: String, repo: String, number: Int, refresh: Bool = false) async throws -> IssueDetailResponse {
+        var path = "/api/v1/issues/\(owner)/\(repo)/\(number)"
+        if refresh { path += "?refresh=true" }
+        let (data, _) = try await request(path: path)
+        return try decoder.decode(IssueDetailResponse.self, from: data)
+    }
+
+    func pulls(owner: String, repo: String, refresh: Bool = false) async throws -> PullsResponse {
+        var path = "/api/v1/pulls/\(owner)/\(repo)"
+        if refresh { path += "?refresh=true" }
+        let (data, _) = try await request(path: path)
+        return try decoder.decode(PullsResponse.self, from: data)
+    }
+
+    func pullDetail(owner: String, repo: String, number: Int, refresh: Bool = false) async throws -> PullDetailResponse {
+        var path = "/api/v1/pulls/\(owner)/\(repo)/\(number)"
+        if refresh { path += "?refresh=true" }
+        let (data, _) = try await request(path: path)
+        return try decoder.decode(PullDetailResponse.self, from: data)
+    }
+
     // MARK: - Private
 
     private let decoder: JSONDecoder = {

@@ -7,12 +7,10 @@ struct ContentView: View {
         if api.isConfigured {
             TabView {
                 Tab("Issues", systemImage: "list.bullet") {
-                    RepoListView()
+                    IssueListView()
                 }
                 Tab("PRs", systemImage: "arrow.triangle.merge") {
-                    Text("Pull Requests")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+                    PRListView()
                 }
                 Tab("Active", systemImage: "play.circle") {
                     Text("Active Sessions")
