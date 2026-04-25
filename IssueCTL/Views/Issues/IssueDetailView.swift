@@ -10,6 +10,13 @@ struct IssueDetailView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showLaunchSheet = false
+    @State private var isClosing = false
+    @State private var isReopening = false
+    @State private var showCommentSheet = false
+    @State private var showCloseSheet = false
+    @State private var showCloseConfirm = false
+    @State private var showReopenConfirm = false
+    @State private var actionError: String?
 
     var body: some View {
         Group {
@@ -24,23 +31,32 @@ struct IssueDetailView: View {
                     Button("Retry") { Task { await load() } }
                 }
             } else if let detail {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        headerSection(detail.issue)
-                        bodySection(detail.issue)
-                        if !detail.linkedPRs.isEmpty {
-                            linkedPRsSection(detail.linkedPRs)
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            headerSection(detail.issue)
+                            bodySection(detail.issue)
+                            if !detail.linkedPRs.isEmpty {
+                                linkedPRsSection(detail.linkedPRs)
+                            }
+                            if !detail.deployments.isEmpty {
+                                deploymentsSection(detail.deployments)
+                            }
+                            if !detail.comments.isEmpty {
+                                commentsSection(detail.comments)
+                            }
+                            if let actionError {
+                                Label(actionError, systemImage: "exclamationmark.triangle")
+                                    .foregroundStyle(.red)
+                                    .font(.subheadline)
+                            }
                         }
-                        if !detail.deployments.isEmpty {
-                            deploymentsSection(detail.deployments)
-                        }
-                        if !detail.comments.isEmpty {
-                            commentsSection(detail.comments)
-                        }
+                        .padding()
                     }
-                    .padding()
+                    .refreshable { await load(refresh: true) }
+
+                    actionBar(for: detail.issue)
                 }
-                .refreshable { await load(refresh: true) }
             }
         }
         .navigationTitle("#\(number)")
@@ -67,6 +83,25 @@ struct IssueDetailView: View {
                     referencedFiles: detail.referencedFiles
                 )
             }
+        }
+        .sheet(isPresented: $showCommentSheet) {
+            IssueCommentSheet(
+                owner: owner, repo: repo, number: number,
+                onSuccess: { Task { await load(refresh: true) } }
+            )
+        }
+        .sheet(isPresented: $showCloseSheet) {
+            CloseIssueSheet(
+                owner: owner, repo: repo, number: number,
+                onSuccess: { Task { await load(refresh: true) } }
+            )
+        }
+        .confirmationDialog("Close Issue", isPresented: $showCloseConfirm, titleVisibility: .visible) {
+            Button("Close", role: .destructive) { Task { await closeWithoutComment() } }
+            Button("Close with comment...") { showCloseSheet = true }
+        }
+        .confirmationDialog("Reopen Issue", isPresented: $showReopenConfirm, titleVisibility: .visible) {
+            Button("Reopen") { Task { await reopen() } }
         }
         .task { await load() }
     }
@@ -182,6 +217,55 @@ struct IssueDetailView: View {
         }
     }
 
+    // MARK: - Action Bar
+
+    @ViewBuilder
+    private func actionBar(for issue: GitHubIssue) -> some View {
+        if issue.isOpen {
+            HStack(spacing: 16) {
+                Button {
+                    showCommentSheet = true
+                } label: {
+                    Label("Comment", systemImage: "bubble.left")
+                }
+
+                Button {
+                    showCloseConfirm = true
+                } label: {
+                    if isClosing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Close", systemImage: "xmark.circle")
+                    }
+                }
+                .tint(.red)
+                .disabled(isClosing)
+            }
+            .labelStyle(.titleAndIcon)
+            .font(.caption)
+            .padding()
+            .background(.bar)
+        } else {
+            HStack {
+                Button {
+                    showReopenConfirm = true
+                } label: {
+                    if isReopening {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Reopen", systemImage: "arrow.uturn.backward.circle")
+                    }
+                }
+                .tint(.green)
+                .disabled(isReopening)
+            }
+            .labelStyle(.titleAndIcon)
+            .font(.caption)
+            .padding()
+            .background(.bar)
+        }
+    }
+
     // MARK: - Loading
 
     private func load(refresh: Bool = false) async {
@@ -193,6 +277,40 @@ struct IssueDetailView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func closeWithoutComment() async {
+        isClosing = true
+        actionError = nil
+        do {
+            let body = IssueStateRequestBody(state: "closed", comment: nil)
+            let response = try await api.updateIssueState(owner: owner, repo: repo, number: number, body: body)
+            if response.success {
+                await load(refresh: true)
+            } else {
+                actionError = response.error ?? "Failed to close issue"
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+        isClosing = false
+    }
+
+    private func reopen() async {
+        isReopening = true
+        actionError = nil
+        do {
+            let body = IssueStateRequestBody(state: "open", comment: nil)
+            let response = try await api.updateIssueState(owner: owner, repo: repo, number: number, body: body)
+            if response.success {
+                await load(refresh: true)
+            } else {
+                actionError = response.error ?? "Failed to reopen issue"
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+        isReopening = false
     }
 }
 
