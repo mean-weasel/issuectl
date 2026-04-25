@@ -116,6 +116,7 @@ export {
   createIssue,
   updateIssue,
   closeIssue,
+  reopenIssue,
   reassignIssue,
   type ReassignResult,
 } from "./github/issues.js";

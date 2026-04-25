@@ -138,6 +138,20 @@ export async function closeIssue(
   });
 }
 
+export async function reopenIssue(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<void> {
+  await octokit.rest.issues.update({
+    owner,
+    repo,
+    issue_number: number,
+    state: "open",
+  });
+}
+
 export async function getComments(
   octokit: Octokit,
   owner: string,

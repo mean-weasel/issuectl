@@ -7,6 +7,7 @@ import {
   createIssue,
   updateIssue,
   closeIssue,
+  reopenIssue,
   getComments,
   addComment,
   updateComment,
@@ -220,6 +221,32 @@ describe("closeIssue", () => {
     );
 
     await expect(closeIssue(octokit, "owner", "repo", 999)).rejects.toThrow("Not Found");
+  });
+});
+
+/* ---------- reopenIssue ---------- */
+
+describe("reopenIssue", () => {
+  it("reopens an issue by setting state to open", async () => {
+    const { octokit, update } = makeOctokit();
+    update.mockResolvedValue({ data: { ...RAW_ISSUE, state: "open" } });
+
+    await reopenIssue(octokit, "owner", "repo", 1);
+    expect(update).toHaveBeenCalledWith({
+      owner: "owner",
+      repo: "repo",
+      issue_number: 1,
+      state: "open",
+    });
+  });
+
+  it("propagates 404 errors", async () => {
+    const { octokit, update } = makeOctokit();
+    update.mockRejectedValue(
+      Object.assign(new Error("Not Found"), { status: 404 }),
+    );
+
+    await expect(reopenIssue(octokit, "owner", "repo", 999)).rejects.toThrow("Not Found");
   });
 });
 
