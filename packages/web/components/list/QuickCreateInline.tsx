@@ -42,7 +42,10 @@ export function QuickCreateInline({ onCreated }: Props) {
             key,
           );
           if (!assignResult.success) {
-            showToast(assignResult.error, "error");
+            showToast("Draft saved but assignment failed \u2014 assign it manually", "warning");
+            setTitle("");
+            router.refresh();
+            onCreated();
             return;
           }
           const msg = assignResult.cleanupWarning
