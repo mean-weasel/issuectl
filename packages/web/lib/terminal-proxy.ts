@@ -2,7 +2,7 @@ import { IncomingMessage } from "node:http";
 import { Duplex } from "node:stream";
 import { WebSocketServer, WebSocket } from "ws";
 import { getDb, getActiveDeploymentByPort } from "@issuectl/core";
-import log from "./logger.js";
+import log from "./logger";
 
 const PORT_MIN = 7700;
 const PORT_MAX = 7799;

@@ -1,8 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
-import log, { logPath } from "./lib/logger.js";
-import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy.js";
+import log, { logPath } from "./lib/logger";
+import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
