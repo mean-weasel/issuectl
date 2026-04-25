@@ -106,6 +106,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test launch-ui.spec.ts --project=mobile-chromium
+      - name: Run viewport health spec
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test viewport-health.spec.ts --project=mobile-chromium
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
