@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
@@ -61,7 +61,13 @@ export function TerminalPanel({
           <button
             type="button"
             className={styles.backButton}
-            onClick={onClose}
+            onClick={() => {
+              if (window.history.length > 1) {
+                onClose();
+              } else {
+                router.push(`/issues/${owner}/${repo}/${issueNumber}`);
+              }
+            }}
             aria-label="Back to issue"
           >
             <svg
