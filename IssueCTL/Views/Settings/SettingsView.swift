@@ -28,10 +28,7 @@ struct SettingsView: View {
                 titleVisibility: .visible
             ) {
                 Button("Disconnect", role: .destructive) {
-                    api.serverURL = ""
-                    api.apiToken = ""
-                    KeychainService.delete(key: "serverURL")
-                    KeychainService.delete(key: "apiToken")
+                    api.disconnect()
                 }
             }
         }

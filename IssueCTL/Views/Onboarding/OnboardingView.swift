@@ -67,19 +67,17 @@ struct OnboardingView: View {
             url = "https://\(url)"
         }
 
-        api.serverURL = url
-        api.apiToken = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
-            let health = try await api.health()
+            let health = try await api.checkHealth(url: url, token: token)
             if !health.ok {
                 throw APIError.serverError(0, "Server reported unhealthy status")
             }
-            // Success — api.isConfigured is now true, ContentView will switch
+            // Success — persist and switch to main UI
+            api.configure(url: url, token: token)
         } catch {
             errorMessage = error.localizedDescription
-            api.serverURL = ""
-            api.apiToken = ""
         }
 
         isChecking = false

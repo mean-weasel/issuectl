@@ -1,13 +1,9 @@
 import Foundation
 
-@Observable
-final class APIClient: @unchecked Sendable {
-    var serverURL: String {
-        didSet { KeychainService.save(key: "serverURL", value: serverURL) }
-    }
-    var apiToken: String {
-        didSet { KeychainService.save(key: "apiToken", value: apiToken) }
-    }
+@Observable @MainActor
+final class APIClient {
+    private(set) var serverURL: String = ""
+    private(set) var apiToken: String = ""
     var isConfigured: Bool {
         !serverURL.isEmpty && !apiToken.isEmpty
     }
@@ -32,6 +28,22 @@ final class APIClient: @unchecked Sendable {
         } else {
             self.apiToken = KeychainService.load(key: "apiToken") ?? ""
         }
+    }
+
+    /// Persist credentials after a successful health check.
+    func configure(url: String, token: String) {
+        serverURL = url
+        apiToken = token
+        KeychainService.save(key: "serverURL", value: url)
+        KeychainService.save(key: "apiToken", value: token)
+    }
+
+    /// Clear credentials and remove from Keychain.
+    func disconnect() {
+        serverURL = ""
+        apiToken = ""
+        KeychainService.delete(key: "serverURL")
+        KeychainService.delete(key: "apiToken")
     }
 
     private var baseURL: URL? {
@@ -69,6 +81,27 @@ final class APIClient: @unchecked Sendable {
 
     func health() async throws -> ServerHealth {
         let (data, _) = try await request(path: "/api/v1/health")
+        return try decoder.decode(ServerHealth.self, from: data)
+    }
+
+    /// Check health against a server before persisting credentials.
+    func checkHealth(url: String, token: String) async throws -> ServerHealth {
+        guard let base = URL(string: url) else {
+            throw APIError.notConfigured
+        }
+        var urlRequest = URLRequest(url: base.appendingPathComponent("/api/v1/health"))
+        urlRequest.httpMethod = "GET"
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if httpResponse.statusCode == 401 { throw APIError.unauthorized }
+        if httpResponse.statusCode >= 400 {
+            let errorBody = try? JSONDecoder().decode(ErrorResponse.self, from: data)
+            throw APIError.serverError(httpResponse.statusCode, errorBody?.error ?? "Unknown error")
+        }
         return try decoder.decode(ServerHealth.self, from: data)
     }
 
