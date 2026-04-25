@@ -168,7 +168,25 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
 
         <div className={styles.field}>
           <div className={styles.fieldLabel}>Repository</div>
-          {showRepoPicker ? (
+          {repos.length <= 1 ? (
+            <div className={styles.repoDisplay}>
+              <span className={styles.repoDot} />
+              <span className={styles.repoName}>{selectedRepo.owner}/{selectedRepo.repo}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.repoToggle}
+              onClick={() => setShowRepoPicker(!showRepoPicker)}
+              disabled={isPending}
+              aria-expanded={showRepoPicker}
+            >
+              <span className={styles.repoDot} />
+              <span className={styles.repoName}>{selectedRepo.owner}/{selectedRepo.repo}</span>
+              <span className={styles.repoChevron} data-open={showRepoPicker}>&#x25BE;</span>
+            </button>
+          )}
+          {showRepoPicker && (
             <div className={styles.repoList}>
               {repos.map((r) => {
                 const isSelected =
@@ -177,30 +195,15 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
                   <button
                     key={`${r.owner}/${r.repo}`}
                     type="button"
-                    className={`${styles.repoOption} ${isSelected ? styles.repoOptionSelected : ""}`}
+                    className={isSelected ? styles.repoOptionSelected : styles.repoOption}
                     onClick={() => handleSelectRepo(r)}
                   >
                     <span className={styles.repoDot} />
-                    {r.owner}/{r.repo}
+                    <span className={styles.repoOptionLabel}>{r.owner}/{r.repo}</span>
+                    {isSelected && <span className={styles.repoCheck}>&#x2713;</span>}
                   </button>
                 );
               })}
-            </div>
-          ) : (
-            <div className={styles.repoDisplay}>
-              <span className={styles.repoDot} />
-              <span className={styles.repoName}>
-                {selectedRepo.owner}/{selectedRepo.repo}
-              </span>
-              {repos.length > 1 && (
-                <button
-                  type="button"
-                  className={styles.repoChange}
-                  onClick={() => setShowRepoPicker(true)}
-                >
-                  change
-                </button>
-              )}
             </div>
           )}
         </div>

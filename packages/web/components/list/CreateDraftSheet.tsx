@@ -40,11 +40,13 @@ export function CreateDraftSheet({ open, onClose }: Props) {
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [selectedRepoIds, setSelectedRepoIds] = useState<Set<number>>(new Set());
   const [defaultRepoId, setDefaultRepoId] = useState<number | null>(null);
+  const [showRepos, setShowRepos] = useState(false);
 
   // Load tracked repos and default repo when the sheet opens.
   useEffect(() => {
     if (!open) return;
     setSelectedRepoIds(new Set());
+    setShowRepos(false);
     setLoadingRepos(true);
     Promise.all([listReposAction(), getDefaultRepoIdAction()])
       .then(([repoList, defaultId]) => {
@@ -211,6 +213,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
     setError(null);
     setProgress(null);
     setSelectedRepoIds(new Set());
+    setShowRepos(false);
     onClose();
   };
 
@@ -246,29 +249,47 @@ export function CreateDraftSheet({ open, onClose }: Props) {
           style={title.length > 50 ? { fontSize: 20, lineHeight: 1.3 } : undefined}
         />
 
-        {/* Repo chip row — toggleable multi-select */}
+        {/* Repo dropdown — toggleable multi-select */}
         {!loadingRepos && repos.length > 0 && (
           <div className={styles.repoSection}>
             <label className={styles.label}>Repos</label>
-            <div className={styles.chipRow}>
-              {repos.map((repo) => {
-                const isSelected = selectedRepoIds.has(repo.id);
-                return (
-                  <button
-                    key={repo.id}
-                    type="button"
-                    className={
-                      isSelected ? styles.repoChipSelected : styles.repoChip
-                    }
-                    onClick={() => toggleRepo(repo.id)}
-                    disabled={saving}
-                    aria-pressed={isSelected}
-                  >
-                    {repo.name}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              className={styles.repoToggle}
+              onClick={() => setShowRepos(!showRepos)}
+              disabled={saving}
+              aria-expanded={showRepos}
+            >
+              <span className={styles.repoSummary}>
+                {selectedRepoIds.size === 0
+                  ? "No repos \u2014 save as draft"
+                  : selectedRepoIds.size === 1
+                    ? repos.find((r) => selectedRepoIds.has(r.id))?.name ?? "1 repo"
+                    : `${selectedRepoIds.size} repos`}
+              </span>
+              <span className={styles.repoChevron} data-open={showRepos}>&#x25BE;</span>
+            </button>
+            {showRepos && (
+              <div className={styles.repoDropdown}>
+                {repos.map((repo) => {
+                  const isSelected = selectedRepoIds.has(repo.id);
+                  return (
+                    <button
+                      key={repo.id}
+                      type="button"
+                      className={isSelected ? styles.repoRowSelected : styles.repoRow}
+                      onClick={() => toggleRepo(repo.id)}
+                      disabled={saving}
+                      aria-pressed={isSelected}
+                    >
+                      <span className={styles.repoDot} />
+                      <span className={styles.repoRowLabel}>{repo.owner}/{repo.name}</span>
+                      {isSelected && <span className={styles.repoCheck}>&#x2713;</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

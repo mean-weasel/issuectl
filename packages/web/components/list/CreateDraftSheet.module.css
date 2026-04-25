@@ -31,63 +31,124 @@
   font-style: italic;
 }
 
-/* ── Repo chip row ────────────────────────────────── */
+/* ── Repo dropdown ────────────────────────────────── */
 
 .repoSection {
   margin-bottom: 18px;
 }
 
-.chipRow {
+.repoToggle {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-  max-height: 72px;
-  overflow-y: auto;
-}
-
-.repoChip,
-.repoChipSelected {
-  display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: var(--paper-radius-sm);
-  font-family: var(--paper-mono);
-  font-size: var(--paper-fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  line-height: 1.4;
-  border: 1px solid var(--paper-line);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-
-.repoChip {
-  background: transparent;
-  color: var(--paper-ink-muted);
-}
-
-.repoChip:hover {
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  min-height: 44px;
+  margin-top: 4px;
   background: var(--paper-bg-warm);
-  color: var(--paper-ink-soft);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  color: var(--paper-ink);
+  font-family: var(--paper-serif);
+  font-size: var(--paper-fs-base);
+  cursor: pointer;
+  text-align: left;
 }
 
-.repoChipSelected {
-  background: var(--paper-accent-soft);
-  color: var(--paper-accent);
-  border-color: var(--paper-accent-dim);
+.repoToggle:hover:not(:disabled) {
+  background: var(--paper-bg-warmer);
 }
 
-.repoChipSelected:hover {
-  background: var(--paper-accent-soft);
-  color: var(--paper-accent);
-}
-
-.repoChip:disabled,
-.repoChipSelected:disabled {
+.repoToggle:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.repoSummary {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repoChevron {
+  font-size: var(--paper-fs-base);
+  color: var(--paper-ink-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.repoChevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+.repoDropdown {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.repoRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px;
+  min-height: 44px;
+  background: var(--paper-bg-warm);
+  border: none;
+  border-bottom: 1px solid var(--paper-line-soft);
+  color: var(--paper-ink);
+  font-family: var(--paper-serif);
+  font-size: var(--paper-fs-base);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.repoRow:last-child {
+  border-bottom: none;
+}
+
+.repoRow:hover {
+  background: var(--paper-bg-warmer);
+}
+
+.repoRow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.repoRowSelected {
+  composes: repoRow;
+  background: var(--paper-accent-soft);
+}
+
+.repoRowSelected:hover {
+  background: var(--paper-accent-soft);
+}
+
+.repoDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--paper-accent);
+  flex-shrink: 0;
+}
+
+.repoRowLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repoCheck {
+  color: var(--paper-accent);
+  font-size: var(--paper-fs-xl);
+  flex-shrink: 0;
 }
 
 /* ── Actions / feedback ────────────────────────────── */
