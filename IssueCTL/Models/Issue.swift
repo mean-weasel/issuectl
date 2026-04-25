@@ -65,3 +65,23 @@ struct IssueDetailResponse: Codable, Sendable {
     let referencedFiles: [String]
     let fromCache: Bool
 }
+
+struct IssueStateRequestBody: Encodable, Sendable {
+    let state: String
+    let comment: String?
+}
+
+struct IssueStateResponse: Codable, Sendable {
+    let success: Bool
+    let error: String?
+}
+
+struct IssueCommentRequestBody: Encodable, Sendable {
+    let body: String
+}
+
+struct IssueCommentResponse: Codable, Sendable {
+    let success: Bool
+    let commentId: Int?
+    let error: String?
+}

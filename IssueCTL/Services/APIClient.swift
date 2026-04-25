@@ -175,6 +175,18 @@ final class APIClient {
         return try decoder.decode(PullCommentResponse.self, from: data)
     }
 
+    func updateIssueState(owner: String, repo: String, number: Int, body: IssueStateRequestBody) async throws -> IssueStateResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/issues/\(owner)/\(repo)/\(number)/state", method: "POST", body: bodyData)
+        return try decoder.decode(IssueStateResponse.self, from: data)
+    }
+
+    func commentOnIssue(owner: String, repo: String, number: Int, body: IssueCommentRequestBody) async throws -> IssueCommentResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/issues/\(owner)/\(repo)/\(number)/comments", method: "POST", body: bodyData)
+        return try decoder.decode(IssueCommentResponse.self, from: data)
+    }
+
     // MARK: - Private
 
     private let decoder: JSONDecoder = {
