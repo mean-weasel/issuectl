@@ -167,7 +167,8 @@ struct LaunchView: View {
                 selectedCommentIndices: Array(selectedCommentIndices).sorted(),
                 selectedFilePaths: Array(selectedFilePaths),
                 preamble: preamble.isEmpty ? nil : preamble,
-                forceResume: nil
+                forceResume: nil,
+                idempotencyKey: UUID().uuidString
             )
             let response = try await api.launch(
                 owner: owner,

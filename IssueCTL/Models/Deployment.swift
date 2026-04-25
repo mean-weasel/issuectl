@@ -77,6 +77,7 @@ struct LaunchRequestBody: Encodable, Sendable {
     let selectedFilePaths: [String]
     let preamble: String?
     let forceResume: Bool?
+    let idempotencyKey: String?
 }
 
 struct LaunchResponse: Codable, Sendable {
