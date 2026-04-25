@@ -39,7 +39,8 @@ export async function POST(
   let body: StateBody;
   try {
     body = await request.json();
-  } catch {
+  } catch (parseErr) {
+    log.warn({ err: parseErr, msg: "api_request_body_parse_failed", url: request.nextUrl.pathname });
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
@@ -82,10 +83,11 @@ export async function POST(
         await withAuthRetry((octokit) => reopenIssue(octokit, owner, repo, issueNumber));
       }
     } catch (stateErr) {
-      // addComment clears its own comment/content caches; clear state caches here
       clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
+      clearCacheKey(db, `issue-header:${owner}/${repo}#${issueNumber}`);
+      clearCacheKey(db, `issue-content:${owner}/${repo}#${issueNumber}`);
       clearCacheKey(db, `issues:${owner}/${repo}`);
-      log.error({ err: stateErr, msg: "api_issue_state_failed", owner, repo, issueNumber, state: body.state, commentPosted });
+      log.error({ err: stateErr, msg: "api_issue_state_partial_failure", owner, repo, issueNumber, state: body.state, commentPosted });
       return NextResponse.json(
         {
           success: false,
@@ -99,6 +101,8 @@ export async function POST(
     }
 
     clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
+    clearCacheKey(db, `issue-header:${owner}/${repo}#${issueNumber}`);
+    clearCacheKey(db, `issue-content:${owner}/${repo}#${issueNumber}`);
     clearCacheKey(db, `issues:${owner}/${repo}`);
 
     log.info({ msg: "api_issue_state_changed", owner, repo, issueNumber, state: body.state });

@@ -32,7 +32,8 @@ export async function POST(
   let body: CommentBody;
   try {
     body = await request.json();
-  } catch {
+  } catch (parseErr) {
+    log.warn({ err: parseErr, msg: "api_request_body_parse_failed", url: request.nextUrl.pathname });
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
