@@ -9,6 +9,12 @@ struct PRDetailView: View {
     @State private var detail: PullDetailResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var isApproving = false
+    @State private var isMerging = false
+    @State private var showRequestChanges = false
+    @State private var showCommentSheet = false
+    @State private var showMergeConfirm = false
+    @State private var actionError: String?
 
     var body: some View {
         Group {
@@ -23,29 +29,60 @@ struct PRDetailView: View {
                     Button("Retry") { Task { await load() } }
                 }
             } else if let detail {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        headerSection(detail.pull)
-                        branchSection(detail.pull)
-                        bodySection(detail.pull)
-                        if !detail.checks.isEmpty {
-                            checksSection(detail.checks)
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            headerSection(detail.pull)
+                            branchSection(detail.pull)
+                            bodySection(detail.pull)
+                            if !detail.checks.isEmpty {
+                                checksSection(detail.checks)
+                            }
+                            if !detail.reviews.isEmpty {
+                                reviewsSection(detail.reviews)
+                            }
+                            if !detail.files.isEmpty {
+                                filesSection(detail.files)
+                            }
+                            if let linkedIssue = detail.linkedIssue {
+                                linkedIssueSection(linkedIssue)
+                            }
+                            if let actionError {
+                                Label(actionError, systemImage: "exclamationmark.triangle")
+                                    .foregroundStyle(.red)
+                                    .font(.subheadline)
+                            }
                         }
-                        if !detail.files.isEmpty {
-                            filesSection(detail.files)
-                        }
-                        if let linkedIssue = detail.linkedIssue {
-                            linkedIssueSection(linkedIssue)
-                        }
+                        .padding()
                     }
-                    .padding()
+                    .refreshable { await load(refresh: true) }
+
+                    if detail.pull.isOpen && !detail.pull.merged {
+                        actionBar
+                    }
                 }
-                .refreshable { await load(refresh: true) }
             }
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .sheet(isPresented: $showRequestChanges) {
+            RequestChangesSheet(
+                owner: owner, repo: repo, number: number,
+                onSuccess: { Task { await load(refresh: true) } }
+            )
+        }
+        .sheet(isPresented: $showCommentSheet) {
+            CommentSheet(
+                owner: owner, repo: repo, number: number,
+                onSuccess: { Task { await load(refresh: true) } }
+            )
+        }
+        .confirmationDialog("Merge Pull Request", isPresented: $showMergeConfirm, titleVisibility: .visible) {
+            Button("Merge Commit") { Task { await merge(method: "merge") } }
+            Button("Squash and Merge") { Task { await merge(method: "squash") } }
+            Button("Rebase and Merge") { Task { await merge(method: "rebase") } }
+        }
     }
 
     // MARK: - Sections
@@ -170,6 +207,108 @@ struct PRDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private func reviewsSection(_ reviews: [GitHubPullReview]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider()
+            Label("Reviews", systemImage: "eye")
+                .font(.headline)
+
+            ForEach(reviews) { review in
+                HStack(spacing: 8) {
+                    Image(systemName: reviewIcon(for: review.state))
+                        .foregroundStyle(reviewColor(for: review.state))
+                    if let user = review.user {
+                        Text(user.login)
+                            .font(.subheadline)
+                    }
+                    Text(reviewStateLabel(review.state))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private func reviewIcon(for state: String) -> String {
+        switch state {
+        case "approved": "checkmark.circle.fill"
+        case "changes_requested": "xmark.circle.fill"
+        case "commented": "bubble.left.fill"
+        case "dismissed": "minus.circle.fill"
+        default: "questionmark.circle"
+        }
+    }
+
+    private func reviewColor(for state: String) -> Color {
+        switch state {
+        case "approved": .green
+        case "changes_requested": .red
+        case "commented": .secondary
+        case "dismissed": .orange
+        default: .secondary
+        }
+    }
+
+    private func reviewStateLabel(_ state: String) -> String {
+        switch state {
+        case "approved": "Approved"
+        case "changes_requested": "Requested changes"
+        case "commented": "Commented"
+        case "dismissed": "Dismissed"
+        default: state
+        }
+    }
+
+    // MARK: - Action Bar
+
+    private var actionBar: some View {
+        HStack(spacing: 16) {
+            Button {
+                Task { await approve() }
+            } label: {
+                if isApproving {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Label("Approve", systemImage: "checkmark.circle")
+                }
+            }
+            .tint(.green)
+            .disabled(isApproving)
+
+            Button {
+                showRequestChanges = true
+            } label: {
+                Label("Changes", systemImage: "xmark.circle")
+            }
+            .tint(.red)
+
+            Button {
+                showCommentSheet = true
+            } label: {
+                Label("Comment", systemImage: "bubble.left")
+            }
+
+            Button {
+                showMergeConfirm = true
+            } label: {
+                if isMerging {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Label("Merge", systemImage: "arrow.triangle.merge")
+                }
+            }
+            .tint(.purple)
+            .disabled(isMerging)
+        }
+        .labelStyle(.titleAndIcon)
+        .font(.caption)
+        .padding()
+        .background(.bar)
+    }
+
     // MARK: - Loading
 
     private func load(refresh: Bool = false) async {
@@ -181,6 +320,40 @@ struct PRDetailView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func approve() async {
+        isApproving = true
+        actionError = nil
+        do {
+            let body = ReviewRequestBody(event: "APPROVE", body: nil)
+            let response = try await api.reviewPull(owner: owner, repo: repo, number: number, body: body)
+            if response.success {
+                await load(refresh: true)
+            } else {
+                actionError = response.error ?? "Failed to approve"
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+        isApproving = false
+    }
+
+    private func merge(method: String) async {
+        isMerging = true
+        actionError = nil
+        do {
+            let body = MergeRequestBody(mergeMethod: method)
+            let response = try await api.mergePull(owner: owner, repo: repo, number: number, body: body)
+            if response.success {
+                await load(refresh: true)
+            } else {
+                actionError = response.error ?? "Merge failed"
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+        isMerging = false
     }
 }
 
