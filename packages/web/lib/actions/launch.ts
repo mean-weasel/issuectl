@@ -12,6 +12,7 @@ import {
   isTmuxSessionAlive,
   respawnTtyd,
   tmuxSessionName,
+  updateTtydInfo,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -247,7 +248,7 @@ export async function checkSessionAlive(
 }
 
 type EnsureTtydResult =
-  | { port: number; respawned?: true }
+  | { port: number; respawned?: true; alive?: never }
   | { alive: false; error?: string };
 
 export async function ensureTtyd(
@@ -287,10 +288,10 @@ export async function ensureTtyd(
 
     // Tmux alive, ttyd dead — respawn ttyd
     const { pid } = await respawnTtyd(port, sessionName);
-    db.prepare("UPDATE deployments SET ttyd_pid = ? WHERE id = ?").run(pid, deploymentId);
+    updateTtydInfo(db, deploymentId, port, pid);
     return { port, respawned: true };
   } catch (err) {
     console.error("[issuectl] ensureTtyd failed:", err);
-    return { alive: false, error: "Failed to ensure terminal" };
+    return { alive: false, error: formatErrorForUser(err) };
   }
 }

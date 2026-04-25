@@ -295,45 +295,41 @@ describe("isTmuxSessionAlive", () => {
     expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
   });
 
-  it("returns false when tmux command times out", () => {
+  it("returns false when tmux is not installed (ENOENT)", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("not found"), { code: "ENOENT" });
+    });
+    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
+  });
+
+  it("throws on unexpected errors (ETIMEDOUT) to prevent false 'dead' cascades", () => {
     execFileSyncSpy.mockImplementation(() => {
       throw Object.assign(new Error("timed out"), { code: "ETIMEDOUT" });
     });
-    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
-  });
-
-  it("returns false when tmux is not installed", () => {
-    execFileSyncSpy.mockImplementation(() => {
-      throw Object.assign(new Error("not found"), { code: "ENOENT" });
-    });
-    expect(isTmuxSessionAlive("issuectl-repo-42")).toBe(false);
-  });
-
-  it("logs unexpected errors (not exit code 1)", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    execFileSyncSpy.mockImplementation(() => {
-      throw Object.assign(new Error("not found"), { code: "ENOENT" });
-    });
-
-    isTmuxSessionAlive("issuectl-repo-42");
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      "[issuectl] tmux has-session failed unexpectedly:",
-      expect.any(Error),
+    expect(() => isTmuxSessionAlive("issuectl-repo-42")).toThrow(
+      'tmux has-session failed unexpectedly for "issuectl-repo-42"',
     );
-    warnSpy.mockRestore();
   });
 
-  it("does not log when exit code is 1 (normal 'session not found')", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("throws on unexpected errors (EPERM) to prevent false 'dead' cascades", () => {
     execFileSyncSpy.mockImplementation(() => {
-      throw Object.assign(new Error("session not found"), { status: 1 });
+      throw Object.assign(new Error("EPERM"), { code: "EPERM" });
     });
+    expect(() => isTmuxSessionAlive("issuectl-repo-42")).toThrow(
+      "tmux has-session failed unexpectedly",
+    );
+  });
 
-    isTmuxSessionAlive("issuectl-repo-42");
-
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+  it("preserves original error as cause when throwing", () => {
+    const original = Object.assign(new Error("timed out"), { code: "ETIMEDOUT" });
+    execFileSyncSpy.mockImplementation(() => {
+      throw original;
+    });
+    try {
+      isTmuxSessionAlive("issuectl-repo-42");
+    } catch (err) {
+      expect((err as Error).cause).toBe(original);
+    }
   });
 });
 
@@ -828,7 +824,7 @@ describe("reconcileOrphanedDeployments", () => {
     expect(selectCall![0]).toContain("ttyd_pid IS NOT NULL");
   });
 
-  it("logs error and does not throw when reconcile fails", () => {
+  it("logs error and does not throw when query fails", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const db = {
       prepare: vi.fn(() => {
@@ -839,9 +835,50 @@ describe("reconcileOrphanedDeployments", () => {
     // Should not throw
     expect(() => reconcileOrphanedDeployments(db)).not.toThrow();
     expect(errorSpy).toHaveBeenCalledWith(
-      "[issuectl] Failed to reconcile orphaned deployments:",
+      "[issuectl] Failed to query deployments for reconciliation:",
       expect.any(Error),
     );
     errorSpy.mockRestore();
+  });
+
+  it("continues reconciling other rows when one row fails (per-row isolation)", () => {
+    // Row 1 causes isTmuxSessionAlive to throw (ETIMEDOUT), row 2 is dead.
+    execFileSyncSpy.mockImplementation((_cmd: string, args: string[]) => {
+      if (args[0] === "has-session" && args[2] === "issuectl-repoA-10") {
+        throw Object.assign(new Error("timed out"), { code: "ETIMEDOUT" });
+      }
+      // repoB session is gone (exit code 1)
+      throw Object.assign(new Error("session not found"), { status: 1 });
+    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const runSpy = vi.fn();
+    const db = {
+      prepare: vi.fn((sql: string) => {
+        if (sql.includes("SELECT")) {
+          return {
+            all: vi.fn(() => [
+              { id: 1, issue_number: 10, repo_name: "repoA" },
+              { id: 2, issue_number: 20, repo_name: "repoB" },
+            ]),
+          };
+        }
+        return { run: runSpy };
+      }),
+    } as unknown as Database.Database;
+
+    reconcileOrphanedDeployments(db);
+
+    // Row 1 should have failed (logged), row 2 should still be reconciled.
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[issuectl] Failed to reconcile deployment 1:",
+      expect.any(Error),
+    );
+    expect(runSpy).toHaveBeenCalledTimes(1);
+    expect(runSpy).toHaveBeenCalledWith(2);
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 });

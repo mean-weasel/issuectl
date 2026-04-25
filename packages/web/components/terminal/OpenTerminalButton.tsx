@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { TerminalPanel } from "./TerminalPanel";
 import { checkSessionAlive, ensureTtyd } from "@/lib/actions/launch";
+import styles from "./OpenTerminalButton.module.css";
 
 const HEALTH_CHECK_INTERVAL_MS = 10_000;
 
@@ -31,26 +32,30 @@ export function OpenTerminalButton({
   const router = useRouter();
 
   useEffect(() => {
+    if (isPending) return;
+
     const timer = setInterval(async () => {
-      const { alive } = await checkSessionAlive(deploymentId);
-      if (!alive) {
-        clearInterval(timer);
-        setOpen(false);
-        router.refresh();
+      try {
+        const { alive } = await checkSessionAlive(deploymentId);
+        if (!alive) {
+          clearInterval(timer);
+          setOpen(false);
+          router.refresh();
+        }
+      } catch {
+        // Network error or server unavailable — skip this tick.
       }
     }, HEALTH_CHECK_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [deploymentId, router]);
+  }, [deploymentId, isPending, router]);
 
   function handleOpen() {
     setError(null);
     startTransition(async () => {
       const result = await ensureTtyd(deploymentId);
-      if ("alive" in result && !result.alive) {
-        if (result.error) {
-          setError(result.error);
-        }
+      if (!("port" in result)) {
+        if (result.error) setError(result.error);
         router.refresh();
         return;
       }
@@ -63,7 +68,7 @@ export function OpenTerminalButton({
       <Button variant="primary" onClick={handleOpen} disabled={isPending}>
         {isPending ? "Connecting..." : "Open Terminal"}
       </Button>
-      {error && <p role="alert" style={{ color: "var(--color-error, #c62828)", marginTop: "0.5rem", fontSize: "0.875rem" }}>{error}</p>}
+      {error && <p role="alert" className={styles.error}>{error}</p>}
       <TerminalPanel
         open={open}
         onClose={() => setOpen(false)}
