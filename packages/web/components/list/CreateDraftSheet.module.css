@@ -55,7 +55,7 @@
   text-align: left;
 }
 
-.repoToggle:hover {
+.repoToggle:hover:not(:disabled) {
   background: var(--paper-bg-warmer);
 }
 
