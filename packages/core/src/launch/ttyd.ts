@@ -277,6 +277,46 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   return { pid: child.pid, port };
 }
 
+/* ------------------------------------------------------------------ */
+/*  respawnTtyd                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Respawn a ttyd process against an existing tmux session. Used when
+ * ttyd has exited (e.g. `-q` exit-on-disconnect) but the tmux session
+ * is still alive. Unlike `spawnTtyd`, this does NOT create a new tmux
+ * session — it attaches to the one that already exists.
+ */
+export async function respawnTtyd(
+  port: number,
+  sessionName: string,
+): Promise<{ pid: number }> {
+  const child = spawn(
+    "ttyd",
+    ["-W", "-i", "127.0.0.1", "-p", String(port), "-q",
+     "tmux", "attach-session", "-t", sessionName],
+    { detached: true, stdio: "ignore" },
+  );
+
+  child.on("error", (err) => {
+    console.error(`[issuectl] ttyd respawn process ${child.pid} errored:`, err);
+  });
+  child.unref();
+
+  if (child.pid === undefined) {
+    throw new Error("Failed to respawn ttyd: no PID returned");
+  }
+
+  await new Promise((r) => setTimeout(r, 300));
+  if (!isTtydAlive(child.pid)) {
+    throw new Error(
+      `ttyd process ${child.pid} died immediately after respawn. Check that port ${port} is available.`,
+    );
+  }
+
+  return { pid: child.pid };
+}
+
 /** Best-effort cleanup of a tmux session. */
 function killTmuxSession(name: string): void {
   try {

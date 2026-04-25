@@ -34,6 +34,7 @@ import {
   isTmuxSessionAlive,
   allocatePort,
   spawnTtyd,
+  respawnTtyd,
   reconcileOrphanedDeployments,
   tmuxSessionName,
 } from "./ttyd.js";
@@ -638,6 +639,68 @@ describe("spawnTtyd", () => {
       "ttyd process 99 died immediately after spawn",
     );
     killSpy.mockRestore();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  respawnTtyd                                                        */
+/* ------------------------------------------------------------------ */
+
+describe("respawnTtyd", () => {
+  beforeEach(() => {
+    spawnSpy.mockReset();
+    execFileSyncSpy.mockReset();
+  });
+
+  it("spawns ttyd against existing tmux session and returns new PID", async () => {
+    const unrefSpy = vi.fn();
+    spawnSpy.mockReturnValue({ pid: 88, unref: unrefSpy, on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    const result = await respawnTtyd(7700, "issuectl-repo-42");
+
+    expect(result).toEqual({ pid: 88 });
+    expect(unrefSpy).toHaveBeenCalled();
+
+    const [bin, args, opts] = spawnSpy.mock.calls[0] as [string, string[], Record<string, unknown>];
+    expect(bin).toBe("ttyd");
+    expect(args).toEqual([
+      "-W", "-i", "127.0.0.1", "-p", "7700", "-q",
+      "tmux", "attach-session", "-t", "issuectl-repo-42",
+    ]);
+    expect(opts).toEqual({ detached: true, stdio: "ignore" });
+    killSpy.mockRestore();
+  });
+
+  it("does NOT create a new tmux session", async () => {
+    spawnSpy.mockReturnValue({ pid: 88, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    await respawnTtyd(7700, "issuectl-repo-42");
+
+    // execFileSync should NOT have been called (no tmux new-session)
+    expect(execFileSyncSpy).not.toHaveBeenCalled();
+    killSpy.mockRestore();
+  });
+
+  it("throws when ttyd dies immediately after respawn", async () => {
+    spawnSpy.mockReturnValue({ pid: 99, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
+    });
+
+    await expect(respawnTtyd(7700, "issuectl-repo-42")).rejects.toThrow(
+      "ttyd process 99 died immediately after respawn",
+    );
+    killSpy.mockRestore();
+  });
+
+  it("throws when no PID is returned", async () => {
+    spawnSpy.mockReturnValue({ pid: undefined, unref: vi.fn(), on: vi.fn() });
+
+    await expect(respawnTtyd(7700, "issuectl-repo-42")).rejects.toThrow(
+      "Failed to respawn ttyd: no PID returned",
+    );
   });
 });
 

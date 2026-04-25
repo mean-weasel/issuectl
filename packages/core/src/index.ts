@@ -188,6 +188,7 @@ export {
 export {
   verifyTtyd,
   spawnTtyd,
+  respawnTtyd,
   killTtyd,
   isTtydAlive,
   isTmuxSessionAlive,
