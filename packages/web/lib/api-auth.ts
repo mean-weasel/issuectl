@@ -1,6 +1,6 @@
-import { getDb, getSetting } from "@issuectl/core";
-import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { getDb, getSetting } from "@issuectl/core";
 import log from "./logger";
 
 /**
@@ -14,15 +14,9 @@ export function validateApiToken(headers: Headers): boolean {
   if (!authHeader?.startsWith("Bearer ")) return false;
 
   const provided = authHeader.slice(7);
-
-  let stored: string | undefined;
-  try {
-    const db = getDb();
-    stored = getSetting(db, "api_token");
-  } catch (err) {
-    log.error({ err, msg: "api_auth_db_error" });
-    return false;
-  }
+  if (!provided) return false;
+  const db = getDb();
+  const stored = getSetting(db, "api_token");
   if (!stored) return false;
 
   // Timing-safe comparison — both must be the same length
@@ -41,12 +35,20 @@ export function validateApiToken(headers: Headers): boolean {
  *   if (denied) return denied;
  */
 export function requireAuth(request: NextRequest): NextResponse | null {
-  if (!validateApiToken(request.headers)) {
-    log.warn({ msg: "api_auth_failed", url: request.nextUrl.pathname });
+  try {
+    if (!validateApiToken(request.headers)) {
+      log.warn({ msg: "api_auth_failed", url: request.nextUrl.pathname });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+    return null;
+  } catch (err) {
+    log.error({ err, msg: "api_auth_error" });
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
-  return null;
 }
