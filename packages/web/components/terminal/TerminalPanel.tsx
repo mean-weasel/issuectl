@@ -58,14 +58,6 @@ export function TerminalPanel({
     <div className={styles.overlay} data-open={open}>
       <div className={styles.backdrop} onClick={onClose} />
       <div className={styles.panel} data-open={open}>
-        <button
-          type="button"
-          className={styles.handle}
-          onClick={onClose}
-          aria-label="Close terminal"
-        >
-          <span className={styles.handleChevron}>{"\u203A"}</span>
-        </button>
         <div className={styles.header}>
           <Link
             href={`/${owner}/${repo}/${issueNumber}`}
@@ -94,6 +86,28 @@ export function TerminalPanel({
               />
             </svg>
           </Link>
+          <button
+            type="button"
+            className={styles.backButton}
+            onClick={onClose}
+            aria-label="Back to issue"
+          >
+            <svg
+              width="12"
+              height="20"
+              viewBox="0 0 12 20"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M10 2L2 10L10 18"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           <button
             className={styles.closeButton}
             onClick={onClose}
