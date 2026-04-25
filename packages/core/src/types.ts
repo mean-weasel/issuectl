@@ -101,6 +101,7 @@ export type UnifiedListItem =
       issue: GitHubIssue;
       priority: Priority;
       section: Exclude<Section, "unassigned">;
+      idleSince?: string | null;
     };
 
 // Narrow helpers for places that want a specific variant.

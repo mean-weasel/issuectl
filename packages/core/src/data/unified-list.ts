@@ -93,6 +93,14 @@ export function groupIntoSections(
         .map((d) => d.issueNumber),
     );
 
+    // Map issue number → idleSince for active deployments so the UI can
+    // distinguish idle sessions from truly active ones.
+    const idleSinceMap = new Map<number, string | null>(
+      deployments
+        .filter((d) => d.endedAt === null)
+        .map((d) => [d.issueNumber, d.idleSince]),
+    );
+
     const priorityMap = new Map<number, Priority>(
       priorities.map((p) => [p.issueNumber, p.priority]),
     );
@@ -117,6 +125,7 @@ export function groupIntoSections(
         issue,
         priority,
         section,
+        ...(section === "running" ? { idleSince: idleSinceMap.get(issue.number) ?? null } : {}),
       };
 
       if (section === "open") open.push(item);

@@ -180,6 +180,42 @@ describe("updateSetting", () => {
   });
 });
 
+describe("idle setting validation", () => {
+  it("rejects negative idle_grace_period", async () => {
+    const result = await updateSetting("idle_grace_period", "-1");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("non-negative");
+  });
+
+  it("rejects idle_threshold over 86400", async () => {
+    const result = await updateSetting("idle_threshold", "100000");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("86400");
+  });
+
+  it("accepts valid idle_grace_period", async () => {
+    const result = await updateSetting("idle_grace_period", "600");
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid idle_threshold", async () => {
+    const result = await updateSetting("idle_threshold", "300");
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects non-numeric idle_grace_period", async () => {
+    const result = await updateSetting("idle_grace_period", "abc");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("non-negative");
+  });
+
+  it("rejects non-numeric idle_threshold", async () => {
+    const result = await updateSetting("idle_threshold", "abc");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("non-negative");
+  });
+});
+
 describe("updateSettings (batch)", () => {
   it("returns success for empty updates", async () => {
     const result = await updateSettings({});

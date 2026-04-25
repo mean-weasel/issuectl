@@ -17,23 +17,31 @@ type Props = {
   branchPattern: string;
   cacheTTL: string;
   claudeExtraArgs: string;
+  idleGracePeriod: string;
+  idleThreshold: string;
 };
 
 type FormValues = {
   branch_pattern: string;
   cache_ttl: string;
   claude_extra_args: string;
+  idle_grace_period: string;
+  idle_threshold: string;
 };
 
 export function SettingsForm({
   branchPattern,
   cacheTTL,
   claudeExtraArgs,
+  idleGracePeriod,
+  idleThreshold,
 }: Props) {
   const [values, setValues] = useState<FormValues>({
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
     claude_extra_args: claudeExtraArgs,
+    idle_grace_period: idleGracePeriod,
+    idle_threshold: idleThreshold,
   });
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -51,6 +59,8 @@ export function SettingsForm({
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
     claude_extra_args: claudeExtraArgs,
+    idle_grace_period: idleGracePeriod,
+    idle_threshold: idleThreshold,
   };
 
   const isDirty = (Object.keys(originals) as (keyof FormValues)[]).some(
@@ -192,6 +202,46 @@ export function SettingsForm({
                   ))}
                 </div>
               )}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionTitle}>Terminal Idle Detection</div>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="sf-idle-grace">Grace Period (seconds)</label>
+            <input
+              id="sf-idle-grace"
+              className={styles.input}
+              value={values.idle_grace_period}
+              onChange={(e) => handleChange("idle_grace_period", e.target.value)}
+              disabled={isPending}
+              autoComplete="off"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              enterKeyHint="done"
+            />
+            <div className={styles.help}>
+              Seconds after launch before idle detection begins. Default 300 (5 min).
+            </div>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="sf-idle-threshold">Idle Threshold (seconds)</label>
+            <input
+              id="sf-idle-threshold"
+              className={styles.input}
+              value={values.idle_threshold}
+              onChange={(e) => handleChange("idle_threshold", e.target.value)}
+              disabled={isPending}
+              autoComplete="off"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              enterKeyHint="done"
+            />
+            <div className={styles.help}>
+              Seconds of no terminal output before marking idle. Default 300 (5 min).
+            </div>
           </div>
         </div>
       </section>

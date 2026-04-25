@@ -184,3 +184,9 @@
   color: var(--paper-accent);
   font-weight: 600;
 }
+
+.idleLabel {
+  color: var(--paper-ink-faint);
+  font-weight: 600;
+  font-style: italic;
+}

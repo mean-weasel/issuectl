@@ -125,7 +125,11 @@ export function ListRow({ item, onLaunch, onClose }: Props) {
           {section === "running" && (
             <>
               <span className={styles.sep}>·</span>
-              <span className={styles.activeLabel}>active</span>
+              {item.idleSince ? (
+                <span className={styles.idleLabel}>idle</span>
+              ) : (
+                <span className={styles.activeLabel}>active</span>
+              )}
             </>
           )}
         </div>
