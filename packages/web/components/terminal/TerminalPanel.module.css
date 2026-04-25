@@ -66,6 +66,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.backButton:hover {
+  background: var(--paper-bg-warm);
+}
+
 .backButton:active {
   background: var(--paper-bg-warmer);
 }

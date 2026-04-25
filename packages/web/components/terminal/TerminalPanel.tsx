@@ -87,6 +87,7 @@ export function TerminalPanel({
             </svg>
           </Link>
           <button
+            type="button"
             className={styles.backButton}
             onClick={onClose}
             aria-label="Back to issue"
