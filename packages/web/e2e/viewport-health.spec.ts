@@ -280,11 +280,14 @@ test.afterAll(async () => {
 // ── Test describes ────────────────────────────────────────────────────
 
 test.describe("Viewport health — no horizontal overflow", () => {
+  test.beforeEach(() => {
+    if (skipReason) test.skip(true, skipReason);
+  });
+
   for (const route of ROUTES) {
     test(`${route.label} (${route.path}) — no horizontal overflow at any iPhone size`, async ({
       browser,
     }) => {
-      if (skipReason) test.skip(true, skipReason);
       await forEachViewport(browser, route.path, async (page) => {
         await assertNoHorizontalOverflow(page);
       });
@@ -294,7 +297,6 @@ test.describe("Viewport health — no horizontal overflow", () => {
   test(`issue detail (/issues/${TEST_OWNER}/${TEST_REPO}/1) — no horizontal overflow at any iPhone size`, async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, `/issues/${TEST_OWNER}/${TEST_REPO}/1`, async (page) => {
       await assertNoHorizontalOverflow(page);
     });
@@ -303,7 +305,6 @@ test.describe("Viewport health — no horizontal overflow", () => {
   test(`draft detail (/drafts/${DRAFT_ID}) — no horizontal overflow at any iPhone size`, async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, `/drafts/${DRAFT_ID}`, async (page) => {
       await assertNoHorizontalOverflow(page);
     });
@@ -311,10 +312,13 @@ test.describe("Viewport health — no horizontal overflow", () => {
 });
 
 test.describe("Viewport health — no element bleed", () => {
+  test.beforeEach(() => {
+    if (skipReason) test.skip(true, skipReason);
+  });
+
   test("dashboard (/) — no element bleed at any iPhone size", async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, "/", async (page) => {
       await assertNoElementBleed(page);
     });
@@ -323,7 +327,6 @@ test.describe("Viewport health — no element bleed", () => {
   test(`issue detail (/issues/${TEST_OWNER}/${TEST_REPO}/1) — no element bleed at any iPhone size`, async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, `/issues/${TEST_OWNER}/${TEST_REPO}/1`, async (page) => {
       await assertNoElementBleed(page);
     });
@@ -332,7 +335,6 @@ test.describe("Viewport health — no element bleed", () => {
   test("new draft form (/new) — no element bleed at any iPhone size", async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, "/new", async (page) => {
       await assertNoElementBleed(page);
     });
@@ -340,10 +342,13 @@ test.describe("Viewport health — no element bleed", () => {
 });
 
 test.describe("Viewport health — no dead whitespace (#223)", () => {
+  test.beforeEach(() => {
+    if (skipReason) test.skip(true, skipReason);
+  });
+
   test("dashboard (/) — no dead whitespace at any iPhone size", async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, "/", async (page) => {
       await assertNoDeadWhitespace(page);
     });
@@ -352,7 +357,6 @@ test.describe("Viewport health — no dead whitespace (#223)", () => {
   test(`issue detail (/issues/${TEST_OWNER}/${TEST_REPO}/1) — no dead whitespace at any iPhone size`, async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
     await forEachViewport(browser, `/issues/${TEST_OWNER}/${TEST_REPO}/1`, async (page) => {
       await assertNoDeadWhitespace(page);
     });
@@ -360,8 +364,11 @@ test.describe("Viewport health — no dead whitespace (#223)", () => {
 });
 
 test.describe("Viewport health — sheet content overflow (#222, #224)", () => {
-  test("command sheet contents stay within viewport", async ({ browser }) => {
+  test.beforeEach(() => {
     if (skipReason) test.skip(true, skipReason);
+  });
+
+  test("command sheet contents stay within viewport", async ({ browser }) => {
     await forEachViewport(browser, "/", async (page, vp) => {
       // Open the command sheet
       await page.click('button[aria-label="Open command sheet"]');
@@ -387,24 +394,12 @@ test.describe("Viewport health — sheet content overflow (#222, #224)", () => {
   test("command sheet with open sheet — no element bleed", async ({
     browser,
   }) => {
-    if (skipReason) test.skip(true, skipReason);
-    const context = await browser.newContext({
-      viewport: { width: 390, height: 844 },
-      isMobile: true,
-      hasTouch: true,
-      deviceScaleFactor: 3,
-    });
-    const page = await context.newPage();
-    try {
-      await page.goto(`${BASE_URL}/`);
-      await page.waitForLoadState("networkidle");
+    await forEachViewport(browser, "/", async (page) => {
       await page.click('button[aria-label="Open command sheet"]');
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible();
       await page.waitForTimeout(300);
       await assertNoElementBleed(page);
-    } finally {
-      await context.close();
-    }
+    });
   });
 });

@@ -112,7 +112,7 @@ interface WsStats {
   bytesToClient: number;
   /** High-water mark of clientWs.bufferedAmount. */
   peakBufferedAmount: number;
-  /** Frames dropped because client was not OPEN or safeSend failed (disjoint from backpressureDrops). */
+  /** Frames dropped in either direction because the destination was not OPEN or safeSend failed (disjoint from backpressureDrops). */
   droppedFrames: number;
   /** Frames dropped due to backpressure (buffer > threshold). Disjoint from droppedFrames; cumulative across episodes. */
   backpressureDrops: number;
@@ -190,7 +190,9 @@ export function handleUpgrade(
     const pendingClientMsgs: { data: Buffer | ArrayBuffer | Buffer[]; isBinary: boolean }[] = [];
     clientWs.on("message", (data, isBinary) => {
       if (upstream.readyState === WebSocket.OPEN) {
-        safeSend(upstream, data, { binary: isBinary }, "client_to_upstream", port);
+        if (!safeSend(upstream, data, { binary: isBinary }, "client_to_upstream", port)) {
+          stats.droppedFrames++;
+        }
       } else if (upstream.readyState === WebSocket.CONNECTING) {
         pendingClientMsgs.push({ data, isBinary });
       }

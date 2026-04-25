@@ -74,7 +74,13 @@ const server = createServer((req, res) => {
     }
   }
 
-  handle(req, res);
+  handle(req, res).catch((err) => {
+    log.error({ err, msg: "next_request_handler_error", url: req.url });
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+    }
+    res.end("Internal Server Error");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -202,7 +208,11 @@ setInterval(async () => {
 // Graceful shutdown
 // ---------------------------------------------------------------------------
 
+let shuttingDown = false;
+
 function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
   log.info({ msg: "server_shutdown" });
   server.close(() => {
     log.flush(() => process.exit(0));
@@ -214,3 +224,32 @@ function shutdown() {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+// ---------------------------------------------------------------------------
+// Crash handlers
+// ---------------------------------------------------------------------------
+// Pino's flush() is async (callback-based). Use the callback to
+// delay process.exit() until the buffer drains, with a safety-net
+// timeout in case the callback never fires. The console.error
+// fallback guarantees the crash is visible on stderr regardless.
+
+function crashExit(label: string, err: Error): void {
+  console.error(`FATAL ${label}:`, err);
+  log.fatal({ err, msg: label });
+  try {
+    log.flush(() => process.exit(1));
+  } catch (flushErr) {
+    console.error("Failed to flush logs during crash:", flushErr);
+    process.exit(1);
+  }
+  setTimeout(() => process.exit(1), 1000).unref();
+}
+
+process.on("uncaughtException", (err) => {
+  crashExit("uncaught_exception", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  crashExit("unhandled_rejection", err);
+});

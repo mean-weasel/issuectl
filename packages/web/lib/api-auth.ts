@@ -1,10 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, getSetting } from "@issuectl/core";
+import log from "./logger";
 
 /**
  * Validate a bearer token from request headers against the stored api_token.
- * Uses timing-safe comparison to prevent timing attacks.
+ * Uses timing-safe comparison to prevent timing attacks. Note: a length
+ * mismatch causes an early return, which reveals that the token length
+ * differs — acceptable because the token is a random secret, not a password.
  */
 export function validateApiToken(headers: Headers): boolean {
   const authHeader = headers.get("Authorization");
@@ -34,6 +37,7 @@ export function validateApiToken(headers: Headers): boolean {
 export function requireAuth(request: NextRequest): NextResponse | null {
   try {
     if (!validateApiToken(request.headers)) {
+      log.warn({ msg: "api_auth_failed", url: request.nextUrl.pathname });
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 },
@@ -41,7 +45,7 @@ export function requireAuth(request: NextRequest): NextResponse | null {
     }
     return null;
   } catch (err) {
-    console.error("[issuectl] Auth check failed:", err);
+    log.error({ err, msg: "api_auth_error" });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

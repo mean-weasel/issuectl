@@ -60,6 +60,7 @@ describe("validateApiToken", () => {
     const headers = new Headers({ Authorization: "Basic abc123" });
     expect(validateApiToken(headers)).toBe(false);
   });
+
 });
 
 describe("requireAuth", () => {
