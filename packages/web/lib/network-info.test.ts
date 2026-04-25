@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import os from "node:os";
 
 vi.mock("node:os", () => ({
@@ -12,10 +12,16 @@ const mockNetworkInterfaces = vi.mocked(os.networkInterfaces);
 // Re-import per test group via resetModules if needed.
 const { getLanIp, resetForTesting } = await import("./network-info.js");
 
+const originalFetch = globalThis.fetch;
+
 describe("getLanIp", () => {
   beforeEach(() => {
     resetForTesting();
     mockNetworkInterfaces.mockReset();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("returns null before refresh", () => {
