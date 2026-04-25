@@ -71,11 +71,29 @@
   opacity: 0;
 }
 
+.backButton {
+  color: var(--paper-ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--paper-radius-sm);
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.backButton:active {
+  background: var(--paper-bg-warmer);
+}
+
 .header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px 10px 40px;
+  gap: 8px;
+  padding: 10px 16px 10px 8px;
   border-bottom: 1px solid var(--paper-line);
   flex-shrink: 0;
 }
@@ -84,9 +102,13 @@
   display: none;
 }
 
-/* Desktop: hide swipe handle, show X button */
+/* Desktop: hide swipe handle + back button, show X button */
 @media (min-width: 768px) and (hover: hover) {
   .handle {
+    display: none;
+  }
+
+  .backButton {
     display: none;
   }
 

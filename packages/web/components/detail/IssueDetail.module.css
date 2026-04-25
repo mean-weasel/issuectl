@@ -1,7 +1,6 @@
 .container {
   background: var(--paper-bg);
   min-height: 100dvh;
-  padding-bottom: 60px;
 }
 
 .body {

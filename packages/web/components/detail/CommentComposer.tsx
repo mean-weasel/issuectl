@@ -29,6 +29,7 @@ export function CommentComposer({ owner, repo, issueNumber, onCommentPosted }: P
   const [syncVisible, setSyncVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const syncStartRef = useRef(0);
+  const composerRef = useRef<HTMLDivElement>(null);
   const {
     uploading,
     dragging,
@@ -94,6 +95,11 @@ export function CommentComposer({ owner, repo, issueNumber, onCommentPosted }: P
       }
       clearDraft();
       router.refresh();
+      // Scroll the composer to the bottom of the viewport so the user
+      // isn't left staring at dead whitespace while the refresh loads.
+      requestAnimationFrame(() => {
+        composerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      });
       const data = result.data as { cacheStale?: boolean };
       showToast(
         data.cacheStale
@@ -117,7 +123,7 @@ export function CommentComposer({ owner, repo, issueNumber, onCommentPosted }: P
   };
 
   return (
-    <div className={styles.composer}>
+    <div ref={composerRef} className={styles.composer}>
       <div className={styles.label}>add a comment</div>
       <div className={`${styles.textareaWrap} ${dragging ? styles.textareaDragging : ""}`}>
         <textarea
