@@ -102,15 +102,16 @@ function safeSend(
 const TICK_INTERVAL_MS = 5_000;
 
 interface WsStats {
-  clientIp: string;
-  port: number;
+  readonly clientIp: string;
+  readonly port: number;
   framesFromTtyd: number;
   framesToClient: number;
   bytesToClient: number;
   peakBufferedAmount: number;
   droppedFrames: number;
   backpressureDrops: number;
-  connectedAt: number;
+  backpressureShedding: boolean;
+  readonly connectedAt: number;
 }
 
 /**
@@ -146,6 +147,7 @@ export function handleUpgrade(
       peakBufferedAmount: 0,
       droppedFrames: 0,
       backpressureDrops: 0,
+      backpressureShedding: false,
       connectedAt: Date.now(),
     };
 
@@ -207,17 +209,28 @@ export function handleUpgrade(
           stats.peakBufferedAmount = buffered;
         }
         if (buffered > BACKPRESSURE_BYTES) {
+          if (!stats.backpressureShedding) {
+            stats.backpressureShedding = true;
+            log.warn({ msg: "ws_backpressure_start", port, clientIp, bufferedBytes: buffered });
+          }
           stats.backpressureDrops++;
           return;
+        }
+        if (stats.backpressureShedding) {
+          stats.backpressureShedding = false;
+          log.warn({ msg: "ws_backpressure_clear", port, clientIp, droppedDuringEpisode: stats.backpressureDrops });
         }
 
         const len = data instanceof Buffer ? data.length
           : data instanceof ArrayBuffer ? data.byteLength
           : (data as Buffer[]).reduce((acc, b) => acc + b.length, 0);
-        stats.bytesToClient += len;
-        stats.framesToClient++;
 
-        safeSend(clientWs, data, { binary: isBinary }, "upstream_to_client", port);
+        if (safeSend(clientWs, data, { binary: isBinary }, "upstream_to_client", port)) {
+          stats.bytesToClient += len;
+          stats.framesToClient++;
+        } else {
+          stats.droppedFrames++;
+        }
       });
     });
 

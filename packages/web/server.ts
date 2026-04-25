@@ -18,25 +18,27 @@ await app.prepare();
 // HTTP request logging
 // ---------------------------------------------------------------------------
 
-function requestLogger(req: IncomingMessage, res: ServerResponse, next: () => void): void {
+function logRequest(req: IncomingMessage, res: ServerResponse): void {
   const start = Date.now();
   const { method, url } = req;
 
-  res.on("finish", () => {
+  // `close` fires on every response (including aborted ones), unlike
+  // `finish` which only fires when the response was fully sent.
+  res.on("close", () => {
     log.debug({
       msg: "http_request",
       method,
       url,
       status: res.statusCode,
       ms: Date.now() - start,
+      aborted: !res.writableFinished,
     });
   });
-
-  next();
 }
 
 const server = createServer((req, res) => {
-  requestLogger(req, res, () => handle(req, res));
+  logRequest(req, res);
+  handle(req, res);
 });
 
 // ---------------------------------------------------------------------------
@@ -81,11 +83,12 @@ interceptUpgradeRegistrations("addListener");
 server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HANDLED]?: boolean }, head: Buffer) => {
   const match = req.url?.match(TERMINAL_WS_RE);
   if (match) {
+    const terminalPort = Number(match[1]);
     socket[HANDLED] = true;
     try {
-      handleUpgrade(req, socket, head, Number(match[1]));
+      handleUpgrade(req, socket, head, terminalPort);
     } catch (err) {
-      log.error({ err, msg: "terminal_upgrade_failed" });
+      log.error({ err, msg: "terminal_upgrade_failed", port: terminalPort });
       socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
       socket.destroy();
     }
@@ -134,29 +137,38 @@ server.listen(port, () => {
 function shutdown() {
   log.info({ msg: "server_shutdown" });
   server.close(() => {
+    log.flush();
     process.exit(0);
   });
   // Force exit after 5s if connections don't drain; unref so a clean
   // shutdown before the deadline doesn't hold the event loop open.
-  setTimeout(() => process.exit(1), 5000).unref();
+  setTimeout(() => {
+    log.flush();
+    process.exit(1);
+  }, 5000).unref();
 }
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 // ---------------------------------------------------------------------------
-// Crash handlers — last resort, writes synchronously before exit
+// Crash handlers
 // ---------------------------------------------------------------------------
+// Pino multistream writes asynchronously. log.fatal() may not flush
+// before process.exit(). The console.error fallback guarantees the
+// crash is visible on stderr even if pino's buffer doesn't drain.
 
 process.on("uncaughtException", (err) => {
+  console.error("FATAL uncaught_exception:", err);
   log.fatal({ err, msg: "uncaught_exception" });
+  log.flush();
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  log.fatal({
-    err: reason instanceof Error ? reason : new Error(String(reason)),
-    msg: "unhandled_rejection",
-  });
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  console.error("FATAL unhandled_rejection:", err);
+  log.fatal({ err, msg: "unhandled_rejection" });
+  log.flush();
   process.exit(1);
 });

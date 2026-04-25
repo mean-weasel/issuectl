@@ -58,7 +58,7 @@ The web server writes structured JSON logs via pino to **two destinations simult
 | stdout | Live view in the terminal running `issuectl web` |
 | `~/.issuectl/logs/web.log` | Durable file — survives terminal close, process crash |
 
-The log file rotates at **10 MB**, keeping one `.1` backup (`web.log.1`).
+The log file rotates at **10 MB**, keeping one backup (named `YYYYMMDD-HHMM-01-web.log`).
 
 **Key log events:**
 
@@ -71,8 +71,13 @@ The log file rotates at **10 MB**, keeping one `.1` backup (`web.log.1`).
 | `ws_connect` | info | WebSocket proxy opened: port, client IP, active count |
 | `ws_close` | info | WebSocket proxy closed: reason, duration, frame stats |
 | `ws_tick` | debug | Per-connection frame stats every 5s |
+| `ws_backpressure_start` | warn | Client send buffer exceeded threshold — shedding frames |
+| `ws_backpressure_clear` | warn | Client send buffer drained — resuming normal forwarding |
 | `ws_upstream_error` | error | ttyd WebSocket errored |
 | `ws_client_error` | error | Client-side WebSocket errored |
+| `wss_error` | error | WebSocketServer-level error |
+| `ws_send_error` | error | Failed to send a frame (logged by safeSend helper) |
+| `terminal_upgrade_failed` | error | Uncaught exception during WebSocket upgrade |
 | `uncaught_exception` | fatal | Unhandled error — logged before process exits |
 | `unhandled_rejection` | fatal | Unhandled promise rejection — logged before process exits |
 

@@ -26,6 +26,33 @@ export async function assertNoElementBleed(
   const bleeds = await page.evaluate((max: number) => {
     const vw = document.documentElement.clientWidth;
     const vh = window.innerHeight;
+
+    /** Walk up the DOM to check if overflow on the given axis is clipped
+     *  by an ancestor whose boundary is within the viewport threshold. */
+    function isClippedByAncestor(
+      el: Element,
+      axis: "x" | "y",
+      threshold: number,
+    ): boolean {
+      let parent = el.parentElement;
+      while (parent && parent !== document.documentElement) {
+        const style = getComputedStyle(parent);
+        const overflow = axis === "x" ? style.overflowX : style.overflowY;
+        if (
+          overflow === "hidden" ||
+          overflow === "auto" ||
+          overflow === "scroll" ||
+          overflow === "clip"
+        ) {
+          const parentRect = parent.getBoundingClientRect();
+          const edge = axis === "x" ? parentRect.right : parentRect.bottom;
+          if (edge <= threshold) return true;
+        }
+        parent = parent.parentElement;
+      }
+      return false;
+    }
+
     const candidates = Array.from(
       document.querySelectorAll<Element>(
         "main *, [role='dialog'] *, header *",
@@ -43,18 +70,27 @@ export async function assertNoElementBleed(
     for (const el of candidates) {
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) continue;
-      if (rect.right > vw + 1 || rect.bottom > vh + 200) {
-        offenders.push({
-          tag: el.tagName.toLowerCase(),
-          id: (el as HTMLElement).id ?? "",
-          className:
-            typeof (el as HTMLElement).className === "string"
-              ? (el as HTMLElement).className
-              : "",
-          right: Math.round(rect.right),
-          bottom: Math.round(rect.bottom),
-        });
-      }
+
+      const bleedsRight = rect.right > vw + 1;
+      const bleedsBottom = rect.bottom > vh + 200;
+      if (!bleedsRight && !bleedsBottom) continue;
+
+      // Skip if every bleeding axis is clipped by an ancestor
+      const rightOk = !bleedsRight || isClippedByAncestor(el, "x", vw + 1);
+      const bottomOk =
+        !bleedsBottom || isClippedByAncestor(el, "y", vh + 200);
+      if (rightOk && bottomOk) continue;
+
+      offenders.push({
+        tag: el.tagName.toLowerCase(),
+        id: (el as HTMLElement).id ?? "",
+        className:
+          typeof (el as HTMLElement).className === "string"
+            ? (el as HTMLElement).className
+            : "",
+        right: Math.round(rect.right),
+        bottom: Math.round(rect.bottom),
+      });
     }
 
     return offenders;
