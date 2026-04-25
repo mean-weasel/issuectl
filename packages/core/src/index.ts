@@ -99,6 +99,7 @@ export type {
   GitHubLabel,
   GitHubCheck,
   GitHubPullFile,
+  GitHubPullReview,
   GitHubAccessibleRepo,
 } from "./github/types.js";
 export { getGhToken, checkGhAuth } from "./github/auth.js";
@@ -139,6 +140,14 @@ export {
   getPulls,
   getPullDetail,
 } from "./data/pulls.js";
+export {
+  listReviews,
+  createReview,
+  mergePull,
+  createPullComment,
+  type ReviewEvent,
+  type MergeMethod,
+} from "./github/pulls.js";
 export { getDashboardData } from "./data/repos.js";
 export {
   readCachedAccessibleRepos,
