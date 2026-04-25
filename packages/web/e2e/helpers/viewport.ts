@@ -110,39 +110,6 @@ export async function assertNoElementBleed(
 }
 
 /**
- * Asserts that a scroll container is properly scrollable when its content
- * overflows vertically.
- */
-export async function assertScrollContainerScrollable(
-  page: Page,
-  selector: string,
-  label: string,
-): Promise<void> {
-  const result = await page.evaluate((sel: string) => {
-    const el = document.querySelector<HTMLElement>(sel);
-    if (!el) return { found: false, overflows: false, overflowY: "" };
-    const style = getComputedStyle(el);
-    return {
-      found: true,
-      overflows: el.scrollHeight > el.clientHeight,
-      overflowY: style.overflowY,
-    };
-  }, selector);
-
-  if (!result.found) {
-    expect(false, `${label}: selector "${selector}" not found`).toBe(true);
-    return;
-  }
-
-  if (result.overflows) {
-    expect(
-      result.overflowY,
-      `${label}: content overflows (scrollHeight > clientHeight) but overflowY is "${result.overflowY}" — expected "auto" or "scroll"`,
-    ).toMatch(/^(auto|scroll)$/);
-  }
-}
-
-/**
  * Asserts that there is no excessive dead whitespace below the main content.
  * Fails if the gap between the bottom of main content and the viewport bottom
  * exceeds tolerancePx.

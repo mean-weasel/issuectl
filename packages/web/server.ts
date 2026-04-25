@@ -137,14 +137,12 @@ server.listen(port, () => {
 function shutdown() {
   log.info({ msg: "server_shutdown" });
   server.close(() => {
-    log.flush();
-    process.exit(0);
+    log.flush(() => process.exit(0));
   });
   // Force exit after 5s if connections don't drain; unref so a clean
   // shutdown before the deadline doesn't hold the event loop open.
   setTimeout(() => {
-    log.flush();
-    process.exit(1);
+    log.flush(() => process.exit(1));
   }, 5000).unref();
 }
 
@@ -154,21 +152,22 @@ process.on("SIGTERM", shutdown);
 // ---------------------------------------------------------------------------
 // Crash handlers
 // ---------------------------------------------------------------------------
-// Pino multistream writes asynchronously. log.fatal() may not flush
-// before process.exit(). The console.error fallback guarantees the
-// crash is visible on stderr even if pino's buffer doesn't drain.
+// Pino's flush() is async (callback-based). Use the callback to
+// delay process.exit() until the buffer drains, with a safety-net
+// timeout in case the callback never fires. The console.error
+// fallback guarantees the crash is visible on stderr regardless.
 
 process.on("uncaughtException", (err) => {
   console.error("FATAL uncaught_exception:", err);
   log.fatal({ err, msg: "uncaught_exception" });
-  log.flush();
-  process.exit(1);
+  log.flush(() => process.exit(1));
+  setTimeout(() => process.exit(1), 1000).unref();
 });
 
 process.on("unhandledRejection", (reason) => {
   const err = reason instanceof Error ? reason : new Error(String(reason));
   console.error("FATAL unhandled_rejection:", err);
   log.fatal({ err, msg: "unhandled_rejection" });
-  log.flush();
-  process.exit(1);
+  log.flush(() => process.exit(1));
+  setTimeout(() => process.exit(1), 1000).unref();
 });

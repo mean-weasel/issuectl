@@ -104,13 +104,22 @@ const TICK_INTERVAL_MS = 5_000;
 interface WsStats {
   readonly clientIp: string;
   readonly port: number;
+  /** Frames received from the ttyd upstream WebSocket. */
   framesFromTtyd: number;
+  /** Frames successfully forwarded to the client. */
   framesToClient: number;
+  /** Total bytes successfully sent to the client. */
   bytesToClient: number;
+  /** High-water mark of clientWs.bufferedAmount. */
   peakBufferedAmount: number;
+  /** Frames dropped because client was not OPEN or safeSend failed (disjoint from backpressureDrops). */
   droppedFrames: number;
+  /** Frames dropped due to backpressure (buffer > threshold). Disjoint from droppedFrames; cumulative across episodes. */
   backpressureDrops: number;
+  /** True while actively shedding frames due to backpressure. */
   backpressureShedding: boolean;
+  /** Drops in the current backpressure episode (reset on clear). */
+  backpressureEpisodeDrops: number;
   readonly connectedAt: number;
 }
 
@@ -148,6 +157,7 @@ export function handleUpgrade(
       droppedFrames: 0,
       backpressureDrops: 0,
       backpressureShedding: false,
+      backpressureEpisodeDrops: 0,
       connectedAt: Date.now(),
     };
 
@@ -214,16 +224,23 @@ export function handleUpgrade(
             log.warn({ msg: "ws_backpressure_start", port, clientIp, bufferedBytes: buffered });
           }
           stats.backpressureDrops++;
+          stats.backpressureEpisodeDrops++;
           return;
         }
         if (stats.backpressureShedding) {
           stats.backpressureShedding = false;
-          log.warn({ msg: "ws_backpressure_clear", port, clientIp, droppedDuringEpisode: stats.backpressureDrops });
+          log.warn({ msg: "ws_backpressure_clear", port, clientIp, droppedDuringEpisode: stats.backpressureEpisodeDrops });
+          stats.backpressureEpisodeDrops = 0;
         }
 
-        const len = data instanceof Buffer ? data.length
-          : data instanceof ArrayBuffer ? data.byteLength
-          : (data as Buffer[]).reduce((acc, b) => acc + b.length, 0);
+        let len: number;
+        if (data instanceof Buffer) {
+          len = data.length;
+        } else if (data instanceof ArrayBuffer) {
+          len = data.byteLength;
+        } else {
+          len = (data as Buffer[]).reduce((acc, b) => acc + b.length, 0);
+        }
 
         if (safeSend(clientWs, data, { binary: isBinary }, "upstream_to_client", port)) {
           stats.bytesToClient += len;
