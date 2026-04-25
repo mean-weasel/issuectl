@@ -283,7 +283,9 @@ export function deletePendingDeployment(
   }
 }
 
-export type ActiveDeploymentWithRepo = Deployment & {
+export type ActiveDeploymentWithRepo = Omit<Deployment, "state" | "endedAt"> & {
+  state: "active";
+  endedAt: null;
   owner: string;
   repoName: string;
 };
@@ -302,6 +304,8 @@ export function getActiveDeployments(
     .all() as Array<DeploymentRow & { owner: string; repo_name: string }>;
   return rows.map((row) => ({
     ...rowToDeployment(row),
+    state: "active" as const,
+    endedAt: null,
     owner: row.owner,
     repoName: row.repo_name,
   }));

@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import log from "@/lib/logger";
 import {
   getDb,
   getRepo,
   executeLaunch,
   withAuthRetry,
   withIdempotency,
+  isValidNonce,
   DuplicateInFlightError,
   formatErrorForUser,
   type WorkspaceMode,
 } from "@issuectl/core";
 import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
-import { randomUUID } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ type LaunchRequestBody = {
   selectedFilePaths: string[];
   preamble?: string;
   forceResume?: boolean;
+  idempotencyKey?: string;
 };
 
 const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
@@ -81,6 +83,9 @@ export async function POST(
       { status: 400 },
     );
   }
+  if (body.idempotencyKey !== undefined && !isValidNonce(body.idempotencyKey)) {
+    return NextResponse.json({ error: "Invalid idempotency key" }, { status: 400 });
+  }
 
   try {
     const db = getDb();
@@ -88,7 +93,6 @@ export async function POST(
       return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
     }
 
-    const idempotencyKey = randomUUID();
     const runLaunch = async () => {
       const r = await withAuthRetry((octokit) =>
         executeLaunch(db, octokit, {
@@ -109,7 +113,9 @@ export async function POST(
         labelWarning: r.labelWarning ?? null,
       };
     };
-    const result = await withIdempotency(db, "launch-issue", idempotencyKey, runLaunch);
+    const result = body.idempotencyKey
+      ? await withIdempotency(db, "launch-issue", body.idempotencyKey, runLaunch)
+      : await runLaunch();
 
     return NextResponse.json({
       success: true,
@@ -119,12 +125,13 @@ export async function POST(
     });
   } catch (err) {
     if (err instanceof DuplicateInFlightError) {
+      log.warn({ msg: "launch_duplicate_in_flight", owner, repo, issueNumber });
       return NextResponse.json(
         { error: "This launch is already in progress — please wait." },
         { status: 409 },
       );
     }
-    console.error(`[issuectl] POST /api/v1/launch/${owner}/${repo}/${issueNumber} failed:`, err);
+    log.error({ err, msg: "api_launch_failed", owner, repo, issueNumber });
     return NextResponse.json(
       { error: formatErrorForUser(err) },
       { status: 500 },

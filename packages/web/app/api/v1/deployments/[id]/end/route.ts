@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import log from "@/lib/logger";
 import {
   getDb,
   getRepo,
@@ -7,7 +8,6 @@ import {
   endDeployment,
   killTtyd,
   tmuxSessionName,
-  formatErrorForUser,
   cleanupStaleContextFiles,
 } from "@issuectl/core";
 
@@ -62,26 +62,26 @@ export async function POST(
       return NextResponse.json({ error: "Deployment does not match the specified issue" }, { status: 400 });
     }
 
+    if (deployment.endedAt !== null) {
+      return NextResponse.json({ success: true });
+    }
+
     if (deployment.ttydPid) {
       try {
         killTtyd(deployment.ttydPid, tmuxSessionName(body.repo, body.issueNumber));
       } catch (killErr) {
-        console.warn(
-          "[issuectl] Failed to kill ttyd process, proceeding with session end:",
-          { deploymentId, pid: deployment.ttydPid },
-          killErr,
-        );
+        log.warn({ err: killErr, msg: "kill_ttyd_failed", deploymentId, pid: deployment.ttydPid });
       }
     }
     endDeployment(db, deploymentId);
 
-    cleanupStaleContextFiles().catch((err) => {
-      console.warn("[issuectl] Failed to clean up stale context files:", err);
+    cleanupStaleContextFiles().catch((cleanupErr) => {
+      log.warn({ err: cleanupErr, msg: "context_file_cleanup_failed" });
     });
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error(`[issuectl] POST /api/v1/deployments/${deploymentId}/end failed:`, err);
-    return NextResponse.json({ error: formatErrorForUser(err) }, { status: 500 });
+    log.error({ err, msg: "api_end_session_failed", deploymentId });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
