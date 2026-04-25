@@ -7,16 +7,6 @@
   padding: 22px 24px 60px;
 }
 
-.title {
-  font-family: var(--paper-serif);
-  font-weight: 500;
-  font-size: 26px;
-  line-height: 1.2;
-  letter-spacing: -0.4px;
-  color: var(--paper-ink);
-  margin-bottom: 12px;
-}
-
 .contentError {
   font-family: var(--paper-serif);
   font-style: italic;
@@ -34,12 +24,5 @@
     max-width: 820px;
     margin: 0 auto;
     padding: 32px 40px 40px;
-  }
-
-  .title {
-    font-size: 36px;
-    line-height: 1.15;
-    letter-spacing: -0.7px;
-    margin-bottom: 14px;
   }
 }
