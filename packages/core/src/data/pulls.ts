@@ -1,7 +1,7 @@
 import type { Octokit } from "@octokit/rest";
 import type Database from "better-sqlite3";
-import type { GitHubPull, GitHubCheck, GitHubIssue, GitHubPullFile } from "../github/types.js";
-import { listPulls, getPull, getPullChecks, listPullFiles } from "../github/pulls.js";
+import type { GitHubPull, GitHubCheck, GitHubIssue, GitHubPullFile, GitHubPullReview } from "../github/types.js";
+import { listPulls, getPull, getPullChecks, listPullFiles, listReviews } from "../github/pulls.js";
 import { getIssue } from "../github/issues.js";
 import { getCacheTtl, getCached, setCached, isFresh } from "../db/cache.js";
 
@@ -55,10 +55,11 @@ async function fetchPullDetail(
   repo: string,
   number: number,
 ): Promise<CachedPullDetail> {
-  const [pull, checks, files] = await Promise.all([
+  const [pull, checks, files, reviews] = await Promise.all([
     getPull(octokit, owner, repo, number),
     getPullChecks(octokit, owner, repo, `pull/${number}/head`),
     listPullFiles(octokit, owner, repo, number),
+    listReviews(octokit, owner, repo, number),
   ]);
 
   const issueNumber = extractLinkedIssueNumber(pull.body);
@@ -77,7 +78,7 @@ async function fetchPullDetail(
     }
   }
 
-  return { pull, checks, files, linkedIssue };
+  return { pull, checks, files, linkedIssue, reviews };
 }
 
 type CachedPullDetail = {
@@ -85,6 +86,7 @@ type CachedPullDetail = {
   checks: GitHubCheck[];
   files: GitHubPullFile[];
   linkedIssue: GitHubIssue | null;
+  reviews: GitHubPullReview[];
 };
 
 export async function getPullDetail(
@@ -108,7 +110,9 @@ export async function getPullDetail(
           console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
         });
       }
-      return { ...cached.data, fromCache: true, cachedAt: cached.fetchedAt };
+      const data = cached.data;
+      data.reviews ??= [];
+      return { ...data, fromCache: true, cachedAt: cached.fetchedAt };
     }
   }
 
