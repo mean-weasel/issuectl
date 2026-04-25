@@ -10,6 +10,7 @@
   letter-spacing: -0.4px;
   color: var(--paper-ink);
   margin-bottom: 12px;
+  padding-right: 60px;
 }
 
 .editBtn {
@@ -65,32 +66,6 @@
   gap: 8px;
 }
 
-.actionBtn {
-  background: none;
-  border: 1px solid var(--paper-line);
-  border-radius: var(--paper-radius-sm);
-  padding: 2px 10px;
-  font-family: var(--paper-sans);
-  font-size: var(--paper-fs-xs);
-  color: var(--paper-ink-muted);
-  cursor: pointer;
-  transition: color 0.1s, border-color 0.1s;
-}
-
-.actionBtn:hover {
-  color: var(--paper-ink);
-  border-color: var(--paper-ink-muted);
-}
-
-.actionBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.saveBtn {
-  color: var(--paper-ink);
-  border-color: var(--paper-ink-muted);
-}
 
 @media (min-width: 768px) {
   .title {

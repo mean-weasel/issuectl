@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/paper";
 import { updateIssue } from "@/lib/actions/issues";
 import { useToast } from "@/components/ui/ToastProvider";
 import styles from "./EditableTitle.module.css";
@@ -100,12 +101,12 @@ export function EditableTitle({ owner, repo, issueNumber, initialTitle }: Props)
           aria-label="Edit issue title"
         />
         <div className={styles.actions}>
-          <button className={styles.actionBtn} onClick={handleCancel} disabled={saving}>
+          <Button variant="ghost" onClick={handleCancel} disabled={saving}>
             cancel
-          </button>
-          <button className={`${styles.actionBtn} ${styles.saveBtn}`} onClick={handleSave} disabled={saving}>
+          </Button>
+          <Button variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? "saving\u2026" : "save"}
-          </button>
+          </Button>
         </div>
       </div>
     );
