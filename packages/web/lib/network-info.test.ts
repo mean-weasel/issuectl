@@ -9,7 +9,6 @@ vi.mock("node:os", () => ({
 const mockNetworkInterfaces = vi.mocked(os.networkInterfaces);
 
 // Dynamic import so mocks are in place before the module loads.
-// Re-import per test group via resetModules if needed.
 const { getLanIp, getPublicIp, getLanRedirectUrl, resetForTesting } = await import("./network-info.js");
 
 const originalFetch = globalThis.fetch;

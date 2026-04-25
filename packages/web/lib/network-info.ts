@@ -12,7 +12,7 @@ export function getLanIp(): string | null {
   return lanIp;
 }
 
-/** Detect the first routable (non-internal, non-link-local) IPv4 address. */
+/** Detect the first non-internal, non-link-local IPv4 address (typically a LAN address). */
 function detectLanIp(): string | null {
   const interfaces = os.networkInterfaces();
   for (const addrs of Object.values(interfaces)) {
@@ -64,7 +64,8 @@ export async function refreshNetworkInfo(): Promise<void> {
 }
 
 // Skip static/infra routes that don't need the LAN redirect.
-// Lookahead matches segment boundary: /api/..., /favicon.ico, /sw.js, /manifest (end-of-path).
+// Lookahead requires keyword followed by '/', '.', or end-of-path — /api/health and /favicon.ico
+// are skipped, but /api-docs is not.
 const SKIP_REDIRECT_RE = /^\/((_next|api|favicon|icon|apple-touch-icon|manifest|sw|offline)(?=\/|\.|$))/;
 
 export function getLanRedirectUrl(
