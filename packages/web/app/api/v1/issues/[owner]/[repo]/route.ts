@@ -12,12 +12,13 @@ export async function GET(
   if (denied) return denied;
 
   const { owner, repo } = await params;
-  const db = getDb();
-  if (!getRepo(db, owner, repo)) {
-    return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
-  }
 
   try {
+    const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
+    }
+
     const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
     const result = await withAuthRetry((octokit) =>
       getIssues(db, octokit, owner, repo, { forceRefresh }),

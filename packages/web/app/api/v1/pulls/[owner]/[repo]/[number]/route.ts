@@ -17,12 +17,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid pull request number" }, { status: 400 });
   }
 
-  const db = getDb();
-  if (!getRepo(db, owner, repo)) {
-    return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
-  }
-
   try {
+    const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
+    }
+
     const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
     const result = await withAuthRetry((octokit) =>
       getPullDetail(db, octokit, owner, repo, pullNumber, { forceRefresh }),
