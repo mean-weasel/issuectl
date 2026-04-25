@@ -39,75 +39,43 @@
   transform: translateX(0);
 }
 
-/* Mobile: keep the left-edge swipe handle */
-.handle {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 16px;
+.header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--paper-ink-muted);
-  background: transparent;
-  transition: color 0.15s ease;
-  z-index: 1;
-  user-select: none;
-  border: none;
-  padding: 0;
-  font: inherit;
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px 8px;
+  border-bottom: 1px solid var(--paper-line);
+  flex-shrink: 0;
 }
 
-.handle:hover {
-  color: var(--paper-ink);
-  background: transparent;
-}
-
-.handleChevron {
-  font-size: 16px;
-  font-weight: 700;
-  opacity: 0;
-}
-
+/* Mobile: back arrow button */
 .backButton {
-  color: var(--paper-ink);
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
+  margin-left: -10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--paper-ink);
   border-radius: var(--paper-radius-sm);
   transition: background 0.1s;
-  -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .backButton:active {
   background: var(--paper-bg-warmer);
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px 10px 8px;
-  border-bottom: 1px solid var(--paper-line);
-  flex-shrink: 0;
-}
-
 .closeButton {
   display: none;
 }
 
-/* Desktop: hide swipe handle + back button, show X button */
+/* Desktop: hide back arrow, show X button */
 @media (min-width: 768px) and (hover: hover) {
-  .handle {
-    display: none;
-  }
-
   .backButton {
     display: none;
   }
