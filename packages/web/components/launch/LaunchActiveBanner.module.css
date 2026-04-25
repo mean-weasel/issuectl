@@ -20,7 +20,7 @@
 
   .text {
     min-width: 0;
-    flex-basis: calc(100% - 34px);
+    flex-basis: calc(100% - 30px);
   }
 }
 
