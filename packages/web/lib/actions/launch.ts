@@ -216,6 +216,9 @@ export async function endSession(
 export async function checkSessionAlive(
   deploymentId: number,
 ): Promise<{ alive: boolean; error?: string }> {
+  if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
+    return { alive: false };
+  }
   try {
     const db = getDb();
     const deployment = getDeploymentById(db, deploymentId);
@@ -251,19 +254,23 @@ type EnsureTtydResult =
 export async function ensureTtyd(
   deploymentId: number,
 ): Promise<EnsureTtydResult> {
+  if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
+    return { alive: false };
+  }
   try {
     const db = getDb();
     const deployment = getDeploymentById(db, deploymentId);
     if (!deployment || deployment.endedAt !== null) {
       return { alive: false };
     }
-    if (!deployment.ttydPid) {
+    if (!deployment.ttydPid || deployment.ttydPort === null) {
       return { alive: false };
     }
+    const port = deployment.ttydPort;
 
     // ttyd is still running — return immediately
     if (isTtydAlive(deployment.ttydPid)) {
-      return { port: deployment.ttydPort! };
+      return { port };
     }
 
     // ttyd is dead — check if the tmux session is still alive
@@ -282,9 +289,9 @@ export async function ensureTtyd(
     }
 
     // Tmux alive, ttyd dead — respawn ttyd
-    const { pid } = await respawnTtyd(deployment.ttydPort!, sessionName);
+    const { pid } = await respawnTtyd(port, sessionName);
     db.prepare("UPDATE deployments SET ttyd_pid = ? WHERE id = ?").run(pid, deploymentId);
-    return { port: deployment.ttydPort!, respawned: true };
+    return { port, respawned: true };
   } catch (err) {
     console.error("[issuectl] ensureTtyd failed:", err);
     return { alive: false, error: "Failed to ensure terminal" };
