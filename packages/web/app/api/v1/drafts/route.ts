@@ -1,4 +1,3 @@
-// packages/web/app/api/v1/drafts/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";

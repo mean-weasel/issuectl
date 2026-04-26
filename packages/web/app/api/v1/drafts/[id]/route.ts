@@ -5,6 +5,8 @@ import { getDb, deleteDraft, formatErrorForUser } from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -13,8 +15,8 @@ export async function DELETE(
   if (denied) return denied;
 
   const { id } = await params;
-  if (!id) {
-    return NextResponse.json({ error: "Draft id is required" }, { status: 400 });
+  if (!id || !UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid draft id" }, { status: 400 });
   }
 
   try {

@@ -13,6 +13,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type AssignBody = {
   repoId: number;
 };
@@ -25,8 +27,8 @@ export async function POST(
   if (denied) return denied;
 
   const { id } = await params;
-  if (!id) {
-    return NextResponse.json({ error: "Draft id is required" }, { status: 400 });
+  if (!id || !UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid draft id" }, { status: 400 });
   }
 
   let body: AssignBody;
@@ -48,9 +50,13 @@ export async function POST(
     );
 
     // Clear issue cache so next fetch includes the new issue
-    const repo = getRepoById(db, body.repoId);
-    if (repo) {
-      clearCacheKey(db, `issues:${repo.owner}/${repo.name}`);
+    try {
+      const repo = getRepoById(db, body.repoId);
+      if (repo) {
+        clearCacheKey(db, `issues:${repo.owner}/${repo.name}`);
+      }
+    } catch (cacheErr) {
+      log.warn({ err: cacheErr, msg: "api_cache_clear_failed", repoId: body.repoId });
     }
 
     log.info({ msg: "api_draft_assigned", draftId: id, repoId: body.repoId, issueNumber: result.issueNumber });
