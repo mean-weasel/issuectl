@@ -93,7 +93,9 @@ struct IssueDetailView: View {
                         Menu {
                             ForEach(Priority.allCases, id: \.self) { priority in
                                 Button {
-                                    Task { await updatePriority(priority) }
+                                    let previousPriority = currentPriority
+                                    currentPriority = priority
+                                    Task { await confirmPriority(priority, rollbackTo: previousPriority) }
                                 } label: {
                                     HStack {
                                         Text(priority.rawValue.capitalized)
@@ -429,21 +431,18 @@ struct IssueDetailView: View {
         isLoading = false
     }
 
-    private func updatePriority(_ priority: Priority) async {
+    private func confirmPriority(_ priority: Priority, rollbackTo previous: Priority) async {
         guard !isLoadingPriority else { return }
         isLoadingPriority = true
         actionError = nil
-        let previousPriority = currentPriority
-        // Optimistic update
-        currentPriority = priority
         do {
             let response = try await api.setPriority(owner: owner, repo: repo, number: number, priority: priority)
             if !response.success {
-                currentPriority = previousPriority
+                currentPriority = previous
                 actionError = response.error ?? "Failed to set priority"
             }
         } catch {
-            currentPriority = previousPriority
+            currentPriority = previous
             actionError = error.localizedDescription
         }
         isLoadingPriority = false
