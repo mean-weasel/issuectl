@@ -16,6 +16,7 @@ function makeIssue(overrides: Partial<GitHubIssue> = {}): GitHubIssue {
     body: "body",
     state: "open",
     labels: [],
+    assignees: [],
     user: null,
     commentCount: 0,
     createdAt: "2026-01-01T00:00:00Z",

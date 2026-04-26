@@ -19,6 +19,7 @@ struct GitHubIssue: Codable, Identifiable, Sendable {
     let body: String?
     let state: String
     let labels: [GitHubLabel]
+    let assignees: [GitHubUser]?
     let user: GitHubUser?
     let commentCount: Int
     let createdAt: String
