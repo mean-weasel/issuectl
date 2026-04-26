@@ -1,12 +1,16 @@
 import SwiftUI
 
 /// A toggle chip that filters lists to show only items created by the current user.
+/// Shows as disabled (grayed out) when the user fetch failed, rather than hiding entirely.
 struct MineFilterChip: View {
     @Binding var isOn: Bool
     let isAvailable: Bool
+    var isDisabled: Bool = false
+
+    private var shouldShow: Bool { isAvailable || isDisabled }
 
     var body: some View {
-        if isAvailable {
+        if shouldShow {
             Button {
                 isOn.toggle()
             } label: {
@@ -27,8 +31,10 @@ struct MineFilterChip: View {
                         .strokeBorder(isOn ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 1)
                 )
                 .clipShape(Capsule())
+                .opacity(isDisabled ? 0.4 : 1.0)
             }
             .buttonStyle(.plain)
+            .disabled(isDisabled)
         }
     }
 }

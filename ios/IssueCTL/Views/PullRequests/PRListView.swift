@@ -11,6 +11,7 @@ struct PRListView: View {
     @State private var sortOrder: SortOrder = .updated
     @State private var mineOnly = false
     @State private var currentUserLogin: String?
+    @State private var userFetchFailed = false
 
     // Swipe state
     @State private var showMergeConfirm = false
@@ -91,7 +92,7 @@ struct PRListView: View {
 
                 HStack(spacing: 0) {
                     RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
-                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil)
+                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil, isDisabled: userFetchFailed)
                         .padding(.trailing, 16)
                 }
                 .padding(.bottom, 8)
@@ -234,10 +235,12 @@ struct PRListView: View {
             repos = try await api.repos()
 
             // Fetch current user for "mine" filter — non-blocking
-            if currentUserLogin == nil {
-                if let user = try? await api.currentUser() {
-                    currentUserLogin = user.login
-                }
+            do {
+                let user = try await api.currentUser()
+                currentUserLogin = user.login
+                userFetchFailed = false
+            } catch {
+                userFetchFailed = true
             }
 
             var failedRepos: [String] = []

@@ -13,6 +13,7 @@ struct ParseView: View {
     @State private var repos: [Repo] = []
     @State private var errorMessage: String?
     @State private var creationResult: BatchCreateResult?
+    @State private var repoLoadError: String?
 
     private var hasParsed: Bool { !parsedIssues.isEmpty }
     private var acceptedCount: Int { acceptedIds.count }
@@ -39,11 +40,7 @@ struct ParseView: View {
                 }
             }
             .task {
-                do {
-                    repos = try await api.repos()
-                } catch {
-                    // Non-fatal — repo picker will just be empty
-                }
+                await loadRepos()
             }
         }
     }
@@ -72,6 +69,23 @@ struct ParseView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+
+            if let repoLoadError {
+                VStack(spacing: 8) {
+                    Label("Failed to load repositories", systemImage: "exclamationmark.triangle")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                    Text(repoLoadError)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Retry") { Task { await loadRepos() } }
+                        .font(.subheadline)
+                        .buttonStyle(.bordered)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             if let errorMessage {
@@ -199,11 +213,9 @@ struct ParseView: View {
             if result.failed > 0 {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(result.results.filter { !$0.success }) { item in
-                        if let error = item.error {
-                            Label(error, systemImage: "xmark.circle")
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        }
+                        Label(item.error ?? "Unknown error", systemImage: "xmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.red)
                     }
                 }
                 .padding()
@@ -221,6 +233,15 @@ struct ParseView: View {
     }
 
     // MARK: - Actions
+
+    private func loadRepos() async {
+        repoLoadError = nil
+        do {
+            repos = try await api.repos()
+        } catch {
+            repoLoadError = error.localizedDescription
+        }
+    }
 
     private func parse() async {
         isParsing = true
@@ -251,19 +272,20 @@ struct ParseView: View {
         isCreating = true
         errorMessage = nil
         do {
-            let reviewed = parsedIssues.map { issue in
-                let accepted = acceptedIds.contains(issue.id)
-                let repo = repoSelections[issue.id]
-                return ReviewedIssue(
-                    id: issue.id,
-                    title: issue.title,
-                    body: issue.body,
-                    owner: repo?.owner ?? "",
-                    repo: repo?.name ?? "",
-                    labels: issue.suggestedLabels,
-                    accepted: accepted
-                )
-            }
+            let reviewed = parsedIssues
+                .filter { acceptedIds.contains($0.id) }
+                .map { issue in
+                    let repo = repoSelections[issue.id]
+                    return ReviewedIssue(
+                        id: issue.id,
+                        title: issue.title,
+                        body: issue.body,
+                        owner: repo?.owner ?? "",
+                        repo: repo?.name ?? "",
+                        labels: issue.suggestedLabels,
+                        accepted: true
+                    )
+                }
             creationResult = try await api.batchCreateIssues(issues: reviewed)
         } catch {
             errorMessage = error.localizedDescription

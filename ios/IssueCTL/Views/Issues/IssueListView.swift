@@ -15,6 +15,7 @@ struct IssueListView: View {
     @State private var showParseSheet = false
     @State private var mineOnly = false
     @State private var currentUserLogin: String?
+    @State private var userFetchFailed = false
 
     // Swipe action state
     @State private var showCloseConfirm = false
@@ -136,7 +137,7 @@ struct IssueListView: View {
 
                 HStack(spacing: 0) {
                     RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
-                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil)
+                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil, isDisabled: userFetchFailed)
                         .padding(.trailing, 16)
                 }
                 .padding(.bottom, 8)
@@ -409,15 +410,15 @@ struct IssueListView: View {
                 do { return try await api.activeDeployments() }
                 catch { return nil }
             }()
-            async let userFetch: UserResponse? = {
-                do { return try await api.currentUser() }
-                catch { return nil }
-            }()
-
             drafts = await draftsFetch?.drafts ?? drafts
             activeDeployments = await deploymentsFetch?.deployments ?? activeDeployments
-            if let user = await userFetch {
+
+            do {
+                let user = try await api.currentUser()
                 currentUserLogin = user.login
+                userFetchFailed = false
+            } catch {
+                userFetchFailed = true
             }
 
             var failedRepos: [String] = []

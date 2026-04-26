@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
+import log from "@/lib/logger";
+import { formatErrorForUser } from "@issuectl/core";
 import { parseNaturalLanguage } from "@/lib/actions/parse";
 
 export const dynamic = "force-dynamic";
@@ -36,9 +38,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(result.data);
   } catch (err) {
-    console.error("[issuectl] POST /api/v1/parse failed:", err);
+    log.error({ err, msg: "api_parse_failed" });
     return NextResponse.json(
-      { error: "Failed to parse input" },
+      { error: formatErrorForUser(err) },
       { status: 500 },
     );
   }
