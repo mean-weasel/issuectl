@@ -9,6 +9,8 @@ struct PRListView: View {
     @State private var section: PRSection = .open
     @State private var selectedRepoIds: Set<Int> = []
     @State private var sortOrder: SortOrder = .updated
+    @State private var mineOnly = false
+    @State private var currentUserLogin: String?
 
     // Swipe state
     @State private var showMergeConfirm = false
@@ -20,15 +22,21 @@ struct PRListView: View {
         pullsByRepo.values.flatMap { $0 }
     }
 
-    // Pulls filtered by selected repos (before section/sort filtering)
+    // Pulls filtered by selected repos and "mine" toggle (before section/sort filtering)
     private var repoFilteredPulls: [GitHubPull] {
+        var items: [GitHubPull]
         if selectedRepoIds.isEmpty {
-            return allPulls
+            items = allPulls
+        } else {
+            let selectedRepoNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
+            items = pullsByRepo
+                .filter { selectedRepoNames.contains($0.key) }
+                .values.flatMap { $0 }
         }
-        let selectedRepoNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
-        return pullsByRepo
-            .filter { selectedRepoNames.contains($0.key) }
-            .values.flatMap { $0 }
+        if mineOnly, let login = currentUserLogin {
+            items = items.filter { $0.user?.login == login }
+        }
+        return items
     }
 
     private var filteredPulls: [GitHubPull] {
@@ -81,8 +89,12 @@ struct PRListView: View {
                 SectionTabs(selected: $section, counts: sectionCounts)
                     .padding(.vertical, 8)
 
-                RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
-                    .padding(.bottom, 8)
+                HStack(spacing: 0) {
+                    RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
+                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil)
+                        .padding(.trailing, 16)
+                }
+                .padding(.bottom, 8)
 
                 Divider()
 
@@ -220,6 +232,14 @@ struct PRListView: View {
         errorMessage = nil
         do {
             repos = try await api.repos()
+
+            // Fetch current user for "mine" filter — non-blocking
+            if currentUserLogin == nil {
+                if let user = try? await api.currentUser() {
+                    currentUserLogin = user.login
+                }
+            }
+
             var failedRepos: [String] = []
             await withTaskGroup(of: (String, String, [GitHubPull]?).self) { group in
                 for repo in repos {

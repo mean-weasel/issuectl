@@ -12,6 +12,9 @@ struct IssueListView: View {
     @State private var selectedRepoIds: Set<Int> = []
     @State private var sortOrder: SortOrder = .updated
     @State private var showCreateSheet = false
+    @State private var showParseSheet = false
+    @State private var mineOnly = false
+    @State private var currentUserLogin: String?
 
     // Swipe action state
     @State private var showCloseConfirm = false
@@ -45,15 +48,21 @@ struct IssueListView: View {
         runningIssuesByRepo[repoFullName]?.contains(issue.number) ?? false
     }
 
-    // Issues filtered by selected repos (before section/sort filtering)
+    // Issues filtered by selected repos and "mine" toggle (before section/sort filtering)
     private var repoFilteredIssues: [GitHubIssue] {
+        var items: [GitHubIssue]
         if selectedRepoIds.isEmpty {
-            return allIssues
+            items = allIssues
+        } else {
+            let selectedRepoNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
+            items = issuesByRepo
+                .filter { selectedRepoNames.contains($0.key) }
+                .values.flatMap { $0 }
         }
-        let selectedRepoNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
-        return issuesByRepo
-            .filter { selectedRepoNames.contains($0.key) }
-            .values.flatMap { $0 }
+        if mineOnly, let login = currentUserLogin {
+            items = items.filter { $0.user?.login == login }
+        }
+        return items
     }
 
     private var filteredIssues: [GitHubIssue] {
@@ -125,8 +134,12 @@ struct IssueListView: View {
                 SectionTabs(selected: $section, counts: sectionCounts)
                     .padding(.vertical, 8)
 
-                RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
-                    .padding(.bottom, 8)
+                HStack(spacing: 0) {
+                    RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
+                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil)
+                        .padding(.trailing, 16)
+                }
+                .padding(.bottom, 8)
 
                 Divider()
 
@@ -169,8 +182,17 @@ struct IssueListView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCreateSheet = true
+                    Menu {
+                        Button {
+                            showCreateSheet = true
+                        } label: {
+                            Label("Quick Create", systemImage: "plus")
+                        }
+                        Button {
+                            showParseSheet = true
+                        } label: {
+                            Label("Parse with AI", systemImage: "text.viewfinder")
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -184,6 +206,9 @@ struct IssueListView: View {
             }
             .sheet(isPresented: $showCreateSheet) {
                 QuickCreateSheet(repos: repos, onSuccess: { Task { await loadAll(refresh: true) } })
+            }
+            .sheet(isPresented: $showParseSheet) {
+                ParseView()
             }
             .sheet(isPresented: $showLaunchSheet) {
                 if let target = launchTarget {
@@ -374,7 +399,7 @@ struct IssueListView: View {
         do {
             repos = try await api.repos()
 
-            // Drafts and deployments are supplementary — fetch independently so a failure
+            // Drafts, deployments, and user are supplementary — fetch independently so a failure
             // doesn't block the primary issue list.
             async let draftsFetch: DraftsResponse? = {
                 do { return try await api.listDrafts() }
@@ -384,9 +409,16 @@ struct IssueListView: View {
                 do { return try await api.activeDeployments() }
                 catch { return nil }
             }()
+            async let userFetch: UserResponse? = {
+                do { return try await api.currentUser() }
+                catch { return nil }
+            }()
 
             drafts = await draftsFetch?.drafts ?? drafts
             activeDeployments = await deploymentsFetch?.deployments ?? activeDeployments
+            if let user = await userFetch {
+                currentUserLogin = user.login
+            }
 
             var failedRepos: [String] = []
             await withTaskGroup(of: (String, String, [GitHubIssue]?).self) { group in
