@@ -430,6 +430,7 @@ struct IssueDetailView: View {
     }
 
     private func updatePriority(_ priority: Priority) async {
+        actionError = nil
         let previousPriority = currentPriority
         // Optimistic update
         currentPriority = priority

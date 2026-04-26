@@ -31,6 +31,17 @@ struct SetPriorityResponse: Codable, Sendable {
     let error: String?
 }
 
+struct IssuePriorityItem: Codable, Sendable {
+    let repoId: Int
+    let issueNumber: Int
+    let priority: Priority
+    let updatedAt: Int
+}
+
+struct PrioritiesListResponse: Codable, Sendable {
+    let priorities: [IssuePriorityItem]
+}
+
 // MARK: - APIClient Extension
 
 extension APIClient {
@@ -41,6 +52,14 @@ extension APIClient {
             path: "/api/v1/issues/\(owner)/\(repo)/\(number)/priority"
         )
         return try decoder.decode(PriorityResponse.self, from: data).priority
+    }
+
+    /// Fetch all priorities for a repo in one call.
+    func listPriorities(owner: String, repo: String) async throws -> [IssuePriorityItem] {
+        let (data, _) = try await request(
+            path: "/api/v1/issues/\(owner)/\(repo)/priorities"
+        )
+        return try decoder.decode(PrioritiesListResponse.self, from: data).priorities
     }
 
     /// Set the priority for an issue.

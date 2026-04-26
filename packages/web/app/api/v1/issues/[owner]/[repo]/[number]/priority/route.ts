@@ -70,7 +70,7 @@ export async function PUT(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!VALID_PRIORITIES.includes(body.priority)) {
+  if (typeof body?.priority !== "string" || !VALID_PRIORITIES.includes(body.priority)) {
     return NextResponse.json(
       { error: "Invalid priority — must be low, normal, or high" },
       { status: 400 },

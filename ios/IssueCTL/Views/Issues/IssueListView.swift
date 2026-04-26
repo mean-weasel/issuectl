@@ -472,25 +472,21 @@ struct IssueListView: View {
 
     private func loadPriorities() async {
         isLoadingPriorities = true
-        await withTaskGroup(of: (String, Priority?).self) { group in
-            for (repoFullName, issues) in issuesByRepo {
+        await withTaskGroup(of: [(String, Priority)].self) { group in
+            let uniqueRepos = Set(repos.map { ($0.owner, $0.name) }.map { "\($0.0)/\($0.1)" })
+            for repoFullName in uniqueRepos {
                 guard let repo = repos.first(where: { $0.fullName == repoFullName }) else { continue }
-                for issue in issues {
-                    let key = "\(repo.owner)/\(repo.name)#\(issue.number)"
-                    group.addTask {
-                        do {
-                            let priority = try await api.getPriority(
-                                owner: repo.owner, repo: repo.name, number: issue.number
-                            )
-                            return (key, priority)
-                        } catch {
-                            return (key, nil)
-                        }
+                group.addTask {
+                    do {
+                        let items = try await api.listPriorities(owner: repo.owner, repo: repo.name)
+                        return items.map { ("\(repo.owner)/\(repo.name)#\($0.issueNumber)", $0.priority) }
+                    } catch {
+                        return []
                     }
                 }
             }
-            for await (key, priority) in group {
-                if let priority {
+            for await pairs in group {
+                for (key, priority) in pairs {
                     priorities[key] = priority
                 }
             }
