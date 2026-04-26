@@ -31,6 +31,10 @@ struct IssueListView: View {
     @State private var actionError: String?
     @State private var errorDismissTask: Task<Void, Never>?
 
+    // Priority data keyed by "owner/repo#number"
+    @State private var priorities: [String: Priority] = [:]
+    @State private var isLoadingPriorities = false
+
     private var allIssues: [GitHubIssue] {
         issuesByRepo.values.flatMap { $0 }
     }
@@ -79,17 +83,26 @@ struct IssueListView: View {
             guard let repo = repoFor(issue: issue) else { return false }
             return issue.isOpen && isRunning(issue, in: repo.fullName)
         }
+        case .unassigned: items = items.filter { issue in
+            issue.isOpen && (issue.assignees ?? []).isEmpty
+        }
         case .closed: items = items.filter { !$0.isOpen }
         }
 
         switch sortOrder {
         case .updated: items.sort { $0.updatedAt > $1.updatedAt }
         case .created: items.sort { $0.createdAt > $1.createdAt }
-        // Comment count as rough engagement proxy — GitHub issues have no native priority field
-        case .priority: items.sort { $0.commentCount > $1.commentCount }
+        case .priority: items.sort { prioritySortIndex(for: $0) < prioritySortIndex(for: $1) }
         }
 
         return items
+    }
+
+    /// Returns a sort index for priority sorting (high=0, normal=1, low=2).
+    private func prioritySortIndex(for issue: GitHubIssue) -> Int {
+        guard let repo = repoFor(issue: issue) else { return Priority.normal.sortIndex }
+        let key = "\(repo.owner)/\(repo.name)#\(issue.number)"
+        return (priorities[key] ?? .normal).sortIndex
     }
 
     private var sectionCounts: [IssueSection: Int] {
@@ -102,11 +115,15 @@ struct IssueListView: View {
             guard let repo = repoFor(issue: issue) else { return false }
             return issue.isOpen && isRunning(issue, in: repo.fullName)
         }
+        let unassigned = items.filter { issue in
+            issue.isOpen && (issue.assignees ?? []).isEmpty
+        }
         let closed = items.filter { !$0.isOpen }
         return [
             .drafts: drafts.count,
             .open: open.count,
             .running: running.count,
+            .unassigned: unassigned.count,
             .closed: closed.count,
         ]
     }
@@ -444,10 +461,41 @@ struct IssueListView: View {
             if !failedRepos.isEmpty {
                 actionError = "Failed to load: \(failedRepos.joined(separator: ", "))"
             }
+
+            // Fetch priorities for all displayed issues (best-effort)
+            await loadPriorities()
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func loadPriorities() async {
+        isLoadingPriorities = true
+        await withTaskGroup(of: (String, Priority?).self) { group in
+            for (repoFullName, issues) in issuesByRepo {
+                guard let repo = repos.first(where: { $0.fullName == repoFullName }) else { continue }
+                for issue in issues {
+                    let key = "\(repo.owner)/\(repo.name)#\(issue.number)"
+                    group.addTask {
+                        do {
+                            let priority = try await api.getPriority(
+                                owner: repo.owner, repo: repo.name, number: issue.number
+                            )
+                            return (key, priority)
+                        } catch {
+                            return (key, nil)
+                        }
+                    }
+                }
+            }
+            for await (key, priority) in group {
+                if let priority {
+                    priorities[key] = priority
+                }
+            }
+        }
+        isLoadingPriorities = false
     }
 }
 

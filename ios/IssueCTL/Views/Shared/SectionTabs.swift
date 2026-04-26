@@ -37,7 +37,7 @@ struct SectionTabs<Section: Hashable & CaseIterable & RawRepresentable>: View wh
 }
 
 enum IssueSection: String, CaseIterable {
-    case drafts, open, running, closed
+    case drafts, open, running, unassigned, closed
 }
 
 enum PRSection: String, CaseIterable {

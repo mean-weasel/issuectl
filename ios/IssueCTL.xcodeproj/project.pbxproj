@@ -38,6 +38,7 @@
 		9A70F3F0F0470F2847F716F7 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9F091BF822565D8E0F15E7A /* APIClient.swift */; };
 		9E992E49A2D7059EA9BC4F34 /* PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */; };
 		A18D8982D49319C633EE661A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3C1581E55A12781F1E76A1 /* ContentView.swift */; };
+		A3CBDBDDDEF8192FEB9DCBC0 /* APIClient+Priority.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3079E105A528EED5BBA37B20 /* APIClient+Priority.swift */; };
 		A9B2111D17EC7F6C48EEE268 /* PRDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 767FFF9158E604C69C4007DB /* PRDetailView.swift */; };
 		AB8FF61639D060883C77859B /* CloseIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15A1E2EA43AFA474E8518F5 /* CloseIssueSheet.swift */; };
 		B19FE4C33598B3FD1BBAC6AA /* APIClient+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */; };
@@ -68,6 +69,7 @@
 		22FAF4DCDBAB6A7A58E076C4 /* APIClient+Assignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Assignment.swift"; sourceTree = "<group>"; };
 		28E6C0859937F6A85F709D99 /* Deployment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deployment.swift; sourceTree = "<group>"; };
 		2B94F959305A936F2643E3F6 /* APIClient+DetailActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+DetailActions.swift"; sourceTree = "<group>"; };
+		3079E105A528EED5BBA37B20 /* APIClient+Priority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Priority.swift"; sourceTree = "<group>"; };
 		3518E82E2F76B696A0CACFEB /* LabelManagementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelManagementSheet.swift; sourceTree = "<group>"; };
 		364C3F577D49589A381F15B4 /* SessionRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRowView.swift; sourceTree = "<group>"; };
 		4010BC691DB71B872353344A /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 				DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */,
 				5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */,
 				D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */,
+				3079E105A528EED5BBA37B20 /* APIClient+Priority.swift */,
 				A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */,
 				7A6FD670361C44AE6DB85ECE /* KeychainService.swift */,
 			);
@@ -345,6 +348,7 @@
 				F8AA4C4B8F453C5ED17CA45C /* APIClient+Drafts.swift in Sources */,
 				CDB684F0D93BA2822BCFC541 /* APIClient+ImageUpload.swift in Sources */,
 				5317AF616D7D3E184371FA9B /* APIClient+ListEnhancements.swift in Sources */,
+				A3CBDBDDDEF8192FEB9DCBC0 /* APIClient+Priority.swift in Sources */,
 				B19FE4C33598B3FD1BBAC6AA /* APIClient+Settings.swift in Sources */,
 				9A70F3F0F0470F2847F716F7 /* APIClient.swift in Sources */,
 				FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */,
