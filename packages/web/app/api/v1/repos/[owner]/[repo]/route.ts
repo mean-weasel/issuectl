@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
-import { getDb, removeRepo, getRepo } from "@issuectl/core";
+import { getDb, removeRepo, getRepo, formatErrorForUser } from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,12 @@ export async function DELETE(
   if (denied) return denied;
 
   const { owner, repo: repoName } = await params;
+  if (!owner || !repoName) {
+    return NextResponse.json(
+      { success: false, error: "Owner and repo name are required" },
+      { status: 400 },
+    );
+  }
 
   try {
     const db = getDb();
@@ -30,7 +36,7 @@ export async function DELETE(
   } catch (err) {
     log.error({ err, msg: "api_repo_remove_failed", owner, name: repoName });
     return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Unexpected error" },
+      { success: false, error: formatErrorForUser(err) },
       { status: 500 },
     );
   }
