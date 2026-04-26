@@ -29,3 +29,10 @@ packages/web/public/sw.js
 packages/web/public/sw.js.map
 packages/web/public/swe-worker-*.js
 packages/web/var/
+
+# Xcode / iOS
+ios/build/
+ios/DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcuserdata/

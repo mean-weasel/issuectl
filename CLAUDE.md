@@ -8,6 +8,7 @@ Cross-repo GitHub issue command center with Claude Code launch integration.
   - `packages/core` — shared business logic (SQLite, Octokit, launch flow)
   - `packages/cli` — CLI entry point (`issuectl init`, `issuectl web`, `issuectl repo`)
   - `packages/web` — Next.js App Router dashboard (Server Components + Server Actions)
+  - `ios/` — native SwiftUI iOS app (connects to the web server's REST API)
 - **Spec:** `docs/specs/2026-04-06-issuectl-design.md`
 - **Implementation plan:** `docs/specs/2026-04-06-implementation-plan.md`
 - **Mockups:** `docs/mockups/web.html` (primary reference), `docs/mockups/index.html` (gallery)
@@ -26,6 +27,9 @@ Cross-repo GitHub issue command center with Claude Code launch integration.
 | Database | SQLite via `better-sqlite3` at `~/.issuectl/issuectl.db` |
 | Terminal | ttyd (web-based, embedded in dashboard) |
 | Styling | CSS Modules + global design tokens (no Tailwind) |
+| iOS target | iOS 18+, Swift 6.0, SwiftUI only |
+| iOS project gen | XcodeGen (`ios/project.yml`) |
+| iOS networking | URLSession async/await → server REST API (`/api/v1/`) |
 
 ## Code conventions
 
@@ -38,6 +42,15 @@ Cross-repo GitHub issue command center with Claude Code launch integration.
 - **Server Components for reads.** Pages are Server Components that call core data functions directly.
 - **CSS Modules for component styles.** One `.module.css` file per component. Global tokens in `app/globals.css`. Match the design tokens from the mockup HTML files.
 
+### iOS conventions (`ios/`)
+
+- **SwiftUI only.** No UIKit unless absolutely necessary (WKWebView wrapper is the exception).
+- **No third-party dependencies.** Use only Apple frameworks.
+- **Async/await everywhere.** No completion handlers.
+- **@Observable macro** for state management (iOS 18+).
+- **XcodeGen for project generation.** `ios/project.yml` is the source of truth. Run `xcodegen generate` from the `ios/` directory after modifying it. The `.xcodeproj` is checked in for convenience.
+- **File organization:** `ios/IssueCTL/App/` (entry point), `Models/` (Codable structs), `Services/` (APIClient, Keychain), `Views/` (organized by feature).
+
 ## Build and run
 
 ```bash
@@ -48,6 +61,20 @@ pnpm turbo dev                  # Dev mode (core watch + web dev server)
 issuectl init                   # First-time setup (creates DB)
 issuectl web                    # Start dashboard (localhost:3847)
 ```
+
+### iOS build
+
+```bash
+cd ios
+xcodebuild build \
+  -project IssueCTL.xcodeproj \
+  -scheme IssueCTL \
+  -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+  -configuration Debug \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+Or via XcodeBuildMCP: `build_sim` / `build_run_sim` / `screenshot`.
 
 ## Logging
 
