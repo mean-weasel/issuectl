@@ -10,6 +10,7 @@
 		0ABCC3FB2E10C1BEA6AA4BFD /* IssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */; };
 		0B585381530245167B82950D /* QuickCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */; };
 		1947E5288D6AB12AE79684BB /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
+		1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */; };
 		2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */; };
 		2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD234C4632456D401809E8A5 /* OnboardingView.swift */; };
 		327EF2CAB79710212AEE37A6 /* ParseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2FEDC36ACDF7207272AE3 /* ParseView.swift */; };
@@ -44,6 +45,7 @@
 		BB3D82F9FB758E4769B8BA58 /* RepoFilterChips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */; };
 		C188EF4912DB0E5917317C07 /* CommentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13760098C8ED1658B27AD54B /* CommentSheet.swift */; };
 		C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */; };
+		CDB684F0D93BA2822BCFC541 /* APIClient+ImageUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */; };
 		DFD20FE91CC408AA0423C202 /* PRRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75027D57516F296784BEDA4B /* PRRowView.swift */; };
 		E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EBC2D036E0950B774A3A43 /* LaunchView.swift */; };
 		E35D59719FABCC9A185D8366 /* EditIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22DECFEBB9C9FEB55E9A1045 /* EditIssueSheet.swift */; };
@@ -74,6 +76,7 @@
 		472896A74FFDCC9B621A984E /* PRListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRListView.swift; sourceTree = "<group>"; };
 		488FA6CF4785A8769D688726 /* IssueCommentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCommentSheet.swift; sourceTree = "<group>"; };
 		5CE9191D87F0834C417E13B0 /* AssigneeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssigneeSheet.swift; sourceTree = "<group>"; };
+		5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+ImageUpload.swift"; sourceTree = "<group>"; };
 		6BE8B812763DC773F8484C7D /* ParseResultRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParseResultRow.swift; sourceTree = "<group>"; };
 		75027D57516F296784BEDA4B /* PRRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRRowView.swift; sourceTree = "<group>"; };
 		767FFF9158E604C69C4007DB /* PRDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRDetailView.swift; sourceTree = "<group>"; };
@@ -82,6 +85,7 @@
 		7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueRowView.swift; sourceTree = "<group>"; };
 		80A4F0FF399CC75CAB4F1A1C /* Issue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Issue.swift; sourceTree = "<group>"; };
 		80B19DB112594A978EE5AF5B /* EditCommentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditCommentSheet.swift; sourceTree = "<group>"; };
+		894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAttachmentButton.swift; sourceTree = "<group>"; };
 		9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestChangesSheet.swift; sourceTree = "<group>"; };
 		A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Settings.swift"; sourceTree = "<group>"; };
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -163,6 +167,7 @@
 				22FAF4DCDBAB6A7A58E076C4 /* APIClient+Assignment.swift */,
 				2B94F959305A936F2643E3F6 /* APIClient+DetailActions.swift */,
 				DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */,
+				5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */,
 				D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */,
 				A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */,
 				7A6FD670361C44AE6DB85ECE /* KeychainService.swift */,
@@ -250,6 +255,7 @@
 			isa = PBXGroup;
 			children = (
 				4403330B1342AA7C19FA797D /* Constants.swift */,
+				894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */,
 				FE149A3F324BCC15AB57153E /* LabelPicker.swift */,
 				F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */,
 				0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */,
@@ -337,6 +343,7 @@
 				34F18449E8DBA4A039C94A44 /* APIClient+Assignment.swift in Sources */,
 				83664A1EEF860FABA2F49FDD /* APIClient+DetailActions.swift in Sources */,
 				F8AA4C4B8F453C5ED17CA45C /* APIClient+Drafts.swift in Sources */,
+				CDB684F0D93BA2822BCFC541 /* APIClient+ImageUpload.swift in Sources */,
 				5317AF616D7D3E184371FA9B /* APIClient+ListEnhancements.swift in Sources */,
 				B19FE4C33598B3FD1BBAC6AA /* APIClient+Settings.swift in Sources */,
 				9A70F3F0F0470F2847F716F7 /* APIClient.swift in Sources */,
@@ -351,6 +358,7 @@
 				3A294328BBF7D4016CC7B91E /* DraftDetailView.swift in Sources */,
 				9318F86221EE651B485C689D /* EditCommentSheet.swift in Sources */,
 				E35D59719FABCC9A185D8366 /* EditIssueSheet.swift in Sources */,
+				1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */,
 				EE08B250394D4614915429E1 /* Issue.swift in Sources */,
 				78C4075442E5AFA3CEC1CDD5 /* IssueCTLApp.swift in Sources */,
 				87D4FB7DE2798776F76673E2 /* IssueCommentSheet.swift in Sources */,

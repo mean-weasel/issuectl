@@ -20,6 +20,13 @@ struct IssueCommentSheet: View {
                     TextEditor(text: $commentBody)
                         .frame(minHeight: 120)
                         .font(.body)
+                    ImageAttachmentButton(owner: owner, repo: repo) { markdown in
+                        if commentBody.isEmpty {
+                            commentBody = markdown
+                        } else {
+                            commentBody += "\n\n\(markdown)"
+                        }
+                    }
                 }
 
                 if let errorMessage {

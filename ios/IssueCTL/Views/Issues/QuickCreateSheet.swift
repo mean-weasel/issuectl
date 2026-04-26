@@ -53,6 +53,15 @@ struct QuickCreateSheet: View {
                                     .allowsHitTesting(false)
                             }
                         }
+                    if let repo = selectedRepo {
+                        ImageAttachmentButton(owner: repo.owner, repo: repo.name) { markdown in
+                            if bodyText.isEmpty {
+                                bodyText = markdown
+                            } else {
+                                bodyText += "\n\n\(markdown)"
+                            }
+                        }
+                    }
                 }
 
                 Section("Repository") {
