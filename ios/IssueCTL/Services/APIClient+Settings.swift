@@ -34,9 +34,9 @@ extension APIClient {
         return repo
     }
 
-    /// Remove a tracked repository by ID.
-    func removeRepo(id: Int) async throws {
-        let (data, _) = try await request(path: "/api/v1/repos/\(id)", method: "DELETE", body: nil)
+    /// Remove a tracked repository by owner and name.
+    func removeRepo(owner: String, name: String) async throws {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(name)", method: "DELETE", body: nil)
         let response = try decoder.decode(RemoveRepoResponse.self, from: data)
         guard response.success else {
             throw APIError.serverError(400, response.error ?? "Failed to remove repository")
