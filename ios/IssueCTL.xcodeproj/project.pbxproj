@@ -10,6 +10,7 @@
 		0ABCC3FB2E10C1BEA6AA4BFD /* IssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */; };
 		0B585381530245167B82950D /* QuickCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */; };
 		1947E5288D6AB12AE79684BB /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
+		2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */; };
 		2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD234C4632456D401809E8A5 /* OnboardingView.swift */; };
 		332F4D8213B6FCFB806AC6A7 /* RepoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C48C04AAB5D9F17D9DD63684 /* RepoListView.swift */; };
 		3A294328BBF7D4016CC7B91E /* DraftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3814ACC4885AAA637A3041 /* DraftDetailView.swift */; };
@@ -17,6 +18,7 @@
 		48B3B409AB2457A29BE870C7 /* Deployment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E6C0859937F6A85F709D99 /* Deployment.swift */; };
 		493AD60F477A0039E95E5D02 /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5C5A4C468148B6D09FDA6F /* ServerHealth.swift */; };
 		49EDEDB941BBD61FDAD431EB /* RequestChangesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */; };
+		5317AF616D7D3E184371FA9B /* APIClient+ListEnhancements.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */; };
 		581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE149A3F324BCC15AB57153E /* LabelPicker.swift */; };
 		59D20056C3E281403735631D /* Repo.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7701223E13D43C4F74244B0 /* Repo.swift */; };
 		5B840823FA293BB29D5ED80E /* IssueListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D882E51722D47D736257AB4F /* IssueListView.swift */; };
@@ -82,12 +84,14 @@
 		C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailView.swift; sourceTree = "<group>"; };
 		CA3814ACC4885AAA637A3041 /* DraftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftDetailView.swift; sourceTree = "<group>"; };
 		D15A1E2EA43AFA474E8518F5 /* CloseIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseIssueSheet.swift; sourceTree = "<group>"; };
+		D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+ListEnhancements.swift"; sourceTree = "<group>"; };
 		D882E51722D47D736257AB4F /* IssueListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueListView.swift; sourceTree = "<group>"; };
 		DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Drafts.swift"; sourceTree = "<group>"; };
 		DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCreateSheet.swift; sourceTree = "<group>"; };
 		E9F091BF822565D8E0F15E7A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepoSheet.swift; sourceTree = "<group>"; };
 		F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTabs.swift; sourceTree = "<group>"; };
+		F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MineFilterChip.swift; sourceTree = "<group>"; };
 		FD234C4632456D401809E8A5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		FE149A3F324BCC15AB57153E /* LabelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelPicker.swift; sourceTree = "<group>"; };
 		FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequest.swift; sourceTree = "<group>"; };
@@ -150,6 +154,7 @@
 				E9F091BF822565D8E0F15E7A /* APIClient.swift */,
 				2B94F959305A936F2643E3F6 /* APIClient+DetailActions.swift */,
 				DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */,
+				D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */,
 				A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */,
 				7A6FD670361C44AE6DB85ECE /* KeychainService.swift */,
 			);
@@ -237,6 +242,7 @@
 			children = (
 				4403330B1342AA7C19FA797D /* Constants.swift */,
 				FE149A3F324BCC15AB57153E /* LabelPicker.swift */,
+				F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */,
 				0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */,
 				F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */,
 			);
@@ -318,6 +324,7 @@
 			files = (
 				83664A1EEF860FABA2F49FDD /* APIClient+DetailActions.swift in Sources */,
 				F8AA4C4B8F453C5ED17CA45C /* APIClient+Drafts.swift in Sources */,
+				5317AF616D7D3E184371FA9B /* APIClient+ListEnhancements.swift in Sources */,
 				B19FE4C33598B3FD1BBAC6AA /* APIClient+Settings.swift in Sources */,
 				9A70F3F0F0470F2847F716F7 /* APIClient.swift in Sources */,
 				FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */,
@@ -340,6 +347,7 @@
 				BB243C0355BC2828C525684A /* LabelManagementSheet.swift in Sources */,
 				581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */,
 				E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */,
+				2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */,
 				2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */,
 				A9B2111D17EC7F6C48EEE268 /* PRDetailView.swift in Sources */,
 				65142BB24364562CB5305E0F /* PRListView.swift in Sources */,
