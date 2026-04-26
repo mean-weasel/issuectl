@@ -60,6 +60,7 @@ function makeDeployment(issueNumber: number, ended = false): Deployment {
     endedAt: ended ? "2026-04-02T00:00:00Z" : null,
     ttydPort: null,
     ttydPid: null,
+    idleSince: null,
   };
 }
 
@@ -110,6 +111,32 @@ describe("groupIntoSections", () => {
     });
     expect(result.running).toHaveLength(1);
     expect(result.open).toEqual([]);
+  });
+
+  it("propagates idleSince to running items and omits it from open items", () => {
+    const runningIssue = makeIssue({ number: 5 });
+    const openIssue = makeIssue({ number: 6 });
+    const idleDep = { ...makeDeployment(5, false), idleSince: "2026-04-25T00:00:00Z" };
+    const result = groupIntoSections({
+      drafts: [],
+      perRepo: [
+        {
+          repo,
+          issues: [runningIssue, openIssue],
+          deployments: [idleDep],
+          priorities: [],
+        },
+      ],
+    });
+    expect(result.running).toHaveLength(1);
+    const runningItem = result.running[0];
+    if (runningItem.kind !== "issue") throw new Error("expected issue");
+    expect(runningItem.idleSince).toBe("2026-04-25T00:00:00Z");
+
+    expect(result.open).toHaveLength(1);
+    const openItem = result.open[0];
+    if (openItem.kind !== "issue") throw new Error("expected issue");
+    expect(openItem.idleSince).toBeUndefined();
   });
 
   it("treats an issue with only ended deployments as open", () => {

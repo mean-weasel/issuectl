@@ -13,7 +13,9 @@ export type SettingKey =
   | "worktree_dir"
   | "claude_extra_args"
   | "default_repo_id"
-  | "api_token";
+  | "api_token"
+  | "idle_grace_period"
+  | "idle_threshold";
 
 export type Setting = {
   key: SettingKey;
@@ -45,6 +47,7 @@ export type Deployment = {
   endedAt: string | null;
   ttydPort: number | null;
   ttydPid: number | null;
+  idleSince: string | null;
 };
 
 export type CacheEntry<T = unknown> = {
@@ -98,6 +101,7 @@ export type UnifiedListItem =
       issue: GitHubIssue;
       priority: Priority;
       section: Exclude<Section, "unassigned">;
+      idleSince?: string | null;
     };
 
 // Narrow helpers for places that want a specific variant.

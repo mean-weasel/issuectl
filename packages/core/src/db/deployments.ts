@@ -14,6 +14,7 @@ type DeploymentRow = {
   ended_at: string | null;
   ttyd_port: number | null;
   ttyd_pid: number | null;
+  idle_since: string | null;
 };
 
 function rowToDeployment(row: DeploymentRow): Deployment {
@@ -30,6 +31,7 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     endedAt: row.ended_at,
     ttydPort: row.ttyd_port,
     ttydPid: row.ttyd_pid,
+    idleSince: row.idle_since,
   };
 }
 
@@ -167,7 +169,7 @@ export function endDeployment(
   deploymentId: number,
 ): void {
   const result = db
-    .prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ? AND ended_at IS NULL")
+    .prepare("UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL WHERE id = ? AND ended_at IS NULL")
     .run(deploymentId);
   if (result.changes === 0) {
     throw new Error(`No active deployment found with id ${deploymentId}`);
@@ -309,4 +311,22 @@ export function getActiveDeployments(
     owner: row.owner,
     repoName: row.repo_name,
   }));
+}
+
+export function setIdleSince(
+  db: Database.Database,
+  deploymentId: number,
+): void {
+  db.prepare(
+    "UPDATE deployments SET idle_since = datetime('now') WHERE id = ? AND idle_since IS NULL",
+  ).run(deploymentId);
+}
+
+export function clearIdleSince(
+  db: Database.Database,
+  deploymentId: number,
+): void {
+  db.prepare(
+    "UPDATE deployments SET idle_since = NULL WHERE id = ?",
+  ).run(deploymentId);
 }

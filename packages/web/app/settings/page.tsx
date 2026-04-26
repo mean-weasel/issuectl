@@ -52,6 +52,8 @@ export default async function SettingsPage({
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
   const cacheTTL = settingMap.cache_ttl ?? "300";
   const claudeExtraArgs = settingMap.claude_extra_args ?? "";
+  const idleGracePeriod = settingMap.idle_grace_period ?? "300";
+  const idleThreshold = settingMap.idle_threshold ?? "300";
 
   return (
     <PullToRefreshWrapper>
@@ -66,6 +68,8 @@ export default async function SettingsPage({
           branchPattern={branchPattern}
           cacheTTL={cacheTTL}
           claudeExtraArgs={claudeExtraArgs}
+          idleGracePeriod={idleGracePeriod}
+          idleThreshold={idleThreshold}
         />
 
         <section className={styles.section}>

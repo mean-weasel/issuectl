@@ -63,13 +63,15 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings).toHaveLength(4);
+    expect(settings).toHaveLength(6);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
     expect(keys).toContain("cache_ttl");
     expect(keys).toContain("worktree_dir");
     expect(keys).toContain("claude_extra_args");
+    expect(keys).toContain("idle_grace_period");
+    expect(keys).toContain("idle_threshold");
   });
 
   it("seedDefaults sets claude_extra_args to --dangerously-skip-permissions by default", () => {
@@ -81,6 +83,12 @@ describe("seedDefaults", () => {
     setSetting(db, "cache_ttl", "999");
     seedDefaults(db);
     expect(getSetting(db, "cache_ttl")).toBe("999");
+  });
+
+  it("seeds idle_grace_period and idle_threshold defaults", () => {
+    seedDefaults(db);
+    expect(getSetting(db, "idle_grace_period")).toBe("300");
+    expect(getSetting(db, "idle_threshold")).toBe("300");
   });
 
   it("is idempotent", () => {

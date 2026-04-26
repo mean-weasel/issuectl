@@ -4,6 +4,7 @@ import next from "next";
 import log, { logPath } from "./lib/logger";
 import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
+import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 
@@ -185,6 +186,11 @@ server.listen(port, () => {
   } else {
     console.log("> LAN auto-switch: disabled (could not detect IPs)");
   }
+  try {
+    startIdleChecker();
+  } catch (err) {
+    log.error({ msg: "idle_checker_start_failed", err });
+  }
 });
 
 // Refresh IPs every 30 minutes to handle DHCP/ISP changes.
@@ -213,6 +219,7 @@ let shuttingDown = false;
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
+  stopIdleChecker();
   log.info({ msg: "server_shutdown" });
   server.close(() => {
     log.flush(() => process.exit(0));

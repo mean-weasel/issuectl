@@ -85,12 +85,12 @@ export function groupIntoSections(
   const closed: IssueListItem[] = [];
 
   for (const { repo, issues, deployments, priorities } of input.perRepo) {
-    // A deployment row with ended_at IS NULL means there's a live
-    // worktree / Claude session still open for that issue.
-    const activeLaunchSet = new Set(
+    // Map issue number → idleSince for active (non-ended) deployments.
+    // Also used as the "has active deployment" check via .has().
+    const idleSinceMap = new Map<number, string | null>(
       deployments
         .filter((d) => d.endedAt === null)
-        .map((d) => d.issueNumber),
+        .map((d) => [d.issueNumber, d.idleSince]),
     );
 
     const priorityMap = new Map<number, Priority>(
@@ -105,7 +105,7 @@ export function groupIntoSections(
       let section: "open" | "running" | "closed";
       if (issue.state === "closed") {
         section = "closed";
-      } else if (activeLaunchSet.has(issue.number)) {
+      } else if (idleSinceMap.has(issue.number)) {
         section = "running";
       } else {
         section = "open";
@@ -117,6 +117,7 @@ export function groupIntoSections(
         issue,
         priority,
         section,
+        ...(section === "running" ? { idleSince: idleSinceMap.get(issue.number) ?? null } : {}),
       };
 
       if (section === "open") open.push(item);

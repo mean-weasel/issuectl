@@ -238,6 +238,12 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 12,
+    up(db) {
+      db.exec(`ALTER TABLE deployments ADD COLUMN idle_since TEXT;`);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

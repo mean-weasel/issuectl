@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -31,7 +31,8 @@ const CREATE_TABLES = `
     launched_at      TEXT NOT NULL DEFAULT (datetime('now')),
     ended_at         TEXT,
     ttyd_port        INTEGER,
-    ttyd_pid         INTEGER
+    ttyd_pid         INTEGER,
+    idle_since       TEXT
   );
 
   CREATE TABLE IF NOT EXISTS cache (

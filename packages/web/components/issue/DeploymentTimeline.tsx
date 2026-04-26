@@ -31,7 +31,11 @@ function buildEntries(
 
   for (const dep of deployments) {
     entries.push({
-      label: dep.endedAt ? "Session ended" : "Claude Code active",
+      label: dep.endedAt
+        ? "Session ended"
+        : dep.idleSince
+          ? "Claude Code idle"
+          : "Claude Code active",
       ref: dep.branchName,
       date: dep.endedAt ?? dep.launchedAt,
       type: "launched",

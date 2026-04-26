@@ -11,6 +11,8 @@ const VALID_KEYS: readonly SettingKey[] = [
   "worktree_dir",
   "claude_extra_args",
   "default_repo_id",
+  "idle_grace_period",
+  "idle_threshold",
 ];
 
 const ALLOW_EMPTY = new Set<SettingKey>(["claude_extra_args", "default_repo_id"]);
@@ -69,6 +71,15 @@ function validateOne(
     const result = validateClaudeArgs(trimmed);
     if (!result.ok) {
       return { ok: false, error: result.errors.join(" ") };
+    }
+  }
+  if (key === "idle_grace_period" || key === "idle_threshold") {
+    const num = Number(trimmed);
+    if (!Number.isFinite(num) || num < 0) {
+      return { ok: false, error: `${key === "idle_grace_period" ? "Grace period" : "Idle threshold"} must be a non-negative number` };
+    }
+    if (num > 86400) {
+      return { ok: false, error: `${key === "idle_grace_period" ? "Grace period" : "Idle threshold"} cannot exceed 86400 seconds (24 hours)` };
     }
   }
   return { ok: true, trimmed };
