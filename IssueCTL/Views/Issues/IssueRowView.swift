@@ -2,43 +2,56 @@ import SwiftUI
 
 struct IssueRowView: View {
     let issue: GitHubIssue
+    var repoColor: Color = .secondary
+    var isRunning: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text("#\(issue.number)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(issue.title)
-                    .font(.body)
-                    .lineLimit(2)
-            }
+        HStack(spacing: 8) {
+            Circle()
+                .fill(repoColor)
+                .frame(width: 8, height: 8)
 
-            HStack(spacing: 8) {
-                if !issue.labels.isEmpty {
-                    HStack(spacing: 4) {
-                        ForEach(issue.labels.prefix(3)) { label in
-                            LabelBadge(label: label)
-                        }
-                        if issue.labels.count > 3 {
-                            Text("+\(issue.labels.count - 3)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text("#\(issue.number)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text(issue.title)
+                        .font(.body)
+                        .lineLimit(2)
+                    if isRunning {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 6, height: 6)
                     }
                 }
 
-                Spacer()
+                HStack(spacing: 8) {
+                    if !issue.labels.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(issue.labels.prefix(3)) { label in
+                                LabelBadge(label: label)
+                            }
+                            if issue.labels.count > 3 {
+                                Text("+\(issue.labels.count - 3)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
 
-                if let user = issue.user {
-                    Text(user.login)
+                    Spacer()
+
+                    if let user = issue.user {
+                        Text(user.login)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(issue.timeAgo)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
-
-                Text(issue.timeAgo)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.vertical, 2)
@@ -60,17 +73,5 @@ struct LabelBadge: View {
 
     private var labelColor: Color {
         Color(hex: label.color) ?? .secondary
-    }
-}
-
-private extension Color {
-    init?(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        guard hex.count == 6,
-              let int = UInt64(hex, radix: 16) else { return nil }
-        let r = Double((int >> 16) & 0xFF) / 255
-        let g = Double((int >> 8) & 0xFF) / 255
-        let b = Double(int & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
     }
 }

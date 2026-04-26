@@ -187,6 +187,30 @@ final class APIClient {
         return try decoder.decode(IssueCommentResponse.self, from: data)
     }
 
+    // MARK: - Drafts
+
+    func listDrafts() async throws -> DraftsResponse {
+        let (data, _) = try await request(path: "/api/v1/drafts")
+        return try decoder.decode(DraftsResponse.self, from: data)
+    }
+
+    func createDraft(body: CreateDraftRequestBody) async throws -> CreateDraftResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/drafts", method: "POST", body: bodyData)
+        return try decoder.decode(CreateDraftResponse.self, from: data)
+    }
+
+    func deleteDraft(id: String) async throws -> SuccessResponse {
+        let (data, _) = try await request(path: "/api/v1/drafts/\(id)", method: "DELETE")
+        return try decoder.decode(SuccessResponse.self, from: data)
+    }
+
+    func assignDraft(id: String, body: AssignDraftRequestBody) async throws -> AssignDraftResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/drafts/\(id)/assign", method: "POST", body: bodyData)
+        return try decoder.decode(AssignDraftResponse.self, from: data)
+    }
+
     // MARK: - Private
 
     private let decoder: JSONDecoder = {

@@ -2,36 +2,43 @@ import SwiftUI
 
 struct PRRowView: View {
     let pull: GitHubPull
+    var repoColor: Color = .secondary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text("#\(pull.number)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(pull.title)
-                    .font(.body)
-                    .lineLimit(2)
-            }
+        HStack(spacing: 8) {
+            Circle()
+                .fill(repoColor)
+                .frame(width: 8, height: 8)
 
-            HStack(spacing: 8) {
-                PRStateBadge(pull: pull)
-
-                Text(pull.diffSummary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                if let user = pull.user {
-                    Text(user.login)
-                        .font(.caption)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text("#\(pull.number)")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Text(pull.title)
+                        .font(.body)
+                        .lineLimit(2)
                 }
 
-                Text(pull.timeAgo)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 8) {
+                    PRStateBadge(pull: pull)
+
+                    Text(pull.diffSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    if let user = pull.user {
+                        Text(user.login)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(pull.timeAgo)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(.vertical, 2)

@@ -86,3 +86,46 @@ struct IssueCommentResponse: Codable, Sendable {
     let commentId: Int?
     let error: String?
 }
+
+// MARK: - Drafts
+
+struct Draft: Codable, Identifiable, Sendable {
+    let id: String
+    let title: String
+    let body: String?
+    let priority: String?
+    let createdAt: Double // unix timestamp from server
+}
+
+struct DraftsResponse: Codable, Sendable {
+    let drafts: [Draft]
+}
+
+struct CreateDraftRequestBody: Encodable, Sendable {
+    let title: String
+    let body: String?
+    let priority: String?
+}
+
+struct CreateDraftResponse: Codable, Sendable {
+    let success: Bool
+    let id: String?
+    let error: String?
+}
+
+struct AssignDraftRequestBody: Encodable, Sendable {
+    let repoId: Int
+}
+
+struct AssignDraftResponse: Codable, Sendable {
+    let success: Bool
+    let issueNumber: Int?
+    let issueUrl: String?
+    let cleanupWarning: String?
+    let error: String?
+}
+
+struct SuccessResponse: Codable, Sendable {
+    let success: Bool
+    let error: String?
+}
