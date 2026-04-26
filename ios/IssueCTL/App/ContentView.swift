@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(APIClient.self) private var api
+    @Environment(NetworkMonitor.self) private var network
 
     var body: some View {
         if api.isConfigured {
@@ -19,6 +20,10 @@ struct ContentView: View {
                     SettingsView()
                 }
             }
+            .overlay(alignment: .top) {
+                OfflineBanner()
+            }
+            .animation(.easeInOut(duration: 0.3), value: network.isConnected)
         } else {
             OnboardingView()
         }
