@@ -24,6 +24,8 @@ struct IssueDetailView: View {
     @State private var editingComment: GitHubComment?
     @State private var deletingComment: GitHubComment?
     @State private var isDeletingComment = false
+    @State private var currentUserLogin: String?
+    @State private var showActionError = false
 
     var body: some View {
         Group {
@@ -56,14 +58,6 @@ struct IssueDetailView: View {
                         .padding()
                     }
                     .refreshable { await load(refresh: true) }
-
-                    if let actionError {
-                        Label(actionError, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
-                            .font(.subheadline)
-                            .padding(.horizontal)
-                            .padding(.vertical, 6)
-                    }
 
                     actionBar(for: detail.issue)
                 }
@@ -169,6 +163,14 @@ struct IssueDetailView: View {
             }
         } message: {
             Text("Are you sure you want to delete this comment? This cannot be undone.")
+        }
+        .alert("Error", isPresented: $showActionError) {
+            Button("OK") { actionError = nil }
+        } message: {
+            Text(actionError ?? "")
+        }
+        .onChange(of: actionError) { _, newValue in
+            showActionError = newValue != nil
         }
         .task { await load() }
     }
@@ -276,20 +278,25 @@ struct IssueDetailView: View {
                 .font(.headline)
 
             ForEach(comments) { comment in
-                CommentView(comment: comment)
-                    .contextMenu {
-                        Button {
-                            editingComment = comment
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
+                let isOwnComment = currentUserLogin != nil && comment.user?.login == currentUserLogin
+                if isOwnComment {
+                    CommentView(comment: comment)
+                        .contextMenu {
+                            Button {
+                                editingComment = comment
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
 
-                        Button(role: .destructive) {
-                            deletingComment = comment
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                            Button(role: .destructive) {
+                                deletingComment = comment
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
-                    }
+                } else {
+                    CommentView(comment: comment)
+                }
 
                 if comment.id != comments.last?.id {
                     Divider()
@@ -353,7 +360,11 @@ struct IssueDetailView: View {
         isLoading = true
         errorMessage = nil
         do {
-            detail = try await api.issueDetail(owner: owner, repo: repo, number: number, refresh: refresh)
+            async let detailResult = api.issueDetail(owner: owner, repo: repo, number: number, refresh: refresh)
+            async let userResult = api.currentUser()
+            detail = try await detailResult
+            // Best-effort: don't fail the whole load if user fetch fails
+            currentUserLogin = try? await userResult.login
         } catch {
             errorMessage = error.localizedDescription
         }

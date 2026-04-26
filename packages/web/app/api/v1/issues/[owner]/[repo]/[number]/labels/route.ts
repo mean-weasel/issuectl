@@ -46,6 +46,8 @@ export async function POST(
     return NextResponse.json({ error: "Action must be 'add' or 'remove'" }, { status: 400 });
   }
 
+  const labelName = body.label.trim();
+
   try {
     const db = getDb();
     if (!getRepo(db, owner, repo)) {
@@ -54,11 +56,11 @@ export async function POST(
 
     if (body.action === "add") {
       await withAuthRetry((octokit) =>
-        addLabel(octokit, owner, repo, issueNumber, body.label),
+        addLabel(octokit, owner, repo, issueNumber, labelName),
       );
     } else {
       await withAuthRetry((octokit) =>
-        removeLabel(octokit, owner, repo, issueNumber, body.label),
+        removeLabel(octokit, owner, repo, issueNumber, labelName),
       );
     }
 
@@ -67,10 +69,10 @@ export async function POST(
     clearCacheKey(db, `issue-content:${owner}/${repo}#${issueNumber}`);
     clearCacheKey(db, `issues:${owner}/${repo}`);
 
-    log.info({ msg: "api_issue_label_toggled", owner, repo, issueNumber, label: body.label, action: body.action });
+    log.info({ msg: "api_issue_label_toggled", owner, repo, issueNumber, label: labelName, action: body.action });
     return NextResponse.json({ success: true });
   } catch (err) {
-    log.error({ err, msg: "api_issue_label_toggle_failed", owner, repo, issueNumber, label: body.label });
+    log.error({ err, msg: "api_issue_label_toggle_failed", owner, repo, issueNumber, label: labelName });
     return NextResponse.json(
       { success: false, error: formatErrorForUser(err) },
       { status: 500 },

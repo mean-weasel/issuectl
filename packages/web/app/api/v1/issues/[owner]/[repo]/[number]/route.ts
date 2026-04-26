@@ -41,8 +41,8 @@ export async function GET(
     );
     return NextResponse.json(result);
   } catch (err) {
-    console.error(`[issuectl] GET /api/v1/issues/${owner}/${repo}/${issueNumber} failed:`, err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    log.error({ err, msg: "api_issue_detail_failed", owner, repo, issueNumber });
+    return NextResponse.json({ error: formatErrorForUser(err) }, { status: 500 });
   }
 }
 
@@ -101,6 +101,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Repository not tracked" }, { status: 404 });
     }
 
+    // Note: body.trim() may produce an empty string — this is intentional.
+    // GitHub allows clearing an issue body to empty.
     await withAuthRetry((octokit) =>
       updateIssue(octokit, owner, repo, issueNumber, {
         title: body.title?.trim(),

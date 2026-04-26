@@ -13,8 +13,9 @@ struct LabelManagementSheet: View {
     @State private var repoLabels: [GitHubLabel] = []
     @State private var activeLabels: Set<String>
     @State private var isLoading = true
-    @State private var isToggling: String?
+    @State private var togglingLabels: Set<String> = []
     @State private var errorMessage: String?
+    @State private var loadError: String?
     @State private var searchText = ""
 
     init(
@@ -44,6 +45,14 @@ struct LabelManagementSheet: View {
             Group {
                 if isLoading {
                     ProgressView("Loading labels...")
+                } else if loadError != nil {
+                    ContentUnavailableView {
+                        Label("Failed to Load", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text("Could not load labels.")
+                    } actions: {
+                        Button("Retry") { Task { await loadLabels() } }
+                    }
                 } else if repoLabels.isEmpty {
                     ContentUnavailableView {
                         Label("No Labels", systemImage: "tag")
@@ -81,7 +90,7 @@ struct LabelManagementSheet: View {
     @ViewBuilder
     private func labelRow(_ label: GitHubLabel) -> some View {
         let isActive = activeLabels.contains(label.name)
-        let isCurrentlyToggling = isToggling == label.name
+        let isCurrentlyToggling = togglingLabels.contains(label.name)
 
         Button {
             Task { await toggle(label: label, isActive: isActive) }
@@ -120,17 +129,18 @@ struct LabelManagementSheet: View {
 
     private func loadLabels() async {
         isLoading = true
+        loadError = nil
         do {
             let response = try await api.listRepoLabels(owner: owner, repo: repo)
             repoLabels = response.labels.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         } catch {
-            errorMessage = error.localizedDescription
+            loadError = error.localizedDescription
         }
         isLoading = false
     }
 
     private func toggle(label: GitHubLabel, isActive: Bool) async {
-        isToggling = label.name
+        togglingLabels.insert(label.name)
         errorMessage = nil
         do {
             let requestBody = ToggleLabelRequestBody(
@@ -154,7 +164,7 @@ struct LabelManagementSheet: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-        isToggling = nil
+        togglingLabels.remove(label.name)
     }
 }
 
