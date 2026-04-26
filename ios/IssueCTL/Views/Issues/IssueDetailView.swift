@@ -28,6 +28,10 @@ struct IssueDetailView: View {
     @State private var currentUserLogin: String?
     @State private var showActionError = false
 
+    // Priority state
+    @State private var currentPriority: Priority = .normal
+    @State private var isLoadingPriority = false
+
     var body: some View {
         Group {
             if isLoading && detail == nil {
@@ -84,6 +88,23 @@ struct IssueDetailView: View {
                             showAssigneeSheet = true
                         } label: {
                             Label("Manage Assignees", systemImage: "person.badge.plus")
+                        }
+                        Divider()
+                        Menu {
+                            ForEach(Priority.allCases, id: \.self) { priority in
+                                Button {
+                                    Task { await updatePriority(priority) }
+                                } label: {
+                                    HStack {
+                                        Text(priority.rawValue.capitalized)
+                                        if priority == currentPriority {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label("Priority", systemImage: "arrow.up.arrow.down")
                         }
                         Divider()
                         Button {
@@ -200,6 +221,8 @@ struct IssueDetailView: View {
 
             HStack(spacing: 8) {
                 StateBadge(isOpen: issue.isOpen)
+
+                PriorityBadge(priority: currentPriority)
 
                 if let user = issue.user {
                     Text(user.login)
@@ -395,13 +418,35 @@ struct IssueDetailView: View {
         do {
             async let detailResult = api.issueDetail(owner: owner, repo: repo, number: number, refresh: refresh)
             async let userResult = api.currentUser()
+            async let priorityResult = api.getPriority(owner: owner, repo: repo, number: number)
             detail = try await detailResult
-            // Best-effort: don't fail the whole load if user fetch fails
+            // Best-effort: don't fail the whole load if user/priority fetch fails
             currentUserLogin = try? await userResult.login
+            currentPriority = (try? await priorityResult) ?? .normal
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func updatePriority(_ priority: Priority) async {
+        guard !isLoadingPriority else { return }
+        isLoadingPriority = true
+        actionError = nil
+        let previousPriority = currentPriority
+        // Optimistic update
+        currentPriority = priority
+        do {
+            let response = try await api.setPriority(owner: owner, repo: repo, number: number, priority: priority)
+            if !response.success {
+                currentPriority = previousPriority
+                actionError = response.error ?? "Failed to set priority"
+            }
+        } catch {
+            currentPriority = previousPriority
+            actionError = error.localizedDescription
+        }
+        isLoadingPriority = false
     }
 
     private func closeWithoutComment() async {
@@ -516,5 +561,41 @@ struct FlowLayout: Layout {
         }
 
         return (CGSize(width: maxWidth, height: totalHeight), positions)
+    }
+}
+
+struct PriorityBadge: View {
+    let priority: Priority
+
+    var body: some View {
+        // Only show badge for non-default priorities
+        if priority != .normal {
+            HStack(spacing: 4) {
+                Image(systemName: iconName)
+                Text(priority.rawValue.capitalized)
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(badgeColor.opacity(0.15))
+            .foregroundStyle(badgeColor)
+            .clipShape(Capsule())
+        }
+    }
+
+    private var badgeColor: Color {
+        switch priority {
+        case .high: .red
+        case .normal: .secondary
+        case .low: .blue
+        }
+    }
+
+    private var iconName: String {
+        switch priority {
+        case .high: "arrow.up"
+        case .normal: "minus"
+        case .low: "arrow.down"
+        }
     }
 }
