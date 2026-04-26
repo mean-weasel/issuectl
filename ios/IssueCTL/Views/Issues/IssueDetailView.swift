@@ -430,6 +430,8 @@ struct IssueDetailView: View {
     }
 
     private func updatePriority(_ priority: Priority) async {
+        guard !isLoadingPriority else { return }
+        isLoadingPriority = true
         actionError = nil
         let previousPriority = currentPriority
         // Optimistic update
@@ -444,6 +446,7 @@ struct IssueDetailView: View {
             currentPriority = previousPriority
             actionError = error.localizedDescription
         }
+        isLoadingPriority = false
     }
 
     private func closeWithoutComment() async {

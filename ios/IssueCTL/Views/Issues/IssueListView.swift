@@ -472,6 +472,8 @@ struct IssueListView: View {
 
     private func loadPriorities() async {
         isLoadingPriorities = true
+        var newPriorities: [String: Priority] = [:]
+        var hadFailure = false
         await withTaskGroup(of: [(String, Priority)].self) { group in
             let uniqueRepos = Set(repos.map { ($0.owner, $0.name) }.map { "\($0.0)/\($0.1)" })
             for repoFullName in uniqueRepos {
@@ -486,11 +488,13 @@ struct IssueListView: View {
                 }
             }
             for await pairs in group {
+                if pairs.isEmpty { hadFailure = true }
                 for (key, priority) in pairs {
-                    priorities[key] = priority
+                    newPriorities[key] = priority
                 }
             }
         }
+        priorities = newPriorities
         isLoadingPriorities = false
     }
 }
