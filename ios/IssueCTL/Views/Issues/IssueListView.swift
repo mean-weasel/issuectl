@@ -179,6 +179,9 @@ struct IssueListView: View {
             .navigationDestination(for: IssueDestination.self) { dest in
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
+            .navigationDestination(for: DraftDestination.self) { dest in
+                DraftDetailView(draft: dest.draft, onSaved: { Task { await loadAll(refresh: true) } })
+            }
             .sheet(isPresented: $showCreateSheet) {
                 QuickCreateSheet(repos: repos, onSuccess: { Task { await loadAll(refresh: true) } })
             }
@@ -299,16 +302,24 @@ struct IssueListView: View {
         } else {
             List {
                 ForEach(drafts) { draft in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(draft.title)
-                            .font(.body)
-                        if let priority = draft.priority, priority != "normal" {
-                            Text(priority.capitalized)
-                                .font(.caption2)
-                                .foregroundStyle(priority == "high" ? .red : .secondary)
+                    NavigationLink(value: DraftDestination(draft: draft)) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(draft.title)
+                                .font(.body)
+                            if let body = draft.body, !body.isEmpty {
+                                Text(body)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                            if let priority = draft.priority, priority != "normal" {
+                                Text(priority.capitalized)
+                                    .font(.caption2)
+                                    .foregroundStyle(priority == "high" ? .red : .secondary)
+                            }
                         }
+                        .padding(.vertical, 2)
                     }
-                    .padding(.vertical, 2)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             deleteDraftTarget = draft.id
@@ -411,4 +422,16 @@ struct IssueDestination: Hashable {
     let owner: String
     let repo: String
     let number: Int
+}
+
+struct DraftDestination: Hashable {
+    let draft: Draft
+
+    static func == (lhs: DraftDestination, rhs: DraftDestination) -> Bool {
+        lhs.draft.id == rhs.draft.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(draft.id)
+    }
 }

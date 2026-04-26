@@ -16,6 +16,7 @@
 		48B3B409AB2457A29BE870C7 /* Deployment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E6C0859937F6A85F709D99 /* Deployment.swift */; };
 		493AD60F477A0039E95E5D02 /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5C5A4C468148B6D09FDA6F /* ServerHealth.swift */; };
 		49EDEDB941BBD61FDAD431EB /* RequestChangesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */; };
+		581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE149A3F324BCC15AB57153E /* LabelPicker.swift */; };
 		59D20056C3E281403735631D /* Repo.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7701223E13D43C4F74244B0 /* Repo.swift */; };
 		5B840823FA293BB29D5ED80E /* IssueListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D882E51722D47D736257AB4F /* IssueListView.swift */; };
 		65142BB24364562CB5305E0F /* PRListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472896A74FFDCC9B621A984E /* PRListView.swift */; };
@@ -38,6 +39,7 @@
 		E996836A5A715FE47B402A6A /* SectionTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */; };
 		EE08B250394D4614915429E1 /* Issue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A4F0FF399CC75CAB4F1A1C /* Issue.swift */; };
 		F17CDC8FC484D666EB0B35C0 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6FD670361C44AE6DB85ECE /* KeychainService.swift */; };
+		F8AA4C4B8F453C5ED17CA45C /* APIClient+Drafts.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */; };
 		FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */; };
 		FC628F6EB78E8E0AAF2DCB5A /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4010BC691DB71B872353344A /* SessionListView.swift */; };
 /* End PBXBuildFile section */
@@ -71,11 +73,13 @@
 		C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailView.swift; sourceTree = "<group>"; };
 		D15A1E2EA43AFA474E8518F5 /* CloseIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseIssueSheet.swift; sourceTree = "<group>"; };
 		D882E51722D47D736257AB4F /* IssueListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueListView.swift; sourceTree = "<group>"; };
+		DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Drafts.swift"; sourceTree = "<group>"; };
 		DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCreateSheet.swift; sourceTree = "<group>"; };
 		E9F091BF822565D8E0F15E7A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepoSheet.swift; sourceTree = "<group>"; };
 		F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTabs.swift; sourceTree = "<group>"; };
 		FD234C4632456D401809E8A5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		FE149A3F324BCC15AB57153E /* LabelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelPicker.swift; sourceTree = "<group>"; };
 		FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequest.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -134,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				E9F091BF822565D8E0F15E7A /* APIClient.swift */,
+				DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */,
 				A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */,
 				7A6FD670361C44AE6DB85ECE /* KeychainService.swift */,
 			);
@@ -220,6 +225,7 @@
 			isa = PBXGroup;
 			children = (
 				4403330B1342AA7C19FA797D /* Constants.swift */,
+				FE149A3F324BCC15AB57153E /* LabelPicker.swift */,
 				0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */,
 				F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */,
 			);
@@ -295,6 +301,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F8AA4C4B8F453C5ED17CA45C /* APIClient+Drafts.swift in Sources */,
 				B19FE4C33598B3FD1BBAC6AA /* APIClient+Settings.swift in Sources */,
 				9A70F3F0F0470F2847F716F7 /* APIClient.swift in Sources */,
 				FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */,
@@ -311,6 +318,7 @@
 				5B840823FA293BB29D5ED80E /* IssueListView.swift in Sources */,
 				1947E5288D6AB12AE79684BB /* IssueRowView.swift in Sources */,
 				F17CDC8FC484D666EB0B35C0 /* KeychainService.swift in Sources */,
+				581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */,
 				E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */,
 				2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */,
 				A9B2111D17EC7F6C48EEE268 /* PRDetailView.swift in Sources */,

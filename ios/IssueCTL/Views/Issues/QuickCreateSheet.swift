@@ -8,10 +8,17 @@ struct QuickCreateSheet: View {
     let onSuccess: () -> Void
 
     @State private var title = ""
+    @State private var bodyText = ""
     @State private var selectedRepoId: Int?
     @State private var priority: String = "normal"
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+
+    // Labels
+    @State private var availableLabels: [GitHubLabel] = []
+    @State private var selectedLabels: Set<String> = []
+    @State private var isLoadingLabels = false
+    @State private var labelLoadError: String?
 
     private var selectedRepo: Repo? {
         repos.first { $0.id == selectedRepoId }
@@ -32,6 +39,22 @@ struct QuickCreateSheet: View {
                         .font(.body)
                 }
 
+                Section("Description") {
+                    TextEditor(text: $bodyText)
+                        .font(.body)
+                        .frame(minHeight: 100)
+                        .overlay(alignment: .topLeading) {
+                            if bodyText.isEmpty {
+                                Text("Optional description...")
+                                    .foregroundStyle(.tertiary)
+                                    .font(.body)
+                                    .padding(.top, 8)
+                                    .padding(.leading, 5)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                }
+
                 Section("Repository") {
                     Picker("Repo", selection: $selectedRepoId) {
                         Text("None (local draft)").tag(nil as Int?)
@@ -43,6 +66,28 @@ struct QuickCreateSheet: View {
                                 Text(repo.fullName)
                             }
                             .tag(repo.id as Int?)
+                        }
+                    }
+                }
+
+                if let repo = selectedRepo {
+                    Section("Labels") {
+                        if let labelError = labelLoadError {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label(labelError, systemImage: "exclamationmark.triangle")
+                                    .foregroundStyle(.orange)
+                                    .font(.callout)
+                                Button("Retry") {
+                                    Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+                                }
+                                .font(.callout)
+                            }
+                        } else {
+                            LabelPicker(
+                                labels: availableLabels,
+                                selectedLabels: $selectedLabels,
+                                isLoading: isLoadingLabels
+                            )
                         }
                     }
                 }
@@ -85,18 +130,39 @@ struct QuickCreateSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .onChange(of: selectedRepoId) { _, newValue in
+                selectedLabels = []
+                availableLabels = []
+                labelLoadError = nil
+                if let repoId = newValue, let repo = repos.first(where: { $0.id == repoId }) {
+                    Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+                }
+            }
         }
+    }
+
+    private func loadLabels(owner: String, repo: String) async {
+        isLoadingLabels = true
+        labelLoadError = nil
+        do {
+            availableLabels = try await api.repoLabels(owner: owner, repo: repo)
+        } catch {
+            availableLabels = []
+            labelLoadError = "Failed to load labels"
+        }
+        isLoadingLabels = false
     }
 
     private func submit() async {
         isSubmitting = true
         errorMessage = nil
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
             let createBody = CreateDraftRequestBody(
                 title: trimmedTitle,
-                body: nil,
+                body: trimmedBody.isEmpty ? nil : trimmedBody,
                 priority: priority
             )
             let createResponse = try await api.createDraft(body: createBody)
@@ -109,8 +175,9 @@ struct QuickCreateSheet: View {
 
             // If a repo is selected, assign the draft to create a GitHub issue
             if let repoId = selectedRepoId {
-                let assignBody = AssignDraftRequestBody(repoId: repoId)
-                let assignResponse = try await api.assignDraft(id: draftId, body: assignBody)
+                let labels = selectedLabels.isEmpty ? nil : Array(selectedLabels)
+                let assignBody = AssignDraftWithLabelsRequestBody(repoId: repoId, labels: labels)
+                let assignResponse = try await api.assignDraftWithLabels(id: draftId, body: assignBody)
                 if !assignResponse.success {
                     errorMessage = assignResponse.error ?? "Draft created but failed to assign to repo"
                     isSubmitting = false
@@ -119,6 +186,13 @@ struct QuickCreateSheet: View {
                 if let warning = assignResponse.cleanupWarning {
                     // Issue was created on GitHub but draft cleanup failed on server.
                     // Show warning and refresh, but don't auto-dismiss so user sees it.
+                    errorMessage = "Issue created. Note: \(warning)"
+                    isSubmitting = false
+                    onSuccess()
+                    return
+                }
+                if let warning = assignResponse.labelsWarning {
+                    // Issue was created on GitHub but labels could not be applied.
                     errorMessage = "Issue created. Note: \(warning)"
                     isSubmitting = false
                     onSuccess()

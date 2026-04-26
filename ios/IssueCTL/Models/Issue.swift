@@ -122,6 +122,7 @@ struct AssignDraftResponse: Codable, Sendable {
     let issueNumber: Int?
     let issueUrl: String?
     let cleanupWarning: String?
+    let labelsWarning: String?
     let error: String?
 }
 
