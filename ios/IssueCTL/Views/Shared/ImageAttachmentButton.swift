@@ -13,6 +13,17 @@ struct ImageAttachmentButton: View {
     @State private var isUploading = false
     @State private var errorMessage: String?
 
+    @ViewBuilder
+    private var pickerLabel: some View {
+        if isUploading {
+            ProgressView()
+                .controlSize(.small)
+        } else {
+            Label("Attach Image", systemImage: "photo")
+                .font(.callout)
+        }
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             PhotosPicker(
@@ -20,13 +31,7 @@ struct ImageAttachmentButton: View {
                 matching: .images,
                 photoLibrary: .shared()
             ) {
-                if isUploading {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Label("Attach Image", systemImage: "photo")
-                        .font(.callout)
-                }
+                pickerLabel
             }
             .disabled(isUploading)
 
