@@ -191,7 +191,7 @@ struct SettingsView: View {
         Task {
             for repo in reposToDelete {
                 do {
-                    try await api.removeRepo(id: repo.id)
+                    try await api.removeRepo(owner: repo.owner, name: repo.name)
                 } catch {
                     // Restore on failure
                     removeError = "Failed to remove \(repo.fullName): \(error.localizedDescription)"
