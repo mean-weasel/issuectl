@@ -63,7 +63,7 @@ struct ImageLightbox: View {
                             .aspectRatio(contentMode: .fit)
                             .scaleEffect(scale)
                             .offset(combinedOffset)
-                            .gesture(combinedGesture(in: geometry))
+                            .gesture(combinedGesture)
                             .onTapGesture(count: 2) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     if scale > minScale {
@@ -128,7 +128,7 @@ struct ImageLightbox: View {
 
     // MARK: - Gestures
 
-    private func combinedGesture(in geometry: GeometryProxy) -> some Gesture {
+    private var combinedGesture: some Gesture {
         SimultaneousGesture(
             magnificationGesture,
             dragGesture

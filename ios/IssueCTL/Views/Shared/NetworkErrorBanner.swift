@@ -18,7 +18,7 @@ import SwiftUI
 /// ```
 struct NetworkErrorBanner: View {
     @Binding var errorMessage: String?
-    let onRetry: (() async -> Void)?
+    let onRetry: (() async throws -> Void)?
 
     @State private var isRetrying = false
     @State private var dismissTask: Task<Void, Never>?
@@ -43,11 +43,16 @@ struct NetworkErrorBanner: View {
                     Button {
                         Task {
                             isRetrying = true
-                            await onRetry()
-                            isRetrying = false
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                errorMessage = nil
+                            do {
+                                try await onRetry()
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    errorMessage = nil
+                                }
+                            } catch {
+                                // Retry failed — keep banner visible, reset auto-dismiss
+                                scheduleAutoDismiss()
                             }
+                            isRetrying = false
                         }
                     } label: {
                         if isRetrying {

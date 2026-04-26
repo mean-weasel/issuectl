@@ -42,6 +42,7 @@ final class NetworkMonitor {
     }
 
     deinit {
+        let monitor = self.monitor
         monitor.cancel()
     }
 
