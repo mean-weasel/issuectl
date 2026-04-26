@@ -111,19 +111,10 @@ struct AddRepoSheet: View {
                 ProgressView("Loading repos...")
                 Spacer()
             }
-        } else if let error = browseError, browseRepos.isEmpty {
-            Label(error, systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.secondary)
-        } else if browseRepos.isEmpty {
-            Text("No accessible repos found.")
-                .foregroundStyle(.secondary)
         } else {
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search repos...", text: $browseSearch)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
+            if let error = browseError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
             }
 
             Button {
@@ -137,32 +128,45 @@ struct AddRepoSheet: View {
                     }
                 }
             }
-            .disabled(isRefreshing)
+            .disabled(isRefreshing || isBrowseLoading)
 
-            ForEach(filteredBrowseRepos) { repo in
-                Button {
-                    owner = repo.owner
-                    name = repo.name
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(repo.fullName)
-                                .foregroundStyle(.primary)
-                            if let pushedAt = repo.pushedAt {
-                                Text("Pushed: \(pushedAt)")
-                                    .font(.caption2)
+            if browseRepos.isEmpty && browseError == nil {
+                Text("No repos loaded yet. Tap Refresh to fetch from GitHub.")
+                    .foregroundStyle(.secondary)
+            } else if !browseRepos.isEmpty {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search repos...", text: $browseSearch)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                }
+
+                ForEach(filteredBrowseRepos) { repo in
+                    Button {
+                        owner = repo.owner
+                        name = repo.name
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(repo.fullName)
+                                    .foregroundStyle(.primary)
+                                if let pushedAt = repo.pushedAt {
+                                    Text("Pushed: \(pushedAt)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if repo.private {
+                                Image(systemName: "lock.fill")
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                        }
-                        Spacer()
-                        if repo.private {
-                            Image(systemName: "lock.fill")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        if repo.owner == owner && repo.name == name {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.blue)
+                            if repo.owner == owner && repo.name == name {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
                         }
                     }
                 }

@@ -41,6 +41,8 @@ struct SettingsView: View {
                 EditRepoSheet(repo: repo) { updated in
                     if let idx = repos.firstIndex(where: { $0.id == updated.id }) {
                         repos[idx] = updated
+                    } else {
+                        Task { await loadRepos() }
                     }
                 }
             }

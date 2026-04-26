@@ -32,7 +32,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     log.error({ err, msg: "api_github_repos_failed", refresh });
     return NextResponse.json(
-      { error: formatErrorForUser(err) },
+      { success: false, error: formatErrorForUser(err) },
       { status: 500 },
     );
   }
