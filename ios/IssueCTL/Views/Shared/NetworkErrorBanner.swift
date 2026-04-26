@@ -43,16 +43,19 @@ struct NetworkErrorBanner: View {
                     Button {
                         Task {
                             isRetrying = true
+                            defer { isRetrying = false }
                             do {
                                 try await onRetry()
                                 withAnimation(.easeOut(duration: 0.3)) {
                                     errorMessage = nil
                                 }
                             } catch {
-                                // Retry failed — keep banner visible, reset auto-dismiss
+                                // Retry failed — update message with latest error, reset auto-dismiss
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    errorMessage = error.localizedDescription
+                                }
                                 scheduleAutoDismiss()
                             }
-                            isRetrying = false
                         }
                     } label: {
                         if isRetrying {
