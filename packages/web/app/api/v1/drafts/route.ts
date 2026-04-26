@@ -85,7 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const input: DraftInput = {
       title: body.title,
       body: body.body,
-      priority: (body.priority as Priority) ?? undefined,
+      priority: body.priority as Priority | undefined,
     };
     const draft = createDraft(db, input);
     log.info({ msg: "api_draft_created", draftId: draft.id });
