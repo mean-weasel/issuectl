@@ -90,8 +90,10 @@ struct DraftDetailView: View {
     }
 
     private func updateHasChanges() {
-        let titleChanged = title != draft.title
-        let bodyChanged = bodyText != (draft.body ?? "")
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let titleChanged = trimmedTitle != draft.title
+        let bodyChanged = trimmedBody != (draft.body ?? "")
         let priorityChanged = priority != (draft.priority ?? "normal")
         hasChanges = titleChanged || bodyChanged || priorityChanged
     }

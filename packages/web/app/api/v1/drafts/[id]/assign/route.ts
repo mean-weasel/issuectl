@@ -52,6 +52,7 @@ export async function POST(
 
   try {
     const db = getDb();
+    let labelsWarning: string | undefined;
     const result = await withAuthRetry(async (octokit) => {
       const assignResult = await assignDraftToRepo(db, octokit, id, body.repoId);
 
@@ -63,7 +64,10 @@ export async function POST(
             await addLabels(octokit, repo.owner, repo.name, assignResult.issueNumber, body.labels);
           } catch (labelErr) {
             log.warn({ err: labelErr, msg: "api_draft_assign_labels_failed", draftId: id, labels: body.labels });
+            labelsWarning = "Issue created but labels could not be applied";
           }
+        } else {
+          log.error({ msg: "api_draft_assign_repo_not_found_for_labels", draftId: id, repoId: body.repoId });
         }
       }
 
@@ -85,6 +89,7 @@ export async function POST(
       success: true,
       issueNumber: result.issueNumber,
       issueUrl: result.issueUrl,
+      ...(labelsWarning ? { labelsWarning } : {}),
     });
   } catch (err) {
     if (err instanceof DraftPartialCommitError) {

@@ -18,6 +18,7 @@ struct QuickCreateSheet: View {
     @State private var availableLabels: [GitHubLabel] = []
     @State private var selectedLabels: Set<String> = []
     @State private var isLoadingLabels = false
+    @State private var labelLoadError: String?
 
     private var selectedRepo: Repo? {
         repos.first { $0.id == selectedRepoId }
@@ -69,13 +70,25 @@ struct QuickCreateSheet: View {
                     }
                 }
 
-                if selectedRepo != nil {
+                if let repo = selectedRepo {
                     Section("Labels") {
-                        LabelPicker(
-                            labels: availableLabels,
-                            selectedLabels: $selectedLabels,
-                            isLoading: isLoadingLabels
-                        )
+                        if let labelError = labelLoadError {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label(labelError, systemImage: "exclamationmark.triangle")
+                                    .foregroundStyle(.orange)
+                                    .font(.callout)
+                                Button("Retry") {
+                                    Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+                                }
+                                .font(.callout)
+                            }
+                        } else {
+                            LabelPicker(
+                                labels: availableLabels,
+                                selectedLabels: $selectedLabels,
+                                isLoading: isLoadingLabels
+                            )
+                        }
                     }
                 }
 
@@ -120,6 +133,7 @@ struct QuickCreateSheet: View {
             .onChange(of: selectedRepoId) { _, newValue in
                 selectedLabels = []
                 availableLabels = []
+                labelLoadError = nil
                 if let repoId = newValue, let repo = repos.first(where: { $0.id == repoId }) {
                     Task { await loadLabels(owner: repo.owner, repo: repo.name) }
                 }
@@ -129,11 +143,12 @@ struct QuickCreateSheet: View {
 
     private func loadLabels(owner: String, repo: String) async {
         isLoadingLabels = true
+        labelLoadError = nil
         do {
             availableLabels = try await api.repoLabels(owner: owner, repo: repo)
         } catch {
-            // Label loading is non-critical — the user can still create without labels
             availableLabels = []
+            labelLoadError = "Failed to load labels"
         }
         isLoadingLabels = false
     }
@@ -171,6 +186,13 @@ struct QuickCreateSheet: View {
                 if let warning = assignResponse.cleanupWarning {
                     // Issue was created on GitHub but draft cleanup failed on server.
                     // Show warning and refresh, but don't auto-dismiss so user sees it.
+                    errorMessage = "Issue created. Note: \(warning)"
+                    isSubmitting = false
+                    onSuccess()
+                    return
+                }
+                if let warning = assignResponse.labelsWarning {
+                    // Issue was created on GitHub but labels could not be applied.
                     errorMessage = "Issue created. Note: \(warning)"
                     isSubmitting = false
                     onSuccess()

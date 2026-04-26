@@ -109,6 +109,10 @@ export async function PATCH(
     if (body.body !== undefined) update.body = body.body;
     if (body.priority !== undefined) update.priority = body.priority as Priority;
 
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
     const draft = updateDraft(db, id, update);
     if (!draft) {
       return NextResponse.json({ success: false, error: "Draft not found" }, { status: 404 });
