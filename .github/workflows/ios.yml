@@ -1,10 +1,11 @@
-name: CI
+name: iOS
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -29,7 +30,7 @@ jobs:
       - name: Build for iOS Simulator
         run: |
           xcodebuild build \
-            -project IssueCTL.xcodeproj \
+            -project ios/IssueCTL.xcodeproj \
             -scheme IssueCTL \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -configuration Debug \

@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
 
 permissions:
   contents: write

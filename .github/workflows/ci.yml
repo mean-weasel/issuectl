@@ -11,6 +11,8 @@ on:
       - '.husky/**'
       - 'LICENSE'
       - '.github/**/*.md'
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
 
 jobs:
   typecheck:
