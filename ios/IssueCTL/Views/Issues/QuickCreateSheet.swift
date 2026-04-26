@@ -8,10 +8,16 @@ struct QuickCreateSheet: View {
     let onSuccess: () -> Void
 
     @State private var title = ""
+    @State private var bodyText = ""
     @State private var selectedRepoId: Int?
     @State private var priority: String = "normal"
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+
+    // Labels
+    @State private var availableLabels: [GitHubLabel] = []
+    @State private var selectedLabels: Set<String> = []
+    @State private var isLoadingLabels = false
 
     private var selectedRepo: Repo? {
         repos.first { $0.id == selectedRepoId }
@@ -32,6 +38,22 @@ struct QuickCreateSheet: View {
                         .font(.body)
                 }
 
+                Section("Description") {
+                    TextEditor(text: $bodyText)
+                        .font(.body)
+                        .frame(minHeight: 100)
+                        .overlay(alignment: .topLeading) {
+                            if bodyText.isEmpty {
+                                Text("Optional description...")
+                                    .foregroundStyle(.tertiary)
+                                    .font(.body)
+                                    .padding(.top, 8)
+                                    .padding(.leading, 5)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                }
+
                 Section("Repository") {
                     Picker("Repo", selection: $selectedRepoId) {
                         Text("None (local draft)").tag(nil as Int?)
@@ -44,6 +66,16 @@ struct QuickCreateSheet: View {
                             }
                             .tag(repo.id as Int?)
                         }
+                    }
+                }
+
+                if selectedRepo != nil {
+                    Section("Labels") {
+                        LabelPicker(
+                            labels: availableLabels,
+                            selectedLabels: $selectedLabels,
+                            isLoading: isLoadingLabels
+                        )
                     }
                 }
 
@@ -85,18 +117,37 @@ struct QuickCreateSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .onChange(of: selectedRepoId) { _, newValue in
+                selectedLabels = []
+                availableLabels = []
+                if let repoId = newValue, let repo = repos.first(where: { $0.id == repoId }) {
+                    Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+                }
+            }
         }
+    }
+
+    private func loadLabels(owner: String, repo: String) async {
+        isLoadingLabels = true
+        do {
+            availableLabels = try await api.repoLabels(owner: owner, repo: repo)
+        } catch {
+            // Label loading is non-critical — the user can still create without labels
+            availableLabels = []
+        }
+        isLoadingLabels = false
     }
 
     private func submit() async {
         isSubmitting = true
         errorMessage = nil
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
             let createBody = CreateDraftRequestBody(
                 title: trimmedTitle,
-                body: nil,
+                body: trimmedBody.isEmpty ? nil : trimmedBody,
                 priority: priority
             )
             let createResponse = try await api.createDraft(body: createBody)
@@ -109,8 +160,9 @@ struct QuickCreateSheet: View {
 
             // If a repo is selected, assign the draft to create a GitHub issue
             if let repoId = selectedRepoId {
-                let assignBody = AssignDraftRequestBody(repoId: repoId)
-                let assignResponse = try await api.assignDraft(id: draftId, body: assignBody)
+                let labels = selectedLabels.isEmpty ? nil : Array(selectedLabels)
+                let assignBody = AssignDraftWithLabelsRequestBody(repoId: repoId, labels: labels)
+                let assignResponse = try await api.assignDraftWithLabels(id: draftId, body: assignBody)
                 if !assignResponse.success {
                     errorMessage = assignResponse.error ?? "Draft created but failed to assign to repo"
                     isSubmitting = false

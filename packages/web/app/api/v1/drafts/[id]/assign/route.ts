@@ -9,6 +9,7 @@ import {
   formatErrorForUser,
   getRepoById,
   clearCacheKey,
+  addLabels,
 } from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 type AssignBody = {
   repoId: number;
+  labels?: string[];
 };
 
 export async function POST(
@@ -42,12 +44,31 @@ export async function POST(
   if (typeof body.repoId !== "number" || !Number.isInteger(body.repoId) || body.repoId <= 0) {
     return NextResponse.json({ error: "repoId must be a positive integer" }, { status: 400 });
   }
+  if (body.labels !== undefined) {
+    if (!Array.isArray(body.labels) || body.labels.some((l: unknown) => typeof l !== "string")) {
+      return NextResponse.json({ error: "labels must be an array of strings" }, { status: 400 });
+    }
+  }
 
   try {
     const db = getDb();
-    const result = await withAuthRetry((octokit) =>
-      assignDraftToRepo(db, octokit, id, body.repoId),
-    );
+    const result = await withAuthRetry(async (octokit) => {
+      const assignResult = await assignDraftToRepo(db, octokit, id, body.repoId);
+
+      // Apply labels after issue creation (best-effort)
+      if (body.labels && body.labels.length > 0) {
+        const repo = getRepoById(db, body.repoId);
+        if (repo) {
+          try {
+            await addLabels(octokit, repo.owner, repo.name, assignResult.issueNumber, body.labels);
+          } catch (labelErr) {
+            log.warn({ err: labelErr, msg: "api_draft_assign_labels_failed", draftId: id, labels: body.labels });
+          }
+        }
+      }
+
+      return assignResult;
+    });
 
     // Clear issue cache so next fetch includes the new issue
     try {
