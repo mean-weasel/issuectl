@@ -47,8 +47,7 @@ struct ImageLightbox: View {
     private let dismissThreshold: CGFloat = 150.0
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
+        ZStack {
                 Color.black.ignoresSafeArea()
                     .opacity(dismissOpacity)
 
@@ -74,6 +73,8 @@ struct ImageLightbox: View {
                                     } else {
                                         scale = 3.0
                                         lastScale = 3.0
+                                        offset = .zero
+                                        lastOffset = .zero
                                     }
                                 }
                             }
@@ -91,18 +92,17 @@ struct ImageLightbox: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .overlay(alignment: .topTrailing) {
-                Button {
-                    isPresented = false
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title)
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, .white.opacity(0.3))
-                }
-                .padding(20)
-                .opacity(dismissOpacity)
+        .overlay(alignment: .topTrailing) {
+            Button {
+                isPresented = false
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, .white.opacity(0.3))
             }
+            .padding(20)
+            .opacity(dismissOpacity)
         }
         .statusBarHidden()
     }
@@ -170,7 +170,8 @@ struct ImageLightbox: View {
                             )
                         }
                         // Dismiss after animation starts
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        Task {
+                            try? await Task.sleep(for: .seconds(0.15))
                             isPresented = false
                         }
                     } else {
