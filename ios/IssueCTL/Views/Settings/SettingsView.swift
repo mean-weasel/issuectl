@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var reposError: String?
     @State private var healthError: String?
     @State private var removeError: String?
+    @State private var refreshError: String?
 
     var body: some View {
         NavigationStack {
@@ -51,6 +52,14 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(removeError ?? "")
+            }
+            .alert("Refresh Failed", isPresented: .init(
+                get: { refreshError != nil },
+                set: { if !$0 { refreshError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(refreshError ?? "")
             }
             .task {
                 await loadData()
@@ -164,7 +173,11 @@ struct SettingsView: View {
             repos = try await api.repos()
             reposError = nil
         } catch {
-            reposError = error.localizedDescription
+            if repos.isEmpty {
+                reposError = error.localizedDescription
+            } else {
+                refreshError = error.localizedDescription
+            }
         }
     }
 

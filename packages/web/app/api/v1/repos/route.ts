@@ -65,9 +65,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (err) {
     log.warn({ err, msg: "api_repo_add_github_check_failed", owner: body.owner, name: body.name });
+    const status = (err as { status?: number }).status;
+    if (status === 404) {
+      return NextResponse.json(
+        { error: `Repository ${body.owner}/${body.name} not found on GitHub` },
+        { status: 404 },
+      );
+    }
     return NextResponse.json(
-      { error: `Repository ${body.owner}/${body.name} not found on GitHub` },
-      { status: 404 },
+      { error: `Failed to verify repository on GitHub` },
+      { status: 502 },
     );
   }
 
@@ -89,7 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     log.error({ err, msg: "api_repo_add_failed" });
     return NextResponse.json(
-      { success: false, error: formatErrorForUser(err) },
+      { success: false, error: err instanceof Error ? err.message : "Unexpected error" },
       { status: 500 },
     );
   }

@@ -50,7 +50,7 @@ final class APIClient {
         URL(string: serverURL)
     }
 
-    private func request(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    func request(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
         guard let base = baseURL else {
             throw APIError.notConfigured
         }
@@ -213,7 +213,7 @@ final class APIClient {
 
     // MARK: - Private
 
-    private let decoder: JSONDecoder = {
+    let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
         return d
