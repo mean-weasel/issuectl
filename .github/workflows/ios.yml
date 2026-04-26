@@ -32,7 +32,7 @@ jobs:
           xcodebuild build \
             -project ios/IssueCTL.xcodeproj \
             -scheme IssueCTL \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
