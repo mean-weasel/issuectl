@@ -1,7 +1,17 @@
 import { IncomingMessage } from "node:http";
 import { Duplex } from "node:stream";
 import { WebSocketServer, WebSocket } from "ws";
-import { getDb, getActiveDeploymentByPort } from "@issuectl/core";
+import {
+  getDb,
+  getActiveDeploymentByPort,
+  getRepoById,
+  isTtydAlive,
+  isTmuxSessionAlive,
+  tmuxSessionName,
+  respawnTtyd,
+  updateTtydInfo,
+  endDeployment,
+} from "@issuectl/core";
 import log from "./logger";
 import { registerPort, unregisterPort, recordPtyOutput } from "./idle-registry";
 
@@ -21,6 +31,110 @@ export function isValidTerminalPort(port: number): boolean {
   return getActiveDeploymentByPort(db, port) !== undefined;
 }
 
+// Per-port respawn coalescing — concurrent callers (HTTP + WS arrive
+// near-simultaneously) share a single respawn attempt instead of racing.
+const respawnInFlight = new Map<number, Promise<boolean>>();
+
+/**
+ * Ensure the ttyd process for a port is alive. If ttyd has exited
+ * (due to `-q` quit-on-disconnect) but the tmux session is still
+ * running, respawn ttyd against the existing session and update the DB.
+ *
+ * Returns `true` when ttyd is now running and safe to proxy to.
+ * Returns `false` when the connection should not proceed — either
+ * because no active deployment exists, the repo was not found, the
+ * tmux session is dead, or respawn failed.
+ */
+async function ensureTtydRunning(port: number): Promise<boolean> {
+  let db;
+  try {
+    db = getDb();
+  } catch (err) {
+    log.error({ msg: "ttyd_respawn_db_unavailable", port, err });
+    return false;
+  }
+
+  const deployment = getActiveDeploymentByPort(db, port);
+  if (!deployment) {
+    log.debug({ msg: "ttyd_no_active_deployment", port });
+    return false;
+  }
+
+  // No PID recorded — skip liveness check and return false so the
+  // proxy doesn't attempt a connection to a port with nothing listening.
+  if (!deployment.ttydPid) {
+    log.warn({ msg: "ttyd_no_pid_recorded", port, deploymentId: deployment.id });
+    return false;
+  }
+
+  // ttyd is still running — nothing to do
+  if (isTtydAlive(deployment.ttydPid)) return true;
+
+  // ttyd is dead — coalesce concurrent respawn attempts for the same port
+  const existing = respawnInFlight.get(port);
+  if (existing) return existing;
+
+  const promise = doRespawn(port, deployment, db);
+  respawnInFlight.set(port, promise);
+  try {
+    return await promise;
+  } finally {
+    respawnInFlight.delete(port);
+  }
+}
+
+async function doRespawn(
+  port: number,
+  deployment: { id: number; repoId: number; issueNumber: number; ttydPid: number | null },
+  db: ReturnType<typeof getDb>,
+): Promise<boolean> {
+  const repo = getRepoById(db, deployment.repoId);
+  if (!repo) {
+    log.warn({ msg: "ttyd_respawn_no_repo", port, deploymentId: deployment.id, repoId: deployment.repoId });
+    return false;
+  }
+
+  const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+
+  let sessionAlive: boolean;
+  try {
+    sessionAlive = isTmuxSessionAlive(sessionName);
+  } catch (err) {
+    // Transient failure (ETIMEDOUT, EPERM) — don't end the deployment,
+    // don't proxy. The liveness checker will retry on the next interval.
+    log.error({ msg: "ttyd_tmux_check_failed", port, deploymentId: deployment.id, sessionName, err });
+    return false;
+  }
+
+  if (!sessionAlive) {
+    try {
+      endDeployment(db, deployment.id);
+    } catch {
+      // Already ended by liveness checker or concurrent request — fine
+    }
+    log.info({ msg: "ttyd_session_dead", port, deploymentId: deployment.id, sessionName });
+    return false;
+  }
+
+  // tmux alive, ttyd dead → respawn
+  try {
+    const result = await respawnTtyd(port, sessionName);
+    updateTtydInfo(db, deployment.id, port, result.pid);
+    log.info({
+      msg: "ttyd_respawned",
+      port,
+      deploymentId: deployment.id,
+      oldPid: deployment.ttydPid,
+      newPid: result.pid,
+      sessionName,
+    });
+    return true;
+  } catch (err) {
+    log.error({ msg: "ttyd_respawn_failed", port, deploymentId: deployment.id, err });
+    return false;
+  }
+}
+
 /**
  * Proxy an HTTP request to a local ttyd instance and return the response.
  * Used by the Route Handlers to forward HTML/JS/CSS asset requests.
@@ -29,6 +143,16 @@ export async function proxyHttpRequest(
   port: number,
   path: string,
 ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
+  // Respawn ttyd if it exited since the last connection
+  const alive = await ensureTtydRunning(port);
+  if (!alive) {
+    return {
+      status: 502,
+      headers: { "content-type": "text/plain" },
+      body: Buffer.from("Terminal session has ended"),
+    };
+  }
+
   const url = `http://127.0.0.1:${port}${path}`;
   const res = await fetch(url);
   const body = Buffer.from(await res.arrayBuffer());
@@ -126,16 +250,26 @@ interface WsStats {
 
 /**
  * Handle an HTTP upgrade request for a terminal WebSocket. Called from
- * `server.ts`'s `upgrade` event listener.
+ * `server.ts`'s `upgrade` event listener. Async because it may need to
+ * respawn ttyd before upgrading — the caller must `.catch()` the result.
  */
-export function handleUpgrade(
+export async function handleUpgrade(
   req: IncomingMessage,
   socket: Duplex,
   head: Buffer,
   port: number,
-): void {
+): Promise<void> {
   if (!isValidTerminalPort(port)) {
     socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+    socket.destroy();
+    return;
+  }
+
+  // Respawn ttyd before upgrading — this keeps the wss.handleUpgrade
+  // callback synchronous, avoiding unhandled promise rejections.
+  const alive = await ensureTtydRunning(port);
+  if (!alive) {
+    socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
     socket.destroy();
     return;
   }

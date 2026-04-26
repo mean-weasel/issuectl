@@ -1,6 +1,10 @@
 import {
   getDb,
   getActiveDeploymentByPort,
+  getActiveDeployments,
+  endDeployment,
+  isTmuxSessionAlive,
+  tmuxSessionName,
   getSetting,
   setIdleSince,
   clearIdleSince,
@@ -88,9 +92,54 @@ function parseSetting(
   return parsed;
 }
 
+/**
+ * Check all active deployments for dead tmux sessions and end them.
+ * The tmux session is the real liveness signal — ttyd may exit on
+ * client disconnect (`-q` flag) while the session is still alive and
+ * reconnectable. Only end the deployment when the tmux session itself
+ * is gone.
+ */
+export function checkDeploymentLiveness(): void {
+  let db;
+  try {
+    db = getDb();
+  } catch (err) {
+    log.error({ msg: "liveness_check_db_unavailable", err });
+    return;
+  }
+
+  let deployments;
+  try {
+    deployments = getActiveDeployments(db);
+  } catch (err) {
+    log.error({ msg: "liveness_check_query_failed", err });
+    return;
+  }
+
+  for (const deployment of deployments) {
+    try {
+      const sessionName = tmuxSessionName(deployment.repoName, deployment.issueNumber);
+      if (!isTmuxSessionAlive(sessionName)) {
+        endDeployment(db, deployment.id);
+        log.info({
+          msg: "deployment_session_dead",
+          deploymentId: deployment.id,
+          issueNumber: deployment.issueNumber,
+          sessionName,
+        });
+      }
+    } catch (err) {
+      log.error({ msg: "liveness_check_error", deploymentId: deployment.id, err });
+    }
+  }
+}
+
 export function startIdleChecker(): void {
   if (timer) return;
-  timer = setInterval(checkIdleDeployments, CHECK_INTERVAL_MS);
+  timer = setInterval(() => {
+    checkIdleDeployments();
+    checkDeploymentLiveness();
+  }, CHECK_INTERVAL_MS);
   timer.unref();
   log.info({ msg: "idle_checker_started", intervalMs: CHECK_INTERVAL_MS });
 }

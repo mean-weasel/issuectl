@@ -128,13 +128,13 @@ server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HAN
   if (match) {
     const terminalPort = Number(match[1]);
     socket[HANDLED] = true;
-    try {
-      handleUpgrade(req, socket, head, terminalPort);
-    } catch (err) {
+    handleUpgrade(req, socket, head, terminalPort).catch((err) => {
       log.error({ err, msg: "terminal_upgrade_failed", port: terminalPort });
-      socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
-      socket.destroy();
-    }
+      if (!socket.destroyed) {
+        socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+        socket.destroy();
+      }
+    });
   }
 });
 

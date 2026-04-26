@@ -108,6 +108,7 @@ struct QuickCreateSheet: View {
                         Text("High").tag("high")
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("priority-picker")
                 }
 
                 if let errorMessage {
