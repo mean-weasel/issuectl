@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var healthError: String?
     @State private var removeError: String?
     @State private var refreshError: String?
+    @State private var editingRepo: Repo?
 
     var body: some View {
         NavigationStack {
@@ -34,6 +35,13 @@ struct SettingsView: View {
             .sheet(isPresented: $showAddRepo) {
                 AddRepoSheet { newRepo in
                     repos.insert(newRepo, at: 0)
+                }
+            }
+            .sheet(item: $editingRepo) { repo in
+                EditRepoSheet(repo: repo) { updated in
+                    if let idx = repos.firstIndex(where: { $0.id == updated.id }) {
+                        repos[idx] = updated
+                    }
                 }
             }
             .confirmationDialog(
@@ -121,7 +129,12 @@ struct SettingsView: View {
                 }
             } else {
                 ForEach(repos) { repo in
-                    RepoRow(repo: repo)
+                    Button {
+                        editingRepo = repo
+                    } label: {
+                        RepoRow(repo: repo)
+                    }
+                    .tint(.primary)
                 }
                 .onDelete(perform: deleteRepos)
             }
@@ -210,10 +223,21 @@ private struct RepoRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(repo.fullName)
-                .font(.body)
+            HStack {
+                Text(repo.fullName)
+                    .font(.body)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             if let localPath = repo.localPath {
                 Text(localPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let branchPattern = repo.branchPattern {
+                Text("Branch: \(branchPattern)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
