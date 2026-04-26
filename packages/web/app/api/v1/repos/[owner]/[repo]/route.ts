@@ -96,9 +96,9 @@ export async function PATCH(
       );
     }
 
-    const updates: { localPath?: string; branchPattern?: string } = {};
-    if (body.localPath !== undefined) updates.localPath = body.localPath;
-    if (body.branchPattern !== undefined) updates.branchPattern = body.branchPattern;
+    const updates: { localPath?: string | null; branchPattern?: string | null } = {};
+    if (body.localPath !== undefined) updates.localPath = body.localPath || null;
+    if (body.branchPattern !== undefined) updates.branchPattern = body.branchPattern || null;
 
     const updated = updateRepo(db, repo.id, updates);
     log.info({ msg: "api_repo_updated", repoId: repo.id, owner, name: repoName, updates });

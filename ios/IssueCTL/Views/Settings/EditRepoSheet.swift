@@ -99,8 +99,8 @@ struct EditRepoSheet: View {
             let updated = try await api.updateRepo(
                 owner: repo.owner,
                 name: repo.name,
-                localPath: trimmedPath.isEmpty ? nil : trimmedPath,
-                branchPattern: trimmedPattern.isEmpty ? nil : trimmedPattern
+                localPath: trimmedPath,
+                branchPattern: trimmedPattern
             )
             onUpdated(updated)
             dismiss()

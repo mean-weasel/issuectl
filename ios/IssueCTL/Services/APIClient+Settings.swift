@@ -19,8 +19,8 @@ struct RemoveRepoResponse: Codable, Sendable {
 }
 
 struct UpdateRepoRequest: Encodable, Sendable {
-    let localPath: String?
-    let branchPattern: String?
+    let localPath: String
+    let branchPattern: String
 }
 
 struct UpdateRepoResponse: Codable, Sendable {
@@ -63,7 +63,7 @@ extension APIClient {
     }
 
     /// Update a tracked repository's localPath and/or branchPattern.
-    func updateRepo(owner: String, name: String, localPath: String?, branchPattern: String?) async throws -> Repo {
+    func updateRepo(owner: String, name: String, localPath: String, branchPattern: String) async throws -> Repo {
         let body = UpdateRepoRequest(localPath: localPath, branchPattern: branchPattern)
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(name)", method: "PATCH", body: bodyData)
