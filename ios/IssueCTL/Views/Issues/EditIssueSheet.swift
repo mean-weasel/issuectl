@@ -52,6 +52,13 @@ struct EditIssueSheet: View {
                     TextEditor(text: $issueBody)
                         .frame(minHeight: 200)
                         .font(.body)
+                    ImageAttachmentButton(owner: owner, repo: repo) { markdown in
+                        if issueBody.isEmpty {
+                            issueBody = markdown
+                        } else {
+                            issueBody += "\n\n\(markdown)"
+                        }
+                    }
                 }
 
                 if let errorMessage {
