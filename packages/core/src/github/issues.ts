@@ -1,6 +1,6 @@
 import type { Octokit } from "@octokit/rest";
 import type Database from "better-sqlite3";
-import type { GitHubIssue, GitHubComment, RawGitHubUser } from "./types.js";
+import type { GitHubIssue, GitHubUser, GitHubComment, RawGitHubUser } from "./types.js";
 import { mapUser } from "./types.js";
 import { getRepoById } from "../db/repos.js";
 import { clearCacheKey } from "../db/cache.js";
@@ -13,6 +13,7 @@ function mapIssue(raw: unknown): GitHubIssue {
     body: string | null;
     state: string;
     labels: Array<{ name?: string; color?: string; description?: string | null } | string>;
+    assignees: RawGitHubUser[] | null;
     user: RawGitHubUser;
     comments: number;
     created_at: string;
@@ -32,6 +33,9 @@ function mapIssue(raw: unknown): GitHubIssue {
         color: l.color ?? "",
         description: l.description ?? null,
       })),
+    assignees: (r.assignees ?? [])
+      .map((a) => mapUser(a))
+      .filter((u): u is GitHubUser => u !== null),
     user: mapUser(r.user),
     commentCount: r.comments ?? 0,
     createdAt: r.created_at,

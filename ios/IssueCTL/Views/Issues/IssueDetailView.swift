@@ -21,6 +21,7 @@ struct IssueDetailView: View {
     // Detail actions state (#263, #264, #265)
     @State private var showEditSheet = false
     @State private var showLabelSheet = false
+    @State private var showAssigneeSheet = false
     @State private var editingComment: GitHubComment?
     @State private var deletingComment: GitHubComment?
     @State private var isDeletingComment = false
@@ -79,6 +80,11 @@ struct IssueDetailView: View {
                         } label: {
                             Label("Manage Labels", systemImage: "tag")
                         }
+                        Button {
+                            showAssigneeSheet = true
+                        } label: {
+                            Label("Manage Assignees", systemImage: "person.badge.plus")
+                        }
                         Divider()
                         Button {
                             showLaunchSheet = true
@@ -131,6 +137,15 @@ struct IssueDetailView: View {
                     owner: owner, repo: repo, number: number,
                     currentLabels: detail.issue.labels,
                     onSuccess: { Task { await load(refresh: true) } }
+                )
+            }
+        }
+        .sheet(isPresented: $showAssigneeSheet) {
+            if let detail {
+                AssigneeSheet(
+                    owner: owner, repo: repo, number: number,
+                    currentAssignees: (detail.issue.assignees ?? []).map(\.login),
+                    onUpdate: { _ in Task { await load(refresh: true) } }
                 )
             }
         }
@@ -201,6 +216,24 @@ struct IssueDetailView: View {
                 FlowLayout(spacing: 6) {
                     ForEach(issue.labels) { label in
                         LabelBadge(label: label)
+                    }
+                }
+            }
+
+            if let assignees = issue.assignees, !assignees.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.2")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    FlowLayout(spacing: 4) {
+                        ForEach(assignees, id: \.login) { assignee in
+                            Text(assignee.login)
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
                     }
                 }
             }

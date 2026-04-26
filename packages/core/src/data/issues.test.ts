@@ -53,6 +53,7 @@ function makeIssue(overrides: Partial<GitHubIssue> = {}): GitHubIssue {
     body: "Check `src/index.ts` and https://github.com/owner/repo/blob/main/lib/utils.ts for context",
     state: "open",
     labels: [],
+    assignees: [],
     user: null,
     commentCount: 0,
     createdAt: "2026-01-01T00:00:00Z",

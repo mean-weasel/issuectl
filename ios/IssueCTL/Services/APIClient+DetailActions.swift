@@ -45,20 +45,9 @@ struct LabelsListResponse: Codable, Sendable {
     let labels: [GitHubLabel]
 }
 
-struct CurrentUserResponse: Codable, Sendable {
-    let login: String
-}
-
 // MARK: - APIClient Extension
 
 extension APIClient {
-
-    // MARK: - Current User
-
-    func currentUser() async throws -> CurrentUserResponse {
-        let (data, _) = try await request(path: "/api/v1/user")
-        return try decoder.decode(CurrentUserResponse.self, from: data)
-    }
 
     // MARK: - Issue Editing (#263)
 
