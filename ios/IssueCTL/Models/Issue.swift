@@ -65,6 +65,11 @@ struct IssueDetailResponse: Codable, Sendable {
     let linkedPRs: [GitHubPull]
     let referencedFiles: [String]
     let fromCache: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case issue, comments, deployments, referencedFiles, fromCache
+        case linkedPRs = "linkedPrs"
+    }
 }
 
 struct IssueStateRequestBody: Encodable, Sendable {
