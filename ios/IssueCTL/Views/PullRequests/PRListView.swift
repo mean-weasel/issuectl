@@ -12,6 +12,7 @@ struct PRListView: View {
     @State private var mineOnly = false
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
+    @State private var navigationPath = NavigationPath()
 
     // Swipe state
     @State private var showMergeConfirm = false
@@ -85,7 +86,7 @@ struct PRListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 SectionTabs(selected: $section, counts: sectionCounts)
                     .padding(.vertical, 8)
@@ -167,6 +168,7 @@ struct PRListView: View {
                 }
             }
             .task { await loadAll() }
+            .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }
 
@@ -192,7 +194,7 @@ struct PRListView: View {
                     )) {
                         PRRowView(pull: pull, repoColor: color)
                     }
-                    .swipeActions(edge: .leading) {
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if pull.isOpen {
                             Button {
                                 swipeTarget = (repo.owner, repo.name, pull.number)

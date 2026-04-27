@@ -19,6 +19,7 @@ struct TerminalView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Done") { dismiss() }
+                            .accessibilityIdentifier("terminal-done-button")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 12) {
@@ -30,6 +31,7 @@ struct TerminalView: View {
                             } label: {
                                 Label("End", systemImage: "stop.circle.fill")
                             }
+                            .accessibilityIdentifier("terminal-end-button")
                         }
                     }
                 }
@@ -65,5 +67,9 @@ struct TerminalWebView: UIViewRepresentable {
         return webView
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {}
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        if webView.url != url {
+            webView.load(URLRequest(url: url))
+        }
+    }
 }

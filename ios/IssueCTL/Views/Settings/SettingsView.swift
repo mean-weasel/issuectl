@@ -13,9 +13,10 @@ struct SettingsView: View {
     @State private var removeError: String?
     @State private var refreshError: String?
     @State private var editingRepo: Repo?
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Form {
                 serverInfoSection
                 reposSection
@@ -77,6 +78,7 @@ struct SettingsView: View {
             .refreshable {
                 await loadData()
             }
+            .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }
 

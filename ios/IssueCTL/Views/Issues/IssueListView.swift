@@ -16,6 +16,7 @@ struct IssueListView: View {
     @State private var mineOnly = false
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
+    @State private var navigationPath = NavigationPath()
 
     // Swipe action state
     @State private var showCloseConfirm = false
@@ -147,7 +148,7 @@ struct IssueListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 SectionTabs(selected: $section, counts: sectionCounts)
                     .padding(.vertical, 8)
@@ -198,6 +199,7 @@ struct IssueListView: View {
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
                     }
+                    .accessibilityIdentifier("sort-menu")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -206,14 +208,17 @@ struct IssueListView: View {
                         } label: {
                             Label("Quick Create", systemImage: "plus")
                         }
+                        .accessibilityIdentifier("quick-create-button")
                         Button {
                             showParseSheet = true
                         } label: {
                             Label("Parse with AI", systemImage: "text.viewfinder")
                         }
+                        .accessibilityIdentifier("parse-ai-button")
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityIdentifier("create-menu")
                 }
             }
             .navigationDestination(for: IssueDestination.self) { dest in
@@ -273,6 +278,7 @@ struct IssueListView: View {
                 }
             }
             .task { await loadAll() }
+            .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }
 
@@ -299,7 +305,7 @@ struct IssueListView: View {
                     )) {
                         IssueRowView(issue: issue, repoColor: color, isRunning: running)
                     }
-                    .swipeActions(edge: .leading) {
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
                             Button {
                                 launchTarget = (repo.owner, repo.name, issue.number, issue.title)
@@ -473,7 +479,6 @@ struct IssueListView: View {
     private func loadPriorities() async {
         isLoadingPriorities = true
         var newPriorities: [String: Priority] = [:]
-        var hadFailure = false
         await withTaskGroup(of: [(String, Priority)].self) { group in
             let uniqueRepos = Set(repos.map { ($0.owner, $0.name) }.map { "\($0.0)/\($0.1)" })
             for repoFullName in uniqueRepos {
@@ -488,7 +493,6 @@ struct IssueListView: View {
                 }
             }
             for await pairs in group {
-                if pairs.isEmpty { hadFailure = true }
                 for (key, priority) in pairs {
                     newPriorities[key] = priority
                 }

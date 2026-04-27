@@ -62,19 +62,37 @@ issuectl init                   # First-time setup (creates DB)
 issuectl web                    # Start dashboard (localhost:3847)
 ```
 
-### iOS build
+### iOS build & run
 
+Use the `xcodebuildmcp` CLI for all iOS build, test, run, and simulator operations. Never use raw `xcodebuild`, `xcrun simctl`, or `simctl` directly.
+
+**Discovery pattern:**
 ```bash
-cd ios
-xcodebuild build \
-  -project IssueCTL.xcodeproj \
-  -scheme IssueCTL \
-  -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-  -configuration Debug \
-  CODE_SIGNING_ALLOWED=NO
+xcodebuildmcp --help                     # top-level workflows
+xcodebuildmcp <workflow> --help          # commands in a workflow
+xcodebuildmcp <workflow> <command> --help # flags for a command
 ```
 
-Or via XcodeBuildMCP: `build_sim` / `build_run_sim` / `screenshot`.
+**Common commands:**
+```bash
+xcodebuildmcp simulator build-and-run    # build + install + launch (one-shot)
+xcodebuildmcp simulator build            # compile only
+xcodebuildmcp simulator test             # run XCTests
+xcodebuildmcp simulator screenshot       # capture simulator screen
+xcodebuildmcp simulator list             # available simulators
+xcodebuildmcp ui-automation snapshot-ui  # view hierarchy with coordinates
+xcodebuildmcp ui-automation tap --label "Button"  # tap by accessibility label
+xcodebuildmcp ui-automation tap -x 200 -y 400     # tap by coordinates
+xcodebuildmcp ui-automation swipe        # swipe gesture
+xcodebuildmcp tools                      # list all 72 tools
+```
+
+**Rules:**
+- Run `xcodebuildmcp setup` if `.xcodebuildmcp/config.yaml` doesn't exist yet
+- Prefer `build-and-run` over separate build → install → launch steps
+- Session defaults auto-fill `--scheme`, `--project-path`, `--simulator-name` from config
+- All `--simulator-id` values come from `xcodebuildmcp simulator list`
+- Use `--help` on any command to discover flags — don't guess
 
 ## Logging
 

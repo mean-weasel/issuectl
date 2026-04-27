@@ -10,15 +10,19 @@ struct ContentView: View {
                 Tab("Issues", systemImage: "list.bullet") {
                     IssueListView()
                 }
+                .accessibilityIdentifier("issues-tab")
                 Tab("PRs", systemImage: "arrow.triangle.merge") {
                     PRListView()
                 }
+                .accessibilityIdentifier("prs-tab")
                 Tab("Active", systemImage: "play.circle") {
                     SessionListView()
                 }
+                .accessibilityIdentifier("active-tab")
                 Tab("Settings", systemImage: "gearshape") {
                     SettingsView()
                 }
+                .accessibilityIdentifier("settings-tab")
             }
             .overlay(alignment: .top) {
                 OfflineBanner()

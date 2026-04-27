@@ -58,6 +58,7 @@ struct LaunchView: View {
                         Text("Clone").tag("clone")
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("workspace-mode-picker")
                 }
 
                 Section("Branch Name") {
