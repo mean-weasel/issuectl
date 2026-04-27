@@ -559,7 +559,7 @@ struct IssueListView: View {
     }
 
     private func refreshWithCooldown() async {
-        if let last = lastRefreshDate, Date().timeIntervalSince(last) < refreshCooldown {
+        guard shouldAllowRefresh(lastRefreshDate: lastRefreshDate, cooldown: refreshCooldown) else {
             return
         }
         lastRefreshDate = Date()

@@ -552,10 +552,10 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(deployment.repoId, 42)
         XCTAssertEqual(deployment.issueNumber, 10)
         XCTAssertEqual(deployment.branchName, "issue-10-fix-bug")
-        XCTAssertEqual(deployment.workspaceMode, "worktree")
+        XCTAssertEqual(deployment.workspaceMode, .worktree)
         XCTAssertEqual(deployment.workspacePath, "/tmp/worktrees/issue-10")
         XCTAssertEqual(deployment.linkedPrNumber, 15)
-        XCTAssertEqual(deployment.state, "active")
+        XCTAssertEqual(deployment.state, .active)
         XCTAssertTrue(deployment.isActive)
         XCTAssertNil(deployment.endedAt)
         XCTAssertEqual(deployment.ttydPort, 7682)
@@ -581,6 +581,7 @@ final class ModelDecodingTests: XCTestCase {
         """.data(using: .utf8)!
 
         let deployment = try decoder.decode(Deployment.self, from: json)
+        XCTAssertEqual(deployment.state, .ended)
         XCTAssertFalse(deployment.isActive)
         XCTAssertNil(deployment.linkedPrNumber)
         XCTAssertNil(deployment.ttydPort)
@@ -763,7 +764,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(draft.id, "draft-abc123")
         XCTAssertEqual(draft.title, "New feature idea")
         XCTAssertEqual(draft.body, "Description of the feature")
-        XCTAssertEqual(draft.priority, "normal")
+        XCTAssertEqual(draft.priority, .normal)
         XCTAssertEqual(draft.createdAt, 1714200000.0)
     }
 
