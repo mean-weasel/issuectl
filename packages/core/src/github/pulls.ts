@@ -92,6 +92,46 @@ export async function getPullChecks(
   }));
 }
 
+export type ChecksRollupStatus = "success" | "failure" | "pending" | null;
+
+/**
+ * Returns a single rollup status for a given ref by inspecting check runs.
+ * - "failure" if any check has conclusion failure/cancelled/timed_out
+ * - "pending" if any check is not yet completed
+ * - "success" if all checks completed with success/neutral/skipped
+ * - null if there are no checks
+ */
+export async function getChecksRollupForRef(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  ref: string,
+): Promise<ChecksRollupStatus> {
+  const { data } = await octokit.rest.checks.listForRef({
+    owner,
+    repo,
+    ref,
+    per_page: 100,
+  });
+
+  const runs = data.check_runs;
+  if (runs.length === 0) return null;
+
+  let hasPending = false;
+  for (const run of runs) {
+    if (run.status !== "completed") {
+      hasPending = true;
+      continue;
+    }
+    const c = run.conclusion;
+    if (c === "failure" || c === "cancelled" || c === "timed_out" || c === "action_required") {
+      return "failure";
+    }
+  }
+
+  return hasPending ? "pending" : "success";
+}
+
 export async function listPullFiles(
   octokit: Octokit,
   owner: string,

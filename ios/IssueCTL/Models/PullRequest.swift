@@ -17,6 +17,7 @@ struct GitHubPull: Codable, Identifiable, Sendable {
     let mergedAt: String?
     let closedAt: String?
     let htmlUrl: String
+    let checksStatus: String?
 
     var id: Int { number }
 

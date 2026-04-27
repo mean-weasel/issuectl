@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { getDb, getRepo, getPulls, withAuthRetry } from "@issuectl/core";
+import { getDb, getRepo, getPulls, getPullsWithChecks, withAuthRetry } from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +20,15 @@ export async function GET(
     }
 
     const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
-    const result = await withAuthRetry((octokit) =>
-      getPulls(db, octokit, owner, repo, { forceRefresh }),
-    );
+    const includeChecks = request.nextUrl.searchParams.get("checks") !== "false";
+
+    const result = includeChecks
+      ? await withAuthRetry((octokit) =>
+          getPullsWithChecks(db, octokit, owner, repo, { forceRefresh }),
+        )
+      : await withAuthRetry((octokit) =>
+          getPulls(db, octokit, owner, repo, { forceRefresh }),
+        );
     return NextResponse.json(result);
   } catch (err) {
     console.error(`[issuectl] GET /api/v1/pulls/${owner}/${repo} failed:`, err);

@@ -1,7 +1,7 @@
 import type { Octokit } from "@octokit/rest";
 import type Database from "better-sqlite3";
 import type { GitHubPull, GitHubCheck, GitHubIssue, GitHubPullFile, GitHubPullReview } from "../github/types.js";
-import { listPulls, getPull, getPullChecks, listPullFiles, listReviews } from "../github/pulls.js";
+import { listPulls, getPull, getPullChecks, listPullFiles, listReviews, getChecksRollupForRef, type ChecksRollupStatus } from "../github/pulls.js";
 import { getIssue } from "../github/issues.js";
 import { getCacheTtl, getCached, setCached, isFresh } from "../db/cache.js";
 
@@ -47,6 +47,75 @@ export async function getPulls(
   const pulls = await listPulls(octokit, owner, repo, "open");
   setCached(db, cacheKey, pulls);
   return { pulls, fromCache: false, cachedAt: new Date() };
+}
+
+export type PullWithChecksStatus = GitHubPull & { checksStatus: ChecksRollupStatus };
+
+/**
+ * Fetches the PR list and enriches each PR with a checksStatus rollup.
+ * Check statuses are fetched concurrently (capped at 5 in-flight).
+ * The enriched result is cached separately from the plain pulls list.
+ */
+export async function getPullsWithChecks(
+  db: Database.Database,
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  options?: { forceRefresh?: boolean },
+): Promise<{
+  pulls: PullWithChecksStatus[];
+  fromCache: boolean;
+  cachedAt: Date | null;
+}> {
+  const cacheKey = `pulls-with-checks:${owner}/${repo}`;
+  const ttl = getCacheTtl(db);
+
+  if (!options?.forceRefresh) {
+    const cached = getCached<PullWithChecksStatus[]>(db, cacheKey);
+    if (cached) {
+      if (!isFresh(cached.fetchedAt, ttl)) {
+        // Background revalidation
+        fetchPullsWithChecks(octokit, owner, repo).then((data) => {
+          setCached(db, cacheKey, data);
+        }).catch((err) => {
+          console.warn(`[issuectl] Background revalidation failed for ${cacheKey}:`, err);
+        });
+      }
+      return { pulls: cached.data, fromCache: true, cachedAt: cached.fetchedAt };
+    }
+  }
+
+  const pulls = await fetchPullsWithChecks(octokit, owner, repo);
+  setCached(db, cacheKey, pulls);
+  return { pulls, fromCache: false, cachedAt: new Date() };
+}
+
+async function fetchPullsWithChecks(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+): Promise<PullWithChecksStatus[]> {
+  const pulls = await listPulls(octokit, owner, repo, "open");
+
+  // Fetch check rollups concurrently with a concurrency cap of 5
+  const CONCURRENCY = 5;
+  const results: PullWithChecksStatus[] = [];
+  for (let i = 0; i < pulls.length; i += CONCURRENCY) {
+    const batch = pulls.slice(i, i + CONCURRENCY);
+    const enriched = await Promise.all(
+      batch.map(async (pull) => {
+        let checksStatus: ChecksRollupStatus = null;
+        try {
+          checksStatus = await getChecksRollupForRef(octokit, owner, repo, pull.headRef);
+        } catch {
+          // If checks fetch fails, leave as null rather than failing the whole list
+        }
+        return { ...pull, checksStatus };
+      }),
+    );
+    results.push(...enriched);
+  }
+  return results;
 }
 
 async function fetchPullDetail(
