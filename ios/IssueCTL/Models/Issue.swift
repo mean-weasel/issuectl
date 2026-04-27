@@ -65,6 +65,11 @@ struct IssueDetailResponse: Codable, Sendable {
     let linkedPRs: [GitHubPull]
     let referencedFiles: [String]
     let fromCache: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case issue, comments, deployments, referencedFiles, fromCache
+        case linkedPRs = "linkedPrs"
+    }
 }
 
 struct IssueStateRequestBody: Encodable, Sendable {
@@ -94,7 +99,7 @@ struct Draft: Codable, Identifiable, Sendable {
     let id: String
     let title: String
     let body: String?
-    let priority: String?
+    let priority: Priority?
     let createdAt: Double // unix timestamp from server
 }
 
@@ -105,7 +110,7 @@ struct DraftsResponse: Codable, Sendable {
 struct CreateDraftRequestBody: Encodable, Sendable {
     let title: String
     let body: String?
-    let priority: String?
+    let priority: Priority?
 }
 
 struct CreateDraftResponse: Codable, Sendable {

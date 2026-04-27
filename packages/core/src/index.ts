@@ -142,6 +142,7 @@ export {
 } from "./data/issues.js";
 export {
   getPulls,
+  getPullsWithChecks,
   getPullDetail,
 } from "./data/pulls.js";
 export {
@@ -151,6 +152,7 @@ export {
   createPullComment,
   type ReviewEvent,
   type MergeMethod,
+  type ChecksRollupStatus,
 } from "./github/pulls.js";
 export { getDashboardData } from "./data/repos.js";
 export {

@@ -13,7 +13,7 @@ struct LaunchView: View {
     let repoLocalPath: String?
 
     @State private var branchName: String
-    @State private var workspaceMode: String
+    @State private var workspaceMode: WorkspaceMode
     @State private var showCloneWarning: Bool
     @State private var selectedCommentIndices: Set<Int> = []
     @State private var selectedFilePaths: Set<String> = []
@@ -35,14 +35,9 @@ struct LaunchView: View {
         self.referencedFiles = referencedFiles
         self.repoLocalPath = repoLocalPath
 
-        let slug = issueTitle
-            .lowercased()
-            .replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-            .prefix(40)
-        _branchName = State(initialValue: "issue-\(issueNumber)-\(slug)")
+        _branchName = State(initialValue: generateBranchName(issueNumber: issueNumber, issueTitle: issueTitle))
         let needsClone = repoLocalPath == nil || repoLocalPath?.isEmpty == true
-        _workspaceMode = State(initialValue: needsClone ? "clone" : "worktree")
+        _workspaceMode = State(initialValue: needsClone ? .clone : .worktree)
         _showCloneWarning = State(initialValue: needsClone)
     }
 
@@ -143,9 +138,9 @@ struct LaunchView: View {
 
             Section("Workspace Mode") {
                 Picker("Mode", selection: $workspaceMode) {
-                    Text("Worktree").tag("worktree")
-                    Text("Existing").tag("existing")
-                    Text("Clone").tag("clone")
+                    Text("Worktree").tag(WorkspaceMode.worktree)
+                    Text("Existing").tag(WorkspaceMode.existing)
+                    Text("Clone").tag(WorkspaceMode.clone)
                 }
                 .pickerStyle(.segmented)
                 .disabled(showCloneWarning)
@@ -243,13 +238,14 @@ struct LaunchView: View {
                     if let match = repos.first(where: { $0.owner == owner && $0.name == repo }) {
                         let needsClone = match.localPath == nil || match.localPath?.isEmpty == true
                         showCloneWarning = needsClone
-                        workspaceMode = needsClone ? "clone" : "worktree"
+                        workspaceMode = needsClone ? .clone : .worktree
                     }
                 } catch {
-                    // Network failure — leave showCloneWarning at its init value
+                    // Could not verify clone status — unlock the picker so user can choose
+                    showCloneWarning = false
                 }
             }
-            if workspaceMode == "worktree" {
+            if workspaceMode == .worktree {
                 do {
                     let status = try await api.checkWorktreeStatus(
                         owner: owner, repo: repo, issueNumber: issueNumber
@@ -311,9 +307,14 @@ struct LaunchView: View {
             if response.success, let deploymentId = response.deploymentId, let port = response.ttydPort {
                 launchedPort = port
                 launchedDeployment = ActiveDeployment(
-                    id: deploymentId, repoId: 0, issueNumber: issueNumber,
-                    branchName: branchName, workspaceMode: workspaceMode,
-                    workspacePath: "", linkedPrNumber: nil, state: "active",
+                    id: deploymentId,
+                    repoId: 0,
+                    issueNumber: issueNumber,
+                    branchName: branchName,
+                    workspaceMode: workspaceMode,
+                    workspacePath: "",
+                    linkedPrNumber: nil,
+                    state: .active,
                     launchedAt: ISO8601DateFormatter().string(from: Date()),
                     endedAt: nil, ttydPort: port, ttydPid: nil,
                     owner: owner, repoName: repo

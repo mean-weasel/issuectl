@@ -5,7 +5,7 @@ import Foundation
 struct UpdateDraftRequestBody: Encodable, Sendable {
     let title: String?
     let body: String?
-    let priority: String?
+    let priority: Priority?
 }
 
 struct UpdateDraftResponse: Codable, Sendable {
