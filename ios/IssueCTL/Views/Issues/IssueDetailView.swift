@@ -9,7 +9,7 @@ struct IssueDetailView: View {
     @State private var detail: IssueDetailResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var showLaunchSheet = false
+    @State private var activeDetailSheet: DetailSheet?
     @State private var isClosing = false
     @State private var isReopening = false
     @State private var showCommentSheet = false
@@ -18,10 +18,7 @@ struct IssueDetailView: View {
     @State private var showReopenConfirm = false
     @State private var actionError: String?
 
-    // State for issue editing, label management, and comment edit/delete actions
-    @State private var showEditSheet = false
-    @State private var showLabelSheet = false
-    @State private var showAssigneeSheet = false
+    // Comment actions and error display
     @State private var editingComment: GitHubComment?
     @State private var deletingComment: GitHubComment?
     @State private var isDeletingComment = false
@@ -31,7 +28,6 @@ struct IssueDetailView: View {
     // Priority state
     @State private var currentPriority: Priority = .normal
     @State private var isLoadingPriority = false
-    @State private var showReassignSheet = false
     @State private var staleHint: String?
     @State private var staleHintDismissTask: Task<Void, Never>?
 
@@ -84,21 +80,21 @@ struct IssueDetailView: View {
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if detail != nil {
+            if let detail {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
-                            showEditSheet = true
+                            activeDetailSheet = .edit(detail)
                         } label: {
                             Label("Edit Issue", systemImage: "pencil")
                         }
                         Button {
-                            showLabelSheet = true
+                            activeDetailSheet = .labels(detail)
                         } label: {
                             Label("Manage Labels", systemImage: "tag")
                         }
                         Button {
-                            showAssigneeSheet = true
+                            activeDetailSheet = .assignees(detail)
                         } label: {
                             Label("Manage Assignees", systemImage: "person.badge.plus")
                         }
@@ -123,12 +119,12 @@ struct IssueDetailView: View {
                         }
                         Divider()
                         Button {
-                            showReassignSheet = true
+                            activeDetailSheet = .reassign(detail)
                         } label: {
                             Label("Reassign to Repo…", systemImage: "arrow.triangle.swap")
                         }
                         Button {
-                            showLaunchSheet = true
+                            activeDetailSheet = .launch(detail)
                         } label: {
                             Label("Launch", systemImage: "play.fill")
                         }
@@ -138,18 +134,16 @@ struct IssueDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showReassignSheet) {
-            if let detail {
+        .sheet(item: $activeDetailSheet) { sheet in
+            switch sheet {
+            case .reassign(let detail):
                 ReassignSheet(
                     owner: owner, repo: repo, number: number,
                     issueTitle: detail.issue.title
-                ) { newOwner, newRepo, newNumber in
+                ) { _, _, _ in
                     Task { await load(refresh: true) }
                 }
-            }
-        }
-        .sheet(isPresented: $showLaunchSheet) {
-            if let detail {
+            case .launch(let detail):
                 LaunchView(
                     owner: owner,
                     repo: repo,
@@ -157,6 +151,25 @@ struct IssueDetailView: View {
                     issueTitle: detail.issue.title,
                     comments: detail.comments,
                     referencedFiles: detail.referencedFiles
+                )
+            case .edit(let detail):
+                EditIssueSheet(
+                    owner: owner, repo: repo, number: number,
+                    currentTitle: detail.issue.title,
+                    currentBody: detail.issue.body,
+                    onSuccess: { Task { await load(refresh: true) } }
+                )
+            case .labels(let detail):
+                LabelManagementSheet(
+                    owner: owner, repo: repo, number: number,
+                    currentLabels: detail.issue.labels,
+                    onSuccess: { Task { await load(refresh: true) } }
+                )
+            case .assignees(let detail):
+                AssigneeSheet(
+                    owner: owner, repo: repo, number: number,
+                    currentAssignees: (detail.issue.assignees ?? []).map(\.login),
+                    onUpdate: { _ in Task { await load(refresh: true) } }
                 )
             }
         }
@@ -171,34 +184,6 @@ struct IssueDetailView: View {
                 owner: owner, repo: repo, number: number,
                 onSuccess: { Task { await load(refresh: true) } }
             )
-        }
-        .sheet(isPresented: $showEditSheet) {
-            if let detail {
-                EditIssueSheet(
-                    owner: owner, repo: repo, number: number,
-                    currentTitle: detail.issue.title,
-                    currentBody: detail.issue.body,
-                    onSuccess: { Task { await load(refresh: true) } }
-                )
-            }
-        }
-        .sheet(isPresented: $showLabelSheet) {
-            if let detail {
-                LabelManagementSheet(
-                    owner: owner, repo: repo, number: number,
-                    currentLabels: detail.issue.labels,
-                    onSuccess: { Task { await load(refresh: true) } }
-                )
-            }
-        }
-        .sheet(isPresented: $showAssigneeSheet) {
-            if let detail {
-                AssigneeSheet(
-                    owner: owner, repo: repo, number: number,
-                    currentAssignees: (detail.issue.assignees ?? []).map(\.login),
-                    onUpdate: { _ in Task { await load(refresh: true) } }
-                )
-            }
         }
         .sheet(item: $editingComment) { comment in
             EditCommentSheet(
@@ -660,6 +645,24 @@ struct PriorityBadge: View {
         case .high: "arrow.up"
         case .normal: "minus"
         case .low: "arrow.down"
+        }
+    }
+}
+
+enum DetailSheet: Identifiable, Sendable {
+    case reassign(IssueDetailResponse)
+    case launch(IssueDetailResponse)
+    case edit(IssueDetailResponse)
+    case labels(IssueDetailResponse)
+    case assignees(IssueDetailResponse)
+
+    var id: String {
+        switch self {
+        case .reassign: "reassign"
+        case .launch: "launch"
+        case .edit: "edit"
+        case .labels: "labels"
+        case .assignees: "assignees"
         }
     }
 }

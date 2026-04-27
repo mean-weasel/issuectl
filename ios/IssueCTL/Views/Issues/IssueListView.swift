@@ -25,8 +25,7 @@ struct IssueListView: View {
     @State private var showCloseConfirm = false
     @State private var showReopenConfirm = false
     @State private var swipeTarget: (owner: String, repo: String, number: Int)?
-    @State private var showLaunchSheet = false
-    @State private var launchTarget: (owner: String, repo: String, number: Int, title: String)?
+    @State private var launchTarget: LaunchTarget?
 
     // Draft swipe state
     @State private var showDeleteDraftConfirm = false
@@ -256,17 +255,15 @@ struct IssueListView: View {
             .sheet(isPresented: $showParseSheet) {
                 ParseView()
             }
-            .sheet(isPresented: $showLaunchSheet) {
-                if let target = launchTarget {
-                    LaunchView(
-                        owner: target.owner,
-                        repo: target.repo,
-                        issueNumber: target.number,
-                        issueTitle: target.title,
-                        comments: [],
-                        referencedFiles: []
-                    )
-                }
+            .sheet(item: $launchTarget) { target in
+                LaunchView(
+                    owner: target.owner,
+                    repo: target.repo,
+                    issueNumber: target.number,
+                    issueTitle: target.title,
+                    comments: [],
+                    referencedFiles: []
+                )
             }
             .confirmationDialog("Close Issue", isPresented: $showCloseConfirm, titleVisibility: .visible) {
                 Button("Close", role: .destructive) {
@@ -353,8 +350,7 @@ struct IssueListView: View {
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
                             Button {
-                                launchTarget = (repo.owner, repo.name, issue.number, issue.title)
-                                showLaunchSheet = true
+                                launchTarget = LaunchTarget(owner: repo.owner, repo: repo.name, number: issue.number, title: issue.title)
                             } label: {
                                 Label("Launch", systemImage: "play.fill")
                             }
@@ -596,6 +592,15 @@ struct IssueDestination: Hashable {
     let owner: String
     let repo: String
     let number: Int
+}
+
+struct LaunchTarget: Identifiable, Sendable {
+    let owner: String
+    let repo: String
+    let number: Int
+    let title: String
+
+    var id: String { "\(owner)/\(repo)#\(number)" }
 }
 
 struct DraftDestination: Hashable {

@@ -274,7 +274,7 @@ final class ModelDecodingTests: XCTestCase {
                 }
             ],
             "deployments": [],
-            "linked_prs": [],
+            "linkedPRs": [],
             "referenced_files": ["src/main.ts", "README.md"],
             "from_cache": false
         }
