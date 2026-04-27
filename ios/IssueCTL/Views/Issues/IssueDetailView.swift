@@ -18,7 +18,7 @@ struct IssueDetailView: View {
     @State private var showReopenConfirm = false
     @State private var actionError: String?
 
-    // State for comment edit/delete actions
+    // Comment actions and error display
     @State private var editingComment: GitHubComment?
     @State private var deletingComment: GitHubComment?
     @State private var isDeletingComment = false
