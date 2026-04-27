@@ -291,6 +291,7 @@ struct IssueListView: View {
                 Label(actionError, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
                     .font(.subheadline)
+                    .lineLimit(3)
             }
             ForEach(filteredIssues, id: \.htmlUrl) { issue in
                 let color = repoIndex(for: issue).map { RepoColors.color(for: $0) } ?? .secondary
@@ -305,6 +306,7 @@ struct IssueListView: View {
                     )) {
                         IssueRowView(issue: issue, repoColor: color, isRunning: running)
                     }
+                    .accessibilityIdentifier("issue-row-\(issue.number)")
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
                             Button {
@@ -369,6 +371,7 @@ struct IssueListView: View {
                         }
                         .padding(.vertical, 2)
                     }
+                    .accessibilityIdentifier("draft-row-\(draft.id)")
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             deleteDraftTarget = draft.id
@@ -426,7 +429,7 @@ struct IssueListView: View {
 
             // Supplementary fetches — failures surface via actionError banner
             // but don't block the primary issue list.
-            var supplementaryErrors: [String] = []
+            var failures: [String] = []
 
             async let draftsFetch: Result<DraftsResponse, Error> = {
                 do { return .success(try await api.listDrafts()) }
@@ -438,11 +441,11 @@ struct IssueListView: View {
             }()
             switch await draftsFetch {
             case .success(let result): drafts = result.drafts
-            case .failure(let error): supplementaryErrors.append("drafts (\(error.localizedDescription))")
+            case .failure(let error): failures.append("drafts (\(error.localizedDescription))")
             }
             switch await deploymentsFetch {
             case .success(let result): activeDeployments = result.deployments
-            case .failure(let error): supplementaryErrors.append("sessions (\(error.localizedDescription))")
+            case .failure(let error): failures.append("sessions (\(error.localizedDescription))")
             }
 
             do {
@@ -451,10 +454,9 @@ struct IssueListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
-                supplementaryErrors.append("user profile (\(error.localizedDescription))")
+                failures.append("user profile (\(error.localizedDescription))")
             }
 
-            var failedRepos: [String] = []
             await withTaskGroup(of: (String, String, [GitHubIssue]?).self) { group in
                 for repo in repos {
                     group.addTask {
@@ -470,13 +472,12 @@ struct IssueListView: View {
                     if let issues {
                         issuesByRepo[fullName] = issues
                     } else {
-                        failedRepos.append(name)
+                        failures.append(name)
                     }
                 }
             }
-            let allFailures = failedRepos + supplementaryErrors
-            if !allFailures.isEmpty {
-                actionError = "Failed to load: \(allFailures.joined(separator: ", "))"
+            if !failures.isEmpty {
+                actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
 
             // Fetch priorities for all displayed issues (best-effort)

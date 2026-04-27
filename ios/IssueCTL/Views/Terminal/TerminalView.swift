@@ -9,19 +9,32 @@ struct TerminalView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var showEndConfirm = false
+    @State private var loadError: String?
 
     var body: some View {
         NavigationStack {
             Group {
                 if let url = terminalURL {
-                    TerminalWebView(url: url)
-                        .ignoresSafeArea(edges: .bottom)
+                    if let loadError {
+                        ContentUnavailableView {
+                            Label("Terminal Connection Failed", systemImage: "wifi.exclamationmark")
+                        } description: {
+                            Text(loadError)
+                        } actions: {
+                            Button("Retry") { self.loadError = nil }
+                        }
+                    } else {
+                        TerminalWebView(url: url, loadError: $loadError)
+                            .ignoresSafeArea(edges: .bottom)
+                    }
                 } else {
-                    ContentUnavailableView(
-                        "Invalid Server URL",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text("Could not parse: \(api.serverURL)/api/terminal/\(port)/")
-                    )
+                    ContentUnavailableView {
+                        Label("Invalid Server URL", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text("Could not parse: \(api.serverURL)/api/terminal/\(port)/")
+                    } actions: {
+                        Button("Dismiss") { dismiss() }
+                    }
                 }
             }
             .navigationTitle("\(deployment.repoFullName) #\(deployment.issueNumber)")
@@ -64,6 +77,11 @@ struct TerminalView: View {
 
 struct TerminalWebView: UIViewRepresentable {
     let url: URL
+    @Binding var loadError: String?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(loadError: $loadError)
+    }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -72,6 +90,7 @@ struct TerminalWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .black
         webView.scrollView.isScrollEnabled = false
+        webView.navigationDelegate = context.coordinator
         webView.load(URLRequest(url: url))
         return webView
     }
@@ -79,6 +98,26 @@ struct TerminalWebView: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         if webView.url != url {
             webView.load(URLRequest(url: url))
+        }
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        @Binding var loadError: String?
+
+        init(loadError: Binding<String?>) {
+            _loadError = loadError
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            loadError = nil
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            loadError = error.localizedDescription
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            loadError = error.localizedDescription
         }
     }
 }

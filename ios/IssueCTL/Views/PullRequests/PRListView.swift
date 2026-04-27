@@ -181,6 +181,7 @@ struct PRListView: View {
                 Label(actionError, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
                     .font(.subheadline)
+                    .lineLimit(3)
             }
             ForEach(filteredPulls, id: \.htmlUrl) { pull in
                 let color = repoIndex(for: pull).map { RepoColors.color(for: $0) } ?? .secondary
@@ -194,6 +195,7 @@ struct PRListView: View {
                     )) {
                         PRRowView(pull: pull, repoColor: color)
                     }
+                    .accessibilityIdentifier("pr-row-\(pull.number)")
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if pull.isOpen {
                             Button {
@@ -238,17 +240,16 @@ struct PRListView: View {
             repos = try await api.repos()
 
             // Fetch current user for "mine" filter — failure is non-fatal
-            var supplementaryErrors: [String] = []
+            var failures: [String] = []
             do {
                 let user = try await api.currentUser()
                 currentUserLogin = user.login
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
-                supplementaryErrors.append("user profile (\(error.localizedDescription))")
+                failures.append("user profile (\(error.localizedDescription))")
             }
 
-            var failedRepos: [String] = []
             await withTaskGroup(of: (String, String, [GitHubPull]?).self) { group in
                 for repo in repos {
                     group.addTask {
@@ -264,13 +265,12 @@ struct PRListView: View {
                     if let pulls {
                         pullsByRepo[fullName] = pulls
                     } else {
-                        failedRepos.append(name)
+                        failures.append(name)
                     }
                 }
             }
-            let allFailures = failedRepos + supplementaryErrors
-            if !allFailures.isEmpty {
-                actionError = "Failed to load: \(allFailures.joined(separator: ", "))"
+            if !failures.isEmpty {
+                actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
         } catch {
             errorMessage = error.localizedDescription

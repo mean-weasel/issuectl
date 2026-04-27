@@ -20,6 +20,7 @@ struct SettingsView: View {
             Form {
                 serverInfoSection
                 reposSection
+                managementSection
                 disconnectSection
             }
             .navigationTitle("Settings")
@@ -31,6 +32,14 @@ struct SettingsView: View {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Add repository")
+                }
+            }
+            .navigationDestination(for: SettingsDestination.self) { dest in
+                switch dest {
+                case .advancedSettings:
+                    AdvancedSettingsView()
+                case .worktrees:
+                    WorktreeListView()
                 }
             }
             .sheet(isPresented: $showAddRepo) {
@@ -153,6 +162,19 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Management Section
+
+    private var managementSection: some View {
+        Section("Management") {
+            NavigationLink(value: SettingsDestination.advancedSettings) {
+                Label("Advanced Settings", systemImage: "slider.horizontal.3")
+            }
+            NavigationLink(value: SettingsDestination.worktrees) {
+                Label("Worktrees", systemImage: "arrow.triangle.branch")
+            }
+        }
+    }
+
     // MARK: - Disconnect Section
 
     private var disconnectSection: some View {
@@ -218,6 +240,11 @@ struct SettingsView: View {
             }
         }
     }
+}
+
+enum SettingsDestination: Hashable {
+    case advancedSettings
+    case worktrees
 }
 
 // MARK: - Repo Row

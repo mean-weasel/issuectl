@@ -51,6 +51,7 @@ struct PRDetailView: View {
                                 Label(actionError, systemImage: "exclamationmark.triangle")
                                     .foregroundStyle(.red)
                                     .font(.subheadline)
+                                    .lineLimit(3)
                             }
                         }
                         .padding()
@@ -66,6 +67,9 @@ struct PRDetailView: View {
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .onAppear {
+            actionError = nil
+        }
         .sheet(isPresented: $showRequestChanges) {
             RequestChangesSheet(
                 owner: owner, repo: repo, number: number,

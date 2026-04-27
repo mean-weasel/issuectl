@@ -34,6 +34,7 @@ struct SessionListView: View {
                     List {
                         ForEach(deployments) { deployment in
                             SessionRowView(deployment: deployment)
+                                .accessibilityIdentifier("session-row-\(deployment.id)")
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     if deployment.ttydPort != nil {

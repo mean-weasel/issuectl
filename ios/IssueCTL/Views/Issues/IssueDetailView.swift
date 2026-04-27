@@ -31,6 +31,7 @@ struct IssueDetailView: View {
     // Priority state
     @State private var currentPriority: Priority = .normal
     @State private var isLoadingPriority = false
+    @State private var showReassignSheet = false
 
     var body: some View {
         Group {
@@ -110,6 +111,11 @@ struct IssueDetailView: View {
                         }
                         Divider()
                         Button {
+                            showReassignSheet = true
+                        } label: {
+                            Label("Reassign to Repo…", systemImage: "arrow.triangle.swap")
+                        }
+                        Button {
                             showLaunchSheet = true
                         } label: {
                             Label("Launch", systemImage: "play.fill")
@@ -117,6 +123,16 @@ struct IssueDetailView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
+                }
+            }
+        }
+        .sheet(isPresented: $showReassignSheet) {
+            if let detail {
+                ReassignSheet(
+                    owner: owner, repo: repo, number: number,
+                    issueTitle: detail.issue.title
+                ) { newOwner, newRepo, newNumber in
+                    Task { await load(refresh: true) }
                 }
             }
         }
@@ -211,6 +227,9 @@ struct IssueDetailView: View {
             showActionError = newValue != nil
         }
         .task { await load() }
+        .onAppear {
+            actionError = nil
+        }
     }
 
     // MARK: - Sections
