@@ -101,9 +101,13 @@ extension APIClient {
     // MARK: Worktree Status
 
     func checkWorktreeStatus(owner: String, repo: String, issueNumber: Int) async throws -> WorktreeStatusResponse {
-        let (data, _) = try await request(
-            path: "/api/v1/worktrees/status?owner=\(owner)&repo=\(repo)&issueNumber=\(issueNumber)"
-        )
+        var components = URLComponents(string: "/api/v1/worktrees/status")!
+        components.queryItems = [
+            URLQueryItem(name: "owner", value: owner),
+            URLQueryItem(name: "repo", value: repo),
+            URLQueryItem(name: "issueNumber", value: String(issueNumber)),
+        ]
+        let (data, _) = try await request(path: components.string!)
         return try decoder.decode(WorktreeStatusResponse.self, from: data)
     }
 

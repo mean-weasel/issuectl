@@ -51,6 +51,7 @@ export async function ensureTtydForDeployment(
     updateTtydInfo(db, deploymentId, port, pid);
     return { port, respawned: true };
   } catch (err) {
+    console.error("[issuectl] ensureTtydForDeployment failed:", deploymentId, err);
     return { alive: false, error: formatErrorForUser(err) };
   }
 }

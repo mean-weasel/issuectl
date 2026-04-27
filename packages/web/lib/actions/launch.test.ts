@@ -256,7 +256,7 @@ describe("ensureTtyd", () => {
 
     const result = await ensureTtyd(1);
 
-    expect(result).toEqual({ alive: false });
+    expect(result).toEqual({ alive: false, error: "Terminal session has ended" });
     expect(respawnTtyd).not.toHaveBeenCalled();
     expect(coreEndDeployment).toHaveBeenCalled();
   });
@@ -266,7 +266,7 @@ describe("ensureTtyd", () => {
 
     const result = await ensureTtyd(1);
 
-    expect(result).toEqual({ alive: false });
+    expect(result).toEqual({ alive: false, error: "Deployment not found or already ended" });
   });
 
   it("returns alive false when deployment has no ttydPid", async () => {
@@ -274,7 +274,7 @@ describe("ensureTtyd", () => {
 
     const result = await ensureTtyd(1);
 
-    expect(result).toEqual({ alive: false });
+    expect(result).toEqual({ alive: false, error: "No terminal process configured" });
   });
 
   it("calls updateTtydInfo with new PID after respawn", async () => {
@@ -307,7 +307,7 @@ describe("ensureTtyd", () => {
 
     const result = await ensureTtyd(1);
 
-    expect(result).toEqual({ alive: false });
+    expect(result).toEqual({ alive: false, error: "Repository not found" });
     expect(isTmuxSessionAlive).not.toHaveBeenCalled();
   });
 });

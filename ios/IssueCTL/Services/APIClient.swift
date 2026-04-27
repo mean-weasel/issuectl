@@ -56,7 +56,7 @@ final class APIClient {
         }
 
         guard let url = URL(string: path, relativeTo: base) else {
-            throw APIError.notConfigured
+            throw APIError.invalidPath(path)
         }
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
@@ -92,7 +92,10 @@ final class APIClient {
         guard let base = URL(string: url) else {
             throw APIError.notConfigured
         }
-        var urlRequest = URLRequest(url: base.appendingPathComponent("/api/v1/health"))
+        guard let healthURL = URL(string: "/api/v1/health", relativeTo: base) else {
+            throw APIError.invalidPath("/api/v1/health")
+        }
+        var urlRequest = URLRequest(url: healthURL)
         urlRequest.httpMethod = "GET"
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -225,6 +228,7 @@ final class APIClient {
 
 enum APIError: LocalizedError {
     case notConfigured
+    case invalidPath(String)
     case unauthorized
     case invalidResponse
     case serverError(Int, String)
@@ -232,6 +236,7 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured: "Server URL not configured"
+        case .invalidPath(let path): "Invalid API path: \(path)"
         case .unauthorized: "Invalid API token"
         case .invalidResponse: "Invalid server response"
         case .serverError(let code, let message): "Server error (\(code)): \(message)"

@@ -15,7 +15,7 @@ export async function POST(
   const { id: idStr } = await params;
   const deploymentId = parseInt(idStr, 10);
   if (Number.isNaN(deploymentId) || deploymentId <= 0) {
-    return NextResponse.json({ alive: false }, { status: 400 });
+    return NextResponse.json({ alive: false, error: "Invalid deployment ID" }, { status: 400 });
   }
 
   const result = await ensureTtydForDeployment(deploymentId);

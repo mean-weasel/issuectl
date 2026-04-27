@@ -70,6 +70,19 @@ struct LaunchView: View {
                     port: port,
                     onEnd: { dismiss() }
                 )
+            } else {
+                NavigationStack {
+                    ContentUnavailableView {
+                        Label("Terminal Error", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text("Terminal port was not assigned.")
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Dismiss") { dismiss() }
+                        }
+                    }
+                }
             }
         }
     }
