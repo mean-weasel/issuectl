@@ -245,7 +245,7 @@ struct PRListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
-                supplementaryErrors.append("user profile")
+                supplementaryErrors.append("user profile (\(error.localizedDescription))")
             }
 
             var failedRepos: [String] = []

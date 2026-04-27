@@ -428,23 +428,21 @@ struct IssueListView: View {
             // but don't block the primary issue list.
             var supplementaryErrors: [String] = []
 
-            async let draftsFetch: DraftsResponse? = {
-                do { return try await api.listDrafts() }
-                catch { return nil }
+            async let draftsFetch: Result<DraftsResponse, Error> = {
+                do { return .success(try await api.listDrafts()) }
+                catch { return .failure(error) }
             }()
-            async let deploymentsFetch: ActiveDeploymentsResponse? = {
-                do { return try await api.activeDeployments() }
-                catch { return nil }
+            async let deploymentsFetch: Result<ActiveDeploymentsResponse, Error> = {
+                do { return .success(try await api.activeDeployments()) }
+                catch { return .failure(error) }
             }()
-            if let draftResult = await draftsFetch {
-                drafts = draftResult.drafts
-            } else {
-                supplementaryErrors.append("drafts")
+            switch await draftsFetch {
+            case .success(let result): drafts = result.drafts
+            case .failure(let error): supplementaryErrors.append("drafts (\(error.localizedDescription))")
             }
-            if let deploymentResult = await deploymentsFetch {
-                activeDeployments = deploymentResult.deployments
-            } else {
-                supplementaryErrors.append("sessions")
+            switch await deploymentsFetch {
+            case .success(let result): activeDeployments = result.deployments
+            case .failure(let error): supplementaryErrors.append("sessions (\(error.localizedDescription))")
             }
 
             do {
@@ -453,7 +451,7 @@ struct IssueListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
-                supplementaryErrors.append("user profile")
+                supplementaryErrors.append("user profile (\(error.localizedDescription))")
             }
 
             var failedRepos: [String] = []

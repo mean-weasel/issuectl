@@ -20,7 +20,7 @@ struct TerminalView: View {
                     ContentUnavailableView(
                         "Invalid Server URL",
                         systemImage: "exclamationmark.triangle",
-                        description: Text("Could not connect to \(api.serverURL)")
+                        description: Text("Unable to parse server URL. Check your connection settings.")
                     )
                 }
             }
