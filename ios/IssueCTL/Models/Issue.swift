@@ -99,7 +99,7 @@ struct Draft: Codable, Identifiable, Sendable {
     let id: String
     let title: String
     let body: String?
-    let priority: String?
+    let priority: Priority?
     let createdAt: Double // unix timestamp from server
 }
 
@@ -110,7 +110,7 @@ struct DraftsResponse: Codable, Sendable {
 struct CreateDraftRequestBody: Encodable, Sendable {
     let title: String
     let body: String?
-    let priority: String?
+    let priority: Priority?
 }
 
 struct CreateDraftResponse: Codable, Sendable {

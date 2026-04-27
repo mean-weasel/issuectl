@@ -391,10 +391,10 @@ struct IssueListView: View {
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
                             }
-                            if let priority = draft.priority, priority != "normal" {
-                                Text(priority.capitalized)
+                            if let priority = draft.priority, priority != .normal {
+                                Text(priority.rawValue.capitalized)
                                     .font(.caption2)
-                                    .foregroundStyle(priority == "high" ? .red : .secondary)
+                                    .foregroundStyle(priority == .high ? .red : .secondary)
                             }
                         }
                         .padding(.vertical, 2)

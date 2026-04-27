@@ -13,7 +13,7 @@ struct LaunchView: View {
     let repoLocalPath: String?
 
     @State private var branchName: String
-    @State private var workspaceMode: String
+    @State private var workspaceMode: WorkspaceMode
     @State private var showCloneWarning: Bool
     @State private var selectedCommentIndices: Set<Int> = []
     @State private var selectedFilePaths: Set<String> = []
@@ -39,7 +39,7 @@ struct LaunchView: View {
             .prefix(40)
         _branchName = State(initialValue: "issue-\(issueNumber)-\(slug)")
         let needsClone = repoLocalPath == nil || repoLocalPath?.isEmpty == true
-        _workspaceMode = State(initialValue: needsClone ? "clone" : "worktree")
+        _workspaceMode = State(initialValue: needsClone ? .clone : .worktree)
         _showCloneWarning = State(initialValue: needsClone)
     }
 
@@ -67,9 +67,9 @@ struct LaunchView: View {
 
                 Section("Workspace Mode") {
                     Picker("Mode", selection: $workspaceMode) {
-                        Text("Worktree").tag("worktree")
-                        Text("Existing").tag("existing")
-                        Text("Clone").tag("clone")
+                        Text("Worktree").tag(WorkspaceMode.worktree)
+                        Text("Existing").tag(WorkspaceMode.existing)
+                        Text("Clone").tag(WorkspaceMode.clone)
                     }
                     .pickerStyle(.segmented)
                     .disabled(showCloneWarning)
@@ -167,7 +167,7 @@ struct LaunchView: View {
                         if let match = repos.first(where: { $0.owner == owner && $0.name == repo }) {
                             let needsClone = match.localPath == nil || match.localPath?.isEmpty == true
                             showCloneWarning = needsClone
-                            workspaceMode = needsClone ? "clone" : "worktree"
+                            workspaceMode = needsClone ? .clone : .worktree
                         }
                     } catch {
                         // Could not verify clone status — unlock the picker so user can choose
@@ -217,7 +217,7 @@ struct LaunchView: View {
                     workspaceMode: workspaceMode,
                     workspacePath: "",
                     linkedPrNumber: nil,
-                    state: "active",
+                    state: .active,
                     launchedAt: ISO8601DateFormatter().string(from: Date()),
                     endedAt: nil,
                     ttydPort: port,

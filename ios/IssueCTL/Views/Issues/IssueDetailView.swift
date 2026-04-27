@@ -338,7 +338,7 @@ struct IssueDetailView: View {
                     Text(deployment.branchName)
                         .font(.subheadline)
                     Spacer()
-                    Text(deployment.state)
+                    Text(deployment.state.rawValue)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

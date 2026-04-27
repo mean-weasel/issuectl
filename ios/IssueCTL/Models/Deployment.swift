@@ -1,20 +1,35 @@
 import Foundation
 
+// MARK: - Enums
+
+enum WorkspaceMode: String, Codable, CaseIterable, Sendable {
+    case clone
+    case worktree
+    case existing
+}
+
+enum DeploymentState: String, Codable, Sendable {
+    case active
+    case ended
+}
+
+// MARK: - Models
+
 struct Deployment: Codable, Identifiable, Sendable {
     let id: Int
     let repoId: Int
     let issueNumber: Int
     let branchName: String
-    let workspaceMode: String
+    let workspaceMode: WorkspaceMode
     let workspacePath: String
     let linkedPrNumber: Int?
-    let state: String
+    let state: DeploymentState
     let launchedAt: String
     let endedAt: String?
     let ttydPort: Int?
     let ttydPid: Int?
 
-    var isActive: Bool { state == "active" && endedAt == nil }
+    var isActive: Bool { state == .active && endedAt == nil }
 
     var launchedDate: Date? {
         ISO8601DateFormatter().date(from: launchedAt)
@@ -37,10 +52,10 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
     let repoId: Int
     let issueNumber: Int
     let branchName: String
-    let workspaceMode: String
+    let workspaceMode: WorkspaceMode
     let workspacePath: String
     let linkedPrNumber: Int?
-    let state: String
+    let state: DeploymentState
     let launchedAt: String
     let endedAt: String?
     let ttydPort: Int?
@@ -72,7 +87,7 @@ struct ActiveDeploymentsResponse: Codable, Sendable {
 
 struct LaunchRequestBody: Encodable, Sendable {
     let branchName: String
-    let workspaceMode: String
+    let workspaceMode: WorkspaceMode
     let selectedCommentIndices: [Int]
     let selectedFilePaths: [String]
     let preamble: String?
