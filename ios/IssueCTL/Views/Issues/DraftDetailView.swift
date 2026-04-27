@@ -9,7 +9,7 @@ struct DraftDetailView: View {
 
     @State private var title: String
     @State private var bodyText: String
-    @State private var priority: String
+    @State private var priority: Priority
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var hasChanges = false
@@ -28,7 +28,7 @@ struct DraftDetailView: View {
         self.onSaved = onSaved
         _title = State(initialValue: draft.title)
         _bodyText = State(initialValue: draft.body ?? "")
-        _priority = State(initialValue: draft.priority ?? "normal")
+        _priority = State(initialValue: draft.priority ?? .normal)
     }
 
     private var canSave: Bool {
@@ -64,9 +64,9 @@ struct DraftDetailView: View {
 
             Section("Priority") {
                 Picker("Priority", selection: $priority) {
-                    Text("Low").tag("low")
-                    Text("Normal").tag("normal")
-                    Text("High").tag("high")
+                    Text("Low").tag(Priority.low)
+                    Text("Normal").tag(Priority.normal)
+                    Text("High").tag(Priority.high)
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("priority-picker")
@@ -183,7 +183,7 @@ struct DraftDetailView: View {
         let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
         let titleChanged = trimmedTitle != draft.title
         let bodyChanged = trimmedBody != (draft.body ?? "")
-        let priorityChanged = priority != (draft.priority ?? "normal")
+        let priorityChanged = priority != (draft.priority ?? .normal)
         hasChanges = titleChanged || bodyChanged || priorityChanged
     }
 
@@ -243,7 +243,7 @@ struct DraftDetailView: View {
             let updateBody = UpdateDraftRequestBody(
                 title: trimmedTitle != draft.title ? trimmedTitle : nil,
                 body: trimmedBody != (draft.body ?? "") ? trimmedBody : nil,
-                priority: priority != (draft.priority ?? "normal") ? priority : nil
+                priority: priority != (draft.priority ?? .normal) ? priority : nil
             )
             let response = try await api.updateDraft(id: draft.id, body: updateBody)
             if response.success {

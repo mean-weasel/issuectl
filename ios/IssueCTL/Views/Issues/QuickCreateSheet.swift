@@ -10,7 +10,7 @@ struct QuickCreateSheet: View {
     @State private var title = ""
     @State private var bodyText = ""
     @State private var selectedRepoId: Int?
-    @State private var priority: String = "normal"
+    @State private var priority: Priority = .normal
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
@@ -106,9 +106,9 @@ struct QuickCreateSheet: View {
 
                 Section("Priority") {
                     Picker("Priority", selection: $priority) {
-                        Text("Low").tag("low")
-                        Text("Normal").tag("normal")
-                        Text("High").tag("high")
+                        Text("Low").tag(Priority.low)
+                        Text("Normal").tag(Priority.normal)
+                        Text("High").tag(Priority.high)
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("priority-picker")
