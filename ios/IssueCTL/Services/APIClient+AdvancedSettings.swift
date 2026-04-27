@@ -6,16 +6,6 @@ struct SettingsResponse: Codable, Sendable {
     let settings: [String: String]
 }
 
-struct SettingsUpdateRequest: Encodable, Sendable {
-    let updates: [String: String]
-
-    func encode(to encoder: Encoder) throws {
-        // Encode as flat key-value (not nested under "updates")
-        var container = encoder.singleValueContainer()
-        try container.encode(updates)
-    }
-}
-
 // MARK: - Worktree types
 
 struct WorktreeInfo: Codable, Identifiable, Sendable {
@@ -64,9 +54,79 @@ struct ReassignResponse: Codable, Sendable {
     let error: String?
 }
 
+// MARK: - Worktree status types
+
+struct WorktreeStatusResponse: Codable, Sendable {
+    let exists: Bool
+    let dirty: Bool
+    let path: String
+
+    var isDirty: Bool { exists && dirty }
+}
+
+struct WorktreeResetRequest: Encodable, Sendable {
+    let owner: String
+    let repo: String
+    let issueNumber: Int
+}
+
+// MARK: - EnsureTtyd types
+
+enum EnsureTtydResult: Sendable {
+    case available(port: Int, respawned: Bool)
+    case unavailable(error: String?)
+}
+
+extension EnsureTtydResult: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case port, respawned, alive, error
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let port = try c.decodeIfPresent(Int.self, forKey: .port) {
+            let respawned = try c.decodeIfPresent(Bool.self, forKey: .respawned) ?? false
+            self = .available(port: port, respawned: respawned)
+        } else {
+            let error = try c.decodeIfPresent(String.self, forKey: .error)
+            self = .unavailable(error: error)
+        }
+    }
+}
+
 // MARK: - APIClient extensions
 
 extension APIClient {
+
+    // MARK: Worktree Status
+
+    func checkWorktreeStatus(owner: String, repo: String, issueNumber: Int) async throws -> WorktreeStatusResponse {
+        var components = URLComponents(string: "/api/v1/worktrees/status")!
+        components.queryItems = [
+            URLQueryItem(name: "owner", value: owner),
+            URLQueryItem(name: "repo", value: repo),
+            URLQueryItem(name: "issueNumber", value: String(issueNumber)),
+        ]
+        let (data, _) = try await request(path: components.string!)
+        return try decoder.decode(WorktreeStatusResponse.self, from: data)
+    }
+
+    func resetWorktree(owner: String, repo: String, issueNumber: Int) async throws -> SuccessResponse {
+        let body = WorktreeResetRequest(owner: owner, repo: repo, issueNumber: issueNumber)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/worktrees/reset", method: "POST", body: bodyData)
+        return try decoder.decode(SuccessResponse.self, from: data)
+    }
+
+    // MARK: EnsureTtyd
+
+    func ensureTtyd(deploymentId: Int) async throws -> EnsureTtydResult {
+        let (data, _) = try await request(
+            path: "/api/v1/deployments/\(deploymentId)/ensure-ttyd",
+            method: "POST"
+        )
+        return try decoder.decode(EnsureTtydResult.self, from: data)
+    }
 
     // MARK: Settings
 

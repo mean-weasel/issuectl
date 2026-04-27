@@ -10,18 +10,36 @@ struct TerminalView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showEndConfirm = false
     @State private var loadError: String?
+    @State private var currentPort: Int
+    @State private var isRespawning = false
+
+    init(deployment: ActiveDeployment, port: Int, onEnd: @escaping () -> Void) {
+        self.deployment = deployment
+        self.port = port
+        self.onEnd = onEnd
+        _currentPort = State(initialValue: port)
+    }
 
     var body: some View {
         NavigationStack {
             Group {
                 if let url = terminalURL {
-                    if let loadError {
+                    if isRespawning {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text("Reconnecting terminal…")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if let loadError {
                         ContentUnavailableView {
                             Label("Terminal Connection Failed", systemImage: "wifi.exclamationmark")
                         } description: {
                             Text(loadError)
                         } actions: {
-                            Button("Retry") { self.loadError = nil }
+                            Button("Retry") {
+                                Task { await attemptRespawn() }
+                            }
                         }
                     } else {
                         TerminalWebView(url: url, loadError: $loadError)
@@ -71,7 +89,24 @@ struct TerminalView: View {
     }
 
     private var terminalURL: URL? {
-        URL(string: "\(api.serverURL)/api/terminal/\(port)/")
+        URL(string: "\(api.serverURL)/api/terminal/\(currentPort)/")
+    }
+
+    private func attemptRespawn() async {
+        isRespawning = true
+        loadError = nil
+        do {
+            let result = try await api.ensureTtyd(deploymentId: deployment.id)
+            switch result {
+            case .available(let port, _):
+                currentPort = port
+            case .unavailable(let error):
+                loadError = error ?? "Session has ended"
+            }
+        } catch {
+            loadError = error.localizedDescription
+        }
+        isRespawning = false
     }
 }
 

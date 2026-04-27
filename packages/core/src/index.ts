@@ -40,6 +40,7 @@ export {
   getSettings,
   seedDefaults,
   generateApiToken,
+  DEFAULT_WORKTREE_DIR,
 } from "./db/settings.js";
 export {
   createDraft,
@@ -177,6 +178,7 @@ export {
 // Launch flow
 export {
   executeLaunch,
+  expandHome,
   type LaunchOptions,
   type LaunchResult,
   type LaunchContext,

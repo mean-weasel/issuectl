@@ -49,7 +49,7 @@ export interface LaunchResult {
   labelWarning?: string;
 }
 
-function expandHome(p: string): string {
+export function expandHome(p: string): string {
   const home = process.env.HOME ?? process.env.USERPROFILE ?? "/";
   if (p === "~") return home;
   if (p.startsWith("~/")) return home + p.slice(1);

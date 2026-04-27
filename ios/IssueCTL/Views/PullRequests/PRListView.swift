@@ -10,6 +10,9 @@ struct PRListView: View {
     @State private var selectedRepoIds: Set<Int> = []
     @State private var sortOrder: SortOrder = .updated
     @State private var mineOnly = false
+    @SceneStorage("prs.section") private var storedSection = PRSection.open.rawValue
+    @SceneStorage("prs.sortOrder") private var storedSortOrder = SortOrder.updated.rawValue
+    @SceneStorage("prs.mineOnly") private var storedMineOnly = false
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
     @State private var navigationPath = NavigationPath()
@@ -180,10 +183,24 @@ struct PRListView: View {
                 }
             }
             .task { await loadAll() }
-            .onChange(of: section) { _, _ in displayLimit = pageSize }
+            .onAppear {
+                if let s = PRSection(rawValue: storedSection) { section = s }
+                if let s = SortOrder(rawValue: storedSortOrder) { sortOrder = s }
+                mineOnly = storedMineOnly
+            }
+            .onChange(of: section) { _, new in
+                displayLimit = pageSize
+                storedSection = new.rawValue
+            }
             .onChange(of: selectedRepoIds) { _, _ in displayLimit = pageSize }
-            .onChange(of: sortOrder) { _, _ in displayLimit = pageSize }
-            .onChange(of: mineOnly) { _, _ in displayLimit = pageSize }
+            .onChange(of: sortOrder) { _, new in
+                displayLimit = pageSize
+                storedSortOrder = new.rawValue
+            }
+            .onChange(of: mineOnly) { _, new in
+                displayLimit = pageSize
+                storedMineOnly = new
+            }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }

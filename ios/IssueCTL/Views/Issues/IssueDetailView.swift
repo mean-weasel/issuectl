@@ -18,7 +18,7 @@ struct IssueDetailView: View {
     @State private var showReopenConfirm = false
     @State private var actionError: String?
 
-    // Detail actions state (#263, #264, #265)
+    // State for issue editing, label management, and comment edit/delete actions
     @State private var showEditSheet = false
     @State private var showLabelSheet = false
     @State private var showAssigneeSheet = false
@@ -32,6 +32,8 @@ struct IssueDetailView: View {
     @State private var currentPriority: Priority = .normal
     @State private var isLoadingPriority = false
     @State private var showReassignSheet = false
+    @State private var staleHint: String?
+    @State private var staleHintDismissTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -47,6 +49,16 @@ struct IssueDetailView: View {
                 }
             } else if let detail {
                 VStack(spacing: 0) {
+                    if let staleHint {
+                        Label(staleHint, systemImage: "arrow.clockwise")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .background(.ultraThinMaterial)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
                             headerSection(detail.issue)
@@ -230,6 +242,8 @@ struct IssueDetailView: View {
         .onAppear {
             actionError = nil
         }
+        .animation(.easeInOut(duration: 0.25), value: staleHint != nil)
+        .onDisappear { staleHintDismissTask?.cancel() }
     }
 
     // MARK: - Sections
@@ -495,6 +509,7 @@ struct IssueDetailView: View {
             let response = try await api.updateIssueState(owner: owner, repo: repo, number: number, body: body)
             if response.success {
                 await load(refresh: true)
+                showStaleHint("Issue closed — pull to refresh if stale")
             } else {
                 actionError = response.error ?? "Failed to close issue"
             }
@@ -512,6 +527,7 @@ struct IssueDetailView: View {
             let response = try await api.updateIssueState(owner: owner, repo: repo, number: number, body: body)
             if response.success {
                 await load(refresh: true)
+                showStaleHint("Issue reopened — pull to refresh if stale")
             } else {
                 actionError = response.error ?? "Failed to reopen issue"
             }
@@ -532,6 +548,7 @@ struct IssueDetailView: View {
             )
             if response.success {
                 await load(refresh: true)
+                showStaleHint("Comment deleted — pull to refresh if stale")
             } else {
                 actionError = response.error ?? "Failed to delete comment"
             }
@@ -540,6 +557,15 @@ struct IssueDetailView: View {
         }
         isDeletingComment = false
         deletingComment = nil
+    }
+
+    private func showStaleHint(_ message: String) {
+        staleHintDismissTask?.cancel()
+        staleHint = message
+        staleHintDismissTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            if !Task.isCancelled { staleHint = nil }
+        }
     }
 }
 
