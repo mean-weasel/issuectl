@@ -25,16 +25,6 @@ struct SettingsView: View {
                 disconnectSection
             }
             .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showAddRepo = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Add repository")
-                }
-            }
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
                 case .advancedSettings:
@@ -155,6 +145,12 @@ struct SettingsView: View {
                     .tint(.primary)
                 }
                 .onDelete(perform: deleteRepos)
+
+                Button {
+                    showAddRepo = true
+                } label: {
+                    Label("Add Repository", systemImage: "plus.circle")
+                }
             }
         } header: {
             HStack {
