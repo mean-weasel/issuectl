@@ -11,9 +11,12 @@ struct IssueListView: View {
     @State private var section: IssueSection = .open
     @State private var selectedRepoIds: Set<Int> = []
     @State private var sortOrder: SortOrder = .updated
+    @State private var mineOnly = false
+    @SceneStorage("issues.section") private var storedSection = IssueSection.open.rawValue
+    @SceneStorage("issues.sortOrder") private var storedSortOrder = SortOrder.updated.rawValue
+    @SceneStorage("issues.mineOnly") private var storedMineOnly = false
     @State private var showCreateSheet = false
     @State private var showParseSheet = false
-    @State private var mineOnly = false
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
     @State private var navigationPath = NavigationPath()
@@ -290,10 +293,24 @@ struct IssueListView: View {
                 }
             }
             .task { await loadAll() }
-            .onChange(of: section) { _, _ in displayLimit = pageSize }
+            .onAppear {
+                if let s = IssueSection(rawValue: storedSection) { section = s }
+                if let s = SortOrder(rawValue: storedSortOrder) { sortOrder = s }
+                mineOnly = storedMineOnly
+            }
+            .onChange(of: section) { _, new in
+                displayLimit = pageSize
+                storedSection = new.rawValue
+            }
             .onChange(of: selectedRepoIds) { _, _ in displayLimit = pageSize }
-            .onChange(of: sortOrder) { _, _ in displayLimit = pageSize }
-            .onChange(of: mineOnly) { _, _ in displayLimit = pageSize }
+            .onChange(of: sortOrder) { _, new in
+                displayLimit = pageSize
+                storedSortOrder = new.rawValue
+            }
+            .onChange(of: mineOnly) { _, new in
+                displayLimit = pageSize
+                storedMineOnly = new
+            }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }

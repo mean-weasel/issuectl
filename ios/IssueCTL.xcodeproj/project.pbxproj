@@ -57,6 +57,7 @@
 		C8222FD4B618852C6CE61ACA /* ImageLightbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39642CB180355E5C62A75E /* ImageLightbox.swift */; };
 		C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */; };
 		CDB684F0D93BA2822BCFC541 /* APIClient+ImageUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */; };
+		D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF815A24660864A5AA69B05 /* LaunchProgressView.swift */; };
 		DFD20FE91CC408AA0423C202 /* PRRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75027D57516F296784BEDA4B /* PRRowView.swift */; };
 		E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EBC2D036E0950B774A3A43 /* LaunchView.swift */; };
 		E35D59719FABCC9A185D8366 /* EditIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22DECFEBB9C9FEB55E9A1045 /* EditIssueSheet.swift */; };
@@ -128,6 +129,7 @@
 		F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTabs.swift; sourceTree = "<group>"; };
 		F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MineFilterChip.swift; sourceTree = "<group>"; };
 		FAC4DF9BB857B451A1F2B5B3 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		FAF815A24660864A5AA69B05 /* LaunchProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchProgressView.swift; sourceTree = "<group>"; };
 		FD234C4632456D401809E8A5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		FE149A3F324BCC15AB57153E /* LabelPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelPicker.swift; sourceTree = "<group>"; };
 		FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequest.swift; sourceTree = "<group>"; };
@@ -266,6 +268,7 @@
 		91959DC1A8A25C554BECF0FA /* Launch */ = {
 			isa = PBXGroup;
 			children = (
+				FAF815A24660864A5AA69B05 /* LaunchProgressView.swift */,
 				13EBC2D036E0950B774A3A43 /* LaunchView.swift */,
 			);
 			path = Launch;
@@ -412,6 +415,7 @@
 				F17CDC8FC484D666EB0B35C0 /* KeychainService.swift in Sources */,
 				BB243C0355BC2828C525684A /* LabelManagementSheet.swift in Sources */,
 				581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */,
+				D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */,
 				E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */,
 				2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */,
 				62580655D91E8E7A9A7950B1 /* NetworkErrorBanner.swift in Sources */,

@@ -55,7 +55,10 @@ final class APIClient {
             throw APIError.notConfigured
         }
 
-        var urlRequest = URLRequest(url: base.appendingPathComponent(path))
+        guard let url = URL(string: path, relativeTo: base) else {
+            throw APIError.notConfigured
+        }
+        var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
         urlRequest.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")

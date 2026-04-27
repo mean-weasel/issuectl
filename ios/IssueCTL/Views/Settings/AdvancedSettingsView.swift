@@ -15,14 +15,23 @@ struct AdvancedSettingsView: View {
     @State private var idleThreshold = ""
     @State private var branchPattern = ""
     @State private var worktreeDir = ""
+    @State private var defaultRepoId = ""
+    @State private var repos: [Repo] = []
+
+    private var editableFields: [(key: String, value: String)] {
+        [
+            ("cache_ttl", cacheTTL),
+            ("claude_extra_args", claudeExtraArgs),
+            ("idle_grace_period", idleGracePeriod),
+            ("idle_threshold", idleThreshold),
+            ("branch_pattern", branchPattern),
+            ("worktree_dir", worktreeDir),
+            ("default_repo_id", defaultRepoId),
+        ]
+    }
 
     private var hasChanges: Bool {
-        cacheTTL != (settings["cache_ttl"] ?? "") ||
-        claudeExtraArgs != (settings["claude_extra_args"] ?? "") ||
-        idleGracePeriod != (settings["idle_grace_period"] ?? "") ||
-        idleThreshold != (settings["idle_threshold"] ?? "") ||
-        branchPattern != (settings["branch_pattern"] ?? "") ||
-        worktreeDir != (settings["worktree_dir"] ?? "")
+        editableFields.contains { $0.value != (settings[$0.key] ?? "") }
     }
 
     var body: some View {
@@ -96,6 +105,19 @@ struct AdvancedSettingsView: View {
                     Text("Directory where git worktrees are created.")
                 }
 
+                Section {
+                    Picker("Default Repository", selection: $defaultRepoId) {
+                        Text("None").tag("")
+                        ForEach(repos) { repo in
+                            Text(repo.fullName).tag(String(repo.id))
+                        }
+                    }
+                } header: {
+                    Text("Default Repository")
+                } footer: {
+                    Text("Pre-selected repository when creating new drafts.")
+                }
+
                 if let saveError {
                     Section {
                         Label(saveError, systemImage: "exclamationmark.triangle.fill")
@@ -125,13 +147,17 @@ struct AdvancedSettingsView: View {
         isLoading = true
         errorMessage = nil
         do {
-            settings = try await api.getSettings()
+            async let settingsFetch = api.getSettings()
+            async let reposFetch = api.repos()
+            settings = try await settingsFetch
+            repos = try await reposFetch
             cacheTTL = settings["cache_ttl"] ?? ""
             claudeExtraArgs = settings["claude_extra_args"] ?? ""
             idleGracePeriod = settings["idle_grace_period"] ?? ""
             idleThreshold = settings["idle_threshold"] ?? ""
             branchPattern = settings["branch_pattern"] ?? ""
             worktreeDir = settings["worktree_dir"] ?? ""
+            defaultRepoId = settings["default_repo_id"] ?? ""
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -143,13 +169,10 @@ struct AdvancedSettingsView: View {
         saveError = nil
         defer { isSaving = false }
 
-        var updates: [String: String] = [:]
-        if cacheTTL != (settings["cache_ttl"] ?? "") { updates["cache_ttl"] = cacheTTL }
-        if claudeExtraArgs != (settings["claude_extra_args"] ?? "") { updates["claude_extra_args"] = claudeExtraArgs }
-        if idleGracePeriod != (settings["idle_grace_period"] ?? "") { updates["idle_grace_period"] = idleGracePeriod }
-        if idleThreshold != (settings["idle_threshold"] ?? "") { updates["idle_threshold"] = idleThreshold }
-        if branchPattern != (settings["branch_pattern"] ?? "") { updates["branch_pattern"] = branchPattern }
-        if worktreeDir != (settings["worktree_dir"] ?? "") { updates["worktree_dir"] = worktreeDir }
+        let updates = Dictionary(
+            uniqueKeysWithValues: editableFields.filter { $0.value != (settings[$0.key] ?? "") }
+                .map { ($0.key, $0.value) }
+        )
 
         guard !updates.isEmpty else { return }
 

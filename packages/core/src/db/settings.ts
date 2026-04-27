@@ -2,10 +2,12 @@ import { randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Setting, SettingKey } from "../types.js";
 
+export const DEFAULT_WORKTREE_DIR = "~/.issuectl/worktrees/";
+
 const DEFAULT_SETTINGS: Setting[] = [
   { key: "branch_pattern", value: "issue-{number}-{slug}" },
   { key: "cache_ttl", value: "300" },
-  { key: "worktree_dir", value: "~/.issuectl/worktrees/" },
+  { key: "worktree_dir", value: DEFAULT_WORKTREE_DIR },
   { key: "claude_extra_args", value: "--dangerously-skip-permissions" },
   { key: "idle_grace_period", value: "300" },
   { key: "idle_threshold", value: "300" },
