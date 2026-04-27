@@ -420,11 +420,14 @@ struct IssueListView: View {
     private func loadAll(refresh: Bool = false) async {
         isLoading = true
         errorMessage = nil
+        actionError = nil
         do {
             repos = try await api.repos()
 
-            // Drafts, deployments, and user are supplementary — fetch independently so a failure
-            // doesn't block the primary issue list.
+            // Supplementary fetches — failures surface via actionError banner
+            // but don't block the primary issue list.
+            var supplementaryErrors: [String] = []
+
             async let draftsFetch: DraftsResponse? = {
                 do { return try await api.listDrafts() }
                 catch { return nil }
@@ -433,8 +436,16 @@ struct IssueListView: View {
                 do { return try await api.activeDeployments() }
                 catch { return nil }
             }()
-            drafts = await draftsFetch?.drafts ?? drafts
-            activeDeployments = await deploymentsFetch?.deployments ?? activeDeployments
+            if let draftResult = await draftsFetch {
+                drafts = draftResult.drafts
+            } else {
+                supplementaryErrors.append("drafts")
+            }
+            if let deploymentResult = await deploymentsFetch {
+                activeDeployments = deploymentResult.deployments
+            } else {
+                supplementaryErrors.append("sessions")
+            }
 
             do {
                 let user = try await api.currentUser()
@@ -442,6 +453,7 @@ struct IssueListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
+                supplementaryErrors.append("user profile")
             }
 
             var failedRepos: [String] = []
@@ -464,8 +476,9 @@ struct IssueListView: View {
                     }
                 }
             }
-            if !failedRepos.isEmpty {
-                actionError = "Failed to load: \(failedRepos.joined(separator: ", "))"
+            let allFailures = failedRepos + supplementaryErrors
+            if !allFailures.isEmpty {
+                actionError = "Failed to load: \(allFailures.joined(separator: ", "))"
             }
 
             // Fetch priorities for all displayed issues (best-effort)
