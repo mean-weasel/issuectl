@@ -37,12 +37,14 @@ struct QuickCreateSheet: View {
                 Section("Title") {
                     TextField("Issue title", text: $title)
                         .font(.body)
+                        .accessibilityIdentifier("issue-title-field")
                 }
 
                 Section("Description") {
                     TextEditor(text: $bodyText)
                         .font(.body)
                         .frame(minHeight: 100)
+                        .accessibilityIdentifier("issue-body-editor")
                         .overlay(alignment: .topLeading) {
                             if bodyText.isEmpty {
                                 Text("Optional description...")
@@ -77,6 +79,7 @@ struct QuickCreateSheet: View {
                             .tag(repo.id as Int?)
                         }
                     }
+                    .accessibilityIdentifier("repo-picker")
                 }
 
                 if let repo = selectedRepo {
@@ -131,6 +134,7 @@ struct QuickCreateSheet: View {
                         }
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
+                    .accessibilityIdentifier("submit-issue-button")
                 }
             }
             .navigationTitle("Quick Create")
@@ -138,6 +142,7 @@ struct QuickCreateSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("cancel-button")
                 }
             }
             .onChange(of: selectedRepoId) { _, newValue in

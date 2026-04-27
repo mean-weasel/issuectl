@@ -33,12 +33,14 @@ struct DraftDetailView: View {
             Section("Title") {
                 TextField("Issue title", text: $title)
                     .font(.body)
+                    .accessibilityIdentifier("draft-title-field")
             }
 
             Section("Description") {
                 TextEditor(text: $bodyText)
                     .font(.body)
                     .frame(minHeight: 120)
+                    .accessibilityIdentifier("draft-body-editor")
                     .overlay(alignment: .topLeading) {
                         if bodyText.isEmpty {
                             Text("Optional description...")
@@ -83,6 +85,7 @@ struct DraftDetailView: View {
                     }
                 }
                 .disabled(!canSave)
+                .accessibilityIdentifier("save-draft-button")
             }
         }
         .onChange(of: title) { _, _ in updateHasChanges() }

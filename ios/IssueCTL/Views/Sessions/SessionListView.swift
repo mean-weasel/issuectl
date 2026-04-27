@@ -7,11 +7,12 @@ struct SessionListView: View {
     @State private var errorMessage: String?
     @State private var terminalTarget: ActiveDeployment?
     @State private var endingDeploymentId: Int?
+    @State private var navigationPath = NavigationPath()
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if isLoading && deployments.isEmpty {
                     ProgressView("Loading sessions...")
@@ -57,6 +58,7 @@ struct SessionListView: View {
             .onReceive(refreshTimer) { _ in
                 Task { await load() }
             }
+            .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
             .fullScreenCover(item: $terminalTarget) { deployment in
                 if let port = deployment.ttydPort {
                     TerminalView(
