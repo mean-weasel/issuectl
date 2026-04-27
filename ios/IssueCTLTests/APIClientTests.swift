@@ -483,7 +483,7 @@ final class APIClientTests: XCTestCase {
 
         let body = LaunchRequestBody(
             branchName: "issue-5-fix",
-            workspaceMode: "worktree",
+            workspaceMode: .worktree,
             selectedCommentIndices: [0, 1],
             selectedFilePaths: ["src/main.ts"],
             preamble: "Fix the bug",

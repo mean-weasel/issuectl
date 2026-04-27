@@ -32,12 +32,7 @@ struct LaunchView: View {
         self.referencedFiles = referencedFiles
         self.repoLocalPath = repoLocalPath
 
-        let slug = issueTitle
-            .lowercased()
-            .replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-            .prefix(40)
-        _branchName = State(initialValue: "issue-\(issueNumber)-\(slug)")
+        _branchName = State(initialValue: generateBranchName(issueNumber: issueNumber, issueTitle: issueTitle))
         let needsClone = repoLocalPath == nil || repoLocalPath?.isEmpty == true
         _workspaceMode = State(initialValue: needsClone ? .clone : .worktree)
         _showCloneWarning = State(initialValue: needsClone)
