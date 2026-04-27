@@ -594,7 +594,7 @@ struct IssueDestination: Hashable {
     let number: Int
 }
 
-struct LaunchTarget: Identifiable {
+struct LaunchTarget: Identifiable, Sendable {
     let owner: String
     let repo: String
     let number: Int
