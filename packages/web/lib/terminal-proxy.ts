@@ -27,8 +27,13 @@ export function isValidTerminalPort(port: number): boolean {
   if (!Number.isFinite(port) || port < PORT_MIN || port > PORT_MAX) {
     return false;
   }
-  const db = getDb();
-  return getActiveDeploymentByPort(db, port) !== undefined;
+  try {
+    const db = getDb();
+    return getActiveDeploymentByPort(db, port) !== undefined;
+  } catch (err) {
+    log.error({ msg: "terminal_port_check_db_error", port, err });
+    return false;
+  }
 }
 
 // Per-port respawn coalescing — concurrent callers (HTTP + WS arrive
@@ -109,8 +114,8 @@ async function doRespawn(
   if (!sessionAlive) {
     try {
       endDeployment(db, deployment.id);
-    } catch {
-      // Already ended by liveness checker or concurrent request — fine
+    } catch (err) {
+      log.debug({ msg: "ttyd_end_deployment_skipped", deploymentId: deployment.id, err });
     }
     log.info({ msg: "ttyd_session_dead", port, deploymentId: deployment.id, sessionName });
     return false;
