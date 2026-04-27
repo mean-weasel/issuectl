@@ -23,6 +23,8 @@ struct PRRowView: View {
                 HStack(spacing: 8) {
                     PRStateBadge(pull: pull)
 
+                    ChecksStatusDot(status: pull.checksStatus)
+
                     Text(pull.diffSummary)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -74,6 +76,37 @@ struct PRStateBadge: View {
         .background(color.opacity(0.15))
         .foregroundStyle(color)
         .clipShape(Capsule())
+    }
+}
+
+struct ChecksStatusDot: View {
+    let status: String?
+
+    private var color: Color {
+        switch status {
+        case "success": return .green
+        case "failure": return .red
+        case "pending": return .yellow
+        default: return .gray
+        }
+    }
+
+    private var accessibilityLabel: String {
+        switch status {
+        case "success": return "CI passing"
+        case "failure": return "CI failing"
+        case "pending": return "CI pending"
+        default: return "CI status unknown"
+        }
+    }
+
+    var body: some View {
+        if status != nil {
+            Image(systemName: "circle.fill")
+                .font(.system(size: 7))
+                .foregroundStyle(color)
+                .accessibilityLabel(accessibilityLabel)
+        }
     }
 }
 
