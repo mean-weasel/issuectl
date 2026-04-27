@@ -436,14 +436,34 @@ struct IssueDetailView: View {
     private func load(refresh: Bool = false) async {
         isLoading = true
         errorMessage = nil
+        actionError = nil
         do {
             async let detailResult = api.issueDetail(owner: owner, repo: repo, number: number, refresh: refresh)
-            async let userResult = api.currentUser()
-            async let priorityResult = api.getPriority(owner: owner, repo: repo, number: number)
+            async let userResult: Result<UserResponse, Error> = {
+                do { return .success(try await api.currentUser()) }
+                catch { return .failure(error) }
+            }()
+            async let priorityResult: Result<Priority, Error> = {
+                do { return .success(try await api.getPriority(owner: owner, repo: repo, number: number)) }
+                catch { return .failure(error) }
+            }()
             detail = try await detailResult
-            // Best-effort: don't fail the whole load if user/priority fetch fails
-            currentUserLogin = try? await userResult.login
-            currentPriority = (try? await priorityResult) ?? .normal
+
+            // Supplementary fetches — failures are non-fatal but surfaced
+            var failures: [String] = []
+            switch await userResult {
+            case .success(let user): currentUserLogin = user.login
+            case .failure(let error): failures.append("user profile (\(error.localizedDescription))")
+            }
+            switch await priorityResult {
+            case .success(let priority): currentPriority = priority
+            case .failure(let error):
+                currentPriority = .normal
+                failures.append("priority (\(error.localizedDescription))")
+            }
+            if !failures.isEmpty {
+                actionError = "Failed to load: \(failures.joined(separator: ", "))"
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

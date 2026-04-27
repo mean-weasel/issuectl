@@ -250,20 +250,22 @@ struct PRListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            await withTaskGroup(of: (String, String, [GitHubPull]?).self) { group in
+            await withTaskGroup(of: (String, String, [GitHubPull]?, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
                             let response = try await api.pulls(owner: repo.owner, repo: repo.name, refresh: refresh)
-                            return (repo.fullName, repo.name, response.pulls)
+                            return (repo.fullName, repo.name, response.pulls, nil)
                         } catch {
-                            return (repo.fullName, repo.name, nil)
+                            return (repo.fullName, repo.name, nil, error)
                         }
                     }
                 }
-                for await (fullName, name, pulls) in group {
+                for await (fullName, name, pulls, error) in group {
                     if let pulls {
                         pullsByRepo[fullName] = pulls
+                    } else if let error {
+                        failures.append("\(name) (\(error.localizedDescription))")
                     } else {
                         failures.append(name)
                     }

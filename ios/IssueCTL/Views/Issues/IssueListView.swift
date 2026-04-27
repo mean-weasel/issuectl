@@ -457,20 +457,22 @@ struct IssueListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            await withTaskGroup(of: (String, String, [GitHubIssue]?).self) { group in
+            await withTaskGroup(of: (String, String, [GitHubIssue]?, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
                             let response = try await api.issues(owner: repo.owner, repo: repo.name, refresh: refresh)
-                            return (repo.fullName, repo.name, response.issues)
+                            return (repo.fullName, repo.name, response.issues, nil)
                         } catch {
-                            return (repo.fullName, repo.name, nil)
+                            return (repo.fullName, repo.name, nil, error)
                         }
                     }
                 }
-                for await (fullName, name, issues) in group {
+                for await (fullName, name, issues, error) in group {
                     if let issues {
                         issuesByRepo[fullName] = issues
+                    } else if let error {
+                        failures.append("\(name) (\(error.localizedDescription))")
                     } else {
                         failures.append(name)
                     }
@@ -480,38 +482,45 @@ struct IssueListView: View {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
 
-            // Fetch priorities for all displayed issues (best-effort)
-            await loadPriorities()
+            // Fetch priorities for all displayed issues — failures are non-fatal
+            let priorityFailures = await loadPriorities()
+            if !priorityFailures.isEmpty && failures.isEmpty {
+                // Only show priority failures if there aren't already more important errors
+                actionError = "Failed to load: \(priorityFailures.joined(separator: ", "))"
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
     }
 
-    private func loadPriorities() async {
+    private func loadPriorities() async -> [String] {
         isLoadingPriorities = true
         var newPriorities: [String: Priority] = [:]
-        await withTaskGroup(of: [(String, Priority)].self) { group in
+        var priorityErrors: [String] = []
+        await withTaskGroup(of: ([(String, Priority)], String?).self) { group in
             let uniqueRepos = Set(repos.map { ($0.owner, $0.name) }.map { "\($0.0)/\($0.1)" })
             for repoFullName in uniqueRepos {
                 guard let repo = repos.first(where: { $0.fullName == repoFullName }) else { continue }
                 group.addTask {
                     do {
                         let items = try await api.listPriorities(owner: repo.owner, repo: repo.name)
-                        return items.map { ("\(repo.owner)/\(repo.name)#\($0.issueNumber)", $0.priority) }
+                        return (items.map { ("\(repo.owner)/\(repo.name)#\($0.issueNumber)", $0.priority) }, nil)
                     } catch {
-                        return []
+                        return ([], "\(repo.name) priorities (\(error.localizedDescription))")
                     }
                 }
             }
-            for await pairs in group {
+            for await (pairs, errorMsg) in group {
                 for (key, priority) in pairs {
                     newPriorities[key] = priority
                 }
+                if let errorMsg { priorityErrors.append(errorMsg) }
             }
         }
         priorities = newPriorities
         isLoadingPriorities = false
+        return priorityErrors
     }
 }
 
