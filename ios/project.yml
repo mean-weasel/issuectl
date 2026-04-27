@@ -19,6 +19,8 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         GENERATE_INFOPLIST_FILE: true
         PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.ios
+        DEVELOPMENT_TEAM: B3A6AN2HA4
+        CODE_SIGN_STYLE: Automatic
     scheme:
       testTargets:
         - IssueCTLTests
