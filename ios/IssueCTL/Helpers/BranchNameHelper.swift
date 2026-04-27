@@ -1,7 +1,6 @@
 import Foundation
 
-/// Pure function that generates a branch name from an issue number and title.
-/// Matches the slug logic used in LaunchView.
+/// Slug: lowercase, non-alphanumeric collapsed to dashes, capped at 40 chars.
 func generateBranchName(issueNumber: Int, issueTitle: String) -> String {
     let slug = issueTitle
         .lowercased()
@@ -11,8 +10,6 @@ func generateBranchName(issueNumber: Int, issueTitle: String) -> String {
     return "issue-\(issueNumber)-\(slug)"
 }
 
-/// Checks whether a refresh should be allowed based on cooldown.
-/// Returns true if enough time has passed since the last refresh, or if there was no prior refresh.
 func shouldAllowRefresh(lastRefreshDate: Date?, cooldown: TimeInterval, now: Date = Date()) -> Bool {
     guard let last = lastRefreshDate else { return true }
     return now.timeIntervalSince(last) >= cooldown
