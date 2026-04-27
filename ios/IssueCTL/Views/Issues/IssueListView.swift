@@ -182,21 +182,29 @@ struct IssueListView: View {
                         ProgressView("Loading issues...")
                             .frame(maxHeight: .infinity)
                     } else if let errorMessage {
-                        ContentUnavailableView {
-                            Label("Error", systemImage: "exclamationmark.triangle")
-                        } description: {
-                            Text(errorMessage)
-                        } actions: {
-                            Button("Retry") { Task { await loadAll() } }
+                        ScrollView {
+                            ContentUnavailableView {
+                                Label("Error", systemImage: "exclamationmark.triangle")
+                            } description: {
+                                Text(errorMessage)
+                            } actions: {
+                                Button("Retry") { Task { await loadAll() } }
+                            }
+                            .frame(maxHeight: .infinity)
                         }
+                        .refreshable { await refreshWithCooldown() }
                     } else if section == .drafts {
                         draftsList
                     } else if filteredIssues.isEmpty {
-                        ContentUnavailableView(
-                            "No Issues",
-                            systemImage: "checkmark.circle",
-                            description: Text("No \(section.rawValue) issues.")
-                        )
+                        ScrollView {
+                            ContentUnavailableView(
+                                "No Issues",
+                                systemImage: "checkmark.circle",
+                                description: Text("No \(section.rawValue) issues.")
+                            )
+                            .frame(maxHeight: .infinity)
+                        }
+                        .refreshable { await refreshWithCooldown() }
                     } else {
                         issuesList
                     }
