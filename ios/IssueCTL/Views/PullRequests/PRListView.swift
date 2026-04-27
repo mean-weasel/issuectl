@@ -237,7 +237,7 @@ struct PRListView: View {
         do {
             repos = try await api.repos()
 
-            // Fetch current user for "mine" filter — non-blocking
+            // Fetch current user for "mine" filter — failure is non-fatal
             var supplementaryErrors: [String] = []
             do {
                 let user = try await api.currentUser()
