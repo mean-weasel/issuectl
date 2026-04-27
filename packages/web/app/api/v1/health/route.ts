@@ -9,7 +9,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     ok: true,
-    version: process.env.npm_package_version ?? "0.0.0",
+    version: process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0",
     timestamp: new Date().toISOString(),
   });
 }

@@ -104,8 +104,10 @@ struct SettingsView: View {
                 LabeledContent("User", value: username)
             }
 
+            LabeledContent("App Version", value: AppVersion.display)
+
             if let health = serverHealth {
-                LabeledContent("Version", value: health.version)
+                LabeledContent("Server Version", value: health.version)
             } else if let error = healthError {
                 LabeledContent("Error") {
                     Text(error)
