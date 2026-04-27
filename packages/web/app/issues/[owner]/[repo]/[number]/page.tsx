@@ -54,7 +54,17 @@ export default async function IssueDetailPage({
   }
 
   const db = getDb();
-  const octokit = await getOctokit();
+
+  // Start the async Octokit init (token fetch) without blocking, then
+  // run synchronous DB lookups while the promise is in flight.
+  const octokitP = getOctokit();
+  const repoRecord = getRepo(db, owner, repo);
+  const repoId = repoRecord?.id ?? 0;
+  const currentPriority = repoId > 0
+    ? getPriority(db, repoId, issueNumber)
+    : "normal";
+
+  const octokit = await octokitP;
 
   try {
     const { issue, deployments, referencedFiles } = await getIssueHeader(
@@ -64,11 +74,6 @@ export default async function IssueDetailPage({
       repo,
       issueNumber,
     );
-    const repoRecord = getRepo(db, owner, repo);
-    const repoId = repoRecord?.id ?? 0;
-    const currentPriority = repoId > 0
-      ? getPriority(db, repoId, issueNumber)
-      : "normal";
 
     const boundRefresh = refreshIssueAction.bind(
       null,

@@ -45,14 +45,18 @@ export async function DashboardContent({
 }: Props) {
   try {
     const db = getDb();
-    const octokit = await getOctokit();
 
+    // Start the async Octokit init (token fetch) without blocking, then
+    // run synchronous filter logic while the promise is in flight.
+    const octokitP = getOctokit();
     const repoFilter = activeRepo ? parseRepoKey(activeRepo) : null;
     const targetRepos = repoFilter
       ? repos.filter(
           (r) => r.owner === repoFilter.owner && r.name === repoFilter.name,
         )
       : repos;
+
+    const octokit = await octokitP;
 
     const [data, allPrs] = await Promise.all([
       getUnifiedList(db, octokit, activeSort, repoFilter),
