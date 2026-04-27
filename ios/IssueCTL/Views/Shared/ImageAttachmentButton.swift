@@ -14,13 +14,14 @@ struct ImageAttachmentButton: View {
     @State private var errorMessage: String?
 
     var body: some View {
+        let uploading = isUploading
         HStack(spacing: 8) {
             PhotosPicker(
                 selection: $selectedItem,
                 matching: .images,
                 photoLibrary: .shared()
             ) {
-                if isUploading {
+                if uploading {
                     ProgressView()
                         .controlSize(.small)
                 } else {
@@ -28,7 +29,7 @@ struct ImageAttachmentButton: View {
                         .font(.callout)
                 }
             }
-            .disabled(isUploading)
+            .disabled(uploading)
 
             if let errorMessage {
                 Text(errorMessage)
