@@ -420,21 +420,30 @@ struct IssueListView: View {
     private func loadAll(refresh: Bool = false) async {
         isLoading = true
         errorMessage = nil
+        actionError = nil
         do {
             repos = try await api.repos()
 
-            // Drafts, deployments, and user are supplementary — fetch independently so a failure
-            // doesn't block the primary issue list.
-            async let draftsFetch: DraftsResponse? = {
-                do { return try await api.listDrafts() }
-                catch { return nil }
+            // Supplementary fetches — failures surface via actionError banner
+            // but don't block the primary issue list.
+            var supplementaryErrors: [String] = []
+
+            async let draftsFetch: Result<DraftsResponse, Error> = {
+                do { return .success(try await api.listDrafts()) }
+                catch { return .failure(error) }
             }()
-            async let deploymentsFetch: ActiveDeploymentsResponse? = {
-                do { return try await api.activeDeployments() }
-                catch { return nil }
+            async let deploymentsFetch: Result<ActiveDeploymentsResponse, Error> = {
+                do { return .success(try await api.activeDeployments()) }
+                catch { return .failure(error) }
             }()
-            drafts = await draftsFetch?.drafts ?? drafts
-            activeDeployments = await deploymentsFetch?.deployments ?? activeDeployments
+            switch await draftsFetch {
+            case .success(let result): drafts = result.drafts
+            case .failure(let error): supplementaryErrors.append("drafts (\(error.localizedDescription))")
+            }
+            switch await deploymentsFetch {
+            case .success(let result): activeDeployments = result.deployments
+            case .failure(let error): supplementaryErrors.append("sessions (\(error.localizedDescription))")
+            }
 
             do {
                 let user = try await api.currentUser()
@@ -442,6 +451,7 @@ struct IssueListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
+                supplementaryErrors.append("user profile (\(error.localizedDescription))")
             }
 
             var failedRepos: [String] = []
@@ -464,8 +474,9 @@ struct IssueListView: View {
                     }
                 }
             }
-            if !failedRepos.isEmpty {
-                actionError = "Failed to load: \(failedRepos.joined(separator: ", "))"
+            let allFailures = failedRepos + supplementaryErrors
+            if !allFailures.isEmpty {
+                actionError = "Failed to load: \(allFailures.joined(separator: ", "))"
             }
 
             // Fetch priorities for all displayed issues (best-effort)

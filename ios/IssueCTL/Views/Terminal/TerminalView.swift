@@ -12,44 +12,53 @@ struct TerminalView: View {
 
     var body: some View {
         NavigationStack {
-            TerminalWebView(url: terminalURL)
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("\(deployment.repoFullName) #\(deployment.issueNumber)")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Done") { dismiss() }
-                            .accessibilityIdentifier("terminal-done-button")
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        HStack(spacing: 12) {
-                            Text(deployment.runningDuration)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Button(role: .destructive) {
-                                showEndConfirm = true
-                            } label: {
-                                Label("End", systemImage: "stop.circle.fill")
-                            }
-                            .accessibilityIdentifier("terminal-end-button")
+            Group {
+                if let url = terminalURL {
+                    TerminalWebView(url: url)
+                        .ignoresSafeArea(edges: .bottom)
+                } else {
+                    ContentUnavailableView(
+                        "Invalid Server URL",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("Could not parse: \(api.serverURL)/api/terminal/\(port)/")
+                    )
+                }
+            }
+            .navigationTitle("\(deployment.repoFullName) #\(deployment.issueNumber)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                        .accessibilityIdentifier("terminal-done-button")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        Text(deployment.runningDuration)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button(role: .destructive) {
+                            showEndConfirm = true
+                        } label: {
+                            Label("End", systemImage: "stop.circle.fill")
                         }
+                        .accessibilityIdentifier("terminal-end-button")
                     }
                 }
-                .confirmationDialog(
-                    "End this session?",
-                    isPresented: $showEndConfirm,
-                    titleVisibility: .visible
-                ) {
-                    Button("End Session", role: .destructive) {
-                        onEnd()
-                    }
+            }
+            .confirmationDialog(
+                "End this session?",
+                isPresented: $showEndConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("End Session", role: .destructive) {
+                    onEnd()
                 }
+            }
         }
     }
 
-    private var terminalURL: URL {
-        let base = api.serverURL
-        return URL(string: "\(base)/api/terminal/\(port)/")!
+    private var terminalURL: URL? {
+        URL(string: "\(api.serverURL)/api/terminal/\(port)/")
     }
 }
 

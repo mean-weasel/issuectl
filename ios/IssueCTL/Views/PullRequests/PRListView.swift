@@ -233,16 +233,19 @@ struct PRListView: View {
     private func loadAll(refresh: Bool = false) async {
         isLoading = true
         errorMessage = nil
+        actionError = nil
         do {
             repos = try await api.repos()
 
-            // Fetch current user for "mine" filter — non-blocking
+            // Fetch current user for "mine" filter — failure is non-fatal
+            var supplementaryErrors: [String] = []
             do {
                 let user = try await api.currentUser()
                 currentUserLogin = user.login
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
+                supplementaryErrors.append("user profile (\(error.localizedDescription))")
             }
 
             var failedRepos: [String] = []
@@ -265,8 +268,9 @@ struct PRListView: View {
                     }
                 }
             }
-            if !failedRepos.isEmpty {
-                actionError = "Failed to load: \(failedRepos.joined(separator: ", "))"
+            let allFailures = failedRepos + supplementaryErrors
+            if !allFailures.isEmpty {
+                actionError = "Failed to load: \(allFailures.joined(separator: ", "))"
             }
         } catch {
             errorMessage = error.localizedDescription
