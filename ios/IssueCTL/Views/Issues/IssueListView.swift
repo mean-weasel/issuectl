@@ -36,6 +36,12 @@ struct IssueListView: View {
     @State private var priorities: [String: Priority] = [:]
     @State private var isLoadingPriorities = false
 
+    @State private var oldestCachedAt: Date?
+    private let pageSize = 15
+    @State private var displayLimit = 15
+    @State private var lastRefreshDate: Date?
+    private let refreshCooldown: TimeInterval = 10
+
     private var allIssues: [GitHubIssue] {
         issuesByRepo.values.flatMap { $0 }
     }
@@ -162,6 +168,12 @@ struct IssueListView: View {
 
                 Divider()
 
+                if let oldestCachedAt {
+                    CacheAgeLabel(date: oldestCachedAt)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                }
+
                 Group {
                     if isLoading && issuesByRepo.isEmpty && drafts.isEmpty {
                         ProgressView("Loading issues...")
@@ -278,6 +290,10 @@ struct IssueListView: View {
                 }
             }
             .task { await loadAll() }
+            .onChange(of: section) { _, _ in displayLimit = pageSize }
+            .onChange(of: selectedRepoIds) { _, _ in displayLimit = pageSize }
+            .onChange(of: sortOrder) { _, _ in displayLimit = pageSize }
+            .onChange(of: mineOnly) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }
@@ -286,6 +302,8 @@ struct IssueListView: View {
 
     @ViewBuilder
     private var issuesList: some View {
+        let allFiltered = filteredIssues
+        let visibleIssues = Array(allFiltered.prefix(displayLimit))
         List {
             if let actionError {
                 Label(actionError, systemImage: "exclamationmark.triangle")
@@ -293,7 +311,7 @@ struct IssueListView: View {
                     .font(.subheadline)
                     .lineLimit(3)
             }
-            ForEach(filteredIssues, id: \.htmlUrl) { issue in
+            ForEach(visibleIssues, id: \.htmlUrl) { issue in
                 let color = repoIndex(for: issue).map { RepoColors.color(for: $0) } ?? .secondary
                 let repo = repoFor(issue: issue)
                 let running = repo.map { isRunning(issue, in: $0.fullName) } ?? false
@@ -338,8 +356,18 @@ struct IssueListView: View {
                     }
                 }
             }
+
+            if allFiltered.count > displayLimit {
+                Button {
+                    displayLimit += pageSize
+                } label: {
+                    Text("Load More (\(allFiltered.count - displayLimit) remaining)")
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                }
+            }
         }
-        .refreshable { await loadAll(refresh: true) }
+        .refreshable { await refreshWithCooldown() }
     }
 
     @ViewBuilder
@@ -382,7 +410,7 @@ struct IssueListView: View {
                     }
                 }
             }
-            .refreshable { await loadAll(refresh: true) }
+            .refreshable { await refreshWithCooldown() }
         }
     }
 
@@ -457,20 +485,26 @@ struct IssueListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            await withTaskGroup(of: (String, String, [GitHubIssue]?, Error?).self) { group in
+            var cachedDates: [Date] = []
+            let isoFormatter = ISO8601DateFormatter()
+
+            await withTaskGroup(of: (String, String, [GitHubIssue]?, String?, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
                             let response = try await api.issues(owner: repo.owner, repo: repo.name, refresh: refresh)
-                            return (repo.fullName, repo.name, response.issues, nil)
+                            return (repo.fullName, repo.name, response.issues, response.cachedAt, nil)
                         } catch {
-                            return (repo.fullName, repo.name, nil, error)
+                            return (repo.fullName, repo.name, nil, nil, error)
                         }
                     }
                 }
-                for await (fullName, name, issues, error) in group {
+                for await (fullName, name, issues, cachedAt, error) in group {
                     if let issues {
                         issuesByRepo[fullName] = issues
+                        if let cachedAt, let date = isoFormatter.date(from: cachedAt) {
+                            cachedDates.append(date)
+                        }
                     } else if let error {
                         failures.append("\(name) (\(error.localizedDescription))")
                     } else {
@@ -478,6 +512,7 @@ struct IssueListView: View {
                     }
                 }
             }
+            oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
@@ -521,6 +556,14 @@ struct IssueListView: View {
         priorities = newPriorities
         isLoadingPriorities = false
         return priorityErrors
+    }
+
+    private func refreshWithCooldown() async {
+        if let last = lastRefreshDate, Date().timeIntervalSince(last) < refreshCooldown {
+            return
+        }
+        lastRefreshDate = Date()
+        await loadAll(refresh: true)
     }
 }
 

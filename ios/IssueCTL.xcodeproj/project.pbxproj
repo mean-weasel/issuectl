@@ -13,6 +13,7 @@
 		1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */; };
 		2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */; };
 		2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD234C4632456D401809E8A5 /* OnboardingView.swift */; };
+		31F1727D0042386D7B07C93A /* CacheAgeLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2841D89323711B68449BB980 /* CacheAgeLabel.swift */; };
 		327EF2CAB79710212AEE37A6 /* ParseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2FEDC36ACDF7207272AE3 /* ParseView.swift */; };
 		332F4D8213B6FCFB806AC6A7 /* RepoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C48C04AAB5D9F17D9DD63684 /* RepoListView.swift */; };
 		34F18449E8DBA4A039C94A44 /* APIClient+Assignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FAF4DCDBAB6A7A58E076C4 /* APIClient+Assignment.swift */; };
@@ -77,6 +78,7 @@
 		223E1C810B3BD014B117301B /* IssueCTLApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCTLApp.swift; sourceTree = "<group>"; };
 		22DECFEBB9C9FEB55E9A1045 /* EditIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditIssueSheet.swift; sourceTree = "<group>"; };
 		22FAF4DCDBAB6A7A58E076C4 /* APIClient+Assignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Assignment.swift"; sourceTree = "<group>"; };
+		2841D89323711B68449BB980 /* CacheAgeLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheAgeLabel.swift; sourceTree = "<group>"; };
 		28E6C0859937F6A85F709D99 /* Deployment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deployment.swift; sourceTree = "<group>"; };
 		2B94F959305A936F2643E3F6 /* APIClient+DetailActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+DetailActions.swift"; sourceTree = "<group>"; };
 		3079E105A528EED5BBA37B20 /* APIClient+Priority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Priority.swift"; sourceTree = "<group>"; };
@@ -283,6 +285,7 @@
 		E81A7D2E7B5E3CA762AC518E /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				2841D89323711B68449BB980 /* CacheAgeLabel.swift */,
 				4403330B1342AA7C19FA797D /* Constants.swift */,
 				894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */,
 				3F39642CB180355E5C62A75E /* ImageLightbox.swift */,
@@ -385,6 +388,7 @@
 				FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */,
 				B4D3E5DC8306990F763058B6 /* AdvancedSettingsView.swift in Sources */,
 				916892AA5B3D923B618E6288 /* AssigneeSheet.swift in Sources */,
+				31F1727D0042386D7B07C93A /* CacheAgeLabel.swift in Sources */,
 				AB8FF61639D060883C77859B /* CloseIssueSheet.swift in Sources */,
 				C188EF4912DB0E5917317C07 /* CommentSheet.swift in Sources */,
 				661BA5DB6B1BC46ADC8289D5 /* CommentView.swift in Sources */,

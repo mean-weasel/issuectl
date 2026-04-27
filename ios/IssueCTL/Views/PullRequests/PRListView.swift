@@ -20,6 +20,12 @@ struct PRListView: View {
     @State private var actionError: String?
     @State private var errorDismissTask: Task<Void, Never>?
 
+    @State private var oldestCachedAt: Date?
+    private let pageSize = 15
+    @State private var displayLimit = 15
+    @State private var lastRefreshDate: Date?
+    private let refreshCooldown: TimeInterval = 10
+
     private var allPulls: [GitHubPull] {
         pullsByRepo.values.flatMap { $0 }
     }
@@ -100,6 +106,12 @@ struct PRListView: View {
 
                 Divider()
 
+                if let oldestCachedAt {
+                    CacheAgeLabel(date: oldestCachedAt)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                }
+
                 Group {
                     if isLoading && pullsByRepo.isEmpty {
                         ProgressView("Loading pull requests...")
@@ -168,6 +180,10 @@ struct PRListView: View {
                 }
             }
             .task { await loadAll() }
+            .onChange(of: section) { _, _ in displayLimit = pageSize }
+            .onChange(of: selectedRepoIds) { _, _ in displayLimit = pageSize }
+            .onChange(of: sortOrder) { _, _ in displayLimit = pageSize }
+            .onChange(of: mineOnly) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
     }
@@ -176,6 +192,8 @@ struct PRListView: View {
 
     @ViewBuilder
     private var pullsList: some View {
+        let allFiltered = filteredPulls
+        let visiblePulls = Array(allFiltered.prefix(displayLimit))
         List {
             if let actionError {
                 Label(actionError, systemImage: "exclamationmark.triangle")
@@ -183,7 +201,7 @@ struct PRListView: View {
                     .font(.subheadline)
                     .lineLimit(3)
             }
-            ForEach(filteredPulls, id: \.htmlUrl) { pull in
+            ForEach(visiblePulls, id: \.htmlUrl) { pull in
                 let color = repoIndex(for: pull).map { RepoColors.color(for: $0) } ?? .secondary
                 let repo = repoFor(pull: pull)
 
@@ -209,8 +227,18 @@ struct PRListView: View {
                     }
                 }
             }
+
+            if allFiltered.count > displayLimit {
+                Button {
+                    displayLimit += pageSize
+                } label: {
+                    Text("Load More (\(allFiltered.count - displayLimit) remaining)")
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                }
+            }
         }
-        .refreshable { await loadAll(refresh: true) }
+        .refreshable { await refreshWithCooldown() }
     }
 
     // MARK: - Actions
@@ -250,20 +278,26 @@ struct PRListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            await withTaskGroup(of: (String, String, [GitHubPull]?, Error?).self) { group in
+            var cachedDates: [Date] = []
+            let isoFormatter = ISO8601DateFormatter()
+
+            await withTaskGroup(of: (String, String, [GitHubPull]?, String?, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
                             let response = try await api.pulls(owner: repo.owner, repo: repo.name, refresh: refresh)
-                            return (repo.fullName, repo.name, response.pulls, nil)
+                            return (repo.fullName, repo.name, response.pulls, response.cachedAt, nil)
                         } catch {
-                            return (repo.fullName, repo.name, nil, error)
+                            return (repo.fullName, repo.name, nil, nil, error)
                         }
                     }
                 }
-                for await (fullName, name, pulls, error) in group {
+                for await (fullName, name, pulls, cachedAt, error) in group {
                     if let pulls {
                         pullsByRepo[fullName] = pulls
+                        if let cachedAt, let date = isoFormatter.date(from: cachedAt) {
+                            cachedDates.append(date)
+                        }
                     } else if let error {
                         failures.append("\(name) (\(error.localizedDescription))")
                     } else {
@@ -271,6 +305,7 @@ struct PRListView: View {
                     }
                 }
             }
+            oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
@@ -278,6 +313,14 @@ struct PRListView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func refreshWithCooldown() async {
+        if let last = lastRefreshDate, Date().timeIntervalSince(last) < refreshCooldown {
+            return
+        }
+        lastRefreshDate = Date()
+        await loadAll(refresh: true)
     }
 }
 

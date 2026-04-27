@@ -14,6 +14,15 @@ struct DraftDetailView: View {
     @State private var errorMessage: String?
     @State private var hasChanges = false
 
+    @State private var repos: [Repo] = []
+    @State private var selectedRepoId: Int?
+    @State private var availableLabels: [GitHubLabel] = []
+    @State private var selectedLabels: Set<String> = []
+    @State private var isAssigning = false
+    @State private var isLoadingLabels = false
+    @State private var reposError: String?
+    @State private var labelLoadError: String?
+
     init(draft: Draft, onSaved: @escaping () -> Void) {
         self.draft = draft
         self.onSaved = onSaved
@@ -63,6 +72,73 @@ struct DraftDetailView: View {
                 .accessibilityIdentifier("priority-picker")
             }
 
+            Section("Assign to Repository") {
+                if let reposError {
+                    Label(reposError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                    Button("Retry") { Task { await loadRepos() } }
+                        .font(.subheadline)
+                }
+
+                Picker("Repository", selection: $selectedRepoId) {
+                    Text("None (keep as draft)").tag(nil as Int?)
+                    ForEach(repos) { repo in
+                        Text(repo.fullName).tag(repo.id as Int?)
+                    }
+                }
+                .accessibilityIdentifier("assign-repo-picker")
+
+                if let labelLoadError {
+                    Label(labelLoadError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                    Button("Retry") {
+                        if let repoId = selectedRepoId, let repo = repos.first(where: { $0.id == repoId }) {
+                            Task { await loadLabels(owner: repo.owner, name: repo.name) }
+                        }
+                    }
+                    .font(.subheadline)
+                } else if isLoadingLabels {
+                    HStack {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Loading labels...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if !availableLabels.isEmpty {
+                    ForEach(availableLabels) { label in
+                        Toggle(isOn: Binding(
+                            get: { selectedLabels.contains(label.name) },
+                            set: { isOn in
+                                if isOn { selectedLabels.insert(label.name) }
+                                else { selectedLabels.remove(label.name) }
+                            }
+                        )) {
+                            LabelBadge(label: label)
+                        }
+                    }
+                }
+
+                if selectedRepoId != nil {
+                    Button {
+                        Task { await assignToRepo() }
+                    } label: {
+                        if isAssigning {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            let repoName = repos.first(where: { $0.id == selectedRepoId })?.name ?? "Repo"
+                            Label("Create Issue in \(repoName)", systemImage: "arrow.up.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(isAssigning)
+                    .accessibilityIdentifier("assign-draft-button")
+                }
+            }
+
             if let errorMessage {
                 Section {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
@@ -88,9 +164,18 @@ struct DraftDetailView: View {
                 .accessibilityIdentifier("save-draft-button")
             }
         }
+        .task { await loadRepos() }
         .onChange(of: title) { _, _ in updateHasChanges() }
         .onChange(of: bodyText) { _, _ in updateHasChanges() }
         .onChange(of: priority) { _, _ in updateHasChanges() }
+        .onChange(of: selectedRepoId) { _, newValue in
+            if let repoId = newValue, let repo = repos.first(where: { $0.id == repoId }) {
+                Task { await loadLabels(owner: repo.owner, name: repo.name) }
+            } else {
+                availableLabels = []
+                selectedLabels = []
+            }
+        }
     }
 
     private func updateHasChanges() {
@@ -100,6 +185,52 @@ struct DraftDetailView: View {
         let bodyChanged = trimmedBody != (draft.body ?? "")
         let priorityChanged = priority != (draft.priority ?? "normal")
         hasChanges = titleChanged || bodyChanged || priorityChanged
+    }
+
+    private func loadRepos() async {
+        reposError = nil
+        do {
+            repos = try await api.repos()
+        } catch {
+            reposError = "Failed to load repositories"
+        }
+    }
+
+    private func loadLabels(owner: String, name: String) async {
+        isLoadingLabels = true
+        selectedLabels = []
+        labelLoadError = nil
+        defer { isLoadingLabels = false }
+        do {
+            let labels = try await api.repoLabels(owner: owner, repo: name)
+            guard repos.first(where: { $0.owner == owner && $0.name == name })?.id == selectedRepoId else { return }
+            availableLabels = labels
+        } catch {
+            availableLabels = []
+            labelLoadError = "Failed to load labels"
+        }
+    }
+
+    private func assignToRepo() async {
+        guard let repoId = selectedRepoId else { return }
+        isAssigning = true
+        errorMessage = nil
+        do {
+            let body = AssignDraftWithLabelsRequestBody(
+                repoId: repoId,
+                labels: selectedLabels.isEmpty ? nil : Array(selectedLabels)
+            )
+            let response = try await api.assignDraftWithLabels(id: draft.id, body: body)
+            if response.success {
+                onSaved()
+                dismiss()
+            } else {
+                errorMessage = response.error ?? "Failed to assign draft"
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isAssigning = false
     }
 
     private func save() async {

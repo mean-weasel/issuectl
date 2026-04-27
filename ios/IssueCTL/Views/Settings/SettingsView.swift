@@ -6,6 +6,7 @@ struct SettingsView: View {
     @State private var showAddRepo = false
     @State private var repos: [Repo] = []
     @State private var serverHealth: ServerHealth?
+    @State private var currentUsername: String?
     @State private var isLoadingRepos = false
     @State private var isLoadingHealth = false
     @State private var reposError: String?
@@ -109,6 +110,10 @@ struct SettingsView: View {
                 }
             }
 
+            if let username = currentUsername {
+                LabeledContent("User", value: username)
+            }
+
             if let health = serverHealth {
                 LabeledContent("Version", value: health.version)
             } else if let error = healthError {
@@ -190,7 +195,17 @@ struct SettingsView: View {
     private func loadData() async {
         async let healthTask: () = loadHealth()
         async let reposTask: () = loadRepos()
-        _ = await (healthTask, reposTask)
+        async let userTask: () = loadUser()
+        _ = await (healthTask, reposTask, userTask)
+    }
+
+    private func loadUser() async {
+        do {
+            let user = try await api.currentUser()
+            currentUsername = user.login
+        } catch {
+            // Non-fatal — just don't show the username
+        }
     }
 
     private func loadHealth() async {

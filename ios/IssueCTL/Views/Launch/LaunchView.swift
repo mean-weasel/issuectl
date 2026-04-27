@@ -10,9 +10,11 @@ struct LaunchView: View {
     let issueTitle: String
     let comments: [GitHubComment]
     let referencedFiles: [String]
+    let repoLocalPath: String?
 
     @State private var branchName: String
-    @State private var workspaceMode = "worktree"
+    @State private var workspaceMode: String
+    @State private var showCloneWarning: Bool
     @State private var selectedCommentIndices: Set<Int> = []
     @State private var selectedFilePaths: Set<String> = []
     @State private var preamble = ""
@@ -21,13 +23,14 @@ struct LaunchView: View {
     @State private var launchedPort: Int?
     @State private var launchedDeployment: ActiveDeployment?
 
-    init(owner: String, repo: String, issueNumber: Int, issueTitle: String, comments: [GitHubComment], referencedFiles: [String]) {
+    init(owner: String, repo: String, issueNumber: Int, issueTitle: String, comments: [GitHubComment], referencedFiles: [String], repoLocalPath: String? = nil) {
         self.owner = owner
         self.repo = repo
         self.issueNumber = issueNumber
         self.issueTitle = issueTitle
         self.comments = comments
         self.referencedFiles = referencedFiles
+        self.repoLocalPath = repoLocalPath
 
         let slug = issueTitle
             .lowercased()
@@ -35,6 +38,9 @@ struct LaunchView: View {
             .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
             .prefix(40)
         _branchName = State(initialValue: "issue-\(issueNumber)-\(slug)")
+        let needsClone = repoLocalPath == nil || repoLocalPath?.isEmpty == true
+        _workspaceMode = State(initialValue: needsClone ? "clone" : "worktree")
+        _showCloneWarning = State(initialValue: needsClone)
     }
 
     var body: some View {
@@ -51,6 +57,14 @@ struct LaunchView: View {
                     }
                 }
 
+                if showCloneWarning {
+                    Section {
+                        Label("This repository has no local clone. A fresh clone will be created.", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                            .font(.subheadline)
+                    }
+                }
+
                 Section("Workspace Mode") {
                     Picker("Mode", selection: $workspaceMode) {
                         Text("Worktree").tag("worktree")
@@ -58,6 +72,7 @@ struct LaunchView: View {
                         Text("Clone").tag("clone")
                     }
                     .pickerStyle(.segmented)
+                    .disabled(showCloneWarning)
                     .accessibilityIdentifier("workspace-mode-picker")
                 }
 
@@ -143,6 +158,21 @@ struct LaunchView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                }
+            }
+            .task {
+                if repoLocalPath == nil {
+                    do {
+                        let repos = try await api.repos()
+                        if let match = repos.first(where: { $0.owner == owner && $0.name == repo }) {
+                            let needsClone = match.localPath == nil || match.localPath?.isEmpty == true
+                            showCloneWarning = needsClone
+                            workspaceMode = needsClone ? "clone" : "worktree"
+                        }
+                    } catch {
+                        // Could not verify clone status — unlock the picker so user can choose
+                        showCloneWarning = false
+                    }
                 }
             }
             .fullScreenCover(item: $launchedDeployment) { deployment in
