@@ -75,7 +75,7 @@ struct OnboardingView: View {
                 throw APIError.serverError(0, "Server reported unhealthy status")
             }
             // Success — persist and switch to main UI
-            api.configure(url: url, token: token)
+            try api.configure(url: url, token: token)
         } catch {
             errorMessage = error.localizedDescription
         }

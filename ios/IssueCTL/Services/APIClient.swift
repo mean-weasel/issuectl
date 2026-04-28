@@ -9,33 +9,29 @@ final class APIClient {
     }
 
     init() {
-        // Support launch arguments for automated testing:
-        // -serverURL http://... -apiToken abc123
-        let args = ProcessInfo.processInfo.arguments
-        if let urlIndex = args.firstIndex(of: "-serverURL"),
-           urlIndex + 1 < args.count {
-            let url = args[urlIndex + 1]
+        // Support environment variables for automated testing:
+        // ISSUECTL_SERVER_URL=http://... ISSUECTL_API_TOKEN=abc123
+        let env = ProcessInfo.processInfo.environment
+        if let url = env["ISSUECTL_SERVER_URL"], !url.isEmpty {
             self.serverURL = url
-            KeychainService.save(key: "serverURL", value: url)
+            _ = try? KeychainService.save(key: "serverURL", value: url)
         } else {
             self.serverURL = KeychainService.load(key: "serverURL") ?? ""
         }
-        if let tokenIndex = args.firstIndex(of: "-apiToken"),
-           tokenIndex + 1 < args.count {
-            let token = args[tokenIndex + 1]
+        if let token = env["ISSUECTL_API_TOKEN"], !token.isEmpty {
             self.apiToken = token
-            KeychainService.save(key: "apiToken", value: token)
+            _ = try? KeychainService.save(key: "apiToken", value: token)
         } else {
             self.apiToken = KeychainService.load(key: "apiToken") ?? ""
         }
     }
 
     /// Persist credentials after a successful health check.
-    func configure(url: String, token: String) {
+    func configure(url: String, token: String) throws {
         serverURL = url
         apiToken = token
-        KeychainService.save(key: "serverURL", value: url)
-        KeychainService.save(key: "apiToken", value: token)
+        try KeychainService.save(key: "serverURL", value: url)
+        try KeychainService.save(key: "apiToken", value: token)
     }
 
     /// Clear credentials and remove from Keychain.
