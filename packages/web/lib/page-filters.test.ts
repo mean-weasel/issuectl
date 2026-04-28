@@ -31,6 +31,7 @@ function makePull(overrides: Partial<GitHubPull> = {}): GitHubPull {
     title: "PR",
     body: null,
     state: "open",
+    draft: false,
     merged: false,
     user: { login: "me", avatarUrl: "" },
     headRef: "f",

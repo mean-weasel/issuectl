@@ -33,6 +33,7 @@ function makePR(overrides: Partial<GitHubPull> = {}): GitHubPull {
     title: "PR title",
     body: "closes #1",
     state: "open",
+    draft: false,
     merged: false,
     user: null,
     headRef: "feature",

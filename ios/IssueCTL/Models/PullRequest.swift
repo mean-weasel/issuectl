@@ -5,6 +5,7 @@ struct GitHubPull: Codable, Identifiable, Sendable {
     let title: String
     let body: String?
     let state: String
+    let draft: Bool?
     let merged: Bool
     let user: GitHubUser?
     let headRef: String
@@ -21,6 +22,7 @@ struct GitHubPull: Codable, Identifiable, Sendable {
 
     var id: Int { number }
 
+    var isDraft: Bool { draft ?? false }
     var isOpen: Bool { state == "open" }
 
     var diffSummary: String {
