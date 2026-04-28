@@ -291,6 +291,11 @@ struct LaunchView: View {
         errorMessage = nil
         withAnimation { showProgress = true }
 
+        defer {
+            isLaunching = false
+            withAnimation { showProgress = false }
+        }
+
         do {
             let body = LaunchRequestBody(
                 branchName: branchName,
@@ -321,13 +326,9 @@ struct LaunchView: View {
                 )
             } else {
                 errorMessage = response.error ?? "Launch failed"
-                withAnimation { showProgress = false }
             }
         } catch {
             errorMessage = error.localizedDescription
-            withAnimation { showProgress = false }
         }
-
-        isLaunching = false
     }
 }
