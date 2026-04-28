@@ -13,6 +13,7 @@ import { EditableBody } from "./EditableBody";
 import { EditableTitle } from "./EditableTitle";
 import { PriorityPicker } from "./PriorityPicker";
 import { IssueActionSheet } from "./IssueActionSheet";
+import { ReopenButton } from "./ReopenButton";
 import styles from "./IssueDetail.module.css";
 
 type Props = {
@@ -85,7 +86,9 @@ export function IssueDetail({
           />
         </DetailMeta>
 
-        {issue.state !== "closed" && (
+        {issue.state === "closed" ? (
+          <ReopenButton owner={owner} repo={repoName} issueNumber={issue.number} />
+        ) : (
           <Suspense fallback={null}>
             <IssueActionSheet
               owner={owner}
