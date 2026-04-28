@@ -143,6 +143,7 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
             setConfirming(true);
           }}
           disabled={merging}
+          data-shortcut="merge"
         >
           {merging ? "merging…" : "merge pull request →"}
         </button>

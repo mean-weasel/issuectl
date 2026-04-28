@@ -187,12 +187,13 @@ export function ListContent({
 
   return (
     <div>
-      {prs.map(({ repo, pull }) => (
+      {prs.map(({ repo, pull }, i) => (
         <PrListRow
           key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
           owner={repo.owner}
           repoName={repo.name}
           pull={pull}
+          rowIndex={i}
         />
       ))}
     </div>

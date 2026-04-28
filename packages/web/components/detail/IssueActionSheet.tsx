@@ -226,7 +226,7 @@ export function IssueActionSheet({
       {/* Desktop inline action bar — visible only on wide viewports */}
       <div className={styles.desktopBar}>
         {!hasLiveDeployment && (
-          <Button variant="primary" onClick={handleLaunchTap}>
+          <Button variant="primary" onClick={handleLaunchTap} data-shortcut="launch">
             Launch with Claude
           </Button>
         )}

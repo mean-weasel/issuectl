@@ -1,12 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import type { UnifiedListItem } from "@issuectl/core";
 import { Chip, LabelChip } from "@/components/paper";
 import { SyncDot } from "@/components/ui/SyncDot";
+import { useFocusContext } from "./FocusContext";
 import { SwipeRow } from "./SwipeRow";
 import styles from "./ListRow.module.css";
 
 type Props = {
   item: UnifiedListItem;
+  rowIndex?: number;
   onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
   onClose?: (owner: string, repo: string, issueNumber: number) => void;
 };
@@ -28,10 +32,16 @@ function formatAge(updatedAt: string | number): string {
   return `${diffDays}d`;
 }
 
-export function ListRow({ item, onLaunch, onClose }: Props) {
+export function ListRow({ item, rowIndex, onLaunch, onClose }: Props) {
+  const focus = useFocusContext();
+  const isFocused = rowIndex !== undefined && focus?.focusedIndex === rowIndex;
+
   if (item.kind === "draft") {
     return (
-      <div className={styles.item}>
+      <div
+        className={`${styles.item}${isFocused ? ` ${styles.focused}` : ""}`}
+        data-row-index={rowIndex}
+      >
         <Link href={`/drafts/${item.draft.id}`} className={styles.rowLink}>
           <div className={styles.title}>{item.draft.title}</div>
           <div className={styles.meta}>
@@ -81,7 +91,11 @@ export function ListRow({ item, onLaunch, onClose }: Props) {
   }
 
   const rowContent = (
-    <div className={styles.item} data-section={section}>
+    <div
+      className={`${styles.item}${isFocused ? ` ${styles.focused}` : ""}`}
+      data-section={section}
+      data-row-index={rowIndex}
+    >
       <Link
         href={`/issues/${repo.owner}/${repo.name}/${issue.number}`}
         className={styles.rowLink}

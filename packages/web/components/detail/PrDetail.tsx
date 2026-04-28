@@ -16,6 +16,8 @@ import { BodyText } from "./BodyText";
 import { CIChecks } from "./CIChecks";
 import { FilesChanged } from "./FilesChanged";
 import { MergeButton } from "./MergeButton";
+import { DetailKeyboardNav } from "./DetailKeyboardNav";
+import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -41,6 +43,8 @@ export function PrDetail({
 
   return (
     <div className={styles.container}>
+      <DetailKeyboardNav backHref="/?tab=prs" />
+      <KeyboardHelpOverlay />
       <DetailTopBar
         backHref="/?tab=prs"
         crumb={<>{owner}/<b>{repoName}</b></>}
