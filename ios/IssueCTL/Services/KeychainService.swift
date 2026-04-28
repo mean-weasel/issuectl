@@ -15,8 +15,7 @@ enum KeychainError: LocalizedError {
 enum KeychainService {
     private static let service = "com.issuectl.ios"
 
-    @discardableResult
-    static func save(key: String, value: String) throws -> Bool {
+    static func save(key: String, value: String) throws {
         let data = Data(value.utf8)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -34,7 +33,6 @@ enum KeychainService {
         guard status == errSecSuccess else {
             throw KeychainError.saveFailed(key: key, status: status)
         }
-        return true
     }
 
     static func load(key: String) -> String? {

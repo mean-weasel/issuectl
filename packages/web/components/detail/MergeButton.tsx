@@ -23,7 +23,12 @@ function getCheckStatus(checks: GitHubCheck[]): "passing" | "failing" | "pending
       hasPending = true;
       continue;
     }
-    if (check.conclusion === "failure" || check.conclusion === "timed_out") {
+    if (
+      check.conclusion === "failure" ||
+      check.conclusion === "cancelled" ||
+      check.conclusion === "timed_out" ||
+      check.conclusion === "action_required"
+    ) {
       return "failing";
     }
   }
@@ -32,7 +37,11 @@ function getCheckStatus(checks: GitHubCheck[]): "passing" | "failing" | "pending
 
 function failingCheckCount(checks: GitHubCheck[]): number {
   return checks.filter(
-    (c) => c.conclusion === "failure" || c.conclusion === "timed_out",
+    (c) =>
+      c.conclusion === "failure" ||
+      c.conclusion === "cancelled" ||
+      c.conclusion === "timed_out" ||
+      c.conclusion === "action_required",
   ).length;
 }
 
@@ -57,7 +66,6 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
     }
   };
 
-  /* Bug 1: Draft PRs cannot be merged */
   if (draft) {
     return (
       <button className={styles.mergeBtn} disabled>
@@ -79,13 +87,14 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
   }
 
   const ciStatus = getCheckStatus(checks);
+  const failCount = ciStatus === "failing" ? failingCheckCount(checks) : 0;
 
   return (
     <>
-      {/* Bug 2: CI gate — warn when checks are failing or pending */}
+      {/* Warn when checks are failing or pending */}
       {ciStatus === "failing" && (
         <div className={styles.mergeError} role="status">
-          {failingCheckCount(checks)} CI {failingCheckCount(checks) === 1 ? "check" : "checks"} failing
+          {failCount} CI {failCount === 1 ? "check" : "checks"} failing
         </div>
       )}
       {ciStatus === "pending" && (
@@ -98,7 +107,6 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
           <span className={styles.confirmLabel}>
             merge into <b>{baseRef}</b>?
           </span>
-          {/* Bug 3: disable confirm button while merge is in flight */}
           <button className={styles.confirmBtn} onClick={handleConfirm} disabled={merging}>
             {merging ? "merging…" : "yes, merge →"}
           </button>

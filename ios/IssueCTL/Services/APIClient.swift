@@ -14,13 +14,13 @@ final class APIClient {
         let env = ProcessInfo.processInfo.environment
         if let url = env["ISSUECTL_SERVER_URL"], !url.isEmpty {
             self.serverURL = url
-            _ = try? KeychainService.save(key: "serverURL", value: url)
+            try? KeychainService.save(key: "serverURL", value: url)
         } else {
             self.serverURL = KeychainService.load(key: "serverURL") ?? ""
         }
         if let token = env["ISSUECTL_API_TOKEN"], !token.isEmpty {
             self.apiToken = token
-            _ = try? KeychainService.save(key: "apiToken", value: token)
+            try? KeychainService.save(key: "apiToken", value: token)
         } else {
             self.apiToken = KeychainService.load(key: "apiToken") ?? ""
         }

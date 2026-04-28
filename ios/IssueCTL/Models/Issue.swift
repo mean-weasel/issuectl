@@ -1,8 +1,8 @@
 import Foundation
 
 /// Shared ISO 8601 date formatter — allocated once, reused everywhere.
-/// Must live at file scope so models, views, and extensions can reference it.
-let sharedISO8601Formatter: ISO8601DateFormatter = {
+/// ISO8601DateFormatter is documented as thread-safe once configured.
+nonisolated(unsafe) let sharedISO8601Formatter: ISO8601DateFormatter = {
     let f = ISO8601DateFormatter()
     f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return f

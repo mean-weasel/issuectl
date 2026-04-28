@@ -691,7 +691,7 @@ enum DetailSheet: Identifiable, Sendable {
     }
 }
 
-enum ActiveConfirmation: Identifiable {
+enum ActiveConfirmation: Identifiable, Sendable {
     case closeIssue
     case reopenIssue
     case deleteComment(GitHubComment)
