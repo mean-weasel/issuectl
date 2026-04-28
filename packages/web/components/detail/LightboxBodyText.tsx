@@ -12,7 +12,7 @@ const AVATAR_MAX_SIZE = 100; // pixels — GitHub avatars are typically 20–46p
 function isAvatarImage(el: HTMLImageElement): boolean {
   if (el.hasAttribute("data-avatar")) return true;
   if (AVATAR_URL_PATTERN.test(el.src)) return true;
-  // Check natural dimensions for already-loaded small square images
+  // Check natural dimensions for already-loaded small images
   if (
     el.naturalWidth > 0 &&
     el.naturalWidth <= AVATAR_MAX_SIZE &&

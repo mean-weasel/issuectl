@@ -32,6 +32,11 @@ export function OpenTerminalButton({
   const [activePort, setActivePort] = useState(ttydPort);
   const router = useRouter();
 
+  // Sync activePort when the server re-renders with a new ttydPort
+  useEffect(() => {
+    setActivePort(ttydPort);
+  }, [ttydPort]);
+
   useEffect(() => {
     if (isPending) return;
 
@@ -55,7 +60,7 @@ export function OpenTerminalButton({
     setError(null);
     startTransition(async () => {
       const result = await ensureTtyd(deploymentId);
-      if (!("port" in result) || result.port == null) {
+      if (!("port" in result) || result.port === null || result.port === undefined) {
         if ("error" in result && result.error) setError(result.error);
         router.refresh();
         return;

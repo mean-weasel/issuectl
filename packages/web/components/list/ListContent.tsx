@@ -59,11 +59,13 @@ export function ListContent({
   const [closeError, setCloseError] = useState<string | null>(null);
 
   // Reset visible count whenever filter criteria or the filtered dataset changes.
-  // `data` and `prs` capture search-term and repo/status filter changes that the
-  // discrete props (activeRepo, mineOnly) don't cover.
+  // Length fingerprints detect upstream filter changes (sort, repo) without
+  // resetting on every RSC re-render that produces a new array reference.
+  const dataFingerprint = data.open.length + data.running.length + data.closed.length;
+  const prsFingerprint = prs.length;
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [activeTab, activeSection, activeRepo, mineOnly, data, prs]);
+  }, [activeTab, activeSection, activeRepo, mineOnly, dataFingerprint, prsFingerprint]);
 
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
