@@ -13,6 +13,7 @@ struct DraftDetailView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var hasChanges = false
+    @State private var showDiscardConfirm = false
 
     @State private var repos: [Repo] = []
     @State private var selectedRepoId: Int?
@@ -148,7 +149,20 @@ struct DraftDetailView: View {
         }
         .navigationTitle("Edit Draft")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if hasChanges {
+                        showDiscardConfirm = true
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Text("Back")
+                }
+                .accessibilityIdentifier("draft-back-button")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await save() }
@@ -175,6 +189,27 @@ struct DraftDetailView: View {
                 availableLabels = []
                 selectedLabels = []
             }
+        }
+        .onDisappear {
+            if hasChanges {
+                Task { await autoSave() }
+            }
+        }
+        .confirmationDialog(
+            "You have unsaved changes",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Save and Close") {
+                Task {
+                    await autoSave()
+                    dismiss()
+                }
+            }
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -256,5 +291,27 @@ struct DraftDetailView: View {
             errorMessage = error.localizedDescription
         }
         isSaving = false
+    }
+
+    private func autoSave() async {
+        guard hasChanges else { return }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        do {
+            let updateBody = UpdateDraftRequestBody(
+                title: trimmedTitle != draft.title ? trimmedTitle : nil,
+                body: trimmedBody != (draft.body ?? "") ? trimmedBody : nil,
+                priority: priority != (draft.priority ?? .normal) ? priority : nil
+            )
+            let response = try await api.updateDraft(id: draft.id, body: updateBody)
+            if response.success {
+                hasChanges = false
+                onSaved()
+            }
+        } catch {
+            // Auto-save is best-effort; errors are silently ignored
+        }
     }
 }

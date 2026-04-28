@@ -12,6 +12,8 @@ struct TerminalView: View {
     @State private var loadError: String?
     @State private var currentPort: Int
     @State private var isRespawning = false
+    @State private var isEndingSession = false
+    @State private var endSessionError: String?
 
     init(deployment: ActiveDeployment, port: Int, onEnd: @escaping () -> Void) {
         self.deployment = deployment
@@ -82,7 +84,33 @@ struct TerminalView: View {
                 titleVisibility: .visible
             ) {
                 Button("End Session", role: .destructive) {
-                    onEnd()
+                    Task { await endSession() }
+                }
+            }
+            .overlay {
+                if isEndingSession {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text("Ending session…")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(24)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            }
+            .alert("Failed to End Session", isPresented: Binding(
+                get: { endSessionError != nil },
+                set: { if !$0 { endSessionError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                if let endSessionError {
+                    Text(endSessionError)
                 }
             }
         }
@@ -90,6 +118,27 @@ struct TerminalView: View {
 
     private var terminalURL: URL? {
         URL(string: "\(api.serverURL)/api/terminal/\(currentPort)/")
+    }
+
+    private func endSession() async {
+        isEndingSession = true
+        endSessionError = nil
+        do {
+            let response = try await api.endSession(
+                deploymentId: deployment.id,
+                owner: deployment.owner,
+                repo: deployment.repoName,
+                issueNumber: deployment.issueNumber
+            )
+            if response.success {
+                onEnd()
+            } else {
+                endSessionError = response.error ?? "Failed to end session"
+            }
+        } catch {
+            endSessionError = error.localizedDescription
+        }
+        isEndingSession = false
     }
 
     private func attemptRespawn() async {
