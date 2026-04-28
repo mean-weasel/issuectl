@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
 import styles from "./TerminalPanel.module.css";
 
 type ConnectionStatus = "connecting" | "connected" | "error";
+
+const statusLabels: Record<ConnectionStatus, string> = {
+  connecting: "Connecting...",
+  connected: "Connected",
+  error: "Disconnected",
+};
 
 type Props = {
   open: boolean;
@@ -67,13 +73,20 @@ export function TerminalPanel({
     return () => clearTimeout(timer);
   }, [open, connectionStatus]);
 
-  const handleIframeLoad = useCallback(() => {
-    setConnectionStatus("connected");
-  }, []);
+  function handleIframeLoad() {
+    // iframe onLoad fires even for HTTP error pages — verify the endpoint is healthy
+    fetch(`/api/terminal/${ttydPort}/`, { method: "HEAD" })
+      .then((res) => {
+        setConnectionStatus(res.ok ? "connected" : "error");
+      })
+      .catch(() => {
+        setConnectionStatus("error");
+      });
+  }
 
-  const handleIframeError = useCallback(() => {
+  function handleIframeError() {
     setConnectionStatus("error");
-  }, []);
+  }
 
   function handleRetry() {
     setConnectionStatus("connecting");
@@ -124,21 +137,9 @@ export function TerminalPanel({
           <span className={styles.headerTitle}>
             #{issueNumber} — {issueTitle}
           </span>
-          {connectionStatus === "connecting" && (
-            <span className={styles.statusBadge} data-status="connecting">
-              Connecting...
-            </span>
-          )}
-          {connectionStatus === "connected" && (
-            <span className={styles.statusBadge} data-status="connected">
-              Connected
-            </span>
-          )}
-          {connectionStatus === "error" && (
-            <span className={styles.statusBadge} data-status="error">
-              Disconnected
-            </span>
-          )}
+          <span className={styles.statusBadge} data-status={connectionStatus}>
+            {statusLabels[connectionStatus]}
+          </span>
           {error && <span className={styles.headerError}>{error}</span>}
           <Button
             variant="ghost"

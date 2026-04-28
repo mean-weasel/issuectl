@@ -43,12 +43,16 @@ export function Modal({
     width !== undefined
       ? ({ "--modal-width": `${width}px` } as CSSProperties)
       : undefined;
-  // Stable ref avoids re-registering the keydown listener when onClose identity changes
+  // Stable refs avoid re-registering listeners when prop identities change
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
+    // Capture the opener element once on mount
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
 
     // Focus the modal container so keyboard events work immediately
     modalRef.current?.focus();
@@ -59,7 +63,7 @@ export function Modal({
 
     function handleKeyDown(e: KeyboardEvent) {
       // Escape to close
-      if (e.key === "Escape" && !disabled) {
+      if (e.key === "Escape" && !disabledRef.current) {
         e.stopImmediatePropagation();
         onCloseRef.current();
         return;
@@ -68,7 +72,10 @@ export function Modal({
       // Focus trap
       if (e.key === "Tab" && modalRef.current) {
         const focusable = getFocusable(modalRef.current);
-        if (focusable.length === 0) return;
+        if (focusable.length === 0) {
+          e.preventDefault();
+          return;
+        }
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
         if (e.shiftKey && document.activeElement === first) {
@@ -87,9 +94,9 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = prevOverflow;
       // Restore focus to the element that opened the modal
-      previouslyFocused?.focus();
+      previouslyFocusedRef.current?.focus();
     };
-  }, [disabled]);
+  }, []); // mount-only: refs handle dynamic values
 
   return (
     <div

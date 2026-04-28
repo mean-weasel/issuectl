@@ -2,8 +2,10 @@ import SwiftUI
 
 /// Renders a markdown string as styled `Text` using `AttributedString(markdown:)`.
 ///
-/// Supports bold, italic, inline code, links, headings, bullet/numbered lists,
-/// and blockquotes. Code blocks (```) are rendered in a monospace font.
+/// Inline elements (bold, italic, inline code, links) are rendered via
+/// `.inlineOnlyPreservingWhitespace`. Fenced code blocks (```) are extracted
+/// and displayed in a monospace font with a background. Block-level markdown
+/// (headings, lists, blockquotes) is **not** interpreted.
 /// If markdown parsing fails, the raw string is shown as a fallback.
 struct MarkdownView: View {
     let content: String
@@ -30,19 +32,29 @@ struct MarkdownView: View {
 
     // MARK: - Inline Markdown
 
+    private func parseMarkdown(_ source: String) -> AttributedString? {
+        do {
+            return try AttributedString(
+                markdown: source,
+                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+            )
+        } catch {
+            #if DEBUG
+            print("[MarkdownView] Parse failed: \(error.localizedDescription)")
+            #endif
+            return nil
+        }
+    }
+
     @ViewBuilder
     private func markdownText(_ source: String) -> some View {
         let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             EmptyView()
-        } else if let attributed = try? AttributedString(
-            markdown: trimmed,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        ) {
+        } else if let attributed = parseMarkdown(trimmed) {
             Text(attributed)
                 .font(.body)
         } else {
-            // Fallback: show raw text if parsing fails
             Text(trimmed)
                 .font(.body)
         }
@@ -74,11 +86,7 @@ struct MarkdownView: View {
                     insideCode = true
                 }
             } else {
-                if current.isEmpty {
-                    current = line
-                } else {
-                    current += "\n" + line
-                }
+                current += current.isEmpty ? line : "\n" + line
             }
         }
 
