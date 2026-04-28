@@ -5,7 +5,9 @@ struct QuickCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let repos: [Repo]
-    let onSuccess: () -> Void
+    /// Called on success. The optional string carries a non-fatal warning
+    /// (e.g. "labels could not be applied") that the parent should surface briefly.
+    let onSuccess: (_ warning: String?) -> Void
 
     @State private var title = ""
     @State private var bodyText = ""
@@ -200,22 +202,25 @@ struct QuickCreateSheet: View {
                 }
                 if let warning = assignResponse.cleanupWarning {
                     // Issue was created on GitHub but draft cleanup failed on server.
-                    // Show warning and refresh, but don't auto-dismiss so user sees it.
-                    errorMessage = "Issue created. Note: \(warning)"
+                    // Dismiss the sheet — the issue exists — and surface the warning
+                    // via the parent's action-error banner (auto-dismisses after 5s).
                     isSubmitting = false
-                    onSuccess()
+                    onSuccess("Issue created. Note: \(warning)")
+                    dismiss()
                     return
                 }
                 if let warning = assignResponse.labelsWarning {
                     // Issue was created on GitHub but labels could not be applied.
-                    errorMessage = "Issue created. Note: \(warning)"
+                    // Dismiss the sheet — the issue exists — and surface the warning
+                    // via the parent's action-error banner (auto-dismisses after 5s).
                     isSubmitting = false
-                    onSuccess()
+                    onSuccess("Issue created. Note: \(warning)")
+                    dismiss()
                     return
                 }
             }
 
-            onSuccess()
+            onSuccess(nil)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
