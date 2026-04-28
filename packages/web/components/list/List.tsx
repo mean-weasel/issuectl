@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import type { Section, SortMode } from "@issuectl/core";
 import { Drawer, Fab } from "@/components/paper";
@@ -14,11 +14,14 @@ import { BottomHandle } from "./BottomHandle";
 import { useListCounts } from "./ListCountContext";
 import { SearchProvider } from "./SearchContext";
 import { SearchBar } from "./SearchBar";
+import { FocusProvider } from "./FocusContext";
+import { ListKeyboardNav } from "./ListKeyboardNav";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 import { CacheAge } from "@/components/ui/CacheAge";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 import { VersionBadge } from "@/components/ui/VersionBadge";
+import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
 
 type Repo = { owner: string; name: string };
 
@@ -74,6 +77,8 @@ export function List({
   const [createOpen, setCreateOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const handleCreateDraft = useCallback(() => setCreateOpen(true), []);
 
   const counts = useListCounts();
   const sectionCounts = counts?.sectionCounts ?? null;
@@ -163,8 +168,18 @@ export function List({
 
   return (
     <SearchProvider>
+    <FocusProvider>
     <PullToRefreshWrapper>
     <div className={styles.container}>
+      <ListKeyboardNav
+        activeTab={activeTab}
+        activeSection={activeSection}
+        activeRepo={activeRepo}
+        activeSort={activeSort}
+        mineOnly={mineOnly}
+        onCreateDraft={handleCreateDraft}
+      />
+      <KeyboardHelpOverlay />
       <div className={styles.topBar}>
         {/* Brand: full on desktop, compact on mobile */}
         <h1 className={styles.brand}>
@@ -448,6 +463,7 @@ export function List({
       </Drawer>
     </div>
     </PullToRefreshWrapper>
+    </FocusProvider>
     </SearchProvider>
   );
 }

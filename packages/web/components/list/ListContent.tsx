@@ -216,12 +216,13 @@ export function ListContent({
 
   return (
     <div>
-      {filteredPrs.map(({ repo, pull }) => (
+      {filteredPrs.map(({ repo, pull }, i) => (
         <PrListRow
           key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
           owner={repo.owner}
           repoName={repo.name}
           pull={pull}
+          rowIndex={i}
         />
       ))}
     </div>

@@ -6,11 +6,12 @@ import styles from "./ListSection.module.css";
 type Props = {
   title: ReactNode | null;
   items: UnifiedListItem[];
+  startIndex?: number;
   onLaunch?: (owner: string, repo: string, issueNumber: number) => void;
   onClose?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
-export function ListSection({ title, items, onLaunch, onClose }: Props) {
+export function ListSection({ title, items, startIndex = 0, onLaunch, onClose }: Props) {
   if (items.length === 0) return null;
 
   return (
@@ -22,7 +23,7 @@ export function ListSection({ title, items, onLaunch, onClose }: Props) {
           <span className={styles.count}>{items.length}</span>
         </div>
       ) : null}
-      {items.map((item) => (
+      {items.map((item, i) => (
         <ListRow
           key={
             item.kind === "draft"
@@ -30,6 +31,7 @@ export function ListSection({ title, items, onLaunch, onClose }: Props) {
               : `issue-${item.repo.id}-${item.issue.number}`
           }
           item={item}
+          rowIndex={startIndex + i}
           onLaunch={onLaunch}
           onClose={onClose}
         />

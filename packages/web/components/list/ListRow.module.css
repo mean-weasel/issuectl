@@ -15,6 +15,12 @@
   background: var(--paper-bg-warm);
 }
 
+.item.focused {
+  background: var(--paper-bg-warm);
+  border-left: 3px solid var(--paper-accent);
+  padding-left: 0;
+}
+
 .item:active {
   background: var(--paper-bg-warmer);
 }
