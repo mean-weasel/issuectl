@@ -7,6 +7,7 @@ struct AdvancedSettingsView: View {
     @State private var errorMessage: String?
     @State private var isSaving = false
     @State private var saveError: String?
+    @State private var showSaveSuccess = false
 
     // Editable fields
     @State private var cacheTTL = ""
@@ -132,6 +133,9 @@ struct AdvancedSettingsView: View {
             ToolbarItem(placement: .confirmationAction) {
                 if isSaving {
                     ProgressView()
+                } else if showSaveSuccess {
+                    Label("Saved", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
                 } else {
                     Button("Save") {
                         Task { await save() }
@@ -167,6 +171,7 @@ struct AdvancedSettingsView: View {
     private func save() async {
         isSaving = true
         saveError = nil
+        showSaveSuccess = false
         defer { isSaving = false }
 
         let updates = Dictionary(
@@ -179,7 +184,13 @@ struct AdvancedSettingsView: View {
         do {
             let response = try await api.updateSettings(updates)
             if response.success {
+                // Update baseline so dirty-state detection resets
                 settings.merge(updates) { _, new in new }
+
+                // Show brief success indicator
+                showSaveSuccess = true
+                try? await Task.sleep(for: .seconds(2))
+                showSaveSuccess = false
             } else {
                 saveError = response.error ?? "Failed to save settings"
             }
