@@ -113,6 +113,23 @@
   border-color: var(--paper-ink-muted);
 }
 
+.strategySelect {
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg);
+  color: var(--paper-ink);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.strategySelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .mergeError {
   font-family: var(--paper-serif);
   font-size: var(--paper-fs-sm);

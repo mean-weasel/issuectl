@@ -51,18 +51,25 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
   const [merging, setMerging] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [merged, setMerged] = useState(false);
+  const [strategy, setStrategy] = useState<"merge" | "squash" | "rebase">("merge");
 
   const handleConfirm = async () => {
     setConfirming(false);
     setMerging(true);
     setMergeError(null);
-    const result = await mergePullAction(owner, repoName, pullNumber);
-    setMerging(false);
-    if (result.success) {
-      setMerged(true);
-      router.refresh();
-    } else {
-      setMergeError(result.error ?? "Merge failed");
+    try {
+      const result = await mergePullAction(owner, repoName, pullNumber, strategy);
+      if (result.success) {
+        setMerged(true);
+        router.refresh();
+      } else {
+        setMergeError(result.error ?? "Merge failed");
+      }
+    } catch (err) {
+      console.error("[issuectl] Merge pull request failed:", err);
+      setMergeError("Something went wrong while merging. Please try again.");
+    } finally {
+      setMerging(false);
     }
   };
 
@@ -107,6 +114,16 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
           <span className={styles.confirmLabel}>
             merge into <b>{baseRef}</b>?
           </span>
+          <select
+            className={styles.strategySelect}
+            value={strategy}
+            onChange={(e) => setStrategy(e.target.value as "merge" | "squash" | "rebase")}
+            disabled={merging}
+          >
+            <option value="merge">Merge commit</option>
+            <option value="squash">Squash and merge</option>
+            <option value="rebase">Rebase and merge</option>
+          </select>
           <button className={styles.confirmBtn} onClick={handleConfirm} disabled={merging}>
             {merging ? "merging…" : "yes, merge →"}
           </button>

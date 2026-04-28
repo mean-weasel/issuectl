@@ -13,6 +13,7 @@ import { launchIssue } from "@/lib/actions/launch";
 import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
 import { Button } from "@/components/paper";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { checkWorktreeStatusAction } from "@/lib/actions/worktrees";
@@ -72,6 +73,7 @@ export function LaunchModal({
     path: string;
   } | null>(null);
   const [forceResume, setForceResume] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const [initialBranch] = useState(defaultBranch);
   const [initialMode] = useState<WorkspaceMode>(
@@ -142,9 +144,21 @@ export function LaunchModal({
 
   const handleClose = useCallback(() => {
     if (isPending) return;
-    if (isDirty && !window.confirm("Discard launch configuration?")) return;
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+      return;
+    }
     onClose();
   }, [isPending, isDirty, onClose]);
+
+  const handleDiscardConfirm = useCallback(() => {
+    setShowDiscardConfirm(false);
+    onClose();
+  }, [onClose]);
+
+  const handleDiscardCancel = useCallback(() => {
+    setShowDiscardConfirm(false);
+  }, []);
 
   function handleLaunch() {
     setError(null);
@@ -194,82 +208,94 @@ export function LaunchModal({
   }
 
   return (
-    <Modal
-      title="Launch to Claude Code"
-      width={620}
-      onClose={handleClose}
-      disabled={isPending}
-      footer={
-        <>
-          <Button variant="ghost" onClick={handleClose} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button
-            variant="accent"
-            onClick={handleLaunch}
-            disabled={isPending || !branchName.trim()}
-          >
-            {isPending
-              ? workspaceMode === "clone"
-                ? "Cloning repo & launching\u2026"
-                : workspaceMode === "worktree"
-                  ? "Preparing worktree & launching\u2026"
-                  : "Launching\u2026"
-              : "Launch"}
-          </Button>
-        </>
-      }
-    >
-      <div className={styles.issueSummary}>
-        <span className={styles.issueDot} />
-        <div>
-          <div className={styles.issueTitle}>
-            #{issue.number} &middot; {issue.title}
-          </div>
-          <div className={styles.issueRepo}>
-            {owner}/{repo}
+    <>
+      <Modal
+        title="Launch to Claude Code"
+        width={620}
+        onClose={handleClose}
+        disabled={isPending}
+        footer={
+          <>
+            <Button variant="ghost" onClick={handleClose} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="accent"
+              onClick={handleLaunch}
+              disabled={isPending || !branchName.trim()}
+            >
+              {isPending
+                ? workspaceMode === "clone"
+                  ? "Cloning repo & launching\u2026"
+                  : workspaceMode === "worktree"
+                    ? "Preparing worktree & launching\u2026"
+                    : "Launching\u2026"
+                : "Launch"}
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.issueSummary}>
+          <span className={styles.issueDot} />
+          <div>
+            <div className={styles.issueTitle}>
+              #{issue.number} &middot; {issue.title}
+            </div>
+            <div className={styles.issueRepo}>
+              {owner}/{repo}
+            </div>
           </div>
         </div>
-      </div>
 
-      {dirtyWorktree?.dirty && !forceResume && (
-        <DirtyWorktreeBanner
-          owner={owner}
+        {dirtyWorktree?.dirty && !forceResume && (
+          <DirtyWorktreeBanner
+            owner={owner}
+            repo={repo}
+            issueNumber={issue.number}
+            worktreePath={dirtyWorktree.path}
+            onDiscard={() => setDirtyWorktree(null)}
+            onResume={() => setForceResume(true)}
+          />
+        )}
+
+        <BranchInput value={branchName} onChange={setBranchName} />
+
+        <WorkspaceModeSelector
+          value={workspaceMode}
+          onChange={setWorkspaceMode}
+          repoLocalPath={repoLocalPath}
           repo={repo}
           issueNumber={issue.number}
-          worktreePath={dirtyWorktree.path}
-          onDiscard={() => setDirtyWorktree(null)}
-          onResume={() => setForceResume(true)}
+        />
+
+        <ContextToggles
+          comments={comments}
+          referencedFiles={referencedFiles}
+          selectedComments={selectedComments}
+          selectedFiles={selectedFiles}
+          onToggleComment={toggleComment}
+          onToggleFile={toggleFile}
+          onAddFile={addFile}
+        />
+
+        <PreambleInput value={preamble} onChange={setPreamble} />
+
+        {error && (
+          <div className={styles.error} role="alert">
+            {error}
+          </div>
+        )}
+      </Modal>
+      {showDiscardConfirm && (
+        <ConfirmDialog
+          title="Discard Changes"
+          message="Discard launch configuration?"
+          confirmLabel="Discard"
+          confirmVariant="danger"
+          onConfirm={handleDiscardConfirm}
+          onCancel={handleDiscardCancel}
         />
       )}
-
-      <BranchInput value={branchName} onChange={setBranchName} />
-
-      <WorkspaceModeSelector
-        value={workspaceMode}
-        onChange={setWorkspaceMode}
-        repoLocalPath={repoLocalPath}
-        repo={repo}
-        issueNumber={issue.number}
-      />
-
-      <ContextToggles
-        comments={comments}
-        referencedFiles={referencedFiles}
-        selectedComments={selectedComments}
-        selectedFiles={selectedFiles}
-        onToggleComment={toggleComment}
-        onToggleFile={toggleFile}
-        onAddFile={addFile}
-      />
-
-      <PreambleInput value={preamble} onChange={setPreamble} />
-
-      {error && (
-        <div className={styles.error} role="alert">
-          {error}
-        </div>
-      )}
-    </Modal>
+    </>
   );
 }

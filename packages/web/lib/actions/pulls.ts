@@ -13,6 +13,7 @@ export async function mergePullAction(
   owner: string,
   repo: string,
   pullNumber: number,
+  mergeMethod?: "merge" | "squash" | "rebase",
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (typeof owner !== "string" || owner.trim().length === 0) {
     return { success: false, error: "Invalid owner" };
@@ -23,19 +24,24 @@ export async function mergePullAction(
   if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
     return { success: false, error: "Invalid pull request number" };
   }
-
-  const db = getDb();
-  const tracked = getRepo(db, owner, repo);
-  if (!tracked) {
-    return { success: false, error: "Repository is not tracked" };
+  const VALID_MERGE_METHODS = ["merge", "squash", "rebase"] as const;
+  if (mergeMethod !== undefined && !(VALID_MERGE_METHODS as readonly string[]).includes(mergeMethod)) {
+    return { success: false, error: "Invalid merge method" };
   }
 
   try {
+    const db = getDb();
+    const tracked = getRepo(db, owner, repo);
+    if (!tracked) {
+      return { success: false, error: "Repository is not tracked" };
+    }
+
     await withAuthRetry((octokit) =>
       octokit.rest.pulls.merge({
         owner,
         repo,
         pull_number: pullNumber,
+        ...(mergeMethod ? { merge_method: mergeMethod } : {}),
       }),
     );
     // Clear the PR detail cache so the re-rendered page shows merged state
