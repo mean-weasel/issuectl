@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { type QueuedOperation } from "@/lib/offline-queue";
+import { Modal } from "./Modal";
 import styles from "./FailureModal.module.css";
 
 type Props = {
@@ -42,46 +43,31 @@ export function FailureModal({ failures, onRetry, onDiscard, onClose }: Props) {
   }
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div
-        className={styles.modal}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label="Failed operations"
-      >
-        <div className={styles.header}>
-          <h3 className={styles.title}>Failed to sync</h3>
-          <button className={styles.close} onClick={onClose} aria-label="Close">
-            &times;
-          </button>
+    <Modal title="Failed to sync" width={440} onClose={onClose}>
+      {failures.map((op) => (
+        <div key={op.id} className={styles.row}>
+          <div className={styles.info}>
+            <div className={styles.description}>{describeOp(op)}</div>
+            <div className={styles.error}>{op.error}</div>
+          </div>
+          <div className={styles.actions}>
+            <button
+              className={styles.retry}
+              onClick={() => handleRetry(op)}
+              disabled={retrying === op.id}
+            >
+              {retrying === op.id ? "Retrying\u2026" : "Retry"}
+            </button>
+            <button
+              className={styles.discard}
+              onClick={() => onDiscard(op.id)}
+              disabled={retrying === op.id}
+            >
+              Discard
+            </button>
+          </div>
         </div>
-        <div className={styles.body}>
-          {failures.map((op) => (
-            <div key={op.id} className={styles.row}>
-              <div className={styles.info}>
-                <div className={styles.description}>{describeOp(op)}</div>
-                <div className={styles.error}>{op.error}</div>
-              </div>
-              <div className={styles.actions}>
-                <button
-                  className={styles.retry}
-                  onClick={() => handleRetry(op)}
-                  disabled={retrying === op.id}
-                >
-                  {retrying === op.id ? "Retrying…" : "Retry"}
-                </button>
-                <button
-                  className={styles.discard}
-                  onClick={() => onDiscard(op.id)}
-                  disabled={retrying === op.id}
-                >
-                  Discard
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      ))}
+    </Modal>
   );
 }
