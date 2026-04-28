@@ -26,6 +26,7 @@ struct PRListView: View {
     @State private var oldestCachedAt: Date?
     private let pageSize = 15
     @State private var displayLimit = 15
+    @State private var searchText = ""
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
 
@@ -56,6 +57,14 @@ struct PRListView: View {
         switch section {
         case .open: items = items.filter { $0.isOpen }
         case .closed: items = items.filter { !$0.isOpen }
+        }
+
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            items = items.filter { pull in
+                pull.title.lowercased().contains(query) ||
+                (pull.body ?? "").lowercased().contains(query)
+            }
         }
 
         switch sortOrder {
@@ -201,8 +210,10 @@ struct PRListView: View {
                 displayLimit = pageSize
                 storedMineOnly = new
             }
+            .onChange(of: searchText) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
+        .searchable(text: $searchText, prompt: "Search pull requests")
     }
 
     // MARK: - List
