@@ -174,7 +174,7 @@ struct TerminalWebView: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
         webView.backgroundColor = .black
-        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
         webView.navigationDelegate = context.coordinator
         webView.load(URLRequest(url: url))
         return webView
