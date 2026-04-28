@@ -29,6 +29,7 @@ export function OpenTerminalButton({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [activePort, setActivePort] = useState(ttydPort);
   const router = useRouter();
 
   useEffect(() => {
@@ -54,11 +55,14 @@ export function OpenTerminalButton({
     setError(null);
     startTransition(async () => {
       const result = await ensureTtyd(deploymentId);
-      if (!("port" in result)) {
-        if (result.error) setError(result.error);
+      if (!("port" in result) || result.port == null) {
+        if ("error" in result && result.error) setError(result.error);
         router.refresh();
         return;
       }
+      // Use the fresh port from ensureTtyd — the RSC-rendered ttydPort
+      // may be stale if ttyd was respawned on a different port.
+      setActivePort(result.port);
       setOpen(true);
     });
   }
@@ -72,7 +76,7 @@ export function OpenTerminalButton({
       <TerminalPanel
         open={open}
         onClose={() => setOpen(false)}
-        ttydPort={ttydPort}
+        ttydPort={activePort}
         deploymentId={deploymentId}
         owner={owner}
         repo={repo}
