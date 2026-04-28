@@ -9,6 +9,7 @@ function mapPull(raw: unknown): GitHubPull {
     title: string;
     body: string | null;
     state: string;
+    draft: boolean;
     merged: boolean;
     merged_at: string | null;
     user: RawGitHubUser;
@@ -27,6 +28,7 @@ function mapPull(raw: unknown): GitHubPull {
     title: r.title,
     body: r.body,
     state: r.state as GitHubPull["state"],
+    draft: r.draft ?? false,
     merged: r.merged ?? r.merged_at !== null,
     user: mapUser(r.user),
     headRef: r.head.ref,

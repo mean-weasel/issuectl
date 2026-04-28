@@ -81,6 +81,7 @@ function makePR(): GitHubPull {
     title: "Fix",
     body: "closes #1",
     state: "open",
+    draft: false,
     merged: false,
     user: null,
     headRef: "fix",
