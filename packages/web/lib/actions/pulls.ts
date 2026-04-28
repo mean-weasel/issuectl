@@ -24,14 +24,18 @@ export async function mergePullAction(
   if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
     return { success: false, error: "Invalid pull request number" };
   }
-
-  const db = getDb();
-  const tracked = getRepo(db, owner, repo);
-  if (!tracked) {
-    return { success: false, error: "Repository is not tracked" };
+  const VALID_MERGE_METHODS = ["merge", "squash", "rebase"] as const;
+  if (mergeMethod !== undefined && !(VALID_MERGE_METHODS as readonly string[]).includes(mergeMethod)) {
+    return { success: false, error: "Invalid merge method" };
   }
 
   try {
+    const db = getDb();
+    const tracked = getRepo(db, owner, repo);
+    if (!tracked) {
+      return { success: false, error: "Repository is not tracked" };
+    }
+
     await withAuthRetry((octokit) =>
       octokit.rest.pulls.merge({
         owner,

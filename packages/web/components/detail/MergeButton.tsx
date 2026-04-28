@@ -57,13 +57,19 @@ export function MergeButton({ owner, repoName, pullNumber, baseRef, draft, check
     setConfirming(false);
     setMerging(true);
     setMergeError(null);
-    const result = await mergePullAction(owner, repoName, pullNumber, strategy);
-    setMerging(false);
-    if (result.success) {
-      setMerged(true);
-      router.refresh();
-    } else {
-      setMergeError(result.error ?? "Merge failed");
+    try {
+      const result = await mergePullAction(owner, repoName, pullNumber, strategy);
+      if (result.success) {
+        setMerged(true);
+        router.refresh();
+      } else {
+        setMergeError(result.error ?? "Merge failed");
+      }
+    } catch (err) {
+      console.error("[issuectl] Merge pull request failed:", err);
+      setMergeError("Something went wrong while merging. Please try again.");
+    } finally {
+      setMerging(false);
     }
   };
 

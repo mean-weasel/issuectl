@@ -1,5 +1,5 @@
 .error {
-  color: var(--color-danger);
-  margin-top: var(--space-xs);
-  font-size: var(--font-sm);
+  color: var(--paper-brick);
+  margin-top: 8px;
+  font-size: var(--paper-fs-sm);
 }
