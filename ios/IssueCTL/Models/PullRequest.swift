@@ -19,7 +19,9 @@ struct GitHubPull: Codable, Identifiable, Sendable {
     let htmlUrl: String
     let checksStatus: String?
 
-    var id: Int { number }
+    /// Use htmlUrl as the stable ID — PR numbers are only unique per-repo,
+    /// so using `number` would collide when multiple repos are shown together.
+    var id: String { htmlUrl }
 
     var isOpen: Bool { state == "open" }
 
