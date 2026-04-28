@@ -147,7 +147,7 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
       <div className={styles.head}>
         <div className={styles.avi}>
           {comment.user?.avatarUrl ? (
-            <Image src={comment.user.avatarUrl} alt="" width={26} height={26} />
+            <Image src={comment.user.avatarUrl} alt="" width={26} height={26} data-avatar="true" />
           ) : (
             initials(comment.user?.login)
           )}

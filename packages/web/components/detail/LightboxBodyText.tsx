@@ -28,8 +28,9 @@ export function LightboxBodyText({ body, className }: Props) {
       const page = containerRef.current.closest("[data-lightbox-root]");
       const root = page ?? document;
       const imgs = Array.from(root.querySelectorAll("img"))
+        .filter((el) => !el.hasAttribute("data-avatar"))
         .map((el) => el.src)
-        .filter((s) => s && !s.includes("avatarUrl") && !s.includes("githubusercontent.com/u/"));
+        .filter((s) => s);
       lightbox.open(src, imgs.length > 0 ? imgs : [src]);
     },
     [lightbox],

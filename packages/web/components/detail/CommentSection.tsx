@@ -21,7 +21,8 @@ export function CommentSection({ initialComments, currentUser, owner, repo, issu
   // clear pending optimistic comments — the server data is authoritative.
   useEffect(() => {
     if (initialComments.length > prevCountRef.current) {
-      setPendingComments([]);
+      const serverBodies = new Set(initialComments.map(c => c.body));
+      setPendingComments(prev => prev.filter(p => !serverBodies.has(p.body)));
     }
     prevCountRef.current = initialComments.length;
   }, [initialComments.length]);
