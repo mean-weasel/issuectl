@@ -144,7 +144,7 @@ export function CommentComposer({ owner, repo, issueNumber, onCommentPosted }: P
           autoComplete="off"
           autoCapitalize="sentences"
           spellCheck={true}
-          enterKeyHint="send"
+          enterKeyHint="enter"
         />
       </div>
       {error && <div className={styles.error}>{error}</div>}

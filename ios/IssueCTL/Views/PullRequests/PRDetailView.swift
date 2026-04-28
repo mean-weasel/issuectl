@@ -137,9 +137,7 @@ struct PRDetailView: View {
         if let body = pull.body, !body.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Divider()
-                Text(body)
-                    .font(.body)
-                    .textSelection(.enabled)
+                MarkdownView(content: body)
             }
         }
     }

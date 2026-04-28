@@ -26,9 +26,7 @@ struct CommentView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text(comment.body)
-                .font(.body)
-                .textSelection(.enabled)
+            MarkdownView(content: comment.body)
         }
         .padding(.vertical, 4)
     }

@@ -35,6 +35,12 @@
   flex-direction: column;
 }
 
+@media (min-width: 1200px) {
+  .panel {
+    width: min(800px, 60%);
+  }
+}
+
 .panel[data-open="true"] {
   transform: translateX(0);
 }
@@ -136,9 +142,56 @@
   color: var(--paper-brick);
 }
 
+/* Connection status badge */
+.statusBadge {
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-xs);
+  padding: 2px 8px;
+  border-radius: var(--paper-radius-sm);
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.statusBadge[data-status="connecting"] {
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-muted);
+}
+
+.statusBadge[data-status="connected"] {
+  background: color-mix(in srgb, var(--paper-forest) 15%, transparent);
+  color: var(--paper-forest);
+}
+
+.statusBadge[data-status="error"] {
+  background: color-mix(in srgb, var(--paper-brick) 15%, transparent);
+  color: var(--paper-brick);
+}
+
+/* Connection error overlay */
+.connectionError {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #1a1b26;
+}
+
+.connectionErrorText {
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-base);
+  color: var(--paper-ink-muted);
+  margin: 0;
+}
+
 .terminalFrame {
   flex: 1;
   border: none;
   width: 100%;
   background: #1a1b26;
+}
+
+.terminalFrame[data-hidden="true"] {
+  display: none;
 }

@@ -62,6 +62,17 @@ export function EditableBody({ owner, repo, issueNumber, initialBody }: Props) {
     setEditing(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      void handleSave();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
   if (editing) {
     return (
       <div className={styles.editor}>
@@ -69,12 +80,15 @@ export function EditableBody({ owner, repo, issueNumber, initialBody }: Props) {
           className={styles.textarea}
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onKeyDown={handleKeyDown}
           rows={10}
           disabled={saving}
           autoFocus
           maxLength={65536}
+          aria-label="Edit issue body"
         />
         <div className={styles.actions}>
+          <span className={styles.editHint}>{"\u2318\u21A9 to save \u00B7 esc to cancel"}</span>
           <Button variant="ghost" onClick={handleCancel} disabled={saving}>
             cancel
           </Button>

@@ -269,9 +269,7 @@ struct IssueDetailView: View {
         if let body = issue.body, !body.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Divider()
-                Text(body)
-                    .font(.body)
-                    .textSelection(.enabled)
+                MarkdownView(content: body)
             }
         }
     }
