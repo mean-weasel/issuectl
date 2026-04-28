@@ -1,0 +1,54 @@
+import Foundation
+
+/// Filter items from a [repoFullName: [Item]] dictionary by selected repos and current user.
+func filterItemsByRepo<Item>(
+    _ itemsByRepo: [String: [Item]],
+    repos: [Repo],
+    selectedRepoIds: Set<Int>,
+    mineOnly: Bool,
+    currentUserLogin: String?,
+    userLogin: (Item) -> String?
+) -> [Item] {
+    var items: [Item]
+    if selectedRepoIds.isEmpty {
+        items = itemsByRepo.values.flatMap { $0 }
+    } else {
+        let selectedNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
+        items = itemsByRepo
+            .filter { selectedNames.contains($0.key) }
+            .values.flatMap { $0 }
+    }
+    if mineOnly, let login = currentUserLogin {
+        items = items.filter { userLogin($0) == login }
+    }
+    return items
+}
+
+/// Look up the Repo that owns an item by matching its URL in the itemsByRepo dictionary.
+func repoForItem<Item>(
+    _ item: Item,
+    in itemsByRepo: [String: [Item]],
+    repos: [Repo],
+    htmlUrl: (Item) -> String
+) -> Repo? {
+    let url = htmlUrl(item)
+    for (repoFullName, items) in itemsByRepo {
+        if items.contains(where: { htmlUrl($0) == url }) {
+            return repos.first(where: { $0.fullName == repoFullName })
+        }
+    }
+    return nil
+}
+
+/// Look up the index of the Repo that owns an item (for color assignment).
+func repoIndexForItem<Item>(
+    _ item: Item,
+    in itemsByRepo: [String: [Item]],
+    repos: [Repo],
+    htmlUrl: (Item) -> String
+) -> Int? {
+    guard let repo = repoForItem(item, in: itemsByRepo, repos: repos, htmlUrl: htmlUrl) else {
+        return nil
+    }
+    return repos.firstIndex(where: { $0.id == repo.id })
+}

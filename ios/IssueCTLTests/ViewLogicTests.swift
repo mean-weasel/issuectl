@@ -158,4 +158,134 @@ final class ViewLogicTests: XCTestCase {
         // In this case "Load More" would not be shown
         XCTAssertTrue(displayLimit >= totalItems, "All items are now visible")
     }
+
+    // MARK: - Repo Filter Helpers
+
+    private struct FakeItem {
+        let htmlUrl: String
+        let userLogin: String?
+    }
+
+    private func makeRepos() -> [Repo] {
+        [
+            Repo(id: 1, owner: "org", name: "alpha", localPath: nil, branchPattern: nil, createdAt: ""),
+            Repo(id: 2, owner: "org", name: "beta", localPath: nil, branchPattern: nil, createdAt: ""),
+        ]
+    }
+
+    func testFilterItemsByRepoNoSelection() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: "alice")],
+            "org/beta": [FakeItem(htmlUrl: "b1", userLogin: "bob")],
+        ]
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [], mineOnly: false, currentUserLogin: nil, userLogin: { $0.userLogin })
+        XCTAssertEqual(result.count, 2)
+    }
+
+    func testFilterItemsByRepoWithSelection() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: "alice")],
+            "org/beta": [FakeItem(htmlUrl: "b1", userLogin: "bob")],
+        ]
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [1], mineOnly: false, currentUserLogin: nil, userLogin: { $0.userLogin })
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.htmlUrl, "a1")
+    }
+
+    func testFilterItemsByRepoMineOnly() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [
+                FakeItem(htmlUrl: "a1", userLogin: "alice"),
+                FakeItem(htmlUrl: "a2", userLogin: "bob"),
+            ],
+        ]
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [], mineOnly: true, currentUserLogin: "alice", userLogin: { $0.userLogin })
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.htmlUrl, "a1")
+    }
+
+    func testFilterItemsByRepoEmpty() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [:]
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [], mineOnly: false, currentUserLogin: nil, userLogin: { $0.userLogin })
+        XCTAssertTrue(result.isEmpty)
+    }
+
+    func testRepoForItemFound() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: nil)],
+            "org/beta": [FakeItem(htmlUrl: "b1", userLogin: nil)],
+        ]
+        let target = FakeItem(htmlUrl: "b1", userLogin: nil)
+        let repo = repoForItem(target, in: items, repos: repos, htmlUrl: { $0.htmlUrl })
+        XCTAssertEqual(repo?.name, "beta")
+    }
+
+    func testRepoForItemNotFound() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: nil)],
+        ]
+        let target = FakeItem(htmlUrl: "missing", userLogin: nil)
+        let repo = repoForItem(target, in: items, repos: repos, htmlUrl: { $0.htmlUrl })
+        XCTAssertNil(repo)
+    }
+
+    func testRepoIndexForItemFound() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: nil)],
+            "org/beta": [FakeItem(htmlUrl: "b1", userLogin: nil)],
+        ]
+        let target = FakeItem(htmlUrl: "b1", userLogin: nil)
+        let idx = repoIndexForItem(target, in: items, repos: repos, htmlUrl: { $0.htmlUrl })
+        XCTAssertEqual(idx, 1)
+    }
+
+    func testRepoIndexForItemNotFound() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [:]
+        let target = FakeItem(htmlUrl: "nope", userLogin: nil)
+        let idx = repoIndexForItem(target, in: items, repos: repos, htmlUrl: { $0.htmlUrl })
+        XCTAssertNil(idx)
+    }
+
+    func testFilterItemsByRepoMineOnlyWithNilLogin() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: "alice")],
+        ]
+        // mineOnly is true but login is nil — filter is a no-op, all items returned
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [], mineOnly: true, currentUserLogin: nil, userLogin: { $0.userLogin })
+        XCTAssertEqual(result.count, 1)
+    }
+
+    func testFilterItemsByRepoSelectionAndMineOnly() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [
+                FakeItem(htmlUrl: "a1", userLogin: "alice"),
+                FakeItem(htmlUrl: "a2", userLogin: "bob"),
+            ],
+            "org/beta": [FakeItem(htmlUrl: "b1", userLogin: "alice")],
+        ]
+        // Select only repo 1 (alpha) AND filter to alice
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [1], mineOnly: true, currentUserLogin: "alice", userLogin: { $0.userLogin })
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.htmlUrl, "a1")
+    }
+
+    func testFilterItemsByRepoStaleSelectionId() {
+        let repos = makeRepos()
+        let items: [String: [FakeItem]] = [
+            "org/alpha": [FakeItem(htmlUrl: "a1", userLogin: nil)],
+        ]
+        // selectedRepoIds contains an ID not in repos — returns empty
+        let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [999], mineOnly: false, currentUserLogin: nil, userLogin: { $0.userLogin })
+        XCTAssertTrue(result.isEmpty)
+    }
 }

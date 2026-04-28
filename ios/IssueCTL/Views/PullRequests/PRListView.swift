@@ -21,7 +21,6 @@ struct PRListView: View {
     @State private var showMergeConfirm = false
     @State private var swipeTarget: (owner: String, repo: String, number: Int)?
     @State private var actionError: String?
-    @State private var errorDismissTask: Task<Void, Never>?
 
     @State private var oldestCachedAt: Date?
     private let pageSize = 15
@@ -30,25 +29,15 @@ struct PRListView: View {
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
 
-    private var allPulls: [GitHubPull] {
-        pullsByRepo.values.flatMap { $0 }
-    }
-
-    // Pulls filtered by selected repos and "mine" toggle (before section/sort filtering)
     private var repoFilteredPulls: [GitHubPull] {
-        var items: [GitHubPull]
-        if selectedRepoIds.isEmpty {
-            items = allPulls
-        } else {
-            let selectedRepoNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
-            items = pullsByRepo
-                .filter { selectedRepoNames.contains($0.key) }
-                .values.flatMap { $0 }
-        }
-        if mineOnly, let login = currentUserLogin {
-            items = items.filter { $0.user?.login == login }
-        }
-        return items
+        filterItemsByRepo(
+            pullsByRepo,
+            repos: repos,
+            selectedRepoIds: selectedRepoIds,
+            mineOnly: mineOnly,
+            currentUserLogin: currentUserLogin,
+            userLogin: { $0.user?.login }
+        )
     }
 
     private var filteredPulls: [GitHubPull] {
@@ -86,21 +75,11 @@ struct PRListView: View {
     }
 
     private func repoIndex(for pull: GitHubPull) -> Int? {
-        for (repoFullName, pulls) in pullsByRepo {
-            if pulls.contains(where: { $0.htmlUrl == pull.htmlUrl }) {
-                return repos.firstIndex(where: { $0.fullName == repoFullName })
-            }
-        }
-        return nil
+        repoIndexForItem(pull, in: pullsByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
     }
 
     private func repoFor(pull: GitHubPull) -> Repo? {
-        for (repoFullName, pulls) in pullsByRepo {
-            if pulls.contains(where: { $0.htmlUrl == pull.htmlUrl }) {
-                return repos.first(where: { $0.fullName == repoFullName })
-            }
-        }
-        return nil
+        repoForItem(pull, in: pullsByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
     }
 
     var body: some View {
@@ -129,19 +108,27 @@ struct PRListView: View {
                         ProgressView("Loading pull requests...")
                             .frame(maxHeight: .infinity)
                     } else if let errorMessage {
-                        ContentUnavailableView {
-                            Label("Error", systemImage: "exclamationmark.triangle")
-                        } description: {
-                            Text(errorMessage)
-                        } actions: {
-                            Button("Retry") { Task { await loadAll() } }
+                        ScrollView {
+                            ContentUnavailableView {
+                                Label("Error", systemImage: "exclamationmark.triangle")
+                            } description: {
+                                Text(errorMessage)
+                            } actions: {
+                                Button("Retry") { Task { await loadAll() } }
+                            }
+                            .frame(maxHeight: .infinity)
                         }
+                        .refreshable { await refreshWithCooldown() }
                     } else if filteredPulls.isEmpty {
-                        ContentUnavailableView(
-                            "No Pull Requests",
-                            systemImage: "arrow.triangle.merge",
-                            description: Text("No \(section.rawValue) pull requests.")
-                        )
+                        ScrollView {
+                            ContentUnavailableView(
+                                "No Pull Requests",
+                                systemImage: "arrow.triangle.merge",
+                                description: Text("No \(section.rawValue) pull requests.")
+                            )
+                            .frame(maxHeight: .infinity)
+                        }
+                        .refreshable { await refreshWithCooldown() }
                     } else {
                         pullsList
                     }
@@ -180,17 +167,7 @@ struct PRListView: View {
                     }
                 }
             }
-            .onChange(of: actionError) { _, newValue in
-                errorDismissTask?.cancel()
-                if newValue != nil {
-                    errorDismissTask = Task {
-                        try? await Task.sleep(for: .seconds(5))
-                        if !Task.isCancelled {
-                            actionError = nil
-                        }
-                    }
-                }
-            }
+            .autoDismissError($actionError)
             .task { await loadAll() }
             .onAppear {
                 if let s = PRSection(rawValue: storedSection) { section = s }
@@ -256,15 +233,7 @@ struct PRListView: View {
                 }
             }
 
-            if allFiltered.count > displayLimit {
-                Button {
-                    displayLimit += pageSize
-                } label: {
-                    Text("Load More (\(allFiltered.count - displayLimit) remaining)")
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity)
-                }
-            }
+            LoadMoreButton(totalCount: allFiltered.count, displayLimit: $displayLimit, pageSize: pageSize)
         }
         .refreshable { await refreshWithCooldown() }
     }
@@ -349,7 +318,7 @@ struct PRListView: View {
     }
 
     private func refreshWithCooldown() async {
-        if let last = lastRefreshDate, Date().timeIntervalSince(last) < refreshCooldown {
+        guard shouldAllowRefresh(lastRefreshDate: lastRefreshDate, cooldown: refreshCooldown) else {
             return
         }
         lastRefreshDate = Date()
