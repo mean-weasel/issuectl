@@ -12,6 +12,8 @@ import { RepoFilterChips } from "./RepoFilterChips";
 import { FiltersSheet } from "./FiltersSheet";
 import { BottomHandle } from "./BottomHandle";
 import { useListCounts } from "./ListCountContext";
+import { SearchProvider } from "./SearchContext";
+import { SearchBar } from "./SearchBar";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 import { CacheAge } from "@/components/ui/CacheAge";
@@ -160,6 +162,7 @@ export function List({
       : mineOnly ? "mine" : "everyone";
 
   return (
+    <SearchProvider>
     <PullToRefreshWrapper>
     <div className={styles.container}>
       <div className={styles.topBar}>
@@ -191,6 +194,8 @@ export function List({
             <span className={styles.contextCount}>{prCount}</span>
           )}
         </button>
+
+        <SearchBar />
 
         <CacheAge cachedAt={cachedAt ?? null} />
         <nav className={styles.desktopNav}>
@@ -443,6 +448,7 @@ export function List({
       </Drawer>
     </div>
     </PullToRefreshWrapper>
+    </SearchProvider>
   );
 }
 
