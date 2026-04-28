@@ -99,7 +99,10 @@ export default async function LaunchProgressPage({
           {owner}/{repo} · #{issueNumber}
         </p>
         <LaunchProgress deployment={deployment} counts={counts} />
-        <LaunchProgressPoller active={deployment.endedAt === null} />
+        <LaunchProgressPoller
+          active={deployment.endedAt === null}
+          stateFingerprint={`${deployment.state}:${deployment.ttydPort ?? "none"}`}
+        />
       </div>
     </div>
   );

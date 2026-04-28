@@ -67,6 +67,8 @@ export function PriorityPicker({ repoId, issueNumber, currentPriority }: Props) 
           e.stopPropagation();
           setOpen(true);
         }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
         priority: {priority}
       </button>

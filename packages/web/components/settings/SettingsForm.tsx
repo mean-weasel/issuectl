@@ -36,13 +36,15 @@ export function SettingsForm({
   idleGracePeriod,
   idleThreshold,
 }: Props) {
-  const [values, setValues] = useState<FormValues>({
+  const initialValues: FormValues = {
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
     claude_extra_args: claudeExtraArgs,
     idle_grace_period: idleGracePeriod,
     idle_threshold: idleThreshold,
-  });
+  };
+  const [values, setValues] = useState<FormValues>(initialValues);
+  const [originals, setOriginals] = useState<FormValues>(initialValues);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,14 +56,6 @@ export function SettingsForm({
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     };
   }, []);
-
-  const originals: FormValues = {
-    branch_pattern: branchPattern,
-    cache_ttl: cacheTTL,
-    claude_extra_args: claudeExtraArgs,
-    idle_grace_period: idleGracePeriod,
-    idle_threshold: idleThreshold,
-  };
 
   const isDirty = (Object.keys(originals) as (keyof FormValues)[]).some(
     (k) => values[k] !== originals[k],
@@ -115,6 +109,10 @@ export function SettingsForm({
         setError(result.error ?? "Failed to save settings");
         return;
       }
+
+      // Reset the baseline so isDirty correctly reflects the saved
+      // state — without this, subsequent edits always appear dirty.
+      setOriginals({ ...values });
 
       if (result.cacheStale) {
         showToast("Settings saved — reload to see updates", "success");

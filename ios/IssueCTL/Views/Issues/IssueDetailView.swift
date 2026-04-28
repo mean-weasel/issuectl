@@ -2,6 +2,7 @@ import SwiftUI
 
 struct IssueDetailView: View {
     @Environment(APIClient.self) private var api
+    @Environment(\.openURL) private var openURL
     let owner: String
     let repo: String
     let number: Int
@@ -77,7 +78,22 @@ struct IssueDetailView: View {
         .toolbar {
             if let detail {
                 ToolbarItem(placement: .topBarTrailing) {
+                    if let url = URL(string: detail.issue.htmlUrl) {
+                        ShareLink(item: url) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button {
+                            if let url = URL(string: detail.issue.htmlUrl) {
+                                openURL(url)
+                            }
+                        } label: {
+                            Label("Open on GitHub", systemImage: "safari")
+                        }
+                        Divider()
                         Button {
                             activeDetailSheet = .edit(detail)
                         } label: {
@@ -128,6 +144,9 @@ struct IssueDetailView: View {
                     }
                 }
             }
+        }
+        .navigationDestination(for: PRDestination.self) { dest in
+            PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
         }
         .sheet(item: $activeDetailSheet) { sheet in
             switch sheet {
@@ -282,19 +301,21 @@ struct IssueDetailView: View {
                 .font(.headline)
 
             ForEach(prs) { pr in
-                HStack(spacing: 6) {
-                    Image(systemName: pr.isOpen ? "arrow.triangle.merge" : (pr.merged ? "checkmark.circle.fill" : "xmark.circle"))
-                        .foregroundStyle(pr.isOpen ? .green : (pr.merged ? .purple : .red))
-                    Text("#\(pr.number)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text(pr.title)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                    Spacer()
-                    Text(pr.diffSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                NavigationLink(value: PRDestination(owner: owner, repo: repo, number: pr.number)) {
+                    HStack(spacing: 6) {
+                        Image(systemName: pr.isOpen ? "arrow.triangle.merge" : (pr.merged ? "checkmark.circle.fill" : "xmark.circle"))
+                            .foregroundStyle(pr.isOpen ? .green : (pr.merged ? .purple : .red))
+                        Text("#\(pr.number)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(pr.title)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(pr.diffSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, 2)
             }
