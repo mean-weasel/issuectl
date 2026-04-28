@@ -64,7 +64,11 @@ export function OfflineIndicator() {
       const { enqueue, remove: removeOp } = await import("@/lib/offline-queue");
       try {
         await removeOp(op.id);
-        await enqueue(op.action as "assignDraft" | "addComment" | "toggleLabel", op.params, op.nonce);
+        await enqueue(
+          op.action as "assignDraft" | "addComment" | "toggleLabel" | "closeIssue" | "setPriority",
+          op.params,
+          op.nonce,
+        );
         refreshQueue();
         showToast("Operation re-queued for sync", "success");
       } catch (err) {
@@ -124,7 +128,7 @@ export function OfflineIndicator() {
               {hasQueue && ` · ${pendingCount} operation${pendingCount > 1 ? "s" : ""} queued`}
             </span>
             <span className={styles.textCompact}>
-              Offline{hasQueue && ` �� ${pendingCount} queued`}
+              Offline{hasQueue && ` - ${pendingCount} queued`}
             </span>
           </div>
           {dropdownOpen && (

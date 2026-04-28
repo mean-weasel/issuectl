@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { GitHubLabel } from "@issuectl/core";
 import { toggleLabel } from "@/lib/actions/issues";
 import { tryOrQueue } from "@/lib/tryOrQueue";
@@ -28,6 +29,7 @@ export function LabelManager({
   currentLabels,
   availableLabels,
 }: Props) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [syncVisible, setSyncVisible] = useState(false);
@@ -77,6 +79,7 @@ export function LabelManager({
         }
 
         showToast("Labels updated", "success");
+        router.refresh();
       } catch (err) {
         console.error("[issuectl] toggleLabel threw:", err);
         setError(err instanceof Error ? err.message : "Failed to update label");

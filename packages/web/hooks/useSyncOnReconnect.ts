@@ -5,7 +5,8 @@ import { checkHealth, replayQueue } from "@/lib/sync";
 import { listPending, type QueuedOperation } from "@/lib/offline-queue";
 import { assignDraftAction } from "@/lib/actions/drafts";
 import { addComment } from "@/lib/actions/comments";
-import { toggleLabel } from "@/lib/actions/issues";
+import { closeIssue, toggleLabel } from "@/lib/actions/issues";
+import { setPriorityAction } from "@/lib/actions/priority";
 import { refreshAction } from "@/lib/actions/refresh";
 
 type ActionResult = { success: boolean; error?: string };
@@ -35,6 +36,19 @@ async function executeOperation(op: QueuedOperation): Promise<ActionResult> {
         label: p.label as string,
         action: p.action as "add" | "remove",
       });
+    case "closeIssue":
+      return closeIssue(
+        p.owner as string,
+        p.repo as string,
+        p.issueNumber as number,
+        p.comment as string | undefined,
+      );
+    case "setPriority":
+      return setPriorityAction(
+        p.repoId as number,
+        p.issueNumber as number,
+        p.priority as "low" | "normal" | "high",
+      );
     default:
       return { success: false, error: `Unknown action: ${op.action}` };
   }

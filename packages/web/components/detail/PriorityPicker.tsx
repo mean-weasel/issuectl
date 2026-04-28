@@ -3,7 +3,9 @@
 import { useState } from "react";
 import type { Priority } from "@issuectl/core";
 import { Sheet } from "@/components/paper";
+import { useToast } from "@/components/ui/ToastProvider";
 import { setPriorityAction } from "@/lib/actions/priority";
+import { tryOrQueue } from "@/lib/tryOrQueue";
 import styles from "./PriorityPicker.module.css";
 
 type PriorityOption = {
@@ -36,6 +38,7 @@ type Props = {
 };
 
 export function PriorityPicker({ repoId, issueNumber, currentPriority }: Props) {
+  const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [priority, setPriority] = useState<Priority>(currentPriority);
   const [setting, setSetting] = useState<Priority | null>(null);
@@ -45,12 +48,20 @@ export function PriorityPicker({ repoId, issueNumber, currentPriority }: Props) 
     setSetting(next);
     setError(null);
     try {
-      const result = await setPriorityAction(repoId, issueNumber, next);
-      if (result.success) {
+      const result = await tryOrQueue(
+        "setPriority",
+        { repoId, issueNumber, priority: next },
+        () => setPriorityAction(repoId, issueNumber, next),
+      );
+      if (result.outcome === "queued") {
+        setPriority(next);
+        setOpen(false);
+        showToast("Priority change queued — will sync when online", "warning");
+      } else if (result.outcome === "succeeded") {
         setPriority(next);
         setOpen(false);
       } else {
-        setError(result.error ?? "Failed to update priority");
+        setError(result.error);
       }
     } catch {
       setError("Failed to update priority");

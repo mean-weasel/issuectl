@@ -19,6 +19,10 @@ function describeOp(op: QueuedOperation): string {
       const verb = (p.action as string) === "add" ? "Add" : "Remove";
       return `${verb} label "${p.label as string}" on ${p.owner as string}/${p.repo as string}#${p.issueNumber as number}`;
     }
+    case "closeIssue":
+      return `Close ${p.owner as string}/${p.repo as string}#${p.issueNumber as number}`;
+    case "setPriority":
+      return `Set priority to "${p.priority as string}" on issue #${p.issueNumber as number}`;
     default:
       return op.action;
   }

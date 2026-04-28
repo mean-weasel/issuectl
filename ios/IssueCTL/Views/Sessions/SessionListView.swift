@@ -67,7 +67,7 @@ struct SessionListView: View {
                         port: port,
                         onEnd: {
                             terminalTarget = nil
-                            Task { await endSession(deployment) }
+                            deployments.removeAll { $0.id == deployment.id }
                         }
                     )
                 }
