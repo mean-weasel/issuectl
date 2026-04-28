@@ -13,6 +13,7 @@ export async function mergePullAction(
   owner: string,
   repo: string,
   pullNumber: number,
+  mergeMethod?: "merge" | "squash" | "rebase",
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (typeof owner !== "string" || owner.trim().length === 0) {
     return { success: false, error: "Invalid owner" };
@@ -36,6 +37,7 @@ export async function mergePullAction(
         owner,
         repo,
         pull_number: pullNumber,
+        ...(mergeMethod ? { merge_method: mergeMethod } : {}),
       }),
     );
     // Clear the PR detail cache so the re-rendered page shows merged state
