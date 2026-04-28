@@ -57,6 +57,7 @@
 		B7BC266681BEE18B94DA1223 /* BranchNameHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736AD6AF28A44D0CEF44377B /* BranchNameHelper.swift */; };
 		BB243C0355BC2828C525684A /* LabelManagementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3518E82E2F76B696A0CACFEB /* LabelManagementSheet.swift */; };
 		BB3D82F9FB758E4769B8BA58 /* RepoFilterChips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */; };
+		C02C3F84D16B27F60A6622E0 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1EDD5BE2AB56ED93A092C0C /* MarkdownView.swift */; };
 		C188EF4912DB0E5917317C07 /* CommentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13760098C8ED1658B27AD54B /* CommentSheet.swift */; };
 		C8222FD4B618852C6CE61ACA /* ImageLightbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39642CB180355E5C62A75E /* ImageLightbox.swift */; };
 		C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */; };
@@ -140,6 +141,7 @@
 		B7701223E13D43C4F74244B0 /* Repo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repo.swift; sourceTree = "<group>"; };
 		BC00C899D2ADA14475787AE7 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		BE5C5A4C468148B6D09FDA6F /* ServerHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHealth.swift; sourceTree = "<group>"; };
+		C1EDD5BE2AB56ED93A092C0C /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
 		C48C04AAB5D9F17D9DD63684 /* RepoListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepoListView.swift; sourceTree = "<group>"; };
 		C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailView.swift; sourceTree = "<group>"; };
 		CA3814ACC4885AAA637A3041 /* DraftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftDetailView.swift; sourceTree = "<group>"; };
@@ -346,6 +348,7 @@
 				3F39642CB180355E5C62A75E /* ImageLightbox.swift */,
 				CCED89BF4650BDFC4262B48D /* InteractivePopDisabler.swift */,
 				FE149A3F324BCC15AB57153E /* LabelPicker.swift */,
+				C1EDD5BE2AB56ED93A092C0C /* MarkdownView.swift */,
 				F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */,
 				6E3F3CE4A721136E587B4C67 /* NetworkErrorBanner.swift */,
 				0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */,
@@ -539,6 +542,7 @@
 				581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */,
 				D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */,
 				E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */,
+				C02C3F84D16B27F60A6622E0 /* MarkdownView.swift in Sources */,
 				2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */,
 				62580655D91E8E7A9A7950B1 /* NetworkErrorBanner.swift in Sources */,
 				8E89CDCD892A094F7485DB40 /* NetworkMonitor.swift in Sources */,
