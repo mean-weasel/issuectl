@@ -144,6 +144,7 @@ export {
   getPulls,
   getPullsWithChecks,
   getPullDetail,
+  type PullWithChecksStatus,
 } from "./data/pulls.js";
 export {
   listReviews,

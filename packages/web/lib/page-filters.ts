@@ -1,9 +1,9 @@
-import type { GitHubPull } from "@issuectl/core";
+import type { PullWithChecksStatus } from "@issuectl/core";
 import { repoKey } from "./repo-key";
 
 export type PrEntry = {
   repo: { owner: string; name: string };
-  pull: GitHubPull;
+  pull: PullWithChecksStatus;
 };
 
 /**
