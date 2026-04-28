@@ -74,6 +74,7 @@ export type GitHubPullFile = {
   status: "added" | "modified" | "removed" | "renamed" | "copied" | "changed" | "unchanged";
   additions: number;
   deletions: number;
+  patch?: string;
 };
 
 export type GitHubAccessibleRepo = {

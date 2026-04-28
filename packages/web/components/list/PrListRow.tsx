@@ -1,12 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import type { PullWithChecksStatus } from "@issuectl/core";
 import { Chip } from "@/components/paper";
+import { useFocusContext } from "./FocusContext";
 import styles from "./PrListRow.module.css";
 
 type Props = {
   owner: string;
   repoName: string;
   pull: PullWithChecksStatus;
+  rowIndex?: number;
 };
 
 function formatAge(updatedAt: string): string {
@@ -30,12 +34,17 @@ function getStatusDot(pull: PullWithChecksStatus): StatusDotVariant {
   return "none";
 }
 
-export function PrListRow({ owner, repoName, pull }: Props) {
+export function PrListRow({ owner, repoName, pull, rowIndex }: Props) {
+  const focus = useFocusContext();
+  const isFocused = rowIndex !== undefined && focus.focusedIndex === rowIndex;
   const dot = getStatusDot(pull);
   const href = `/pulls/${owner}/${repoName}/${pull.number}`;
 
   return (
-    <div className={styles.item}>
+    <div
+      className={`${styles.item}${isFocused ? ` ${styles.focused}` : ""}`}
+      data-row-index={rowIndex}
+    >
       <Link href={href} className={styles.rowLink}>
         <span className={`${styles.dot} ${styles[dot]}`} aria-hidden />
         <div className={styles.title}>{pull.title}</div>

@@ -16,6 +16,30 @@
   align-items: center;
 }
 
+.expandBtn {
+  cursor: pointer;
+  border-radius: var(--paper-radius-sm);
+  transition: background 0.12s;
+}
+
+.expandBtn:hover {
+  background: color-mix(in srgb, var(--paper-ink) 5%, transparent);
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+  transition: transform 0.15s ease;
+  color: var(--paper-ink-faint);
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
 .add {
   color: var(--paper-accent);
   font-family: var(--paper-serif);
@@ -54,4 +78,36 @@
   font-size: 12px;
   color: var(--paper-ink-faint);
   text-align: center;
+}
+
+/* --- Diff block --- */
+
+.diffBlock {
+  font-family: var(--paper-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-x: auto;
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  white-space: pre;
+}
+
+.diffLine {
+  padding: 0 4px;
+}
+
+.diffAdd {
+  background: color-mix(in srgb, var(--paper-accent) 12%, transparent);
+}
+
+.diffDel {
+  background: color-mix(in srgb, var(--paper-brick) 12%, transparent);
+}
+
+.diffHunk {
+  color: var(--paper-ink-faint);
+  font-style: italic;
 }

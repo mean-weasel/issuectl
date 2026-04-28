@@ -8,6 +8,11 @@
   background: var(--paper-bg-warm);
 }
 
+.item.focused {
+  background: var(--paper-bg-warm);
+  border-left: 3px solid var(--paper-accent);
+}
+
 .rowLink {
   flex: 1;
   padding: 16px 24px 16px 58px;
