@@ -229,6 +229,24 @@ final class EnumTests: XCTestCase {
         let deployment = try decoder.decode(ActiveDeployment.self, from: json)
         XCTAssertEqual(deployment.state, .active)
         XCTAssertEqual(deployment.workspaceMode, .clone)
+        XCTAssertTrue(deployment.isActive)
+    }
+
+    func testActiveDeploymentActiveButEndedAtPresent() throws {
+        let json = """
+        {
+            "id": 1, "repo_id": 1, "issue_number": 1,
+            "branch_name": "b", "workspace_mode": "clone",
+            "workspace_path": "/tmp", "linked_pr_number": null,
+            "state": "active",
+            "launched_at": "2026-04-27T08:00:00Z", "ended_at": "2026-04-27T09:00:00Z",
+            "ttyd_port": 7682, "ttyd_pid": 100,
+            "owner": "org", "repo_name": "app"
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(ActiveDeployment.self, from: json)
+        XCTAssertFalse(deployment.isActive)
     }
 
     func testPriorityInDraft() throws {

@@ -6,6 +6,8 @@ struct TerminalView: View {
     let deployment: ActiveDeployment
     let port: Int
     let onEnd: () -> Void
+    private let terminalFontSize = 24
+    private let terminalPageZoom = 1.35
 
     @Environment(\.dismiss) private var dismiss
     @State private var showEndConfirm = false
@@ -52,7 +54,12 @@ struct TerminalView: View {
                             }
                         }
                     } else {
-                        TerminalWebView(url: url, loadError: $loadError)
+                        TerminalWebView(
+                            url: url,
+                            loadError: $loadError,
+                            fontSize: terminalFontSize,
+                            pageZoom: terminalPageZoom
+                        )
                             .ignoresSafeArea(edges: .bottom)
                     }
                 } else {
@@ -132,7 +139,13 @@ struct TerminalView: View {
     private var terminalURL: URL? {
         guard let terminalToken else { return nil }
         var components = URLComponents(string: "\(api.serverURL)/api/terminal/\(currentPort)/")
-        components?.queryItems = [URLQueryItem(name: "terminalToken", value: terminalToken)]
+        components?.queryItems = [
+            URLQueryItem(name: "terminalToken", value: terminalToken),
+            URLQueryItem(name: "fontSize", value: "\(terminalFontSize)"),
+            URLQueryItem(name: "lineHeight", value: "1.25"),
+            URLQueryItem(name: "disableResizeOverlay", value: "true"),
+            URLQueryItem(name: "rendererType", value: "canvas"),
+        ]
         return components?.url
     }
 
@@ -180,9 +193,11 @@ struct TerminalView: View {
 struct TerminalWebView: UIViewRepresentable {
     let url: URL
     @Binding var loadError: String?
+    let fontSize: Int
+    let pageZoom: CGFloat
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(loadError: $loadError)
+        Coordinator(loadError: $loadError, fontSize: fontSize)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -193,25 +208,33 @@ struct TerminalWebView: UIViewRepresentable {
         webView.backgroundColor = .black
         webView.scrollView.bounces = false
         webView.navigationDelegate = context.coordinator
+        webView.pageZoom = pageZoom
         webView.load(URLRequest(url: url))
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.fontSize = fontSize
+        webView.pageZoom = pageZoom
         if webView.url != url {
             webView.load(URLRequest(url: url))
+        } else {
+            context.coordinator.applyTerminalSizing(to: webView)
         }
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         @Binding var loadError: String?
+        var fontSize: Int
 
-        init(loadError: Binding<String?>) {
+        init(loadError: Binding<String?>, fontSize: Int) {
             _loadError = loadError
+            self.fontSize = fontSize
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             loadError = nil
+            applyTerminalSizing(to: webView)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -220,6 +243,46 @@ struct TerminalWebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             loadError = error.localizedDescription
+        }
+
+        func applyTerminalSizing(to webView: WKWebView) {
+            let script = """
+            (() => {
+                const id = "issuectl-terminal-font-size";
+                let style = document.getElementById(id);
+                if (!style) {
+                    style = document.createElement("style");
+                    style.id = id;
+                    document.head.appendChild(style);
+                }
+                style.textContent = `
+                    :root {
+                        --issuectl-terminal-font-size: \(fontSize)px;
+                    }
+                    body,
+                    .terminal,
+                    .xterm,
+                    .xterm-viewport,
+                    .xterm-screen,
+                    .xterm-rows,
+                    .xterm-char-measure-element {
+                        font-size: var(--issuectl-terminal-font-size) !important;
+                        line-height: 1.2 !important;
+                    }
+                `;
+                const terminal = window.term || window.terminal || window.xterm;
+                if (terminal && terminal.options) {
+                    terminal.options.fontSize = \(fontSize);
+                    terminal.options.lineHeight = 1.2;
+                    if (typeof terminal.refresh === "function") {
+                        terminal.refresh(0, terminal.rows || 0);
+                    }
+                }
+                window.dispatchEvent(new Event("resize"));
+                setTimeout(() => window.dispatchEvent(new Event("resize")), 150);
+            })();
+            """
+            webView.evaluateJavaScript(script)
         }
     }
 }

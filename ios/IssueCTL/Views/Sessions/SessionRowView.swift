@@ -26,6 +26,12 @@ struct SessionRowView: View {
                 Label(deployment.runningDuration, systemImage: "clock")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if deployment.ttydPort != nil {
+                    Label("Open", systemImage: "terminal")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.blue)
+                }
             }
         }
         .padding(.vertical, 4)

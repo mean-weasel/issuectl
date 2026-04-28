@@ -63,6 +63,8 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
     let owner: String
     let repoName: String
 
+    var isActive: Bool { state == .active && endedAt == nil }
+
     var launchedDate: Date? {
         parseIssueCTLDate(launchedAt)
     }
