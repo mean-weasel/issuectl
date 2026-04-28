@@ -58,9 +58,12 @@ export function ListContent({
   const [isPending, startTransition] = useTransition();
   const [closeError, setCloseError] = useState<string | null>(null);
 
+  // Reset visible count whenever filter criteria or the filtered dataset changes.
+  // `data` and `prs` capture search-term and repo/status filter changes that the
+  // discrete props (activeRepo, mineOnly) don't cover.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [activeTab, activeSection, activeRepo, mineOnly]);
+  }, [activeTab, activeSection, activeRepo, mineOnly, data, prs]);
 
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
