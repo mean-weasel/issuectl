@@ -41,6 +41,7 @@ struct IssueListView: View {
     @State private var oldestCachedAt: Date?
     private let pageSize = 15
     @State private var displayLimit = 15
+    @State private var searchText = ""
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
 
@@ -98,6 +99,14 @@ struct IssueListView: View {
         case .closed: items = items.filter { !$0.isOpen }
         }
 
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            items = items.filter { issue in
+                issue.title.lowercased().contains(query) ||
+                (issue.body ?? "").lowercased().contains(query)
+            }
+        }
+
         switch sortOrder {
         case .updated: items.sort { $0.updatedAt > $1.updatedAt }
         case .created: items.sort { $0.createdAt > $1.createdAt }
@@ -135,6 +144,15 @@ struct IssueListView: View {
             .unassigned: unassigned.count,
             .closed: closed.count,
         ]
+    }
+
+    private var filteredDrafts: [Draft] {
+        guard !searchText.isEmpty else { return drafts }
+        let query = searchText.lowercased()
+        return drafts.filter { draft in
+            draft.title.lowercased().contains(query) ||
+            (draft.body ?? "").lowercased().contains(query)
+        }
     }
 
     private func repoIndex(for issue: GitHubIssue) -> Int? {
@@ -319,8 +337,10 @@ struct IssueListView: View {
                 displayLimit = pageSize
                 storedMineOnly = new
             }
+            .onChange(of: searchText) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
         }
+        .searchable(text: $searchText, prompt: "Search issues")
     }
 
     // MARK: - Lists
@@ -396,7 +416,7 @@ struct IssueListView: View {
 
     @ViewBuilder
     private var draftsList: some View {
-        if drafts.isEmpty {
+        if filteredDrafts.isEmpty {
             ContentUnavailableView(
                 "No Drafts",
                 systemImage: "doc.text",
@@ -404,7 +424,7 @@ struct IssueListView: View {
             )
         } else {
             List {
-                ForEach(drafts) { draft in
+                ForEach(filteredDrafts) { draft in
                     NavigationLink(value: DraftDestination(draft: draft)) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(draft.title)
