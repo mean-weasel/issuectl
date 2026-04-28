@@ -38,6 +38,7 @@ export type GitHubPull = {
   title: string;
   body: string | null;
   state: "open" | "closed";
+  draft: boolean;
   merged: boolean;
   user: GitHubUser | null;
   headRef: string;

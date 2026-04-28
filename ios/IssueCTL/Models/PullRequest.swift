@@ -5,6 +5,7 @@ struct GitHubPull: Codable, Identifiable, Sendable {
     let title: String
     let body: String?
     let state: String
+    let draft: Bool?
     let merged: Bool
     let user: GitHubUser?
     let headRef: String
@@ -19,8 +20,11 @@ struct GitHubPull: Codable, Identifiable, Sendable {
     let htmlUrl: String
     let checksStatus: String?
 
-    var id: Int { number }
+    /// Use htmlUrl as the stable ID — PR numbers are only unique per-repo,
+    /// so using `number` would collide when multiple repos are shown together.
+    var id: String { htmlUrl }
 
+    var isDraft: Bool { draft ?? false }
     var isOpen: Bool { state == "open" }
 
     var diffSummary: String {

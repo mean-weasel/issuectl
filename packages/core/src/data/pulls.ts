@@ -107,8 +107,11 @@ async function fetchPullsWithChecks(
         let checksStatus: ChecksRollupStatus = null;
         try {
           checksStatus = await getChecksRollupForRef(octokit, owner, repo, pull.headRef);
-        } catch {
-          // If checks fetch fails, leave as null rather than failing the whole list
+        } catch (err) {
+          console.warn(
+            `[issuectl] getChecksRollupForRef failed for ${owner}/${repo} ref=${pull.headRef}:`,
+            err instanceof Error ? err.message : err,
+          );
         }
         return { ...pull, checksStatus };
       }),

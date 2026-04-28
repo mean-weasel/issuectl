@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import type { GitHubIssue, Priority, Deployment } from "@issuectl/core";
 import { Chip, LabelChip } from "@/components/paper";
 import { timeAgo } from "@/lib/format";
@@ -86,17 +86,19 @@ export function IssueDetail({
         </DetailMeta>
 
         {issue.state !== "closed" && (
-          <IssueActionSheet
-            owner={owner}
-            repo={repoName}
-            repoId={repoId}
-            number={issue.number}
-            repoLocalPath={repoLocalPath}
-            issue={issue}
-            deployments={deployments}
-            referencedFiles={referencedFiles}
-            hasLiveDeployment={hasLiveDeployment}
-          />
+          <Suspense fallback={null}>
+            <IssueActionSheet
+              owner={owner}
+              repo={repoName}
+              repoId={repoId}
+              number={issue.number}
+              repoLocalPath={repoLocalPath}
+              issue={issue}
+              deployments={deployments}
+              referencedFiles={referencedFiles}
+              hasLiveDeployment={hasLiveDeployment}
+            />
+          </Suspense>
         )}
         <EditableBody
           owner={owner}

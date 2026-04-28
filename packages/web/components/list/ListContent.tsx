@@ -60,7 +60,7 @@ export function ListContent({
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [activeSection]);
+  }, [activeTab, activeSection, activeRepo, mineOnly]);
 
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);

@@ -71,6 +71,8 @@ export function PrDetail({
             repoName={repoName}
             pullNumber={pull.number}
             baseRef={pull.baseRef}
+            draft={pull.draft}
+            checks={checks}
           />
         )}
 

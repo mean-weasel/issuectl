@@ -117,7 +117,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(issue.body, "Users cannot login with OAuth")
         XCTAssertEqual(issue.state, "open")
         XCTAssertTrue(issue.isOpen)
-        XCTAssertEqual(issue.id, 123)
+        XCTAssertEqual(issue.id, "https://github.com/org/repo/issues/123")
         XCTAssertEqual(issue.labels.count, 1)
         XCTAssertEqual(issue.labels[0].name, "bug")
         XCTAssertEqual(issue.labels[0].color, "d73a4a")
@@ -324,7 +324,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(pull.deletions, 30)
         XCTAssertEqual(pull.changedFiles, 5)
         XCTAssertEqual(pull.diffSummary, "+150 -30")
-        XCTAssertEqual(pull.id, 42)
+        XCTAssertEqual(pull.id, "https://github.com/org/repo/pull/42")
         XCTAssertNil(pull.mergedAt)
     }
 

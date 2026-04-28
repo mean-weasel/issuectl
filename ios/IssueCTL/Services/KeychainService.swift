@@ -1,10 +1,21 @@
 import Foundation
 import Security
 
+enum KeychainError: LocalizedError {
+    case saveFailed(key: String, status: OSStatus)
+
+    var errorDescription: String? {
+        switch self {
+        case .saveFailed(let key, let status):
+            "Failed to save \(key) to Keychain (status \(status))"
+        }
+    }
+}
+
 enum KeychainService {
     private static let service = "com.issuectl.ios"
 
-    static func save(key: String, value: String) {
+    static func save(key: String, value: String) throws {
         let data = Data(value.utf8)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -16,7 +27,12 @@ enum KeychainService {
 
         var add = query
         add[kSecValueData as String] = data
-        SecItemAdd(add as CFDictionary, nil)
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+
+        let status = SecItemAdd(add as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw KeychainError.saveFailed(key: key, status: status)
+        }
     }
 
     static func load(key: String) -> String? {
