@@ -10,7 +10,12 @@ type DotKind = "success" | "failure" | "pending" | "neutral";
 function dotKind(check: GitHubCheck): DotKind {
   if (check.status !== "completed") return "pending";
   if (check.conclusion === "success") return "success";
-  if (check.conclusion === "failure" || check.conclusion === "timed_out") {
+  if (
+    check.conclusion === "failure" ||
+    check.conclusion === "cancelled" ||
+    check.conclusion === "timed_out" ||
+    check.conclusion === "action_required"
+  ) {
     return "failure";
   }
   return "neutral";
