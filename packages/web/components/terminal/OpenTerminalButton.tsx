@@ -30,6 +30,7 @@ export function OpenTerminalButton({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [activePort, setActivePort] = useState(ttydPort);
+  const [terminalToken, setTerminalToken] = useState<string | null>(null);
   const router = useRouter();
 
   // Sync activePort when the server re-renders with a new ttydPort
@@ -68,6 +69,7 @@ export function OpenTerminalButton({
       // Use the fresh port from ensureTtyd — the RSC-rendered ttydPort
       // may be stale if ttyd was respawned on a different port.
       setActivePort(result.port);
+      setTerminalToken(result.terminalToken);
       setOpen(true);
     });
   }
@@ -82,6 +84,7 @@ export function OpenTerminalButton({
         open={open}
         onClose={() => setOpen(false)}
         ttydPort={activePort}
+        terminalToken={terminalToken}
         deploymentId={deploymentId}
         owner={owner}
         repo={repo}

@@ -6,6 +6,8 @@ const mockGetDb = vi.hoisted(() => vi.fn(() => "fake-db"));
 vi.mock("@issuectl/core", () => ({
   getDb: mockGetDb,
   getActiveDeploymentByPort: mockGetActiveDeploymentByPort,
+  getDeploymentById: vi.fn(),
+  getSetting: vi.fn(),
 }));
 
 import { isValidTerminalPort, rewriteHtml } from "./terminal-proxy.js";
@@ -72,5 +74,17 @@ describe("rewriteHtml", () => {
     const input = "<link href='/style.css'>";
     const result = rewriteHtml(input, 7700);
     expect(result).toBe("<link href='/api/terminal/7700/style.css'>");
+  });
+
+  it("adds terminalToken to rewritten asset URLs", () => {
+    const input = '<script src="/auth_token.js"></script>';
+    const result = rewriteHtml(input, 7701, "abc123");
+    expect(result).toContain('/api/terminal/7701/auth_token.js?terminalToken=abc123');
+  });
+
+  it("injects a WebSocket token patch when terminalToken is present", () => {
+    const result = rewriteHtml("<html><head></head><body></body></html>", 7701, "abc123");
+    expect(result).toContain("window.WebSocket=AuthWebSocket");
+    expect(result).toContain("abc123");
   });
 });

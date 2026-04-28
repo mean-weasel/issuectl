@@ -14,6 +14,7 @@ import {
 } from "@issuectl/core";
 import log from "./logger";
 import { registerPort, unregisterPort, recordPtyOutput } from "./idle-registry";
+import { validateTerminalToken } from "./terminal-auth";
 
 const PORT_MIN = 7700;
 const PORT_MAX = 7799;
@@ -171,11 +172,31 @@ export async function proxyHttpRequest(
  * `/auth_token.js`, etc. that need to become
  * `/api/terminal/{port}/token`, etc.
  */
-export function rewriteHtml(html: string, port: number): string {
+export function rewriteHtml(html: string, port: number, terminalToken?: string): string {
   const prefix = `/api/terminal/${port}`;
-  return html
+  const token = terminalToken;
+  const encodedToken = token ? encodeURIComponent(token) : "";
+  const tokenQuery = encodedToken ? `?terminalToken=${encodedToken}` : "";
+  const wsPatch = terminalToken
+    ? `<script>(()=>{const token=${JSON.stringify(token)};const port=${JSON.stringify(port)};const Native=window.WebSocket;function AuthWebSocket(url,protocols){try{const u=new URL(url,window.location.href);if(u.origin===window.location.origin&&u.pathname.startsWith("/api/terminal/"+port+"/")&&!u.searchParams.has("terminalToken")){u.searchParams.set("terminalToken",token);url=u.toString();}}catch{}return protocols===undefined?new Native(url):new Native(url,protocols)}AuthWebSocket.prototype=Native.prototype;Object.setPrototypeOf(AuthWebSocket,Native);window.WebSocket=AuthWebSocket;})();</script>`
+    : "";
+  const rewritten = html
     .replace(/(href|src|action)="\/(?!\/)/g, `$1="${prefix}/`)
     .replace(/(href|src|action)='\/(?!\/)/g, `$1='${prefix}/`);
+  const withToken = tokenQuery
+    ? rewritten.replace(
+        /(href|src|action)=(["'])(\/api\/terminal\/\d+\/[^"']*?)(["'])/g,
+        (_match, attr: string, quote: string, url: string, endQuote: string) => {
+          if (url.includes("terminalToken=")) return `${attr}=${quote}${url}${endQuote}`;
+          const separator = url.includes("?") ? "&" : "?";
+          return `${attr}=${quote}${url}${separator}terminalToken=${encodedToken}${endQuote}`;
+        },
+      )
+    : rewritten;
+  if (!wsPatch) return withToken;
+  return withToken.includes("</head>")
+    ? withToken.replace("</head>", `${wsPatch}</head>`)
+    : `${wsPatch}${withToken}`;
 }
 
 const wss = new WebSocketServer({ noServer: true });
@@ -264,6 +285,13 @@ export async function handleUpgrade(
   head: Buffer,
   port: number,
 ): Promise<void> {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  if (!validateTerminalToken(url.searchParams.get("terminalToken"), port)) {
+    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+    socket.destroy();
+    return;
+  }
+
   if (!isValidTerminalPort(port)) {
     socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
     socket.destroy();

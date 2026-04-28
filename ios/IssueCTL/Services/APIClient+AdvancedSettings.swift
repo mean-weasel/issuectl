@@ -73,20 +73,21 @@ struct WorktreeResetRequest: Encodable, Sendable {
 // MARK: - EnsureTtyd types
 
 enum EnsureTtydResult: Sendable {
-    case available(port: Int, respawned: Bool)
+    case available(port: Int, terminalToken: String, respawned: Bool)
     case unavailable(error: String?)
 }
 
 extension EnsureTtydResult: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case port, respawned, alive, error
+        case port, terminalToken, respawned, alive, error
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         if let port = try c.decodeIfPresent(Int.self, forKey: .port) {
+            let terminalToken = try c.decode(String.self, forKey: .terminalToken)
             let respawned = try c.decodeIfPresent(Bool.self, forKey: .respawned) ?? false
-            self = .available(port: port, respawned: respawned)
+            self = .available(port: port, terminalToken: terminalToken, respawned: respawned)
         } else {
             let error = try c.decodeIfPresent(String.self, forKey: .error)
             self = .unavailable(error: error)

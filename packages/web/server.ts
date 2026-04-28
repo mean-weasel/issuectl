@@ -7,6 +7,7 @@ import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./
 import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
+const SENSITIVE_QUERY_PARAMS = new Set(["terminalToken"]);
 
 const dev = process.argv.includes("--dev");
 const port = Number(process.env.PORT ?? 3847);
@@ -38,7 +39,8 @@ if (process.env.ISSUECTL_TUNNEL_URL) {
 
 function logRequest(req: IncomingMessage, res: ServerResponse): void {
   const start = Date.now();
-  const { method, url } = req;
+  const { method } = req;
+  const url = redactSensitiveUrl(req.url, req.headers.host);
 
   // `close` fires on every response (including aborted ones), unlike
   // `finish` which only fires when the response was fully sent.
@@ -52,6 +54,23 @@ function logRequest(req: IncomingMessage, res: ServerResponse): void {
       aborted: !res.writableFinished,
     });
   });
+}
+
+function redactSensitiveUrl(rawUrl: string | undefined, host: string | undefined): string | undefined {
+  if (!rawUrl) return rawUrl;
+  try {
+    const parsed = new URL(rawUrl, `http://${host ?? "localhost"}`);
+    let redacted = false;
+    for (const param of SENSITIVE_QUERY_PARAMS) {
+      if (parsed.searchParams.has(param)) {
+        parsed.searchParams.set(param, "[redacted]");
+        redacted = true;
+      }
+    }
+    return redacted ? `${parsed.pathname}${parsed.search}` : rawUrl;
+  } catch {
+    return rawUrl.replace(/([?&]terminalToken=)[^&]*/g, "$1[redacted]");
+  }
 }
 
 const server = createServer((req, res) => {
@@ -76,7 +95,11 @@ const server = createServer((req, res) => {
   }
 
   handle(req, res).catch((err) => {
-    log.error({ err, msg: "next_request_handler_error", url: req.url });
+    log.error({
+      err,
+      msg: "next_request_handler_error",
+      url: redactSensitiveUrl(req.url, req.headers.host),
+    });
     if (!res.headersSent) {
       res.writeHead(500, { "Content-Type": "text/plain" });
     }

@@ -328,6 +328,7 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
       <div
         className={styles.scrim}
         data-closing={closing || undefined}
+        onMouseDown={onClose}
         onClick={onClose}
         aria-hidden="true"
         style={scrimStyle}

@@ -11,6 +11,7 @@ struct TerminalView: View {
     @State private var showEndConfirm = false
     @State private var loadError: String?
     @State private var currentPort: Int
+    @State private var terminalToken: String?
     @State private var isRespawning = false
     @State private var isEndingSession = false
     @State private var endSessionError: String?
@@ -25,7 +26,14 @@ struct TerminalView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let url = terminalURL {
+                if terminalToken == nil && loadError == nil {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Connecting terminal…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if let url = terminalURL {
                     if isRespawning {
                         VStack(spacing: 12) {
                             ProgressView()
@@ -113,11 +121,19 @@ struct TerminalView: View {
                     Text(endSessionError)
                 }
             }
+            .task {
+                if terminalToken == nil && !isRespawning {
+                    await attemptRespawn()
+                }
+            }
         }
     }
 
     private var terminalURL: URL? {
-        URL(string: "\(api.serverURL)/api/terminal/\(currentPort)/")
+        guard let terminalToken else { return nil }
+        var components = URLComponents(string: "\(api.serverURL)/api/terminal/\(currentPort)/")
+        components?.queryItems = [URLQueryItem(name: "terminalToken", value: terminalToken)]
+        return components?.url
     }
 
     private func endSession() async {
@@ -148,8 +164,9 @@ struct TerminalView: View {
         do {
             let result = try await api.ensureTtyd(deploymentId: deployment.id)
             switch result {
-            case .available(let port, _):
+            case .available(let port, let token, _):
                 currentPort = port
+                terminalToken = token
             case .unavailable(let error):
                 loadError = error ?? "Session has ended"
             }

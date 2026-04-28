@@ -18,6 +18,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   ttydPort: number;
+  terminalToken: string | null;
   deploymentId: number;
   owner: string;
   repo: string;
@@ -29,6 +30,7 @@ export function TerminalPanel({
   open,
   onClose,
   ttydPort,
+  terminalToken,
   deploymentId,
   owner,
   repo,
@@ -74,8 +76,12 @@ export function TerminalPanel({
   }, [open, connectionStatus]);
 
   function handleIframeLoad() {
+    if (!terminalToken) {
+      setConnectionStatus("error");
+      return;
+    }
     // iframe onLoad fires even for HTTP error pages — verify the endpoint is healthy
-    fetch(`/api/terminal/${ttydPort}/`, { method: "HEAD" })
+    fetch(`/api/terminal/${ttydPort}/?terminalToken=${encodeURIComponent(terminalToken)}`, { method: "HEAD" })
       .then((res) => {
         setConnectionStatus(res.ok ? "connected" : "error");
       })
@@ -166,7 +172,11 @@ export function TerminalPanel({
           key={iframeKey}
           ref={iframeRef}
           className={styles.terminalFrame}
-          src={`/api/terminal/${ttydPort}/`}
+          src={
+            terminalToken
+              ? `/api/terminal/${ttydPort}/?terminalToken=${encodeURIComponent(terminalToken)}`
+              : "about:blank"
+          }
           title={`Terminal — Issue #${issueNumber}`}
           onLoad={handleIframeLoad}
           onError={handleIframeError}

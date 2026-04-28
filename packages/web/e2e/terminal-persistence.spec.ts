@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
-import { initSchema, runMigrations, tmuxSessionName } from "@issuectl/core";
+import { generateApiToken, initSchema, runMigrations, tmuxSessionName } from "@issuectl/core";
 
 /**
  * E2E test: terminal session persistence across panel close and navigation.
@@ -183,6 +183,7 @@ function createTestDb(dbPath: string, ttydPid: number): void {
     ] as const) {
       insertSetting.run(key, value);
     }
+    generateApiToken(db);
 
     // Repo
     db.prepare("INSERT OR IGNORE INTO repos (owner, name) VALUES (?, ?)").run(
