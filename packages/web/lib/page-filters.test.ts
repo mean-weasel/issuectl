@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { GitHubPull } from "@issuectl/core";
+import type { PullWithChecksStatus } from "@issuectl/core";
 import {
   resolveActiveRepo,
   filterPrs,
@@ -25,7 +25,7 @@ describe("resolveActiveRepo", () => {
   });
 });
 
-function makePull(overrides: Partial<GitHubPull> = {}): GitHubPull {
+function makePull(overrides: Partial<PullWithChecksStatus> = {}): PullWithChecksStatus {
   return {
     number: 1,
     title: "PR",
@@ -44,6 +44,7 @@ function makePull(overrides: Partial<GitHubPull> = {}): GitHubPull {
     mergedAt: null,
     closedAt: null,
     htmlUrl: "",
+    checksStatus: null,
     ...overrides,
   };
 }

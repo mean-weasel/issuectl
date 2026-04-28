@@ -2,7 +2,7 @@ import {
   getDb,
   getOctokit,
   getUnifiedList,
-  getPulls,
+  getPullsWithChecks,
   mapLimit,
   DEFAULT_REPO_FANOUT,
   type Section,
@@ -59,7 +59,7 @@ export async function DashboardContent({
       gatherPulls(db, octokit, targetRepos),
     ]);
 
-    const filteredPrs = filterPrs(allPrs, null, mineOnly ? username : null);
+    const filteredPrs = filterPrs(allPrs, activeRepo, mineOnly ? username : null);
 
     const sectionCounts: Record<Section, number> = {
       unassigned: data.unassigned.length,
@@ -106,14 +106,14 @@ async function gatherPulls(
 ): Promise<PrEntry[]> {
   const prResults = await mapLimit(repos, DEFAULT_REPO_FANOUT, async (repo) => {
     try {
-      const { pulls } = await getPulls(db, octokit, repo.owner, repo.name);
+      const { pulls } = await getPullsWithChecks(db, octokit, repo.owner, repo.name);
       return pulls.map((pull) => ({
         repo: { owner: repo.owner, name: repo.name },
         pull,
       }));
     } catch (err) {
       console.error(
-        `[issuectl] getPulls failed for ${repo.owner}/${repo.name} — PRs for this repo will be missing:`,
+        `[issuectl] getPullsWithChecks failed for ${repo.owner}/${repo.name} — PRs for this repo will be missing:`,
         err instanceof Error ? err.message : err,
       );
       return [];

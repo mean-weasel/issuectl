@@ -1,12 +1,12 @@
 import Link from "next/link";
-import type { GitHubPull } from "@issuectl/core";
+import type { PullWithChecksStatus } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import styles from "./PrListRow.module.css";
 
 type Props = {
   owner: string;
   repoName: string;
-  pull: GitHubPull;
+  pull: PullWithChecksStatus;
 };
 
 function formatAge(updatedAt: string): string {
@@ -20,9 +20,13 @@ function formatAge(updatedAt: string): string {
 
 type StatusDotVariant = "pass" | "fail" | "pending" | "merged" | "none";
 
-function getStatusDot(pull: GitHubPull): StatusDotVariant {
+function getStatusDot(pull: PullWithChecksStatus): StatusDotVariant {
   if (pull.merged) return "merged";
   if (pull.state === "closed") return "none";
+  // Open PR — map checksStatus rollup to a dot color
+  if (pull.checksStatus === "success") return "pass";
+  if (pull.checksStatus === "failure") return "fail";
+  if (pull.checksStatus === "pending") return "pending";
   return "none";
 }
 
