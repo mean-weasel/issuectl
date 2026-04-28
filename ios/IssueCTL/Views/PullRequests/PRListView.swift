@@ -324,9 +324,10 @@ struct PRListView: View {
                 return collected
             }
             var cachedDates: [Date] = []
+            var nextPullsByRepo: [String: [GitHubPull]] = [:]
             for (fullName, name, pulls, cachedAt, error) in repoResults {
                 if let pulls {
-                    pullsByRepo[fullName] = pulls
+                    nextPullsByRepo[fullName] = pulls
                     if let cachedAt, let date = sharedISO8601Formatter.date(from: cachedAt) {
                         cachedDates.append(date)
                     }
@@ -336,6 +337,7 @@ struct PRListView: View {
                     failures.append(name)
                 }
             }
+            pullsByRepo = nextPullsByRepo
             oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"

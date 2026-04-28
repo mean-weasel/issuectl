@@ -51,6 +51,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
     Promise.all([listReposAction(), getDefaultRepoIdAction()])
       .then(([repoList, defaultId]) => {
         setRepos(repoList);
+        setShowRepos(repoList.length > 0);
         if (defaultId !== null && repoList.some((r) => r.id === defaultId)) {
           setSelectedRepoIds(new Set([defaultId]));
           setDefaultRepoId(defaultId);
@@ -259,6 +260,7 @@ export function CreateDraftSheet({ open, onClose }: Props) {
               onClick={() => setShowRepos(!showRepos)}
               disabled={saving}
               aria-expanded={showRepos}
+              aria-label="Choose repositories"
             >
               <span className={styles.repoSummary}>
                 {selectedRepoIds.size === 0

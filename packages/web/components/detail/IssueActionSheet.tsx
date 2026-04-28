@@ -137,7 +137,7 @@ export function IssueActionSheet({
         if (result.outcome === "queued") {
           setConfirmClose(false);
           showToast("Issue close queued — will sync when online", "warning");
-          router.replace("/");
+          router.replace("/?section=closed");
           return;
         }
         if (result.outcome === "error") {
@@ -152,7 +152,7 @@ export function IssueActionSheet({
             : "Issue closed",
           "success",
         );
-        router.replace("/");
+        router.replace("/?section=closed");
       } catch (err) {
         console.error("[issuectl] Close issue failed:", err);
         setError("Something went wrong while closing the issue. Please try again.");

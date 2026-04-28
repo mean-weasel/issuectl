@@ -11,6 +11,7 @@ const getDb = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getRepoById = vi.hoisted(() => vi.fn());
+const getSetting = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
@@ -24,6 +25,7 @@ vi.mock("@issuectl/core", () => ({
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
   getRepo: (...args: unknown[]) => getRepo(...args),
   getRepoById: (...args: unknown[]) => getRepoById(...args),
+  getSetting: (...args: unknown[]) => getSetting(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
@@ -84,6 +86,7 @@ beforeEach(() => {
   getDeploymentById.mockReset();
   getRepo.mockReset();
   getRepoById.mockReset();
+  getSetting.mockReset();
   killTtyd.mockReset();
   coreEndDeployment.mockReset();
   cleanupStaleContextFiles.mockReset();
@@ -104,6 +107,7 @@ beforeEach(() => {
   getDeploymentById.mockReturnValue(makeDeployment(42));
   getRepo.mockReturnValue(makeRepoRecord());
   getRepoById.mockReturnValue(makeRepoRecord());
+  getSetting.mockReturnValue("test-api-token");
   coreEndDeployment.mockReturnValue(undefined);
   cleanupStaleContextFiles.mockReturnValue(Promise.resolve());
 });
@@ -233,7 +237,7 @@ describe("ensureTtyd", () => {
 
     const result = await ensureTtyd(1);
 
-    expect(result).toEqual({ port: 7700 });
+    expect(result).toEqual({ port: 7700, terminalToken: expect.any(String) });
     expect(respawnTtyd).not.toHaveBeenCalled();
   });
 
@@ -245,7 +249,7 @@ describe("ensureTtyd", () => {
 
     const result = await ensureTtyd(1);
 
-    expect(result).toEqual({ port: 7700, respawned: true });
+    expect(result).toEqual({ port: 7700, terminalToken: expect.any(String), respawned: true });
     expect(respawnTtyd).toHaveBeenCalledWith(7700, "issuectl-repo-7");
   });
 

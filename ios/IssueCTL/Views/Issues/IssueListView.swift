@@ -26,6 +26,7 @@ struct IssueListView: View {
     @State private var showReopenConfirm = false
     @State private var swipeTarget: (owner: String, repo: String, number: Int)?
     @State private var launchTarget: LaunchTarget?
+    @State private var loadingLaunchTargetId: String?
 
     // Draft swipe state
     @State private var showDeleteDraftConfirm = false
@@ -282,8 +283,8 @@ struct IssueListView: View {
                     repo: target.repo,
                     issueNumber: target.number,
                     issueTitle: target.title,
-                    comments: [],
-                    referencedFiles: []
+                    comments: target.comments,
+                    referencedFiles: target.referencedFiles
                 )
             }
             .confirmationDialog("Close Issue", isPresented: $showCloseConfirm, titleVisibility: .visible) {
@@ -373,9 +374,15 @@ struct IssueListView: View {
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
                             Button {
-                                launchTarget = LaunchTarget(owner: repo.owner, repo: repo.name, number: issue.number, title: issue.title)
+                                Task {
+                                    await prepareLaunch(owner: repo.owner, repo: repo.name, number: issue.number, title: issue.title)
+                                }
                             } label: {
-                                Label("Launch", systemImage: "play.fill")
+                                if loadingLaunchTargetId == "\(repo.owner)/\(repo.name)#\(issue.number)" {
+                                    Label("Loading", systemImage: "hourglass")
+                                } else {
+                                    Label("Launch", systemImage: "play.fill")
+                                }
                             }
                             .tint(.green)
                         } else {
@@ -459,6 +466,31 @@ struct IssueListView: View {
     }
 
     // MARK: - Actions
+
+    private func prepareLaunch(owner: String, repo: String, number: Int, title: String) async {
+        let targetId = "\(owner)/\(repo)#\(number)"
+        loadingLaunchTargetId = targetId
+        actionError = nil
+        defer {
+            if loadingLaunchTargetId == targetId {
+                loadingLaunchTargetId = nil
+            }
+        }
+
+        do {
+            let detail = try await api.issueDetail(owner: owner, repo: repo, number: number)
+            launchTarget = LaunchTarget(
+                owner: owner,
+                repo: repo,
+                number: number,
+                title: title,
+                comments: detail.comments,
+                referencedFiles: detail.referencedFiles
+            )
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
 
     private func updateIssueState(owner: String, repo: String, number: Int, state: String) async {
         actionError = nil
@@ -550,9 +582,10 @@ struct IssueListView: View {
                 }
             }
             var cachedDates: [Date] = []
+            var nextIssuesByRepo: [String: [GitHubIssue]] = [:]
             for (fullName, name, issues, cachedAt, error) in repoResults {
                 if let issues {
-                    issuesByRepo[fullName] = issues
+                    nextIssuesByRepo[fullName] = issues
                     if let cachedAt, let date = sharedISO8601Formatter.date(from: cachedAt) {
                         cachedDates.append(date)
                     }
@@ -562,6 +595,7 @@ struct IssueListView: View {
                     failures.append(name)
                 }
             }
+            issuesByRepo = nextIssuesByRepo
             oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
@@ -581,14 +615,14 @@ struct IssueListView: View {
 
     private func loadPriorities() async -> [String] {
         isLoadingPriorities = true
-        // Snapshot repos into a local Sendable value so child tasks don't
-        // capture main-actor state. Collect results via sequential `for await`.
-        let repoSnapshot = repos.map { (fullName: $0.fullName, owner: $0.owner, name: $0.name) }
-        let uniqueFullNames = Set(repoSnapshot.map(\.fullName))
+        // Snapshot repos into a local Sendable value keyed by fullName so
+        // child tasks don't capture main-actor state and duplicates are skipped.
+        let repoByName: [String: (owner: String, name: String)] = repos.reduce(into: [:]) {
+            $0[$1.fullName] = (owner: $1.owner, name: $1.name)
+        }
         var priorityResults: [([(String, Priority)], String?)] = []
         await withTaskGroup(of: ([(String, Priority)], String?).self) { group in
-            for fullName in uniqueFullNames {
-                guard let repo = repoSnapshot.first(where: { $0.fullName == fullName }) else { continue }
+            for (_, repo) in repoByName {
                 group.addTask { [api] in
                     do {
                         let items = try await api.listPriorities(owner: repo.owner, repo: repo.name)
@@ -635,6 +669,8 @@ struct LaunchTarget: Identifiable, Sendable {
     let repo: String
     let number: Int
     let title: String
+    let comments: [GitHubComment]
+    let referencedFiles: [String]
 
     var id: String { "\(owner)/\(repo)#\(number)" }
 }

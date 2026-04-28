@@ -223,7 +223,7 @@ export function List({
         <button
           className={styles.sheetMenuBtn}
           onClick={() => setFiltersOpen(true)}
-          aria-label="Filters and navigation"
+          aria-label="Open navigation"
         >
           <svg
             width="18"
@@ -245,7 +245,7 @@ export function List({
         <button
           className={styles.menuBtn}
           onClick={() => setDrawerOpen(true)}
-          aria-label="Open navigation"
+          aria-label="Open drawer"
         >
           <svg
             width="20"

@@ -160,7 +160,7 @@ export function ListContent({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadMore, activeSection]);
+  }, [loadMore, activeTab, activeSection]);
 
   if (activeTab === "issues") {
     const total = filteredData[activeSection].length;
@@ -214,9 +214,13 @@ export function ListContent({
     );
   }
 
+  const total = filteredPrs.length;
+  const showing = Math.min(visibleCount, total);
+  const visiblePrs = filteredPrs.slice(0, visibleCount);
+
   return (
     <div>
-      {filteredPrs.map(({ repo, pull }, i) => (
+      {visiblePrs.map(({ repo, pull }, i) => (
         <PrListRow
           key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
           owner={repo.owner}
@@ -225,6 +229,14 @@ export function ListContent({
           rowIndex={i}
         />
       ))}
+      {total > PAGE_SIZE && (
+        <div className={styles.pageStatus}>
+          Showing {showing} of {total}
+        </div>
+      )}
+      {visibleCount < total && (
+        <div ref={sentinelRef} className={styles.sentinel} />
+      )}
     </div>
   );
 }

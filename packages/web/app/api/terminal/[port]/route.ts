@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidTerminalPort, proxyHttpRequest, rewriteHtml } from "@/lib/terminal-proxy";
+import { validateTerminalToken } from "@/lib/terminal-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ port: string }> },
 ): Promise<NextResponse> {
   const { port: portStr } = await params;
@@ -13,13 +14,17 @@ export async function GET(
   if (!isValidTerminalPort(port)) {
     return new NextResponse("Not Found", { status: 404 });
   }
+  const terminalToken = request.nextUrl.searchParams.get("terminalToken");
+  if (!validateTerminalToken(terminalToken, port)) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
 
   try {
     const upstream = await proxyHttpRequest(port, "/");
     const contentType = upstream.headers["content-type"] ?? "";
 
     if (contentType.includes("text/html")) {
-      const rewritten = rewriteHtml(upstream.body.toString("utf-8"), port);
+      const rewritten = rewriteHtml(upstream.body.toString("utf-8"), port, terminalToken ?? undefined);
       return new NextResponse(rewritten, {
         status: upstream.status,
         headers: { "content-type": contentType },
@@ -39,3 +44,5 @@ export async function GET(
     return new NextResponse("Proxy error", { status: 502 });
   }
 }
+
+export const HEAD = GET;
