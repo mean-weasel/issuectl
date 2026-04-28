@@ -34,11 +34,18 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
   const [displayBody, setDisplayBody] = useState(comment.body);
   const [editBody, setEditBody] = useState(comment.body);
   const [saving, setSaving] = useState(false);
+  // Tracks whether displayBody holds an optimistic value that should not
+  // be overwritten by a concurrent server refresh (comment.body change).
+  const [optimistic, setOptimistic] = useState(false);
 
-  // Sync displayBody when the server data changes (e.g. after router.refresh())
+  // Sync displayBody when the server data changes (e.g. after router.refresh()),
+  // but skip while an optimistic update is in flight to avoid clobbering the
+  // value the user just saved with a stale server response.
   useEffect(() => {
-    setDisplayBody(comment.body);
-  }, [comment.body]);
+    if (!optimistic) {
+      setDisplayBody(comment.body);
+    }
+  }, [comment.body, optimistic]);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -67,25 +74,31 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
     setSaving(true);
     const originalBody = displayBody;
 
-    // Optimistic: show new body immediately; rolled back in the error handler below
+    // Optimistic: show new body immediately; rolled back in the error handler below.
+    // Set the optimistic flag so the server-sync effect doesn't clobber this value.
+    setOptimistic(true);
     setDisplayBody(editBody);
     setMode("normal");
 
     try {
       const result = await editComment(owner, repo, issueNumber, comment.id, editBody);
       if (!result.success) {
+        setOptimistic(false);
         setDisplayBody(originalBody);
         setMode("editing");
         showToast(result.error, "error");
         return;
       }
       router.refresh();
+      // Clear optimistic flag after refresh so the next server data wins
+      setOptimistic(false);
       showToast(
         result.cacheStale ? "Comment updated — reload if the page looks stale" : "Comment updated",
         "success",
       );
     } catch (err) {
       console.error("[issuectl] Edit comment failed unexpectedly:", err);
+      setOptimistic(false);
       setDisplayBody(originalBody);
       setMode("editing");
       showToast("Failed to edit comment", "error");

@@ -4,6 +4,11 @@ import { getDb, clearCache, clearCacheKey, dbExists } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
 const REFRESH_COOLDOWN_MS = 10_000;
+// NOTE: `lastRefreshAt` is process-local module state. In a multi-process
+// deployment (e.g. Node cluster mode, multiple serverless instances) each
+// process maintains its own timestamp, so the cooldown is per-process, not
+// global. This is acceptable for the single-process `issuectl web` server.
+// If multi-process support is needed, move the timestamp to the DB.
 let lastRefreshAt = 0;
 
 export async function refreshAction(): Promise<{
@@ -36,6 +41,7 @@ export async function refreshAction(): Promise<{
 }
 
 const ISSUE_REFRESH_COOLDOWN_MS = 5_000;
+// Same process-local caveat as `lastRefreshAt` above.
 let lastIssueRefreshAt = 0;
 
 /**

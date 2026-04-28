@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   GitHubIssue,
@@ -69,8 +69,16 @@ export function IssueActionSheet({
   const { isOffline } = useOfflineAware();
   const searchParams = useSearchParams();
 
+  // Keep a ref to hasLiveDeployment so the mount-only effect below always
+  // reads the latest value without needing it in the dependency array
+  // (which would re-trigger the effect on every render where it changes).
+  const hasLiveDeploymentRef = useRef(hasLiveDeployment);
   useEffect(() => {
-    if (searchParams.get("launch") === "true" && !hasLiveDeployment) {
+    hasLiveDeploymentRef.current = hasLiveDeployment;
+  }, [hasLiveDeployment]);
+
+  useEffect(() => {
+    if (searchParams.get("launch") === "true" && !hasLiveDeploymentRef.current) {
       handleLaunchTap();
       const url = new URL(window.location.href);
       url.searchParams.delete("launch");
