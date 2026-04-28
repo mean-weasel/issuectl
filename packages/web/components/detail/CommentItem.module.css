@@ -91,16 +91,42 @@
   background: var(--paper-brick);
 }
 
-/* Desktop: hide actions until hover */
+/* Desktop: actions are always visible but subtle; full opacity on hover */
 @media (min-width: 768px) {
   .actions {
-    opacity: 0;
+    opacity: 0.5;
     transition: opacity 0.15s;
   }
 
-  .comment:hover .actions {
+  .comment:hover .actions,
+  .actions:focus-within {
     opacity: 1;
   }
+}
+
+/* Mobile: ensure 44×44px touch targets */
+@media (max-width: 767px) {
+  .actionBtn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+  }
+}
+
+/* Visually-hidden live region */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* --- Edit mode --- */

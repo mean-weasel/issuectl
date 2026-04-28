@@ -23,6 +23,18 @@
   border-color: var(--paper-ink-muted);
 }
 
+/* Ensure 44×44px touch target on mobile */
+@media (max-width: 767px) {
+  .editBtn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+  }
+}
+
 .editor {
   display: flex;
   flex-direction: column;
@@ -50,6 +62,20 @@
 
 .actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.editHint {
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-ink-faint);
+  margin-right: auto;
+}
+
+@media (max-width: 767px) {
+  .editHint {
+    display: none;
+  }
 }

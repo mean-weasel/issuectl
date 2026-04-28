@@ -155,17 +155,20 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
         <div className={styles.who}>{comment.user?.login ?? "unknown"}</div>
         {isOwn && mode === "normal" && (
           <div className={styles.actions}>
-            <button type="button" className={styles.actionBtn} onClick={handleEdit}>
+            <button type="button" className={styles.actionBtn} onClick={handleEdit} aria-label="Edit comment">
               edit
             </button>
             <button
               type="button"
               className={`${styles.actionBtn} ${confirmingDelete ? styles.deleteConfirm : ""}`}
               onClick={handleDeleteClick}
-              aria-label={confirmingDelete ? "Confirm delete" : "Delete comment"}
+              aria-label={confirmingDelete ? "Confirm delete comment" : "Delete comment"}
             >
               {confirmingDelete ? "confirm?" : "delete"}
             </button>
+            <div className={styles.srOnly} aria-live="polite" role="status">
+              {confirmingDelete ? "Press delete again to confirm deletion" : ""}
+            </div>
           </div>
         )}
         <div className={styles.time}>{timeAgo(comment.updatedAt)}</div>
@@ -182,6 +185,7 @@ export function CommentItem({ comment, currentUser, owner, repo, issueNumber }: 
             disabled={saving}
             maxLength={65536}
             autoFocus
+            aria-label="Edit comment body"
           />
           <div className={styles.editFooter}>
             <span className={styles.editHint}>⌘↩ to save · esc to cancel</span>
