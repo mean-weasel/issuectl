@@ -1,5 +1,13 @@
 import Foundation
 
+/// Shared ISO 8601 date formatter — allocated once, reused everywhere.
+/// Must live at file scope so models, views, and extensions can reference it.
+let sharedISO8601Formatter: ISO8601DateFormatter = {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return f
+}()
+
 struct GitHubUser: Codable, Sendable {
     let login: String
     let avatarUrl: String
@@ -27,12 +35,14 @@ struct GitHubIssue: Codable, Identifiable, Sendable {
     let closedAt: String?
     let htmlUrl: String
 
-    var id: Int { number }
+    /// Use htmlUrl as the stable ID — issue numbers are only unique per-repo,
+    /// so using `number` would collide when multiple repos are shown together.
+    var id: String { htmlUrl }
 
     var isOpen: Bool { state == "open" }
 
     var updatedDate: Date? {
-        ISO8601DateFormatter().date(from: updatedAt)
+        sharedISO8601Formatter.date(from: updatedAt)
     }
 
     var timeAgo: String {

@@ -295,10 +295,7 @@ struct PRListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            var cachedDates: [Date] = []
-            let isoFormatter = ISO8601DateFormatter()
-
-            await withTaskGroup(of: (String, String, [GitHubPull]?, String?, Error?).self) { group in
+            let repoResults = await withTaskGroup(of: (String, String, [GitHubPull]?, String?, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
@@ -309,17 +306,23 @@ struct PRListView: View {
                         }
                     }
                 }
-                for await (fullName, name, pulls, cachedAt, error) in group {
-                    if let pulls {
-                        pullsByRepo[fullName] = pulls
-                        if let cachedAt, let date = isoFormatter.date(from: cachedAt) {
-                            cachedDates.append(date)
-                        }
-                    } else if let error {
-                        failures.append("\(name) (\(error.localizedDescription))")
-                    } else {
-                        failures.append(name)
+                var collected: [(String, String, [GitHubPull]?, String?, Error?)] = []
+                for await result in group {
+                    collected.append(result)
+                }
+                return collected
+            }
+            var cachedDates: [Date] = []
+            for (fullName, name, pulls, cachedAt, error) in repoResults {
+                if let pulls {
+                    pullsByRepo[fullName] = pulls
+                    if let cachedAt, let date = sharedISO8601Formatter.date(from: cachedAt) {
+                        cachedDates.append(date)
                     }
+                } else if let error {
+                    failures.append("\(name) (\(error.localizedDescription))")
+                } else {
+                    failures.append(name)
                 }
             }
             oldestCachedAt = cachedDates.min()

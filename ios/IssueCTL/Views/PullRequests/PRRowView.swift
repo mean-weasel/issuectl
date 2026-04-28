@@ -112,7 +112,7 @@ struct ChecksStatusDot: View {
 
 private extension GitHubPull {
     var updatedDate: Date? {
-        ISO8601DateFormatter().date(from: updatedAt)
+        sharedISO8601Formatter.date(from: updatedAt)
     }
 
     var timeAgo: String {

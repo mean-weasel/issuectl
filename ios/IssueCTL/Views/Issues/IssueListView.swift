@@ -506,10 +506,7 @@ struct IssueListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            var cachedDates: [Date] = []
-            let isoFormatter = ISO8601DateFormatter()
-
-            await withTaskGroup(of: (String, String, [GitHubIssue]?, String?, Error?).self) { group in
+            let repoResults = await withTaskGroup(of: (String, String, [GitHubIssue]?, String?, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
@@ -520,17 +517,23 @@ struct IssueListView: View {
                         }
                     }
                 }
-                for await (fullName, name, issues, cachedAt, error) in group {
-                    if let issues {
-                        issuesByRepo[fullName] = issues
-                        if let cachedAt, let date = isoFormatter.date(from: cachedAt) {
-                            cachedDates.append(date)
-                        }
-                    } else if let error {
-                        failures.append("\(name) (\(error.localizedDescription))")
-                    } else {
-                        failures.append(name)
+                var collected: [(String, String, [GitHubIssue]?, String?, Error?)] = []
+                for await result in group {
+                    collected.append(result)
+                }
+                return collected
+            }
+            var cachedDates: [Date] = []
+            for (fullName, name, issues, cachedAt, error) in repoResults {
+                if let issues {
+                    issuesByRepo[fullName] = issues
+                    if let cachedAt, let date = sharedISO8601Formatter.date(from: cachedAt) {
+                        cachedDates.append(date)
                     }
+                } else if let error {
+                    failures.append("\(name) (\(error.localizedDescription))")
+                } else {
+                    failures.append(name)
                 }
             }
             oldestCachedAt = cachedDates.min()
@@ -552,9 +555,7 @@ struct IssueListView: View {
 
     private func loadPriorities() async -> [String] {
         isLoadingPriorities = true
-        var newPriorities: [String: Priority] = [:]
-        var priorityErrors: [String] = []
-        await withTaskGroup(of: ([(String, Priority)], String?).self) { group in
+        let priorityResults = await withTaskGroup(of: ([(String, Priority)], String?).self) { group in
             let uniqueRepos = Set(repos.map { ($0.owner, $0.name) }.map { "\($0.0)/\($0.1)" })
             for repoFullName in uniqueRepos {
                 guard let repo = repos.first(where: { $0.fullName == repoFullName }) else { continue }
@@ -567,12 +568,19 @@ struct IssueListView: View {
                     }
                 }
             }
-            for await (pairs, errorMsg) in group {
-                for (key, priority) in pairs {
-                    newPriorities[key] = priority
-                }
-                if let errorMsg { priorityErrors.append(errorMsg) }
+            var collected: [([(String, Priority)], String?)] = []
+            for await result in group {
+                collected.append(result)
             }
+            return collected
+        }
+        var newPriorities: [String: Priority] = [:]
+        var priorityErrors: [String] = []
+        for (pairs, errorMsg) in priorityResults {
+            for (key, priority) in pairs {
+                newPriorities[key] = priority
+            }
+            if let errorMsg { priorityErrors.append(errorMsg) }
         }
         priorities = newPriorities
         isLoadingPriorities = false

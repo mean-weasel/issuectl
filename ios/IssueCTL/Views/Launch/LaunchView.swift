@@ -315,7 +315,7 @@ struct LaunchView: View {
                     workspacePath: "",
                     linkedPrNumber: nil,
                     state: .active,
-                    launchedAt: ISO8601DateFormatter().string(from: Date()),
+                    launchedAt: sharedISO8601Formatter.string(from: Date()),
                     endedAt: nil, ttydPort: port, ttydPid: nil,
                     owner: owner, repoName: repo
                 )

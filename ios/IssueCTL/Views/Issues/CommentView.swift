@@ -36,7 +36,7 @@ struct CommentView: View {
 
 private extension GitHubComment {
     var createdDate: Date? {
-        ISO8601DateFormatter().date(from: createdAt)
+        sharedISO8601Formatter.date(from: createdAt)
     }
 
     var timeAgo: String {
