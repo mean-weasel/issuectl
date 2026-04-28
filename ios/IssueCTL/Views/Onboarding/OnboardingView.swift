@@ -4,6 +4,7 @@ struct OnboardingView: View {
     @Environment(APIClient.self) private var api
     @State private var serverURL = ""
     @State private var apiToken = ""
+    @State private var showToken = false
     @State private var isChecking = false
     @State private var errorMessage: String?
 
@@ -16,15 +17,29 @@ struct OnboardingView: View {
                 }
 
                 Section("Server URL") {
-                    TextField("https://issuectl.example.com", text: $serverURL)
+                    TextField("http://192.168.1.x:3847", text: $serverURL)
                         .textContentType(.URL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                 }
 
                 Section("API Token") {
-                    SecureField("Paste your API token", text: $apiToken)
-                        .textInputAutocapitalization(.never)
+                    HStack {
+                        if showToken {
+                            TextField("Paste your API token", text: $apiToken)
+                                .textInputAutocapitalization(.never)
+                        } else {
+                            SecureField("Paste your API token", text: $apiToken)
+                                .textInputAutocapitalization(.never)
+                        }
+                        Button {
+                            showToken.toggle()
+                        } label: {
+                            Image(systemName: showToken ? "eye.slash" : "eye")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     Text("Run `issuectl init` on your Mac to generate a token.")
                         .font(.caption)
@@ -64,7 +79,17 @@ struct OnboardingView: View {
         var url = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
         if url.hasSuffix("/") { url.removeLast() }
         if !url.hasPrefix("http://") && !url.hasPrefix("https://") {
-            url = "https://\(url)"
+            url = "http://\(url)"
+        }
+
+        // Validate URL structure: must have a valid scheme (http/https) and host
+        guard let parsed = URL(string: url),
+              let scheme = parsed.scheme,
+              (scheme == "http" || scheme == "https"),
+              parsed.host != nil else {
+            errorMessage = "Enter a valid URL (e.g. http://192.168.1.10:3847)"
+            isChecking = false
+            return
         }
 
         let token = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
