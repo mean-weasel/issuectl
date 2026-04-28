@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
+import styles from "./EndSessionButton.module.css";
 
 type Props = {
   deploymentId: number;
@@ -27,26 +28,20 @@ export function EndSessionButton({ deploymentId, owner, repo, issueNumber }: Pro
         } else {
           setError(result.error ?? "Failed to end session");
         }
-      } catch {
+      } catch (err) {
+        console.error("[issuectl] EndSessionButton: endSession threw:", err);
         setError("Failed to end session — please try again");
       }
     });
   }
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span className={styles.wrapper}>
       <Button variant="ghost" onClick={handleEnd} disabled={isPending}>
         {isPending ? "Ending..." : "End Session"}
       </Button>
       {error && (
-        <span
-          role="alert"
-          style={{
-            fontSize: "var(--paper-fs-xs)",
-            color: "var(--paper-brick)",
-            fontFamily: "var(--paper-sans)",
-          }}
-        >
+        <span role="alert" className={styles.error}>
           {error}
         </span>
       )}

@@ -123,6 +123,8 @@ struct TerminalView: View {
     private func endSession() async {
         isEndingSession = true
         endSessionError = nil
+        defer { isEndingSession = false }
+
         do {
             let response = try await api.endSession(
                 deploymentId: deployment.id,
@@ -138,7 +140,6 @@ struct TerminalView: View {
         } catch {
             endSessionError = error.localizedDescription
         }
-        isEndingSession = false
     }
 
     private func attemptRespawn() async {

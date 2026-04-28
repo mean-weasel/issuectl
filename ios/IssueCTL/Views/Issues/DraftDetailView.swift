@@ -202,11 +202,12 @@ struct DraftDetailView: View {
         ) {
             Button("Save and Close") {
                 Task {
-                    await autoSave()
-                    dismiss()
+                    let saved = await autoSave()
+                    if saved { dismiss() }
                 }
             }
             Button("Discard Changes", role: .destructive) {
+                hasChanges = false
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}
@@ -268,19 +269,23 @@ struct DraftDetailView: View {
         isAssigning = false
     }
 
+    /// Builds an update body containing only the fields that differ from the original draft.
+    private func buildUpdateBody() -> UpdateDraftRequestBody {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return UpdateDraftRequestBody(
+            title: trimmedTitle != draft.title ? trimmedTitle : nil,
+            body: trimmedBody != (draft.body ?? "") ? trimmedBody : nil,
+            priority: priority != (draft.priority ?? .normal) ? priority : nil
+        )
+    }
+
     private func save() async {
         isSaving = true
         errorMessage = nil
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
-            let updateBody = UpdateDraftRequestBody(
-                title: trimmedTitle != draft.title ? trimmedTitle : nil,
-                body: trimmedBody != (draft.body ?? "") ? trimmedBody : nil,
-                priority: priority != (draft.priority ?? .normal) ? priority : nil
-            )
-            let response = try await api.updateDraft(id: draft.id, body: updateBody)
+            let response = try await api.updateDraft(id: draft.id, body: buildUpdateBody())
             if response.success {
                 onSaved()
                 dismiss()
@@ -293,25 +298,27 @@ struct DraftDetailView: View {
         isSaving = false
     }
 
-    private func autoSave() async {
-        guard hasChanges else { return }
+    @discardableResult
+    private func autoSave() async -> Bool {
+        guard hasChanges else { return true }
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedTitle.isEmpty else { return }
-        let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return false }
 
         do {
-            let updateBody = UpdateDraftRequestBody(
-                title: trimmedTitle != draft.title ? trimmedTitle : nil,
-                body: trimmedBody != (draft.body ?? "") ? trimmedBody : nil,
-                priority: priority != (draft.priority ?? .normal) ? priority : nil
-            )
-            let response = try await api.updateDraft(id: draft.id, body: updateBody)
+            let response = try await api.updateDraft(id: draft.id, body: buildUpdateBody())
             if response.success {
                 hasChanges = false
                 onSaved()
+                return true
+            } else {
+                print("[IssueCTL] autoSave server error for draft \(draft.id): \(response.error ?? "unknown")")
+                errorMessage = response.error ?? "Auto-save failed"
+                return false
             }
         } catch {
-            // Auto-save is best-effort; errors are silently ignored
+            print("[IssueCTL] autoSave failed for draft \(draft.id): \(error.localizedDescription)")
+            errorMessage = "Auto-save failed: \(error.localizedDescription)"
+            return false
         }
     }
 }

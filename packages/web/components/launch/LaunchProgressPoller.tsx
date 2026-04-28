@@ -17,12 +17,9 @@ type Props = {
 // Drives a parent Server Component re-fetch via router.refresh() while the
 // deployment is active — the RSC equivalent of a polling fetch. Pauses on
 // visibilitychange so a backgrounded tab doesn't keep firing GitHub-backed
-// refreshes (battery, API quota). Browsers throttle hidden-tab timers, but
-// not aggressively enough to skip this.
-//
-// Improvements over the original:
-// - Concurrency guard: overlapping router.refresh() calls cannot pile up
-// - Stall detection: warns the user if no state change in 5 minutes
+// refreshes (battery, API quota). A concurrency guard prevents overlapping
+// refresh calls from piling up, and a stall timer warns the user if no
+// deployment state change occurs within STALL_TIMEOUT_MS.
 export function LaunchProgressPoller({ active, stateFingerprint }: Props) {
   const router = useRouter();
   const isRefreshing = useRef(false);
@@ -40,13 +37,10 @@ export function LaunchProgressPoller({ active, stateFingerprint }: Props) {
   const safeRefresh = useCallback(() => {
     if (isRefreshing.current) return;
     isRefreshing.current = true;
-    // router.refresh() returns void but behaves as an async operation
-    // internally. Use startTransition-style scheduling: mark done on the
-    // next microtask so the flag clears after React processes the update.
     router.refresh();
-    // Clear the guard after a short delay — router.refresh() doesn't
-    // return a promise, so we use a conservative timeout that's shorter
-    // than the poll interval to avoid skipping cycles.
+    // router.refresh() doesn't return a promise, so clear the guard
+    // after a short delay that's shorter than the poll interval to
+    // avoid skipping cycles.
     setTimeout(() => {
       isRefreshing.current = false;
     }, 2000);

@@ -40,7 +40,8 @@ export function WelcomeScreen() {
       }
 
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("[issuectl] WelcomeScreen: addRepo failed:", err);
       setError("Something went wrong. Check your connection and try again.");
     } finally {
       setSubmitting(false);

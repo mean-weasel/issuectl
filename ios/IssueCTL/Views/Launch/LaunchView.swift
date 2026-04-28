@@ -293,7 +293,9 @@ struct LaunchView: View {
 
         defer {
             isLaunching = false
-            withAnimation { showProgress = false }
+            if launchedDeployment == nil {
+                withAnimation { showProgress = false }
+            }
         }
 
         do {

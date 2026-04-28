@@ -1,0 +1,11 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error {
+  font-size: var(--paper-fs-xs);
+  color: var(--paper-brick);
+  font-family: var(--paper-sans);
+}
