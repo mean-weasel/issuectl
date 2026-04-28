@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/paper";
 import { endSession } from "@/lib/actions/launch";
 import styles from "./TerminalPanel.module.css";
+
+type ConnectionStatus = "connecting" | "connected" | "error";
 
 type Props = {
   open: boolean;
@@ -29,6 +31,10 @@ export function TerminalPanel({
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>("connecting");
+  const [iframeKey, setIframeKey] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const router = useRouter();
 
   function handleEndSession() {
@@ -44,14 +50,35 @@ export function TerminalPanel({
     });
   }
 
+  /* Reset connection status whenever the panel opens */
   useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    if (open) {
+      setConnectionStatus("connecting");
     }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open]);
+
+  /* Focus the iframe when the panel opens and is connected */
+  useEffect(() => {
+    if (!open || connectionStatus !== "connected") return;
+    // Small delay lets the slide-in transition finish so the iframe is visible
+    const timer = setTimeout(() => {
+      iframeRef.current?.focus();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [open, connectionStatus]);
+
+  const handleIframeLoad = useCallback(() => {
+    setConnectionStatus("connected");
+  }, []);
+
+  const handleIframeError = useCallback(() => {
+    setConnectionStatus("error");
+  }, []);
+
+  function handleRetry() {
+    setConnectionStatus("connecting");
+    setIframeKey((k) => k + 1);
+  }
 
   return (
     <div className={styles.overlay} data-open={open}>
@@ -97,6 +124,21 @@ export function TerminalPanel({
           <span className={styles.headerTitle}>
             #{issueNumber} — {issueTitle}
           </span>
+          {connectionStatus === "connecting" && (
+            <span className={styles.statusBadge} data-status="connecting">
+              Connecting...
+            </span>
+          )}
+          {connectionStatus === "connected" && (
+            <span className={styles.statusBadge} data-status="connected">
+              Connected
+            </span>
+          )}
+          {connectionStatus === "error" && (
+            <span className={styles.statusBadge} data-status="error">
+              Disconnected
+            </span>
+          )}
           {error && <span className={styles.headerError}>{error}</span>}
           <Button
             variant="ghost"
@@ -106,10 +148,28 @@ export function TerminalPanel({
             {isPending ? "Ending..." : "End Session"}
           </Button>
         </div>
+
+        {/* Connection-error overlay */}
+        {connectionStatus === "error" && (
+          <div className={styles.connectionError}>
+            <p className={styles.connectionErrorText}>
+              Could not connect to the terminal.
+            </p>
+            <Button variant="primary" onClick={handleRetry}>
+              Retry
+            </Button>
+          </div>
+        )}
+
         <iframe
+          key={iframeKey}
+          ref={iframeRef}
           className={styles.terminalFrame}
           src={`/api/terminal/${ttydPort}/`}
           title={`Terminal — Issue #${issueNumber}`}
+          onLoad={handleIframeLoad}
+          onError={handleIframeError}
+          data-hidden={connectionStatus === "error"}
         />
       </div>
     </div>
