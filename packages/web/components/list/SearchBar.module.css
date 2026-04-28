@@ -1,0 +1,107 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+/* ── Search icon (inline SVG) ── */
+.icon {
+  color: var(--paper-ink-muted);
+  flex-shrink: 0;
+}
+
+/* ── Mobile: show only the icon toggle button ── */
+.mobileToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobileToggle:hover {
+  color: var(--paper-ink);
+}
+
+/* ── Input container ── */
+.inputWrap {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg);
+  padding: 0 8px;
+  height: 32px;
+}
+
+.inputWrap .icon {
+  flex-shrink: 0;
+}
+
+.input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--paper-mono);
+  font-size: 12px;
+  color: var(--paper-ink);
+  width: 100%;
+  min-width: 0;
+}
+
+.input::placeholder {
+  color: var(--paper-ink-faint);
+  font-style: italic;
+}
+
+/* ── Clear button ── */
+.clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: var(--paper-radius-sm);
+}
+
+.clear:hover {
+  color: var(--paper-ink);
+  background: var(--paper-bg-warm);
+}
+
+/* ── Mobile expanded state ── */
+.expanded .mobileToggle {
+  display: none;
+}
+
+.expanded .inputWrap {
+  display: flex;
+  width: 100%;
+}
+
+/* ── Desktop: always show input, hide mobile toggle ── */
+@media (min-width: 768px) {
+  .mobileToggle {
+    display: none;
+  }
+
+  .inputWrap {
+    display: flex;
+    width: 240px;
+  }
+}

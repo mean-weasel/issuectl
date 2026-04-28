@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { GitHubIssue, GitHubComment, Deployment } from "@issuectl/core";
 import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
 import { BottomHandle } from "@/components/list/BottomHandle";
@@ -9,6 +9,7 @@ import { LaunchModal } from "@/components/launch/LaunchModal";
 import { IssueActionsMenu } from "./IssueActionsMenu";
 import { IssueDesktopActions } from "./IssueDesktopActions";
 import { IssueReassignSheet } from "./IssueReassignSheet";
+import { AutoLaunchTrigger } from "./AutoLaunchTrigger";
 import { closeIssue, reassignIssueAction } from "@/lib/actions/issues";
 import { endSession } from "@/lib/actions/launch";
 import { getComments } from "@/lib/actions/comments";
@@ -62,24 +63,6 @@ export function IssueActionSheet({
   const [reassignKey, setReassignKey] = useState<string | null>(null);
 
   const { isOffline } = useOfflineAware();
-  const searchParams = useSearchParams();
-
-  // Keep a ref to hasLiveDeployment so the mount-only effect below always
-  // reads the latest value without needing it in the dependency array
-  // (which would re-trigger the effect on every render where it changes).
-  const hasLiveDeploymentRef = useRef(hasLiveDeployment);
-  useEffect(() => {
-    hasLiveDeploymentRef.current = hasLiveDeployment;
-  }, [hasLiveDeployment]);
-
-  useEffect(() => {
-    if (searchParams.get("launch") === "true" && !hasLiveDeploymentRef.current) {
-      handleLaunchTap();
-      const url = new URL(window.location.href);
-      url.searchParams.delete("launch");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, []); // only run on mount
 
   useStaleTab();
 
@@ -132,7 +115,6 @@ export function IssueActionSheet({
     setError(null);
     startTransition(async () => {
       try {
-        // End active terminal session before closing the issue
         const liveDeployment = deployments.find((d) => d.endedAt === null);
         if (liveDeployment && !isOffline) {
           const endResult = await endSession(liveDeployment.id, owner, repo, number);
@@ -238,6 +220,13 @@ export function IssueActionSheet({
         onReassign={handleReassignTap}
         onCloseIssue={handleCloseTap}
       />
+
+      <Suspense fallback={null}>
+        <AutoLaunchTrigger
+          hasLiveDeployment={hasLiveDeployment}
+          onTrigger={handleLaunchTap}
+        />
+      </Suspense>
 
       <IssueActionsMenu
         open={sheetOpen}

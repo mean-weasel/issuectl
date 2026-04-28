@@ -13,6 +13,9 @@ import { EditableBody } from "./EditableBody";
 import { EditableTitle } from "./EditableTitle";
 import { PriorityPicker } from "./PriorityPicker";
 import { IssueActionSheet } from "./IssueActionSheet";
+import { ReopenButton } from "./ReopenButton";
+import { DetailKeyboardNav } from "./DetailKeyboardNav";
+import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
 import styles from "./IssueDetail.module.css";
 
 type Props = {
@@ -47,6 +50,8 @@ export function IssueDetail({
 
   return (
     <div className={styles.container} data-lightbox-root>
+      <DetailKeyboardNav backHref="/" />
+      <KeyboardHelpOverlay />
       <DetailTopBar
         backHref="/"
         crumb={
@@ -85,7 +90,9 @@ export function IssueDetail({
           />
         </DetailMeta>
 
-        {issue.state !== "closed" && (
+        {issue.state === "closed" ? (
+          <ReopenButton owner={owner} repo={repoName} issueNumber={issue.number} />
+        ) : (
           <Suspense fallback={null}>
             <IssueActionSheet
               owner={owner}

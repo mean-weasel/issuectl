@@ -151,6 +151,7 @@ export async function listPullFiles(
     status: f.status as GitHubPullFile["status"],
     additions: f.additions,
     deletions: f.deletions,
+    patch: f.patch,
   }));
 }
 

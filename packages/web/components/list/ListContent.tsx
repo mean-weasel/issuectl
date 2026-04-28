@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useTransition } from "react";
+import { useState, useRef, useEffect, useCallback, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import type { Section, UnifiedList } from "@issuectl/core";
+import type { Section, UnifiedList, UnifiedListItem } from "@issuectl/core";
 import type { PrEntry } from "@/lib/page-filters";
 import { ListSection } from "./ListSection";
 import { PrListRow } from "./PrListRow";
 import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
 import { closeIssue } from "@/lib/actions/issues";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useSearch } from "./SearchContext";
 import { buildHref } from "@/lib/list-href";
 import styles from "./List.module.css";
 
@@ -57,15 +58,41 @@ export function ListContent({
   const [closeTarget, setCloseTarget] = useState<{ owner: string; repo: string; number: number } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [closeError, setCloseError] = useState<string | null>(null);
+  const { query } = useSearch();
+
+  // ── Search filtering ──
+  const filteredData = useMemo((): UnifiedList => {
+    if (!query) return data;
+    const q = query.toLowerCase();
+    return {
+      unassigned: data.unassigned.filter((item) =>
+        matchesDraft(item, q),
+      ),
+      open: data.open.filter((item) => matchesIssue(item, q)),
+      running: data.running.filter((item) => matchesIssue(item, q)),
+      closed: data.closed.filter((item) => matchesIssue(item, q)),
+    };
+  }, [data, query]);
+
+  const filteredPrs = useMemo((): PrEntry[] => {
+    if (!query) return prs;
+    const q = query.toLowerCase();
+    return prs.filter(({ pull }) => {
+      if (pull.title.toLowerCase().includes(q)) return true;
+      if (pull.body?.toLowerCase().includes(q)) return true;
+      if (pull.headRef.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [prs, query]);
 
   // Reset visible count whenever filter criteria or the filtered dataset changes.
   // Length fingerprints detect upstream filter changes (sort, repo) without
   // resetting on every RSC re-render that produces a new array reference.
-  const dataFingerprint = data.open.length + data.running.length + data.closed.length;
-  const prsFingerprint = prs.length;
+  const dataFingerprint = filteredData.open.length + filteredData.running.length + filteredData.closed.length;
+  const prsFingerprint = filteredPrs.length;
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [activeTab, activeSection, activeRepo, mineOnly, dataFingerprint, prsFingerprint]);
+  }, [activeTab, activeSection, activeRepo, mineOnly, dataFingerprint, prsFingerprint, query]);
 
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + PAGE_SIZE);
@@ -136,11 +163,11 @@ export function ListContent({
   }, [loadMore, activeSection]);
 
   if (activeTab === "issues") {
-    const total = data[activeSection].length;
+    const total = filteredData[activeSection].length;
     const showing = Math.min(visibleCount, total);
     return (
       <>
-        {renderIssueSection({ activeSection, data, visibleCount, onLaunch: handleLaunch, onClose: handleCloseRequest })}
+        {renderIssueSection({ activeSection, data: filteredData, visibleCount, onLaunch: handleLaunch, onClose: handleCloseRequest })}
         {total > PAGE_SIZE && (
           <div className={styles.pageStatus}>
             Showing {showing} of {total}
@@ -162,9 +189,11 @@ export function ListContent({
     );
   }
 
-  if (prs.length === 0) {
+  if (filteredPrs.length === 0) {
     let emptyMessage: string;
-    if (activeRepo && mineOnly) {
+    if (query) {
+      emptyMessage = "no PRs match your search.";
+    } else if (activeRepo && mineOnly) {
       emptyMessage = `no open PRs from you in ${activeRepo}.`;
     } else if (activeRepo) {
       emptyMessage = `no open PRs in ${activeRepo}.`;
@@ -187,12 +216,13 @@ export function ListContent({
 
   return (
     <div>
-      {prs.map(({ repo, pull }) => (
+      {filteredPrs.map(({ repo, pull }, i) => (
         <PrListRow
           key={`pr-${repo.owner}-${repo.name}-${pull.number}`}
           owner={repo.owner}
           repoName={repo.name}
           pull={pull}
+          rowIndex={i}
         />
       ))}
     </div>
@@ -229,4 +259,23 @@ function renderIssueSection({
 
   const items = allItems.slice(0, visibleCount);
   return <ListSection title={null} items={items} onLaunch={onLaunch} onClose={onClose} />;
+}
+
+/** Case-insensitive substring match for draft items (title + body). */
+function matchesDraft(item: UnifiedListItem, q: string): boolean {
+  if (item.kind !== "draft") return false;
+  const { title, body } = item.draft;
+  if (title.toLowerCase().includes(q)) return true;
+  if (body.toLowerCase().includes(q)) return true;
+  return false;
+}
+
+/** Case-insensitive substring match for issue items (title, body, labels). */
+function matchesIssue(item: UnifiedListItem, q: string): boolean {
+  if (item.kind !== "issue") return false;
+  const { title, body, labels } = item.issue;
+  if (title.toLowerCase().includes(q)) return true;
+  if (body?.toLowerCase().includes(q)) return true;
+  if (labels.some((l) => l.name.toLowerCase().includes(q))) return true;
+  return false;
 }

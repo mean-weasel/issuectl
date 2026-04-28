@@ -1,0 +1,5 @@
+.error {
+  color: var(--paper-brick);
+  margin-top: 8px;
+  font-size: var(--paper-fs-sm);
+}

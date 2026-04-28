@@ -6,6 +6,7 @@ import {
   createIssue as coreCreateIssue,
   updateIssue as coreUpdateIssue,
   closeIssue as coreCloseIssue,
+  reopenIssue as coreReopenIssue,
   reassignIssue as coreReassignIssue,
   addLabel as coreAddLabel,
   removeLabel as coreRemoveLabel,
@@ -180,6 +181,33 @@ export async function closeIssue(
     clearCacheKey(db, `issues:${owner}/${repo}`);
   } catch (err) {
     console.error("[issuectl] Failed to close issue:", err);
+    return { success: false, error: formatErrorForUser(err) };
+  }
+  const { stale } = revalidateSafely(`/issues/${owner}/${repo}/${number}`, "/");
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+export async function reopenIssue(
+  owner: string,
+  repo: string,
+  number: number,
+): Promise<{ success: true; cacheStale?: true } | { success: false; error: string }> {
+  if (!owner || !repo || !Number.isFinite(number) || number <= 0) {
+    return { success: false, error: "Valid owner, repo, and issue number are required" };
+  }
+
+  try {
+    const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
+    await withAuthRetry((octokit) =>
+      coreReopenIssue(octokit, owner, repo, number),
+    );
+    clearCacheKey(db, `issue-detail:${owner}/${repo}#${number}`);
+    clearCacheKey(db, `issues:${owner}/${repo}`);
+  } catch (err) {
+    console.error("[issuectl] Failed to reopen issue:", err);
     return { success: false, error: formatErrorForUser(err) };
   }
   const { stale } = revalidateSafely(`/issues/${owner}/${repo}/${number}`, "/");

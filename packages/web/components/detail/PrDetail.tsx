@@ -2,6 +2,7 @@ import type {
   GitHubPull,
   GitHubCheck,
   GitHubPullFile,
+  GitHubPullReview,
   GitHubIssue,
 } from "@issuectl/core";
 import { Chip } from "@/components/paper";
@@ -14,8 +15,11 @@ import {
 } from "./DetailMeta";
 import { BodyText } from "./BodyText";
 import { CIChecks } from "./CIChecks";
+import { ReviewPanel } from "./ReviewPanel";
 import { FilesChanged } from "./FilesChanged";
 import { MergeButton } from "./MergeButton";
+import { DetailKeyboardNav } from "./DetailKeyboardNav";
+import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -24,6 +28,7 @@ type Props = {
   pull: GitHubPull;
   checks: GitHubCheck[];
   files: GitHubPullFile[];
+  reviews: GitHubPullReview[];
   linkedIssue: GitHubIssue | null;
 };
 
@@ -33,6 +38,7 @@ export function PrDetail({
   pull,
   checks,
   files,
+  reviews,
   linkedIssue,
 }: Props) {
   const prState: "open" | "closed" | "merged" = pull.merged
@@ -41,6 +47,8 @@ export function PrDetail({
 
   return (
     <div className={styles.container}>
+      <DetailKeyboardNav backHref="/?tab=prs" />
+      <KeyboardHelpOverlay />
       <DetailTopBar
         backHref="/?tab=prs"
         crumb={<>{owner}/<b>{repoName}</b></>}
@@ -81,6 +89,15 @@ export function PrDetail({
 
         <h2 className={styles.section}>ci checks</h2>
         <CIChecks checks={checks} />
+
+        <h2 className={styles.section}>reviews</h2>
+        <ReviewPanel
+          owner={owner}
+          repoName={repoName}
+          pullNumber={pull.number}
+          reviews={reviews}
+          isOpen={prState === "open"}
+        />
 
         <h2 className={styles.section}>files changed</h2>
         <FilesChanged files={files} />
