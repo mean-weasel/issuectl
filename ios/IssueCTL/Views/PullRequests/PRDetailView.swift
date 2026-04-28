@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PRDetailView: View {
     @Environment(APIClient.self) private var api
+    @Environment(\.openURL) private var openURL
     let owner: String
     let repo: String
     let number: Int
@@ -66,6 +67,26 @@ struct PRDetailView: View {
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let detail {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if let url = URL(string: detail.pull.htmlUrl) {
+                        ShareLink(item: url) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        if let url = URL(string: detail.pull.htmlUrl) {
+                            openURL(url)
+                        }
+                    } label: {
+                        Image(systemName: "safari")
+                    }
+                }
+            }
+        }
         .task { await load() }
         .onAppear {
             actionError = nil
