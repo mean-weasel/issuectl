@@ -9,7 +9,6 @@ import {
   markPending,
   remove,
   clearAll,
-  type QueuedOperation,
 } from "./offline-queue";
 
 beforeEach(async () => {
@@ -43,6 +42,14 @@ describe("offline-queue", () => {
     expect(pending).toHaveLength(2);
     expect(pending[0].action).toBe("addComment");
     expect(pending[1].action).toBe("toggleLabel");
+  });
+
+  it("supports replayable issue actions", async () => {
+    await enqueue("closeIssue", { owner: "acme", repo: "api", issueNumber: 47 }, "n1");
+    await enqueue("setPriority", { repoId: 1, issueNumber: 47, priority: "high" }, "n2");
+
+    const pending = await listPending();
+    expect(pending.map((op) => op.action)).toEqual(["closeIssue", "setPriority"]);
   });
 
   it("marks an operation as syncing", async () => {

@@ -1,4 +1,9 @@
-export type QueueableAction = "assignDraft" | "addComment" | "toggleLabel";
+export type QueueableAction =
+  | "assignDraft"
+  | "addComment"
+  | "toggleLabel"
+  | "closeIssue"
+  | "setPriority";
 
 export type QueuedOperation = {
   id: string;

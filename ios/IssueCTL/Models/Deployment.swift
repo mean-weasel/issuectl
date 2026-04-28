@@ -32,7 +32,7 @@ struct Deployment: Codable, Identifiable, Sendable {
     var isActive: Bool { state == .active && endedAt == nil }
 
     var launchedDate: Date? {
-        sharedISO8601Formatter.date(from: launchedAt)
+        parseIssueCTLDate(launchedAt)
     }
 
     var runningDuration: String {
@@ -64,7 +64,7 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
     let repoName: String
 
     var launchedDate: Date? {
-        sharedISO8601Formatter.date(from: launchedAt)
+        parseIssueCTLDate(launchedAt)
     }
 
     var runningDuration: String {

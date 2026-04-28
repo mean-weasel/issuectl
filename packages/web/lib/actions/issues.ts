@@ -3,7 +3,6 @@
 import {
   getDb,
   getRepo,
-  getRepoById,
   createIssue as coreCreateIssue,
   updateIssue as coreUpdateIssue,
   closeIssue as coreCloseIssue,

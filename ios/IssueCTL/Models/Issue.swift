@@ -8,6 +8,17 @@ nonisolated(unsafe) let sharedISO8601Formatter: ISO8601DateFormatter = {
     return f
 }()
 
+nonisolated(unsafe) private let sharedISO8601FormatterWithoutFractionalSeconds: ISO8601DateFormatter = {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime]
+    return f
+}()
+
+func parseIssueCTLDate(_ value: String) -> Date? {
+    sharedISO8601Formatter.date(from: value)
+        ?? sharedISO8601FormatterWithoutFractionalSeconds.date(from: value)
+}
+
 struct GitHubUser: Codable, Sendable {
     let login: String
     let avatarUrl: String
@@ -42,7 +53,7 @@ struct GitHubIssue: Codable, Identifiable, Sendable {
     var isOpen: Bool { state == "open" }
 
     var updatedDate: Date? {
-        sharedISO8601Formatter.date(from: updatedAt)
+        parseIssueCTLDate(updatedAt)
     }
 
     var timeAgo: String {
