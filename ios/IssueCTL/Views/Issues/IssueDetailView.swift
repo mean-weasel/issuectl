@@ -12,15 +12,10 @@ struct IssueDetailView: View {
     @State private var activeDetailSheet: DetailSheet?
     @State private var isClosing = false
     @State private var isReopening = false
-    @State private var showCommentSheet = false
-    @State private var showCloseSheet = false
-    @State private var showCloseConfirm = false
-    @State private var showReopenConfirm = false
+    @State private var activeConfirmation: ActiveConfirmation?
     @State private var actionError: String?
 
     // Comment actions and error display
-    @State private var editingComment: GitHubComment?
-    @State private var deletingComment: GitHubComment?
     @State private var isDeletingComment = false
     @State private var currentUserLogin: String?
     @State private var showActionError = false
@@ -171,49 +166,35 @@ struct IssueDetailView: View {
                     currentAssignees: (detail.issue.assignees ?? []).map(\.login),
                     onUpdate: { _ in Task { await load(refresh: true) } }
                 )
+            case .comment:
+                IssueCommentSheet(
+                    owner: owner, repo: repo, number: number,
+                    onSuccess: { Task { await load(refresh: true) } }
+                )
+            case .closeWithComment:
+                CloseIssueSheet(
+                    owner: owner, repo: repo, number: number,
+                    onSuccess: { Task { await load(refresh: true) } }
+                )
+            case .editComment(let comment):
+                EditCommentSheet(
+                    owner: owner, repo: repo, number: number,
+                    commentId: comment.id, currentBody: comment.body,
+                    onSuccess: { Task { await load(refresh: true) } }
+                )
             }
         }
-        .sheet(isPresented: $showCommentSheet) {
-            IssueCommentSheet(
-                owner: owner, repo: repo, number: number,
-                onSuccess: { Task { await load(refresh: true) } }
-            )
-        }
-        .sheet(isPresented: $showCloseSheet) {
-            CloseIssueSheet(
-                owner: owner, repo: repo, number: number,
-                onSuccess: { Task { await load(refresh: true) } }
-            )
-        }
-        .sheet(item: $editingComment) { comment in
-            EditCommentSheet(
-                owner: owner, repo: repo, number: number,
-                commentId: comment.id, currentBody: comment.body,
-                onSuccess: { Task { await load(refresh: true) } }
-            )
-        }
-        .confirmationDialog("Close Issue", isPresented: $showCloseConfirm, titleVisibility: .visible) {
-            Button("Close", role: .destructive) { Task { await closeWithoutComment() } }
-            Button("Close with comment...") { showCloseSheet = true }
-        }
-        .confirmationDialog("Reopen Issue", isPresented: $showReopenConfirm, titleVisibility: .visible) {
-            Button("Reopen") { Task { await reopen() } }
-        }
         .confirmationDialog(
-            "Delete Comment",
+            confirmationTitle,
             isPresented: .init(
-                get: { deletingComment != nil },
-                set: { if !$0 { deletingComment = nil } }
+                get: { activeConfirmation != nil },
+                set: { if !$0 { activeConfirmation = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
-                if let comment = deletingComment {
-                    Task { await deleteComment(comment) }
-                }
-            }
+            confirmationActions
         } message: {
-            Text("Are you sure you want to delete this comment? This cannot be undone.")
+            confirmationMessage
         }
         .alert("Error", isPresented: $showActionError) {
             Button("OK") { actionError = nil }
@@ -359,13 +340,13 @@ struct IssueDetailView: View {
                     CommentView(comment: comment)
                         .contextMenu {
                             Button {
-                                editingComment = comment
+                                activeDetailSheet = .editComment(comment)
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                             }
 
                             Button(role: .destructive) {
-                                deletingComment = comment
+                                activeConfirmation = .deleteComment(comment)
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -388,13 +369,13 @@ struct IssueDetailView: View {
         if issue.isOpen {
             HStack(spacing: 16) {
                 Button {
-                    showCommentSheet = true
+                    activeDetailSheet = .comment
                 } label: {
                     Label("Comment", systemImage: "bubble.left")
                 }
 
                 Button {
-                    showCloseConfirm = true
+                    activeConfirmation = .closeIssue
                 } label: {
                     if isClosing {
                         ProgressView().controlSize(.small)
@@ -412,7 +393,7 @@ struct IssueDetailView: View {
         } else {
             HStack {
                 Button {
-                    showReopenConfirm = true
+                    activeConfirmation = .reopenIssue
                 } label: {
                     if isReopening {
                         ProgressView().controlSize(.small)
@@ -427,6 +408,44 @@ struct IssueDetailView: View {
             .font(.caption)
             .padding()
             .background(.bar)
+        }
+    }
+
+    // MARK: - Confirmation Dialog Helpers
+
+    private var confirmationTitle: String {
+        switch activeConfirmation {
+        case .closeIssue: "Close Issue"
+        case .reopenIssue: "Reopen Issue"
+        case .deleteComment: "Delete Comment"
+        case nil: ""
+        }
+    }
+
+    @ViewBuilder
+    private var confirmationActions: some View {
+        switch activeConfirmation {
+        case .closeIssue:
+            Button("Close", role: .destructive) { Task { await closeWithoutComment() } }
+            Button("Close with comment...") { activeDetailSheet = .closeWithComment }
+        case .reopenIssue:
+            Button("Reopen") { Task { await reopen() } }
+        case .deleteComment(let comment):
+            Button("Delete", role: .destructive) {
+                Task { await deleteComment(comment) }
+            }
+        case nil:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var confirmationMessage: some View {
+        switch activeConfirmation {
+        case .deleteComment:
+            Text("Are you sure you want to delete this comment? This cannot be undone.")
+        default:
+            EmptyView()
         }
     }
 
@@ -488,6 +507,7 @@ struct IssueDetailView: View {
 
     private func closeWithoutComment() async {
         isClosing = true
+        defer { isClosing = false }
         actionError = nil
         do {
             let body = IssueStateRequestBody(state: "closed", comment: nil)
@@ -501,11 +521,11 @@ struct IssueDetailView: View {
         } catch {
             actionError = error.localizedDescription
         }
-        isClosing = false
     }
 
     private func reopen() async {
         isReopening = true
+        defer { isReopening = false }
         actionError = nil
         do {
             let body = IssueStateRequestBody(state: "open", comment: nil)
@@ -519,11 +539,11 @@ struct IssueDetailView: View {
         } catch {
             actionError = error.localizedDescription
         }
-        isReopening = false
     }
 
     private func deleteComment(_ comment: GitHubComment) async {
         isDeletingComment = true
+        defer { isDeletingComment = false }
         actionError = nil
         do {
             let requestBody = DeleteCommentRequestBody(commentId: comment.id)
@@ -540,8 +560,6 @@ struct IssueDetailView: View {
         } catch {
             actionError = error.localizedDescription
         }
-        isDeletingComment = false
-        deletingComment = nil
     }
 
     private func showStaleHint(_ message: String) {
@@ -655,6 +673,9 @@ enum DetailSheet: Identifiable, Sendable {
     case edit(IssueDetailResponse)
     case labels(IssueDetailResponse)
     case assignees(IssueDetailResponse)
+    case comment
+    case closeWithComment
+    case editComment(GitHubComment)
 
     var id: String {
         switch self {
@@ -663,6 +684,23 @@ enum DetailSheet: Identifiable, Sendable {
         case .edit: "edit"
         case .labels: "labels"
         case .assignees: "assignees"
+        case .comment: "comment"
+        case .closeWithComment: "closeWithComment"
+        case .editComment(let c): "editComment-\(c.id)"
+        }
+    }
+}
+
+enum ActiveConfirmation: Identifiable {
+    case closeIssue
+    case reopenIssue
+    case deleteComment(GitHubComment)
+
+    var id: String {
+        switch self {
+        case .closeIssue: "closeIssue"
+        case .reopenIssue: "reopenIssue"
+        case .deleteComment(let c): "deleteComment-\(c.id)"
         }
     }
 }
