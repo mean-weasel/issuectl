@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, SortMode } from "@issuectl/core";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -36,7 +36,6 @@ export function ListKeyboardNav({
   const router = useRouter();
   const focus = useFocusContext();
   const counts = useListCounts();
-  const helpOpenRef = useRef(false);
 
   // Derive visible item count from the counts context
   const itemCount =
@@ -46,7 +45,7 @@ export function ListKeyboardNav({
 
   const moveFocus = useCallback(
     (delta: number) => {
-      if (!focus || itemCount === 0) return;
+      if (itemCount === 0) return;
       const { focusedIndex, setFocusedIndex } = focus;
       let next: number;
       if (focusedIndex < 0) {
@@ -67,13 +66,14 @@ export function ListKeyboardNav({
   );
 
   const openFocused = useCallback(() => {
-    if (!focus || focus.focusedIndex < 0) return;
+    if (focus.focusedIndex < 0) return;
     const row = document.querySelector(
       `[data-row-index="${focus.focusedIndex}"]`,
     );
-    const link = row?.querySelector("a[href]") as HTMLAnchorElement | null;
-    if (link) {
-      router.push(link.href);
+    const link = row?.querySelector("a[href]");
+    const href = link?.getAttribute("href");
+    if (href) {
+      router.push(href);
     }
   }, [focus, router]);
 
@@ -125,18 +125,16 @@ export function ListKeyboardNav({
             )
           : undefined,
       "?": () => {
-        helpOpenRef.current = !helpOpenRef.current;
         const overlay = document.getElementById("keyboard-help-overlay");
         if (overlay) {
-          overlay.style.display = helpOpenRef.current ? "flex" : "none";
+          const isVisible = overlay.style.display !== "none";
+          overlay.style.display = isVisible ? "none" : "flex";
         }
       },
       Escape: () => {
-        // Close help overlay if open
-        if (helpOpenRef.current) {
-          helpOpenRef.current = false;
-          const overlay = document.getElementById("keyboard-help-overlay");
-          if (overlay) overlay.style.display = "none";
+        const overlay = document.getElementById("keyboard-help-overlay");
+        if (overlay && overlay.style.display !== "none") {
+          overlay.style.display = "none";
         }
       },
     }),
@@ -157,8 +155,8 @@ export function ListKeyboardNav({
 
   // Reset focus when tab/section/repo changes
   useEffect(() => {
-    focus?.setFocusedIndex(-1);
-  }, [activeTab, activeSection, activeRepo]); // eslint-disable-line react-hooks/exhaustive-deps
+    focus.setFocusedIndex(-1);
+  }, [activeTab, activeSection, activeRepo]); // focus intentionally omitted — including it causes infinite loop
 
   return null;
 }

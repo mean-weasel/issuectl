@@ -18,6 +18,10 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useFocusContext(): FocusContextValue | null {
-  return useContext(FocusContext);
+export function useFocusContext(): FocusContextValue {
+  const ctx = useContext(FocusContext);
+  if (!ctx) {
+    throw new Error("useFocusContext must be used within a FocusProvider");
+  }
+  return ctx;
 }

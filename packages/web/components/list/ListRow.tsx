@@ -34,7 +34,7 @@ function formatAge(updatedAt: string | number): string {
 
 export function ListRow({ item, rowIndex, onLaunch, onClose }: Props) {
   const focus = useFocusContext();
-  const isFocused = rowIndex !== undefined && focus?.focusedIndex === rowIndex;
+  const isFocused = rowIndex !== undefined && focus.focusedIndex === rowIndex;
 
   if (item.kind === "draft") {
     return (

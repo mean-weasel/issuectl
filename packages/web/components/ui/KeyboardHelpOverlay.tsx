@@ -24,7 +24,8 @@ const GLOBAL_SHORTCUTS = [
 
 /**
  * Keyboard shortcut help overlay. Hidden by default; toggled via the `?` key.
- * Uses a plain DOM id so ListKeyboardNav can toggle display without React state.
+ * Uses a plain DOM id so keyboard nav components (ListKeyboardNav and
+ * DetailKeyboardNav) can toggle display without React state.
  */
 export function KeyboardHelpOverlay() {
   return (

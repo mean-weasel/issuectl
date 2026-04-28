@@ -90,6 +90,9 @@ export async function submitReviewAction(
   if (body !== undefined && typeof body !== "string") {
     return { success: false, error: "Invalid review body" };
   }
+  if (event === "REQUEST_CHANGES" && (!body || body.trim().length === 0)) {
+    return { success: false, error: "Body is required when requesting changes" };
+  }
 
   try {
     const db = getDb();
@@ -113,6 +116,7 @@ export async function submitReviewAction(
 
   const { stale } = revalidateSafely(
     `/pulls/${owner}/${repo}/${pullNumber}`,
+    "/",
   );
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }

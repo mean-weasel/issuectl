@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
@@ -17,16 +17,14 @@ type Props = {
  */
 export function DetailKeyboardNav({ backHref }: Props) {
   const router = useRouter();
-  const helpOpenRef = useRef(false);
 
   const shortcuts = useMemo(
     () => ({
       Escape: () => {
         // Close help overlay first if open
-        if (helpOpenRef.current) {
-          helpOpenRef.current = false;
-          const overlay = document.getElementById("keyboard-help-overlay");
-          if (overlay) overlay.style.display = "none";
+        const overlay = document.getElementById("keyboard-help-overlay");
+        if (overlay && overlay.style.display !== "none") {
+          overlay.style.display = "none";
           return;
         }
         router.push(backHref);
@@ -44,10 +42,10 @@ export function DetailKeyboardNav({ backHref }: Props) {
         btn?.click();
       },
       "?": () => {
-        helpOpenRef.current = !helpOpenRef.current;
         const overlay = document.getElementById("keyboard-help-overlay");
         if (overlay) {
-          overlay.style.display = helpOpenRef.current ? "flex" : "none";
+          const isVisible = overlay.style.display !== "none";
+          overlay.style.display = isVisible ? "none" : "flex";
         }
       },
     }),

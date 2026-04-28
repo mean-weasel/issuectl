@@ -18,7 +18,9 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
         const fn = shortcuts["Escape"];
         if (fn) {
           e.preventDefault();
-          fn();
+          try { fn(); } catch (err) {
+            console.error(`[issuectl] Keyboard shortcut "Escape" handler failed:`, err);
+          }
         }
         return;
       }
@@ -43,7 +45,9 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
       const fn = shortcuts[e.key];
       if (fn) {
         e.preventDefault();
-        fn();
+        try { fn(); } catch (err) {
+          console.error(`[issuectl] Keyboard shortcut "${e.key}" handler failed:`, err);
+        }
       }
     }
 

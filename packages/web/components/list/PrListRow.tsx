@@ -36,7 +36,7 @@ function getStatusDot(pull: PullWithChecksStatus): StatusDotVariant {
 
 export function PrListRow({ owner, repoName, pull, rowIndex }: Props) {
   const focus = useFocusContext();
-  const isFocused = rowIndex !== undefined && focus?.focusedIndex === rowIndex;
+  const isFocused = rowIndex !== undefined && focus.focusedIndex === rowIndex;
   const dot = getStatusDot(pull);
   const href = `/pulls/${owner}/${repoName}/${pull.number}`;
 
