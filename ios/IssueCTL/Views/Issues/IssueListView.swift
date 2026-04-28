@@ -33,7 +33,6 @@ struct IssueListView: View {
     @State private var deleteDraftTarget: String?
 
     @State private var actionError: String?
-    @State private var errorDismissTask: Task<Void, Never>?
 
     // Priority data keyed by "owner/repo#number"
     @State private var priorities: [String: Priority] = [:]
@@ -45,10 +44,6 @@ struct IssueListView: View {
     @State private var searchText = ""
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
-
-    private var allIssues: [GitHubIssue] {
-        issuesByRepo.values.flatMap { $0 }
-    }
 
     // Maps repo full name to set of running issue numbers for that repo.
     // Keyed by repo to avoid cross-repo collisions (issue #5 in repo A vs repo B).
@@ -64,21 +59,15 @@ struct IssueListView: View {
         runningIssuesByRepo[repoFullName]?.contains(issue.number) ?? false
     }
 
-    // Issues filtered by selected repos and "mine" toggle (before section/sort filtering)
     private var repoFilteredIssues: [GitHubIssue] {
-        var items: [GitHubIssue]
-        if selectedRepoIds.isEmpty {
-            items = allIssues
-        } else {
-            let selectedRepoNames = Set(repos.filter { selectedRepoIds.contains($0.id) }.map(\.fullName))
-            items = issuesByRepo
-                .filter { selectedRepoNames.contains($0.key) }
-                .values.flatMap { $0 }
-        }
-        if mineOnly, let login = currentUserLogin {
-            items = items.filter { $0.user?.login == login }
-        }
-        return items
+        filterItemsByRepo(
+            issuesByRepo,
+            repos: repos,
+            selectedRepoIds: selectedRepoIds,
+            mineOnly: mineOnly,
+            currentUserLogin: currentUserLogin,
+            userLogin: { $0.user?.login }
+        )
     }
 
     private var filteredIssues: [GitHubIssue] {
@@ -157,21 +146,11 @@ struct IssueListView: View {
     }
 
     private func repoIndex(for issue: GitHubIssue) -> Int? {
-        for (repoFullName, issues) in issuesByRepo {
-            if issues.contains(where: { $0.htmlUrl == issue.htmlUrl }) {
-                return repos.firstIndex(where: { $0.fullName == repoFullName })
-            }
-        }
-        return nil
+        repoIndexForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
     }
 
     private func repoFor(issue: GitHubIssue) -> Repo? {
-        for (repoFullName, issues) in issuesByRepo {
-            if issues.contains(where: { $0.htmlUrl == issue.htmlUrl }) {
-                return repos.first(where: { $0.fullName == repoFullName })
-            }
-        }
-        return nil
+        repoForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
     }
 
     var body: some View {
@@ -308,17 +287,7 @@ struct IssueListView: View {
                     }
                 }
             }
-            .onChange(of: actionError) { _, newValue in
-                errorDismissTask?.cancel()
-                if newValue != nil {
-                    errorDismissTask = Task {
-                        try? await Task.sleep(for: .seconds(5))
-                        if !Task.isCancelled {
-                            actionError = nil
-                        }
-                    }
-                }
-            }
+            .autoDismissError($actionError)
             .task { await loadAll() }
             .onAppear {
                 if let s = IssueSection(rawValue: storedSection) { section = s }
@@ -408,15 +377,7 @@ struct IssueListView: View {
                 }
             }
 
-            if allFiltered.count > displayLimit {
-                Button {
-                    displayLimit += pageSize
-                } label: {
-                    Text("Load More (\(allFiltered.count - displayLimit) remaining)")
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity)
-                }
-            }
+            LoadMoreButton(totalCount: allFiltered.count, displayLimit: $displayLimit, pageSize: pageSize)
         }
         .refreshable { await refreshWithCooldown() }
     }
@@ -424,11 +385,15 @@ struct IssueListView: View {
     @ViewBuilder
     private var draftsList: some View {
         if filteredDrafts.isEmpty {
-            ContentUnavailableView(
-                "No Drafts",
-                systemImage: "doc.text",
-                description: Text("Tap + to create a draft.")
-            )
+            ScrollView {
+                ContentUnavailableView(
+                    "No Drafts",
+                    systemImage: "doc.text",
+                    description: Text("Tap + to create a draft.")
+                )
+                .frame(maxHeight: .infinity)
+            }
+            .refreshable { await refreshWithCooldown() }
         } else {
             List {
                 ForEach(filteredDrafts) { draft in

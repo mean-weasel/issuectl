@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0ABCC3FB2E10C1BEA6AA4BFD /* IssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */; };
 		0B585381530245167B82950D /* QuickCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */; };
+		0F2044833E18AACECEA0C048 /* RepoFilterHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41967EFA522B03BFB6FDADA7 /* RepoFilterHelpers.swift */; };
 		1947E5288D6AB12AE79684BB /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
 		1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */; };
 		2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */; };
@@ -17,6 +18,7 @@
 		327EF2CAB79710212AEE37A6 /* ParseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2FEDC36ACDF7207272AE3 /* ParseView.swift */; };
 		332F4D8213B6FCFB806AC6A7 /* RepoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C48C04AAB5D9F17D9DD63684 /* RepoListView.swift */; };
 		34F18449E8DBA4A039C94A44 /* APIClient+Assignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FAF4DCDBAB6A7A58E076C4 /* APIClient+Assignment.swift */; };
+		3719E03E98785A8075A6F871 /* ErrorAutoDismissModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 458A6E2819377536E7EDF138 /* ErrorAutoDismissModifier.swift */; };
 		3A294328BBF7D4016CC7B91E /* DraftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3814ACC4885AAA637A3041 /* DraftDetailView.swift */; };
 		42EE83997C330D92A0AF72EF /* WorktreeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */; };
 		435164D5164B0B7D5FA9917F /* ReassignSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3403F8C644518F599E01A976 /* ReassignSheet.swift */; };
@@ -30,6 +32,7 @@
 		57F286E2B3615BA000C1987C /* EdgeCaseModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3CF16B90E6F234095B67412 /* EdgeCaseModelTests.swift */; };
 		581A38A699B1591C0D6C6EB9 /* LabelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE149A3F324BCC15AB57153E /* LabelPicker.swift */; };
 		59D20056C3E281403735631D /* Repo.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7701223E13D43C4F74244B0 /* Repo.swift */; };
+		5AA1967A4E7CC1D191C872DF /* LoadMoreButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4497D324AB6CE09260737497 /* LoadMoreButton.swift */; };
 		5B840823FA293BB29D5ED80E /* IssueListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D882E51722D47D736257AB4F /* IssueListView.swift */; };
 		62580655D91E8E7A9A7950B1 /* NetworkErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3F3CE4A721136E587B4C67 /* NetworkErrorBanner.swift */; };
 		65142BB24364562CB5305E0F /* PRListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472896A74FFDCC9B621A984E /* PRListView.swift */; };
@@ -109,7 +112,10 @@
 		364C3F577D49589A381F15B4 /* SessionRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRowView.swift; sourceTree = "<group>"; };
 		3F39642CB180355E5C62A75E /* ImageLightbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLightbox.swift; sourceTree = "<group>"; };
 		4010BC691DB71B872353344A /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
+		41967EFA522B03BFB6FDADA7 /* RepoFilterHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepoFilterHelpers.swift; sourceTree = "<group>"; };
 		4403330B1342AA7C19FA797D /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		4497D324AB6CE09260737497 /* LoadMoreButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadMoreButton.swift; sourceTree = "<group>"; };
+		458A6E2819377536E7EDF138 /* ErrorAutoDismissModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorAutoDismissModifier.swift; sourceTree = "<group>"; };
 		45D2FEDC36ACDF7207272AE3 /* ParseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParseView.swift; sourceTree = "<group>"; };
 		472896A74FFDCC9B621A984E /* PRListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRListView.swift; sourceTree = "<group>"; };
 		488FA6CF4785A8769D688726 /* IssueCommentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCommentSheet.swift; sourceTree = "<group>"; };
@@ -344,11 +350,13 @@
 			children = (
 				2841D89323711B68449BB980 /* CacheAgeLabel.swift */,
 				4403330B1342AA7C19FA797D /* Constants.swift */,
+				458A6E2819377536E7EDF138 /* ErrorAutoDismissModifier.swift */,
 				894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */,
 				3F39642CB180355E5C62A75E /* ImageLightbox.swift */,
 				CCED89BF4650BDFC4262B48D /* InteractivePopDisabler.swift */,
 				FE149A3F324BCC15AB57153E /* LabelPicker.swift */,
 				C1EDD5BE2AB56ED93A092C0C /* MarkdownView.swift */,
+				4497D324AB6CE09260737497 /* LoadMoreButton.swift */,
 				F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */,
 				6E3F3CE4A721136E587B4C67 /* NetworkErrorBanner.swift */,
 				0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */,
@@ -361,6 +369,7 @@
 			isa = PBXGroup;
 			children = (
 				736AD6AF28A44D0CEF44377B /* BranchNameHelper.swift */,
+				41967EFA522B03BFB6FDADA7 /* RepoFilterHelpers.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -527,6 +536,7 @@
 				9318F86221EE651B485C689D /* EditCommentSheet.swift in Sources */,
 				E35D59719FABCC9A185D8366 /* EditIssueSheet.swift in Sources */,
 				8F6B1136F0F654026188BFF6 /* EditRepoSheet.swift in Sources */,
+				3719E03E98785A8075A6F871 /* ErrorAutoDismissModifier.swift in Sources */,
 				51D419285114BB9B1F7B6D5A /* GitHubAccessibleRepo.swift in Sources */,
 				1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */,
 				C8222FD4B618852C6CE61ACA /* ImageLightbox.swift in Sources */,
@@ -543,6 +553,7 @@
 				D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */,
 				E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */,
 				C02C3F84D16B27F60A6622E0 /* MarkdownView.swift in Sources */,
+				5AA1967A4E7CC1D191C872DF /* LoadMoreButton.swift in Sources */,
 				2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */,
 				62580655D91E8E7A9A7950B1 /* NetworkErrorBanner.swift in Sources */,
 				8E89CDCD892A094F7485DB40 /* NetworkMonitor.swift in Sources */,
@@ -557,6 +568,7 @@
 				435164D5164B0B7D5FA9917F /* ReassignSheet.swift in Sources */,
 				59D20056C3E281403735631D /* Repo.swift in Sources */,
 				BB3D82F9FB758E4769B8BA58 /* RepoFilterChips.swift in Sources */,
+				0F2044833E18AACECEA0C048 /* RepoFilterHelpers.swift in Sources */,
 				332F4D8213B6FCFB806AC6A7 /* RepoListView.swift in Sources */,
 				49EDEDB941BBD61FDAD431EB /* RequestChangesSheet.swift in Sources */,
 				E996836A5A715FE47B402A6A /* SectionTabs.swift in Sources */,
