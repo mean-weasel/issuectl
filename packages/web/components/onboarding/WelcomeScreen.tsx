@@ -35,7 +35,8 @@ export function WelcomeScreen() {
 
       if (result.warning) {
         setWarning(result.warning);
-        return;
+        // Repo was added successfully despite the warning — still
+        // refresh so the user proceeds past the welcome screen.
       }
 
       router.refresh();
