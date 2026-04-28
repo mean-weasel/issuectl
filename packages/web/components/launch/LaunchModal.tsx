@@ -110,11 +110,13 @@ export function LaunchModal({
     return () => { cancelled = true; };
   }, [owner, repo, issue.number, workspaceMode]);
 
+  const allCommentIndices = comments.map((_, i) => i);
   const isDirty =
     branchName !== initialBranch ||
     workspaceMode !== initialMode ||
     preamble.trim().length > 0 ||
-    selectedComments.length !== comments.length ||
+    selectedComments.length !== allCommentIndices.length ||
+    [...selectedComments].sort((a, b) => a - b).some((v, i) => v !== allCommentIndices[i]) ||
     selectedFiles.length !== referencedFiles.length ||
     selectedFiles.some((f) => !referencedFiles.includes(f));
 

@@ -250,7 +250,10 @@ struct IssueListView: View {
                 DraftDetailView(draft: dest.draft, onSaved: { Task { await loadAll(refresh: true) } })
             }
             .sheet(isPresented: $showCreateSheet) {
-                QuickCreateSheet(repos: repos, onSuccess: { Task { await loadAll(refresh: true) } })
+                QuickCreateSheet(repos: repos, onSuccess: { warning in
+                    if let warning { actionError = warning }
+                    Task { await loadAll(refresh: true) }
+                })
             }
             .sheet(isPresented: $showParseSheet) {
                 ParseView()
@@ -506,9 +509,14 @@ struct IssueListView: View {
                 failures.append("user profile (\(error.localizedDescription))")
             }
 
-            let repoResults = await withTaskGroup(of: (String, String, [GitHubIssue]?, String?, Error?).self) { group in
-                for repo in repos {
-                    group.addTask {
+            // Snapshot repos to a local Sendable value so child tasks don't
+            // capture main-actor state. Each child returns its result; the
+            // sequential `for await` loop collects them without data races.
+            let repoSnapshot = repos.map { (fullName: $0.fullName, owner: $0.owner, name: $0.name) }
+            var repoResults: [(String, String, [GitHubIssue]?, String?, Error?)] = []
+            await withTaskGroup(of: (String, String, [GitHubIssue]?, String?, Error?).self) { group in
+                for repo in repoSnapshot {
+                    group.addTask { [api] in
                         do {
                             let response = try await api.issues(owner: repo.owner, repo: repo.name, refresh: refresh)
                             return (repo.fullName, repo.name, response.issues, response.cachedAt, nil)
@@ -517,11 +525,9 @@ struct IssueListView: View {
                         }
                     }
                 }
-                var collected: [(String, String, [GitHubIssue]?, String?, Error?)] = []
                 for await result in group {
-                    collected.append(result)
+                    repoResults.append(result)
                 }
-                return collected
             }
             var cachedDates: [Date] = []
             for (fullName, name, issues, cachedAt, error) in repoResults {
@@ -555,11 +561,15 @@ struct IssueListView: View {
 
     private func loadPriorities() async -> [String] {
         isLoadingPriorities = true
-        let priorityResults = await withTaskGroup(of: ([(String, Priority)], String?).self) { group in
-            let uniqueRepos = Set(repos.map { ($0.owner, $0.name) }.map { "\($0.0)/\($0.1)" })
-            for repoFullName in uniqueRepos {
-                guard let repo = repos.first(where: { $0.fullName == repoFullName }) else { continue }
-                group.addTask {
+        // Snapshot repos into a local Sendable value so child tasks don't
+        // capture main-actor state. Collect results via sequential `for await`.
+        let repoSnapshot = repos.map { (fullName: $0.fullName, owner: $0.owner, name: $0.name) }
+        let uniqueFullNames = Set(repoSnapshot.map(\.fullName))
+        var priorityResults: [([(String, Priority)], String?)] = []
+        await withTaskGroup(of: ([(String, Priority)], String?).self) { group in
+            for fullName in uniqueFullNames {
+                guard let repo = repoSnapshot.first(where: { $0.fullName == fullName }) else { continue }
+                group.addTask { [api] in
                     do {
                         let items = try await api.listPriorities(owner: repo.owner, repo: repo.name)
                         return (items.map { ("\(repo.owner)/\(repo.name)#\($0.issueNumber)", $0.priority) }, nil)
@@ -568,11 +578,9 @@ struct IssueListView: View {
                     }
                 }
             }
-            var collected: [([(String, Priority)], String?)] = []
             for await result in group {
-                collected.append(result)
+                priorityResults.append(result)
             }
-            return collected
         }
         var newPriorities: [String: Priority] = [:]
         var priorityErrors: [String] = []

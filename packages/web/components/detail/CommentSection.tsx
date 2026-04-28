@@ -18,14 +18,25 @@ export function CommentSection({ initialComments, currentUser, owner, repo, issu
   const prevCountRef = useRef(initialComments.length);
 
   // When server-rendered comments update (e.g. from router.refresh()),
-  // clear pending optimistic comments — the server data is authoritative.
+  // remove only the specific confirmed optimistic comments — not all of them.
+  // We match each server body to at most one pending comment so that rapid
+  // double-posts of the same text don't lose the second optimistic entry.
   useEffect(() => {
     if (initialComments.length > prevCountRef.current) {
-      const serverBodies = new Set(initialComments.map(c => c.body));
-      setPendingComments(prev => prev.filter(p => !serverBodies.has(p.body)));
+      const newServerBodies = initialComments
+        .slice(prevCountRef.current)
+        .map(c => c.body);
+      setPendingComments(prev => {
+        const remaining = [...prev];
+        for (const body of newServerBodies) {
+          const idx = remaining.findIndex(p => p.body === body);
+          if (idx !== -1) remaining.splice(idx, 1);
+        }
+        return remaining;
+      });
     }
     prevCountRef.current = initialComments.length;
-  }, [initialComments.length]);
+  }, [initialComments]);
 
   const allComments = [...initialComments, ...pendingComments];
 
