@@ -12,6 +12,7 @@ import { generateBranchName } from "@/lib/branch";
 import { launchIssue } from "@/lib/actions/launch";
 import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
 import { Button } from "@/components/paper";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { checkWorktreeStatusAction } from "@/lib/actions/worktrees";
@@ -184,76 +185,20 @@ export function LaunchModal({
       } catch (err) {
         console.error("[issuectl] Launch failed:", err);
         setError(
-          err instanceof Error ? err.message : "Launch failed — check your connection",
+          err instanceof Error ? err.message : "Launch failed \u2014 check your connection",
         );
       }
     });
   }
 
   return (
-    <div className={styles.overlay} onClick={handleClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.header}>
-          <span className={styles.title}>Launch to Claude Code</span>
-          <button className={styles.close} onClick={handleClose} disabled={isPending}>
-            &times;
-          </button>
-        </div>
-
-        <div className={styles.body}>
-          <div className={styles.issueSummary}>
-            <span className={styles.issueDot} />
-            <div>
-              <div className={styles.issueTitle}>
-                #{issue.number} &middot; {issue.title}
-              </div>
-              <div className={styles.issueRepo}>
-                {owner}/{repo}
-              </div>
-            </div>
-          </div>
-
-          {dirtyWorktree?.dirty && !forceResume && (
-            <DirtyWorktreeBanner
-              owner={owner}
-              repo={repo}
-              issueNumber={issue.number}
-              worktreePath={dirtyWorktree.path}
-              onDiscard={() => setDirtyWorktree(null)}
-              onResume={() => setForceResume(true)}
-            />
-          )}
-
-          <BranchInput value={branchName} onChange={setBranchName} />
-
-          <WorkspaceModeSelector
-            value={workspaceMode}
-            onChange={setWorkspaceMode}
-            repoLocalPath={repoLocalPath}
-            repo={repo}
-            issueNumber={issue.number}
-          />
-
-          <ContextToggles
-            comments={comments}
-            referencedFiles={referencedFiles}
-            selectedComments={selectedComments}
-            selectedFiles={selectedFiles}
-            onToggleComment={toggleComment}
-            onToggleFile={toggleFile}
-            onAddFile={addFile}
-          />
-
-          <PreambleInput value={preamble} onChange={setPreamble} />
-
-          {error && (
-            <div className={styles.error} role="alert">
-              {error}
-            </div>
-          )}
-        </div>
-
-        <div className={styles.footer}>
+    <Modal
+      title="Launch to Claude Code"
+      width={620}
+      onClose={handleClose}
+      disabled={isPending}
+      footer={
+        <>
           <Button variant="ghost" onClick={handleClose} disabled={isPending}>
             Cancel
           </Button>
@@ -264,14 +209,65 @@ export function LaunchModal({
           >
             {isPending
               ? workspaceMode === "clone"
-                ? "Cloning repo & launching…"
+                ? "Cloning repo & launching\u2026"
                 : workspaceMode === "worktree"
-                  ? "Preparing worktree & launching…"
-                  : "Launching…"
+                  ? "Preparing worktree & launching\u2026"
+                  : "Launching\u2026"
               : "Launch"}
           </Button>
+        </>
+      }
+    >
+      <div className={styles.issueSummary}>
+        <span className={styles.issueDot} />
+        <div>
+          <div className={styles.issueTitle}>
+            #{issue.number} &middot; {issue.title}
+          </div>
+          <div className={styles.issueRepo}>
+            {owner}/{repo}
+          </div>
         </div>
       </div>
-    </div>
+
+      {dirtyWorktree?.dirty && !forceResume && (
+        <DirtyWorktreeBanner
+          owner={owner}
+          repo={repo}
+          issueNumber={issue.number}
+          worktreePath={dirtyWorktree.path}
+          onDiscard={() => setDirtyWorktree(null)}
+          onResume={() => setForceResume(true)}
+        />
+      )}
+
+      <BranchInput value={branchName} onChange={setBranchName} />
+
+      <WorkspaceModeSelector
+        value={workspaceMode}
+        onChange={setWorkspaceMode}
+        repoLocalPath={repoLocalPath}
+        repo={repo}
+        issueNumber={issue.number}
+      />
+
+      <ContextToggles
+        comments={comments}
+        referencedFiles={referencedFiles}
+        selectedComments={selectedComments}
+        selectedFiles={selectedFiles}
+        onToggleComment={toggleComment}
+        onToggleFile={toggleFile}
+        onAddFile={addFile}
+      />
+
+      <PreambleInput value={preamble} onChange={setPreamble} />
+
+      {error && (
+        <div className={styles.error} role="alert">
+          {error}
+        </div>
+      )}
+    </Modal>
   );
 }
