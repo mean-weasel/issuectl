@@ -43,6 +43,7 @@ export default async function PullDetailPage({
         pull={detail.pull}
         checks={detail.checks}
         files={detail.files}
+        reviews={detail.reviews}
         linkedIssue={detail.linkedIssue}
       />
     );
