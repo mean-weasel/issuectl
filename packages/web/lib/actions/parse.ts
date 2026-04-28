@@ -29,6 +29,7 @@ import { revalidateSafely } from "@/lib/revalidate";
 // case and prevents a paste-bomb from burning the LLM budget.
 const MAX_PARSE_INPUT = 8192;
 const MAX_BATCH_SIZE = 25;
+const MAX_TITLE = 256;
 
 type ParseActionResult =
   | { success: true; data: { parsed: ParsedIssuesResponse } }
@@ -126,6 +127,16 @@ export async function batchCreateIssues(
           id: issue.id,
           success: false as const,
           error: "Title is required",
+          owner: issue.owner,
+          repo: issue.repo,
+        };
+      }
+
+      if (issue.title.trim().length > MAX_TITLE) {
+        return {
+          id: issue.id,
+          success: false as const,
+          error: `Title must be ${MAX_TITLE} characters or fewer`,
           owner: issue.owner,
           repo: issue.repo,
         };

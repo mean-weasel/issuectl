@@ -49,12 +49,14 @@ export function ParseResults({ results, onReset }: Props) {
             </span>
             <div className={styles.resultSpacer} />
             {r.success && r.issueNumber !== undefined ? (
-              <Link
-                href={`/${r.owner}/${r.repo}/issues/${r.issueNumber}`}
+              <a
+                href={`https://github.com/${r.owner}/${r.repo}/issues/${r.issueNumber}`}
                 className={styles.resultLink}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 #{r.issueNumber}
-              </Link>
+              </a>
             ) : r.success && r.draftId ? (
               <Link
                 href={`/drafts/${r.draftId}`}
