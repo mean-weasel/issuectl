@@ -11,6 +11,7 @@ struct IssueDetailView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var activeDetailSheet: DetailSheet?
+    @State private var terminalTarget: ActiveDeployment?
     @State private var isClosing = false
     @State private var isReopening = false
     @State private var activeConfirmation: ActiveConfirmation?
@@ -135,9 +136,17 @@ struct IssueDetailView: View {
                             Label("Reassign to Repo…", systemImage: "arrow.triangle.swap")
                         }
                         Button {
-                            activeDetailSheet = .launch(detail)
+                            if let deployment = activeDeployment(from: detail) {
+                                openTerminal(deployment)
+                            } else {
+                                activeDetailSheet = .launch(detail)
+                            }
                         } label: {
-                            Label("Launch", systemImage: "play.fill")
+                            if activeDeployment(from: detail) != nil {
+                                Label("Open Terminal", systemImage: "terminal")
+                            } else {
+                                Label("Launch", systemImage: "play.fill")
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -200,6 +209,18 @@ struct IssueDetailView: View {
                     owner: owner, repo: repo, number: number,
                     commentId: comment.id, currentBody: comment.body,
                     onSuccess: { Task { await load(refresh: true) } }
+                )
+            }
+        }
+        .fullScreenCover(item: $terminalTarget) { deployment in
+            if let port = deployment.ttydPort {
+                TerminalView(
+                    deployment: deployment,
+                    port: port,
+                    onEnd: {
+                        terminalTarget = nil
+                        Task { await load(refresh: true) }
+                    }
                 )
             }
         }
@@ -330,20 +351,39 @@ struct IssueDetailView: View {
                 .font(.headline)
 
             ForEach(deployments) { deployment in
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(deployment.isActive ? .green : .secondary)
-                        .frame(width: 8, height: 8)
-                    Text(deployment.branchName)
-                        .font(.subheadline)
-                    Spacer()
-                    Text(deployment.state.rawValue)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if deployment.isActive, deployment.ttydPort != nil {
+                    Button {
+                        openTerminal(activeDeployment(from: deployment))
+                    } label: {
+                        deploymentRow(deployment, showsTerminal: true)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    deploymentRow(deployment, showsTerminal: false)
                 }
-                .padding(.vertical, 2)
             }
         }
+    }
+
+    private func deploymentRow(_ deployment: Deployment, showsTerminal: Bool) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(deployment.isActive ? .green : .secondary)
+                .frame(width: 8, height: 8)
+            Text(deployment.branchName)
+                .font(.subheadline)
+            Spacer()
+            if showsTerminal {
+                Label("Open", systemImage: "terminal")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.blue)
+            } else {
+                Text(deployment.state.rawValue)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     @ViewBuilder
@@ -387,6 +427,15 @@ struct IssueDetailView: View {
     private func actionBar(for issue: GitHubIssue) -> some View {
         if issue.isOpen {
             HStack(spacing: 16) {
+                if let detail, let deployment = activeDeployment(from: detail) {
+                    Button {
+                        openTerminal(deployment)
+                    } label: {
+                        Label("Terminal", systemImage: "terminal")
+                    }
+                    .disabled(deployment.ttydPort == nil)
+                }
+
                 Button {
                     activeDetailSheet = .comment
                 } label: {
@@ -505,6 +554,37 @@ struct IssueDetailView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func activeDeployment(from detail: IssueDetailResponse) -> ActiveDeployment? {
+        detail.deployments.first(where: { $0.isActive }).map(activeDeployment(from:))
+    }
+
+    private func activeDeployment(from deployment: Deployment) -> ActiveDeployment {
+        ActiveDeployment(
+            id: deployment.id,
+            repoId: deployment.repoId,
+            issueNumber: deployment.issueNumber,
+            branchName: deployment.branchName,
+            workspaceMode: deployment.workspaceMode,
+            workspacePath: deployment.workspacePath,
+            linkedPrNumber: deployment.linkedPrNumber,
+            state: deployment.state,
+            launchedAt: deployment.launchedAt,
+            endedAt: deployment.endedAt,
+            ttydPort: deployment.ttydPort,
+            ttydPid: deployment.ttydPid,
+            owner: owner,
+            repoName: repo
+        )
+    }
+
+    private func openTerminal(_ deployment: ActiveDeployment) {
+        guard deployment.ttydPort != nil else {
+            actionError = "Session is running, but its terminal is not ready yet."
+            return
+        }
+        terminalTarget = deployment
     }
 
     private func confirmPriority(_ priority: Priority, rollbackTo previous: Priority) async {

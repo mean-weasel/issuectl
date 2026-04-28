@@ -23,6 +23,9 @@ struct LaunchView: View {
     @State private var errorMessage: String?
     @State private var launchedPort: Int?
     @State private var launchedDeployment: ActiveDeployment?
+    @State private var existingDeployment: ActiveDeployment?
+    @State private var isCheckingActiveSession = false
+    @State private var shouldDismissAfterTerminalClose = false
     @State private var dirtyWorktree = false
     @State private var isResettingWorktree = false
 
@@ -58,7 +61,15 @@ struct LaunchView: View {
                 launchForm
             }
         }
-        .fullScreenCover(item: $launchedDeployment) { deployment in
+        .fullScreenCover(
+            item: $launchedDeployment,
+            onDismiss: {
+                if shouldDismissAfterTerminalClose {
+                    shouldDismissAfterTerminalClose = false
+                    dismiss()
+                }
+            }
+        ) { deployment in
             if let port = launchedPort {
                 TerminalView(
                     deployment: deployment,
@@ -131,6 +142,36 @@ struct LaunchView: View {
                                 Text("Resume with Changes")
                             }
                             .buttonStyle(.borderedProminent)
+                        }
+                    }
+                }
+            }
+
+            if let existingDeployment {
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Claude Code is already running for this issue.", systemImage: "terminal")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.blue)
+
+                        HStack(spacing: 12) {
+                            Button {
+                                openExistingTerminal(existingDeployment)
+                            } label: {
+                                Label("Open Existing Terminal", systemImage: "terminal")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(existingDeployment.ttydPort == nil)
+
+                            Text(existingDeployment.runningDuration)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if existingDeployment.ttydPort == nil {
+                            Text("The session is active, but the terminal is not ready yet.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -213,15 +254,18 @@ struct LaunchView: View {
                 Button {
                     Task { await launchSession() }
                 } label: {
-                    if isLaunching {
+                    if isLaunching || isCheckingActiveSession {
                         ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else if existingDeployment != nil {
+                        Label("Session Already Running", systemImage: "terminal")
                             .frame(maxWidth: .infinity)
                     } else {
                         Label("Launch Claude Code", systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .disabled(branchName.isEmpty || isLaunching)
+                .disabled(branchName.isEmpty || isLaunching || isCheckingActiveSession || existingDeployment != nil)
             }
         }
         .navigationTitle("Launch Session")
@@ -232,6 +276,7 @@ struct LaunchView: View {
             }
         }
         .task {
+            await loadExistingDeployment()
             if repoLocalPath == nil {
                 do {
                     let repos = try await api.repos()
@@ -286,10 +331,39 @@ struct LaunchView: View {
         await performLaunch(forceResume: nil)
     }
 
+    private func loadExistingDeployment() async {
+        isCheckingActiveSession = true
+        defer { isCheckingActiveSession = false }
+        do {
+            existingDeployment = try await findExistingDeployment()
+        } catch {
+            existingDeployment = nil
+        }
+    }
+
+    private func findExistingDeployment() async throws -> ActiveDeployment? {
+        let response = try await api.activeDeployments()
+        return response.deployments.first {
+            $0.isActive &&
+            $0.owner == owner &&
+            $0.repoName == repo &&
+            $0.issueNumber == issueNumber
+        }
+    }
+
+    private func openExistingTerminal(_ deployment: ActiveDeployment) {
+        guard let port = deployment.ttydPort else {
+            errorMessage = "Session is running, but its terminal is not ready yet."
+            return
+        }
+        shouldDismissAfterTerminalClose = true
+        launchedPort = port
+        launchedDeployment = deployment
+    }
+
     private func performLaunch(forceResume: Bool?) async {
         isLaunching = true
         errorMessage = nil
-        withAnimation { showProgress = true }
 
         defer {
             isLaunching = false
@@ -299,6 +373,14 @@ struct LaunchView: View {
         }
 
         do {
+            if let existing = try await findExistingDeployment() {
+                existingDeployment = existing
+                openExistingTerminal(existing)
+                return
+            }
+
+            withAnimation { showProgress = true }
+
             let body = LaunchRequestBody(
                 branchName: branchName,
                 workspaceMode: workspaceMode,
@@ -312,8 +394,9 @@ struct LaunchView: View {
                 owner: owner, repo: repo, number: issueNumber, body: body
             )
             if response.success, let deploymentId = response.deploymentId, let port = response.ttydPort {
+                shouldDismissAfterTerminalClose = true
                 launchedPort = port
-                launchedDeployment = ActiveDeployment(
+                let deployment = ActiveDeployment(
                     id: deploymentId,
                     repoId: 0,
                     issueNumber: issueNumber,
@@ -326,6 +409,8 @@ struct LaunchView: View {
                     endedAt: nil, ttydPort: port, ttydPid: nil,
                     owner: owner, repoName: repo
                 )
+                existingDeployment = deployment
+                launchedDeployment = deployment
             } else {
                 errorMessage = response.error ?? "Launch failed"
             }

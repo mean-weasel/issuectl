@@ -26,6 +26,7 @@ struct IssueListView: View {
     @State private var showReopenConfirm = false
     @State private var swipeTarget: (owner: String, repo: String, number: Int)?
     @State private var launchTarget: LaunchTarget?
+    @State private var terminalTarget: ActiveDeployment?
     @State private var loadingLaunchTargetId: String?
 
     // Draft swipe state
@@ -45,18 +46,25 @@ struct IssueListView: View {
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
 
-    // Maps repo full name to set of running issue numbers for that repo.
-    // Keyed by repo to avoid cross-repo collisions (issue #5 in repo A vs repo B).
-    private var runningIssuesByRepo: [String: Set<Int>] {
-        var map: [String: Set<Int>] = [:]
-        for deployment in activeDeployments {
-            map[deployment.repoFullName, default: []].insert(deployment.issueNumber)
-        }
-        return map
+    private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
+        runningDeployment(for: issue, in: repoFullName) != nil
     }
 
-    private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
-        runningIssuesByRepo[repoFullName]?.contains(issue.number) ?? false
+    private func runningDeployment(for issue: GitHubIssue, in repoFullName: String) -> ActiveDeployment? {
+        activeDeployments.first {
+            $0.isActive &&
+            $0.repoFullName == repoFullName &&
+            $0.issueNumber == issue.number
+        }
+    }
+
+    private func runningDeployment(owner: String, repo: String, number: Int) -> ActiveDeployment? {
+        activeDeployments.first {
+            $0.isActive &&
+            $0.owner == owner &&
+            $0.repoName == repo &&
+            $0.issueNumber == number
+        }
     }
 
     private var repoFilteredIssues: [GitHubIssue] {
@@ -266,6 +274,19 @@ struct IssueListView: View {
                     referencedFiles: target.referencedFiles
                 )
             }
+            .fullScreenCover(item: $terminalTarget) { deployment in
+                if let port = deployment.ttydPort {
+                    TerminalView(
+                        deployment: deployment,
+                        port: port,
+                        onEnd: {
+                            terminalTarget = nil
+                            activeDeployments.removeAll { $0.id == deployment.id }
+                            Task { await loadAll(refresh: true) }
+                        }
+                    )
+                }
+            }
             .confirmationDialog("Close Issue", isPresented: $showCloseConfirm, titleVisibility: .visible) {
                 Button("Close", role: .destructive) {
                     if let target = swipeTarget {
@@ -342,18 +363,31 @@ struct IssueListView: View {
                     .accessibilityIdentifier("issue-row-\(issue.number)")
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
-                            Button {
-                                Task {
-                                    await prepareLaunch(owner: repo.owner, repo: repo.name, number: issue.number, title: issue.title)
+                            if let deployment = runningDeployment(for: issue, in: repo.fullName) {
+                                Button {
+                                    if deployment.ttydPort != nil {
+                                        terminalTarget = deployment
+                                    } else {
+                                        actionError = "Session is running, but its terminal is not ready yet."
+                                    }
+                                } label: {
+                                    Label("Terminal", systemImage: "terminal")
                                 }
-                            } label: {
-                                if loadingLaunchTargetId == "\(repo.owner)/\(repo.name)#\(issue.number)" {
-                                    Label("Loading", systemImage: "hourglass")
-                                } else {
-                                    Label("Launch", systemImage: "play.fill")
+                                .tint(.blue)
+                            } else {
+                                Button {
+                                    Task {
+                                        await prepareLaunch(owner: repo.owner, repo: repo.name, number: issue.number, title: issue.title)
+                                    }
+                                } label: {
+                                    if loadingLaunchTargetId == "\(repo.owner)/\(repo.name)#\(issue.number)" {
+                                        Label("Loading", systemImage: "hourglass")
+                                    } else {
+                                        Label("Launch", systemImage: "play.fill")
+                                    }
                                 }
+                                .tint(.green)
                             }
-                            .tint(.green)
                         } else {
                             Button {
                                 swipeTarget = (repo.owner, repo.name, issue.number)
@@ -440,6 +474,15 @@ struct IssueListView: View {
             if loadingLaunchTargetId == targetId {
                 loadingLaunchTargetId = nil
             }
+        }
+
+        if let deployment = runningDeployment(owner: owner, repo: repo, number: number) {
+            if deployment.ttydPort != nil {
+                terminalTarget = deployment
+            } else {
+                actionError = "Session is running, but its terminal is not ready yet."
+            }
+            return
         }
 
         do {
