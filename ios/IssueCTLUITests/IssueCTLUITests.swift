@@ -1,7 +1,6 @@
 import Network
 import XCTest
 
-@MainActor
 final class IssueCTLUITests: XCTestCase {
     private var server: MockIssueCTLServer!
 
