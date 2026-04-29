@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PROJECT="${IOS_PROJECT:-ios/IssueCTL.xcodeproj}"
-SCHEME="${IOS_SCHEME:-IssueCTL}"
+SCHEME="${IOS_SCHEME:-IssueCTL-UISmoke}"
 CONFIGURATION="${IOS_CONFIGURATION:-Debug}"
 DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPhone 16}"
 
