@@ -83,6 +83,7 @@
 		FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */; };
 		FC628F6EB78E8E0AAF2DCB5A /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4010BC691DB71B872353344A /* SessionListView.swift */; };
 		FE0B5C2B67B34C029C49FD12 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72E02E2D87749738F2DB8BC /* TodayView.swift */; };
+		FE7C48D6D112493DA287E086 /* TodaySearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20D8DA49803407D8C47855E /* TodaySearchSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -157,6 +158,7 @@
 		AC76CB48493EFBDF4AABEF73 /* APIClient+AdvancedSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+AdvancedSettings.swift"; sourceTree = "<group>"; };
 		AD3C1581E55A12781F1E76A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AFD45B1F8D03F28DE1ECAA00 /* GitHubAccessibleRepo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubAccessibleRepo.swift; sourceTree = "<group>"; };
+		B20D8DA49803407D8C47855E /* TodaySearchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodaySearchSheet.swift; sourceTree = "<group>"; };
 		B7701223E13D43C4F74244B0 /* Repo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repo.swift; sourceTree = "<group>"; };
 		BC00C899D2ADA14475787AE7 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		BE5C5A4C468148B6D09FDA6F /* ServerHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHealth.swift; sourceTree = "<group>"; };
@@ -360,6 +362,7 @@
 		9277C6A223C54C5FA343C53F /* Today */ = {
 			isa = PBXGroup;
 			children = (
+				B20D8DA49803407D8C47855E /* TodaySearchSheet.swift */,
 				F72E02E2D87749738F2DB8BC /* TodayView.swift */,
 			);
 			path = Today;
@@ -644,6 +647,7 @@
 				89A326731AF767A4A3FE92EC /* SessionRowView.swift in Sources */,
 				6929F40E6CD23E9A083F4B83 /* SettingsView.swift in Sources */,
 				C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */,
+				FE7C48D6D112493DA287E086 /* TodaySearchSheet.swift in Sources */,
 				FE0B5C2B67B34C029C49FD12 /* TodayView.swift in Sources */,
 				42EE83997C330D92A0AF72EF /* WorktreeListView.swift in Sources */,
 			);

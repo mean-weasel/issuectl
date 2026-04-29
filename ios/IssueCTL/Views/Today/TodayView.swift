@@ -19,6 +19,8 @@ struct TodayView: View {
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
     @State private var showCreateSheet = false
+    @State private var showSearchSheet = false
+    @State private var pendingSearchDestination: TodayDestination?
     @State private var actionError: String?
     @State private var navigationPath = NavigationPath()
 
@@ -76,7 +78,9 @@ struct TodayView: View {
                         systemName: "magnifyingglass",
                         accessibilityLabel: "Search",
                         accessibilityIdentifier: "today-search-button"
-                    ) {}
+                    ) {
+                        showSearchSheet = true
+                    }
                     IconChromeButton(
                         systemName: "gearshape",
                         accessibilityLabel: "Settings",
@@ -104,6 +108,24 @@ struct TodayView: View {
                     if let warning { actionError = warning }
                     Task { await load(refresh: true) }
                 })
+            }
+            .sheet(isPresented: $showSearchSheet, onDismiss: {
+                if let destination = pendingSearchDestination {
+                    navigationPath.append(destination)
+                    pendingSearchDestination = nil
+                }
+            }) {
+                TodaySearchSheet(
+                    repos: repos,
+                    issuesByRepo: issuesByRepo,
+                    pullsByRepo: pullsByRepo,
+                    onSelect: { destination in
+                        pendingSearchDestination = destination
+                        showSearchSheet = false
+                    }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .autoDismissError($actionError)
             .task { await load() }
@@ -392,7 +414,7 @@ struct TodayView: View {
 
 }
 
-private enum TodayDestination: Hashable {
+enum TodayDestination: Hashable {
     case issue(owner: String, repo: String, number: Int)
     case pull(owner: String, repo: String, number: Int)
 }
