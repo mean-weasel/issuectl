@@ -15,6 +15,7 @@ final class IssueCTLUITests: XCTestCase {
         server = nil
     }
 
+    @MainActor
     func testCommandCenterActionsAreReachableFromTabs() {
         let app = launchApp()
 
@@ -57,6 +58,7 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("sessions-refresh-button", existsIn: app)
     }
 
+    @MainActor
     func testTodayActiveSessionsThumbButtonOpensSessions() {
         server.seedActiveDeployment()
         let app = launchApp()
@@ -68,6 +70,7 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("session-reenter-terminal-9001", existsIn: app)
     }
 
+    @MainActor
     func testLaunchingIssueCanBeReenteredFromActiveSessions() {
         let app = launchApp()
 
@@ -93,6 +96,7 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    @MainActor
     func testRunningIssueDetailShowsReentryInsteadOfLaunch() {
         server.seedActiveDeployment()
         let app = launchApp()
@@ -111,6 +115,7 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    @MainActor
     func testUserProfileFailureDoesNotBlockPrimaryLists() {
         server.failUserProfile = true
         let app = launchApp()
@@ -124,6 +129,7 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
     }
 
+    @MainActor
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["ISSUECTL_SERVER_URL"] = server.baseURL.absoluteString
@@ -133,10 +139,12 @@ final class IssueCTLUITests: XCTestCase {
         return app
     }
 
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
 
+    @MainActor
     private func assertElement(
         _ identifier: String,
         existsIn app: XCUIApplication,
@@ -149,6 +157,7 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(exists, "Missing \(identifier)\n\(app.debugDescription)", file: file, line: line)
     }
 
+    @MainActor
     private func waitForNonexistence(
         _ identifier: String,
         in app: XCUIApplication,
