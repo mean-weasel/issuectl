@@ -22,8 +22,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 16.3
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer
+      - name: Select Xcode with iOS Simulator runtime
+        run: |
+          for developer_dir in \
+            /Applications/Xcode_16.4.app/Contents/Developer \
+            /Applications/Xcode_16.3.app/Contents/Developer \
+            /Applications/Xcode.app/Contents/Developer
+          do
+            if [ ! -d "$developer_dir" ]; then
+              continue
+            fi
+
+            sudo xcode-select -s "$developer_dir"
+            if xcrun simctl list runtimes available | grep -q 'iOS'; then
+              echo "Selected $developer_dir"
+              exit 0
+            fi
+          done
+
+          echo "No Xcode installation with an available iOS Simulator runtime found" >&2
+          exit 70
 
       - name: Show build environment
         run: |
