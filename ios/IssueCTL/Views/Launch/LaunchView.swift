@@ -28,6 +28,7 @@ struct LaunchView: View {
     @State private var shouldDismissAfterTerminalClose = false
     @State private var dirtyWorktree = false
     @State private var isResettingWorktree = false
+    @State private var showAdvancedOptions = false
 
     init(owner: String, repo: String, issueNumber: Int, issueTitle: String, comments: [GitHubComment], referencedFiles: [String], repoLocalPath: String? = nil) {
         self.owner = owner
@@ -97,14 +98,37 @@ struct LaunchView: View {
     private var launchForm: some View {
         Form {
             Section {
-                HStack {
-                    Text("#\(issueNumber)")
-                        .font(.subheadline)
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Launch Claude Code")
+                            .font(.title2.weight(.bold))
+                        Text("#\(issueNumber) \(issueTitle)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if let existingDeployment {
+                        Button {
+                            openExistingTerminal(existingDeployment)
+                        } label: {
+                            Label("Re-enter Running Terminal", systemImage: "terminal")
+                                .font(.subheadline.weight(.bold))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(IssueCTLColors.action)
+                        .disabled(existingDeployment.ttydPort == nil)
+                    } else {
+                        launchButton
+                    }
+
+                    Text(recommendedSummary)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(issueTitle)
-                        .font(.subheadline)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(.vertical, 4)
             }
 
             if showCloneWarning {
@@ -112,6 +136,30 @@ struct LaunchView: View {
                     Label("This repository has no local clone. A fresh clone will be created.", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                         .font(.subheadline)
+                }
+            }
+
+            if let existingDeployment {
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Claude Code is already running for this issue.", systemImage: "terminal")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.blue)
+
+                        HStack(spacing: 12) {
+                            Text(existingDeployment.runningDuration)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Spacer()
+
+                            if existingDeployment.ttydPort == nil {
+                                Text("Terminal starting")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -147,100 +195,20 @@ struct LaunchView: View {
                 }
             }
 
-            if let existingDeployment {
-                Section {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("Claude Code is already running for this issue.", systemImage: "terminal")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.blue)
-
-                        HStack(spacing: 12) {
-                            Button {
-                                openExistingTerminal(existingDeployment)
-                            } label: {
-                                Label("Open Existing Terminal", systemImage: "terminal")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(existingDeployment.ttydPort == nil)
-
-                            Text(existingDeployment.runningDuration)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        if existingDeployment.ttydPort == nil {
-                            Text("The session is active, but the terminal is not ready yet.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+            Section {
+                DisclosureGroup(isExpanded: $showAdvancedOptions) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        workspaceOptions
+                        branchOptions
+                        commentOptions
+                        fileOptions
+                        preambleOptions
                     }
+                    .padding(.top, 8)
+                } label: {
+                    Label("Advanced Options", systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.medium))
                 }
-            }
-
-            Section("Workspace Mode") {
-                Picker("Mode", selection: $workspaceMode) {
-                    Text("Worktree").tag(WorkspaceMode.worktree)
-                    Text("Existing").tag(WorkspaceMode.existing)
-                    Text("Clone").tag(WorkspaceMode.clone)
-                }
-                .pickerStyle(.segmented)
-                .disabled(showCloneWarning)
-                .accessibilityIdentifier("workspace-mode-picker")
-            }
-
-            Section("Branch Name") {
-                TextField("Branch name", text: $branchName)
-                    .autocapitalization(.none)
-                    .font(.body.monospaced())
-            }
-
-            if !comments.isEmpty {
-                Section("Include Comments") {
-                    ForEach(Array(comments.enumerated()), id: \.offset) { index, comment in
-                        Toggle(isOn: Binding(
-                            get: { selectedCommentIndices.contains(index) },
-                            set: { isOn in
-                                if isOn { selectedCommentIndices.insert(index) }
-                                else { selectedCommentIndices.remove(index) }
-                            }
-                        )) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                if let user = comment.user {
-                                    Text(user.login)
-                                        .font(.caption.weight(.medium))
-                                }
-                                Text(comment.body)
-                                    .font(.caption)
-                                    .lineLimit(2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-
-            if !referencedFiles.isEmpty {
-                Section("Include Files") {
-                    ForEach(referencedFiles, id: \.self) { filePath in
-                        Toggle(isOn: Binding(
-                            get: { selectedFilePaths.contains(filePath) },
-                            set: { isOn in
-                                if isOn { selectedFilePaths.insert(filePath) }
-                                else { selectedFilePaths.remove(filePath) }
-                            }
-                        )) {
-                            Text(filePath)
-                                .font(.caption.monospaced())
-                                .lineLimit(1)
-                        }
-                    }
-                }
-            }
-
-            Section("Preamble (optional)") {
-                TextEditor(text: $preamble)
-                    .frame(minHeight: 80)
-                    .font(.body)
             }
 
             if let errorMessage {
@@ -249,26 +217,8 @@ struct LaunchView: View {
                         .foregroundStyle(.red)
                 }
             }
-
-            Section {
-                Button {
-                    Task { await launchSession() }
-                } label: {
-                    if isLaunching || isCheckingActiveSession {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else if existingDeployment != nil {
-                        Label("Session Already Running", systemImage: "terminal")
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Label("Launch Claude Code", systemImage: "play.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .disabled(branchName.isEmpty || isLaunching || isCheckingActiveSession || existingDeployment != nil)
-            }
         }
-        .navigationTitle("Launch Session")
+        .navigationTitle("Launch")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -303,6 +253,136 @@ struct LaunchView: View {
                     dirtyWorktree = true
                 }
             }
+        }
+    }
+
+    private var launchButton: some View {
+        Button {
+            Task { await launchSession() }
+        } label: {
+            if isLaunching || isCheckingActiveSession {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            } else {
+                Label("Launch with Recommended Settings", systemImage: "play.fill")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(IssueCTLColors.action)
+        .disabled(branchName.isEmpty || isLaunching || isCheckingActiveSession)
+    }
+
+    private var recommendedSummary: String {
+        let mode: String
+        switch workspaceMode {
+        case .worktree:
+            mode = "new worktree"
+        case .existing:
+            mode = "existing checkout"
+        case .clone:
+            mode = "fresh clone"
+        }
+        return "\(mode.capitalized) workspace - \(branchName.isEmpty ? "generated branch" : branchName)"
+    }
+
+    private var workspaceOptions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Workspace Mode")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker("Mode", selection: $workspaceMode) {
+                Text("Worktree").tag(WorkspaceMode.worktree)
+                Text("Existing").tag(WorkspaceMode.existing)
+                Text("Clone").tag(WorkspaceMode.clone)
+            }
+            .pickerStyle(.segmented)
+            .disabled(showCloneWarning)
+            .accessibilityIdentifier("workspace-mode-picker")
+        }
+    }
+
+    private var branchOptions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Branch Name")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            TextField("Branch name", text: $branchName)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .font(.body.monospaced())
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    @ViewBuilder
+    private var commentOptions: some View {
+        if !comments.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Include Comments")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(Array(comments.enumerated()), id: \.offset) { index, comment in
+                    Toggle(isOn: Binding(
+                        get: { selectedCommentIndices.contains(index) },
+                        set: { isOn in
+                            if isOn { selectedCommentIndices.insert(index) }
+                            else { selectedCommentIndices.remove(index) }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            if let user = comment.user {
+                                Text(user.login)
+                                    .font(.caption.weight(.medium))
+                            }
+                            Text(comment.body)
+                                .font(.caption)
+                                .lineLimit(2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fileOptions: some View {
+        if !referencedFiles.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Include Files")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(referencedFiles, id: \.self) { filePath in
+                    Toggle(isOn: Binding(
+                        get: { selectedFilePaths.contains(filePath) },
+                        set: { isOn in
+                            if isOn { selectedFilePaths.insert(filePath) }
+                            else { selectedFilePaths.remove(filePath) }
+                        }
+                    )) {
+                        Text(filePath)
+                            .font(.caption.monospaced())
+                            .lineLimit(1)
+                    }
+                }
+            }
+        }
+    }
+
+    private var preambleOptions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Preamble")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            TextEditor(text: $preamble)
+                .frame(minHeight: 80)
+                .font(.body)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                )
         }
     }
 

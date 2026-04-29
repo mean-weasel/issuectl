@@ -10,6 +10,7 @@
 		0ABCC3FB2E10C1BEA6AA4BFD /* IssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */; };
 		0B585381530245167B82950D /* QuickCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */; };
 		0F2044833E18AACECEA0C048 /* RepoFilterHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41967EFA522B03BFB6FDADA7 /* RepoFilterHelpers.swift */; };
+		10B14C8F5BB6411AB48FB37A /* CommandCenterComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D6C8B9D3F84B69988A9F55 /* CommandCenterComponents.swift */; };
 		1947E5288D6AB12AE79684BB /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
 		1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */; };
 		2AB481A4FEF6B8AE429E279C /* MineFilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */; };
@@ -80,6 +81,7 @@
 		F8AA4C4B8F453C5ED17CA45C /* APIClient+Drafts.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4D7802FFDD0F6D445452B3 /* APIClient+Drafts.swift */; };
 		FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */; };
 		FC628F6EB78E8E0AAF2DCB5A /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4010BC691DB71B872353344A /* SessionListView.swift */; };
+		FE0B5C2B67B34C029C49FD12 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72E02E2D87749738F2DB8BC /* TodayView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -140,6 +142,7 @@
 		9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditRepoSheet.swift; sourceTree = "<group>"; };
 		9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestChangesSheet.swift; sourceTree = "<group>"; };
 		A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Settings.swift"; sourceTree = "<group>"; };
+		A9D6C8B9D3F84B69988A9F55 /* CommandCenterComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandCenterComponents.swift; sourceTree = "<group>"; };
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC76CB48493EFBDF4AABEF73 /* APIClient+AdvancedSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+AdvancedSettings.swift"; sourceTree = "<group>"; };
 		AD3C1581E55A12781F1E76A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -161,6 +164,7 @@
 		F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepoSheet.swift; sourceTree = "<group>"; };
 		F3CF16B90E6F234095B67412 /* EdgeCaseModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCaseModelTests.swift; sourceTree = "<group>"; };
 		F63680089A3314AB67CE5883 /* ViewLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewLogicTests.swift; sourceTree = "<group>"; };
+		F72E02E2D87749738F2DB8BC /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTabs.swift; sourceTree = "<group>"; };
 		F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MineFilterChip.swift; sourceTree = "<group>"; };
 		FAC4DF9BB857B451A1F2B5B3 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
@@ -209,6 +213,7 @@
 				653A328D4F0E8EA06901C71E /* Settings */,
 				E81A7D2E7B5E3CA762AC518E /* Shared */,
 				2FA8C48F01DE69137521E3BC /* Terminal */,
+				9277C6A223C54C5FA343C53F /* Today */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -332,6 +337,14 @@
 			path = Launch;
 			sourceTree = "<group>";
 		};
+		9277C6A223C54C5FA343C53F /* Today */ = {
+			isa = PBXGroup;
+			children = (
+				F72E02E2D87749738F2DB8BC /* TodayView.swift */,
+			);
+			path = Today;
+			sourceTree = "<group>";
+		};
 		D5E657213913F2B68B41C505 /* IssueCTL */ = {
 			isa = PBXGroup;
 			children = (
@@ -349,6 +362,7 @@
 			isa = PBXGroup;
 			children = (
 				2841D89323711B68449BB980 /* CacheAgeLabel.swift */,
+				A9D6C8B9D3F84B69988A9F55 /* CommandCenterComponents.swift */,
 				4403330B1342AA7C19FA797D /* Constants.swift */,
 				458A6E2819377536E7EDF138 /* ErrorAutoDismissModifier.swift */,
 				894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */,
@@ -529,6 +543,7 @@
 				AB8FF61639D060883C77859B /* CloseIssueSheet.swift in Sources */,
 				C188EF4912DB0E5917317C07 /* CommentSheet.swift in Sources */,
 				661BA5DB6B1BC46ADC8289D5 /* CommentView.swift in Sources */,
+				10B14C8F5BB6411AB48FB37A /* CommandCenterComponents.swift in Sources */,
 				4451AE4574EA7D0F86AEE021 /* Constants.swift in Sources */,
 				A18D8982D49319C633EE661A /* ContentView.swift in Sources */,
 				48B3B409AB2457A29BE870C7 /* Deployment.swift in Sources */,
@@ -577,6 +592,7 @@
 				89A326731AF767A4A3FE92EC /* SessionRowView.swift in Sources */,
 				6929F40E6CD23E9A083F4B83 /* SettingsView.swift in Sources */,
 				C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */,
+				FE0B5C2B67B34C029C49FD12 /* TodayView.swift in Sources */,
 				42EE83997C330D92A0AF72EF /* WorktreeListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

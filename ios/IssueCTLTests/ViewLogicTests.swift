@@ -173,6 +173,72 @@ final class ViewLogicTests: XCTestCase {
         ]
     }
 
+    private func makePull(number: Int = 1, state: String = "open", merged: Bool = false, checksStatus: String? = nil) -> GitHubPull {
+        GitHubPull(
+            number: number,
+            title: "PR \(number)",
+            body: nil,
+            state: state,
+            draft: false,
+            merged: merged,
+            user: nil,
+            headRef: "feature",
+            baseRef: "main",
+            additions: 1,
+            deletions: 1,
+            changedFiles: 1,
+            createdAt: "2026-04-27T08:00:00Z",
+            updatedAt: "2026-04-27T09:00:00Z",
+            mergedAt: merged ? "2026-04-27T10:00:00Z" : nil,
+            closedAt: state == "closed" ? "2026-04-27T10:00:00Z" : nil,
+            htmlUrl: "https://github.com/org/alpha/pull/\(number)",
+            checksStatus: checksStatus
+        )
+    }
+
+    private func makeIssue(number: Int = 1, state: String = "open") -> GitHubIssue {
+        GitHubIssue(
+            number: number,
+            title: "Issue \(number)",
+            body: nil,
+            state: state,
+            labels: [],
+            assignees: nil,
+            user: nil,
+            commentCount: 0,
+            createdAt: "2026-04-27T08:00:00Z",
+            updatedAt: "2026-04-27T09:00:00Z",
+            closedAt: state == "closed" ? "2026-04-27T10:00:00Z" : nil,
+            htmlUrl: "https://github.com/org/alpha/issues/\(number)"
+        )
+    }
+
+    private func makeDeployment(
+        id: Int = 1,
+        owner: String = "org",
+        repo: String = "alpha",
+        issueNumber: Int = 1,
+        state: DeploymentState = .active,
+        endedAt: String? = nil
+    ) -> ActiveDeployment {
+        ActiveDeployment(
+            id: id,
+            repoId: 1,
+            issueNumber: issueNumber,
+            branchName: "issue-\(issueNumber)",
+            workspaceMode: .worktree,
+            workspacePath: "/tmp/repo",
+            linkedPrNumber: nil,
+            state: state,
+            launchedAt: "2026-04-27T08:00:00Z",
+            endedAt: endedAt,
+            ttydPort: 7681,
+            ttydPid: 123,
+            owner: owner,
+            repoName: repo
+        )
+    }
+
     func testFilterItemsByRepoNoSelection() {
         let repos = makeRepos()
         let items: [String: [FakeItem]] = [
@@ -287,5 +353,44 @@ final class ViewLogicTests: XCTestCase {
         // selectedRepoIds contains an ID not in repos — returns empty
         let result = filterItemsByRepo(items, repos: repos, selectedRepoIds: [999], mineOnly: false, currentUserLogin: nil, userLogin: { $0.userLogin })
         XCTAssertTrue(result.isEmpty)
+    }
+
+    // MARK: - PR Review Helpers
+
+    func testPullNeedsReviewAttentionForFailingOrPendingOpenPulls() {
+        XCTAssertTrue(makePull(checksStatus: "failure").needsReviewAttention)
+        XCTAssertTrue(makePull(checksStatus: "pending").needsReviewAttention)
+    }
+
+    func testPullNeedsReviewAttentionIgnoresPassingMissingAndClosedPulls() {
+        XCTAssertFalse(makePull(checksStatus: "success").needsReviewAttention)
+        XCTAssertFalse(makePull(checksStatus: nil).needsReviewAttention)
+        XCTAssertFalse(makePull(state: "closed", checksStatus: "failure").needsReviewAttention)
+    }
+
+    // MARK: - Running Deployment Helpers
+
+    func testRunningDeploymentMatchesActiveIssueSessionByRepoAndIssue() {
+        let issue = makeIssue(number: 42)
+        let deployments = [
+            makeDeployment(id: 1, repo: "beta", issueNumber: 42),
+            makeDeployment(id: 2, repo: "alpha", issueNumber: 42),
+        ]
+
+        let result = runningDeployment(for: issue, in: "org/alpha", deployments: deployments)
+
+        XCTAssertEqual(result?.id, 2)
+    }
+
+    func testRunningDeploymentIgnoresEndedAndMismatchedSessions() {
+        let issue = makeIssue(number: 42)
+        let deployments = [
+            makeDeployment(id: 1, repo: "alpha", issueNumber: 42, state: .ended, endedAt: "2026-04-27T10:00:00Z"),
+            makeDeployment(id: 2, repo: "alpha", issueNumber: 99),
+            makeDeployment(id: 3, repo: "beta", issueNumber: 42),
+        ]
+
+        XCTAssertNil(runningDeployment(for: issue, in: "org/alpha", deployments: deployments))
+        XCTAssertNil(runningDeployment(owner: "org", repo: "alpha", number: 42, deployments: deployments))
     }
 }

@@ -17,6 +17,7 @@ struct IssueListView: View {
     @SceneStorage("issues.mineOnly") private var storedMineOnly = false
     @State private var showCreateSheet = false
     @State private var showParseSheet = false
+    @State private var showFiltersSheet = false
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
     @State private var navigationPath = NavigationPath()
@@ -47,24 +48,7 @@ struct IssueListView: View {
     private let refreshCooldown: TimeInterval = 10
 
     private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
-        runningDeployment(for: issue, in: repoFullName) != nil
-    }
-
-    private func runningDeployment(for issue: GitHubIssue, in repoFullName: String) -> ActiveDeployment? {
-        activeDeployments.first {
-            $0.isActive &&
-            $0.repoFullName == repoFullName &&
-            $0.issueNumber == issue.number
-        }
-    }
-
-    private func runningDeployment(owner: String, repo: String, number: Int) -> ActiveDeployment? {
-        activeDeployments.first {
-            $0.isActive &&
-            $0.owner == owner &&
-            $0.repoName == repo &&
-            $0.issueNumber == number
-        }
+        runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
     }
 
     private var repoFilteredIssues: [GitHubIssue] {
@@ -167,13 +151,6 @@ struct IssueListView: View {
                 SectionTabs(selected: $section, counts: sectionCounts)
                     .padding(.vertical, 8)
 
-                HStack(spacing: 0) {
-                    RepoFilterChips(repos: repos, selectedRepoIds: $selectedRepoIds)
-                    MineFilterChip(isOn: $mineOnly, isAvailable: currentUserLogin != nil, isDisabled: userFetchFailed)
-                        .padding(.trailing, 16)
-                }
-                .padding(.bottom, 8)
-
                 Divider()
 
                 if let oldestCachedAt {
@@ -216,39 +193,6 @@ struct IssueListView: View {
                 }
             }
             .navigationTitle("Issues")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort", selection: $sortOrder) {
-                            Label("Updated", systemImage: "clock").tag(SortOrder.updated)
-                            Label("Created", systemImage: "calendar").tag(SortOrder.created)
-                            Label("Priority", systemImage: "arrow.up.arrow.down").tag(SortOrder.priority)
-                        }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                    }
-                    .accessibilityIdentifier("sort-menu")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            showCreateSheet = true
-                        } label: {
-                            Label("Quick Create", systemImage: "plus")
-                        }
-                        .accessibilityIdentifier("quick-create-button")
-                        Button {
-                            showParseSheet = true
-                        } label: {
-                            Label("Parse with AI", systemImage: "text.viewfinder")
-                        }
-                        .accessibilityIdentifier("parse-ai-button")
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityIdentifier("create-menu")
-                }
-            }
             .navigationDestination(for: IssueDestination.self) { dest in
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
@@ -264,6 +208,23 @@ struct IssueListView: View {
             .sheet(isPresented: $showParseSheet) {
                 ParseView()
             }
+            .sheet(isPresented: $showFiltersSheet) {
+                IssueFilterSheet(
+                    repos: repos,
+                    selectedRepoIds: $selectedRepoIds,
+                    section: $section,
+                    sortOrder: $sortOrder,
+                    mineOnly: $mineOnly,
+                    mineFilterEnabled: currentUserLogin != nil && !userFetchFailed,
+                    sectionCounts: sectionCounts,
+                    onParseWithAI: {
+                        showFiltersSheet = false
+                        showParseSheet = true
+                    }
+                )
+                .presentationDetents([.fraction(0.66), .large])
+                .presentationDragIndicator(.visible)
+            }
             .sheet(item: $launchTarget) { target in
                 LaunchView(
                     owner: target.owner,
@@ -273,6 +234,8 @@ struct IssueListView: View {
                     comments: target.comments,
                     referencedFiles: target.referencedFiles
                 )
+                .presentationDetents([.fraction(0.66), .large])
+                .presentationDragIndicator(.visible)
             }
             .fullScreenCover(item: $terminalTarget) { deployment in
                 if let port = deployment.ttydPort {
@@ -330,8 +293,36 @@ struct IssueListView: View {
             }
             .onChange(of: searchText) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
+            .safeAreaInset(edge: .bottom) {
+                issueThumbBar
+            }
         }
         .searchable(text: $searchText, prompt: "Search issues")
+    }
+
+    private var issueThumbBar: some View {
+        ThumbActionBar {
+            Button {
+                showCreateSheet = true
+            } label: {
+                Label("Create Issue", systemImage: "plus")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(IssueCTLColors.action)
+        } secondary: {
+            Button {
+                showFiltersSheet = true
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 44, height: 36)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Issue filters")
+        }
+        .padding(.bottom, 4)
     }
 
     // MARK: - Lists
@@ -363,7 +354,7 @@ struct IssueListView: View {
                     .accessibilityIdentifier("issue-row-\(issue.number)")
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
-                            if let deployment = runningDeployment(for: issue, in: repo.fullName) {
+                            if let deployment = runningDeployment(for: issue, in: repo.fullName, deployments: activeDeployments) {
                                 Button {
                                     if deployment.ttydPort != nil {
                                         terminalTarget = deployment
@@ -476,7 +467,7 @@ struct IssueListView: View {
             }
         }
 
-        if let deployment = runningDeployment(owner: owner, repo: repo, number: number) {
+        if let deployment = runningDeployment(owner: owner, repo: repo, number: number, deployments: activeDeployments) {
             if deployment.ttydPort != nil {
                 terminalTarget = deployment
             } else {
@@ -692,5 +683,152 @@ struct DraftDestination: Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(draft.id)
+    }
+}
+
+private struct IssueFilterSheet: View {
+    let repos: [Repo]
+    @Binding var selectedRepoIds: Set<Int>
+    @Binding var section: IssueSection
+    @Binding var sortOrder: SortOrder
+    @Binding var mineOnly: Bool
+
+    let mineFilterEnabled: Bool
+    let sectionCounts: [IssueSection: Int]
+    let onParseWithAI: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Filter & Sort")
+                            .font(.title2.weight(.bold))
+                        Text("\(sectionCounts[section] ?? 0) \(section.rawValue) items")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    sheetCard(title: "Status") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            ForEach(IssueSection.allCases, id: \.self) { option in
+                                filterOption(
+                                    title: option.rawValue.capitalized,
+                                    subtitle: "\(sectionCounts[option] ?? 0) items",
+                                    isSelected: section == option
+                                ) {
+                                    section = option
+                                }
+                            }
+                        }
+                    }
+
+                    sheetCard(title: "Repository") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            Button {
+                                selectedRepoIds.removeAll()
+                            } label: {
+                                optionContent(title: "All Repos", subtitle: "\(repos.count) configured", isSelected: selectedRepoIds.isEmpty)
+                            }
+                            .buttonStyle(.plain)
+
+                            ForEach(repos) { repo in
+                                let isSelected = selectedRepoIds.contains(repo.id)
+                                Button {
+                                    if isSelected {
+                                        selectedRepoIds.remove(repo.id)
+                                    } else {
+                                        selectedRepoIds.insert(repo.id)
+                                    }
+                                } label: {
+                                    optionContent(title: repo.name, subtitle: repo.owner, isSelected: isSelected)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    sheetCard(title: "Sort") {
+                        Picker("Sort", selection: $sortOrder) {
+                            Label("Priority", systemImage: "arrow.up.arrow.down").tag(SortOrder.priority)
+                            Label("Updated", systemImage: "clock").tag(SortOrder.updated)
+                            Label("Created", systemImage: "calendar").tag(SortOrder.created)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    VStack(spacing: 0) {
+                        Toggle(isOn: $mineOnly) {
+                            Label("Mine Only", systemImage: "person.crop.circle")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .disabled(!mineFilterEnabled)
+                        .padding(12)
+
+                        Divider()
+
+                        Button(action: onParseWithAI) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "text.viewfinder")
+                                    .frame(width: 24)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Parse with AI")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Create a structured draft from rough notes.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(12)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private func sheetCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content()
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func filterOption(title: String, subtitle: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            optionContent(title: title, subtitle: subtitle, isSelected: isSelected)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func optionContent(title: String, subtitle: String, isSelected: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .padding(10)
+        .background(isSelected ? IssueCTLColors.action.opacity(0.14) : Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? IssueCTLColors.action.opacity(0.55) : Color.clear, lineWidth: 1)
+        }
     }
 }

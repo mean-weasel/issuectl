@@ -52,3 +52,35 @@ func repoIndexForItem<Item>(
     }
     return repos.firstIndex(where: { $0.id == repo.id })
 }
+
+extension GitHubPull {
+    var needsReviewAttention: Bool {
+        isOpen && (checksStatus == "failure" || checksStatus == "pending")
+    }
+}
+
+func runningDeployment(
+    for issue: GitHubIssue,
+    in repoFullName: String,
+    deployments: [ActiveDeployment]
+) -> ActiveDeployment? {
+    deployments.first {
+        $0.isActive &&
+        $0.repoFullName == repoFullName &&
+        $0.issueNumber == issue.number
+    }
+}
+
+func runningDeployment(
+    owner: String,
+    repo: String,
+    number: Int,
+    deployments: [ActiveDeployment]
+) -> ActiveDeployment? {
+    deployments.first {
+        $0.isActive &&
+        $0.owner == owner &&
+        $0.repoName == repo &&
+        $0.issueNumber == number
+    }
+}
