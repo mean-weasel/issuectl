@@ -9,6 +9,7 @@
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
     "test": "turbo test",
+    "ios:ui-smoke": "./scripts/ios-ui-smoke.sh",
     "dev": "turbo dev",
     "prepare": "husky"
   },

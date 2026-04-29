@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'ios/**'
+      - 'scripts/ios-ui-smoke.sh'
+      - 'package.json'
+      - '.husky/pre-push'
       - '.github/workflows/ios.yml'
 
 concurrency:
@@ -13,9 +16,9 @@ concurrency:
 
 jobs:
   build:
-    name: Build
+    name: Build + UI Smoke
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -36,3 +39,8 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Run focused UI smoke tests
+        env:
+          IOS_DESTINATION: platform=iOS Simulator,name=iPhone 16
+        run: ./scripts/ios-ui-smoke.sh
