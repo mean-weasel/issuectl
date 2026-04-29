@@ -283,6 +283,7 @@ struct PRDetailView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(IssueCTLColors.action)
                 .disabled(isMerging)
+                .accessibilityIdentifier("pr-detail-merge-button")
             } else {
                 Button {
                     if let url = URL(string: pull.htmlUrl) {
@@ -295,6 +296,7 @@ struct PRDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(IssueCTLColors.action)
+                .accessibilityIdentifier("pr-detail-open-github-button")
             }
         } secondary: {
             Menu {
@@ -339,6 +341,7 @@ struct PRDetailView: View {
             }
             .buttonStyle(.bordered)
             .accessibilityLabel("Pull request actions")
+            .accessibilityIdentifier("pr-detail-actions-menu")
         }
         .padding(.bottom, 4)
     }

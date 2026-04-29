@@ -143,10 +143,12 @@ struct SessionListView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(IssueCTLColors.action)
+            .accessibilityIdentifier("sessions-create-issue-button")
         } secondary: {
             EmptyView()
         }
         .padding(.bottom, 14)
+        .accessibilityIdentifier("sessions-thumb-bar")
     }
 
     private func load(refresh: Bool = false) async {

@@ -119,6 +119,7 @@ struct LaunchView: View {
                         .buttonStyle(.borderedProminent)
                         .tint(IssueCTLColors.action)
                         .disabled(existingDeployment.ttydPort == nil)
+                        .accessibilityIdentifier("launch-reenter-terminal-button")
                     } else {
                         launchButton
                     }
@@ -209,6 +210,7 @@ struct LaunchView: View {
                     Label("Advanced Options", systemImage: "slider.horizontal.3")
                         .font(.subheadline.weight(.medium))
                 }
+                .accessibilityIdentifier("launch-advanced-options")
             }
 
             if let errorMessage {
@@ -223,6 +225,7 @@ struct LaunchView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") { dismiss() }
+                    .accessibilityIdentifier("launch-cancel-button")
             }
         }
         .task {
@@ -272,6 +275,7 @@ struct LaunchView: View {
         .buttonStyle(.borderedProminent)
         .tint(IssueCTLColors.action)
         .disabled(branchName.isEmpty || isLaunching || isCheckingActiveSession)
+        .accessibilityIdentifier("launch-recommended-button")
     }
 
     private var recommendedSummary: String {

@@ -250,6 +250,7 @@ struct PRListView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(IssueCTLColors.action)
+            .accessibilityIdentifier("prs-quick-actions-button")
         } secondary: {
             Button {
                 showFiltersSheet = true
@@ -260,8 +261,10 @@ struct PRListView: View {
             }
             .buttonStyle(.bordered)
             .accessibilityLabel("Pull request filters")
+            .accessibilityIdentifier("prs-filter-button")
         }
         .padding(.bottom, 4)
+        .accessibilityIdentifier("prs-thumb-bar")
     }
 
     // MARK: - List

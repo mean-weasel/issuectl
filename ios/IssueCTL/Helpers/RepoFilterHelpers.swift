@@ -59,6 +59,36 @@ extension GitHubPull {
     }
 }
 
+func todayIssueMetricLabel(currentUserLogin: String?, userFetchFailed: Bool) -> String {
+    currentUserLogin == nil || userFetchFailed ? "open issues" : "assigned issues"
+}
+
+func todayAssignedIssues(_ issues: [GitHubIssue], currentUserLogin: String?) -> [GitHubIssue] {
+    let openIssues = issues.filter(\.isOpen)
+    guard let currentUserLogin else { return openIssues }
+    return openIssues.filter { issue in
+        (issue.assignees ?? []).contains { $0.login == currentUserLogin }
+    }
+}
+
+func todayAttentionSubtitle(count: Int) -> String {
+    count == 1 ? "1 item needs attention" : "\(count) items need attention"
+}
+
+func todayReviewPulls(_ pulls: [GitHubPull]) -> [GitHubPull] {
+    pulls
+        .filter(\.needsReviewAttention)
+        .sorted { todayPullSortIndex($0) < todayPullSortIndex($1) }
+}
+
+func todayPullSortIndex(_ pull: GitHubPull) -> Int {
+    switch pull.checksStatus {
+    case "failure": 0
+    case "pending": 1
+    default: 2
+    }
+}
+
 func runningDeployment(
     for issue: GitHubIssue,
     in repoFullName: String,
