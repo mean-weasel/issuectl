@@ -44,6 +44,7 @@ struct IssueListView: View {
     private let pageSize = 15
     @State private var displayLimit = 15
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
 
@@ -298,6 +299,7 @@ struct IssueListView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search issues")
+        .searchFocused($isSearchFocused)
     }
 
     private var issueThumbBar: some View {
@@ -313,16 +315,29 @@ struct IssueListView: View {
             .tint(IssueCTLColors.action)
             .accessibilityIdentifier("issues-create-issue-button")
         } secondary: {
-            Button {
-                showFiltersSheet = true
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 44, height: 36)
+            HStack(spacing: 8) {
+                Button {
+                    isSearchFocused = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Search issues")
+                .accessibilityIdentifier("issues-search-button")
+
+                Button {
+                    showFiltersSheet = true
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Issue filters")
+                .accessibilityIdentifier("issues-filter-button")
             }
-            .buttonStyle(.bordered)
-            .accessibilityLabel("Issue filters")
-            .accessibilityIdentifier("issues-filter-button")
         }
         .padding(.bottom, 4)
     }
