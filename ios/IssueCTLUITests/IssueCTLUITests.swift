@@ -83,6 +83,19 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testUserProfileFailureDoesNotBlockPrimaryLists() {
+        server.failUserProfile = true
+        let app = launchApp()
+
+        app.buttons["issues-tab"].tap()
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
+
+        app.buttons["prs-tab"].tap()
+        assertElement("pr-row-7", existsIn: app, timeout: 8)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
+    }
+
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["ISSUECTL_SERVER_URL"] = server.baseURL.absoluteString
@@ -127,6 +140,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
     private let listener: NWListener
     private let queue = DispatchQueue(label: "MockIssueCTLServer")
     private var activeDeployments: [[String: Any]] = []
+    var failUserProfile = false
 
     init() throws {
         let port = NWEndpoint.Port(rawValue: UInt16.random(in: 49_152...65_000))!
@@ -192,6 +206,9 @@ private final class MockIssueCTLServer: @unchecked Sendable {
         case ("GET", "/api/v1/health"):
             body = ["ok": true, "version": "ui-test", "timestamp": isoDate]
         case ("GET", "/api/v1/user"):
+            if failUserProfile {
+                return http(status: 500, json: ["error": "user profile unavailable"])
+            }
             body = ["login": "alice"]
         case ("GET", "/api/v1/repos"):
             body = ["repos": [repo]]
