@@ -31,26 +31,19 @@ struct TodayView: View {
     }
 
     private var assignedIssues: [GitHubIssue] {
-        let openIssues = allIssues.filter(\.isOpen)
-        guard let currentUserLogin else { return openIssues }
-        return openIssues.filter { issue in
-            (issue.assignees ?? []).contains { $0.login == currentUserLogin }
-        }
+        todayAssignedIssues(allIssues, currentUserLogin: currentUserLogin)
     }
 
     private var issueMetricLabel: String {
-        currentUserLogin == nil || userFetchFailed ? "open issues" : "assigned issues"
+        todayIssueMetricLabel(currentUserLogin: currentUserLogin, userFetchFailed: userFetchFailed)
     }
 
     private var attentionSubtitle: String {
-        let count = attentionItems.count
-        return "\(count) item\(count == 1 ? "" : "s") need attention"
+        todayAttentionSubtitle(count: attentionItems.count)
     }
 
     private var reviewPulls: [GitHubPull] {
-        allPulls
-            .filter(\.isOpen)
-            .sorted { pullSortIndex($0) < pullSortIndex($1) }
+        todayReviewPulls(allPulls)
     }
 
     private var attentionItems: [TodayAttentionItem] {
@@ -80,8 +73,17 @@ struct TodayView: View {
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     AppTopBar(title: "Today", subtitle: attentionSubtitle) {
-                        IconChromeButton(systemName: "magnifyingglass") {}
-                        IconChromeButton(systemName: "gearshape") { onShowSettings() }
+                        IconChromeButton(
+                            systemName: "magnifyingglass",
+                            accessibilityLabel: "Search",
+                            accessibilityIdentifier: "today-search-button"
+                        ) {}
+                        IconChromeButton(
+                            systemName: "gearshape",
+                            accessibilityLabel: "Settings",
+                            accessibilityIdentifier: "today-settings-button",
+                            action: onShowSettings
+                        )
                     }
 
                     content
@@ -99,6 +101,7 @@ struct TodayView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(IssueCTLColors.action)
                     .padding(.horizontal, 22)
+                    .accessibilityIdentifier("today-create-issue-button")
                 }
                 .padding(.bottom, 8)
             }
@@ -153,6 +156,7 @@ struct TodayView: View {
                         Button("Refresh") { Task { await load(refresh: true) } }
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(IssueCTLColors.action)
+                            .accessibilityIdentifier("today-refresh-button")
                     }
                     .padding(.top, 4)
 
@@ -180,9 +184,24 @@ struct TodayView: View {
 
     private var metrics: some View {
         HStack(spacing: 8) {
-            StatusMetricCard(value: "\(activeDeployments.count)", label: "running sessions", action: onShowSessions)
-            StatusMetricCard(value: "\(reviewPulls.count)", label: "PRs need review", action: onShowPullRequests)
-            StatusMetricCard(value: "\(assignedIssues.count)", label: issueMetricLabel, action: onShowIssues)
+            StatusMetricCard(
+                value: "\(activeDeployments.count)",
+                label: "running sessions",
+                accessibilityIdentifier: "today-metric-sessions",
+                action: onShowSessions
+            )
+            StatusMetricCard(
+                value: "\(reviewPulls.count)",
+                label: "PRs need review",
+                accessibilityIdentifier: "today-metric-prs",
+                action: onShowPullRequests
+            )
+            StatusMetricCard(
+                value: "\(assignedIssues.count)",
+                label: issueMetricLabel,
+                accessibilityIdentifier: "today-metric-issues",
+                action: onShowIssues
+            )
         }
     }
 
@@ -367,13 +386,6 @@ struct TodayView: View {
         return RepoColors.color(for: index)
     }
 
-    private func pullSortIndex(_ pull: GitHubPull) -> Int {
-        switch pull.checksStatus {
-        case "failure": 0
-        case "pending": 1
-        default: 2
-        }
-    }
 }
 
 private enum TodayDestination: Hashable {

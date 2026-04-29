@@ -311,6 +311,7 @@ struct IssueListView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(IssueCTLColors.action)
+            .accessibilityIdentifier("issues-create-issue-button")
         } secondary: {
             Button {
                 showFiltersSheet = true
@@ -321,8 +322,10 @@ struct IssueListView: View {
             }
             .buttonStyle(.bordered)
             .accessibilityLabel("Issue filters")
+            .accessibilityIdentifier("issues-filter-button")
         }
         .padding(.bottom, 4)
+        .accessibilityIdentifier("issues-thumb-bar")
     }
 
     // MARK: - Lists

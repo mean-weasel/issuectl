@@ -31,6 +31,8 @@ struct AppTopBar<Trailing: View>: View {
 
 struct IconChromeButton: View {
     let systemName: String
+    var accessibilityLabel: String?
+    var accessibilityIdentifier: String?
     let action: () -> Void
 
     var body: some View {
@@ -41,13 +43,15 @@ struct IconChromeButton: View {
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(systemName)
+        .accessibilityLabel(accessibilityLabel ?? systemName)
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
     }
 }
 
 struct StatusMetricCard: View {
     let value: String
     let label: String
+    var accessibilityIdentifier: String?
     let action: () -> Void
 
     var body: some View {
@@ -67,6 +71,7 @@ struct StatusMetricCard: View {
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
     }
 }
 

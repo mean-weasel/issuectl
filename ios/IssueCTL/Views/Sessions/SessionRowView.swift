@@ -50,6 +50,7 @@ struct SessionRowView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(IssueCTLColors.action)
                 .disabled(deployment.ttydPort == nil)
+                .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
 
                 Button(action: onControls) {
                     Image(systemName: "ellipsis")
@@ -59,6 +60,7 @@ struct SessionRowView: View {
                 .buttonStyle(.bordered)
                 .disabled(isEnding)
                 .accessibilityLabel("Session controls")
+                .accessibilityIdentifier("session-controls-\(deployment.id)")
             }
         }
         .padding(14)

@@ -196,14 +196,18 @@ final class ViewLogicTests: XCTestCase {
         )
     }
 
-    private func makeIssue(number: Int = 1, state: String = "open") -> GitHubIssue {
+    private func makeIssue(
+        number: Int = 1,
+        state: String = "open",
+        assignees: [GitHubUser]? = nil
+    ) -> GitHubIssue {
         GitHubIssue(
             number: number,
             title: "Issue \(number)",
             body: nil,
             state: state,
             labels: [],
-            assignees: nil,
+            assignees: assignees,
             user: nil,
             commentCount: 0,
             createdAt: "2026-04-27T08:00:00Z",
@@ -366,6 +370,54 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertFalse(makePull(checksStatus: "success").needsReviewAttention)
         XCTAssertFalse(makePull(checksStatus: nil).needsReviewAttention)
         XCTAssertFalse(makePull(state: "closed", checksStatus: "failure").needsReviewAttention)
+    }
+
+    // MARK: - Today Helpers
+
+    func testTodayIssueMetricLabelFallsBackWhenUserUnavailable() {
+        XCTAssertEqual(todayIssueMetricLabel(currentUserLogin: nil, userFetchFailed: false), "open issues")
+        XCTAssertEqual(todayIssueMetricLabel(currentUserLogin: "alice", userFetchFailed: true), "open issues")
+        XCTAssertEqual(todayIssueMetricLabel(currentUserLogin: "alice", userFetchFailed: false), "assigned issues")
+    }
+
+    func testTodayAssignedIssuesFallsBackToOpenIssuesWhenNoLogin() {
+        let issues = [
+            makeIssue(number: 1, state: "open"),
+            makeIssue(number: 2, state: "closed"),
+            makeIssue(number: 3, state: "open"),
+        ]
+
+        XCTAssertEqual(todayAssignedIssues(issues, currentUserLogin: nil).map(\.number), [1, 3])
+    }
+
+    func testTodayAssignedIssuesFiltersToCurrentUser() {
+        let alice = GitHubUser(login: "alice", avatarUrl: "")
+        let bob = GitHubUser(login: "bob", avatarUrl: "")
+        let issues = [
+            makeIssue(number: 1, assignees: [alice]),
+            makeIssue(number: 2, assignees: [bob]),
+            makeIssue(number: 3, state: "closed", assignees: [alice]),
+            makeIssue(number: 4, assignees: nil),
+        ]
+
+        XCTAssertEqual(todayAssignedIssues(issues, currentUserLogin: "alice").map(\.number), [1])
+    }
+
+    func testTodayAttentionSubtitlePluralizes() {
+        XCTAssertEqual(todayAttentionSubtitle(count: 0), "0 items need attention")
+        XCTAssertEqual(todayAttentionSubtitle(count: 1), "1 item needs attention")
+        XCTAssertEqual(todayAttentionSubtitle(count: 2), "2 items need attention")
+    }
+
+    func testTodayReviewPullsIncludesOnlyFailingOrPendingOpenPullsSorted() {
+        let pulls = [
+            makePull(number: 1, checksStatus: "success"),
+            makePull(number: 2, checksStatus: "pending"),
+            makePull(number: 3, checksStatus: "failure"),
+            makePull(number: 4, state: "closed", checksStatus: "failure"),
+        ]
+
+        XCTAssertEqual(todayReviewPulls(pulls).map(\.number), [3, 2])
     }
 
     // MARK: - Running Deployment Helpers

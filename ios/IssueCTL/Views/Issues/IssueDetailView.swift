@@ -362,6 +362,7 @@ struct IssueDetailView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(IssueCTLColors.action)
                     .disabled(deployment.ttydPort == nil)
+                    .accessibilityIdentifier("issue-detail-reenter-terminal-button")
                 } else if let detail {
                     Button {
                         activeDetailSheet = .launch(detail)
@@ -372,6 +373,7 @@ struct IssueDetailView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(IssueCTLColors.action)
+                    .accessibilityIdentifier("issue-detail-launch-button")
                 }
             } secondary: {
                 issueActionsMenu
@@ -395,6 +397,7 @@ struct IssueDetailView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
                 .disabled(isReopening)
+                .accessibilityIdentifier("issue-detail-reopen-button")
             } secondary: {
                 issueActionsMenu
             }
@@ -486,6 +489,7 @@ struct IssueDetailView: View {
         }
         .buttonStyle(.bordered)
         .accessibilityLabel("Issue actions")
+        .accessibilityIdentifier("issue-detail-actions-menu")
     }
 
     // MARK: - Confirmation Dialog Helpers
