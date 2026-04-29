@@ -19,8 +19,12 @@ struct MarkdownView: View {
                         .font(.body.monospaced())
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemBackground))
+                        .background(IssueCTLColors.elevatedBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+                        }
                         .textSelection(.enabled)
                 } else {
                     markdownText(block.text)

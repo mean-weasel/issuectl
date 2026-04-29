@@ -1,7 +1,30 @@
 import SwiftUI
+import UIKit
 
 enum IssueCTLColors {
-    static let action = Color(hex: "e87125") ?? .orange
+    static var action: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 1.00, green: 0.56, blue: 0.22, alpha: 1.00)
+                : UIColor(red: 0.91, green: 0.44, blue: 0.15, alpha: 1.00)
+        })
+    }
+
+    static var cardBackground: Color {
+        Color(.secondarySystemGroupedBackground)
+    }
+
+    static var elevatedBackground: Color {
+        Color(.tertiarySystemGroupedBackground)
+    }
+
+    static var hairline: Color {
+        Color(.separator).opacity(0.65)
+    }
+
+    static var materialStroke: Color {
+        Color(.separator).opacity(0.45)
+    }
 }
 
 struct AppTopBar<Trailing: View>: View {
@@ -39,8 +62,13 @@ struct IconChromeButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.primary)
                 .frame(width: 36, height: 36)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+                }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel ?? systemName)
@@ -68,7 +96,11 @@ struct StatusMetricCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             .padding(10)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityIdentifier ?? "")
@@ -119,10 +151,10 @@ struct AttentionRow: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(IssueCTLColors.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: 18)
-                            .stroke(isAttention ? IssueCTLColors.action.opacity(0.55) : Color.clear, lineWidth: 1)
+                            .stroke(isAttention ? IssueCTLColors.action.opacity(0.65) : IssueCTLColors.hairline, lineWidth: 1)
                     }
             )
         }
@@ -211,7 +243,7 @@ struct ThumbActionBar<Primary: View, Secondary: View>: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .overlay {
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                .stroke(IssueCTLColors.materialStroke, lineWidth: 1)
         }
         .padding(.horizontal, 14)
     }
@@ -223,12 +255,13 @@ struct OfflineStatusBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "wifi.exclamationmark")
+                .foregroundStyle(.red)
             Text(message)
                 .lineLimit(2)
             Spacer(minLength: 0)
         }
         .font(.caption.weight(.medium))
-        .foregroundStyle(.red)
+        .foregroundStyle(.primary)
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
