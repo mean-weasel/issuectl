@@ -59,34 +59,12 @@ struct PRDetailView: View {
                     }
                     .refreshable { await load(refresh: true) }
 
-                    if detail.pull.isOpen && !detail.pull.merged {
-                        actionBar
-                    }
+                    actionBar(for: detail.pull)
                 }
             }
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let detail {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if let url = URL(string: detail.pull.htmlUrl) {
-                        ShareLink(item: url) {
-                            Image(systemName: "square.and.arrow.up")
-                        }
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        if let url = URL(string: detail.pull.htmlUrl) {
-                            openURL(url)
-                        }
-                    } label: {
-                        Image(systemName: "safari")
-                    }
-                }
-            }
-        }
         .task { await load() }
         .onAppear {
             actionError = nil
@@ -287,49 +265,82 @@ struct PRDetailView: View {
 
     // MARK: - Action Bar
 
-    private var actionBar: some View {
-        HStack(spacing: 16) {
-            Button {
-                Task { await approve() }
-            } label: {
-                if isApproving {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Label("Approve", systemImage: "checkmark.circle")
+    private func actionBar(for pull: GitHubPull) -> some View {
+        ThumbActionBar {
+            if pull.isOpen && !pull.merged {
+                Button {
+                    showMergeConfirm = true
+                } label: {
+                    if isMerging {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("Merge", systemImage: "arrow.triangle.merge")
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                    }
                 }
-            }
-            .tint(.green)
-            .disabled(isApproving)
-
-            Button {
-                showRequestChanges = true
-            } label: {
-                Label("Changes", systemImage: "xmark.circle")
-            }
-            .tint(.red)
-
-            Button {
-                showCommentSheet = true
-            } label: {
-                Label("Comment", systemImage: "bubble.left")
-            }
-
-            Button {
-                showMergeConfirm = true
-            } label: {
-                if isMerging {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Label("Merge", systemImage: "arrow.triangle.merge")
+                .buttonStyle(.borderedProminent)
+                .tint(IssueCTLColors.action)
+                .disabled(isMerging)
+            } else {
+                Button {
+                    if let url = URL(string: pull.htmlUrl) {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("Open GitHub", systemImage: "safari")
+                        .font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(IssueCTLColors.action)
             }
-            .tint(.purple)
-            .disabled(isMerging)
+        } secondary: {
+            Menu {
+                if pull.isOpen && !pull.merged {
+                    Button {
+                        Task { await approve() }
+                    } label: {
+                        if isApproving {
+                            Label("Approving", systemImage: "hourglass")
+                        } else {
+                            Label("Approve", systemImage: "checkmark.circle")
+                        }
+                    }
+                    .disabled(isApproving)
+
+                    Button {
+                        showRequestChanges = true
+                    } label: {
+                        Label("Request Changes", systemImage: "xmark.circle")
+                    }
+                }
+
+                Button {
+                    showCommentSheet = true
+                } label: {
+                    Label("Comment", systemImage: "bubble.left")
+                }
+
+                Divider()
+
+                if let detail, let url = URL(string: detail.pull.htmlUrl) {
+                    Button {
+                        openURL(url)
+                    } label: {
+                        Label("Open on GitHub", systemImage: "safari")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 44, height: 36)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Pull request actions")
         }
-        .labelStyle(.titleAndIcon)
-        .font(.caption)
-        .padding()
-        .background(.bar)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Loading

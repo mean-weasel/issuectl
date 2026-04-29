@@ -41,7 +41,7 @@ enum IssueSection: String, CaseIterable {
 }
 
 enum PRSection: String, CaseIterable {
-    case open, closed
+    case review, open, merged, closed
 }
 
 enum SortOrder: String, CaseIterable {

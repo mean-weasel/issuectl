@@ -76,84 +76,6 @@ struct IssueDetailView: View {
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let detail {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if let url = URL(string: detail.issue.htmlUrl) {
-                        ShareLink(item: url) {
-                            Image(systemName: "square.and.arrow.up")
-                        }
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            if let url = URL(string: detail.issue.htmlUrl) {
-                                openURL(url)
-                            }
-                        } label: {
-                            Label("Open on GitHub", systemImage: "safari")
-                        }
-                        Divider()
-                        Button {
-                            activeDetailSheet = .edit(detail)
-                        } label: {
-                            Label("Edit Issue", systemImage: "pencil")
-                        }
-                        Button {
-                            activeDetailSheet = .labels(detail)
-                        } label: {
-                            Label("Manage Labels", systemImage: "tag")
-                        }
-                        Button {
-                            activeDetailSheet = .assignees(detail)
-                        } label: {
-                            Label("Manage Assignees", systemImage: "person.badge.plus")
-                        }
-                        Divider()
-                        Menu {
-                            ForEach(Priority.allCases, id: \.self) { priority in
-                                Button {
-                                    let previousPriority = currentPriority
-                                    currentPriority = priority
-                                    Task { await confirmPriority(priority, rollbackTo: previousPriority) }
-                                } label: {
-                                    HStack {
-                                        Text(priority.rawValue.capitalized)
-                                        if priority == currentPriority {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            Label("Priority", systemImage: "arrow.up.arrow.down")
-                        }
-                        Divider()
-                        Button {
-                            activeDetailSheet = .reassign(detail)
-                        } label: {
-                            Label("Reassign to Repo…", systemImage: "arrow.triangle.swap")
-                        }
-                        Button {
-                            if let deployment = activeDeployment(from: detail) {
-                                openTerminal(deployment)
-                            } else {
-                                activeDetailSheet = .launch(detail)
-                            }
-                        } label: {
-                            if activeDeployment(from: detail) != nil {
-                                Label("Open Terminal", systemImage: "terminal")
-                            } else {
-                                Label("Launch", systemImage: "play.fill")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
-            }
-        }
         .navigationDestination(for: PRDestination.self) { dest in
             PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
         }
@@ -175,6 +97,8 @@ struct IssueDetailView: View {
                     comments: detail.comments,
                     referencedFiles: detail.referencedFiles
                 )
+                .presentationDetents([.fraction(0.66), .large])
+                .presentationDragIndicator(.visible)
             case .edit(let detail):
                 EditIssueSheet(
                     owner: owner, repo: repo, number: number,
@@ -426,16 +350,61 @@ struct IssueDetailView: View {
     @ViewBuilder
     private func actionBar(for issue: GitHubIssue) -> some View {
         if issue.isOpen {
-            HStack(spacing: 16) {
+            ThumbActionBar {
                 if let detail, let deployment = activeDeployment(from: detail) {
                     Button {
                         openTerminal(deployment)
                     } label: {
-                        Label("Terminal", systemImage: "terminal")
+                        Label(deployment.ttydPort == nil ? "Terminal Starting" : "Re-enter Terminal", systemImage: "terminal")
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(IssueCTLColors.action)
                     .disabled(deployment.ttydPort == nil)
+                } else if let detail {
+                    Button {
+                        activeDetailSheet = .launch(detail)
+                    } label: {
+                        Label("Launch Claude", systemImage: "play.fill")
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(IssueCTLColors.action)
                 }
+            } secondary: {
+                issueActionsMenu
+            }
+            .padding(.bottom, 4)
+        } else {
+            ThumbActionBar {
+                Button {
+                    activeConfirmation = .reopenIssue
+                } label: {
+                    HStack {
+                        if isReopening {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("Reopen", systemImage: "arrow.uturn.backward.circle")
+                        }
+                    }
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .disabled(isReopening)
+            } secondary: {
+                issueActionsMenu
+            }
+            .padding(.bottom, 4)
+        }
+    }
 
+    private var issueActionsMenu: some View {
+        Menu {
+            if let detail {
                 Button {
                     activeDetailSheet = .comment
                 } label: {
@@ -443,40 +412,80 @@ struct IssueDetailView: View {
                 }
 
                 Button {
-                    activeConfirmation = .closeIssue
+                    activeDetailSheet = .edit(detail)
                 } label: {
-                    if isClosing {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label("Close", systemImage: "xmark.circle")
-                    }
+                    Label("Edit Issue", systemImage: "pencil")
                 }
-                .tint(.red)
-                .disabled(isClosing)
-            }
-            .labelStyle(.titleAndIcon)
-            .font(.caption)
-            .padding()
-            .background(.bar)
-        } else {
-            HStack {
+
                 Button {
-                    activeConfirmation = .reopenIssue
+                    activeDetailSheet = .labels(detail)
                 } label: {
-                    if isReopening {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label("Reopen", systemImage: "arrow.uturn.backward.circle")
-                    }
+                    Label("Manage Labels", systemImage: "tag")
                 }
-                .tint(.green)
-                .disabled(isReopening)
+
+                Button {
+                    activeDetailSheet = .assignees(detail)
+                } label: {
+                    Label("Manage Assignees", systemImage: "person.badge.plus")
+                }
+
+                Divider()
+
+                Menu {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Button {
+                            let previousPriority = currentPriority
+                            currentPriority = priority
+                            Task { await confirmPriority(priority, rollbackTo: previousPriority) }
+                        } label: {
+                            HStack {
+                                Text(priority.rawValue.capitalized)
+                                if priority == currentPriority {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Priority", systemImage: "arrow.up.arrow.down")
+                }
+
+                Button {
+                    activeDetailSheet = .reassign(detail)
+                } label: {
+                    Label("Reassign to Repo", systemImage: "arrow.triangle.swap")
+                }
+
+                Divider()
+
+                Button {
+                    if let url = URL(string: detail.issue.htmlUrl) {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("Open on GitHub", systemImage: "safari")
+                }
+
+                if detail.issue.isOpen {
+                    Button(role: .destructive) {
+                        activeConfirmation = .closeIssue
+                    } label: {
+                        if isClosing {
+                            Label("Closing", systemImage: "hourglass")
+                        } else {
+                            Label("Close Issue", systemImage: "xmark.circle")
+                        }
+                    }
+                    .disabled(isClosing)
+                }
             }
-            .labelStyle(.titleAndIcon)
-            .font(.caption)
-            .padding()
-            .background(.bar)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 44, height: 36)
         }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("Issue actions")
     }
 
     // MARK: - Confirmation Dialog Helpers

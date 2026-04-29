@@ -15,6 +15,7 @@ struct QuickCreateSheet: View {
     @State private var priority: Priority = .normal
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var showMoreOptions = false
 
     // Labels
     @State private var availableLabels: [GitHubLabel] = []
@@ -35,111 +36,155 @@ struct QuickCreateSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Title") {
-                    TextField("Issue title", text: $title)
-                        .font(.body)
-                        .accessibilityIdentifier("issue-title-field")
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Create Issue")
+                            .font(.title2.weight(.bold))
+                        Text("Fast capture first. Add metadata only when needed.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 4)
 
-                Section("Description") {
-                    TextEditor(text: $bodyText)
-                        .font(.body)
-                        .frame(minHeight: 100)
-                        .accessibilityIdentifier("issue-body-editor")
-                        .overlay(alignment: .topLeading) {
-                            if bodyText.isEmpty {
-                                Text("Optional description...")
-                                    .foregroundStyle(.tertiary)
-                                    .font(.body)
-                                    .padding(.top, 8)
-                                    .padding(.leading, 5)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    if let repo = selectedRepo {
-                        ImageAttachmentButton(owner: repo.owner, repo: repo.name) { markdown in
-                            if bodyText.isEmpty {
-                                bodyText = markdown
-                            } else {
-                                bodyText += "\n\n\(markdown)"
-                            }
+                    sheetCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Repository")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            repoSelector
                         }
                     }
-                }
 
-                Section("Repository") {
-                    Picker("Repo", selection: $selectedRepoId) {
-                        Text("None (local draft)").tag(nil as Int?)
-                        ForEach(Array(repos.enumerated()), id: \.element.id) { index, repo in
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(RepoColors.color(for: index))
-                                    .frame(width: 8, height: 8)
-                                Text(repo.fullName)
-                            }
-                            .tag(repo.id as Int?)
+                    sheetCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Title")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            TextField("Issue title", text: $title)
+                                .font(.body)
+                                .textInputAutocapitalization(.sentences)
+                                .accessibilityIdentifier("issue-title-field")
                         }
                     }
-                    .accessibilityIdentifier("repo-picker")
-                }
 
-                if let repo = selectedRepo {
-                    Section("Labels") {
-                        if let labelError = labelLoadError {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Label(labelError, systemImage: "exclamationmark.triangle")
-                                    .foregroundStyle(.orange)
-                                    .font(.callout)
-                                Button("Retry") {
-                                    Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+                    sheetCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Details")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            TextEditor(text: $bodyText)
+                                .font(.body)
+                                .frame(minHeight: 92)
+                                .accessibilityIdentifier("issue-body-editor")
+                                .overlay(alignment: .topLeading) {
+                                    if bodyText.isEmpty {
+                                        Text("Describe the issue")
+                                            .foregroundStyle(.tertiary)
+                                            .font(.body)
+                                            .padding(.top, 8)
+                                            .padding(.leading, 5)
+                                            .allowsHitTesting(false)
+                                    }
                                 }
-                                .font(.callout)
+                        }
+                    }
+
+                    sheetCard {
+                        DisclosureGroup(isExpanded: $showMoreOptions) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                if let repo = selectedRepo {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Labels")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        if let labelError = labelLoadError {
+                                            VStack(alignment: .leading, spacing: 8) {
+                                                Label(labelError, systemImage: "exclamationmark.triangle")
+                                                    .foregroundStyle(.orange)
+                                                    .font(.callout)
+                                                Button("Retry") {
+                                                    Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+                                                }
+                                                .font(.callout)
+                                            }
+                                        } else {
+                                            LabelPicker(
+                                                labels: availableLabels,
+                                                selectedLabels: $selectedLabels,
+                                                isLoading: isLoadingLabels
+                                            )
+                                        }
+                                    }
+
+                                    ImageAttachmentButton(owner: repo.owner, repo: repo.name) { markdown in
+                                        if bodyText.isEmpty {
+                                            bodyText = markdown
+                                        } else {
+                                            bodyText += "\n\n\(markdown)"
+                                        }
+                                    }
+                                }
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Priority")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    Picker("Priority", selection: $priority) {
+                                        Text("Low").tag(Priority.low)
+                                        Text("Normal").tag(Priority.normal)
+                                        Text("High").tag(Priority.high)
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .accessibilityIdentifier("priority-picker")
+                                }
                             }
-                        } else {
-                            LabelPicker(
-                                labels: availableLabels,
-                                selectedLabels: $selectedLabels,
-                                isLoading: isLoadingLabels
-                            )
+                            .padding(.top, 12)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("More Options")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Labels, attachments, priority, and local drafts.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
-                }
 
-                Section("Priority") {
-                    Picker("Priority", selection: $priority) {
-                        Text("Low").tag(Priority.low)
-                        Text("Normal").tag(Priority.normal)
-                        Text("High").tag(Priority.high)
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("priority-picker")
-                }
-
-                if let errorMessage {
-                    Section {
+                    if let errorMessage {
                         Label(errorMessage, systemImage: "exclamationmark.triangle")
+                            .font(.subheadline)
                             .foregroundStyle(.red)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
                     }
                 }
-
-                Section {
-                    Button {
-                        Task { await submit() }
-                    } label: {
-                        if isSubmitting {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text(buttonLabel)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
-                    .accessibilityIdentifier("submit-issue-button")
-                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 18)
             }
-            .navigationTitle("Quick Create")
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    Task { await submit() }
+                } label: {
+                    if isSubmitting {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text(buttonLabel)
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(IssueCTLColors.action)
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
+                .accessibilityIdentifier("submit-issue-button")
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .background(.bar)
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -147,15 +192,86 @@ struct QuickCreateSheet: View {
                         .accessibilityIdentifier("cancel-button")
                 }
             }
+            .onAppear {
+                if selectedRepoId == nil {
+                    selectedRepoId = repos.first?.id
+                }
+            }
             .onChange(of: selectedRepoId) { _, newValue in
                 selectedLabels = []
                 availableLabels = []
                 labelLoadError = nil
-                if let repoId = newValue, let repo = repos.first(where: { $0.id == repoId }) {
+                if showMoreOptions, let repoId = newValue, let repo = repos.first(where: { $0.id == repoId }) {
                     Task { await loadLabels(owner: repo.owner, repo: repo.name) }
                 }
             }
+            .onChange(of: showMoreOptions) { _, isExpanded in
+                guard isExpanded, availableLabels.isEmpty, labelLoadError == nil, let repo = selectedRepo else { return }
+                Task { await loadLabels(owner: repo.owner, repo: repo.name) }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
+    }
+
+    @ViewBuilder
+    private var repoSelector: some View {
+        if repos.isEmpty {
+            Text("Local draft")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        } else {
+            HStack(spacing: 8) {
+                ForEach(Array(repos.prefix(2).enumerated()), id: \.element.id) { index, repo in
+                    Button {
+                        selectedRepoId = repo.id
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(RepoColors.color(for: index))
+                                .frame(width: 8, height: 8)
+                            Text(repo.name)
+                                .lineLimit(1)
+                        }
+                        .font(.body)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 8)
+                        .background(
+                            selectedRepoId == repo.id ? IssueCTLColors.action.opacity(0.16) : Color(.tertiarySystemGroupedBackground),
+                            in: Capsule()
+                        )
+                        .foregroundStyle(selectedRepoId == repo.id ? IssueCTLColors.action : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Menu {
+                    ForEach(repos.dropFirst(2), id: \.id) { repo in
+                        Button(repo.fullName) {
+                            selectedRepoId = repo.id
+                        }
+                    }
+                    Divider()
+                    Button("Local Draft") {
+                        selectedRepoId = nil
+                    }
+                } label: {
+                    Text("More")
+                        .font(.body)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 8)
+                        .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func sheetCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func loadLabels(owner: String, repo: String) async {
@@ -202,7 +318,7 @@ struct QuickCreateSheet: View {
                 }
                 if let warning = assignResponse.cleanupWarning {
                     // Issue was created on GitHub but draft cleanup failed on server.
-                    // Dismiss the sheet — the issue exists — and surface the warning
+                    // Dismiss the sheet; the issue exists. Surface the warning
                     // via the parent's action-error banner (auto-dismisses after 5s).
                     isSubmitting = false
                     onSuccess("Issue created. Note: \(warning)")
@@ -211,7 +327,7 @@ struct QuickCreateSheet: View {
                 }
                 if let warning = assignResponse.labelsWarning {
                     // Issue was created on GitHub but labels could not be applied.
-                    // Dismiss the sheet — the issue exists — and surface the warning
+                    // Dismiss the sheet; the issue exists. Surface the warning
                     // via the parent's action-error banner (auto-dismisses after 5s).
                     isSubmitting = false
                     onSuccess("Issue created. Note: \(warning)")
