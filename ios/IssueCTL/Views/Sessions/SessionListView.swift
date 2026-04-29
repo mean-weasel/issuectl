@@ -7,7 +7,7 @@ struct SessionListView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var actionError: String?
-    @State private var terminalTarget: ActiveDeployment?
+    @State private var terminalPresentation: TerminalPresentation?
     @State private var sessionControlsTarget: ActiveDeployment?
     @State private var showCreateSheet = false
     @State private var endingDeploymentId: Int?
@@ -96,9 +96,7 @@ struct SessionListView: View {
                                         deployment: deployment,
                                         isEnding: endingDeploymentId == deployment.id,
                                         onOpen: {
-                                            if deployment.ttydPort != nil {
-                                                terminalTarget = deployment
-                                            }
+                                            openTerminal(deployment)
                                         },
                                         onControls: {
                                             sessionControlsTarget = deployment
@@ -130,13 +128,17 @@ struct SessionListView: View {
             }
             .autoDismissError($actionError)
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
-            .fullScreenCover(item: $terminalTarget) { deployment in
+            .fullScreenCover(item: $terminalPresentation) { presentation in
+                let deployment = presentation.deployment
                 if let port = deployment.ttydPort {
                     TerminalView(
                         deployment: deployment,
                         port: port,
+                        onClose: {
+                            terminalPresentation = nil
+                        },
                         onEnd: {
-                            terminalTarget = nil
+                            terminalPresentation = nil
                             deployments.removeAll { $0.id == deployment.id }
                         }
                     )
@@ -148,9 +150,7 @@ struct SessionListView: View {
                     isEnding: endingDeploymentId == deployment.id,
                     onOpenTerminal: {
                         sessionControlsTarget = nil
-                        if deployment.ttydPort != nil {
-                            terminalTarget = deployment
-                        }
+                        openTerminal(deployment)
                     },
                     onViewIssue: {
                         sessionControlsTarget = nil
@@ -213,6 +213,11 @@ struct SessionListView: View {
         .padding(.bottom, 14)
     }
 
+    private func openTerminal(_ deployment: ActiveDeployment) {
+        guard deployment.ttydPort != nil else { return }
+        terminalPresentation = TerminalPresentation(deployment: deployment)
+    }
+
     private func load(refresh: Bool = false) async {
         if deployments.isEmpty { isLoading = true }
         errorMessage = nil
@@ -256,6 +261,11 @@ struct SessionListView: View {
         }
         endingDeploymentId = nil
     }
+}
+
+private struct TerminalPresentation: Identifiable {
+    let id = UUID()
+    let deployment: ActiveDeployment
 }
 
 private struct ActiveSessionsHeader: View {

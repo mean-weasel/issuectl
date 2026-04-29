@@ -138,11 +138,16 @@ struct IssueDetailView: View {
                 )
             }
         }
-        .fullScreenCover(item: $terminalTarget) { deployment in
+        .fullScreenCover(item: $terminalTarget, onDismiss: {
+            terminalTarget = nil
+        }) { deployment in
             if let port = deployment.ttydPort {
                 TerminalView(
                     deployment: deployment,
                     port: port,
+                    onClose: {
+                        terminalTarget = nil
+                    },
                     onEnd: {
                         terminalTarget = nil
                         Task { await load(refresh: true) }

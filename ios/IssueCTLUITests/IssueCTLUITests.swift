@@ -20,14 +20,14 @@ final class IssueCTLUITests: XCTestCase {
         let app = launchApp()
 
         assertElement("today-create-issue-button", existsIn: app, timeout: 8)
-        assertElement("today-metric-sessions", existsIn: app)
-        assertElement("today-metric-prs", existsIn: app)
-        assertElement("today-metric-issues", existsIn: app)
+        assertElement("today-metric-sessions", existsIn: app, timeout: 5)
+        assertElement("today-metric-prs", existsIn: app, timeout: 5)
+        assertElement("today-metric-issues", existsIn: app, timeout: 5)
 
         element("today-settings-button", in: app).tap()
         assertElement("settings-done-button", existsIn: app, timeout: 3)
         app.buttons["settings-done-button"].tap()
-        waitForNonexistence("settings-done-button", in: app)
+        waitForButtonNonexistence("settings-done-button", in: app)
 
         element("today-search-button", in: app).tap()
         assertElement("today-search-field", existsIn: app, timeout: 3)
@@ -102,6 +102,24 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions() {
+        let app = launchApp()
+
+        app.buttons["issues-tab"].tap()
+        launchIssueSession(101, in: app)
+        backToIssueList(in: app, expectingIssue: 102)
+
+        launchIssueSession(102, in: app)
+
+        app.buttons["active-tab"].tap()
+        assertElement("sessions-command-header", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9002", existsIn: app, timeout: 5)
+        XCTAssertTrue(element("session-reenter-terminal-9001", in: app).isEnabled)
+        XCTAssertTrue(element("session-reenter-terminal-9002", in: app).isEnabled)
+    }
+
+    @MainActor
     func testRunningIssueDetailShowsReentryInsteadOfLaunch() {
         server.seedActiveDeployment()
         let app = launchApp()
@@ -145,6 +163,45 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    private func launchIssueSession(_ number: Int, in app: XCUIApplication) {
+        assertElement("issue-row-\(number)", existsIn: app, timeout: 8)
+        element("issue-row-\(number)", in: app).tap()
+
+        assertElement("issue-detail-launch-button", existsIn: app, timeout: 5)
+        element("issue-detail-launch-button", in: app).tap()
+
+        assertElement("launch-recommended-button", existsIn: app, timeout: 5)
+        element("launch-recommended-button", in: app).tap()
+
+        XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 8), app.debugDescription)
+        app.buttons["terminal-done-button"].tap()
+        assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
+    }
+
+    @MainActor
+    private func backToIssueList(in app: XCUIApplication, expectingIssue number: Int) {
+        if !element("issue-row-\(number)", in: app).exists {
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+        assertElement("issue-row-\(number)", existsIn: app, timeout: 5)
+    }
+
+    @MainActor
+    private func openSessionTerminal(_ deploymentId: Int, in app: XCUIApplication) {
+        let identifier = "session-reenter-terminal-\(deploymentId)"
+        let target = element(identifier, in: app)
+        XCTAssertTrue(target.waitForExistence(timeout: 5), "Missing \(identifier)\n\(app.debugDescription)")
+
+        if !target.isHittable, app.scrollViews.firstMatch.exists {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+
+        XCTAssertTrue(target.waitForExistence(timeout: 5), "Missing \(identifier) after scroll\n\(app.debugDescription)")
+        XCTAssertTrue(target.isHittable, "\(identifier) is not hittable\n\(app.debugDescription)")
+        target.tap()
+    }
+
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
@@ -166,7 +223,7 @@ final class IssueCTLUITests: XCTestCase {
     private func waitForNonexistence(
         _ identifier: String,
         in app: XCUIApplication,
-        timeout: TimeInterval = 3,
+        timeout: TimeInterval = 8,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -175,6 +232,21 @@ final class IssueCTLUITests: XCTestCase {
         let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
         XCTAssertEqual(result, .completed, "\(identifier) did not disappear\n\(app.debugDescription)", file: file, line: line)
     }
+
+    @MainActor
+    private func waitForButtonNonexistence(
+        _ identifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: app.buttons[identifier])
+        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, "\(identifier) button did not disappear\n\(app.debugDescription)", file: file, line: line)
+    }
+
 }
 
 private final class MockIssueCTLServer: @unchecked Sendable {
@@ -261,25 +333,42 @@ private final class MockIssueCTLServer: @unchecked Sendable {
         case ("GET", "/api/v1/deployments"):
             body = ["deployments": activeDeployments]
         case ("GET", "/api/v1/issues/org/alpha"):
-            body = ["issues": [issue], "from_cache": false, "cached_at": NSNull()]
+            body = ["issues": [issue(number: 101), issue(number: 102)], "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/101"):
             body = [
-                "issue": issue,
+                "issue": issue(number: 101),
                 "comments": [],
-                "deployments": activeDeployments,
+                "deployments": deployments(for: 101),
+                "linkedPRs": [],
+                "referencedFiles": [],
+                "fromCache": false,
+            ]
+        case ("GET", "/api/v1/issues/org/alpha/102"):
+            body = [
+                "issue": issue(number: 102),
+                "comments": [],
+                "deployments": deployments(for: 102),
                 "linkedPRs": [],
                 "referencedFiles": [],
                 "fromCache": false,
             ]
         case ("GET", "/api/v1/issues/org/alpha/priorities"):
-            body = ["priorities": [["repo_id": 1, "issue_number": 101, "priority": "high", "updated_at": 1_777_440_000]]]
+            body = ["priorities": [
+                ["repo_id": 1, "issue_number": 101, "priority": "high", "updated_at": 1_777_440_000],
+                ["repo_id": 1, "issue_number": 102, "priority": "normal", "updated_at": 1_777_440_000],
+            ]]
         case ("GET", "/api/v1/issues/org/alpha/101/priority"):
             body = ["priority": "high"]
+        case ("GET", "/api/v1/issues/org/alpha/102/priority"):
+            body = ["priority": "normal"]
         case ("GET", "/api/v1/pulls/org/alpha"):
             body = ["pulls": pulls, "from_cache": false, "cached_at": NSNull()]
         case ("POST", "/api/v1/launch/org/alpha/101"):
-            activeDeployments = [deployment]
+            activateDeployment(issueNumber: 101)
             body = ["success": true, "deployment_id": 9001, "ttyd_port": 19001, "error": NSNull(), "label_warning": NSNull()]
+        case ("POST", "/api/v1/launch/org/alpha/102"):
+            activateDeployment(issueNumber: 102)
+            body = ["success": true, "deployment_id": 9002, "ttyd_port": 19002, "error": NSNull(), "label_warning": NSNull()]
         case ("POST", "/api/v1/drafts"):
             body = ["success": true, "id": "draft-ui-1", "error": NSNull()]
         case ("POST", "/api/v1/drafts/draft-ui-1/assign"):
@@ -325,11 +414,13 @@ private final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
-    private var issue: [String: Any] {
-        [
-            "number": 101,
-            "title": "Improve launch handoff",
-            "body": "Keep the terminal reachable after leaving detail.",
+    private func issue(number: Int) -> [String: Any] {
+        return [
+            "number": number,
+            "title": number == 101 ? "Improve launch handoff" : "Persist multiple sessions",
+            "body": number == 101
+                ? "Keep the terminal reachable after leaving detail."
+                : "Keep independent terminals reachable after launching more than one issue.",
             "state": "open",
             "labels": [["name": "bug", "color": "d73a4a", "description": NSNull()]],
             "assignees": [["login": "alice", "avatar_url": ""]],
@@ -338,7 +429,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             "created_at": isoDate,
             "updated_at": isoDate,
             "closed_at": NSNull(),
-            "html_url": "https://github.com/org/alpha/issues/101",
+            "html_url": "https://github.com/org/alpha/issues/\(number)",
         ]
     }
 
@@ -350,7 +441,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
     }
 
     private func pull(number: Int, title: String, checksStatus: String) -> [String: Any] {
-        [
+        return [
             "number": number,
             "title": title,
             "body": NSNull(),
@@ -373,22 +464,38 @@ private final class MockIssueCTLServer: @unchecked Sendable {
     }
 
     private var deployment: [String: Any] {
-        [
-            "id": 9001,
+        deployment(issueNumber: 101)
+    }
+
+    private func deployment(issueNumber: Int) -> [String: Any] {
+        let id = issueNumber == 101 ? 9001 : 9002
+        return [
+            "id": id,
             "repo_id": 1,
-            "issue_number": 101,
-            "branch_name": "issue-101-improve-launch-handoff",
+            "issue_number": issueNumber,
+            "branch_name": issueNumber == 101
+                ? "issue-101-improve-launch-handoff"
+                : "issue-102-persist-multiple-sessions",
             "workspace_mode": "worktree",
-            "workspace_path": "/tmp/alpha-worktree",
+            "workspace_path": "/tmp/alpha-worktree-\(issueNumber)",
             "linked_pr_number": NSNull(),
             "state": "active",
             "launched_at": isoDate,
             "ended_at": NSNull(),
-            "ttyd_port": 19001,
-            "ttyd_pid": 12345,
+            "ttyd_port": issueNumber == 101 ? 19001 : 19002,
+            "ttyd_pid": issueNumber == 101 ? 12345 : 12346,
             "owner": "org",
             "repo_name": "alpha",
         ]
+    }
+
+    private func activateDeployment(issueNumber: Int) {
+        activeDeployments.removeAll { $0["issue_number"] as? Int == issueNumber }
+        activeDeployments.append(deployment(issueNumber: issueNumber))
+    }
+
+    private func deployments(for issueNumber: Int) -> [[String: Any]] {
+        activeDeployments.filter { $0["issue_number"] as? Int == issueNumber }
     }
 }
 

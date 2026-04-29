@@ -75,6 +75,9 @@ struct LaunchView: View {
                 TerminalView(
                     deployment: deployment,
                     port: port,
+                    onClose: {
+                        launchedDeployment = nil
+                    },
                     onEnd: { dismiss() }
                 )
             } else {

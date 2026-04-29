@@ -43,15 +43,18 @@ struct SessionRowView: View {
             }
 
             HStack(spacing: 8) {
-                Label(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal", systemImage: "terminal")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 40)
-                    .background(IssueCTLColors.action.opacity(deployment.ttydPort == nil ? 0.45 : 1), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal")
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
+                Button(action: onOpen) {
+                    Label(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal", systemImage: "terminal")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(IssueCTLColors.action.opacity(deployment.ttydPort == nil ? 0.45 : 1), in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(deployment.ttydPort == nil || isEnding)
+                .accessibilityLabel(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal")
+                .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
 
                 Button(action: onControls) {
                     Image(systemName: "ellipsis")
