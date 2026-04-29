@@ -152,6 +152,7 @@ struct TodayView: View {
                         systemName: "terminal",
                         accessibilityLabel: "\(activeDeployments.count) active sessions",
                         accessibilityIdentifier: "today-active-sessions-button",
+                        badge: activeSessionBadge,
                         action: onShowSessions
                     )
                 }
@@ -166,6 +167,10 @@ struct TodayView: View {
             }
         }
         .padding(.bottom, 8)
+    }
+
+    private var activeSessionBadge: String {
+        activeDeployments.count > 99 ? "99+" : "\(activeDeployments.count)"
     }
 
     @ViewBuilder
