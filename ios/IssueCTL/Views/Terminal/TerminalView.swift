@@ -6,14 +6,14 @@ struct TerminalView: View {
     let deployment: ActiveDeployment
     let port: Int
     let onEnd: () -> Void
-    private let terminalFontSize = 24
-    private let terminalPageZoom = 1.35
+    private let terminalPageZoom = TerminalDisplaySettings.defaultPageZoom
 
     @Environment(\.dismiss) private var dismiss
     @State private var showEndConfirm = false
     @State private var loadError: String?
     @State private var currentPort: Int
     @State private var terminalToken: String?
+    @State private var terminalFontSize = TerminalDisplaySettings.defaultFontSize
     @State private var isRespawning = false
     @State private var isEndingSession = false
     @State private var endSessionError: String?
@@ -84,6 +84,32 @@ struct TerminalView: View {
                         Text(deployment.runningDuration)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        Menu {
+                            Button {
+                                terminalFontSize = TerminalDisplaySettings.decreased(from: terminalFontSize)
+                            } label: {
+                                Label("Smaller Text", systemImage: "minus.magnifyingglass")
+                            }
+                            .disabled(terminalFontSize <= TerminalDisplaySettings.minimumFontSize)
+
+                            Button {
+                                terminalFontSize = TerminalDisplaySettings.defaultFontSize
+                            } label: {
+                                Label("Default Text Size", systemImage: "textformat")
+                            }
+
+                            Button {
+                                terminalFontSize = TerminalDisplaySettings.increased(from: terminalFontSize)
+                            } label: {
+                                Label("Larger Text", systemImage: "plus.magnifyingglass")
+                            }
+                            .disabled(terminalFontSize >= TerminalDisplaySettings.maximumFontSize)
+                        } label: {
+                            Image(systemName: "textformat.size")
+                        }
+                        .accessibilityLabel("Terminal text size")
+                        .accessibilityIdentifier("terminal-text-size-menu")
+
                         Button(role: .destructive) {
                             showEndConfirm = true
                         } label: {
@@ -187,6 +213,26 @@ struct TerminalView: View {
             loadError = error.localizedDescription
         }
         isRespawning = false
+    }
+}
+
+struct TerminalDisplaySettings {
+    static let minimumFontSize = 22
+    static let maximumFontSize = 34
+    static let defaultFontSize = 28
+    static let step = 2
+    static let defaultPageZoom = 1.45
+
+    static func clampedFontSize(_ value: Int) -> Int {
+        min(max(value, minimumFontSize), maximumFontSize)
+    }
+
+    static func increased(from value: Int) -> Int {
+        clampedFontSize(value + step)
+    }
+
+    static func decreased(from value: Int) -> Int {
+        clampedFontSize(value - step)
     }
 }
 
