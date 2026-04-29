@@ -70,40 +70,25 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack(alignment: .bottom) {
-                VStack(spacing: 0) {
-                    AppTopBar(title: "Today", subtitle: attentionSubtitle) {
-                        IconChromeButton(
-                            systemName: "magnifyingglass",
-                            accessibilityLabel: "Search",
-                            accessibilityIdentifier: "today-search-button"
-                        ) {}
-                        IconChromeButton(
-                            systemName: "gearshape",
-                            accessibilityLabel: "Settings",
-                            accessibilityIdentifier: "today-settings-button",
-                            action: onShowSettings
-                        )
-                    }
-
-                    content
+            VStack(spacing: 0) {
+                AppTopBar(title: "Today", subtitle: attentionSubtitle) {
+                    IconChromeButton(
+                        systemName: "magnifyingglass",
+                        accessibilityLabel: "Search",
+                        accessibilityIdentifier: "today-search-button"
+                    ) {}
+                    IconChromeButton(
+                        systemName: "gearshape",
+                        accessibilityLabel: "Settings",
+                        accessibilityIdentifier: "today-settings-button",
+                        action: onShowSettings
+                    )
                 }
 
-                VStack(spacing: 8) {
-                    SessionDock(deployments: activeDeployments, action: onShowSessions)
-                    Button {
-                        showCreateSheet = true
-                    } label: {
-                        Text("Create Issue")
-                            .font(.subheadline.weight(.bold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(IssueCTLColors.action)
-                    .padding(.horizontal, 22)
-                    .accessibilityIdentifier("today-create-issue-button")
-                }
-                .padding(.bottom, 8)
+                content
+            }
+            .safeAreaInset(edge: .bottom) {
+                todayBottomActions
             }
             .navigationBarHidden(true)
             .navigationDestination(for: TodayDestination.self) { destination in
@@ -124,6 +109,25 @@ struct TodayView: View {
             .task { await load() }
             .refreshable { await load(refresh: true) }
         }
+    }
+
+    private var todayBottomActions: some View {
+        VStack(spacing: 8) {
+            SessionDock(deployments: activeDeployments, action: onShowSessions)
+            Button {
+                showCreateSheet = true
+            } label: {
+                Text("Create Issue")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(IssueCTLColors.action)
+            .contentShape(Rectangle())
+            .padding(.horizontal, 22)
+            .accessibilityIdentifier("today-create-issue-button")
+        }
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -177,7 +181,7 @@ struct TodayView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, activeDeployments.isEmpty ? 96 : 154)
+                .padding(.bottom, 16)
             }
         }
     }
