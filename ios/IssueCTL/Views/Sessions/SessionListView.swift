@@ -12,8 +12,35 @@ struct SessionListView: View {
     @State private var showCreateSheet = false
     @State private var endingDeploymentId: Int?
     @State private var navigationPath = NavigationPath()
+    @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+
+    private var filteredDeployments: [ActiveDeployment] {
+        guard !searchText.isEmpty else { return deployments }
+        let query = searchText.lowercased()
+        return deployments.filter { deployment in
+            [
+                deployment.repoFullName,
+                "#\(deployment.issueNumber)",
+                deployment.branchName,
+                deployment.ttydPort.map(String.init) ?? "starting",
+            ]
+            .compactMap { $0 }
+            .joined(separator: " ")
+            .lowercased()
+            .contains(query)
+        }
+    }
+
+    private var readyCount: Int {
+        deployments.filter { $0.ttydPort != nil }.count
+    }
+
+    private var startingCount: Int {
+        deployments.count - readyCount
+    }
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -38,6 +65,15 @@ struct SessionListView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 12) {
+                                ActiveSessionsHeader(
+                                    totalCount: deployments.count,
+                                    readyCount: readyCount,
+                                    startingCount: startingCount,
+                                    onRefresh: {
+                                        Task { await load(refresh: true) }
+                                    }
+                                )
+
                                 if let actionError {
                                     Label(actionError, systemImage: "exclamationmark.triangle")
                                         .foregroundStyle(.red)
@@ -46,7 +82,16 @@ struct SessionListView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
 
-                                ForEach(deployments) { deployment in
+                                if filteredDeployments.isEmpty {
+                                    ContentUnavailableView(
+                                        "No Matching Sessions",
+                                        systemImage: "magnifyingglass",
+                                        description: Text("Try another repo, issue number, branch, or port.")
+                                    )
+                                    .padding(.top, 18)
+                                }
+
+                                ForEach(filteredDeployments) { deployment in
                                     SessionRowView(
                                         deployment: deployment,
                                         isEnding: endingDeploymentId == deployment.id,
@@ -73,6 +118,8 @@ struct SessionListView: View {
                 sessionThumbBar
             }
             .navigationTitle("Active Sessions")
+            .searchable(text: $searchText, prompt: "Search sessions")
+            .searchFocused($isSearchFocused)
             .navigationDestination(for: IssueDestination.self) { dest in
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
@@ -144,7 +191,29 @@ struct SessionListView: View {
             .tint(IssueCTLColors.action)
             .accessibilityIdentifier("sessions-create-issue-button")
         } secondary: {
-            EmptyView()
+            HStack(spacing: 8) {
+                Button {
+                    isSearchFocused = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Search sessions")
+                .accessibilityIdentifier("sessions-search-button")
+
+                Button {
+                    Task { await load(refresh: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Refresh sessions")
+                .accessibilityIdentifier("sessions-refresh-button")
+            }
         }
         .padding(.bottom, 14)
     }
@@ -191,6 +260,71 @@ struct SessionListView: View {
             errorMessage = error.localizedDescription
         }
         endingDeploymentId = nil
+    }
+}
+
+private struct ActiveSessionsHeader: View {
+    let totalCount: Int
+    let readyCount: Int
+    let startingCount: Int
+    let onRefresh: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(totalCount) running")
+                        .font(.title3.weight(.bold))
+                    Text("Re-enter terminals without losing active Claude Code work.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                Button(action: onRefresh) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Refresh sessions")
+                .accessibilityIdentifier("sessions-header-refresh-button")
+            }
+
+            HStack(spacing: 10) {
+                metric(value: "\(readyCount)", label: "ready", systemImage: "terminal")
+                metric(value: "\(startingCount)", label: "starting", systemImage: "hourglass")
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityIdentifier("sessions-command-header")
+    }
+
+    private func metric(value: String, label: String, systemImage: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.caption.weight(.semibold))
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IssueCTLColors.elevatedBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

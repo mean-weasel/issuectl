@@ -136,18 +136,30 @@ struct TodayView: View {
     private var todayBottomActions: some View {
         VStack(spacing: 8) {
             SessionDock(deployments: activeDeployments, action: onShowSessions)
-            Button {
-                showCreateSheet = true
-            } label: {
-                Text("Create Issue")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
+            ThumbActionBar {
+                Button {
+                    showCreateSheet = true
+                } label: {
+                    Label("Create Issue", systemImage: "plus")
+                        .font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(IssueCTLColors.action)
+                .contentShape(Rectangle())
+                .accessibilityIdentifier("today-create-issue-button")
+            } secondary: {
+                Button {
+                    showSearchSheet = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Search")
+                .accessibilityIdentifier("today-bottom-search-button")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(IssueCTLColors.action)
-            .contentShape(Rectangle())
-            .padding(.horizontal, 22)
-            .accessibilityIdentifier("today-create-issue-button")
         }
         .padding(.bottom, 8)
     }

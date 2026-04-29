@@ -29,6 +29,7 @@ struct PRListView: View {
     private let pageSize = 15
     @State private var displayLimit = 15
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
 
@@ -237,31 +238,56 @@ struct PRListView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search pull requests")
+        .searchFocused($isSearchFocused)
     }
 
     private var pullRequestThumbBar: some View {
         ThumbActionBar {
             Button {
-                showQuickActionsSheet = true
+                showCreateSheet = true
             } label: {
-                Label("Quick Actions", systemImage: "bolt.fill")
+                Label("Create Issue", systemImage: "plus")
                     .font(.subheadline.weight(.bold))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .tint(IssueCTLColors.action)
-            .accessibilityIdentifier("prs-quick-actions-button")
+            .accessibilityIdentifier("prs-create-issue-button")
         } secondary: {
-            Button {
-                showFiltersSheet = true
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 44, height: 36)
+            HStack(spacing: 8) {
+                Button {
+                    isSearchFocused = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Search pull requests")
+                .accessibilityIdentifier("prs-search-button")
+
+                Button {
+                    showFiltersSheet = true
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Pull request filters")
+                .accessibilityIdentifier("prs-filter-button")
+
+                Button {
+                    showQuickActionsSheet = true
+                } label: {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Pull request quick actions")
+                .accessibilityIdentifier("prs-quick-actions-button")
             }
-            .buttonStyle(.bordered)
-            .accessibilityLabel("Pull request filters")
-            .accessibilityIdentifier("prs-filter-button")
         }
         .padding(.bottom, 4)
     }

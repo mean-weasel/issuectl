@@ -38,14 +38,19 @@ final class IssueCTLUITests: XCTestCase {
 
         app.buttons["issues-tab"].tap()
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
+        assertElement("issues-search-button", existsIn: app)
         assertElement("issues-filter-button", existsIn: app)
 
         app.buttons["prs-tab"].tap()
+        assertElement("prs-create-issue-button", existsIn: app, timeout: 5)
+        assertElement("prs-search-button", existsIn: app)
         assertElement("prs-quick-actions-button", existsIn: app, timeout: 5)
         assertElement("prs-filter-button", existsIn: app)
 
         app.buttons["active-tab"].tap()
         assertElement("sessions-create-issue-button", existsIn: app, timeout: 5)
+        assertElement("sessions-search-button", existsIn: app)
+        assertElement("sessions-refresh-button", existsIn: app)
     }
 
     func testLaunchingIssueCanBeReenteredFromActiveSessions() {
@@ -66,6 +71,7 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
 
         app.buttons["active-tab"].tap()
+        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         element("session-reenter-terminal-9001", in: app).tap()
 
