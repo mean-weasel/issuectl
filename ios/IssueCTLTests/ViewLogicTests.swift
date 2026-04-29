@@ -420,6 +420,54 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(todayReviewPulls(pulls).map(\.number), [3, 2])
     }
 
+    func testTodaySearchMatchesTitleBodyRepoAndNumber() {
+        XCTAssertTrue(todayMatchesSearchQuery(
+            query: "login",
+            title: "Fix login bug",
+            body: nil,
+            repoFullName: "org/alpha",
+            number: 42
+        ))
+        XCTAssertTrue(todayMatchesSearchQuery(
+            query: "oauth",
+            title: "Fix login bug",
+            body: "Handle OAuth redirect failures",
+            repoFullName: "org/alpha",
+            number: 42
+        ))
+        XCTAssertTrue(todayMatchesSearchQuery(
+            query: "org/alpha",
+            title: "Fix login bug",
+            body: nil,
+            repoFullName: "org/alpha",
+            number: 42
+        ))
+        XCTAssertTrue(todayMatchesSearchQuery(
+            query: "#42",
+            title: "Fix login bug",
+            body: nil,
+            repoFullName: "org/alpha",
+            number: 42
+        ))
+        XCTAssertFalse(todayMatchesSearchQuery(
+            query: "billing",
+            title: "Fix login bug",
+            body: nil,
+            repoFullName: "org/alpha",
+            number: 42
+        ))
+    }
+
+    func testTodaySearchEmptyQueryShowsDefaultResults() {
+        XCTAssertTrue(todayMatchesSearchQuery(
+            query: "  ",
+            title: "Fix login bug",
+            body: nil,
+            repoFullName: "org/alpha",
+            number: 42
+        ))
+    }
+
     // MARK: - Running Deployment Helpers
 
     func testRunningDeploymentMatchesActiveIssueSessionByRepoAndIssue() {

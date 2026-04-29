@@ -81,6 +81,29 @@ func todayReviewPulls(_ pulls: [GitHubPull]) -> [GitHubPull] {
         .sorted { todayPullSortIndex($0) < todayPullSortIndex($1) }
 }
 
+func todayMatchesSearchQuery(
+    query: String,
+    title: String,
+    body: String?,
+    repoFullName: String?,
+    number: Int
+) -> Bool {
+    let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard !normalizedQuery.isEmpty else { return true }
+
+    let searchableText = [
+        title,
+        body ?? "",
+        repoFullName ?? "",
+        "#\(number)",
+        "\(number)",
+    ]
+    .joined(separator: " ")
+    .lowercased()
+
+    return searchableText.contains(normalizedQuery)
+}
+
 func todayPullSortIndex(_ pull: GitHubPull) -> Int {
     switch pull.checksStatus {
     case "failure": 0
