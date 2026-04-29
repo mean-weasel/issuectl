@@ -1,7 +1,6 @@
 import Network
 import XCTest
 
-@MainActor
 final class IssueCTLUITests: XCTestCase {
     private var server: MockIssueCTLServer!
 
@@ -16,6 +15,7 @@ final class IssueCTLUITests: XCTestCase {
         server = nil
     }
 
+    @MainActor
     func testCommandCenterActionsAreReachableFromTabs() {
         let app = launchApp()
 
@@ -40,6 +40,11 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issue-title-field", existsIn: app, timeout: 3)
         app.buttons["cancel-button"].tap()
         waitForNonexistence("issue-title-field", in: app)
+    }
+
+    @MainActor
+    func testListToolbarActionsAreReachableFromTabs() {
+        let app = launchApp()
 
         app.buttons["issues-tab"].tap()
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
@@ -58,6 +63,7 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("sessions-refresh-button", existsIn: app)
     }
 
+    @MainActor
     func testTodayActiveSessionsThumbButtonOpensSessions() {
         server.seedActiveDeployment()
         let app = launchApp()
@@ -69,6 +75,7 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("session-reenter-terminal-9001", existsIn: app)
     }
 
+    @MainActor
     func testLaunchingIssueCanBeReenteredFromActiveSessions() {
         let app = launchApp()
 
@@ -94,6 +101,26 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    @MainActor
+    func testRunningIssueDetailShowsReentryInsteadOfLaunch() {
+        server.seedActiveDeployment()
+        let app = launchApp()
+
+        app.buttons["issues-tab"].tap()
+        let runningSegment = app.buttons.containing(NSPredicate(format: "label == %@", "Running, 1")).firstMatch
+        XCTAssertTrue(runningSegment.waitForExistence(timeout: 5), app.debugDescription)
+        runningSegment.tap()
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
+        XCTAssertFalse(element("issue-detail-launch-button", in: app).exists, app.debugDescription)
+
+        element("issue-detail-reenter-terminal-button", in: app).tap()
+        XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    @MainActor
     func testUserProfileFailureDoesNotBlockPrimaryLists() {
         server.failUserProfile = true
         let app = launchApp()
@@ -107,6 +134,7 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
     }
 
+    @MainActor
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["ISSUECTL_SERVER_URL"] = server.baseURL.absoluteString
@@ -116,10 +144,12 @@ final class IssueCTLUITests: XCTestCase {
         return app
     }
 
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
 
+    @MainActor
     private func assertElement(
         _ identifier: String,
         existsIn app: XCUIApplication,
@@ -132,6 +162,7 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(exists, "Missing \(identifier)\n\(app.debugDescription)", file: file, line: line)
     }
 
+    @MainActor
     private func waitForNonexistence(
         _ identifier: String,
         in app: XCUIApplication,
