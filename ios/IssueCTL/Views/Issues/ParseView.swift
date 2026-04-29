@@ -58,11 +58,11 @@ struct ParseView: View {
                 TextEditor(text: $input)
                     .frame(minHeight: 200)
                     .padding(8)
-                    .background(Color(.systemGray6))
+                    .background(IssueCTLColors.elevatedBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(Color.secondary.opacity(0.2))
+                            .strokeBorder(IssueCTLColors.hairline)
                     )
 
                 Text("\(input.count) / 8192")
@@ -84,8 +84,12 @@ struct ParseView: View {
                         .buttonStyle(.bordered)
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(IssueCTLColors.elevatedBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+                }
             }
 
             if let errorMessage {
@@ -219,8 +223,12 @@ struct ParseView: View {
                     }
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(IssueCTLColors.elevatedBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+                }
             }
 
             Spacer()

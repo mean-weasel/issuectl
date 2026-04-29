@@ -61,11 +61,11 @@ private struct LabelChip: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? labelColor.opacity(0.2) : Color(.systemGray6))
+                    .fill(isSelected ? labelColor.opacity(0.2) : IssueCTLColors.elevatedBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(isSelected ? labelColor : Color.clear, lineWidth: 1.5)
+                    .strokeBorder(isSelected ? labelColor : IssueCTLColors.hairline, lineWidth: isSelected ? 1.5 : 0.5)
             )
         }
         .buttonStyle(.plain)
