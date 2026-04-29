@@ -56,6 +56,7 @@ final class IssueCTLUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 8), app.debugDescription)
         app.buttons["terminal-done-button"].tap()
+        assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
 
         app.buttons["active-tab"].tap()
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
@@ -184,7 +185,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             body = [
                 "issue": issue,
                 "comments": [],
-                "deployments": [],
+                "deployments": activeDeployments,
                 "linkedPRs": [],
                 "referencedFiles": [],
                 "fromCache": false,

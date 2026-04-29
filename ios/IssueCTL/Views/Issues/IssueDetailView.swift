@@ -79,7 +79,9 @@ struct IssueDetailView: View {
         .navigationDestination(for: PRDestination.self) { dest in
             PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
         }
-        .sheet(item: $activeDetailSheet) { sheet in
+        .sheet(item: $activeDetailSheet, onDismiss: {
+            Task { await load(refresh: true) }
+        }) { sheet in
             switch sheet {
             case .reassign(let detail):
                 ReassignSheet(

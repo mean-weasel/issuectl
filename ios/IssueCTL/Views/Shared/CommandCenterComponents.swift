@@ -69,6 +69,8 @@ struct IconChromeButton: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
                 }
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel ?? systemName)
