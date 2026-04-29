@@ -78,6 +78,30 @@ struct IconChromeButton: View {
     }
 }
 
+struct ThumbIconButton: View {
+    let systemName: String
+    let accessibilityLabel: String
+    var accessibilityIdentifier: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(IssueCTLColors.action)
+                .frame(width: 44, height: 36)
+                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(IssueCTLColors.materialStroke, lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
+    }
+}
+
 struct StatusMetricCard: View {
     let value: String
     let label: String

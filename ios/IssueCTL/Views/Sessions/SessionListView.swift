@@ -192,27 +192,21 @@ struct SessionListView: View {
             .accessibilityIdentifier("sessions-create-issue-button")
         } secondary: {
             HStack(spacing: 8) {
-                Button {
+                ThumbIconButton(
+                    systemName: "magnifyingglass",
+                    accessibilityLabel: "Search sessions",
+                    accessibilityIdentifier: "sessions-search-button"
+                ) {
                     isSearchFocused = true
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Search sessions")
-                .accessibilityIdentifier("sessions-search-button")
 
-                Button {
+                ThumbIconButton(
+                    systemName: "arrow.clockwise",
+                    accessibilityLabel: "Refresh sessions",
+                    accessibilityIdentifier: "sessions-refresh-button"
+                ) {
                     Task { await load(refresh: true) }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Refresh sessions")
-                .accessibilityIdentifier("sessions-refresh-button")
             }
         }
         .padding(.bottom, 14)

@@ -255,38 +255,29 @@ struct PRListView: View {
             .accessibilityIdentifier("prs-create-issue-button")
         } secondary: {
             HStack(spacing: 8) {
-                Button {
+                ThumbIconButton(
+                    systemName: "magnifyingglass",
+                    accessibilityLabel: "Search pull requests",
+                    accessibilityIdentifier: "prs-search-button"
+                ) {
                     isSearchFocused = true
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Search pull requests")
-                .accessibilityIdentifier("prs-search-button")
 
-                Button {
+                ThumbIconButton(
+                    systemName: "line.3.horizontal.decrease",
+                    accessibilityLabel: "Pull request filters",
+                    accessibilityIdentifier: "prs-filter-button"
+                ) {
                     showFiltersSheet = true
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Pull request filters")
-                .accessibilityIdentifier("prs-filter-button")
 
-                Button {
+                ThumbIconButton(
+                    systemName: "bolt.fill",
+                    accessibilityLabel: "Pull request quick actions",
+                    accessibilityIdentifier: "prs-quick-actions-button"
+                ) {
                     showQuickActionsSheet = true
-                } label: {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Pull request quick actions")
-                .accessibilityIdentifier("prs-quick-actions-button")
             }
         }
         .padding(.bottom, 4)

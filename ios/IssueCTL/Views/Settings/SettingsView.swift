@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(APIClient.self) private var api
+    @Environment(\.dismiss) private var dismiss
     @State private var showDisconnectConfirm = false
     @State private var showAddRepo = false
     @State private var repos: [Repo] = []
@@ -25,6 +26,15 @@ struct SettingsView: View {
                 disconnectSection
             }
             .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityIdentifier("settings-done-button")
+                }
+            }
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
                 case .advancedSettings:
