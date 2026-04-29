@@ -82,19 +82,39 @@ struct ThumbIconButton: View {
     let systemName: String
     let accessibilityLabel: String
     var accessibilityIdentifier: String?
+    var badge: String?
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(IssueCTLColors.action)
-                .frame(width: 44, height: 36)
-                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(IssueCTLColors.materialStroke, lineWidth: 1)
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: systemName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(IssueCTLColors.action)
+                    .frame(width: 44, height: 36)
+                    .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(IssueCTLColors.materialStroke, lineWidth: 1)
+                    }
+
+                if let badge {
+                    Text(badge)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .padding(.horizontal, 3)
+                        .background(Color.green, in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(Color(.systemBackground), lineWidth: 1.5)
+                        }
+                        .offset(x: 5, y: -5)
+                        .accessibilityHidden(true)
                 }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
