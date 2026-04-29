@@ -90,8 +90,7 @@ struct TodayView: View {
                 }
 
                 content
-            }
-            .safeAreaInset(edge: .bottom) {
+
                 todayBottomActions
             }
             .navigationBarHidden(true)
@@ -134,21 +133,29 @@ struct TodayView: View {
     }
 
     private var todayBottomActions: some View {
-        VStack(spacing: 8) {
-            SessionDock(deployments: activeDeployments, action: onShowSessions)
-            ThumbActionBar {
-                Button {
-                    showCreateSheet = true
-                } label: {
-                    Label("Create Issue", systemImage: "plus")
-                        .font(.subheadline.weight(.bold))
-                        .frame(maxWidth: .infinity)
+        ThumbActionBar {
+            Button {
+                showCreateSheet = true
+            } label: {
+                Label("Create Issue", systemImage: "plus")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(IssueCTLColors.action)
+            .contentShape(Rectangle())
+            .accessibilityIdentifier("today-create-issue-button")
+        } secondary: {
+            HStack(spacing: 8) {
+                if !activeDeployments.isEmpty {
+                    ThumbIconButton(
+                        systemName: "terminal",
+                        accessibilityLabel: "\(activeDeployments.count) active sessions",
+                        accessibilityIdentifier: "today-active-sessions-button",
+                        action: onShowSessions
+                    )
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(IssueCTLColors.action)
-                .contentShape(Rectangle())
-                .accessibilityIdentifier("today-create-issue-button")
-            } secondary: {
+
                 ThumbIconButton(
                     systemName: "magnifyingglass",
                     accessibilityLabel: "Search",

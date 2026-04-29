@@ -14,6 +14,7 @@ struct SessionRowView: View {
                     .frame(width: 8, height: 8)
                 Text(deployment.repoFullName)
                     .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
                 Text("#\(deployment.issueNumber)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -42,20 +43,21 @@ struct SessionRowView: View {
             }
 
             HStack(spacing: 8) {
-                Button(action: onOpen) {
-                    Label(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal", systemImage: "terminal")
-                        .font(.subheadline.weight(.bold))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(IssueCTLColors.action)
-                .disabled(deployment.ttydPort == nil)
-                .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
+                Label(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal", systemImage: "terminal")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .background(IssueCTLColors.action.opacity(deployment.ttydPort == nil ? 0.45 : 1), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
 
                 Button(action: onControls) {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 40)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.bordered)
                 .disabled(isEnding)
@@ -68,6 +70,12 @@ struct SessionRowView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18)
                 .stroke(Color.green.opacity(0.22), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if deployment.ttydPort != nil {
+                onOpen()
+            }
         }
     }
 
