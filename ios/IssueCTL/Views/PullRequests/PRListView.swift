@@ -264,7 +264,6 @@ struct PRListView: View {
             .accessibilityIdentifier("prs-filter-button")
         }
         .padding(.bottom, 4)
-        .accessibilityIdentifier("prs-thumb-bar")
     }
 
     // MARK: - List

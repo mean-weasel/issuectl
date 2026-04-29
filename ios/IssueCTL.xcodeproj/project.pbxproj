@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A00000000000000000000001 /* IssueCTLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* IssueCTLUITests.swift */; };
 		0ABCC3FB2E10C1BEA6AA4BFD /* IssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */; };
 		0B585381530245167B82950D /* QuickCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */; };
 		0F2044833E18AACECEA0C048 /* RepoFilterHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41967EFA522B03BFB6FDADA7 /* RepoFilterHelpers.swift */; };
@@ -85,6 +86,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		A00000000000000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EF5E413184FCD5C1D397759F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 791AFA96580A5FB3D384B678;
+			remoteInfo = IssueCTL;
+		};
 		CC2BD2F35AE9F4F4FD860CF7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = EF5E413184FCD5C1D397759F /* Project object */;
@@ -96,6 +104,8 @@
 
 /* Begin PBXFileReference section */
 		0075145AA41F584D8D58036B /* IssueCTLTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = IssueCTLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000002 /* IssueCTLUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = IssueCTLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000003 /* IssueCTLUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCTLUITests.swift; sourceTree = "<group>"; };
 		0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepoFilterChips.swift; sourceTree = "<group>"; };
 		093FBA8D5D66DBDDCAB85BC4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
@@ -315,8 +325,17 @@
 			children = (
 				AB6764D0DF2A55EB3796889D /* IssueCTL.app */,
 				0075145AA41F584D8D58036B /* IssueCTLTests.xctest */,
+				A00000000000000000000002 /* IssueCTLUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000004 /* IssueCTLUITests */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000003 /* IssueCTLUITests.swift */,
+			);
+			path = IssueCTLUITests;
 			sourceTree = "<group>";
 		};
 		91076B7D050263F986B5E4E9 = {
@@ -324,6 +343,7 @@
 			children = (
 				D5E657213913F2B68B41C505 /* IssueCTL */,
 				679803C9E7560FAB9A36EE85 /* IssueCTLTests */,
+				A00000000000000000000004 /* IssueCTLUITests */,
 				7B6751999C63C970469632F3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -413,6 +433,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A00000000000000000000005 /* IssueCTLUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0000000000000000000000B /* Build configuration list for PBXNativeTarget "IssueCTLUITests" */;
+			buildPhases = (
+				A00000000000000000000006 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A00000000000000000000007 /* PBXTargetDependency */,
+			);
+			name = IssueCTLUITests;
+			packageProductDependencies = (
+			);
+			productName = IssueCTLUITests;
+			productReference = A00000000000000000000002 /* IssueCTLUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		74A5540D3FF8CC05F0E56974 /* IssueCTLTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 188108183A585BD066C9C064 /* Build configuration list for PBXNativeTarget "IssueCTLTests" */;
@@ -462,6 +500,11 @@
 						DevelopmentTeam = B3A6AN2HA4;
 						ProvisioningStyle = Automatic;
 					};
+					A00000000000000000000005 = {
+						CreatedOnToolsVersion = 26.4.1;
+						DevelopmentTeam = B3A6AN2HA4;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = DA7D0782F66BD4E6E2A975A4 /* Build configuration list for PBXProject "IssueCTL" */;
@@ -480,6 +523,7 @@
 			targets = (
 				791AFA96580A5FB3D384B678 /* IssueCTL */,
 				74A5540D3FF8CC05F0E56974 /* IssueCTLTests */,
+				A00000000000000000000005 /* IssueCTLUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -508,6 +552,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000001 /* IssueCTLUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0CFDDAD5B48B63CD070021C8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -600,6 +652,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A00000000000000000000007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 791AFA96580A5FB3D384B678 /* IssueCTL */;
+			targetProxy = A00000000000000000000008 /* PBXContainerItemProxy */;
+		};
 		B0357ED7EF8E8EA8C2BBE9A9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 791AFA96580A5FB3D384B678 /* IssueCTL */;
@@ -608,6 +665,48 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A00000000000000000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.issuectl.ios.uitests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = IssueCTL;
+			};
+			name = Debug;
+		};
+		A0000000000000000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.issuectl.ios.uitests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = IssueCTL;
+			};
+			name = Release;
+		};
 		3EAB58CA558187F39D825331 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -828,6 +927,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A0000000000000000000000B /* Build configuration list for PBXNativeTarget "IssueCTLUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000009 /* Debug */,
+				A0000000000000000000000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		188108183A585BD066C9C064 /* Build configuration list for PBXNativeTarget "IssueCTLTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
