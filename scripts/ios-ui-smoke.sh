@@ -17,6 +17,12 @@ else
       | sed -n 's/.*id:\([^,}]*\).*/\1/p'
   )"
   if [ -z "$destination_id" ]; then
+    destination_id="$(
+      xcrun simctl list devices available 2>/dev/null \
+        | awk -F '[()]' '/iPhone/ { print $2; exit }'
+    )"
+  fi
+  if [ -z "$destination_id" ]; then
     echo "No available iPhone simulator destination found for $SCHEME" >&2
     exit 70
   fi
