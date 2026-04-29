@@ -94,6 +94,24 @@ final class IssueCTLUITests: XCTestCase {
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testRunningIssueDetailShowsReentryInsteadOfLaunch() {
+        server.seedActiveDeployment()
+        let app = launchApp()
+
+        app.buttons["issues-tab"].tap()
+        let runningSegment = app.buttons.containing(NSPredicate(format: "label == %@", "Running, 1")).firstMatch
+        XCTAssertTrue(runningSegment.waitForExistence(timeout: 5), app.debugDescription)
+        runningSegment.tap()
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
+        XCTAssertFalse(element("issue-detail-launch-button", in: app).exists, app.debugDescription)
+
+        element("issue-detail-reenter-terminal-button", in: app).tap()
+        XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testUserProfileFailureDoesNotBlockPrimaryLists() {
         server.failUserProfile = true
         let app = launchApp()
