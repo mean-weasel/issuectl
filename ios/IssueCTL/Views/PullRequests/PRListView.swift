@@ -362,7 +362,7 @@ struct PRListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
-                failures.append("user profile (\(error.localizedDescription))")
+                currentUserLogin = nil
             }
 
             let repoResults = await withTaskGroup(of: (String, String, [GitHubPull]?, String?, Error?).self) { group in

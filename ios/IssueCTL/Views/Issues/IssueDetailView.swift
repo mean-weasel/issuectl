@@ -554,7 +554,7 @@ struct IssueDetailView: View {
             var failures: [String] = []
             switch await userResult {
             case .success(let user): currentUserLogin = user.login
-            case .failure(let error): failures.append("user profile (\(error.localizedDescription))")
+            case .failure: currentUserLogin = nil
             }
             switch await priorityResult {
             case .success(let priority): currentPriority = priority

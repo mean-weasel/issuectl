@@ -568,7 +568,7 @@ struct IssueListView: View {
                 userFetchFailed = false
             } catch {
                 userFetchFailed = true
-                failures.append("user profile (\(error.localizedDescription))")
+                currentUserLogin = nil
             }
 
             // Snapshot repos to a local Sendable value so child tasks don't
