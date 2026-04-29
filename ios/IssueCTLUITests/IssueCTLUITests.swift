@@ -40,6 +40,11 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issue-title-field", existsIn: app, timeout: 3)
         app.buttons["cancel-button"].tap()
         waitForNonexistence("issue-title-field", in: app)
+    }
+
+    @MainActor
+    func testListToolbarActionsAreReachableFromTabs() {
+        let app = launchApp()
 
         app.buttons["issues-tab"].tap()
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)

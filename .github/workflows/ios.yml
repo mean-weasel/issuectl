@@ -41,6 +41,4 @@ jobs:
             | xcpretty && exit ${PIPESTATUS[0]}
 
       - name: Run focused UI smoke tests
-        env:
-          IOS_DESTINATION: platform=iOS Simulator,name=iPhone 16
         run: ./scripts/ios-ui-smoke.sh

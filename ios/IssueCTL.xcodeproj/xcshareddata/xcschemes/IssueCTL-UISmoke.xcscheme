@@ -21,6 +21,20 @@
                ReferencedContainer = "container:IssueCTL.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A00000000000000000000005"
+               BuildableName = "IssueCTLUITests.xctest"
+               BlueprintName = "IssueCTLUITests"
+               ReferencedContainer = "container:IssueCTL.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

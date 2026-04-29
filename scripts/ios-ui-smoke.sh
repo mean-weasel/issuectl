@@ -7,10 +7,25 @@ cd "$ROOT_DIR"
 PROJECT="${IOS_PROJECT:-ios/IssueCTL.xcodeproj}"
 SCHEME="${IOS_SCHEME:-IssueCTL-UISmoke}"
 CONFIGURATION="${IOS_CONFIGURATION:-Debug}"
-DESTINATION="${IOS_DESTINATION:-platform=iOS Simulator,name=iPhone 16}"
+
+if [ -n "${IOS_DESTINATION:-}" ]; then
+  DESTINATION="$IOS_DESTINATION"
+else
+  destination_id="$(
+    xcodebuild -project "$PROJECT" -scheme "$SCHEME" -showdestinations 2>/dev/null \
+      | awk '/platform:iOS Simulator/ && /name:iPhone/ { print; exit }' \
+      | sed -n 's/.*id:\([^,}]*\).*/\1/p'
+  )"
+  if [ -z "$destination_id" ]; then
+    echo "No available iPhone simulator destination found for $SCHEME" >&2
+    exit 70
+  fi
+  DESTINATION="platform=iOS Simulator,id=$destination_id"
+fi
 
 TESTS=(
   "IssueCTLUITests/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
+  "IssueCTLUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
   "IssueCTLUITests/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
   "IssueCTLUITests/IssueCTLUITests/testRunningIssueDetailShowsReentryInsteadOfLaunch"
