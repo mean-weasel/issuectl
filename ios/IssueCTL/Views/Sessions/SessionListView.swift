@@ -59,7 +59,6 @@ struct SessionListView: View {
                                             sessionControlsTarget = deployment
                                         }
                                     )
-                                    .accessibilityIdentifier("session-row-\(deployment.id)")
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -148,7 +147,6 @@ struct SessionListView: View {
             EmptyView()
         }
         .padding(.bottom, 14)
-        .accessibilityIdentifier("sessions-thumb-bar")
     }
 
     private func load(refresh: Bool = false) async {

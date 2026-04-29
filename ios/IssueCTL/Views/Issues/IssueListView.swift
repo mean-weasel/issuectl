@@ -325,7 +325,6 @@ struct IssueListView: View {
             .accessibilityIdentifier("issues-filter-button")
         }
         .padding(.bottom, 4)
-        .accessibilityIdentifier("issues-thumb-bar")
     }
 
     // MARK: - Lists
