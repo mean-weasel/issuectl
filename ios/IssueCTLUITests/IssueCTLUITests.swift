@@ -58,6 +58,17 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("sessions-refresh-button", existsIn: app)
     }
 
+    func testTodayActiveSessionsThumbButtonOpensSessions() {
+        server.seedActiveDeployment()
+        let app = launchApp()
+
+        assertElement("today-active-sessions-button", existsIn: app, timeout: 8)
+        element("today-active-sessions-button", in: app).tap()
+
+        assertElement("sessions-command-header", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9001", existsIn: app)
+    }
+
     func testLaunchingIssueCanBeReenteredFromActiveSessions() {
         let app = launchApp()
 
@@ -178,6 +189,10 @@ private final class MockIssueCTLServer: @unchecked Sendable {
 
     func stop() {
         listener.cancel()
+    }
+
+    func seedActiveDeployment() {
+        activeDeployments = [deployment]
     }
 
     private func handle(_ connection: NWConnection) {

@@ -215,46 +215,6 @@ struct AttentionChip: Identifiable {
     }
 }
 
-struct SessionDock: View {
-    let deployments: [ActiveDeployment]
-    let action: () -> Void
-
-    var body: some View {
-        if !deployments.isEmpty {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(.green)
-                    .frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(deployments.count) session\(deployments.count == 1 ? "" : "s") running")
-                        .font(.caption.weight(.semibold))
-                    Text(summary)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Button("Resume", action: action)
-                    .font(.caption.weight(.bold))
-                    .buttonStyle(.borderedProminent)
-                    .tint(IssueCTLColors.action)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.green.opacity(0.28), lineWidth: 1)
-            }
-            .padding(.horizontal, 14)
-        }
-    }
-
-    private var summary: String {
-        deployments.prefix(2).map { "#\($0.issueNumber) \($0.runningDuration)" }.joined(separator: " - ")
-    }
-}
-
 struct ThumbActionBar<Primary: View, Secondary: View>: View {
     @ViewBuilder var primary: () -> Primary
     @ViewBuilder var secondary: () -> Secondary

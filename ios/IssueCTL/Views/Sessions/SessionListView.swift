@@ -108,13 +108,14 @@ struct SessionListView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
-                            .padding(.bottom, 16)
+                            .padding(.bottom, 116)
                         }
                         .refreshable { await load(refresh: true) }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+            }
+            .safeAreaInset(edge: .bottom) {
                 sessionThumbBar
             }
             .navigationTitle("Active Sessions")
