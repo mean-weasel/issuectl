@@ -109,19 +109,13 @@ struct LaunchView: View {
                     }
 
                     if let existingDeployment {
-                        Button {
-                            openExistingTerminal(existingDeployment)
-                        } label: {
-                            Label("Re-enter Running Terminal", systemImage: "terminal")
-                                .font(.subheadline.weight(.bold))
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(IssueCTLColors.action)
-                        .disabled(existingDeployment.ttydPort == nil)
-                        .accessibilityIdentifier("launch-reenter-terminal-button")
+                        Text(existingDeployment.ttydPort == nil ? "Terminal is starting." : "A terminal is already running for this issue.")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
                     } else {
-                        launchButton
+                        Text("Review the launch settings, then start Claude Code.")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
                     }
 
                     Text(recommendedSummary)
@@ -222,6 +216,9 @@ struct LaunchView: View {
         }
         .navigationTitle("Launch")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            launchBottomBar
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") { dismiss() }
@@ -259,23 +256,70 @@ struct LaunchView: View {
         }
     }
 
-    private var launchButton: some View {
-        Button {
-            Task { await launchSession() }
-        } label: {
-            if isLaunching || isCheckingActiveSession {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
+    @ViewBuilder
+    private var launchBottomBar: some View {
+        VStack(spacing: 8) {
+            if let existingDeployment {
+                launchActionButton(
+                    title: existingDeployment.ttydPort == nil ? "Terminal Starting" : "Re-enter Running Terminal",
+                    systemImage: "terminal",
+                    isDisabled: existingDeployment.ttydPort == nil
+                ) {
+                    openExistingTerminal(existingDeployment)
+                }
+                .accessibilityIdentifier("launch-reenter-terminal-button")
             } else {
-                Label("Launch with Recommended Settings", systemImage: "play.fill")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
+                launchButton
             }
         }
-        .buttonStyle(.borderedProminent)
-        .tint(IssueCTLColors.action)
-        .disabled(branchName.isEmpty || isLaunching || isCheckingActiveSession)
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .background(.regularMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+        }
+    }
+
+    private var launchButton: some View {
+        launchActionButton(
+            title: "Launch with Recommended Settings",
+            systemImage: "play.fill",
+            isDisabled: branchName.isEmpty || isLaunching || isCheckingActiveSession
+        ) {
+            Task { await launchSession() }
+        }
         .accessibilityIdentifier("launch-recommended-button")
+    }
+
+    private func launchActionButton(
+        title: String,
+        systemImage: String,
+        isDisabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if isLaunching || isCheckingActiveSession {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.subheadline.weight(.bold))
+                }
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(IssueCTLColors.action.opacity(isDisabled ? 0.45 : 1), in: RoundedRectangle(cornerRadius: 16))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 
     private var recommendedSummary: String {
