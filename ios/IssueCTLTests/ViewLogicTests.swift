@@ -393,4 +393,37 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertNil(runningDeployment(for: issue, in: "org/alpha", deployments: deployments))
         XCTAssertNil(runningDeployment(owner: "org", repo: "alpha", number: 42, deployments: deployments))
     }
+
+    // MARK: - Terminal Display Settings
+
+    func testTerminalFontSizeClampsToSupportedRange() {
+        XCTAssertEqual(
+            TerminalDisplaySettings.clampedFontSize(TerminalDisplaySettings.minimumFontSize - 10),
+            TerminalDisplaySettings.minimumFontSize
+        )
+        XCTAssertEqual(
+            TerminalDisplaySettings.clampedFontSize(TerminalDisplaySettings.maximumFontSize + 10),
+            TerminalDisplaySettings.maximumFontSize
+        )
+        XCTAssertEqual(TerminalDisplaySettings.clampedFontSize(28), 28)
+    }
+
+    func testTerminalFontSizeIncreaseAndDecreaseRespectBounds() {
+        XCTAssertEqual(
+            TerminalDisplaySettings.increased(from: TerminalDisplaySettings.maximumFontSize),
+            TerminalDisplaySettings.maximumFontSize
+        )
+        XCTAssertEqual(
+            TerminalDisplaySettings.decreased(from: TerminalDisplaySettings.minimumFontSize),
+            TerminalDisplaySettings.minimumFontSize
+        )
+        XCTAssertEqual(
+            TerminalDisplaySettings.increased(from: TerminalDisplaySettings.defaultFontSize),
+            TerminalDisplaySettings.defaultFontSize + TerminalDisplaySettings.step
+        )
+        XCTAssertEqual(
+            TerminalDisplaySettings.decreased(from: TerminalDisplaySettings.defaultFontSize),
+            TerminalDisplaySettings.defaultFontSize - TerminalDisplaySettings.step
+        )
+    }
 }
