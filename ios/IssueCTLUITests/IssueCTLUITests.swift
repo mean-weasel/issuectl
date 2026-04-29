@@ -24,6 +24,11 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("today-metric-prs", existsIn: app)
         assertElement("today-metric-issues", existsIn: app)
 
+        element("today-settings-button", in: app).tap()
+        assertElement("settings-done-button", existsIn: app, timeout: 3)
+        app.buttons["settings-done-button"].tap()
+        waitForNonexistence("settings-done-button", in: app)
+
         element("today-search-button", in: app).tap()
         assertElement("today-search-field", existsIn: app, timeout: 3)
         assertElement("today-search-issue-101", existsIn: app)

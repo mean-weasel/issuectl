@@ -316,27 +316,21 @@ struct IssueListView: View {
             .accessibilityIdentifier("issues-create-issue-button")
         } secondary: {
             HStack(spacing: 8) {
-                Button {
+                ThumbIconButton(
+                    systemName: "magnifyingglass",
+                    accessibilityLabel: "Search issues",
+                    accessibilityIdentifier: "issues-search-button"
+                ) {
                     isSearchFocused = true
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Search issues")
-                .accessibilityIdentifier("issues-search-button")
 
-                Button {
+                ThumbIconButton(
+                    systemName: "line.3.horizontal.decrease",
+                    accessibilityLabel: "Issue filters",
+                    accessibilityIdentifier: "issues-filter-button"
+                ) {
                     showFiltersSheet = true
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Issue filters")
-                .accessibilityIdentifier("issues-filter-button")
             }
         }
         .padding(.bottom, 4)

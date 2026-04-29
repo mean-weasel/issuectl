@@ -149,16 +149,13 @@ struct TodayView: View {
                 .contentShape(Rectangle())
                 .accessibilityIdentifier("today-create-issue-button")
             } secondary: {
-                Button {
+                ThumbIconButton(
+                    systemName: "magnifyingglass",
+                    accessibilityLabel: "Search",
+                    accessibilityIdentifier: "today-bottom-search-button"
+                ) {
                     showSearchSheet = true
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 44, height: 36)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Search")
-                .accessibilityIdentifier("today-bottom-search-button")
             }
         }
         .padding(.bottom, 8)
