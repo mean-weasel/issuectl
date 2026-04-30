@@ -47,13 +47,11 @@ jobs:
             fi
 
             sudo xcode-select -s "$developer_dir"
-            if xcrun simctl list runtimes available | grep -q 'iOS'; then
-              echo "Selected $developer_dir"
-              exit 0
-            fi
+            echo "Selected $developer_dir"
+            exit 0
           done
 
-          echo "No Xcode installation with an available iOS Simulator runtime found" >&2
+          echo "No Xcode installation found" >&2
           exit 70
 
       - name: Show build environment
