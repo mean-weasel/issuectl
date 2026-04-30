@@ -5,6 +5,7 @@ struct TerminalView: View {
     @Environment(APIClient.self) private var api
     let deployment: ActiveDeployment
     let port: Int
+    let onClose: () -> Void
     let onEnd: () -> Void
     private let terminalPageZoom = TerminalDisplaySettings.defaultPageZoom
 
@@ -18,9 +19,10 @@ struct TerminalView: View {
     @State private var isEndingSession = false
     @State private var endSessionError: String?
 
-    init(deployment: ActiveDeployment, port: Int, onEnd: @escaping () -> Void) {
+    init(deployment: ActiveDeployment, port: Int, onClose: @escaping () -> Void = {}, onEnd: @escaping () -> Void) {
         self.deployment = deployment
         self.port = port
+        self.onClose = onClose
         self.onEnd = onEnd
         _currentPort = State(initialValue: port)
     }
@@ -76,7 +78,10 @@ struct TerminalView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        onClose()
+                        dismiss()
+                    }
                         .accessibilityIdentifier("terminal-done-button")
                 }
                 ToolbarItem(placement: .topBarTrailing) {

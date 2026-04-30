@@ -58,5 +58,5 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
 
-      - name: Run focused UI smoke tests
-        run: ./scripts/ios-ui-smoke.sh
+      - name: Run full UI smoke workflow suite
+        run: IOS_UI_SMOKE_PROFILE=full ./scripts/ios-ui-smoke.sh

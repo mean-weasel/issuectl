@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 PROJECT="${IOS_PROJECT:-ios/IssueCTL.xcodeproj}"
 SCHEME="${IOS_SCHEME:-IssueCTL-UISmoke}"
 CONFIGURATION="${IOS_CONFIGURATION:-Debug}"
+PROFILE="${IOS_UI_SMOKE_PROFILE:-full}"
 
 if [ -n "${IOS_DESTINATION:-}" ]; then
   DESTINATION="$IOS_DESTINATION"
@@ -29,13 +30,31 @@ else
   DESTINATION="platform=iOS Simulator,id=$destination_id"
 fi
 
-TESTS=(
+FAST_TESTS=(
+  "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+)
+
+FULL_TESTS=(
   "IssueCTLUITests/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
   "IssueCTLUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
   "IssueCTLUITests/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+  "IssueCTLUITests/IssueCTLUITests/testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions"
   "IssueCTLUITests/IssueCTLUITests/testRunningIssueDetailShowsReentryInsteadOfLaunch"
 )
+
+case "$PROFILE" in
+  fast)
+    TESTS=("${FAST_TESTS[@]}")
+    ;;
+  full)
+    TESTS=("${FULL_TESTS[@]}")
+    ;;
+  *)
+    echo "Unknown IOS_UI_SMOKE_PROFILE '$PROFILE'. Expected 'fast' or 'full'." >&2
+    exit 64
+    ;;
+esac
 
 args=(
   test
@@ -50,7 +69,9 @@ for test_id in "${TESTS[@]}"; do
   args+=("-only-testing:$test_id")
 done
 
-echo "Running focused iOS UI smoke tests on: $DESTINATION"
+echo "Running $PROFILE iOS UI smoke tests on: $DESTINATION"
+printf 'Selected tests:\n'
+printf '  %s\n' "${TESTS[@]}"
 
 if command -v xcpretty >/dev/null 2>&1; then
   set -o pipefail

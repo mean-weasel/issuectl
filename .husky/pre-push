@@ -14,5 +14,5 @@ if echo "$changed_files" | grep -qvE '\.(md|html|txt|json|yaml|yml)$|^docs/|^\.h
 fi
 
 if [ "${RUN_IOS_UI_SMOKE:-0}" = "1" ] && echo "$changed_files" | grep -qE '^ios/|^scripts/ios-ui-smoke\.sh$|^\.github/workflows/ios\.yml$'; then
-  pnpm ios:ui-smoke
+  pnpm ios:ui-smoke:fast
 fi

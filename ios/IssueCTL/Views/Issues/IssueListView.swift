@@ -238,11 +238,16 @@ struct IssueListView: View {
                 .presentationDetents([.fraction(0.66), .large])
                 .presentationDragIndicator(.visible)
             }
-            .fullScreenCover(item: $terminalTarget) { deployment in
+            .fullScreenCover(item: $terminalTarget, onDismiss: {
+                terminalTarget = nil
+            }) { deployment in
                 if let port = deployment.ttydPort {
                     TerminalView(
                         deployment: deployment,
                         port: port,
+                        onClose: {
+                            terminalTarget = nil
+                        },
                         onEnd: {
                             terminalTarget = nil
                             activeDeployments.removeAll { $0.id == deployment.id }
