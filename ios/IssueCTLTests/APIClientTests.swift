@@ -108,6 +108,30 @@ final class TestableAPIClient {
         return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
     }
 
+    func createDraft(body: CreateDraftRequestBody) async throws -> CreateDraftResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/drafts", method: "POST", body: bodyData)
+        return try decoder.decode(CreateDraftResponse.self, from: data)
+    }
+
+    func requestBodyData(from request: URLRequest) -> Data? {
+        if let body = request.httpBody { return body }
+        guard let stream = request.httpBodyStream else { return nil }
+
+        stream.open()
+        var data = Data()
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: 4096)
+        while stream.hasBytesAvailable {
+            let read = stream.read(buffer, maxLength: 4096)
+            if read > 0 {
+                data.append(buffer, count: read)
+            }
+        }
+        buffer.deallocate()
+        stream.close()
+        return data
+    }
+
     private struct ErrorBody: Codable {
         let error: String
     }
@@ -499,6 +523,40 @@ final class APIClientTests: XCTestCase {
         let launchResponse = try decoder.decode(LaunchResponse.self, from: data)
         XCTAssertTrue(launchResponse.success)
         XCTAssertEqual(launchResponse.deploymentId, 1)
+    }
+
+    @MainActor
+    func testCreateDraftEndpointAndBodyEncoding() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/drafts"))
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = self.client.requestBodyData(from: request)
+            XCTAssertNotNil(bodyData)
+            if let bodyData {
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+                XCTAssertEqual(json?["title"] as? String, "CI draft")
+                XCTAssertEqual(json?["body"] as? String, "Created from unit coverage")
+                XCTAssertEqual(json?["priority"] as? String, "high")
+            }
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {"success": true, "id": "draft-unit-1", "error": null}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        let body = CreateDraftRequestBody(
+            title: "CI draft",
+            body: "Created from unit coverage",
+            priority: .high
+        )
+        let response = try await client.createDraft(body: body)
+
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.id, "draft-unit-1")
+        XCTAssertNil(response.error)
     }
 
     // MARK: - Base URL configuration

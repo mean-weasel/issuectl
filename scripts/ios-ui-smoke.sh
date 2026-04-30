@@ -35,7 +35,6 @@ FAST_TESTS=(
 )
 
 PR_TESTS=(
-  "IssueCTLUITests/IssueCTLUITests/testCreateMinimalDraftIssueFromThumbReachEntryPoint"
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
 )
 
