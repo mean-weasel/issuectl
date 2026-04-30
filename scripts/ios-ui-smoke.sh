@@ -71,6 +71,7 @@ args=(
   -scheme "$SCHEME"
   -destination "$DESTINATION"
   -configuration "$CONFIGURATION"
+  -enableCodeCoverage NO
   CODE_SIGNING_ALLOWED=NO
 )
 
