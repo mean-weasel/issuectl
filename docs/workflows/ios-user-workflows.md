@@ -18,6 +18,27 @@ xcodebuildmcp ui-automation swipe         # swipe gesture
 xcodebuildmcp simulator screenshot        # capture screen state
 ```
 
+**Automated XCTest smoke suites:**
+
+Use these when the workflow has an accessibility-identifier backed XCTest in `ios/IssueCTLUITests/IssueCTLUITests.swift`.
+
+| Command | Scope | Intended use |
+|---------|-------|--------------|
+| `pnpm ios:ui-smoke:fast` | One critical launch/re-enter workflow | Local pre-push confidence check for iOS changes |
+| `pnpm ios:ui-smoke:full` | All focused iOS UI smoke workflows | Local CI parity before opening or updating a PR |
+| `pnpm ios:ui-smoke` | Full suite by default | Backward-compatible alias for the full suite |
+| `RUN_IOS_UI_SMOKE=1 git push` | Fast profile through Husky pre-push | Opt-in local gate before pushing iOS changes |
+
+The smoke runner accepts the same knobs in local and CI environments:
+
+```sh
+IOS_UI_SMOKE_PROFILE=fast ./scripts/ios-ui-smoke.sh
+IOS_UI_SMOKE_PROFILE=full ./scripts/ios-ui-smoke.sh
+IOS_DESTINATION='platform=iOS Simulator,name=iPhone 17' pnpm ios:ui-smoke:full
+```
+
+CI runs the full profile in `.github/workflows/ios.yml` on iOS, smoke-script, pre-push hook, package script, and iOS workflow changes. Keep the fast profile short enough for developer pushes; put broader regression coverage in the full profile.
+
 ---
 
 ## Workflow 1: Onboarding — Connect to Server
