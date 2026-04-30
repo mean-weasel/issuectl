@@ -36,6 +36,7 @@ FAST_TESTS=(
 
 FULL_TESTS=(
   "IssueCTLUITests/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
+  "IssueCTLUITests/IssueCTLUITests/testCreateDraftIssueFromThumbReachEntryPoint"
   "IssueCTLUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
   "IssueCTLUITests/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"

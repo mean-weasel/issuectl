@@ -29,6 +29,7 @@ struct SectionTabs<Section: Hashable & CaseIterable & RawRepresentable>: View wh
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(selected == section ? .primary : .secondary)
+                    .accessibilityIdentifier("section-tab-\(section.rawValue)")
                 }
             }
             .padding(.horizontal)

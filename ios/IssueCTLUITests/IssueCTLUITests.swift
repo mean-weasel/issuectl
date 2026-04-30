@@ -64,6 +64,37 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testCreateDraftIssueFromThumbReachEntryPoint() {
+        let app = launchApp()
+
+        assertElement("today-create-issue-button", existsIn: app, timeout: 8)
+        element("today-create-issue-button", in: app).tap()
+
+        assertElement("issue-title-field", existsIn: app, timeout: 3)
+        element("quick-create-repo-more-button", in: app).tap()
+        app.buttons["quick-create-local-draft-option"].tap()
+
+        element("issue-title-field", in: app).tap()
+        app.typeText("Test draft issue from automation")
+
+        element("issue-body-editor", in: app).tap()
+        app.typeText("This is a test draft created via workflow automation.")
+
+        element("quick-create-more-options", in: app).tap()
+        app.buttons["High"].tap()
+
+        element("submit-issue-button", in: app).tap()
+        waitForNonexistence("issue-title-field", in: app)
+
+        app.buttons["issues-tab"].tap()
+        assertElement("section-tab-drafts", existsIn: app, timeout: 8)
+        element("section-tab-drafts", in: app).tap()
+        assertElement("draft-row-draft-ui-1", existsIn: app, timeout: 8)
+        let draftTitle = element("draft-row-draft-ui-1-title", in: app)
+        XCTAssertEqual(draftTitle.label, "Test draft issue from automation")
+    }
+
+    @MainActor
     func testTodayActiveSessionsThumbButtonOpensSessions() {
         server.seedActiveDeployment()
         let app = launchApp()
@@ -254,6 +285,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
     private let listener: NWListener
     private let queue = DispatchQueue(label: "MockIssueCTLServer")
     private var activeDeployments: [[String: Any]] = []
+    private var drafts: [[String: Any]] = []
     var failUserProfile = false
 
     init() throws {
@@ -300,16 +332,51 @@ private final class MockIssueCTLServer: @unchecked Sendable {
 
     private func handle(_ connection: NWConnection) {
         connection.start(queue: queue)
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
-            guard let self, let data, let request = String(data: data, encoding: .utf8) else {
+        receiveRequest(on: connection, buffer: Data())
+    }
+
+    private func receiveRequest(on connection: NWConnection, buffer: Data) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, _ in
+            guard let self else {
                 connection.cancel()
                 return
             }
-            let response = self.response(for: request)
-            connection.send(content: response, completion: .contentProcessed { _ in
-                connection.cancel()
-            })
+
+            var nextBuffer = buffer
+            if let data {
+                nextBuffer.append(data)
+            }
+
+            if self.hasCompleteHTTPRequest(nextBuffer) || isComplete {
+                guard let request = String(data: nextBuffer, encoding: .utf8) else {
+                    connection.cancel()
+                    return
+                }
+                let response = self.response(for: request)
+                connection.send(content: response, completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
+                return
+            }
+
+            self.receiveRequest(on: connection, buffer: nextBuffer)
         }
+    }
+
+    private func hasCompleteHTTPRequest(_ data: Data) -> Bool {
+        guard let request = String(data: data, encoding: .utf8) else { return false }
+        guard let headerRange = request.range(of: "\r\n\r\n") else { return false }
+        let headers = String(request[..<headerRange.lowerBound])
+        let contentLength = headers
+            .components(separatedBy: "\r\n")
+            .first { $0.lowercased().hasPrefix("content-length:") }
+            .flatMap { line -> Int? in
+                let value = line.split(separator: ":", maxSplits: 1).dropFirst().first?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return value.flatMap(Int.init)
+            } ?? 0
+        let bodyStart = request.distance(from: request.startIndex, to: headerRange.upperBound)
+        return data.count >= bodyStart + contentLength
     }
 
     private func response(for request: String) -> Data {
@@ -332,6 +399,8 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             body = ["repos": [repo]]
         case ("GET", "/api/v1/deployments"):
             body = ["deployments": activeDeployments]
+        case ("GET", "/api/v1/drafts"):
+            body = ["drafts": drafts]
         case ("GET", "/api/v1/issues/org/alpha"):
             body = ["issues": [issue(number: 101), issue(number: 102)], "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/101"):
@@ -370,6 +439,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             activateDeployment(issueNumber: 102)
             body = ["success": true, "deployment_id": 9002, "ttyd_port": 19002, "error": NSNull(), "label_warning": NSNull()]
         case ("POST", "/api/v1/drafts"):
+            createDraft(from: request)
             body = ["success": true, "id": "draft-ui-1", "error": NSNull()]
         case ("POST", "/api/v1/drafts/draft-ui-1/assign"):
             body = [
@@ -431,6 +501,30 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             "closed_at": NSNull(),
             "html_url": "https://github.com/org/alpha/issues/\(number)",
         ]
+    }
+
+    private func createDraft(from request: String) {
+        let payload = jsonBody(from: request)
+        drafts = [
+            [
+                "id": "draft-ui-1",
+                "title": payload["title"] as? String ?? "Untitled draft",
+                "body": payload["body"] as? String ?? NSNull(),
+                "priority": payload["priority"] as? String ?? "normal",
+                "created_at": 1_777_440_000,
+            ]
+        ]
+    }
+
+    private func jsonBody(from request: String) -> [String: Any] {
+        guard
+            let body = request.components(separatedBy: "\r\n\r\n").last,
+            let data = body.data(using: .utf8),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return [:]
+        }
+        return json
     }
 
     private var pulls: [[String: Any]] {
