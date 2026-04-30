@@ -34,6 +34,11 @@ FAST_TESTS=(
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
 )
 
+PR_TESTS=(
+  "IssueCTLUITests/IssueCTLUITests/testCreateDraftIssueFromThumbReachEntryPoint"
+  "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+)
+
 FULL_TESTS=(
   "IssueCTLUITests/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
   "IssueCTLUITests/IssueCTLUITests/testCreateDraftIssueFromThumbReachEntryPoint"
@@ -48,11 +53,14 @@ case "$PROFILE" in
   fast)
     TESTS=("${FAST_TESTS[@]}")
     ;;
+  pr)
+    TESTS=("${PR_TESTS[@]}")
+    ;;
   full)
     TESTS=("${FULL_TESTS[@]}")
     ;;
   *)
-    echo "Unknown IOS_UI_SMOKE_PROFILE '$PROFILE'. Expected 'fast' or 'full'." >&2
+    echo "Unknown IOS_UI_SMOKE_PROFILE '$PROFILE'. Expected 'fast', 'pr', or 'full'." >&2
     exit 64
     ;;
 esac

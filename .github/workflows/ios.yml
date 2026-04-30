@@ -9,6 +9,19 @@ on:
       - 'package.json'
       - '.husky/pre-push'
       - '.github/workflows/ios.yml'
+  merge_group:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      smoke_profile:
+        description: 'iOS UI smoke profile to run'
+        required: true
+        default: full
+        type: choice
+        options:
+          - fast
+          - pr
+          - full
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -58,5 +71,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
 
-      - name: Run full UI smoke workflow suite
-        run: IOS_UI_SMOKE_PROFILE=full ./scripts/ios-ui-smoke.sh
+      - name: Run UI smoke workflow suite
+        run: |
+          profile="full"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            profile="pr"
+          fi
+          if [ -n "${{ inputs.smoke_profile }}" ]; then
+            profile="${{ inputs.smoke_profile }}"
+          fi
+
+          IOS_UI_SMOKE_PROFILE="$profile" ./scripts/ios-ui-smoke.sh
