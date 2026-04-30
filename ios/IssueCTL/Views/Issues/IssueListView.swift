@@ -300,7 +300,9 @@ struct IssueListView: View {
             .onChange(of: searchText) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
             .safeAreaInset(edge: .bottom) {
-                issueThumbBar
+                if navigationPath.isEmpty {
+                    issueThumbBar
+                }
             }
         }
         .searchable(text: $searchText, prompt: "Search issues")
@@ -321,6 +323,14 @@ struct IssueListView: View {
             .accessibilityIdentifier("issues-create-issue-button")
         } secondary: {
             HStack(spacing: 8) {
+                ThumbIconButton(
+                    systemName: "text.viewfinder",
+                    accessibilityLabel: "Parse with AI",
+                    accessibilityIdentifier: "issues-parse-ai-button"
+                ) {
+                    showParseSheet = true
+                }
+
                 ThumbIconButton(
                     systemName: "magnifyingglass",
                     accessibilityLabel: "Search issues",

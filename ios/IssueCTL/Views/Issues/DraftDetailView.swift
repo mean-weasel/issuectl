@@ -23,6 +23,7 @@ struct DraftDetailView: View {
     @State private var isLoadingLabels = false
     @State private var reposError: String?
     @State private var labelLoadError: String?
+    @FocusState private var isTitleFocused: Bool
 
     init(draft: Draft, onSaved: @escaping () -> Void) {
         self.draft = draft
@@ -41,9 +42,31 @@ struct DraftDetailView: View {
     var body: some View {
         Form {
             Section("Title") {
-                TextField("Issue title", text: $title)
-                    .font(.body)
-                    .accessibilityIdentifier("draft-title-field")
+                HStack(spacing: 8) {
+                    TextField("Issue title", text: $title)
+                        .font(.body)
+                        .focused($isTitleFocused)
+                        .accessibilityIdentifier("draft-title-field")
+
+                    if !title.isEmpty {
+                        Button {
+                            title = ""
+                            isTitleFocused = true
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear draft title")
+                        .accessibilityIdentifier("draft-title-clear-button")
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isTitleFocused = true
+                }
             }
 
             Section("Description") {
@@ -82,13 +105,17 @@ struct DraftDetailView: View {
                         .font(.subheadline)
                 }
 
-                Picker("Repository", selection: $selectedRepoId) {
-                    Text("None (keep as draft)").tag(nil as Int?)
-                    ForEach(repos) { repo in
-                        Text(repo.fullName).tag(repo.id as Int?)
-                    }
+                repositorySelectionButton(title: "None (keep as draft)", isSelected: selectedRepoId == nil) {
+                    selectedRepoId = nil
                 }
-                .accessibilityIdentifier("assign-repo-picker")
+                .accessibilityIdentifier("assign-repo-none-button")
+
+                ForEach(repos) { repo in
+                    repositorySelectionButton(title: repo.fullName, isSelected: selectedRepoId == repo.id) {
+                        selectedRepoId = repo.id
+                    }
+                    .accessibilityIdentifier("assign-repo-\(repo.id)-button")
+                }
 
                 if let labelLoadError {
                     Label(labelLoadError, systemImage: "exclamationmark.triangle")
@@ -146,10 +173,17 @@ struct DraftDetailView: View {
                         .foregroundStyle(.red)
                 }
             }
+
+            Section {
+                Color.clear
+                    .frame(height: 96)
+            }
+            .listRowBackground(Color.clear)
         }
         .navigationTitle("Edit Draft")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -320,5 +354,20 @@ struct DraftDetailView: View {
             errorMessage = "Auto-save failed: \(error.localizedDescription)"
             return false
         }
+    }
+
+    @ViewBuilder
+    private func repositorySelectionButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? .orange : .secondary)
+                Text(title)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer()
+            }
+        }
+        .buttonStyle(.borderless)
     }
 }

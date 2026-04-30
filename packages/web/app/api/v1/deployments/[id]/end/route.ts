@@ -9,6 +9,10 @@ import {
   killTtyd,
   tmuxSessionName,
   cleanupStaleContextFiles,
+  removeLabel,
+  LIFECYCLE_LABEL,
+  clearCacheKey,
+  withAuthRetry,
 } from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +78,31 @@ export async function POST(
       }
     }
     endDeployment(db, deploymentId);
+
+    try {
+      await withAuthRetry((octokit) =>
+        removeLabel(
+          octokit,
+          body.owner,
+          body.repo,
+          body.issueNumber,
+          LIFECYCLE_LABEL.inProgress,
+        ),
+      );
+      clearCacheKey(db, `issue-detail:${body.owner}/${body.repo}#${body.issueNumber}`);
+      clearCacheKey(db, `issue-header:${body.owner}/${body.repo}#${body.issueNumber}`);
+      clearCacheKey(db, `issue-content:${body.owner}/${body.repo}#${body.issueNumber}`);
+      clearCacheKey(db, `issues:${body.owner}/${body.repo}`);
+    } catch (labelErr) {
+      log.warn({
+        err: labelErr,
+        msg: "in_progress_label_cleanup_failed",
+        deploymentId,
+        owner: body.owner,
+        repo: body.repo,
+        issueNumber: body.issueNumber,
+      });
+    }
 
     cleanupStaleContextFiles().catch((cleanupErr) => {
       log.warn({ err: cleanupErr, msg: "context_file_cleanup_failed" });

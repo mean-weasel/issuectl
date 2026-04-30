@@ -106,12 +106,14 @@ CI runs the full profile in `.github/workflows/ios.yml` on iOS, smoke-script, pr
 | 1 | Tap "Issues" tab | Issue list loads (may show loading spinner first) |
 | 2 | Screenshot the issue list | See section tabs (Drafts, Open, Running, etc.) and issue rows |
 | 3 | Tap "Open" section tab | Open issues displayed with title, labels, author |
-| 4 | Tap a repo filter chip to toggle it off | Issues from that repo disappear |
-| 5 | Tap the chip again to toggle it back on | Issues reappear |
-| 6 | Tap "Mine" filter chip | Only issues assigned to current user shown |
-| 7 | Tap "Mine" again to deselect | All issues shown again |
-| 8 | Tap sort menu (arrow icon) | Sort options appear (Updated, Created, Priority) |
-| 9 | Select "Created" | List re-sorts by creation date |
+| 4 | Tap the bottom-right filter button | Filter & Sort sheet appears |
+| 5 | Tap a repository option | Issue counts and visible rows update to that repo |
+| 6 | Tap "All Repos" | Full issue counts and rows are restored |
+| 7 | Scroll to the bottom of the Filter & Sort sheet | Sort segmented control and Mine Only toggle are visible |
+| 8 | Toggle "Mine Only" on | Counts update to issues associated with the current user |
+| 9 | Toggle "Mine Only" off | Full issue counts are restored |
+| 10 | Select "Created" in the Sort segmented control | List re-sorts by creation date |
+| 11 | Dismiss the sheet | Issue list remains visible with selected sort applied |
 
 ---
 
@@ -134,13 +136,13 @@ CI runs the full profile in `.github/workflows/ios.yml` on iOS, smoke-script, pr
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap action menu (top-right) | Menu appears with "Quick Create" and "Parse with AI" |
-| 2 | Tap "Quick Create" | QuickCreateSheet appears |
+| 1 | Tap the bottom "Create Issue" button | QuickCreateSheet appears |
+| 2 | Tap the "Local Draft" repository chip | Local Draft chip is selected and the submit button says "Create Draft" |
 | 3 | Tap "Title" field | Field focused |
 | 4 | Type `Test draft issue from automation` | Title appears |
-| 5 | Tap "Description" TextEditor | Editor focused |
+| 5 | Tap "Details" TextEditor | Editor focused |
 | 6 | Type `This is a test draft created via workflow automation.` | Text appears |
-| 7 | Leave Repository as "None (local draft)" | No repo selected |
+| 7 | Expand "More Options" | Priority segmented picker appears |
 | 8 | Tap Priority "High" segment | High selected in segmented picker |
 | 9 | Tap "Create Draft" button | Loading indicator, then sheet dismisses |
 | 10 | Tap "Drafts" section tab | New draft visible in list |
@@ -170,13 +172,13 @@ CI runs the full profile in `.github/workflows/ios.yml` on iOS, smoke-script, pr
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap action menu → "Quick Create" | QuickCreateSheet appears |
-| 2 | Type a title: `Automation test issue` | Title entered |
-| 3 | Tap Repository picker | Picker shows repos |
-| 4 | Select a repo (e.g., `mean-weasel/issuectl`) | Repo selected, Labels section appears |
-| 5 | (Optional) Select one or more labels | Labels toggled on |
-| 6 | Tap "Create Issue in {repo}" button | Loading, creates draft then assigns to repo |
-| 7 | Sheet dismisses, tap "Open" section | New issue visible in open issues |
+| 1 | Tap "Drafts" section tab | Drafts listed |
+| 2 | Tap a draft row | DraftDetailView opens |
+| 3 | In "Assign to Repository", select a repo row (e.g., `mean-weasel/issuectl-test-repo`) | Repo row shows selected state and labels load |
+| 4 | (Optional) Select one or more labels | Labels toggled on |
+| 5 | Scroll to the bottom of the labels list | "Create Issue in {repo}" button is visible |
+| 6 | Tap "Create Issue in {repo}" button | Loading, then returns to issue list |
+| 7 | Tap "Open" section | New issue visible in open issues |
 | 8 | Verify on GitHub: `gh issue list --repo owner/repo` | Issue exists on GitHub |
 
 ---
@@ -190,14 +192,14 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 **Phase 1: Input**
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap action menu (top-right of issue list) | Menu appears |
-| 2 | Tap "Parse with AI" | ParseView appears with text editor |
-| 3 | Screenshot the input view | See instruction text, empty editor, character counter "0 / 8192" |
-| 4 | Tap the text editor | Editor focused |
-| 5 | Type a freeform description, e.g.: | Text appears with live character count |
+| 1 | Tap the Parse with AI icon in the bottom issue action bar | ParseView appears with text editor |
+| 2 | Screenshot the input view | See instruction text, empty editor, character counter "0 / 8192" |
+| 3 | Tap the text editor | Editor focused |
+| 4 | Type a freeform description, e.g.: | Text appears with live character count |
 |   | `Fix the login page crash when password is empty.` | |
 |   | `Add dark mode support to the settings screen.` | |
 |   | `The API returns 500 when the repo name has dots.` | |
+| 5 | Include a repo full name when you want explicit assignment, e.g. `Create these in owner/repo:` | Parsed issues can be auto-assigned to that repo |
 | 6 | Tap "Parse with AI" button | Loading spinner, "Parsing..." text |
 | 7 | Wait for parsing to complete (may take 5-15s) | Transitions to review view |
 
@@ -252,22 +254,32 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 **Close via swipe:**
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Swipe right on an open issue row | "Close" button appears (red) |
-| 2 | Tap "Close" | Issue moves from Open to Closed section |
-| 3 | Tap "Closed" section tab | See the closed issue |
+| 1 | Swipe left on an open issue row | "Close" button appears (red) |
+| 2 | Tap "Close" | "Close Issue" confirmation dialog appears |
+| 3 | Tap "Close" in the confirmation dialog | Issue closes on GitHub |
+| 4 | Scroll the section tabs horizontally if needed, then tap "Closed" | See the closed issue |
 
 **Reopen via swipe:**
 | Step | Action | Verify |
 |------|--------|--------|
-| 4 | Swipe left on the closed issue | "Reopen" button appears (green) |
-| 5 | Tap "Reopen" | Issue moves back to Open section |
+| 5 | Swipe right on the closed issue | "Reopen" button appears (green) |
+| 6 | Tap "Reopen" | "Reopen Issue" confirmation dialog appears |
+| 7 | Tap "Reopen" in the confirmation dialog | Issue reopens and returns to the Open section |
 
 **Close via detail view:**
 | Step | Action | Verify |
 |------|--------|--------|
 | 1 | Tap an open issue → detail view | Detail loads |
-| 2 | Tap "Close" button in bottom action bar | Confirmation dialog appears |
-| 3 | Confirm close | Issue state changes to Closed, badge updates |
+| 2 | Tap the overflow menu in the bottom action bar | Issue actions menu appears |
+| 3 | Tap "Close Issue" | Confirmation dialog appears |
+| 4 | Confirm close | Issue state changes to Closed, badge updates |
+
+**Reopen via detail view:**
+| Step | Action | Verify |
+|------|--------|--------|
+| 1 | Tap a closed issue → detail view | Detail loads with a "Closed" badge |
+| 2 | Tap "Reopen" in the bottom action bar | "Reopen Issue" confirmation dialog appears |
+| 3 | Confirm reopen | Issue state changes to Open, badge updates |
 
 ---
 
@@ -277,11 +289,13 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap "Comment" button in bottom action bar | IssueCommentSheet appears |
-| 2 | Tap the comment TextEditor | Editor focused |
-| 3 | Type `Test comment from iOS automation` | Text appears |
-| 4 | Tap "Submit" (or equivalent) | Loading, sheet dismisses |
-| 5 | Scroll down in detail view | New comment visible at bottom with your username |
+| 1 | Tap the overflow menu in the bottom action bar | Issue actions menu appears |
+| 2 | Tap "Comment" | IssueCommentSheet appears |
+| 3 | Tap the comment TextEditor | Editor focused |
+| 4 | Type `Test comment from iOS automation` | Text appears |
+| 5 | Tap "Add Comment" | Loading, sheet dismisses |
+| 6 | Scroll down in detail view if needed | New comment visible at bottom with your username |
+| 7 | Verify on GitHub: `gh issue view NUMBER --repo owner/repo --comments` | Comment exists on GitHub |
 
 ---
 
@@ -292,17 +306,17 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 | Step | Action | Verify |
 |------|--------|--------|
 | 1 | Tap an open issue in the list | IssueDetailView loads |
-| 2 | Tap the "..." menu (top-right) | Menu appears |
-| 3 | Tap "Launch" | LaunchView sheet appears |
-| 4 | Screenshot the launch form | See issue title, workspace mode picker, branch name |
-| 5 | Verify workspace mode is "Worktree" (default) | Worktree segment selected |
-| 6 | Tap "Existing" segment in workspace mode picker | Existing selected |
-| 7 | Tap "Worktree" segment to switch back | Worktree selected |
-| 8 | Verify branch name is auto-generated | Field shows `issue-{number}-{slug}` |
-| 9 | (Optional) Toggle comment checkboxes | Selected comments included in context |
-| 10 | Tap "Launch Claude Code" button | Loading indicator |
-| 11 | Wait for launch to complete | TerminalView appears full-screen |
-| 12 | Screenshot the terminal | See ttyd terminal with Claude Code running |
+| 2 | Tap "Launch Claude" in the bottom action bar | LaunchView sheet appears |
+| 3 | Screenshot the launch form | See issue title, recommended workspace summary, and launch button |
+| 4 | If the repo has no local clone, verify the warning | "This repository has no local clone. A fresh clone will be created." appears and Clone mode is selected |
+| 5 | Tap "Advanced Options" | Workspace mode picker, branch name, comment toggles, file options, and preamble appear |
+| 6 | Verify branch name is auto-generated | Field shows `issue-{number}-{slug}` |
+| 7 | If workspace mode is editable, switch between Worktree/Existing/Clone | Selected workspace summary updates |
+| 8 | (Optional) Toggle comment checkboxes | Selected comments included in context |
+| 9 | Tap "Launch with Recommended Settings" | Loading/progress state appears |
+| 10 | Wait for launch to complete | TerminalView appears full-screen |
+| 11 | If Claude shows the workspace trust prompt, choose "Yes, I trust this folder" | Claude Code continues loading |
+| 12 | Screenshot the terminal | See ttyd terminal with Claude Code running for the issue |
 
 **Alternative: Launch via swipe**
 | Step | Action | Verify |
@@ -315,14 +329,16 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 
 ## Workflow 13: Exit Terminal Session (Done)
 
-**Precondition:** Terminal is open from Workflow 11.
+**Precondition:** Terminal is open from Workflow 12.
 
 | Step | Action | Verify |
 |------|--------|--------|
 | 1 | Tap "Done" button (top-left of terminal) | Full-screen terminal dismisses |
 | 2 | Back at IssueDetailView (or wherever launched from) | Previous screen visible |
-| 3 | Tap "Active" tab | SessionListView shows the session still running |
-| 4 | Screenshot to confirm session is listed | See repo, issue number, branch, running duration |
+| 3 | If returned to IssueDetailView, verify the primary action changed to "Re-enter Terminal" | Session is still running for the issue |
+| 4 | Tap "Active" tab from the main tab bar | SessionListView shows the session still running |
+| 5 | Screenshot to confirm session is listed | See repo, issue number, branch, running duration |
+| 6 | Optional backend verification: `curl /api/v1/deployments` | Deployment for the issue has `state: active`, `ttydPort`, and `endedAt: null` |
 
 ---
 
@@ -339,6 +355,15 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 | 5 | Tap "Done" to exit again | Back to session list |
 
 **Key verification:** The terminal should NOT show a blank/black screen. The server-side `ensureTtydRunning()` respawns ttyd against the still-running tmux session.
+
+**Alternative: Re-enter from the running issue**
+| Step | Action | Verify |
+|------|--------|--------|
+| A1 | From Issues, tap the "Running" section tab | Running issue list appears |
+| A2 | Tap the running issue | IssueDetailView appears with "Re-enter Terminal" |
+| A3 | Tap "Re-enter Terminal" | TerminalView appears full-screen |
+| A4 | Screenshot the terminal | Same Claude Code session state appears, not a blank/black screen |
+| A5 | Tap "Done" to exit again | Back to issue detail |
 
 ---
 
@@ -358,9 +383,11 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 | Step | Action | Verify |
 |------|--------|--------|
 | 1 | Open terminal (tap session row) | TerminalView visible |
-| 2 | Tap "End" button (red, top-right) | Confirmation dialog |
+| 2 | Tap the top-right stop/End button | "End this session?" confirmation dialog appears |
 | 3 | Tap "End Session" | Terminal closes, back to previous screen |
-| 4 | Tap "Active" tab | Session no longer listed |
+| 4 | Previous issue detail returns to "Launch Claude" instead of "Re-enter Terminal" | Session is no longer active for that issue |
+| 5 | Tap "Active" tab | Session no longer listed |
+| 6 | Optional backend verification: `curl /api/v1/deployments` | No active deployment remains for the ended issue |
 
 ---
 
@@ -371,11 +398,12 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 | Step | Action | Verify |
 |------|--------|--------|
 | 1 | Tap "PRs" tab | PR list loads |
-| 2 | Screenshot the list | See Open/Closed tabs, PR rows with state badges |
-| 3 | Tap an open PR | PRDetailView loads |
-| 4 | Screenshot the detail | See title, diff stats, branches, body, checks, reviews |
-| 5 | Scroll to verify sections | Checks (CI), Reviews, Changed Files visible |
-| 6 | Tap back to return to list | PR list visible |
+| 2 | Screenshot the list | See Review/Open/Merged/Closed section tabs and PR rows with state badges |
+| 3 | Tap an open or review PR | PRDetailView loads |
+| 4 | Screenshot the detail | See title, diff stats, branches, body, and bottom action bar |
+| 5 | Scroll to verify sections | Checks (CI) and Changed Files visible; Reviews appears when review data exists |
+| 6 | Tap the overflow menu | See Open on GitHub, Comment, Request Changes, and Approve actions |
+| 7 | Tap outside the menu, then tap back | PR list visible |
 
 ---
 
@@ -385,14 +413,15 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap "Settings" tab | Repo list visible |
-| 2 | Tap a repo row | EditRepoSheet appears |
+| 1 | From Today, tap the top-right gear button | Settings sheet appears with repo list |
+| 2 | Tap a repo row | Edit Repository sheet appears |
 | 3 | Tap "Local Path" field | Field focused |
 | 4 | Type `/Users/you/code/repo-name` | Path entered |
 | 5 | Tap "Branch Pattern" field | Field focused |
 | 6 | Type `feature/{{number}}-{{slug}}` | Pattern entered |
 | 7 | Tap "Save" | Sheet dismisses, repo updated |
 | 8 | Tap the repo again to verify | Fields show saved values |
+| 9 | Optional backend verification: `curl /api/v1/repos` | Repo has the saved `localPath` and `branchPattern` |
 
 ---
 
@@ -402,11 +431,12 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap "Settings" tab | Settings visible |
+| 1 | From Today, tap the top-right gear button | Settings sheet visible |
 | 2 | Scroll to bottom | "Disconnect" button visible (red) |
 | 3 | Tap "Disconnect" | Confirmation dialog |
 | 4 | Confirm | App transitions to OnboardingView |
-| 5 | Follow Workflow 1 to reconnect | Back to main app with data |
+| 5 | Follow Workflow 1 to reconnect | Connected Settings sheet or main app appears with server/user/repo data |
+| 6 | If Settings remains open, tap "Done" | Back to main app with data |
 
 ---
 
@@ -416,11 +446,12 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap "..." menu (top-right) | Menu appears |
+| 1 | Tap the overflow menu in the bottom action bar | Menu appears |
 | 2 | Tap "Priority" submenu | Priority options appear (High, Normal, Low) |
 | 3 | Tap "High" | Checkmark appears next to High |
 | 4 | Verify priority badge in header | Red "High" badge visible next to issue title |
 | 5 | Return to issue list | Priority badge visible on the row (if sorting by Priority) |
+| 6 | Optional backend verification: `curl /api/v1/issues/owner/repo/NUMBER/priority` | Priority value matches the selected option |
 
 ---
 
@@ -430,12 +461,13 @@ This is the AI-powered flow: write freeform text describing multiple issues, the
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Tap "..." menu → "Manage Labels" | LabelManagementSheet appears |
+| 1 | Tap bottom overflow menu → "Manage Labels" | LabelManagementSheet appears |
 | 2 | Screenshot the label list | See available repo labels with colored dots |
 | 3 | Tap a label to add it | Checkmark appears, label added to issue |
 | 4 | Tap another label to add | Second checkmark |
 | 5 | Tap the first label again to remove | Checkmark disappears |
 | 6 | Dismiss the sheet | Issue detail shows updated labels |
+| 7 | Optional GitHub verification: `gh issue view NUMBER --repo owner/repo --json labels` | Labels match the expected final set |
 
 ---
 
@@ -447,23 +479,28 @@ This combines multiple workflows into a single golden-path scenario:
 
 | Step | Action | Verify |
 |------|--------|--------|
-| 1 | Issues tab → action menu → Quick Create | QuickCreateSheet |
+| 1 | Issues tab → "Create Issue" in bottom action bar | QuickCreateSheet |
 | 2 | Title: `E2E test: launch from new issue` | Title entered |
 | 3 | Description: `Testing the full create-to-launch flow` | Description entered |
-| 4 | Select a repo | Labels section appears |
+| 4 | Select a repo if needed | Create button names the selected repo |
 | 5 | Tap "Create Issue in {repo}" | Issue created on GitHub |
-| 6 | Tap "Open" section tab | New issue in list |
-| 7 | Swipe left on the new issue | "Launch" button |
-| 8 | Tap "Launch" | LaunchView sheet |
-| 9 | Tap "Launch Claude Code" | Loading... TerminalView |
-| 10 | Verify terminal is live | Claude Code running |
-| 11 | Tap "Done" | Back to list |
-| 12 | Tap "Active" tab | Session listed |
-| 13 | Tap session row | Terminal reconnects (not black) |
-| 14 | Tap "End" → confirm | Session ended |
-| 15 | Tap "Active" tab | No sessions listed |
-| 16 | Tap "Issues" tab → find the issue | Issue still in Open |
-| 17 | Swipe right → Close | Issue moved to Closed |
+| 6 | Verify on GitHub: `gh issue list --repo owner/repo --search "E2E test"` | New issue exists |
+| 7 | Open the issue from the list/search or detail route | IssueDetailView appears |
+| 8 | Tap "Launch Claude" | LaunchView sheet |
+| 9 | Tap "Launch with Recommended Settings" | Loading/progress, then TerminalView |
+| 10 | Verify terminal is live | Terminal is not blank; Claude prompt or session content is visible |
+| 11 | If Claude shows the workspace trust prompt, stop here unless testing Claude execution | Avoids unintended test-repo edits/PRs |
+| 12 | Tap "Done" | Back to list/detail |
+| 13 | Tap "Active" tab | Session listed |
+| 14 | Tap session row | Terminal reconnects (not black) |
+| 15 | Tap top-right stop/End button → confirm | Session ended |
+| 16 | Tap "Active" tab | No sessions listed |
+| 17 | Close the test issue via app or GitHub CLI | Issue moved to Closed |
+
+**Notes:**
+- The issue list may need a refresh before the newly created issue appears in app search.
+- Backend verification for launch cleanup: `curl /api/v1/deployments` should return no deployment for the E2E issue after ending the session.
+- Ending the session should also remove `issuectl:in-progress`; `issuectl:deployed` remains as launch history.
 
 ---
 

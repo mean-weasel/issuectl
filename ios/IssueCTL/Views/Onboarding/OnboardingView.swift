@@ -25,13 +25,11 @@ struct OnboardingView: View {
 
                 Section("API Token") {
                     HStack {
-                        if showToken {
-                            TextField("Paste your API token", text: $apiToken)
-                                .textInputAutocapitalization(.never)
-                        } else {
-                            SecureField("Paste your API token", text: $apiToken)
-                                .textInputAutocapitalization(.never)
-                        }
+                        APITokenField(
+                            placeholder: "Paste your API token",
+                            text: $apiToken,
+                            isMasked: !showToken
+                        )
                         Button {
                             showToken.toggle()
                         } label: {
@@ -106,5 +104,74 @@ struct OnboardingView: View {
         }
 
         isChecking = false
+    }
+}
+
+private struct APITokenField: UIViewRepresentable {
+    let placeholder: String
+    @Binding var text: String
+    let isMasked: Bool
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.placeholder = placeholder
+        textField.delegate = context.coordinator
+        textField.text = displayText
+        textField.textContentType = nil
+        textField.autocorrectionType = .no
+        textField.autocapitalizationType = .none
+        textField.keyboardType = .asciiCapable
+        return textField
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        context.coordinator.text = $text
+        context.coordinator.isMasked = isMasked
+
+        if uiView.text != displayText {
+            uiView.text = displayText
+        }
+
+        uiView.textContentType = nil
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, isMasked: isMasked)
+    }
+
+    private var displayText: String {
+        isMasked ? String(repeating: "•", count: text.count) : text
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var text: Binding<String>
+        var isMasked: Bool
+
+        init(text: Binding<String>, isMasked: Bool) {
+            self.text = text
+            self.isMasked = isMasked
+        }
+
+        func textField(
+            _ textField: UITextField,
+            shouldChangeCharactersIn range: NSRange,
+            replacementString string: String
+        ) -> Bool {
+            guard let swiftRange = Range(range, in: text.wrappedValue) else {
+                return false
+            }
+
+            text.wrappedValue.replaceSubrange(swiftRange, with: string)
+            textField.text = isMasked
+                ? String(repeating: "•", count: text.wrappedValue.count)
+                : text.wrappedValue
+
+            if let end = textField.endOfDocument as UITextPosition? {
+                textField.selectedTextRange = textField.textRange(from: end, to: end)
+            }
+
+            return false
+        }
     }
 }
