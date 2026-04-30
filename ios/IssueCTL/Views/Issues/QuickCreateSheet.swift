@@ -16,6 +16,7 @@ struct QuickCreateSheet: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var showMoreOptions = false
+    @FocusState private var isTitleFocused: Bool
 
     // Labels
     @State private var availableLabels: [GitHubLabel] = []
@@ -64,6 +65,7 @@ struct QuickCreateSheet: View {
                             TextField("Issue title", text: $title)
                                 .font(.body)
                                 .textInputAutocapitalization(.sentences)
+                                .focused($isTitleFocused)
                                 .accessibilityIdentifier("issue-title-field")
                         }
                     }
@@ -197,6 +199,10 @@ struct QuickCreateSheet: View {
                 if selectedRepoId == nil {
                     selectedRepoId = repos.first?.id
                 }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(250))
+                    isTitleFocused = true
+                }
             }
             .onChange(of: selectedRepoId) { _, newValue in
                 selectedLabels = []
@@ -222,54 +228,82 @@ struct QuickCreateSheet: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
         } else {
-            HStack(spacing: 8) {
-                ForEach(Array(repos.prefix(2).enumerated()), id: \.element.id) { index, repo in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
                     Button {
-                        selectedRepoId = repo.id
+                        selectedRepoId = nil
                     } label: {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(RepoColors.color(for: index))
-                                .frame(width: 8, height: 8)
-                            Text(repo.name)
-                                .lineLimit(1)
-                        }
-                        .font(.body)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 8)
-                        .background(
-                            selectedRepoId == repo.id ? IssueCTLColors.action.opacity(0.16) : Color(.tertiarySystemGroupedBackground),
-                            in: Capsule()
+                        selectorChip(
+                            title: "Local Draft",
+                            systemImage: "doc.text",
+                            color: .secondary,
+                            isSelected: selectedRepoId == nil
                         )
-                        .foregroundStyle(selectedRepoId == repo.id ? IssueCTLColors.action : .primary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("quick-create-repo-\(repo.id)-button")
-                }
+                    .accessibilityIdentifier("quick-create-local-draft-button")
 
-                Menu {
-                    ForEach(repos.dropFirst(2), id: \.id) { repo in
-                        Button(repo.fullName) {
+                    ForEach(Array(repos.prefix(2).enumerated()), id: \.element.id) { index, repo in
+                        Button {
                             selectedRepoId = repo.id
+                        } label: {
+                            selectorChip(
+                                title: repo.name,
+                                color: RepoColors.color(for: index),
+                                isSelected: selectedRepoId == repo.id
+                            )
                         }
-                        .accessibilityIdentifier("quick-create-repo-\(repo.id)-option")
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("quick-create-repo-\(repo.id)-button")
                     }
-                    Divider()
-                    Button("Local Draft") {
-                        selectedRepoId = nil
+
+                    Menu {
+                        ForEach(repos.dropFirst(2), id: \.id) { repo in
+                            Button(repo.fullName) {
+                                selectedRepoId = repo.id
+                            }
+                            .accessibilityIdentifier("quick-create-repo-\(repo.id)-option")
+                        }
+                    } label: {
+                        Text("More")
+                            .font(.body)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 8)
+                            .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
                     }
-                    .accessibilityIdentifier("quick-create-local-draft-option")
-                } label: {
-                    Text("More")
-                        .font(.body)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 8)
-                        .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("quick-create-repo-more-button")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("quick-create-repo-more-button")
             }
         }
+    }
+
+    private func selectorChip(
+        title: String,
+        systemImage: String? = nil,
+        color: Color,
+        isSelected: Bool
+    ) -> some View {
+        HStack(spacing: 6) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+            } else {
+                Circle()
+                    .fill(color)
+                    .frame(width: 8, height: 8)
+            }
+            Text(title)
+                .lineLimit(1)
+        }
+        .font(.body)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(
+            isSelected ? IssueCTLColors.action.opacity(0.16) : Color(.tertiarySystemGroupedBackground),
+            in: Capsule()
+        )
+        .foregroundStyle(isSelected ? IssueCTLColors.action : .primary)
     }
 
     private func sheetCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {

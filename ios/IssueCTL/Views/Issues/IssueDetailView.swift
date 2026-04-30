@@ -309,7 +309,7 @@ struct IssueDetailView: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.blue)
             } else {
-                Text(deployment.state.rawValue)
+                Text(deployment.isActive ? deployment.state.rawValue : "ended")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

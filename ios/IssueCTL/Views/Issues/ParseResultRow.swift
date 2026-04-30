@@ -33,8 +33,12 @@ struct ParseResultRow: View {
                     Image(systemName: isAccepted ? "checkmark.circle.fill" : "circle")
                         .font(.title3)
                         .foregroundStyle(isAccepted ? .green : .secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .accessibilityLabel(isAccepted ? "Reject parsed issue" : "Accept parsed issue")
+                .accessibilityIdentifier("parse-result-accept-toggle")
             }
 
             HStack(spacing: 8) {
