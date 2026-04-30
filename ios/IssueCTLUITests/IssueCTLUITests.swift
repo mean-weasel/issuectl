@@ -109,7 +109,12 @@ final class IssueCTLUITests: XCTestCase {
     ) {
         assertElement("issue-title-field", existsIn: app, timeout: 3)
         element("quick-create-repo-more-button", in: app).tap()
-        app.buttons["quick-create-local-draft-option"].tap()
+        let localDraftButton = app.buttons["quick-create-local-draft-button"]
+        if localDraftButton.waitForExistence(timeout: 3) {
+            localDraftButton.tap()
+        } else {
+            app.buttons["quick-create-local-draft-option"].tap()
+        }
 
         element("issue-title-field", in: app).tap()
         app.typeText(title)
@@ -255,13 +260,15 @@ final class IssueCTLUITests: XCTestCase {
     private func openIssuesSection(in app: XCUIApplication) {
         if element("issues-tab", in: app).waitForExistence(timeout: 5) {
             element("issues-tab", in: app).tap()
-        } else {
-            assertElement("section-tab-open", existsIn: app, timeout: 5)
         }
 
-        if element("section-tab-open", in: app).waitForExistence(timeout: 5) {
-            element("section-tab-open", in: app).tap()
+        let openSection = element("section-tab-open", in: app)
+        if !openSection.waitForExistence(timeout: 8), app.scrollViews.firstMatch.exists {
+            app.scrollViews.firstMatch.swipeRight()
         }
+
+        XCTAssertTrue(openSection.waitForExistence(timeout: 8), "Missing section-tab-open\n\(app.debugDescription)")
+        openSection.tap()
     }
 
     @MainActor
