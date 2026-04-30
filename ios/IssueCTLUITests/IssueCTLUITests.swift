@@ -64,34 +64,75 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
-    func testCreateDraftIssueFromThumbReachEntryPoint() {
+    func testCreateMinimalDraftIssueFromThumbReachEntryPoint() {
+        let draftTitle = "CI draft"
         let app = launchApp()
 
         assertElement("today-create-issue-button", existsIn: app, timeout: 8)
         element("today-create-issue-button", in: app).tap()
 
+        createLocalDraft(title: draftTitle, body: nil, priority: nil, in: app)
+
+        openDraftsSection(in: app)
+        assertElement("draft-row-draft-ui-1", existsIn: app, timeout: 8)
+        XCTAssertEqual(element("draft-row-draft-ui-1-title", in: app).label, draftTitle)
+        openIssuesSection(in: app)
+    }
+
+    @MainActor
+    func testCreateDetailedDraftIssueFromThumbReachEntryPoint() {
+        let draftTitle = "Test draft issue from automation"
+        let app = launchApp()
+
+        assertElement("today-create-issue-button", existsIn: app, timeout: 8)
+        element("today-create-issue-button", in: app).tap()
+
+        createLocalDraft(
+            title: draftTitle,
+            body: "This is a test draft created via workflow automation.",
+            priority: "High",
+            in: app
+        )
+
+        openDraftsSection(in: app)
+        assertElement("draft-row-draft-ui-1", existsIn: app, timeout: 8)
+        XCTAssertEqual(element("draft-row-draft-ui-1-title", in: app).label, draftTitle)
+        openIssuesSection(in: app)
+    }
+
+    @MainActor
+    private func createLocalDraft(
+        title: String,
+        body: String?,
+        priority: String?,
+        in app: XCUIApplication
+    ) {
         assertElement("issue-title-field", existsIn: app, timeout: 3)
         element("quick-create-repo-more-button", in: app).tap()
         app.buttons["quick-create-local-draft-option"].tap()
 
         element("issue-title-field", in: app).tap()
-        app.typeText("Test draft issue from automation")
+        app.typeText(title)
 
-        element("issue-body-editor", in: app).tap()
-        app.typeText("This is a test draft created via workflow automation.")
+        if let body {
+            element("issue-body-editor", in: app).tap()
+            app.typeText(body)
+        }
 
-        element("quick-create-more-options", in: app).tap()
-        app.buttons["High"].tap()
+        if let priority {
+            element("quick-create-more-options", in: app).tap()
+            app.buttons[priority].tap()
+        }
 
         element("submit-issue-button", in: app).tap()
         waitForNonexistence("issue-title-field", in: app)
+    }
 
+    @MainActor
+    private func openDraftsSection(in app: XCUIApplication) {
         tapElement("issues-tab", in: app)
         assertElement("section-tab-drafts", existsIn: app, timeout: 8)
         element("section-tab-drafts", in: app).tap()
-        assertElement("draft-row-draft-ui-1", existsIn: app, timeout: 8)
-        let draftTitle = element("draft-row-draft-ui-1-title", in: app)
-        XCTAssertEqual(draftTitle.label, "Test draft issue from automation")
     }
 
     @MainActor
