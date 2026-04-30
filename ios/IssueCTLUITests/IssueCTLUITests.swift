@@ -332,16 +332,51 @@ private final class MockIssueCTLServer: @unchecked Sendable {
 
     private func handle(_ connection: NWConnection) {
         connection.start(queue: queue)
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
-            guard let self, let data, let request = String(data: data, encoding: .utf8) else {
+        receiveRequest(on: connection, buffer: Data())
+    }
+
+    private func receiveRequest(on connection: NWConnection, buffer: Data) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, _ in
+            guard let self else {
                 connection.cancel()
                 return
             }
-            let response = self.response(for: request)
-            connection.send(content: response, completion: .contentProcessed { _ in
-                connection.cancel()
-            })
+
+            var nextBuffer = buffer
+            if let data {
+                nextBuffer.append(data)
+            }
+
+            if self.hasCompleteHTTPRequest(nextBuffer) || isComplete {
+                guard let request = String(data: nextBuffer, encoding: .utf8) else {
+                    connection.cancel()
+                    return
+                }
+                let response = self.response(for: request)
+                connection.send(content: response, completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
+                return
+            }
+
+            self.receiveRequest(on: connection, buffer: nextBuffer)
         }
+    }
+
+    private func hasCompleteHTTPRequest(_ data: Data) -> Bool {
+        guard let request = String(data: data, encoding: .utf8) else { return false }
+        guard let headerRange = request.range(of: "\r\n\r\n") else { return false }
+        let headers = String(request[..<headerRange.lowerBound])
+        let contentLength = headers
+            .components(separatedBy: "\r\n")
+            .first { $0.lowercased().hasPrefix("content-length:") }
+            .flatMap { line -> Int? in
+                let value = line.split(separator: ":", maxSplits: 1).dropFirst().first?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return value.flatMap(Int.init)
+            } ?? 0
+        let bodyStart = request.distance(from: request.startIndex, to: headerRange.upperBound)
+        return data.count >= bodyStart + contentLength
     }
 
     private func response(for request: String) -> Data {
