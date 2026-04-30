@@ -64,6 +64,37 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testCreateDraftIssueFromThumbReachEntryPoint() {
+        let app = launchApp()
+
+        assertElement("today-create-issue-button", existsIn: app, timeout: 8)
+        element("today-create-issue-button", in: app).tap()
+
+        assertElement("issue-title-field", existsIn: app, timeout: 3)
+        element("quick-create-repo-more-button", in: app).tap()
+        app.buttons["quick-create-local-draft-option"].tap()
+
+        element("issue-title-field", in: app).tap()
+        app.typeText("Test draft issue from automation")
+
+        element("issue-body-editor", in: app).tap()
+        app.typeText("This is a test draft created via workflow automation.")
+
+        element("quick-create-more-options", in: app).tap()
+        app.buttons["High"].tap()
+
+        element("submit-issue-button", in: app).tap()
+        waitForNonexistence("issue-title-field", in: app)
+
+        app.buttons["issues-tab"].tap()
+        assertElement("section-tab-drafts", existsIn: app, timeout: 8)
+        element("section-tab-drafts", in: app).tap()
+        assertElement("draft-row-draft-ui-1", existsIn: app, timeout: 8)
+        let draftTitle = element("draft-row-draft-ui-1-title", in: app)
+        XCTAssertEqual(draftTitle.label, "Test draft issue from automation")
+    }
+
+    @MainActor
     func testTodayActiveSessionsThumbButtonOpensSessions() {
         server.seedActiveDeployment()
         let app = launchApp()
@@ -254,6 +285,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
     private let listener: NWListener
     private let queue = DispatchQueue(label: "MockIssueCTLServer")
     private var activeDeployments: [[String: Any]] = []
+    private var drafts: [[String: Any]] = []
     var failUserProfile = false
 
     init() throws {
@@ -332,6 +364,8 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             body = ["repos": [repo]]
         case ("GET", "/api/v1/deployments"):
             body = ["deployments": activeDeployments]
+        case ("GET", "/api/v1/drafts"):
+            body = ["drafts": drafts]
         case ("GET", "/api/v1/issues/org/alpha"):
             body = ["issues": [issue(number: 101), issue(number: 102)], "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/101"):
@@ -370,6 +404,7 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             activateDeployment(issueNumber: 102)
             body = ["success": true, "deployment_id": 9002, "ttyd_port": 19002, "error": NSNull(), "label_warning": NSNull()]
         case ("POST", "/api/v1/drafts"):
+            createDraft(from: request)
             body = ["success": true, "id": "draft-ui-1", "error": NSNull()]
         case ("POST", "/api/v1/drafts/draft-ui-1/assign"):
             body = [
@@ -431,6 +466,30 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             "closed_at": NSNull(),
             "html_url": "https://github.com/org/alpha/issues/\(number)",
         ]
+    }
+
+    private func createDraft(from request: String) {
+        let payload = jsonBody(from: request)
+        drafts = [
+            [
+                "id": "draft-ui-1",
+                "title": payload["title"] as? String ?? "Untitled draft",
+                "body": payload["body"] as? String ?? NSNull(),
+                "priority": payload["priority"] as? String ?? "normal",
+                "created_at": 1_777_440_000,
+            ]
+        ]
+    }
+
+    private func jsonBody(from request: String) -> [String: Any] {
+        guard
+            let body = request.components(separatedBy: "\r\n\r\n").last,
+            let data = body.data(using: .utf8),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return [:]
+        }
+        return json
     }
 
     private var pulls: [[String: Any]] {

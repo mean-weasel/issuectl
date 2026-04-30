@@ -442,6 +442,7 @@ struct IssueListView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(draft.title)
                                 .font(.body)
+                                .accessibilityIdentifier("draft-row-\(draft.id)-title")
                             if let body = draft.body, !body.isEmpty {
                                 Text(body)
                                     .font(.caption)

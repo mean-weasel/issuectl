@@ -149,6 +149,7 @@ struct QuickCreateSheet: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .accessibilityIdentifier("quick-create-more-options")
                     }
 
                     if let errorMessage {
@@ -243,6 +244,7 @@ struct QuickCreateSheet: View {
                         .foregroundStyle(selectedRepoId == repo.id ? IssueCTLColors.action : .primary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("quick-create-repo-\(repo.id)-button")
                 }
 
                 Menu {
@@ -250,11 +252,13 @@ struct QuickCreateSheet: View {
                         Button(repo.fullName) {
                             selectedRepoId = repo.id
                         }
+                        .accessibilityIdentifier("quick-create-repo-\(repo.id)-option")
                     }
                     Divider()
                     Button("Local Draft") {
                         selectedRepoId = nil
                     }
+                    .accessibilityIdentifier("quick-create-local-draft-option")
                 } label: {
                     Text("More")
                         .font(.body)
@@ -263,6 +267,7 @@ struct QuickCreateSheet: View {
                         .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("quick-create-repo-more-button")
             }
         }
     }
