@@ -61,16 +61,6 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Build for iOS Simulator
-        run: |
-          xcodebuild build \
-            -project ios/IssueCTL.xcodeproj \
-            -scheme IssueCTL \
-            -destination 'generic/platform=iOS Simulator' \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            | xcpretty && exit ${PIPESTATUS[0]}
-
       - name: Run UI smoke workflow suite
         run: |
           profile="full"
