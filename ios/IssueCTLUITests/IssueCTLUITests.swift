@@ -46,18 +46,18 @@ final class IssueCTLUITests: XCTestCase {
     func testListToolbarActionsAreReachableFromTabs() {
         let app = launchApp()
 
-        app.buttons["issues-tab"].tap()
+        tapElement("issues-tab", in: app)
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
         assertElement("issues-search-button", existsIn: app)
         assertElement("issues-filter-button", existsIn: app)
 
-        app.buttons["prs-tab"].tap()
+        tapElement("prs-tab", in: app)
         assertElement("prs-create-issue-button", existsIn: app, timeout: 5)
         assertElement("prs-search-button", existsIn: app)
         assertElement("prs-quick-actions-button", existsIn: app, timeout: 5)
         assertElement("prs-filter-button", existsIn: app)
 
-        app.buttons["active-tab"].tap()
+        tapElement("active-tab", in: app)
         assertElement("sessions-create-issue-button", existsIn: app, timeout: 5)
         assertElement("sessions-search-button", existsIn: app)
         assertElement("sessions-refresh-button", existsIn: app)
@@ -86,7 +86,7 @@ final class IssueCTLUITests: XCTestCase {
         element("submit-issue-button", in: app).tap()
         waitForNonexistence("issue-title-field", in: app)
 
-        app.buttons["issues-tab"].tap()
+        tapElement("issues-tab", in: app)
         assertElement("section-tab-drafts", existsIn: app, timeout: 8)
         element("section-tab-drafts", in: app).tap()
         assertElement("draft-row-draft-ui-1", existsIn: app, timeout: 8)
@@ -110,7 +110,7 @@ final class IssueCTLUITests: XCTestCase {
     func testLaunchingIssueCanBeReenteredFromActiveSessions() {
         let app = launchApp()
 
-        app.buttons["issues-tab"].tap()
+        openIssuesSection(in: app)
         assertElement("issue-row-101", existsIn: app, timeout: 8)
         element("issue-row-101", in: app).tap()
 
@@ -124,25 +124,26 @@ final class IssueCTLUITests: XCTestCase {
         app.buttons["terminal-done-button"].tap()
         assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
 
-        app.buttons["active-tab"].tap()
+        tapElement("active-tab", in: app)
         assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         element("session-reenter-terminal-9001", in: app).tap()
 
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["terminal-done-button"].tap()
     }
 
     @MainActor
     func testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions() {
         let app = launchApp()
 
-        app.buttons["issues-tab"].tap()
+        openIssuesSection(in: app)
         launchIssueSession(101, in: app)
         backToIssueList(in: app, expectingIssue: 102)
 
         launchIssueSession(102, in: app)
 
-        app.buttons["active-tab"].tap()
+        tapElement("active-tab", in: app)
         assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9002", existsIn: app, timeout: 5)
@@ -155,7 +156,7 @@ final class IssueCTLUITests: XCTestCase {
         server.seedActiveDeployment()
         let app = launchApp()
 
-        app.buttons["issues-tab"].tap()
+        openIssuesSection(in: app)
         let runningSegment = app.buttons.containing(NSPredicate(format: "label == %@", "Running, 1")).firstMatch
         XCTAssertTrue(runningSegment.waitForExistence(timeout: 5), app.debugDescription)
         runningSegment.tap()
@@ -174,11 +175,11 @@ final class IssueCTLUITests: XCTestCase {
         server.failUserProfile = true
         let app = launchApp()
 
-        app.buttons["issues-tab"].tap()
+        openIssuesSection(in: app)
         assertElement("issue-row-101", existsIn: app, timeout: 8)
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
 
-        app.buttons["prs-tab"].tap()
+        tapElement("prs-tab", in: app)
         assertElement("pr-row-7", existsIn: app, timeout: 8)
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
     }
@@ -210,6 +211,19 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    private func openIssuesSection(in app: XCUIApplication) {
+        if element("issues-tab", in: app).waitForExistence(timeout: 5) {
+            element("issues-tab", in: app).tap()
+        } else {
+            assertElement("section-tab-open", existsIn: app, timeout: 5)
+        }
+
+        if element("section-tab-open", in: app).waitForExistence(timeout: 5) {
+            element("section-tab-open", in: app).tap()
+        }
+    }
+
+    @MainActor
     private func backToIssueList(in app: XCUIApplication, expectingIssue number: Int) {
         if !element("issue-row-\(number)", in: app).exists {
             app.navigationBars.buttons.firstMatch.tap()
@@ -235,6 +249,18 @@ final class IssueCTLUITests: XCTestCase {
     @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    @MainActor
+    private func tapElement(
+        _ identifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assertElement(identifier, existsIn: app, timeout: timeout, file: file, line: line)
+        element(identifier, in: app).tap()
     }
 
     @MainActor
