@@ -35,13 +35,13 @@ FAST_TESTS=(
 )
 
 PR_TESTS=(
-  "IssueCTLUITests/IssueCTLUITests/testCreateDraftIssueFromThumbReachEntryPoint"
+  "IssueCTLUITests/IssueCTLUITests/testCreateMinimalDraftIssueFromThumbReachEntryPoint"
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
 )
 
 FULL_TESTS=(
   "IssueCTLUITests/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
-  "IssueCTLUITests/IssueCTLUITests/testCreateDraftIssueFromThumbReachEntryPoint"
+  "IssueCTLUITests/IssueCTLUITests/testCreateDetailedDraftIssueFromThumbReachEntryPoint"
   "IssueCTLUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
   "IssueCTLUITests/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
   "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
@@ -81,6 +81,13 @@ done
 echo "Running $PROFILE iOS UI smoke tests on: $DESTINATION"
 printf 'Selected tests:\n'
 printf '  %s\n' "${TESTS[@]}"
+printf 'Started at: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+started_at="$SECONDS"
+finish() {
+  printf 'Finished at: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  printf 'Elapsed seconds: %s\n' "$((SECONDS - started_at))"
+}
+trap finish EXIT
 
 if command -v xcpretty >/dev/null 2>&1; then
   set -o pipefail
