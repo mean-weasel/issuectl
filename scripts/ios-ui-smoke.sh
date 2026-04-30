@@ -27,7 +27,7 @@ else
     echo "No available iPhone simulator destination found for $SCHEME" >&2
     exit 70
   fi
-  DESTINATION="platform=iOS Simulator,id=$destination_id"
+  DESTINATION="platform=iOS Simulator,id=$destination_id,arch=arm64"
 fi
 
 FAST_TESTS=(
