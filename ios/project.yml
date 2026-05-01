@@ -62,6 +62,7 @@ targets:
     scheme:
       testTargets:
         - IssueCTLTests
+        - IssueCTLUITests
       gatherCoverageData: true
   IssueCTLTests:
     type: bundle.unit-test
@@ -77,3 +78,34 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.ios.tests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/IssueCTL.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IssueCTL"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  IssueCTLUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS]
+    sources:
+      - path: IssueCTLUITests
+    dependencies:
+      - target: IssueCTL
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.ios.uitests
+        TEST_TARGET_NAME: IssueCTL
+        # Code signing required for UI tests on physical devices
+        DEVELOPMENT_TEAM: B3A6AN2HA4
+        CODE_SIGN_STYLE: Automatic
+        BUNDLE_LOADER: ""  # UI tests run out-of-process; no bundle injection
+# Standalone schemes (supplement the per-target inline scheme above)
+schemes:
+  IssueCTL-UISmoke:
+    build:
+      targets:
+        IssueCTL: all
+        IssueCTLUITests: [testing]
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - IssueCTLUITests
+    run:
+      config: Debug
