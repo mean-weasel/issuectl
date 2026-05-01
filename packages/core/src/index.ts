@@ -4,6 +4,7 @@ export type {
   SettingKey,
   Deployment,
   DeploymentState,
+  LaunchAgent,
   CacheEntry,
   Draft,
   DraftInput,
@@ -219,7 +220,9 @@ export {
 export { updateTtydInfo } from "./db/deployments.js";
 export {
   validateClaudeArgs,
+  validateCodexArgs,
   KNOWN_CLAUDE_FLAGS,
+  KNOWN_CODEX_FLAGS,
   type ValidationResult,
 } from "./launch/claude-args.js";
 

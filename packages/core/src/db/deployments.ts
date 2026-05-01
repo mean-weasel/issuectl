@@ -1,10 +1,11 @@
 import type Database from "better-sqlite3";
-import type { Deployment, DeploymentState } from "../types.js";
+import type { Deployment, DeploymentState, LaunchAgent } from "../types.js";
 
 type DeploymentRow = {
   id: number;
   repo_id: number;
   issue_number: number;
+  agent: string;
   branch_name: string;
   workspace_mode: string;
   workspace_path: string;
@@ -22,6 +23,7 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     id: row.id,
     repoId: row.repo_id,
     issueNumber: row.issue_number,
+    agent: (row.agent as LaunchAgent | undefined) ?? "claude",
     branchName: row.branch_name,
     workspaceMode: row.workspace_mode as Deployment["workspaceMode"],
     workspacePath: row.workspace_path,
@@ -43,6 +45,7 @@ export function recordDeployment(
     branchName: string;
     workspaceMode: Deployment["workspaceMode"];
     workspacePath: string;
+    agent?: LaunchAgent;
     /**
      * Optional initial state. Defaults to "active" for callers that want
      * the legacy one-shot write. The launch flow passes "pending" so the
@@ -54,14 +57,16 @@ export function recordDeployment(
   },
 ): Deployment {
   const state: DeploymentState = deployment.state ?? "active";
+  const agent: LaunchAgent = deployment.agent ?? "claude";
   const result = db
     .prepare(
-      `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, state)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO deployments (repo_id, issue_number, agent, branch_name, workspace_mode, workspace_path, state)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       deployment.repoId,
       deployment.issueNumber,
+      agent,
       deployment.branchName,
       deployment.workspaceMode,
       deployment.workspacePath,

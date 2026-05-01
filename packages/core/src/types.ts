@@ -11,7 +11,9 @@ export type SettingKey =
   | "branch_pattern"
   | "cache_ttl"
   | "worktree_dir"
+  | "launch_agent"
   | "claude_extra_args"
+  | "codex_extra_args"
   | "default_repo_id"
   | "api_token"
   | "idle_grace_period"
@@ -26,11 +28,13 @@ import type { WorkspaceMode } from "./launch/workspace.js";
 import type { GitHubIssue } from "./github/types.js";
 
 export type DeploymentState = "pending" | "active";
+export type LaunchAgent = "claude" | "codex";
 
 export type Deployment = {
   id: number;
   repoId: number;
   issueNumber: number;
+  agent: LaunchAgent;
   branchName: string;
   workspaceMode: WorkspaceMode;
   workspacePath: string;

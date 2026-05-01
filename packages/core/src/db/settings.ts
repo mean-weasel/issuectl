@@ -8,7 +8,9 @@ const DEFAULT_SETTINGS: Setting[] = [
   { key: "branch_pattern", value: "issue-{number}-{slug}" },
   { key: "cache_ttl", value: "300" },
   { key: "worktree_dir", value: DEFAULT_WORKTREE_DIR },
+  { key: "launch_agent", value: "claude" },
   { key: "claude_extra_args", value: "--dangerously-skip-permissions" },
+  { key: "codex_extra_args", value: "" },
   { key: "idle_grace_period", value: "300" },
   { key: "idle_threshold", value: "300" },
 ];

@@ -29,8 +29,31 @@ export const KNOWN_CLAUDE_FLAGS: readonly string[] = [
   "--version",
 ];
 
+export const KNOWN_CODEX_FLAGS: readonly string[] = [
+  "--sandbox",
+  "--ask-for-approval",
+  "--model",
+  "--profile",
+  "--cd",
+  "--add-dir",
+  "--search",
+  "--full-auto",
+  "--dangerously-bypass-approvals-and-sandbox",
+  "--config", "-c",
+  "--enable",
+  "--disable",
+  "--remote",
+  "--remote-auth-token-env",
+  "--image", "-i",
+  "--oss",
+  "--local-provider",
+  "--no-alt-screen",
+  "--help", "-h",
+  "--version", "-V",
+];
+
 const OPERATOR_ERROR =
-  "Shell operators (; && || | > < `...` $(...)) are not allowed. Args are passed directly to claude.";
+  "Shell operators (; && || | > < `...` $(...)) are not allowed. Args are passed directly to the agent.";
 
 // shell-quote silently closes unmatched quotes at end-of-string instead of throwing
 // (verified empirically — `parse('--foo "bar')` returns `["--foo", "bar"]`). This
@@ -58,7 +81,11 @@ function hasUnmatchedQuote(s: string): boolean {
   return inSingle || inDouble;
 }
 
-export function validateClaudeArgs(input: string): ValidationResult {
+function validateAgentArgs(
+  input: string,
+  knownFlags: readonly string[],
+  agentLabel: "Claude" | "Codex",
+): ValidationResult {
   const trimmed = input.trim();
   if (trimmed === "") {
     return { ok: true, errors: [], warnings: [] };
@@ -94,7 +121,7 @@ export function validateClaudeArgs(input: string): ValidationResult {
   if (/\$/.test(trimmed)) {
     return {
       ok: false,
-      errors: ["Variable expansion ($VAR, ${VAR}) is not allowed. Args are passed directly to claude."],
+      errors: [`Variable expansion ($VAR, \${VAR}) is not allowed. Args are passed directly to ${agentLabel}.`],
       warnings: [],
     };
   }
@@ -103,7 +130,7 @@ export function validateClaudeArgs(input: string): ValidationResult {
   try {
     parsed = parse(trimmed);
   } catch (err) {
-    console.error("[issuectl] validateClaudeArgs: shell-quote.parse threw", { input: trimmed, err });
+    console.error(`[issuectl] validate${agentLabel}Args: shell-quote.parse threw`, { input: trimmed, err });
     return {
       ok: false,
       errors: [
@@ -114,14 +141,14 @@ export function validateClaudeArgs(input: string): ValidationResult {
   }
 
   const warnings: string[] = [];
-  const knownSet = new Set<string>(KNOWN_CLAUDE_FLAGS);
+  const knownSet = new Set<string>(knownFlags);
 
   for (const entry of parsed) {
     if (typeof entry === "string") {
       const eqIdx = entry.indexOf("=");
       const flagName = eqIdx >= 0 ? entry.slice(0, eqIdx) : entry;
       if (flagName.startsWith("-") && !knownSet.has(flagName)) {
-        warnings.push(`${flagName} is not a recognized Claude flag.`);
+        warnings.push(`${flagName} is not a recognized ${agentLabel} flag.`);
       }
       continue;
     }
@@ -145,4 +172,12 @@ export function validateClaudeArgs(input: string): ValidationResult {
   }
 
   return { ok: true, errors: [], warnings };
+}
+
+export function validateClaudeArgs(input: string): ValidationResult {
+  return validateAgentArgs(input, KNOWN_CLAUDE_FLAGS, "Claude");
+}
+
+export function validateCodexArgs(input: string): ValidationResult {
+  return validateAgentArgs(input, KNOWN_CODEX_FLAGS, "Codex");
 }
