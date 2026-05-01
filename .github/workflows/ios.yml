@@ -34,8 +34,45 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine iOS smoke relevance
+        id: ios_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "run_smoke=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            changed_files="$(git diff --name-only "$base_ref"...HEAD)"
+          elif [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
+            if git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
+              changed_files="$(git diff --name-only HEAD^1 HEAD)"
+            else
+              changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+            fi
+          else
+            changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+          fi
+
+          echo "Changed files:"
+          printf '%s\n' "$changed_files"
+
+          if printf '%s\n' "$changed_files" | grep -E -q '^(ios/|scripts/ios-ui-smoke\.sh$|package\.json$|\.husky/pre-push$|\.github/workflows/ios\.yml$)'; then
+            echo "run_smoke=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_smoke=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Select Xcode with iOS Simulator runtime
+        if: steps.ios_changes.outputs.run_smoke == 'true'
         run: |
           for developer_dir in \
             /Applications/Xcode_16.4.app/Contents/Developer \
@@ -57,11 +94,13 @@ jobs:
           exit 70
 
       - name: Show build environment
+        if: steps.ios_changes.outputs.run_smoke == 'true'
         run: |
           xcodebuild -version
           swift --version
 
       - name: Run UI smoke workflow suite
+        if: steps.ios_changes.outputs.run_smoke == 'true'
         run: |
           profile="full"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
@@ -72,3 +111,7 @@ jobs:
           fi
 
           IOS_UI_SMOKE_PROFILE="$profile" ./scripts/ios-ui-smoke.sh
+
+      - name: Skip UI smoke workflow suite
+        if: steps.ios_changes.outputs.run_smoke != 'true'
+        run: echo "No iOS-relevant changes detected; required iOS check passes without running simulator smoke."
