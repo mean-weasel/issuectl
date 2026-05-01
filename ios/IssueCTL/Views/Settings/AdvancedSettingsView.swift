@@ -11,7 +11,9 @@ struct AdvancedSettingsView: View {
 
     // Editable fields
     @State private var cacheTTL = ""
+    @State private var launchAgent: LaunchAgent = .claude
     @State private var claudeExtraArgs = ""
+    @State private var codexExtraArgs = ""
     @State private var idleGracePeriod = ""
     @State private var idleThreshold = ""
     @State private var branchPattern = ""
@@ -22,7 +24,9 @@ struct AdvancedSettingsView: View {
     private var editableFields: [(key: String, value: String)] {
         [
             ("cache_ttl", cacheTTL),
+            ("launch_agent", launchAgent.rawValue),
             ("claude_extra_args", claudeExtraArgs),
+            ("codex_extra_args", codexExtraArgs),
             ("idle_grace_period", idleGracePeriod),
             ("idle_threshold", idleThreshold),
             ("branch_pattern", branchPattern),
@@ -32,7 +36,14 @@ struct AdvancedSettingsView: View {
     }
 
     private var hasChanges: Bool {
-        editableFields.contains { $0.value != (settings[$0.key] ?? "") }
+        editableFields.contains { $0.value != baselineValue(for: $0.key) }
+    }
+
+    private func baselineValue(for key: String) -> String {
+        if key == "launch_agent" {
+            return settings[key] ?? LaunchAgent.claude.rawValue
+        }
+        return settings[key] ?? ""
     }
 
     var body: some View {
@@ -66,6 +77,19 @@ struct AdvancedSettingsView: View {
                 }
 
                 Section {
+                    Picker("Default Launch Agent", selection: $launchAgent) {
+                        ForEach(LaunchAgent.allCases) { agent in
+                            Text(agent.displayName).tag(agent)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Launch Agent")
+                } footer: {
+                    Text("Default agent used when launching a new terminal session.")
+                }
+
+                Section {
                     TextField("Extra arguments", text: $claudeExtraArgs)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
@@ -73,6 +97,16 @@ struct AdvancedSettingsView: View {
                     Text("Claude CLI")
                 } footer: {
                     Text("Additional arguments passed to Claude Code on launch.")
+                }
+
+                Section {
+                    TextField("Extra arguments", text: $codexExtraArgs)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("Codex CLI")
+                } footer: {
+                    Text("Additional arguments passed to Codex on launch.")
                 }
 
                 Section {
@@ -156,7 +190,9 @@ struct AdvancedSettingsView: View {
             settings = try await settingsFetch
             repos = try await reposFetch
             cacheTTL = settings["cache_ttl"] ?? ""
+            launchAgent = LaunchAgent.settingValue(settings["launch_agent"])
             claudeExtraArgs = settings["claude_extra_args"] ?? ""
+            codexExtraArgs = settings["codex_extra_args"] ?? ""
             idleGracePeriod = settings["idle_grace_period"] ?? ""
             idleThreshold = settings["idle_threshold"] ?? ""
             branchPattern = settings["branch_pattern"] ?? ""
@@ -175,7 +211,7 @@ struct AdvancedSettingsView: View {
         defer { isSaving = false }
 
         let updates = Dictionary(
-            uniqueKeysWithValues: editableFields.filter { $0.value != (settings[$0.key] ?? "") }
+            uniqueKeysWithValues: editableFields.filter { $0.value != baselineValue(for: $0.key) }
                 .map { ($0.key, $0.value) }
         )
 

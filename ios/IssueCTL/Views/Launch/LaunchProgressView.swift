@@ -5,15 +5,18 @@ struct LaunchProgressView: View {
     let repo: String
     let issueNumber: Int
     let branchName: String
+    let agent: LaunchAgent
 
     @State private var currentStep = 0
-    private let steps: [(label: String, detail: String)] = [
-        ("Assembled issue context", "Gathering comments and referenced files"),
-        ("Checked deployment history", "Verifying no conflicting sessions"),
-        ("Checked out branch", ""),
-        ("Applied lifecycle label", "Marking issue as in-progress"),
-        ("Claude Code running", "Launching terminal session"),
-    ]
+    private var steps: [(label: String, detail: String)] {
+        [
+            ("Assembled issue context", "Gathering comments and referenced files"),
+            ("Checked deployment history", "Verifying no conflicting sessions"),
+            ("Checked out branch", ""),
+            ("Applied lifecycle label", "Marking issue as in-progress"),
+            ("\(agent.displayName) running", "Launching terminal session"),
+        ]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

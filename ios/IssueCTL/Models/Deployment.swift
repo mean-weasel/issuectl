@@ -8,6 +8,29 @@ enum WorkspaceMode: String, Codable, CaseIterable, Sendable {
     case existing
 }
 
+enum LaunchAgent: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
+    case claude
+    case codex
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .claude:
+            return "Claude Code"
+        case .codex:
+            return "Codex"
+        }
+    }
+
+    static func settingValue(_ value: String?) -> LaunchAgent {
+        guard let value, let agent = LaunchAgent(rawValue: value) else {
+            return .claude
+        }
+        return agent
+    }
+}
+
 enum DeploymentState: String, Codable, Sendable {
     case active
     case ended
@@ -88,6 +111,7 @@ struct ActiveDeploymentsResponse: Codable, Sendable {
 }
 
 struct LaunchRequestBody: Encodable, Sendable {
+    let agent: LaunchAgent
     let branchName: String
     let workspaceMode: WorkspaceMode
     let selectedCommentIndices: [Int]
