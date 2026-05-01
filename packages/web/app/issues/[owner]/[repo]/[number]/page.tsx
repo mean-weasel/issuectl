@@ -7,12 +7,14 @@ import {
   getIssueHeader,
   getRepo,
   getPriority,
+  getSettings,
 } from "@issuectl/core";
 import { IssueDetail } from "@/components/detail/IssueDetail";
 import { IssueDetailContent } from "@/components/detail/IssueDetailContent";
 import { LightboxProvider } from "@/components/detail/ImageLightbox";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 import { refreshIssueAction } from "@/lib/actions/refresh";
+import { normalizeLaunchAgent } from "@/components/launch/agent";
 import styles from "./loading.module.css";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +71,9 @@ export default async function IssueDetailPage({
     const currentPriority = repoId > 0
       ? getPriority(db, repoId, issueNumber)
       : "normal";
+    const settings = getSettings(db);
+    const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+    const defaultAgent = normalizeLaunchAgent(settingMap.launch_agent);
 
     const boundRefresh = refreshIssueAction.bind(
       null,
@@ -89,6 +94,7 @@ export default async function IssueDetailPage({
             repoLocalPath={repoRecord?.localPath ?? null}
             deployments={deployments}
             referencedFiles={referencedFiles}
+            defaultAgent={defaultAgent}
           >
             <Suspense fallback={<ContentSkeleton />}>
               <IssueDetailContent

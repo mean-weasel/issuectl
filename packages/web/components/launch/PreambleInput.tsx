@@ -1,14 +1,16 @@
 "use client";
 
 import { MAX_PREAMBLE } from "@/lib/constants";
+import { launchAgentLabel, type LaunchAgent } from "./agent";
 import styles from "./PreambleInput.module.css";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
+  agent: LaunchAgent;
 };
 
-export function PreambleInput({ value, onChange }: Props) {
+export function PreambleInput({ value, onChange, agent }: Props) {
   const remaining = MAX_PREAMBLE - value.length;
   const nearLimit = remaining < 500;
 
@@ -19,7 +21,7 @@ export function PreambleInput({ value, onChange }: Props) {
       </label>
       <textarea
         className={styles.textarea}
-        placeholder="Additional instructions for Claude Code..."
+        placeholder={`Additional instructions for ${launchAgentLabel(agent)}...`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={MAX_PREAMBLE}

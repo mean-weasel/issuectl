@@ -18,10 +18,12 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { checkWorktreeStatusAction } from "@/lib/actions/worktrees";
 import { BranchInput } from "./BranchInput";
+import { AgentSelector } from "./AgentSelector";
 import { WorkspaceModeSelector } from "./WorkspaceModeSelector";
 import { ContextToggles } from "./ContextToggles";
 import { PreambleInput } from "./PreambleInput";
 import { DirtyWorktreeBanner } from "./DirtyWorktreeBanner";
+import { launchAgentLabel, normalizeLaunchAgent, type LaunchAgent } from "./agent";
 import styles from "./LaunchModal.module.css";
 
 type Props = {
@@ -33,6 +35,7 @@ type Props = {
   deployments: Deployment[];
   referencedFiles: string[];
   initialWorkspaceMode?: WorkspaceMode;
+  initialAgent?: LaunchAgent;
   onClose: () => void;
 };
 
@@ -45,6 +48,7 @@ export function LaunchModal({
   deployments,
   referencedFiles,
   initialWorkspaceMode,
+  initialAgent = "claude",
   onClose,
 }: Props) {
   const router = useRouter();
@@ -58,6 +62,7 @@ export function LaunchModal({
     generateBranchName(DEFAULT_BRANCH_PATTERN, issue.number, issue.title);
 
   const [branchName, setBranchName] = useState(defaultBranch);
+  const [agent, setAgent] = useState<LaunchAgent>(normalizeLaunchAgent(initialAgent));
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(
     initialWorkspaceMode ?? (repoLocalPath ? "worktree" : "clone"),
   );
@@ -76,6 +81,7 @@ export function LaunchModal({
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const [initialBranch] = useState(defaultBranch);
+  const [initialAgentState] = useState<LaunchAgent>(normalizeLaunchAgent(initialAgent));
   const [initialMode] = useState<WorkspaceMode>(
     initialWorkspaceMode ?? (repoLocalPath ? "worktree" : "clone"),
   );
@@ -115,6 +121,7 @@ export function LaunchModal({
   const allCommentIndices = comments.map((_, i) => i);
   const isDirty =
     branchName !== initialBranch ||
+    agent !== initialAgentState ||
     workspaceMode !== initialMode ||
     preamble.trim().length > 0 ||
     selectedComments.length !== allCommentIndices.length ||
@@ -165,10 +172,11 @@ export function LaunchModal({
     const idempotencyKey = newIdempotencyKey();
     startTransition(async () => {
       try {
-        const result = await launchIssue({
+        const request: Parameters<typeof launchIssue>[0] & { agent: LaunchAgent } = {
           owner,
           repo,
           issueNumber: issue.number,
+          agent,
           branchName: branchName.trim(),
           workspaceMode,
           selectedCommentIndices: selectedComments,
@@ -176,7 +184,8 @@ export function LaunchModal({
           preamble: preamble.trim() || undefined,
           idempotencyKey,
           forceResume,
-        });
+        };
+        const result = await launchIssue(request);
 
         if (!result.success) {
           setError(result.error ?? "Launch failed");
@@ -210,7 +219,7 @@ export function LaunchModal({
   return (
     <>
       <Modal
-        title="Launch to Claude Code"
+        title={`Launch to ${launchAgentLabel(agent)}`}
         width={620}
         onClose={handleClose}
         disabled={isPending}
@@ -260,6 +269,8 @@ export function LaunchModal({
 
         <BranchInput value={branchName} onChange={setBranchName} />
 
+        <AgentSelector value={agent} onChange={setAgent} disabled={isPending} />
+
         <WorkspaceModeSelector
           value={workspaceMode}
           onChange={setWorkspaceMode}
@@ -278,7 +289,7 @@ export function LaunchModal({
           onAddFile={addFile}
         />
 
-        <PreambleInput value={preamble} onChange={setPreamble} />
+        <PreambleInput value={preamble} onChange={setPreamble} agent={agent} />
 
         {error && (
           <div className={styles.error} role="alert">

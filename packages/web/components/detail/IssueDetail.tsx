@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import type { GitHubIssue, Priority, Deployment } from "@issuectl/core";
+import type { LaunchAgent } from "@/components/launch/agent";
 import { Chip, LabelChip } from "@/components/paper";
 import { timeAgo } from "@/lib/format";
 import { DetailTopBar } from "./DetailTopBar";
@@ -27,6 +28,7 @@ type Props = {
   repoLocalPath: string | null;
   deployments: Deployment[];
   referencedFiles: string[];
+  defaultAgent: LaunchAgent;
   /** Rendered after the body — used by the page to stream the active-deployment banner and comments. */
   children?: ReactNode;
 };
@@ -40,6 +42,7 @@ export function IssueDetail({
   repoLocalPath,
   deployments,
   referencedFiles,
+  defaultAgent,
   children,
 }: Props) {
   const displayLabels = issue.labels.filter(
@@ -104,6 +107,7 @@ export function IssueDetail({
               deployments={deployments}
               referencedFiles={referencedFiles}
               hasLiveDeployment={hasLiveDeployment}
+              defaultAgent={defaultAgent}
             />
           </Suspense>
         )}

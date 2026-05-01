@@ -250,7 +250,7 @@ export function FiltersSheet({
             </svg>
           </span>
           <span className={styles.commandLinkText}>
-            Launch Claude Code
+            Launch Agent
             <span className={styles.commandLinkDesc}>swipe an open issue to launch</span>
           </span>
         </Link>

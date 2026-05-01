@@ -1,10 +1,12 @@
 "use client";
 
 import { Button } from "@/components/paper";
+import { launchAgentLabel, type LaunchAgent } from "@/components/launch/agent";
 import styles from "./ActionSheet.module.css";
 
 type Props = {
   hasLiveDeployment: boolean;
+  defaultAgent: LaunchAgent;
   onLaunch: () => void;
   onReassign: () => void;
   onCloseIssue: () => void;
@@ -12,6 +14,7 @@ type Props = {
 
 export function IssueDesktopActions({
   hasLiveDeployment,
+  defaultAgent,
   onLaunch,
   onReassign,
   onCloseIssue,
@@ -20,7 +23,7 @@ export function IssueDesktopActions({
     <div className={styles.desktopBar}>
       {!hasLiveDeployment && (
         <Button variant="primary" onClick={onLaunch}>
-          Launch with Claude
+          Launch with {launchAgentLabel(defaultAgent)}
         </Button>
       )}
       <Button variant="ghost" onClick={onReassign}>

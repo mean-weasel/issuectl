@@ -6,6 +6,7 @@ import type {
 import { generateBranchName } from "@/lib/branch";
 import { DEFAULT_BRANCH_PATTERN } from "@/lib/constants";
 import { LaunchButton } from "@/components/launch/LaunchButton";
+import { launchAgentLabel, type LaunchAgent } from "@/components/launch/agent";
 import styles from "./LaunchCard.module.css";
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
   comments: GitHubComment[];
   deployments: Deployment[];
   referencedFiles: string[];
+  defaultAgent?: LaunchAgent;
 };
 
 export function LaunchCard({
@@ -26,6 +28,7 @@ export function LaunchCard({
   comments,
   deployments,
   referencedFiles,
+  defaultAgent = "claude",
 }: Props) {
   const lastDeployment = deployments[0];
   const branch =
@@ -34,7 +37,7 @@ export function LaunchCard({
 
   return (
     <div className={styles.card}>
-      <div className={styles.title}>Launch to Claude Code</div>
+      <div className={styles.title}>Launch to {launchAgentLabel(defaultAgent)}</div>
       <div className={styles.meta}>
         branch: <span className={styles.value}>{branch}</span>
       </div>
@@ -53,6 +56,7 @@ export function LaunchCard({
         comments={comments}
         deployments={deployments}
         referencedFiles={referencedFiles}
+        defaultAgent={defaultAgent}
         className={styles.launchBtn}
       />
     </div>

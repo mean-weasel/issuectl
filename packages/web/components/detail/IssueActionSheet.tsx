@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { GitHubIssue, GitHubComment, Deployment } from "@issuectl/core";
+import type { LaunchAgent } from "@/components/launch/agent";
 import { CloseIssueModal } from "@/components/ui/CloseIssueModal";
 import { BottomHandle } from "@/components/list/BottomHandle";
 import { LaunchModal } from "@/components/launch/LaunchModal";
@@ -32,6 +33,7 @@ type Props = {
   deployments: Deployment[];
   referencedFiles: string[];
   hasLiveDeployment: boolean;
+  defaultAgent: LaunchAgent;
 };
 
 export function IssueActionSheet({
@@ -44,6 +46,7 @@ export function IssueActionSheet({
   deployments,
   referencedFiles,
   hasLiveDeployment,
+  defaultAgent,
 }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -216,6 +219,7 @@ export function IssueActionSheet({
 
       <IssueDesktopActions
         hasLiveDeployment={hasLiveDeployment}
+        defaultAgent={defaultAgent}
         onLaunch={handleLaunchTap}
         onReassign={handleReassignTap}
         onCloseIssue={handleCloseTap}
@@ -232,6 +236,7 @@ export function IssueActionSheet({
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         hasLiveDeployment={hasLiveDeployment}
+        defaultAgent={defaultAgent}
         isOffline={isOffline}
         onLaunch={handleLaunchTap}
         onReassign={handleReassignTap}
@@ -247,6 +252,7 @@ export function IssueActionSheet({
           comments={comments}
           deployments={deployments}
           referencedFiles={referencedFiles}
+          initialAgent={defaultAgent}
           onClose={() => setLaunchOpen(false)}
         />
       )}

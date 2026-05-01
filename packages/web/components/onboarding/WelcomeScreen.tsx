@@ -57,7 +57,7 @@ export function WelcomeScreen() {
         </h1>
         <p className={styles.description}>
           Manage GitHub issues and PRs across all your repos from one place.
-          Launch any issue directly into Claude Code with a single click.
+          Launch any issue directly into your selected agent with a single click.
         </p>
 
         <div className={styles.card}>

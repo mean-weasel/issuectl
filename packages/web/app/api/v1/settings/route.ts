@@ -6,6 +6,8 @@ import {
   getSettings,
   setSetting,
   formatErrorForUser,
+  validateClaudeArgs,
+  validateCodexArgs,
   type SettingKey,
 } from "@issuectl/core";
 
@@ -15,11 +17,32 @@ const EDITABLE_KEYS: readonly SettingKey[] = [
   "branch_pattern",
   "cache_ttl",
   "worktree_dir",
+  "launch_agent",
   "claude_extra_args",
+  "codex_extra_args",
   "default_repo_id",
   "idle_grace_period",
   "idle_threshold",
 ];
+
+function validateSettingValue(
+  key: SettingKey,
+  value: string,
+): string | undefined {
+  const trimmed = value.trim();
+  if (key === "launch_agent" && trimmed !== "claude" && trimmed !== "codex") {
+    return "Launch agent must be claude or codex";
+  }
+  if (key === "claude_extra_args") {
+    const result = validateClaudeArgs(trimmed);
+    return result.ok ? undefined : result.errors.join(" ");
+  }
+  if (key === "codex_extra_args") {
+    const result = validateCodexArgs(trimmed);
+    return result.ok ? undefined : result.errors.join(" ");
+  }
+  return undefined;
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const denied = requireAuth(request);
@@ -75,12 +98,19 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         { status: 400 },
       );
     }
+    const validationError = validateSettingValue(key as SettingKey, body[key]);
+    if (validationError) {
+      return NextResponse.json(
+        { error: `${key}: ${validationError}` },
+        { status: 400 },
+      );
+    }
   }
 
   try {
     const db = getDb();
     for (const key of keys) {
-      setSetting(db, key as SettingKey, body[key]);
+      setSetting(db, key as SettingKey, body[key].trim());
     }
     log.info({ msg: "api_settings_updated", keys });
     return NextResponse.json({ success: true });

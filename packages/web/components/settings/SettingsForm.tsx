@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { updateSettings } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/paper";
-import { validateClaudeArgs } from "@issuectl/core/validation";
+import * as validation from "@issuectl/core/validation";
 import type { SettingKey } from "@issuectl/core";
+import { LAUNCH_AGENTS, launchAgentCommand, launchAgentLabel, normalizeLaunchAgent, type LaunchAgent } from "@/components/launch/agent";
 import styles from "./SettingsForm.module.css";
 
 // Save button gets an inline flash in addition to the toast: the
@@ -17,6 +18,8 @@ type Props = {
   branchPattern: string;
   cacheTTL: string;
   claudeExtraArgs: string;
+  codexExtraArgs: string;
+  launchAgent: LaunchAgent;
   idleGracePeriod: string;
   idleThreshold: string;
 };
@@ -25,14 +28,24 @@ type FormValues = {
   branch_pattern: string;
   cache_ttl: string;
   claude_extra_args: string;
+  codex_extra_args: string;
+  launch_agent: LaunchAgent;
   idle_grace_period: string;
   idle_threshold: string;
+};
+
+type ArgsValidation = {
+  ok: boolean;
+  errors: readonly string[];
+  warnings: readonly string[];
 };
 
 export function SettingsForm({
   branchPattern,
   cacheTTL,
   claudeExtraArgs,
+  codexExtraArgs,
+  launchAgent,
   idleGracePeriod,
   idleThreshold,
 }: Props) {
@@ -40,6 +53,8 @@ export function SettingsForm({
     branch_pattern: branchPattern,
     cache_ttl: cacheTTL,
     claude_extra_args: claudeExtraArgs,
+    codex_extra_args: codexExtraArgs,
+    launch_agent: normalizeLaunchAgent(launchAgent),
     idle_grace_period: idleGracePeriod,
     idle_threshold: idleThreshold,
   };
@@ -61,23 +76,45 @@ export function SettingsForm({
     (k) => values[k] !== originals[k],
   );
 
-  // validateClaudeArgs is pure and shouldn't throw, but guard against
+  // Argument validators are pure and shouldn't throw, but guard against
   // unexpected runtime errors so a bad value never crashes the form.
-  let extraArgsValidation;
+  let claudeArgsValidation: ArgsValidation;
   try {
-    extraArgsValidation = validateClaudeArgs(values.claude_extra_args);
+    claudeArgsValidation = validation.validateClaudeArgs(values.claude_extra_args);
   } catch (err) {
     console.error("[issuectl] validateClaudeArgs threw unexpectedly", err);
-    extraArgsValidation = {
+    claudeArgsValidation = {
       ok: false,
       errors: ["Could not validate input (internal error). Try reloading the page."],
       warnings: [],
     };
   }
-  const hasBlockingError = !extraArgsValidation.ok;
-  const hasWarnings = extraArgsValidation.warnings.length > 0;
 
-  function handleChange(key: keyof FormValues, value: string) {
+  const validateCodexArgs: ((input: string) => ArgsValidation) | undefined =
+    "validateCodexArgs" in validation && typeof validation.validateCodexArgs === "function"
+      ? (validation.validateCodexArgs as (input: string) => ArgsValidation)
+      : undefined;
+  const codexArgsValidation = validateCodexArgs
+    ? (() => {
+        try {
+          return validateCodexArgs(values.codex_extra_args);
+        } catch (err) {
+          console.error("[issuectl] validateCodexArgs threw unexpectedly", err);
+          return {
+            ok: false,
+            errors: ["Could not validate input (internal error). Try reloading the page."],
+            warnings: [],
+          };
+        }
+      })()
+    : { ok: true, errors: [], warnings: [] };
+
+  const hasBlockingError = !claudeArgsValidation.ok || !codexArgsValidation.ok;
+  const hasWarnings =
+    claudeArgsValidation.warnings.length > 0 ||
+    codexArgsValidation.warnings.length > 0;
+
+  function handleChange(key: keyof FormValues, value: string | LaunchAgent) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -161,6 +198,22 @@ export function SettingsForm({
               enterKeyHint="done"
             />
           </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="sf-launch-agent">Launch Agent</label>
+            <select
+              id="sf-launch-agent"
+              className={styles.select}
+              value={values.launch_agent}
+              onChange={(e) => handleChange("launch_agent", normalizeLaunchAgent(e.target.value))}
+              disabled={isPending}
+            >
+              {LAUNCH_AGENTS.map((agent) => (
+                <option key={agent} value={agent}>
+                  {launchAgentLabel(agent)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </section>
 
@@ -185,17 +238,51 @@ export function SettingsForm({
             <div className={styles.help}>
               Passed verbatim after <code>claude</code> at launch. Leave empty for defaults.
             </div>
-            {extraArgsValidation.errors.length > 0 && (
+            {claudeArgsValidation.errors.length > 0 && (
               <div className={styles.fieldError} role="alert">
-                {extraArgsValidation.errors.map((e, i) => (
+                {claudeArgsValidation.errors.map((e, i) => (
                   <div key={i}>{e}</div>
                 ))}
               </div>
             )}
-            {extraArgsValidation.errors.length === 0 &&
-              extraArgsValidation.warnings.length > 0 && (
+            {claudeArgsValidation.errors.length === 0 &&
+              claudeArgsValidation.warnings.length > 0 && (
                 <div className={styles.fieldWarning}>
-                  {extraArgsValidation.warnings.map((w, i) => (
+                  {claudeArgsValidation.warnings.map((w, i) => (
+                    <div key={i}>{w}</div>
+                  ))}
+                </div>
+              )}
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="sf-codex-args">Codex Extra Args</label>
+            <input
+              id="sf-codex-args"
+              className={styles.input}
+              value={values.codex_extra_args}
+              onChange={(e) => handleChange("codex_extra_args", e.target.value)}
+              disabled={isPending}
+              placeholder="--model gpt-5"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
+            />
+            <div className={styles.help}>
+              Passed verbatim after <code>{launchAgentCommand("codex")}</code> at launch. Leave empty for defaults.
+            </div>
+            {codexArgsValidation.errors.length > 0 && (
+              <div className={styles.fieldError} role="alert">
+                {codexArgsValidation.errors.map((e, i) => (
+                  <div key={i}>{e}</div>
+                ))}
+              </div>
+            )}
+            {codexArgsValidation.errors.length === 0 &&
+              codexArgsValidation.warnings.length > 0 && (
+                <div className={styles.fieldWarning}>
+                  {codexArgsValidation.warnings.map((w, i) => (
                     <div key={i}>{w}</div>
                   ))}
                 </div>

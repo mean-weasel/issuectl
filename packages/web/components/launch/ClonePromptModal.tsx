@@ -2,16 +2,18 @@
 
 import { Button } from "@/components/paper";
 import { Modal } from "@/components/ui/Modal";
+import { launchAgentLabel, type LaunchAgent } from "./agent";
 import styles from "./ClonePromptModal.module.css";
 
 type Props = {
   owner: string;
   repo: string;
+  agent: LaunchAgent;
   onConfirm: () => void;
   onClose: () => void;
 };
 
-export function ClonePromptModal({ owner, repo, onConfirm, onClose }: Props) {
+export function ClonePromptModal({ owner, repo, agent, onConfirm, onClose }: Props) {
   return (
     <Modal
       title="Repository not cloned"
@@ -34,7 +36,7 @@ export function ClonePromptModal({ owner, repo, onConfirm, onClose }: Props) {
           <strong>
             {owner}/{repo}
           </strong>{" "}
-          has no local path configured. To launch Claude Code, the repo
+          has no local path configured. To launch {launchAgentLabel(agent)}, the repo
           will be cloned automatically.
         </div>
       </div>

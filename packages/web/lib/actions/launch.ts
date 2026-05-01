@@ -15,6 +15,7 @@ import {
   DuplicateInFlightError,
   formatErrorForUser,
   cleanupStaleContextFiles,
+  type LaunchAgent,
   type WorkspaceMode,
 } from "@issuectl/core";
 import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
@@ -24,6 +25,7 @@ type LaunchFormData = {
   owner: string;
   repo: string;
   issueNumber: number;
+  agent?: LaunchAgent;
   branchName: string;
   workspaceMode: WorkspaceMode;
   selectedCommentIndices: number[];
@@ -52,6 +54,7 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
   "worktree",
   "clone",
 ];
+const VALID_LAUNCH_AGENTS: LaunchAgent[] = ["claude", "codex"];
 
 export async function launchIssue(
   formData: LaunchFormData,
@@ -70,6 +73,9 @@ export async function launchIssue(
   }
   if (!VALID_WORKSPACE_MODES.includes(workspaceMode)) {
     return { success: false, error: "Invalid workspace mode" };
+  }
+  if (formData.agent && !VALID_LAUNCH_AGENTS.includes(formData.agent)) {
+    return { success: false, error: "Invalid launch agent" };
   }
   if (formData.selectedCommentIndices.some((i) => !Number.isInteger(i) || i < 0)) {
     return { success: false, error: "Invalid comment selection" };
@@ -110,6 +116,7 @@ export async function launchIssue(
           owner,
           repo,
           issueNumber,
+          agent: formData.agent,
           branchName: trimmedBranch,
           workspaceMode,
           selectedComments: formData.selectedCommentIndices,
