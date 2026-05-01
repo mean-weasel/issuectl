@@ -84,10 +84,6 @@ final class MockIssueCTLServer: @unchecked Sendable {
         issueComments[number] = comments
     }
 
-    func seedRepoLabels() {
-        // Labels already available via GET /api/v1/repos/org/alpha/labels
-    }
-
     // MARK: - Connection handling
 
     private func handle(_ connection: NWConnection) {
@@ -96,7 +92,12 @@ final class MockIssueCTLServer: @unchecked Sendable {
     }
 
     private func receiveRequest(on connection: NWConnection, buffer: Data) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, _ in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+            if let error {
+                print("[MockServer] receive error: \(error)")
+                connection.cancel()
+                return
+            }
             guard let self else {
                 connection.cancel()
                 return
@@ -113,7 +114,8 @@ final class MockIssueCTLServer: @unchecked Sendable {
                     return
                 }
                 let response = self.response(for: request)
-                connection.send(content: response, completion: .contentProcessed { _ in
+                connection.send(content: response, completion: .contentProcessed { sendError in
+                    if let sendError { print("[MockServer] send error: \(sendError)") }
                     connection.cancel()
                 })
                 return
@@ -315,7 +317,15 @@ final class MockIssueCTLServer: @unchecked Sendable {
     // MARK: - Response helpers
 
     func http(status: Int, json: Any) -> Data {
-        let data = try! JSONSerialization.data(withJSONObject: json)
+        let data: Data
+        do {
+            data = try JSONSerialization.data(withJSONObject: json)
+        } catch {
+            print("[MockServer] JSON serialization failed for status \(status): \(error)")
+            let fallback = #"{"error":"MockServer serialization failed"}"#.data(using: .utf8)!
+            let header = "HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json\r\nContent-Length: \(fallback.count)\r\nConnection: close\r\n\r\n"
+            return Data(header.utf8) + fallback
+        }
         let reason = status == 200 ? "OK" : status == 404 ? "Not Found" : "Error"
         let header = """
         HTTP/1.1 \(status) \(reason)\r
@@ -334,6 +344,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
             let data = body.data(using: .utf8),
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
+            print("[MockServer] failed to parse JSON body from request")
             return [:]
         }
         return json
