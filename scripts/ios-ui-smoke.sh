@@ -78,6 +78,13 @@ for test_id in "${TESTS[@]}"; do
   args+=("-only-testing:$test_id")
 done
 
+# Pre-boot the simulator so the first test doesn't absorb cold-start latency.
+sim_id="${DESTINATION##*id=}"
+sim_id="${sim_id%%,*}"
+if [ -n "$sim_id" ]; then
+  xcrun simctl boot "$sim_id" 2>/dev/null || true
+fi
+
 echo "Running $PROFILE iOS UI smoke tests on: $DESTINATION"
 printf 'Selected tests:\n'
 printf '  %s\n' "${TESTS[@]}"
