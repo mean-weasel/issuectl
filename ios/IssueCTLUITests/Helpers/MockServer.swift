@@ -437,6 +437,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
         return [
             "pull": pull(number: number, title: title, checksStatus: checksStatus),
             "commits": [],
+            "checks": [],
             "files": [],
             "reviews": [],
             "fromCache": false,
