@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getDb, setSetting, validateClaudeArgs } from "@issuectl/core";
+import { getDb, setSetting, validateClaudeArgs, validateCodexArgs } from "@issuectl/core";
 import type { SettingKey } from "@issuectl/core";
 
 // User-editable keys only — api_token is managed internally and excluded.
@@ -9,13 +9,19 @@ const VALID_KEYS: readonly SettingKey[] = [
   "branch_pattern",
   "cache_ttl",
   "worktree_dir",
+  "launch_agent",
   "claude_extra_args",
+  "codex_extra_args",
   "default_repo_id",
   "idle_grace_period",
   "idle_threshold",
 ];
 
-const ALLOW_EMPTY = new Set<SettingKey>(["claude_extra_args", "default_repo_id"]);
+const ALLOW_EMPTY = new Set<SettingKey>([
+  "claude_extra_args",
+  "codex_extra_args",
+  "default_repo_id",
+]);
 
 export type UpdateSettingResult = {
   success: boolean;
@@ -72,6 +78,15 @@ function validateOne(
     if (!result.ok) {
       return { ok: false, error: result.errors.join(" ") };
     }
+  }
+  if (key === "codex_extra_args") {
+    const result = validateCodexArgs(trimmed);
+    if (!result.ok) {
+      return { ok: false, error: result.errors.join(" ") };
+    }
+  }
+  if (key === "launch_agent" && trimmed !== "claude" && trimmed !== "codex") {
+    return { ok: false, error: "Launch agent must be claude or codex" };
   }
   if (key === "idle_grace_period" || key === "idle_threshold") {
     const num = Number(trimmed);

@@ -1,12 +1,14 @@
 "use client";
 
 import { Sheet } from "@/components/paper";
+import { launchAgentLabel, type LaunchAgent } from "@/components/launch/agent";
 import styles from "./ActionSheet.module.css";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   hasLiveDeployment: boolean;
+  defaultAgent: LaunchAgent;
   isOffline: boolean;
   onLaunch: () => void;
   onReassign: () => void;
@@ -17,6 +19,7 @@ export function IssueActionsMenu({
   open,
   onClose,
   hasLiveDeployment,
+  defaultAgent,
   isOffline,
   onLaunch,
   onReassign,
@@ -32,7 +35,7 @@ export function IssueActionsMenu({
               <path d="M14 2Q14.3 4.5 17 5Q14.3 5.3 14 8Q13.7 5.3 11 5Q13.7 4.7 14 2Z" fill="currentColor" opacity="0.5" />
             </svg>
           </span>
-          Launch with Claude
+          Launch with {launchAgentLabel(defaultAgent)}
         </button>
       )}
       <button

@@ -19,6 +19,9 @@ const isTtydAlive = vi.hoisted(() => vi.fn());
 const isTmuxSessionAlive = vi.hoisted(() => vi.fn());
 const respawnTtyd = vi.hoisted(() => vi.fn());
 const updateTtydInfo = vi.hoisted(() => vi.fn());
+const executeLaunch = vi.hoisted(() => vi.fn());
+const withAuthRetry = vi.hoisted(() => vi.fn());
+const withIdempotency = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
@@ -35,16 +38,16 @@ vi.mock("@issuectl/core", () => ({
   isTmuxSessionAlive: (...args: unknown[]) => isTmuxSessionAlive(...args),
   respawnTtyd: (...args: unknown[]) => respawnTtyd(...args),
   updateTtydInfo: (...args: unknown[]) => updateTtydInfo(...args),
-  executeLaunch: vi.fn(),
-  withAuthRetry: vi.fn(),
-  withIdempotency: vi.fn(),
+  executeLaunch: (...args: unknown[]) => executeLaunch(...args),
+  withAuthRetry: (...args: unknown[]) => withAuthRetry(...args),
+  withIdempotency: (...args: unknown[]) => withIdempotency(...args),
   DuplicateInFlightError: class DuplicateInFlightError extends Error {},
   formatErrorForUser: (err: unknown) =>
     err instanceof Error ? err.message : String(err),
 }));
 
 // Import AFTER mocks so the mocked module is in place.
-import { endSession, checkSessionAlive, ensureTtyd } from "./launch.js";
+import { endSession, checkSessionAlive, ensureTtyd, launchIssue } from "./launch.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,6 +59,7 @@ function makeDeployment(ttydPid: number | null = 42) {
     id: 1,
     repoId: 1,
     issueNumber: 7,
+    agent: "claude" as const,
     branchName: "feat/x",
     workspaceMode: "worktree" as const,
     workspacePath: "/tmp/x",
@@ -95,6 +99,9 @@ beforeEach(() => {
   isTmuxSessionAlive.mockReset();
   respawnTtyd.mockReset();
   updateTtydInfo.mockReset();
+  executeLaunch.mockReset();
+  withAuthRetry.mockReset();
+  withIdempotency.mockReset();
 
   // Sensible defaults: DB exists, deployment found with a PID, repo found.
   dbRunSpy = vi.fn();
@@ -110,6 +117,65 @@ beforeEach(() => {
   getSetting.mockReturnValue("test-api-token");
   coreEndDeployment.mockReturnValue(undefined);
   cleanupStaleContextFiles.mockReturnValue(Promise.resolve());
+  executeLaunch.mockResolvedValue({ deploymentId: 123, labelWarning: null });
+  withAuthRetry.mockImplementation((fn) => fn({}));
+  withIdempotency.mockImplementation((_db, _action, _key, fn) => fn());
+});
+
+describe("launchIssue", () => {
+  const baseLaunchInput = {
+    owner: "owner",
+    repo: "repo",
+    issueNumber: 7,
+    branchName: "issue-7",
+    workspaceMode: "worktree" as const,
+    selectedCommentIndices: [0],
+    selectedFilePaths: ["src/main.ts"],
+  };
+
+  it("passes the selected codex agent to executeLaunch", async () => {
+    const result = await launchIssue({
+      ...baseLaunchInput,
+      agent: "codex",
+    });
+
+    expect(result).toMatchObject({ success: true, deploymentId: 123 });
+    expect(executeLaunch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        agent: "codex",
+        owner: "owner",
+        repo: "repo",
+        issueNumber: 7,
+      }),
+    );
+  });
+
+  it("rejects an invalid launch agent before starting launch", async () => {
+    const result = await launchIssue({
+      ...baseLaunchInput,
+      agent: "cursor" as never,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: "Invalid launch agent",
+    });
+    expect(executeLaunch).not.toHaveBeenCalled();
+  });
+
+  it("leaves agent undefined when omitted so core can use the saved default", async () => {
+    await launchIssue(baseLaunchInput);
+
+    expect(executeLaunch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        agent: undefined,
+      }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

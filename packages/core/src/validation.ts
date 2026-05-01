@@ -3,6 +3,8 @@
 // or child_process, or the Next.js client build will break.
 export {
   validateClaudeArgs,
+  validateCodexArgs,
   KNOWN_CLAUDE_FLAGS,
+  KNOWN_CODEX_FLAGS,
   type ValidationResult,
 } from "./launch/claude-args.js";

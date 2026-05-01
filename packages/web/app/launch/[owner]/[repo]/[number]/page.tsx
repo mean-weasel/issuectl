@@ -4,6 +4,7 @@ import { DetailTopBar } from "@/components/detail/DetailTopBar";
 import { LaunchProgress } from "@/components/launch/LaunchProgress";
 import { LaunchProgressPoller } from "@/components/launch/LaunchProgressPoller";
 import { parseCount } from "@/lib/parse-count";
+import { deploymentLaunchAgent, launchAgentLabel } from "@/components/launch/agent";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function LaunchProgressPage({
     commentCount !== null && fileCount !== null
       ? { commentCount, fileCount }
       : undefined;
+  const agentLabel = launchAgentLabel(deploymentLaunchAgent(deployment));
 
   return (
     <div style={{ background: "var(--paper-bg)", minHeight: "100dvh" }}>
@@ -86,7 +88,7 @@ export default async function LaunchProgressPage({
             marginBottom: 4,
           }}
         >
-          {deployment.endedAt ? "launched" : "launching…"}
+          {deployment.endedAt ? `${agentLabel} launched` : `Launching ${agentLabel}...`}
         </h1>
         <p
           style={{

@@ -5,7 +5,7 @@ export function LaunchCardPlaceholder() {
     <div className={styles.card}>
       <h4>Ready to launch</h4>
       <p>
-        Open a terminal session with Claude Code pre-loaded. Creates a worktree
+        Open a terminal session with issue context pre-loaded. Creates a worktree
         on a fresh branch.
       </p>
       <div className={styles.actions}>

@@ -11,6 +11,7 @@
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -44,6 +45,11 @@
   min-height: 44px;
 }
 
+.select {
+  composes: input;
+  appearance: auto;
+}
+
 .input:focus {
   outline: none;
   border-color: var(--paper-accent);
@@ -55,6 +61,7 @@
   }
 
   .input,
+  .select,
   .inputReadonly {
     max-width: none;
   }

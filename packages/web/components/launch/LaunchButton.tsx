@@ -9,6 +9,7 @@ import type {
 import { Button } from "@/components/paper";
 import { LaunchModal } from "./LaunchModal";
 import { ClonePromptModal } from "./ClonePromptModal";
+import { launchAgentLabel, normalizeLaunchAgent, type LaunchAgent } from "./agent";
 
 type Props = {
   owner: string;
@@ -18,6 +19,7 @@ type Props = {
   comments: GitHubComment[];
   deployments: Deployment[];
   referencedFiles: string[];
+  defaultAgent?: LaunchAgent;
   className?: string;
 };
 
@@ -29,6 +31,7 @@ export function LaunchButton({
   comments,
   deployments,
   referencedFiles,
+  defaultAgent = "claude",
   className,
 }: Props) {
   const [showModal, setShowModal] = useState(false);
@@ -36,6 +39,7 @@ export function LaunchButton({
   const [forceCloneMode, setForceCloneMode] = useState(false);
 
   const hasLaunched = deployments.length > 0;
+  const initialAgent = normalizeLaunchAgent(defaultAgent);
 
   function handleClick() {
     if (!repoLocalPath) {
@@ -55,13 +59,14 @@ export function LaunchButton({
   return (
     <>
       <Button variant="accent" className={className} onClick={handleClick}>
-        {hasLaunched ? "Re-launch" : "Launch to Claude Code"}
+        {hasLaunched ? `Re-launch with ${launchAgentLabel(initialAgent)}` : `Launch to ${launchAgentLabel(initialAgent)}`}
       </Button>
 
       {showClonePrompt && (
         <ClonePromptModal
           owner={owner}
           repo={repo}
+          agent={initialAgent}
           onConfirm={handleCloneConfirm}
           onClose={() => setShowClonePrompt(false)}
         />
@@ -77,6 +82,7 @@ export function LaunchButton({
           deployments={deployments}
           referencedFiles={referencedFiles}
           initialWorkspaceMode={forceCloneMode ? "clone" : undefined}
+          initialAgent={initialAgent}
           onClose={() => setShowModal(false)}
         />
       )}

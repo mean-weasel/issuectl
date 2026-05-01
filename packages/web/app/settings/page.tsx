@@ -11,6 +11,7 @@ import { TrackedRepos } from "@/components/settings/TrackedRepos";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { WorktreeSection } from "./WorktreeSection";
 import { AuthSection } from "./AuthSection";
+import { normalizeLaunchAgent } from "@/components/launch/agent";
 import type { Metadata } from "next";
 import styles from "./page.module.css";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
@@ -52,6 +53,8 @@ export default async function SettingsPage({
   const branchPattern = settingMap.branch_pattern ?? "issue-{number}-{slug}";
   const cacheTTL = settingMap.cache_ttl ?? "300";
   const claudeExtraArgs = settingMap.claude_extra_args ?? "";
+  const codexExtraArgs = settingMap.codex_extra_args ?? "";
+  const launchAgent = normalizeLaunchAgent(settingMap.launch_agent);
   const idleGracePeriod = settingMap.idle_grace_period ?? "300";
   const idleThreshold = settingMap.idle_threshold ?? "300";
 
@@ -68,6 +71,8 @@ export default async function SettingsPage({
           branchPattern={branchPattern}
           cacheTTL={cacheTTL}
           claudeExtraArgs={claudeExtraArgs}
+          codexExtraArgs={codexExtraArgs}
+          launchAgent={launchAgent}
           idleGracePeriod={idleGracePeriod}
           idleThreshold={idleThreshold}
         />

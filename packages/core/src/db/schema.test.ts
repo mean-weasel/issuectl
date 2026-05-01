@@ -34,15 +34,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 12", () => {
+  it("sets schema_version to 13", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
   });
 });
 
@@ -59,7 +59,7 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
   });
 
   it("migrates v1 schema through v9 and drops claude_aliases", () => {
@@ -75,7 +75,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -99,7 +99,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -142,7 +142,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -161,7 +161,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
   it("initSchema on a fresh DB produces schema version 9", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -182,6 +182,16 @@ describe("schema v5 — drafts and issue_metadata", () => {
       )
       .get();
     expect(row).toBeDefined();
+  });
+
+  it("fresh deployments schema includes agent defaulting to claude", () => {
+    const db = createTestDb();
+    const cols = db
+      .prepare("PRAGMA table_info(deployments)")
+      .all() as { name: string; dflt_value: string | null }[];
+    const agentCol = cols.find((c) => c.name === "agent");
+    expect(agentCol).toBeDefined();
+    expect(agentCol?.dflt_value).toContain("claude");
   });
 
   it("drafts table enforces the priority CHECK constraint", () => {
@@ -227,7 +237,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -315,7 +325,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -398,7 +408,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db
@@ -550,7 +560,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -580,7 +590,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(12);
+    expect(getSchemaVersion(db)).toBe(13);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -593,5 +603,59 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       .map((c) => c.name)
       .sort();
     expect(pkCols).toEqual(["name", "owner"]);
+  });
+
+  it("v12 to v13 migration adds deployment agent and default settings", () => {
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (12);
+      CREATE TABLE repos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner TEXT NOT NULL,
+        name TEXT NOT NULL,
+        UNIQUE(owner, name)
+      );
+      CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      INSERT INTO settings (key, value) VALUES ('claude_extra_args', '--dangerously-skip-permissions');
+      CREATE TABLE deployments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        repo_id INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+        issue_number INTEGER NOT NULL,
+        branch_name TEXT NOT NULL,
+        workspace_mode TEXT NOT NULL,
+        workspace_path TEXT NOT NULL,
+        linked_pr_number INTEGER,
+        state TEXT NOT NULL DEFAULT 'active'
+          CHECK (state IN ('pending', 'active')),
+        launched_at TEXT NOT NULL DEFAULT (datetime('now')),
+        ended_at TEXT,
+        ttyd_port INTEGER,
+        ttyd_pid INTEGER,
+        idle_since TEXT
+      );
+      INSERT INTO repos (owner, name) VALUES ('o', 'n');
+      INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path)
+        VALUES (1, 42, 'b', 'existing', '/x');
+    `);
+
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(13);
+    const deployment = db
+      .prepare("SELECT agent FROM deployments WHERE id = 1")
+      .get() as { agent: string };
+    expect(deployment.agent).toBe("claude");
+    expect(
+      (db.prepare("SELECT value FROM settings WHERE key = 'launch_agent'").get() as { value: string })
+        .value,
+    ).toBe("claude");
+    expect(
+      (db.prepare("SELECT value FROM settings WHERE key = 'codex_extra_args'").get() as { value: string })
+        .value,
+    ).toBe("");
+    expect(() =>
+      db.prepare("UPDATE deployments SET agent = 'unknown' WHERE id = 1").run(),
+    ).toThrow();
   });
 });

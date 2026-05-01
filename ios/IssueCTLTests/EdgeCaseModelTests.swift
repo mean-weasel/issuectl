@@ -169,6 +169,7 @@ final class EdgeCaseModelTests: XCTestCase {
 
     func testLaunchRequestBodyWorktreeEncoding() throws {
         let body = LaunchRequestBody(
+            agent: .claude,
             branchName: "issue-1-test",
             workspaceMode: .worktree,
             selectedCommentIndices: [0, 2],
@@ -181,6 +182,7 @@ final class EdgeCaseModelTests: XCTestCase {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
         XCTAssertEqual(json?["branchName"] as? String, "issue-1-test")
+        XCTAssertEqual(json?["agent"] as? String, "claude")
         XCTAssertEqual(json?["workspaceMode"] as? String, "worktree")
         XCTAssertEqual(json?["selectedCommentIndices"] as? [Int], [0, 2])
         XCTAssertEqual(json?["selectedFilePaths"] as? [String], ["src/main.ts"])
@@ -191,6 +193,7 @@ final class EdgeCaseModelTests: XCTestCase {
 
     func testLaunchRequestBodyCloneEncoding() throws {
         let body = LaunchRequestBody(
+            agent: .claude,
             branchName: "issue-2-feat",
             workspaceMode: .clone,
             selectedCommentIndices: [],
@@ -209,6 +212,7 @@ final class EdgeCaseModelTests: XCTestCase {
 
     func testLaunchRequestBodyExistingEncoding() throws {
         let body = LaunchRequestBody(
+            agent: .claude,
             branchName: "issue-3-docs",
             workspaceMode: .existing,
             selectedCommentIndices: [0],
@@ -222,6 +226,23 @@ final class EdgeCaseModelTests: XCTestCase {
 
         XCTAssertEqual(json?["workspaceMode"] as? String, "existing")
         XCTAssertEqual(json?["selectedFilePaths"] as? [String], ["README.md", "docs/spec.md"])
+    }
+
+    func testLaunchRequestBodyCodexAgentEncoding() throws {
+        let body = LaunchRequestBody(
+            agent: .codex,
+            branchName: "issue-4-codex",
+            workspaceMode: .worktree,
+            selectedCommentIndices: [],
+            selectedFilePaths: [],
+            preamble: nil,
+            forceResume: nil,
+            idempotencyKey: nil
+        )
+        let data = try JSONEncoder().encode(body)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(json?["agent"] as? String, "codex")
     }
 
     // MARK: - Date Computed Properties

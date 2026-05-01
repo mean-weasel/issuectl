@@ -44,12 +44,27 @@ describe("recordDeployment", () => {
     expect(dep.id).toBeGreaterThan(0);
     expect(dep.repoId).toBe(repoId);
     expect(dep.issueNumber).toBe(42);
+    expect(dep.agent).toBe("claude");
     expect(dep.branchName).toBe("issue-42-fix-bug");
     expect(dep.workspaceMode).toBe("existing");
     expect(dep.workspacePath).toBe("/home/dev/api");
     expect(dep.linkedPrNumber).toBeNull();
     expect(dep.endedAt).toBeNull();
     expect(dep.launchedAt).toBeTruthy();
+  });
+
+  it("records the selected launch agent", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 43,
+      agent: "codex",
+      branchName: "issue-43-fix",
+      workspaceMode: "existing",
+      workspacePath: "/home/dev/api",
+    });
+
+    expect(dep.agent).toBe("codex");
+    expect(getDeploymentById(db, dep.id)?.agent).toBe("codex");
   });
 
   it("allows re-deploying an issue after the prior deployment has ended", () => {

@@ -10,7 +10,10 @@ export interface SpawnTtydOptions {
   port: number;
   workspacePath: string;
   contextFilePath: string;
-  claudeCommand: string;
+  agentCommand?: string;
+  agentInputMode?: "stdin" | "argument";
+  /** @deprecated Use agentCommand. Kept temporarily for external callers. */
+  claudeCommand?: string;
   /** Stable session name for tmux (e.g. "issuectl-167"). Multiple
    *  clients connecting to the same ttyd instance will share the
    *  terminal view via this tmux session. */
@@ -213,7 +216,7 @@ export async function allocatePort(db: Database.Database): Promise<number> {
 /* ------------------------------------------------------------------ */
 
 /**
- * Create a tmux session running an interactive Claude command, then
+ * Create a tmux session running an interactive agent command, then
  * spawn a detached ttyd process that serves the session over WebSocket.
  * Returns the child PID and port.
  *
@@ -223,7 +226,19 @@ export async function allocatePort(db: Database.Database): Promise<number> {
  * tmux session is created, the session is cleaned up to prevent orphans.
  */
 export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: number; port: number }> {
-  const { port, workspacePath, contextFilePath, claudeCommand, sessionName } = options;
+  const {
+    port,
+    workspacePath,
+    contextFilePath,
+    agentCommand,
+    agentInputMode = "stdin",
+    claudeCommand,
+    sessionName,
+  } = options;
+  const command = agentCommand ?? claudeCommand;
+  if (!command) {
+    throw new Error("spawnTtyd requires agentCommand");
+  }
 
   if (!TMUX_SESSION_RE.test(sessionName)) {
     throw new Error(
@@ -231,12 +246,17 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
     );
   }
 
-  // Build the inner shell command that runs inside tmux:
-  //   cd <workspace> && cat <context> | <claudeCommand> ; exit
+  // Build the inner shell command that runs inside tmux. Claude Code accepts
+  // piped context while staying interactive; Codex treats piped stdin as a
+  // non-interactive prompt, so it needs the context as its initial argument.
+  const contextInput =
+    agentInputMode === "argument"
+      ? `"$(cat ${shellEscape(contextFilePath)})"`
+      : `< ${shellEscape(contextFilePath)}`;
   const innerCommand =
-    `cd ${shellEscape(workspacePath)} && cat ${shellEscape(contextFilePath)} | ${claudeCommand} ; exit`;
+    `cd ${shellEscape(workspacePath)} && ${command} ${contextInput} ; exit`;
 
-  // Create a detached tmux session that runs the Claude command.
+  // Create a detached tmux session that runs the agent command.
   // This is step 1 of 2 — ttyd will then serve `tmux attach` so
   // every WebSocket client shares the same terminal view.
   execFileSync("tmux", [

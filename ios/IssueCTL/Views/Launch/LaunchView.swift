@@ -17,6 +17,7 @@ struct LaunchView: View {
     @State private var showCloneWarning: Bool
     @State private var selectedCommentIndices: Set<Int> = []
     @State private var selectedFilePaths: Set<String> = []
+    @State private var selectedAgent: LaunchAgent = .claude
     @State private var preamble = ""
     @State private var isLaunching = false
     @State private var showProgress = false
@@ -24,6 +25,7 @@ struct LaunchView: View {
     @State private var launchedPort: Int?
     @State private var launchedDeployment: ActiveDeployment?
     @State private var existingDeployment: ActiveDeployment?
+    @State private var isLoadingLaunchSettings = false
     @State private var isCheckingActiveSession = false
     @State private var shouldDismissAfterTerminalClose = false
     @State private var dirtyWorktree = false
@@ -52,7 +54,8 @@ struct LaunchView: View {
                     owner: owner,
                     repo: repo,
                     issueNumber: issueNumber,
-                    branchName: branchName
+                    branchName: branchName,
+                    agent: selectedAgent
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(.systemGroupedBackground))
@@ -103,7 +106,7 @@ struct LaunchView: View {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Launch Claude Code")
+                        Text("Launch \(selectedAgent.displayName)")
                             .font(.title2.weight(.bold))
                         Text("#\(issueNumber) \(issueTitle)")
                             .font(.caption)
@@ -116,7 +119,7 @@ struct LaunchView: View {
                             .font(.caption.weight(.medium))
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("Review the launch settings, then start Claude Code.")
+                        Text("Review the launch settings, then start \(selectedAgent.displayName).")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
@@ -140,7 +143,7 @@ struct LaunchView: View {
             if let existingDeployment {
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Claude Code is already running for this issue.", systemImage: "terminal")
+                        Label("A terminal is already running for this issue.", systemImage: "terminal")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.blue)
 
@@ -197,6 +200,7 @@ struct LaunchView: View {
                 DisclosureGroup(isExpanded: $showAdvancedOptions) {
                     VStack(alignment: .leading, spacing: 18) {
                         workspaceOptions
+                        agentOptions
                         branchOptions
                         commentOptions
                         fileOptions
@@ -229,6 +233,7 @@ struct LaunchView: View {
             }
         }
         .task {
+            await loadLaunchAgentSetting()
             await loadExistingDeployment()
             if repoLocalPath == nil {
                 do {
@@ -286,9 +291,9 @@ struct LaunchView: View {
 
     private var launchButton: some View {
         launchActionButton(
-            title: "Launch with Recommended Settings",
+            title: "Launch \(selectedAgent.displayName)",
             systemImage: "play.fill",
-            isDisabled: branchName.isEmpty || isLaunching || isCheckingActiveSession
+            isDisabled: branchName.isEmpty || isLaunching || isLoadingLaunchSettings || isCheckingActiveSession
         ) {
             Task { await launchSession() }
         }
@@ -303,7 +308,7 @@ struct LaunchView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                if isLaunching || isCheckingActiveSession {
+                if isLaunching || isLoadingLaunchSettings || isCheckingActiveSession {
                     ProgressView()
                         .controlSize(.small)
                         .tint(.white)
@@ -351,6 +356,21 @@ struct LaunchView: View {
             .pickerStyle(.segmented)
             .disabled(showCloneWarning)
             .accessibilityIdentifier("workspace-mode-picker")
+        }
+    }
+
+    private var agentOptions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Agent")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker("Agent", selection: $selectedAgent) {
+                ForEach(LaunchAgent.allCases) { agent in
+                    Text(agent.displayName).tag(agent)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("launch-agent-picker")
         }
     }
 
@@ -462,6 +482,17 @@ struct LaunchView: View {
         await performLaunch(forceResume: nil)
     }
 
+    private func loadLaunchAgentSetting() async {
+        isLoadingLaunchSettings = true
+        defer { isLoadingLaunchSettings = false }
+        do {
+            let settings = try await api.getSettings()
+            selectedAgent = LaunchAgent.settingValue(settings["launch_agent"])
+        } catch {
+            selectedAgent = .claude
+        }
+    }
+
     private func loadExistingDeployment() async {
         isCheckingActiveSession = true
         defer { isCheckingActiveSession = false }
@@ -513,6 +544,7 @@ struct LaunchView: View {
             withAnimation { showProgress = true }
 
             let body = LaunchRequestBody(
+                agent: selectedAgent,
                 branchName: branchName,
                 workspaceMode: workspaceMode,
                 selectedCommentIndices: Array(selectedCommentIndices).sorted(),

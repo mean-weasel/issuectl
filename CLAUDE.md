@@ -1,6 +1,6 @@
 # issuectl
 
-Cross-repo GitHub issue command center with Claude Code launch integration.
+Cross-repo GitHub issue command center with Claude Code and Codex launch integration.
 
 ## Project overview
 
@@ -26,6 +26,7 @@ Cross-repo GitHub issue command center with Claude Code launch integration.
 | Auth | `gh auth token` (no separate login) |
 | Database | SQLite via `better-sqlite3` at `~/.issuectl/issuectl.db` |
 | Terminal | ttyd (web-based, embedded in dashboard) |
+| Launch agents | Claude Code or Codex, selectable per launch or via settings |
 | Styling | CSS Modules + global design tokens (no Tailwind) |
 | iOS target | iOS 18+, Swift 6.0, SwiftUI only |
 | iOS project gen | XcodeGen (`ios/project.yml`) |
@@ -182,6 +183,7 @@ When the spec or plan references a file, check if it exists before assuming its 
 | Layer | Tool | Command |
 |---|---|---|
 | Unit / integration | Vitest | `pnpm turbo test` (all) or `pnpm --filter @issuectl/core test` |
+| Core real-process integration | Vitest | `pnpm --filter @issuectl/core test:integration` |
 | E2E | Playwright **CLI** | `pnpm --filter @issuectl/web test:e2e` (dev server must be running on :3847) |
 
 - Test files live next to the code they test (`foo.test.ts` alongside `foo.ts`)

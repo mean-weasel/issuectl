@@ -5,6 +5,7 @@ import type {
   GitHubLabel,
   Deployment,
 } from "@issuectl/core";
+import type { LaunchAgent } from "@/components/launch/agent";
 import { LaunchCard } from "./LaunchCard";
 import { LabelManager } from "./LabelManager";
 import { DeploymentTimeline } from "./DeploymentTimeline";
@@ -22,6 +23,7 @@ type Props = {
   repo: string;
   repoLocalPath: string | null;
   availableLabels?: GitHubLabel[];
+  defaultAgent?: LaunchAgent;
 };
 
 export function IssueSidebar({
@@ -34,6 +36,7 @@ export function IssueSidebar({
   repo,
   repoLocalPath,
   availableLabels = [],
+  defaultAgent = "claude",
 }: Props) {
   return (
     <div className={styles.sidebar}>
@@ -45,6 +48,7 @@ export function IssueSidebar({
         comments={comments}
         deployments={deployments}
         referencedFiles={referencedFiles}
+        defaultAgent={defaultAgent}
       />
       <div className={styles.card}>
         <LabelManager

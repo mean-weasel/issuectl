@@ -1,5 +1,6 @@
 import type { Deployment, GitHubPull } from "@issuectl/core";
 import { formatDate } from "@/lib/format";
+import { deploymentLaunchAgent, launchAgentLabel } from "@/components/launch/agent";
 import styles from "./DeploymentTimeline.module.css";
 
 type Props = {
@@ -30,12 +31,13 @@ function buildEntries(
   }
 
   for (const dep of deployments) {
+    const agentLabel = launchAgentLabel(deploymentLaunchAgent(dep));
     entries.push({
       label: dep.endedAt
         ? "Session ended"
         : dep.idleSince
-          ? "Claude Code idle"
-          : "Claude Code active",
+          ? `${agentLabel} idle`
+          : `${agentLabel} active`,
       ref: dep.branchName,
       date: dep.endedAt ?? dep.launchedAt,
       type: "launched",

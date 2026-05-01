@@ -10,6 +10,7 @@ import {
   isValidNonce,
   DuplicateInFlightError,
   formatErrorForUser,
+  type LaunchAgent,
   type WorkspaceMode,
 } from "@issuectl/core";
 import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
@@ -17,6 +18,7 @@ import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
 export const dynamic = "force-dynamic";
 
 type LaunchRequestBody = {
+  agent?: LaunchAgent;
   branchName: string;
   workspaceMode: WorkspaceMode;
   selectedCommentIndices: number[];
@@ -31,6 +33,7 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
   "worktree",
   "clone",
 ];
+const VALID_LAUNCH_AGENTS: LaunchAgent[] = ["claude", "codex"];
 
 export async function POST(
   request: NextRequest,
@@ -61,6 +64,9 @@ export async function POST(
   }
   if (!VALID_WORKSPACE_MODES.includes(body.workspaceMode)) {
     return NextResponse.json({ error: "Invalid workspace mode" }, { status: 400 });
+  }
+  if (body.agent && !VALID_LAUNCH_AGENTS.includes(body.agent)) {
+    return NextResponse.json({ error: "Invalid launch agent" }, { status: 400 });
   }
   if (!Array.isArray(body.selectedCommentIndices) ||
       body.selectedCommentIndices.some((i) => !Number.isInteger(i) || i < 0)) {
@@ -99,6 +105,7 @@ export async function POST(
           owner,
           repo,
           issueNumber,
+          agent: body.agent,
           branchName: trimmedBranch,
           workspaceMode: body.workspaceMode,
           selectedComments: body.selectedCommentIndices,

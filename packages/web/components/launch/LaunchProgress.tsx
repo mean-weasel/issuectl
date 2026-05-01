@@ -1,5 +1,6 @@
 import type { Deployment } from "@issuectl/core";
 import { LIFECYCLE_LABEL } from "@issuectl/core";
+import { deploymentLaunchAgent, launchAgentLabel } from "./agent";
 import styles from "./LaunchProgress.module.css";
 
 type StepStatus = "done" | "active" | "pending";
@@ -31,6 +32,7 @@ type Props = {
 function deriveSteps(deployment: Deployment, counts: Props["counts"]): Step[] {
   const isActive = deployment.state === "active";
   const ended = deployment.endedAt !== null;
+  const agentLabel = launchAgentLabel(deploymentLaunchAgent(deployment));
 
   const contextDetail = counts
     ? `issue + ${counts.commentCount} comment${counts.commentCount !== 1 ? "s" : ""} + ${counts.fileCount} referenced file${counts.fileCount !== 1 ? "s" : ""}`
@@ -59,7 +61,7 @@ function deriveSteps(deployment: Deployment, counts: Props["counts"]): Step[] {
       status: isActive || ended ? "done" : "pending",
     },
     {
-      label: ended ? "Session ended" : "Claude Code running",
+      label: ended ? "Session ended" : `${agentLabel} running`,
       detail: deployment.workspacePath,
       highlightDetail: true,
       status: ended ? "done" : isActive ? "active" : "pending",

@@ -16,7 +16,9 @@ const BASE_URL = `http://localhost:${TEST_PORT}`;
 const TEST_OWNER = "mean-weasel";
 const TEST_REPO = "issuectl-test-repo";
 const TEST_ISSUE = 1;
+const TEST_CODEX_ISSUE = 2;
 const TEST_DEPLOYMENT_ID = 1;
+const TEST_CODEX_DEPLOYMENT_ID = 10_002;
 
 // CI-friendly UI tests for the launch progress page. Seeds a deployment
 // row directly so the page renders without spawning a real ttyd process —
@@ -85,11 +87,13 @@ function createTestDb(dbPath: string): void {
       .prepare("SELECT id FROM repos WHERE owner = ? AND name = ?")
       .get(TEST_OWNER, TEST_REPO) as { id: number };
 
-    db.prepare(
-      `INSERT OR IGNORE INTO deployments
-       (id, repo_id, issue_number, branch_name, workspace_mode, workspace_path, state)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
+    const insertDeployment = db.prepare(
+      `INSERT INTO deployments
+       (id, repo_id, issue_number, branch_name, workspace_mode, workspace_path, state, agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+
+    insertDeployment.run(
       TEST_DEPLOYMENT_ID,
       repo.id,
       TEST_ISSUE,
@@ -97,6 +101,18 @@ function createTestDb(dbPath: string): void {
       "worktree",
       "/tmp/test-workspace",
       "active",
+      "claude",
+    );
+
+    insertDeployment.run(
+      TEST_CODEX_DEPLOYMENT_ID,
+      repo.id,
+      TEST_CODEX_ISSUE,
+      `issue-${TEST_CODEX_ISSUE}-codex-test`,
+      "worktree",
+      "/tmp/test-codex-workspace",
+      "active",
+      "codex",
     );
   } finally {
     db.close();
@@ -127,6 +143,7 @@ let dbPath: string;
 let server: ChildProcess;
 let skipReason: string | undefined;
 const LAUNCH_URL = `${BASE_URL}/launch/${TEST_OWNER}/${TEST_REPO}/${TEST_ISSUE}?deploymentId=${TEST_DEPLOYMENT_ID}`;
+const CODEX_LAUNCH_URL = `${BASE_URL}/launch/${TEST_OWNER}/${TEST_REPO}/${TEST_CODEX_ISSUE}?deploymentId=${TEST_CODEX_DEPLOYMENT_ID}`;
 
 test.beforeAll(async () => {
   const check = await canRun();
@@ -226,8 +243,26 @@ test.describe("launch UI — seeded deployment renders", () => {
     if (skipReason) test.skip(true, skipReason);
     await page.goto(LAUNCH_URL);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "launching",
+      "Launching",
     );
+  });
+
+  test("Claude deployment renders Claude launch copy", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+    await page.goto(LAUNCH_URL);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "Launching Claude Code...",
+    );
+    await expect(page.getByText("Claude Code running")).toBeVisible();
+  });
+
+  test("Codex deployment renders Codex launch copy", async ({ page }) => {
+    if (skipReason) test.skip(true, skipReason);
+    await page.goto(CODEX_LAUNCH_URL);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "Launching Codex...",
+    );
+    await expect(page.getByText("Codex running")).toBeVisible();
   });
 
   test("DetailTopBar back link points to the issue", async ({ page }) => {

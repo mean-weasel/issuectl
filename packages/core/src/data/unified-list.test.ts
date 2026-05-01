@@ -52,6 +52,7 @@ function makeDeployment(issueNumber: number, ended = false): Deployment {
     id: issueNumber * 10,
     repoId: repo.id,
     issueNumber,
+    agent: "claude",
     branchName: `issue-${issueNumber}`,
     workspaceMode: "worktree",
     workspacePath: `/tmp/${issueNumber}`,

@@ -374,7 +374,7 @@ struct IssueDetailView: View {
                     Button {
                         activeDetailSheet = .launch(detail)
                     } label: {
-                        Label("Launch Claude", systemImage: "play.fill")
+                        Label("Launch Agent", systemImage: "play.fill")
                             .font(.subheadline.weight(.bold))
                             .frame(maxWidth: .infinity)
                     }

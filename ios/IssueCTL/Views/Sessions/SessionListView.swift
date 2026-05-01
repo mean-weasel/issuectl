@@ -60,7 +60,7 @@ struct SessionListView: View {
                         ContentUnavailableView(
                             "No Active Sessions",
                             systemImage: "play.circle",
-                            description: Text("Launch a Claude Code session from an issue to see it here.")
+                            description: Text("Launch an agent session from an issue to see it here.")
                         )
                     } else {
                         ScrollView {
@@ -280,7 +280,7 @@ private struct ActiveSessionsHeader: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(totalCount) running")
                         .font(.title3.weight(.bold))
-                    Text("Re-enter terminals without losing active Claude Code work.")
+                    Text("Re-enter terminals without losing active agent work.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)

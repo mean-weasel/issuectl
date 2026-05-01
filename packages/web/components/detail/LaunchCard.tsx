@@ -1,5 +1,6 @@
 import type { Deployment } from "@issuectl/core";
 import { LaunchActiveBanner } from "@/components/launch/LaunchActiveBanner";
+import { deploymentLaunchAgent } from "@/components/launch/agent";
 
 type Props = {
   owner: string;
@@ -23,6 +24,7 @@ export function LaunchCard({ owner, repo, issueNumber, issueTitle, deployments }
       issueNumber={issueNumber}
       issueTitle={issueTitle}
       ttydPort={liveDeployment.ttydPort}
+      agent={deploymentLaunchAgent(liveDeployment)}
     />
   );
 }

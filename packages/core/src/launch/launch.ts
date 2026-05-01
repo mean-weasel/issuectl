@@ -19,11 +19,13 @@ import {
 } from "./context.js";
 import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
 import { verifyTtyd, spawnTtyd, allocatePort, tmuxSessionName } from "./ttyd.js";
+import type { LaunchAgent } from "../types.js";
 
 export interface LaunchOptions {
   owner: string;
   repo: string;
   issueNumber: number;
+  agent?: LaunchAgent;
   branchName: string;
   workspaceMode: WorkspaceMode;
   selectedComments: number[];
@@ -191,11 +193,13 @@ export async function executeLaunch(
   // can both pass it, and the loser trips `idx_deployments_live` here.
   // Translate that one constraint into the friendly duplicate-launch
   // message so both sides of the race see the same story.
+  const launchAgent = normalizeLaunchAgent(options.agent, getLaunchAgent(db));
   let deployment;
   try {
     deployment = recordDeployment(db, {
       repoId: repoRecord.id,
       issueNumber: options.issueNumber,
+      agent: launchAgent,
       branchName: options.branchName,
       workspaceMode: options.workspaceMode,
       workspacePath: workspace.path,
@@ -217,8 +221,11 @@ export async function executeLaunch(
   }
 
   // 9. Spawn ttyd
-  const claudeCommand = buildClaudeCommand(getSetting(db, "claude_extra_args"));
-  console.warn(`[issuectl] launching: ${claudeCommand}`);
+  const agentCommand = buildLaunchAgentCommand(
+    launchAgent,
+    getSetting(db, extraArgsSettingForAgent(launchAgent)),
+  );
+  console.warn(`[issuectl] launching: ${agentCommand}`);
   let ttydPort: number;
   try {
     const port = await allocatePort(db);
@@ -229,7 +236,8 @@ export async function executeLaunch(
       port,
       workspacePath: workspace.path,
       contextFilePath,
-      claudeCommand,
+      agentCommand,
+      agentInputMode: launchAgent === "codex" ? "argument" : "stdin",
       sessionName: tmuxSessionName(options.repo, options.issueNumber),
     });
     updateTtydInfo(db, deployment.id, port, pid);
@@ -302,23 +310,56 @@ async function retryLabel<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 const DANGEROUS_METACHARS = /[;&|<>`$\n\r\t()]/;
+const LAUNCH_AGENTS = new Set<LaunchAgent>(["claude", "codex"]);
+
+function normalizeLaunchAgent(
+  value: LaunchAgent | undefined,
+  fallback: LaunchAgent,
+): LaunchAgent {
+  if (value && LAUNCH_AGENTS.has(value)) return value;
+  return fallback;
+}
+
+function getLaunchAgent(db: Database.Database): LaunchAgent {
+  const raw = getSetting(db, "launch_agent")?.trim();
+  if (raw && LAUNCH_AGENTS.has(raw as LaunchAgent)) {
+    return raw as LaunchAgent;
+  }
+  if (raw) {
+    console.warn(
+      `[issuectl] launch_agent setting is invalid; falling back to 'claude'. Got: ${JSON.stringify(raw)}`,
+    );
+  }
+  return "claude";
+}
+
+function extraArgsSettingForAgent(agent: LaunchAgent): "claude_extra_args" | "codex_extra_args" {
+  return agent === "codex" ? "codex_extra_args" : "claude_extra_args";
+}
 
 /**
  * Build the shell command that the terminal launcher will run. The stored
  * value is trusted (validated at save time) but we apply a cheap metachar
  * check as defense-in-depth — if the value looks dangerous (tampered DB,
- * backup restore, etc.), fall back to plain `claude` and warn.
+ * backup restore, etc.), fall back to the plain agent command and warn.
  */
-export function buildClaudeCommand(rawExtraArgs: string | undefined): string {
+export function buildLaunchAgentCommand(
+  agent: LaunchAgent,
+  rawExtraArgs: string | undefined,
+): string {
   const extraArgs = rawExtraArgs?.trim() ?? "";
-  if (extraArgs === "") return "claude";
+  if (extraArgs === "") return agent;
   if (DANGEROUS_METACHARS.test(extraArgs)) {
     console.warn(
-      `[issuectl] claude_extra_args contains unexpected shell metacharacters; falling back to plain 'claude'. Re-save the value in Settings to re-validate. Got: ${JSON.stringify(extraArgs)}`,
+      `[issuectl] ${extraArgsSettingForAgent(agent)} contains unexpected shell metacharacters; falling back to plain '${agent}'. Re-save the value in Settings to re-validate. Got: ${JSON.stringify(extraArgs)}`,
     );
-    return "claude";
+    return agent;
   }
-  return `claude ${extraArgs}`;
+  return `${agent} ${extraArgs}`;
+}
+
+export function buildClaudeCommand(rawExtraArgs: string | undefined): string {
+  return buildLaunchAgentCommand("claude", rawExtraArgs);
 }
 
 export { generateBranchName } from "./branch.js";

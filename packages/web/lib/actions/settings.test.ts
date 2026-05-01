@@ -20,9 +20,16 @@ const setSetting = vi.fn((_db: FakeDb, key: string, value: string) => {
 
 const getDb = vi.fn(() => fakeDb);
 
-// A spy-able validateClaudeArgs — default implementation accepts everything.
+// Spy-able arg validators — default implementation accepts everything.
 // Tests that need a specific result can override via mockImplementationOnce.
 const validateClaudeArgs = vi.fn(
+  (_input: string): { ok: boolean; errors: string[]; warnings: string[] } => ({
+    ok: true,
+    errors: [],
+    warnings: [],
+  }),
+);
+const validateCodexArgs = vi.fn(
   (_input: string): { ok: boolean; errors: string[]; warnings: string[] } => ({
     ok: true,
     errors: [],
@@ -39,6 +46,10 @@ vi.mock("@issuectl/core", () => ({
   validateClaudeArgs: (...args: unknown[]) => {
     const [input] = args as [string];
     return validateClaudeArgs(input);
+  },
+  validateCodexArgs: (...args: unknown[]) => {
+    const [input] = args as [string];
+    return validateCodexArgs(input);
   },
 }));
 
@@ -72,7 +83,9 @@ beforeEach(() => {
   revalidatePath.mockReset();
   setSetting.mockClear();
   validateClaudeArgs.mockClear();
+  validateCodexArgs.mockClear();
   validateClaudeArgs.mockImplementation(() => ({ ok: true, errors: [], warnings: [] }));
+  validateCodexArgs.mockImplementation(() => ({ ok: true, errors: [], warnings: [] }));
 });
 
 describe("updateSetting", () => {
@@ -116,6 +129,51 @@ describe("updateSetting", () => {
     const result = await updateSetting("claude_extra_args", "--unknown");
     expect(result.success).toBe(true);
     expect(fakeDb.settings.get("claude_extra_args")).toBe("--unknown");
+  });
+
+  it("saves a valid codex_extra_args value", async () => {
+    const result = await updateSetting(
+      "codex_extra_args",
+      "--sandbox danger-full-access --ask-for-approval never",
+    );
+    expect(result.success).toBe(true);
+    expect(validateCodexArgs).toHaveBeenCalledWith(
+      "--sandbox danger-full-access --ask-for-approval never",
+    );
+    expect(fakeDb.settings.get("codex_extra_args")).toBe(
+      "--sandbox danger-full-access --ask-for-approval never",
+    );
+  });
+
+  it("allows empty codex_extra_args", async () => {
+    const result = await updateSetting("codex_extra_args", "   ");
+    expect(result.success).toBe(true);
+    expect(fakeDb.settings.get("codex_extra_args")).toBe("");
+  });
+
+  it("rejects codex_extra_args that fails validation", async () => {
+    validateCodexArgs.mockReturnValueOnce({
+      ok: false,
+      errors: ["Shell operators not allowed."],
+      warnings: [],
+    });
+    const result = await updateSetting("codex_extra_args", "--model gpt-5; rm -rf /");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("operators");
+    expect(fakeDb.settings.has("codex_extra_args")).toBe(false);
+  });
+
+  it("saves a valid default launch agent", async () => {
+    const result = await updateSetting("launch_agent", "codex");
+    expect(result.success).toBe(true);
+    expect(fakeDb.settings.get("launch_agent")).toBe("codex");
+  });
+
+  it("rejects an invalid default launch agent", async () => {
+    const result = await updateSetting("launch_agent", "cursor");
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/launch agent/i);
+    expect(fakeDb.settings.has("launch_agent")).toBe(false);
   });
 
   it("rejects empty value for a non-claude_extra_args key", async () => {
@@ -249,6 +307,24 @@ describe("updateSettings (batch)", () => {
     // Critical: neither key should have been written.
     expect(fakeDb.settings.has("branch_pattern")).toBe(false);
     expect(fakeDb.settings.has("claude_extra_args")).toBe(false);
+  });
+
+  it("rejects the whole batch when codex_extra_args fails validation", async () => {
+    validateCodexArgs.mockImplementationOnce(() => ({
+      ok: false,
+      errors: ["bad codex args"],
+      warnings: [],
+    }));
+
+    const result = await updateSettings({
+      launch_agent: "codex",
+      codex_extra_args: "--bad; rm",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/codex_extra_args/);
+    expect(fakeDb.settings.has("launch_agent")).toBe(false);
+    expect(fakeDb.settings.has("codex_extra_args")).toBe(false);
   });
 
   it("includes the failing key name in the error message", async () => {

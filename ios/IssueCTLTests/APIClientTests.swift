@@ -472,6 +472,7 @@ final class APIClientTests: XCTestCase {
                 // Verify JSON body
                 let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 XCTAssertNotNil(json)
+                XCTAssertEqual(json?["agent"] as? String, "codex")
             }
 
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -482,6 +483,7 @@ final class APIClientTests: XCTestCase {
         }
 
         let body = LaunchRequestBody(
+            agent: .codex,
             branchName: "issue-5-fix",
             workspaceMode: .worktree,
             selectedCommentIndices: [0, 1],

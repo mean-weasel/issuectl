@@ -35,7 +35,7 @@ const SECTION_EMPTY: Record<Section, { title: string; body: string }> = {
   },
   running: {
     title: "no running sessions",
-    body: "when you launch an issue with Claude Code, it lands here while the session is active.",
+    body: "when you launch an issue with an agent, it lands here while the session is active.",
   },
   closed: {
     title: "nothing closed yet",
