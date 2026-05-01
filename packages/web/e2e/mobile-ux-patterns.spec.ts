@@ -496,7 +496,7 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       await expect(dialog).toBeVisible();
 
       // Close via Escape — more reliable than scrim click because
-      // '[aria-hidden="true"]' can match unrelated inert elements.
+      // '[aria-hidden="true"]' can match unrelated elements on the page.
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
@@ -585,8 +585,11 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
 
       // Dispatch a synthetic touchmove on the scrim and check if
       // preventDefault was called (the handler sets defaultPrevented).
+      // Target the scrim via the dialog's previousElementSibling to
+      // avoid the ambiguous '[aria-hidden="true"]' selector.
       const prevented = await page.evaluate(() => {
-        const scrim = document.querySelector('[aria-hidden="true"]');
+        const dialog = document.querySelector('[role="dialog"]');
+        const scrim = dialog?.previousElementSibling;
         if (!scrim) return false;
 
         const touch = new Touch({
