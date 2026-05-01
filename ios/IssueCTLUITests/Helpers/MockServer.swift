@@ -3,12 +3,12 @@ import XCTest
 
 final class MockIssueCTLServer: @unchecked Sendable {
     let baseURL: URL
-    let listener: NWListener
-    let queue = DispatchQueue(label: "MockIssueCTLServer")
+    private let listener: NWListener
+    private let queue = DispatchQueue(label: "MockIssueCTLServer")
 
     // Mutable state — seeded before launch, mutated by endpoint handlers
-    var activeDeployments: [[String: Any]] = []
-    var drafts: [[String: Any]] = []
+    private var activeDeployments: [[String: Any]] = []
+    private var drafts: [[String: Any]] = []
     var failUserProfile = false
     var defaultLaunchAgent = "claude"
     private let stateLock = NSLock()
@@ -29,7 +29,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
     ]
     var issuePriorities: [Int: String] = [101: "high", 102: "normal"]
     var repos: [[String: Any]] = []
-    var nextCommentId: Int = 1001
+    private var nextCommentId: Int = 1001
 
     init() throws {
         let port = NWEndpoint.Port(rawValue: UInt16.random(in: 49_152...65_000))!
