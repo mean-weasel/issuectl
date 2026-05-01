@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { validateClaudeArgs, KNOWN_CLAUDE_FLAGS } from "./claude-args.js";
+import {
+  validateClaudeArgs,
+  validateCodexArgs,
+  KNOWN_CLAUDE_FLAGS,
+  KNOWN_CODEX_FLAGS,
+} from "./claude-args.js";
 
 describe("validateClaudeArgs", () => {
   it("accepts empty string", () => {
@@ -163,5 +168,47 @@ describe("validateClaudeArgs", () => {
 
   it("exposes KNOWN_CLAUDE_FLAGS containing --dangerously-skip-permissions", () => {
     expect(KNOWN_CLAUDE_FLAGS).toContain("--dangerously-skip-permissions");
+  });
+});
+
+describe("validateCodexArgs", () => {
+  it("accepts known codex flags", () => {
+    const result = validateCodexArgs("--sandbox workspace-write --model gpt-5 --full-auto");
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("accepts codex short flags", () => {
+    const result = validateCodexArgs("-c model_reasoning_effort=high -i /tmp/screen.png -V");
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("warns on unknown codex flags", () => {
+    const result = validateCodexArgs("--dangerously-skip-permissions");
+    expect(result.ok).toBe(true);
+    expect(result.warnings[0]).toContain("--dangerously-skip-permissions");
+    expect(result.warnings[0]).toContain("Codex");
+  });
+
+  it("uses the same shell safety rules as Claude validation", () => {
+    const result = validateCodexArgs("--model gpt-5 && rm -rf /");
+    expect(result.ok).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it("exposes KNOWN_CODEX_FLAGS containing local codex help flags", () => {
+    expect(KNOWN_CODEX_FLAGS).toEqual(
+      expect.arrayContaining([
+        "--sandbox",
+        "--ask-for-approval",
+        "--config",
+        "-c",
+        "--image",
+        "-i",
+        "--version",
+        "-V",
+      ]),
+    );
   });
 });

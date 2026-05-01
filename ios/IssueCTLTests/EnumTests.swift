@@ -199,6 +199,7 @@ final class EnumTests: XCTestCase {
     func testWorkspaceModeInLaunchRequestBody() throws {
         for mode in WorkspaceMode.allCases {
             let body = LaunchRequestBody(
+                agent: .claude,
                 branchName: "test",
                 workspaceMode: mode,
                 selectedCommentIndices: [],
@@ -211,6 +212,14 @@ final class EnumTests: XCTestCase {
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             XCTAssertEqual(json?["workspaceMode"] as? String, mode.rawValue)
         }
+    }
+
+    func testLaunchAgentRawValuesAndFallback() {
+        XCTAssertEqual(LaunchAgent.claude.rawValue, "claude")
+        XCTAssertEqual(LaunchAgent.codex.rawValue, "codex")
+        XCTAssertEqual(LaunchAgent.settingValue("codex"), .codex)
+        XCTAssertEqual(LaunchAgent.settingValue("unknown"), .claude)
+        XCTAssertEqual(LaunchAgent.settingValue(nil), .claude)
     }
 
     func testDeploymentStateInActiveDeployment() throws {

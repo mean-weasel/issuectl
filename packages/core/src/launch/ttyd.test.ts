@@ -407,7 +407,7 @@ describe("spawnTtyd", () => {
       port: 7700,
       workspacePath: "/home/user/project",
       contextFilePath: "/tmp/ctx.md",
-      claudeCommand: "claude --dangerously-skip-permissions",
+      agentCommand: "claude --dangerously-skip-permissions",
       sessionName: "issuectl-myrepo-42",
     });
 
@@ -421,12 +421,13 @@ describe("spawnTtyd", () => {
     expect(tmuxCall).toBeDefined();
     const tmuxArgs = tmuxCall[1] as string[];
     expect(tmuxArgs.slice(0, 4)).toEqual(["new-session", "-d", "-s", "issuectl-myrepo-42"]);
-    // The shell command passed to tmux contains the full pipeline
+    // The shell command passed to tmux redirects the context into the agent
     const tmuxCmd = tmuxArgs[4];
     expect(tmuxCmd).toContain("bash -lic");
     expect(tmuxCmd).toContain("/home/user/project");
     expect(tmuxCmd).toContain("/tmp/ctx.md");
     expect(tmuxCmd).toContain("claude --dangerously-skip-permissions");
+    expect(tmuxCmd).toContain("< ");
     expect(tmuxCmd).toContain("; exit");
 
     // tmux session options (with timeout)
@@ -448,6 +449,29 @@ describe("spawnTtyd", () => {
     killSpy.mockRestore();
   });
 
+  it("passes context as an argument for interactive Codex launches", async () => {
+    spawnSpy.mockReturnValue({ pid: 42, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    await spawnTtyd({
+      port: 7700,
+      workspacePath: "/home/user/project",
+      contextFilePath: "/tmp/ctx.md",
+      agentCommand: "codex --sandbox danger-full-access --ask-for-approval never",
+      agentInputMode: "argument",
+      sessionName: "issuectl-myrepo-43",
+    });
+
+    const tmuxCmd = execFileSyncSpy.mock.calls.find(
+      (c: unknown[]) => c[0] === "tmux" && (c[1] as string[])[0] === "new-session",
+    )![1][4] as string;
+    expect(tmuxCmd).toContain("codex --sandbox danger-full-access --ask-for-approval never");
+    expect(tmuxCmd).toContain("$(cat ");
+    expect(tmuxCmd).toContain("/tmp/ctx.md");
+    expect(tmuxCmd).not.toContain(" | codex");
+    killSpy.mockRestore();
+  });
+
   it("binds ttyd to loopback interface (-i 127.0.0.1)", async () => {
     spawnSpy.mockReturnValue({ pid: 42, unref: vi.fn(), on: vi.fn() });
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
@@ -456,7 +480,7 @@ describe("spawnTtyd", () => {
       port: 7700,
       workspacePath: "/tmp/ws",
       contextFilePath: "/tmp/ctx.md",
-      claudeCommand: "claude",
+      agentCommand: "claude",
       sessionName: "issuectl-test-1",
     });
 
@@ -477,7 +501,7 @@ describe("spawnTtyd", () => {
       port: 7700,
       workspacePath: "/home/user/it's a project",
       contextFilePath: "/tmp/file.md",
-      claudeCommand: "claude",
+      agentCommand: "claude",
       sessionName: "issuectl-test-2",
     });
 
@@ -508,7 +532,7 @@ describe("spawnTtyd", () => {
       port: 7700,
       workspacePath: "/tmp",
       contextFilePath: "/tmp/ctx.md",
-      claudeCommand: "claude",
+      agentCommand: "claude",
       sessionName: "issuectl-test-order",
     });
 
@@ -531,7 +555,7 @@ describe("spawnTtyd", () => {
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
-        claudeCommand: "claude",
+        agentCommand: "claude",
         sessionName: "issuectl-test-dup",
       }),
     ).rejects.toThrow("duplicate session: issuectl-test-dup");
@@ -548,7 +572,7 @@ describe("spawnTtyd", () => {
       port: 7700,
       workspacePath: "/tmp",
       contextFilePath: "/tmp/ctx.md",
-      claudeCommand: "claude",
+      agentCommand: "claude",
       sessionName: "issuectl-special-chars-99",
     });
 
@@ -566,7 +590,7 @@ describe("spawnTtyd", () => {
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
-        claudeCommand: "claude",
+        agentCommand: "claude",
         sessionName: "issuectl-my.project-42",
       }),
     ).rejects.toThrow("Invalid tmux session name");
@@ -593,7 +617,7 @@ describe("spawnTtyd", () => {
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
-        claudeCommand: "claude",
+        agentCommand: "claude",
         sessionName: "issuectl-test-cleanup",
       }),
     ).rejects.toThrow("tmux set-option failed");
@@ -616,7 +640,7 @@ describe("spawnTtyd", () => {
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
-        claudeCommand: "claude",
+        agentCommand: "claude",
         sessionName: "issuectl-test-health",
       }),
     ).rejects.toThrow("ttyd process 99 died immediately after spawn");
@@ -637,7 +661,7 @@ describe("spawnTtyd", () => {
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
-        claudeCommand: "claude",
+        agentCommand: "claude",
         sessionName: "issuectl-test-3",
       }),
     ).rejects.toThrow("Failed to spawn ttyd: no PID returned");
@@ -655,7 +679,7 @@ describe("spawnTtyd", () => {
         port: 7700,
         workspacePath: "/tmp",
         contextFilePath: "/tmp/ctx.md",
-        claudeCommand: "claude",
+        agentCommand: "claude",
         sessionName: "issuectl-test-4",
       }),
     ).rejects.toThrow(

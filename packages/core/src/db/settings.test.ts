@@ -63,13 +63,15 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings).toHaveLength(6);
+    expect(settings).toHaveLength(8);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
     expect(keys).toContain("cache_ttl");
     expect(keys).toContain("worktree_dir");
+    expect(keys).toContain("launch_agent");
     expect(keys).toContain("claude_extra_args");
+    expect(keys).toContain("codex_extra_args");
     expect(keys).toContain("idle_grace_period");
     expect(keys).toContain("idle_threshold");
   });
@@ -77,6 +79,12 @@ describe("seedDefaults", () => {
   it("seedDefaults sets claude_extra_args to --dangerously-skip-permissions by default", () => {
     seedDefaults(db);
     expect(getSetting(db, "claude_extra_args")).toBe("--dangerously-skip-permissions");
+  });
+
+  it("seedDefaults sets the launch agent defaults", () => {
+    seedDefaults(db);
+    expect(getSetting(db, "launch_agent")).toBe("claude");
+    expect(getSetting(db, "codex_extra_args")).toBe("");
   });
 
   it("uses INSERT OR IGNORE — does not overwrite existing values", () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import type { Octokit } from "@octokit/rest";
-import { buildClaudeCommand, executeLaunch } from "./launch.js";
+import { buildClaudeCommand, buildLaunchAgentCommand, executeLaunch } from "./launch.js";
 import { createTestDb } from "../db/test-helpers.js";
 import { addRepo } from "../db/repos.js";
 import { recordDeployment } from "../db/deployments.js";
@@ -173,6 +173,33 @@ describe("buildClaudeCommand", () => {
   it("falls back on parentheses", () => {
     expect(buildClaudeCommand("(echo hi)")).toBe("claude");
     expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("buildLaunchAgentCommand", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it("builds a plain codex command with no args", () => {
+    expect(buildLaunchAgentCommand("codex", undefined)).toBe("codex");
+  });
+
+  it("appends codex args", () => {
+    expect(buildLaunchAgentCommand("codex", "--model gpt-5 --full-auto")).toBe(
+      "codex --model gpt-5 --full-auto",
+    );
+  });
+
+  it("falls back to plain codex for dangerous stored args", () => {
+    expect(buildLaunchAgentCommand("codex", "--model gpt-5; rm -rf /")).toBe("codex");
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("codex_extra_args"));
   });
 });
 
@@ -442,7 +469,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       expect.objectContaining({
         port: 7700,
         workspacePath: "/tmp/fake-workspace",
-        claudeCommand: "claude",
+        agentCommand: "claude",
+        agentInputMode: "stdin",
         sessionName: "issuectl-api-42",
       }),
     );
@@ -453,5 +481,80 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       12345,
     );
     expect(result.ttydPort).toBe(7700);
+  });
+
+  it("launches codex when launch_agent is set", async () => {
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "launch_agent",
+      "codex",
+    );
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "codex_extra_args",
+      "--model gpt-5 --full-auto",
+    );
+
+    await executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 43,
+      branchName: "codex-branch",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+    });
+
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentCommand: "codex --model gpt-5 --full-auto",
+        agentInputMode: "argument",
+      }),
+    );
+    const row = db
+      .prepare("SELECT agent FROM deployments WHERE repo_id = ? AND issue_number = ?")
+      .get(repo.id, 43) as { agent: string };
+    expect(row.agent).toBe("codex");
+  });
+
+  it("uses an explicit launch agent over the saved default", async () => {
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "launch_agent",
+      "claude",
+    );
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "codex_extra_args",
+      "--sandbox danger-full-access --ask-for-approval never",
+    );
+
+    await executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 44,
+      agent: "codex",
+      branchName: "codex-override",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+    });
+
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentCommand: "codex --sandbox danger-full-access --ask-for-approval never",
+        agentInputMode: "argument",
+      }),
+    );
+    const row = db
+      .prepare("SELECT agent FROM deployments WHERE repo_id = ? AND issue_number = ?")
+      .get(repo.id, 44) as { agent: string };
+    expect(row.agent).toBe("codex");
   });
 });

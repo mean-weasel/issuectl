@@ -180,6 +180,25 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testCodexLaunchSelectionIsSentToServer() {
+        server.defaultLaunchAgent = "codex"
+        let app = launchApp()
+
+        openIssuesSection(in: app)
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        assertElement("issue-detail-launch-button", existsIn: app, timeout: 5)
+        element("issue-detail-launch-button", in: app).tap()
+
+        assertElement("launch-recommended-button", existsIn: app, timeout: 5)
+        element("launch-recommended-button", in: app).tap()
+
+        XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertEqual(server.lastLaunchAgent, "codex")
+    }
+
+    @MainActor
     func testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions() {
         let app = launchApp()
 
@@ -357,9 +376,18 @@ private final class MockIssueCTLServer: @unchecked Sendable {
     let baseURL: URL
     private let listener: NWListener
     private let queue = DispatchQueue(label: "MockIssueCTLServer")
+    private let stateLock = NSLock()
     private var activeDeployments: [[String: Any]] = []
     private var drafts: [[String: Any]] = []
+    private var lastLaunchPayload: [String: Any] = [:]
+    var defaultLaunchAgent = "claude"
     var failUserProfile = false
+
+    var lastLaunchAgent: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastLaunchPayload["agent"] as? String
+    }
 
     init() throws {
         let port = NWEndpoint.Port(rawValue: UInt16.random(in: 49_152...65_000))!
@@ -470,6 +498,12 @@ private final class MockIssueCTLServer: @unchecked Sendable {
             body = ["login": "alice"]
         case ("GET", "/api/v1/repos"):
             body = ["repos": [repo]]
+        case ("GET", "/api/v1/settings"):
+            body = ["settings": [
+                "launch_agent": defaultLaunchAgent,
+                "claude_extra_args": "--dangerously-skip-permissions",
+                "codex_extra_args": "",
+            ]]
         case ("GET", "/api/v1/deployments"):
             body = ["deployments": activeDeployments]
         case ("GET", "/api/v1/drafts"):
@@ -506,10 +540,10 @@ private final class MockIssueCTLServer: @unchecked Sendable {
         case ("GET", "/api/v1/pulls/org/alpha"):
             body = ["pulls": pulls, "from_cache": false, "cached_at": NSNull()]
         case ("POST", "/api/v1/launch/org/alpha/101"):
-            activateDeployment(issueNumber: 101)
+            activateDeployment(issueNumber: 101, request: request)
             body = ["success": true, "deployment_id": 9001, "ttyd_port": 19001, "error": NSNull(), "label_warning": NSNull()]
         case ("POST", "/api/v1/launch/org/alpha/102"):
-            activateDeployment(issueNumber: 102)
+            activateDeployment(issueNumber: 102, request: request)
             body = ["success": true, "deployment_id": 9002, "ttyd_port": 19002, "error": NSNull(), "label_warning": NSNull()]
         case ("POST", "/api/v1/drafts"):
             createDraft(from: request)
@@ -656,7 +690,12 @@ private final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
-    private func activateDeployment(issueNumber: Int) {
+    private func activateDeployment(issueNumber: Int, request: String) {
+        let payload = jsonBody(from: request)
+        stateLock.lock()
+        lastLaunchPayload = payload
+        stateLock.unlock()
+
         activeDeployments.removeAll { $0["issue_number"] as? Int == issueNumber }
         activeDeployments.append(deployment(issueNumber: issueNumber))
     }
