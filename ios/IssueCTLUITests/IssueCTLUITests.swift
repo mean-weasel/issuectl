@@ -196,6 +196,7 @@ final class IssueCTLUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 8), app.debugDescription)
         XCTAssertEqual(server.lastLaunchAgent, "codex")
+        app.buttons["terminal-done-button"].tap()
     }
 
     @MainActor
@@ -257,6 +258,7 @@ final class IssueCTLUITests: XCTestCase {
         app.launchEnvironment["ISSUECTL_UI_TESTING"] = "1"
         app.terminate()
         app.launch()
+        dismissRestoredModal(in: app)
         return app
     }
 
@@ -278,6 +280,7 @@ final class IssueCTLUITests: XCTestCase {
 
     @MainActor
     private func openIssuesSection(in app: XCUIApplication) {
+        dismissRestoredModal(in: app)
         tapElement("issues-tab", in: app, timeout: 20)
 
         let openSection = element("section-tab-open", in: app)
@@ -287,6 +290,19 @@ final class IssueCTLUITests: XCTestCase {
 
         XCTAssertTrue(openSection.waitForExistence(timeout: 20), "Missing section-tab-open\n\(app.debugDescription)")
         openSection.tap()
+    }
+
+    @MainActor
+    private func dismissRestoredModal(in app: XCUIApplication) {
+        if app.buttons["terminal-done-button"].waitForExistence(timeout: 1) {
+            app.buttons["terminal-done-button"].tap()
+        }
+        if app.buttons["launch-cancel-button"].waitForExistence(timeout: 1) {
+            app.buttons["launch-cancel-button"].tap()
+        }
+        if app.buttons["settings-done-button"].waitForExistence(timeout: 1) {
+            app.buttons["settings-done-button"].tap()
+        }
     }
 
     @MainActor
