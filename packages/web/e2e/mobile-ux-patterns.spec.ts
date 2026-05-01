@@ -495,12 +495,10 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible();
 
-      // Close via scrim click.
-      await page.locator('[aria-hidden="true"]').first().click({ force: true });
+      // Close via Escape — more reliable than scrim click because
+      // '[aria-hidden="true"]' can match unrelated inert elements.
+      await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible({ timeout: 5000 });
-
-      // Wait for exit animation to complete and lock to release.
-      await page.waitForTimeout(300);
 
       const lockState = await page.evaluate(() => ({
         htmlPosition: document.documentElement.style.position,
@@ -543,9 +541,8 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible();
 
-      await page.locator('[aria-hidden="true"]').first().click({ force: true });
+      await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible({ timeout: 5000 });
-      await page.waitForTimeout(500);
 
       // Verify lock styles are cleared and the page is scrollable,
       // then explicitly scroll to the saved position and verify.
