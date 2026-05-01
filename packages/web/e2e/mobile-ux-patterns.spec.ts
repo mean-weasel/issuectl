@@ -495,12 +495,10 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible();
 
-      // Close via scrim click.
-      await page.locator('[aria-hidden="true"]').first().click({ force: true });
+      // Close via Escape — more reliable than scrim click because
+      // '[aria-hidden="true"]' can match unrelated elements on the page.
+      await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible({ timeout: 5000 });
-
-      // Wait for exit animation to complete and lock to release.
-      await page.waitForTimeout(300);
 
       const lockState = await page.evaluate(() => ({
         htmlPosition: document.documentElement.style.position,
@@ -543,9 +541,8 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible();
 
-      await page.locator('[aria-hidden="true"]').first().click({ force: true });
+      await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible({ timeout: 5000 });
-      await page.waitForTimeout(500);
 
       // Verify lock styles are cleared and the page is scrollable,
       // then explicitly scroll to the saved position and verify.
@@ -588,8 +585,11 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
 
       // Dispatch a synthetic touchmove on the scrim and check if
       // preventDefault was called (the handler sets defaultPrevented).
+      // Target the scrim via the dialog's previousElementSibling to
+      // avoid the ambiguous '[aria-hidden="true"]' selector.
       const prevented = await page.evaluate(() => {
-        const scrim = document.querySelector('[aria-hidden="true"]');
+        const dialog = document.querySelector('[role="dialog"]');
+        const scrim = dialog?.previousElementSibling;
         if (!scrim) return false;
 
         const touch = new Touch({

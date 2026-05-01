@@ -3,12 +3,6 @@ name: iOS
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'ios/**'
-      - 'scripts/ios-ui-smoke.sh'
-      - 'package.json'
-      - '.husky/pre-push'
-      - '.github/workflows/ios.yml'
   merge_group:
     branches: [main]
   workflow_dispatch:
