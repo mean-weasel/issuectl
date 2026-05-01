@@ -3,23 +3,60 @@ name: CI
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '**.html'
-      - '**.txt'
-      - 'docs/**'
-      - '.husky/**'
-      - 'LICENSE'
-      - '.github/**/*.md'
-      - 'ios/**'
-      - '.github/workflows/ios.yml'
   merge_group:
     branches: [main]
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.filter.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for CI-relevant changes
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            changed="$(git diff --name-only "$base_ref"...HEAD)"
+          elif [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
+            if git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
+              changed="$(git diff --name-only HEAD^1 HEAD)"
+            else
+              changed="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+            fi
+          else
+            changed="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+          fi
+
+          echo "Changed files:"
+          printf '%s\n' "$changed"
+
+          # CI is relevant when at least one changed file is NOT in the
+          # iOS-only / docs-only / husky-only ignore set.
+          # Single regex: match files we'd ignore. If any file does NOT
+          # match, CI has work to do.
+          ignore_re='^(ios/|docs/|\.husky/|\.github/workflows/ios\.yml$|\.github/.*\.md$|LICENSE$|.*\.(md|html|txt)$)'
+
+          if printf '%s\n' "$changed" | grep -qvE "$ignore_re"; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -33,6 +70,8 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -46,6 +85,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -59,7 +100,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test]
+    needs: [changes, typecheck, lint, test]
+    if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -73,7 +115,8 @@ jobs:
   e2e-web:
     name: E2E Web (mobile UX + launch UI)
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, test]
+    needs: [changes, typecheck, lint, test]
+    if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
