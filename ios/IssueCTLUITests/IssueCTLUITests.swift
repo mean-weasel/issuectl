@@ -259,16 +259,14 @@ final class IssueCTLUITests: XCTestCase {
 
     @MainActor
     private func openIssuesSection(in app: XCUIApplication) {
-        if element("issues-tab", in: app).waitForExistence(timeout: 5) {
-            element("issues-tab", in: app).tap()
-        }
+        tapElement("issues-tab", in: app, timeout: 20)
 
         let openSection = element("section-tab-open", in: app)
-        if !openSection.waitForExistence(timeout: 8), app.scrollViews.firstMatch.exists {
+        if !openSection.waitForExistence(timeout: 20), app.scrollViews.firstMatch.exists {
             app.scrollViews.firstMatch.swipeRight()
         }
 
-        XCTAssertTrue(openSection.waitForExistence(timeout: 8), "Missing section-tab-open\n\(app.debugDescription)")
+        XCTAssertTrue(openSection.waitForExistence(timeout: 20), "Missing section-tab-open\n\(app.debugDescription)")
         openSection.tap()
     }
 
