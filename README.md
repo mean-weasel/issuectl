@@ -10,7 +10,7 @@ Cross-repo GitHub issue command center with Claude Code launch integration.
 pnpm install
 pnpm turbo build
 issuectl init        # First-time setup (creates DB)
-issuectl web         # Start dashboard (localhost:3847)
+issuectl web         # Start dashboard and print iOS setup link/QR
 ```
 
 ## What it does

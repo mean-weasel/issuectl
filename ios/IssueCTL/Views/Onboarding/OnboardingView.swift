@@ -12,7 +12,7 @@ struct OnboardingView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Connect to your issuectl server running on your Mac.")
+                    Text("Connect to your issuectl server running on your Mac. On a physical iPhone, use your Mac's Wi-Fi IP address instead of localhost.")
                         .foregroundStyle(.secondary)
                 }
 
@@ -39,7 +39,7 @@ struct OnboardingView: View {
                         .buttonStyle(.plain)
                     }
 
-                    Text("Run `issuectl init` on your Mac to generate a token.")
+                    Text("Run `issuectl web` on your Mac and use the iOS server URL and API token shown there.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -90,6 +90,12 @@ struct OnboardingView: View {
             return
         }
 
+        if isLocalhost(parsed.host) {
+            errorMessage = "Use your Mac's Wi-Fi IP address, not localhost, when running on a physical iPhone."
+            isChecking = false
+            return
+        }
+
         let token = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
@@ -100,11 +106,49 @@ struct OnboardingView: View {
             // Success — persist and switch to main UI
             try api.configure(url: url, token: token)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = onboardingErrorMessage(for: error, serverURL: url)
         }
 
         isChecking = false
     }
+}
+
+func isLocalhost(_ host: String?) -> Bool {
+    guard let host = host?.lowercased() else { return false }
+    return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
+func onboardingErrorMessage(for error: Error, serverURL: String) -> String {
+    if let apiError = error as? APIError {
+        switch apiError {
+        case .unauthorized:
+            return "Invalid or stale API token. Copy the iOS API token from `issuectl web` and try again."
+        case .notConfigured:
+            return "Server URL not configured."
+        case .invalidPath, .invalidResponse:
+            return "The server responded in an unexpected format. Check that this URL points to issuectl."
+        case .serverError(let code, let message):
+            return "Server error (\(code)): \(message)"
+        }
+    }
+
+    let nsError = error as NSError
+    if nsError.domain == NSURLErrorDomain {
+        switch nsError.code {
+        case NSURLErrorCannotConnectToHost,
+             NSURLErrorCannotFindHost,
+             NSURLErrorTimedOut,
+             NSURLErrorNetworkConnectionLost,
+             NSURLErrorNotConnectedToInternet:
+            return "Could not reach \(serverURL). Make sure issuectl web is running, both devices are on the same network, and Local Network access is allowed."
+        case NSURLErrorAppTransportSecurityRequiresSecureConnection:
+            return "iOS blocked this connection. Rebuild the app with local-network access enabled or use an HTTPS server URL."
+        default:
+            break
+        }
+    }
+
+    return error.localizedDescription
 }
 
 private struct APITokenField: UIViewRepresentable {

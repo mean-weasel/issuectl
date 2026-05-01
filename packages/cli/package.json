@@ -15,7 +15,9 @@
   "dependencies": {
     "@inquirer/prompts": "^7.5.0",
     "@issuectl/core": "workspace:*",
+    "@types/qrcode-terminal": "^0.12.2",
     "chalk": "^5.4.1",
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "qrcode-terminal": "^0.12.0"
   }
 }

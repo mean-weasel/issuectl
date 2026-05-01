@@ -3,6 +3,40 @@ import XCTest
 
 final class ViewLogicTests: XCTestCase {
 
+    // MARK: - iOS Setup Links
+
+    func testSetupLinkParsesServerURLAndToken() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl://setup?serverURL=http%3A%2F%2F192.0.2.10%3A3847&token=abc123"))
+        let setup = try XCTUnwrap(SetupLink(url: url))
+
+        XCTAssertEqual(setup.serverURL, "http://192.0.2.10:3847")
+        XCTAssertEqual(setup.token, "abc123")
+    }
+
+    func testSetupLinkRejectsWrongScheme() throws {
+        let url = try XCTUnwrap(URL(string: "https://setup?serverURL=http%3A%2F%2F192.0.2.10%3A3847&token=abc123"))
+        XCTAssertNil(SetupLink(url: url))
+    }
+
+    func testLocalhostDetectionForPhysicalDeviceSetup() {
+        XCTAssertTrue(isLocalhost("localhost"))
+        XCTAssertTrue(isLocalhost("127.0.0.1"))
+        XCTAssertTrue(isLocalhost("::1"))
+        XCTAssertFalse(isLocalhost("192.0.2.10"))
+    }
+
+    func testUnauthorizedOnboardingErrorIsActionable() {
+        let message = onboardingErrorMessage(for: APIError.unauthorized, serverURL: "http://192.0.2.10:3847")
+        XCTAssertTrue(message.contains("Invalid or stale API token"))
+    }
+
+    func testNetworkOnboardingErrorMentionsReachability() {
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut)
+        let message = onboardingErrorMessage(for: error, serverURL: "http://192.0.2.10:3847")
+        XCTAssertTrue(message.contains("Could not reach"))
+        XCTAssertTrue(message.contains("Local Network access"))
+    }
+
     // MARK: - Branch Name Generation
 
     func testBasicSlugGeneration() {

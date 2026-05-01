@@ -3,9 +3,11 @@
 > Executable playbooks for QA-testing the issuectl iOS app via Claude Code + `xcodebuildmcp ui-automation`. Each workflow is self-contained and describes the preconditions, steps, and expected outcomes.
 
 **Prerequisites for all workflows:**
-- iOS app built and running on simulator (`xcodebuildmcp simulator build-and-run`)
-- `issuectl web` running on localhost:3847
+- iOS app built and running on simulator (`xcodebuildmcp simulator build-and-run`) or a physical iPhone
+- `issuectl web` running on port 3847
 - At least one GitHub repo accessible via `gh auth token`
+
+When testing on a physical iPhone, use the LAN URL printed by `issuectl web`, for example `http://192.0.2.10:3847`. Do not use `localhost`, because that points at the phone, not the Mac. `issuectl web` also prints the current mobile API token, an `issuectl://setup?...` deep link, and a QR code that configures the iOS app automatically.
 
 **Automation commands used:**
 ```
@@ -49,13 +51,15 @@ CI runs the full profile in `.github/workflows/ios.yml` on iOS, smoke-script, pr
 |------|--------|--------|
 | 1 | Screenshot to confirm onboarding screen visible | See "Server URL" and "API Token" fields |
 | 2 | Tap the Server URL field | Field is focused |
-| 3 | Type `http://localhost:3847` | URL appears in field |
+| 3 | Type `http://localhost:3847` on simulator, or the LAN URL from `issuectl web` on a physical iPhone | URL appears in field |
 | 4 | Tap the API Token field | Field is focused (SecureField) |
 | 5 | Type the API token from `issuectl web` output | Dots appear in field |
 | 6 | Tap "Connect" button | Loading indicator, then transition to main TabView |
 | 7 | Screenshot to confirm main app loaded | See Issues tab with tab bar at bottom |
 
-**Recovery:** If connect fails, verify `issuectl web` is running and the token matches `SELECT value FROM settings WHERE key = 'api_token'`.
+**Shortcut:** On a physical iPhone, scan the QR code printed by `issuectl web` or open the printed `issuectl://setup?...` link. The app should save the server URL and token, then transition to the main TabView.
+
+**Recovery:** If connect fails, verify `issuectl web` is running, the phone and Mac are on the same network, the server URL is not `localhost` on a physical iPhone, and the token matches `SELECT value FROM settings WHERE key = 'api_token'`.
 
 ---
 

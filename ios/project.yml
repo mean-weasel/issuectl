@@ -10,6 +10,23 @@ targets:
     supportedDestinations: [iOS]
     sources:
       - path: IssueCTL
+    info:
+      path: IssueCTL/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: com.issuectl.ios.setup
+            CFBundleURLSchemes:
+              - issuectl
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        "UISupportedInterfaceOrientations~iphone":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: "IssueCTL connects to the issuectl server running on your Mac."
     settings:
       base:
         SWIFT_VERSION: "6.0"
