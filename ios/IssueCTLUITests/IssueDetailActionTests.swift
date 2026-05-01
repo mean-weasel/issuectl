@@ -41,6 +41,38 @@ final class IssueDetailActionTests: XCTestCase {
     }
 
     @MainActor
+    func testAddCommentToIssueFromActionsMenu() {
+        let app = launchApp(server: server)
+
+        openIssuesSection(in: app)
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        // Open the actions menu and tap Comment.
+        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 5)
+        element("issue-detail-actions-menu", in: app).tap()
+
+        let commentButton = app.buttons["Comment"]
+        XCTAssertTrue(commentButton.waitForExistence(timeout: 3), "Comment menu item missing")
+        commentButton.tap()
+
+        // The comment sheet should appear with a text editor.
+        // Type a comment and submit.
+        let textEditor = app.textViews.firstMatch
+        XCTAssertTrue(textEditor.waitForExistence(timeout: 3), "Comment text editor missing")
+        textEditor.tap()
+        app.typeText("Test comment from automation")
+
+        // Tap the "Add Comment" submit button.
+        let submitButton = app.buttons["Add Comment"]
+        XCTAssertTrue(submitButton.waitForExistence(timeout: 3), "Submit comment button missing")
+        submitButton.tap()
+
+        // Sheet should dismiss — wait for actions menu to reappear.
+        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 8)
+    }
+
+    @MainActor
     func testReopenClosedIssueFromDetail() {
         server.seedClosedIssue(101)
         let app = launchApp(server: server)
