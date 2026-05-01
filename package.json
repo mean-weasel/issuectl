@@ -12,7 +12,6 @@
     "ios:ui-smoke": "./scripts/ios-ui-smoke.sh",
     "ios:ui-smoke:fast": "IOS_UI_SMOKE_PROFILE=fast ./scripts/ios-ui-smoke.sh",
     "ios:ui-smoke:full": "IOS_UI_SMOKE_PROFILE=full ./scripts/ios-ui-smoke.sh",
-    "test:merge-queue": "echo merge queue required checks test",
     "dev": "turbo dev",
     "prepare": "husky"
   },

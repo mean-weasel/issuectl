@@ -236,6 +236,7 @@ final class IssueCTLUITests: XCTestCase {
         app.launchEnvironment["ISSUECTL_SERVER_URL"] = server.baseURL.absoluteString
         app.launchEnvironment["ISSUECTL_API_TOKEN"] = "ui-test-token"
         app.launchEnvironment["ISSUECTL_UI_TESTING"] = "1"
+        app.terminate()
         app.launch()
         return app
     }
