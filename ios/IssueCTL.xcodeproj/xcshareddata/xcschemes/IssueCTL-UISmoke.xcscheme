@@ -29,7 +29,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A00000000000000000000005"
+               BlueprintIdentifier = "E733D5763E64E8270AF7A0E2"
                BuildableName = "IssueCTLUITests.xctest"
                BlueprintName = "IssueCTLUITests"
                ReferencedContainer = "container:IssueCTL.xcodeproj">
@@ -59,7 +59,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A00000000000000000000005"
+               BlueprintIdentifier = "E733D5763E64E8270AF7A0E2"
                BuildableName = "IssueCTLUITests.xctest"
                BlueprintName = "IssueCTLUITests"
                ReferencedContainer = "container:IssueCTL.xcodeproj">
@@ -108,8 +108,6 @@
             ReferencedContainer = "container:IssueCTL.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
