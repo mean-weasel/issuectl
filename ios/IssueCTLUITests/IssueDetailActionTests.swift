@@ -73,6 +73,31 @@ final class IssueDetailActionTests: XCTestCase {
     }
 
     @MainActor
+    func testSetIssuePriorityFromActionsMenu() {
+        let app = launchApp(server: server)
+
+        openIssuesSection(in: app)
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        // Open the actions menu and look for Priority submenu.
+        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 5)
+        element("issue-detail-actions-menu", in: app).tap()
+
+        let priorityButton = app.buttons["Priority"]
+        XCTAssertTrue(priorityButton.waitForExistence(timeout: 3), "Priority menu item missing")
+        priorityButton.tap()
+
+        // Select "Low" priority.
+        let lowButton = app.buttons["Low"]
+        XCTAssertTrue(lowButton.waitForExistence(timeout: 3), "Low priority option missing")
+        lowButton.tap()
+
+        // The menu should dismiss. Verify we're back on the detail view.
+        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 5)
+    }
+
+    @MainActor
     func testReopenClosedIssueFromDetail() {
         server.seedClosedIssue(101)
         let app = launchApp(server: server)
