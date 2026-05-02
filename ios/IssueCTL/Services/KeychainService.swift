@@ -13,7 +13,11 @@ enum KeychainError: LocalizedError {
 }
 
 enum KeychainService {
-    private static let service = "com.issuectl.ios"
+    private static var service: String {
+        Bundle.main.object(forInfoDictionaryKey: "ISSUECTL_KEYCHAIN_SERVICE") as? String
+            ?? Bundle.main.bundleIdentifier
+            ?? "com.issuectl.ios"
+    }
 
     static func save(key: String, value: String) throws {
         let data = Data(value.utf8)

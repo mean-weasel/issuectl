@@ -12,6 +12,11 @@
     "ios:ui-smoke": "./scripts/ios-ui-smoke.sh",
     "ios:ui-smoke:fast": "IOS_UI_SMOKE_PROFILE=fast ./scripts/ios-ui-smoke.sh",
     "ios:ui-smoke:full": "IOS_UI_SMOKE_PROFILE=full ./scripts/ios-ui-smoke.sh",
+    "ios:preview-smoke:fast": "IOS_SCHEME=IssueCTLPreview-UISmoke IOS_UI_SMOKE_PROFILE=fast ./scripts/ios-ui-smoke.sh",
+    "ios:preview-smoke:full": "IOS_SCHEME=IssueCTLPreview-UISmoke IOS_UI_SMOKE_PROFILE=full ./scripts/ios-ui-smoke.sh",
+    "ios:preview-device-smoke:fast": "IOS_UI_SMOKE_PROFILE=fast ./scripts/ios-preview-device-smoke.sh",
+    "ios:preview-device-smoke:full": "IOS_UI_SMOKE_PROFILE=full ./scripts/ios-preview-device-smoke.sh",
+    "ios:list-devices": "./scripts/ios-list-devices.sh",
     "dev": "turbo dev",
     "prepare": "husky"
   },

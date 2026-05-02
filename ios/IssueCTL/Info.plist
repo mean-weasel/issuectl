@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(ISSUECTL_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -16,19 +18,30 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.issuectl.ios.setup</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER).setup</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>issuectl</string>
+				<string>$(ISSUECTL_URL_SCHEME)</string>
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>ISSUECTL_APP_VARIANT</key>
+	<string>$(ISSUECTL_APP_VARIANT)</string>
+	<key>ISSUECTL_KEYCHAIN_SERVICE</key>
+	<string>$(ISSUECTL_KEYCHAIN_SERVICE)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>$(ISSUECTL_LOCAL_NETWORK_USAGE_DESCRIPTION)</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
@@ -41,12 +54,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>IssueCTL connects to the issuectl server running on your Mac.</string>
 </dict>
 </plist>

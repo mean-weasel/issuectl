@@ -16,3 +16,7 @@ fi
 if [ "${RUN_IOS_UI_SMOKE:-0}" = "1" ] && echo "$changed_files" | grep -qE '^ios/|^scripts/ios-ui-smoke\.sh$|^\.github/workflows/ios\.yml$'; then
   pnpm ios:ui-smoke:fast
 fi
+
+if [ "${RUN_IOS_PREVIEW_E2E:-0}" = "1" ] && echo "$changed_files" | grep -qE '^ios/|^scripts/ios-ui-smoke\.sh$|^scripts/ios-preview-device-smoke\.sh$|^\.github/workflows/ios\.yml$'; then
+  pnpm ios:preview-device-smoke:fast
+fi
