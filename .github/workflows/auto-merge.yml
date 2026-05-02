@@ -1,0 +1,105 @@
+name: Auto Merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: [CI, iOS]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number or URL"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  pull-requests: write
+  statuses: read
+
+jobs:
+  enable:
+    name: Enable auto-merge
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'pull_request'
+      ) ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    steps:
+      - name: Enable auto-merge or enqueue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_PR: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+
+          case "$GITHUB_EVENT_NAME" in
+            workflow_dispatch)
+              pr_target="$DISPATCH_PR"
+              ;;
+            pull_request)
+              pr_target="$(jq -r '.pull_request.html_url' "$GITHUB_EVENT_PATH")"
+              ;;
+            workflow_run)
+              pr_target="$(jq -r '.workflow_run.pull_requests[0].number // empty' "$GITHUB_EVENT_PATH")"
+              if [ -z "$pr_target" ]; then
+                echo "No pull request associated with this workflow_run; nothing to enqueue."
+                exit 0
+              fi
+              ;;
+            *)
+              echo "Unsupported event: $GITHUB_EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          pr_json="$(gh pr view "$pr_target" --json id,state,isDraft,mergeStateStatus,headRepository,url)"
+
+          state="$(jq -r '.state' <<<"$pr_json")"
+          if [ "$state" != "OPEN" ]; then
+            echo "PR is $state; nothing to enqueue."
+            exit 0
+          fi
+
+          if [ "$(jq -r '.isDraft' <<<"$pr_json")" = "true" ]; then
+            echo "PR is draft; skipping auto-merge."
+            exit 0
+          fi
+
+          head_repo="$(jq -r '.headRepository.nameWithOwner' <<<"$pr_json")"
+          if [ "$head_repo" != "$REPOSITORY" ]; then
+            echo "PR head repo is $head_repo; skipping fork PR."
+            exit 0
+          fi
+
+          pr_id="$(jq -r '.id' <<<"$pr_json")"
+          queue_json="$(gh api graphql \
+            -f query='query($id:ID!) { node(id:$id) { ... on PullRequest { isInMergeQueue mergeQueueEntry { position state } } } }' \
+            -f id="$pr_id")"
+          if [ "$(jq -r '.data.node.isInMergeQueue' <<<"$queue_json")" = "true" ]; then
+            echo "PR is already in the merge queue."
+            exit 0
+          fi
+
+          merge_state="$(jq -r '.mergeStateStatus' <<<"$pr_json")"
+          if [ "$merge_state" != "CLEAN" ]; then
+            echo "PR merge state is $merge_state; waiting for required checks."
+            exit 0
+          fi
+
+          gh api graphql \
+            -f query='mutation($pullRequestId:ID!) { enqueuePullRequest(input:{pullRequestId:$pullRequestId}) { mergeQueueEntry { position state } } }' \
+            -f pullRequestId="$pr_id"
