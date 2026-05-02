@@ -32,10 +32,21 @@ final class MockIssueCTLServer: @unchecked Sendable {
     private var nextCommentId: Int = 1001
 
     init() throws {
-        let port = NWEndpoint.Port(rawValue: UInt16.random(in: 49_152...65_000))!
-        listener = try NWListener(using: .tcp, on: port)
-        baseURL = URL(string: "http://127.0.0.1:\(port.rawValue)")!
-        repos = [defaultRepo]
+        var lastError: Error?
+        for _ in 0..<5 {
+            let port = NWEndpoint.Port(rawValue: UInt16.random(in: 49_152...65_000))!
+            do {
+                let attempt = try NWListener(using: .tcp, on: port)
+                listener = attempt
+                baseURL = URL(string: "http://127.0.0.1:\(port.rawValue)")!
+                repos = [defaultRepo]
+                return
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError ?? NSError(domain: "MockIssueCTLServer", code: 1,
+                                   userInfo: [NSLocalizedDescriptionKey: "No available port after 5 attempts"])
     }
 
     func start() throws {
