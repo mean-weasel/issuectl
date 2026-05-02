@@ -8,6 +8,13 @@ PROJECT="${IOS_PROJECT:-ios/IssueCTL.xcodeproj}"
 SCHEME="${IOS_SCHEME:-IssueCTL-UISmoke}"
 CONFIGURATION="${IOS_CONFIGURATION:-Debug}"
 PROFILE="${IOS_UI_SMOKE_PROFILE:-full}"
+if [ -n "${IOS_UI_TEST_TARGET:-}" ]; then
+  UI_TEST_TARGET="$IOS_UI_TEST_TARGET"
+elif [[ "$SCHEME" == *"Preview"* ]]; then
+  UI_TEST_TARGET="IssueCTLPreviewUITests"
+else
+  UI_TEST_TARGET="IssueCTLUITests"
+fi
 
 if [ -n "${IOS_DESTINATION:-}" ]; then
   DESTINATION="$IOS_DESTINATION"
@@ -31,22 +38,22 @@ else
 fi
 
 FAST_TESTS=(
-  "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+  "$UI_TEST_TARGET/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
 )
 
 PR_TESTS=(
-  "IssueCTLUITests/IssueCTLUITests/testCreateMinimalDraftIssueFromThumbReachEntryPoint"
-  "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+  "$UI_TEST_TARGET/IssueCTLUITests/testCreateMinimalDraftIssueFromThumbReachEntryPoint"
+  "$UI_TEST_TARGET/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
 )
 
 FULL_TESTS=(
-  "IssueCTLUITests/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
-  "IssueCTLUITests/IssueCTLUITests/testCreateDetailedDraftIssueFromThumbReachEntryPoint"
-  "IssueCTLUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
-  "IssueCTLUITests/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
-  "IssueCTLUITests/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
-  "IssueCTLUITests/IssueCTLUITests/testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions"
-  "IssueCTLUITests/IssueCTLUITests/testRunningIssueDetailShowsReentryInsteadOfLaunch"
+  "$UI_TEST_TARGET/IssueCTLUITests/testCommandCenterActionsAreReachableFromTabs"
+  "$UI_TEST_TARGET/IssueCTLUITests/testCreateDetailedDraftIssueFromThumbReachEntryPoint"
+  "$UI_TEST_TARGET/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
+  "$UI_TEST_TARGET/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
+  "$UI_TEST_TARGET/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+  "$UI_TEST_TARGET/IssueCTLUITests/testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions"
+  "$UI_TEST_TARGET/IssueCTLUITests/testRunningIssueDetailShowsReentryInsteadOfLaunch"
 )
 
 case "$PROFILE" in
@@ -71,8 +78,13 @@ args=(
   -scheme "$SCHEME"
   -destination "$DESTINATION"
   -configuration "$CONFIGURATION"
-  CODE_SIGNING_ALLOWED=NO
 )
+
+if [ -n "${IOS_CODE_SIGNING_ALLOWED:-}" ]; then
+  args+=("CODE_SIGNING_ALLOWED=${IOS_CODE_SIGNING_ALLOWED}")
+elif [[ "$DESTINATION" == *"iOS Simulator"* ]]; then
+  args+=("CODE_SIGNING_ALLOWED=NO")
+fi
 
 for test_id in "${TESTS[@]}"; do
   args+=("-only-testing:$test_id")
