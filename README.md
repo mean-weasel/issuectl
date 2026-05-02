@@ -21,9 +21,4 @@ issuectl tracks GitHub issues across multiple repos and launches agent sessions 
 
 issuectl can launch issues with either Claude Code or Codex. Choose a default agent in Settings, or select an agent per launch from the web and iOS launch flows.
 
-Agent-specific CLI flags are saved independently:
-
-- `claude_extra_args` for Claude Code launches.
-- `codex_extra_args` for Codex launches, for example `--sandbox danger-full-access --ask-for-approval never`.
-
-Saved arguments are validated before they are stored or used in a launch.
+Agent-specific CLI flags are saved independently as `claude_extra_args` and `codex_extra_args`. See [Launching Issues with Codex](docs/workflows/launching-with-codex.md) for setup examples.
