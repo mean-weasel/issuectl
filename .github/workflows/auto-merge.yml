@@ -66,7 +66,7 @@ jobs:
               ;;
           esac
 
-          pr_json="$(gh pr view "$pr_target" --json id,state,isDraft,mergeStateStatus,headRepository,url)"
+          pr_json="$(gh pr view "$pr_target" --repo "$REPOSITORY" --json id,state,isDraft,mergeStateStatus,headRepository,url)"
 
           state="$(jq -r '.state' <<<"$pr_json")"
           if [ "$state" != "OPEN" ]; then
