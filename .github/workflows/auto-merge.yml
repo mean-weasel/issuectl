@@ -43,6 +43,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           DISPATCH_PR: ${{ inputs.pr }}
+          AUTO_MERGE_ALLOWED_AUTHORS: neonwatty mean-weasel
         run: |
           set -euo pipefail
 
@@ -66,7 +67,7 @@ jobs:
               ;;
           esac
 
-          pr_json="$(gh pr view "$pr_target" --repo "$REPOSITORY" --json id,state,isDraft,mergeStateStatus,headRepository,url)"
+          pr_json="$(gh pr view "$pr_target" --repo "$REPOSITORY" --json id,state,isDraft,mergeStateStatus,headRepository,url,author)"
 
           state="$(jq -r '.state' <<<"$pr_json")"
           if [ "$state" != "OPEN" ]; then
@@ -82,6 +83,20 @@ jobs:
           head_repo="$(jq -r '.headRepository.nameWithOwner' <<<"$pr_json")"
           if [ "$head_repo" != "$REPOSITORY" ]; then
             echo "PR head repo is $head_repo; skipping fork PR."
+            exit 0
+          fi
+
+          author="$(jq -r '.author.login' <<<"$pr_json")"
+          allowed_author="false"
+          for allowed in $AUTO_MERGE_ALLOWED_AUTHORS; do
+            if [ "$author" = "$allowed" ]; then
+              allowed_author="true"
+              break
+            fi
+          done
+
+          if [ "$allowed_author" != "true" ]; then
+            echo "PR author is $author; skipping auto-merge."
             exit 0
           fi
 
