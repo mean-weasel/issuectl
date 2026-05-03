@@ -30,6 +30,9 @@ function shellEscape(s: string): string {
 
 const TMUX_TIMEOUT_MS = 10_000;
 const TMUX_SESSION_RE = /^[a-zA-Z0-9_-]+$/;
+// Detached tmux sessions otherwise start at 80 columns, wider than phones.
+const TMUX_INITIAL_COLUMNS = 40;
+const TMUX_INITIAL_ROWS = 24;
 
 /**
  * Build a tmux-safe session name from repo + issue number. Dots, colons,
@@ -260,7 +263,10 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   // This is step 1 of 2 — ttyd will then serve `tmux attach` so
   // every WebSocket client shares the same terminal view.
   execFileSync("tmux", [
-    "new-session", "-d", "-s", sessionName,
+    "new-session", "-d",
+    "-x", String(TMUX_INITIAL_COLUMNS),
+    "-y", String(TMUX_INITIAL_ROWS),
+    "-s", sessionName,
     `bash -lic ${shellEscape(innerCommand)}`,
   ], { timeout: TMUX_TIMEOUT_MS });
 

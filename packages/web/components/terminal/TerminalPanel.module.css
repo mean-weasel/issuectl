@@ -26,6 +26,7 @@
   right: 0;
   bottom: 0;
   width: 100%;
+  max-width: 100vw;
   background: var(--paper-bg);
   box-shadow: var(--paper-shadow-drawer);
   transform: translateX(100%);
@@ -33,6 +34,7 @@
   z-index: 1001;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 @media (min-width: 1200px) {
@@ -55,6 +57,11 @@
 }
 
 @media (max-width: 767px) {
+  .panel {
+    width: 100vw;
+    width: 100dvw;
+  }
+
   .header {
     gap: 8px;
     padding-right: 12px;
@@ -189,6 +196,9 @@
   flex: 1;
   border: none;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: block;
   background: #1a1b26;
 }
 

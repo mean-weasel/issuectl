@@ -420,9 +420,11 @@ describe("spawnTtyd", () => {
     )!;
     expect(tmuxCall).toBeDefined();
     const tmuxArgs = tmuxCall[1] as string[];
-    expect(tmuxArgs.slice(0, 4)).toEqual(["new-session", "-d", "-s", "issuectl-myrepo-42"]);
+    expect(tmuxArgs.slice(0, 8)).toEqual([
+      "new-session", "-d", "-x", "40", "-y", "24", "-s", "issuectl-myrepo-42",
+    ]);
     // The shell command passed to tmux redirects the context into the agent
-    const tmuxCmd = tmuxArgs[4];
+    const tmuxCmd = tmuxArgs[8];
     expect(tmuxCmd).toContain("bash -lic");
     expect(tmuxCmd).toContain("/home/user/project");
     expect(tmuxCmd).toContain("/tmp/ctx.md");
@@ -464,7 +466,7 @@ describe("spawnTtyd", () => {
 
     const tmuxCmd = execFileSyncSpy.mock.calls.find(
       (c: unknown[]) => c[0] === "tmux" && (c[1] as string[])[0] === "new-session",
-    )![1][4] as string;
+    )![1][8] as string;
     expect(tmuxCmd).toContain("codex --sandbox danger-full-access --ask-for-approval never");
     expect(tmuxCmd).toContain("$(cat ");
     expect(tmuxCmd).toContain("/tmp/ctx.md");
@@ -510,7 +512,7 @@ describe("spawnTtyd", () => {
     // once when wrapping in bash -lic, so the quote escaping is doubled.
     const tmuxCmd = execFileSyncSpy.mock.calls.find(
       (c: unknown[]) => c[0] === "tmux" && (c[1] as string[])[0] === "new-session",
-    )![1][4] as string;
+    )![1][8] as string;
     expect(tmuxCmd).toContain("it");
     expect(tmuxCmd).toContain("s a project");
     killSpy.mockRestore();
