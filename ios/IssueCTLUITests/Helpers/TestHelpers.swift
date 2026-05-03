@@ -30,6 +30,43 @@ func tapElement(
 }
 
 @MainActor
+func tapMainTab(
+    _ identifier: String,
+    label: String,
+    in app: XCUIApplication,
+    timeout: TimeInterval = 8,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
+    let identifiedTab = element(identifier, in: app)
+    if identifiedTab.exists {
+        identifiedTab.tap()
+        return
+    }
+
+    let labeledTab = app.tabBars.buttons[label]
+    if labeledTab.exists {
+        labeledTab.tap()
+        return
+    }
+
+    let identifierProbe = min(timeout, 2)
+    if identifiedTab.waitForExistence(timeout: identifierProbe) {
+        identifiedTab.tap()
+        return
+    }
+
+    let remainingTimeout = max(timeout - identifierProbe, 0)
+    XCTAssertTrue(
+        labeledTab.waitForExistence(timeout: remainingTimeout),
+        "Missing \(identifier) or tab labeled \(label)\n\(app.debugDescription)",
+        file: file,
+        line: line
+    )
+    labeledTab.tap()
+}
+
+@MainActor
 func assertElement(
     _ identifier: String,
     existsIn app: XCUIApplication,
@@ -73,7 +110,7 @@ func waitForButtonNonexistence(
 @MainActor
 func openIssuesSection(in app: XCUIApplication) {
     dismissRestoredModal(in: app)
-    tapElement("issues-tab", in: app, timeout: 20)
+    tapMainTab("issues-tab", label: "Issues", in: app, timeout: 20)
     let openSection = element("section-tab-open", in: app)
     if !openSection.waitForExistence(timeout: 20), app.scrollViews.firstMatch.exists {
         app.scrollViews.firstMatch.swipeRight()

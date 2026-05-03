@@ -20,7 +20,7 @@ final class SessionManagementTests: XCTestCase {
         server.seedActiveDeployment()
         let app = launchApp(server: server)
 
-        tapElement("active-tab", in: app)
+        tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
 
