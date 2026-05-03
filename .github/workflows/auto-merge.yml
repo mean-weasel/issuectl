@@ -1,9 +1,6 @@
 name: Auto Merge
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_run:
     workflows: [CI, iOS]
     types: [completed]
@@ -21,6 +18,14 @@ permissions:
   pull-requests: write
   statuses: read
 
+concurrency:
+  group: auto-merge-${{ github.event.inputs.pr || github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+env:
+  REPOSITORY: ${{ github.repository }}
+  AUTO_MERGE_ALLOWED_AUTHORS: neonwatty mean-weasel
+
 jobs:
   enable:
     name: Enable auto-merge
@@ -31,35 +36,39 @@ jobs:
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'pull_request'
-      ) ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.draft == false &&
-        github.event.pull_request.head.repo.full_name == github.repository
       )
     steps:
-      - name: Enable auto-merge or enqueue
+      - name: Resolve pull request
+        id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
           DISPATCH_PR: ${{ inputs.pr }}
-          AUTO_MERGE_ALLOWED_AUTHORS: neonwatty mean-weasel
         run: |
           set -euo pipefail
 
           case "$GITHUB_EVENT_NAME" in
             workflow_dispatch)
               pr_target="$DISPATCH_PR"
-              ;;
-            pull_request)
-              pr_target="$(jq -r '.pull_request.html_url' "$GITHUB_EVENT_PATH")"
+              if [ -z "$pr_target" ]; then
+                echo "::error::A pull request number or URL is required."
+                exit 1
+              fi
+              echo "pr=$pr_target" >> "$GITHUB_OUTPUT"
               ;;
             workflow_run)
-              pr_target="$(jq -r '.workflow_run.pull_requests[0].number // empty' "$GITHUB_EVENT_PATH")"
+              head_branch="$(jq -r '.workflow_run.head_branch // empty' "$GITHUB_EVENT_PATH")"
+              if [ -z "$head_branch" ]; then
+                echo "::error::workflow_run event has no head_branch; cannot resolve pull request."
+                exit 1
+              fi
+
+              pr_target="$(gh pr list --repo "$REPOSITORY" --head "$head_branch" --state open --json number --jq '.[0].number // empty')"
               if [ -z "$pr_target" ]; then
-                echo "No pull request associated with this workflow_run; nothing to enqueue."
+                echo "No open pull request for branch $head_branch; nothing to enqueue."
+                echo "pr=" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
+              echo "pr=$pr_target" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unsupported event: $GITHUB_EVENT_NAME" >&2
@@ -67,7 +76,15 @@ jobs:
               ;;
           esac
 
-          pr_json="$(gh pr view "$pr_target" --repo "$REPOSITORY" --json id,state,isDraft,mergeStateStatus,headRepository,url,author)"
+      - name: Enable auto-merge or enqueue
+        if: steps.resolve.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TARGET: ${{ steps.resolve.outputs.pr }}
+        run: |
+          set -euo pipefail
+
+          pr_json="$(gh pr view "$PR_TARGET" --repo "$REPOSITORY" --json id,state,isDraft,mergeStateStatus,headRepository,url,author)"
 
           state="$(jq -r '.state' <<<"$pr_json")"
           if [ "$state" != "OPEN" ]; then
@@ -101,6 +118,7 @@ jobs:
           fi
 
           pr_id="$(jq -r '.id' <<<"$pr_json")"
+          pr_url="$(jq -r '.url' <<<"$pr_json")"
           queue_json="$(gh api graphql \
             -f query='query($id:ID!) { node(id:$id) { ... on PullRequest { isInMergeQueue mergeQueueEntry { position state } } } }' \
             -f id="$pr_id")"
@@ -110,11 +128,33 @@ jobs:
           fi
 
           merge_state="$(jq -r '.mergeStateStatus' <<<"$pr_json")"
+          retries=0
+          while [ "$merge_state" != "CLEAN" ] && [ "$retries" -lt 4 ]; do
+            retries=$((retries + 1))
+            echo "PR merge state is $merge_state; waiting for required checks ($retries/4)."
+            sleep 15
+            merge_state="$(gh pr view "$PR_TARGET" --repo "$REPOSITORY" --json mergeStateStatus --jq '.mergeStateStatus')"
+          done
+
           if [ "$merge_state" != "CLEAN" ]; then
             echo "PR merge state is $merge_state; waiting for required checks."
             exit 0
           fi
 
-          gh api graphql \
+          response="$(gh api graphql \
             -f query='mutation($pullRequestId:ID!) { enqueuePullRequest(input:{pullRequestId:$pullRequestId}) { mergeQueueEntry { position state } } }' \
-            -f pullRequestId="$pr_id"
+            -f pullRequestId="$pr_id" 2>&1)" || true
+
+          if jq -e '.errors' <<<"$response" >/dev/null 2>&1; then
+            if jq -e '.errors[0].message == "Pull request is already in the queue"' <<<"$response" >/dev/null 2>&1; then
+              echo "PR $pr_url is already in the merge queue."
+              exit 0
+            fi
+            echo "::error::enqueuePullRequest returned errors for PR $pr_url"
+            jq . <<<"$response"
+            exit 1
+          fi
+
+          position="$(jq -r '.data.enqueuePullRequest.mergeQueueEntry.position' <<<"$response")"
+          queue_state="$(jq -r '.data.enqueuePullRequest.mergeQueueEntry.state' <<<"$response")"
+          echo "PR $pr_url enqueued at position $position with state $queue_state."
