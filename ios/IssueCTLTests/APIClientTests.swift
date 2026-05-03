@@ -53,7 +53,7 @@ final class TestableAPIClient {
         self.session = URLSession(configuration: config)
     }
 
-    func request(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    func request(path: String, method: String = "GET", body: Data? = nil, timeoutInterval: TimeInterval? = nil) async throws -> (Data, HTTPURLResponse) {
         guard let base = URL(string: serverURL) else {
             throw APIError.notConfigured
         }
@@ -63,6 +63,7 @@ final class TestableAPIClient {
         urlRequest.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let body { urlRequest.httpBody = body }
+        if let timeoutInterval { urlRequest.timeoutInterval = timeoutInterval }
 
         let (data, response) = try await session.data(for: urlRequest)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -106,6 +107,23 @@ final class TestableAPIClient {
     func activeDeployments() async throws -> ActiveDeploymentsResponse {
         let (data, _) = try await request(path: "/api/v1/deployments")
         return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
+    }
+
+    func sessionPreviews() async throws -> SessionPreviewsResponse {
+        let (data, _) = try await request(path: "/api/v1/sessions/previews")
+        return try decoder.decode(SessionPreviewsResponse.self, from: data)
+    }
+
+    func parseNaturalLanguage(input: String) async throws -> ParsedIssuesData {
+        let body = ParseRequestBody(input: input)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(
+            path: "/api/v1/parse",
+            method: "POST",
+            body: bodyData,
+            timeoutInterval: 120
+        )
+        return try decoder.decode(ParseResponse.self, from: data).parsed
     }
 
     private struct ErrorBody: Codable {
@@ -274,6 +292,21 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.activeDeployments()
+    }
+
+    @MainActor
+    func testSessionPreviewsEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/sessions/previews"))
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {"previews": {}}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        _ = try await client.sessionPreviews()
     }
 
     // MARK: - Successful Responses

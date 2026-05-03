@@ -21,6 +21,7 @@ import type {
   BatchCreateResult,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
+import { notifyNewIssue } from "@/lib/push/notifications";
 
 // Parse input is a free-form prompt that gets piped to the Claude CLI;
 // cost and latency are proportional to token count and the content is
@@ -191,6 +192,12 @@ export async function batchCreateIssues(
         );
 
         clearCacheKey(db, `issues:${issue.owner}/${issue.repo}`);
+        notifyNewIssue({
+          owner: issue.owner,
+          repo: issue.repo,
+          issueNumber: created.number,
+          title: issue.title.trim(),
+        });
 
         return {
           id: issue.id,

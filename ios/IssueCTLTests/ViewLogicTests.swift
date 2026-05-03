@@ -45,6 +45,70 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertTrue(message.contains("Local Network access"))
     }
 
+    // MARK: - Offline Cache
+
+    func testOfflineCacheStoresValuesPerServer() throws {
+        let suiteName = "issuectl.tests.offline-cache.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let cache = OfflineCacheStore(defaults: defaults)
+        let repo = Repo(id: 1, owner: "org", name: "alpha", localPath: nil, branchPattern: nil, createdAt: "")
+
+        cache.save([repo], for: "repos", serverURL: "http://one.example", cachedAt: "2026-05-01T10:00:00.000Z")
+
+        let cached = try XCTUnwrap(cache.load([Repo].self, for: "repos", serverURL: "http://one.example"))
+        XCTAssertEqual(cached.value.map(\.fullName), ["org/alpha"])
+        XCTAssertEqual(cached.cachedAt, "2026-05-01T10:00:00.000Z")
+        XCTAssertNil(cache.load([Repo].self, for: "repos", serverURL: "http://two.example"))
+    }
+
+    // MARK: - Notification Preferences
+
+    @MainActor
+    func testNotificationPreferencesPersist() throws {
+        let suiteName = "issuectl.tests.notifications.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = NotificationSettingsStore(defaults: defaults)
+
+        store.setIdleTerminals(false)
+        store.setNewIssues(true)
+        store.setMergedPullRequests(false)
+
+        let reloaded = NotificationSettingsStore(defaults: defaults)
+        XCTAssertEqual(
+            reloaded.preferences,
+            NotificationPreferences(idleTerminals: false, newIssues: true, mergedPullRequests: false)
+        )
+    }
+
+    @MainActor
+    func testNotificationDeviceTokenPersists() throws {
+        let suiteName = "issuectl.tests.notification-token.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = NotificationSettingsStore(defaults: defaults)
+
+        store.updateDeviceToken("abcdef123456")
+
+        let reloaded = NotificationSettingsStore(defaults: defaults)
+        XCTAssertEqual(reloaded.deviceToken, "abcdef123456")
+    }
+
+    @MainActor
+    func testNotificationRegistrationErrorIsRecordedAndClearedByToken() throws {
+        let suiteName = "issuectl.tests.notification-error.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = NotificationSettingsStore(defaults: defaults)
+
+        store.updateRegistrationError("registration failed")
+        XCTAssertEqual(store.lastSyncError, "registration failed")
+
+        store.updateDeviceToken("abcdef123456")
+        XCTAssertNil(store.lastSyncError)
+    }
+
     // MARK: - Branch Name Generation
 
     func testBasicSlugGeneration() {

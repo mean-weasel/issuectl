@@ -4,6 +4,7 @@ import Foundation
 final class APIClient {
     private(set) var serverURL: String = ""
     private(set) var apiToken: String = ""
+    let offlineCache = OfflineCacheStore()
     var cachedCurrentUser: UserResponse?
     var cachedCurrentUserExpiresAt: Date?
     var currentUserTask: Task<UserResponse, Error>?
@@ -83,7 +84,7 @@ final class APIClient {
         URL(string: serverURL)
     }
 
-    func request(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    func request(path: String, method: String = "GET", body: Data? = nil, timeoutInterval: TimeInterval? = nil) async throws -> (Data, HTTPURLResponse) {
         guard let base = baseURL else {
             throw APIError.notConfigured
         }
@@ -103,6 +104,7 @@ final class APIClient {
         urlRequest.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let body { urlRequest.httpBody = body }
+        if let timeoutInterval { urlRequest.timeoutInterval = timeoutInterval }
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         responseBytes = data.count
@@ -177,6 +179,7 @@ final class APIClient {
         let task = Task { @MainActor in
             let (data, _) = try await request(path: "/api/v1/repos")
             let response = try decoder.decode(ReposResponse.self, from: data)
+            offlineCache.save(response.repos, for: "repos", serverURL: serverURL)
             return response.repos
         }
         reposTask = task
@@ -189,36 +192,91 @@ final class APIClient {
             return repos
         } catch {
             reposTask = nil
+            if let cached = offlineCache.load([Repo].self, for: "repos", serverURL: serverURL) {
+                return cached.value
+            }
             throw error
         }
+    }
+
+    func registerPushDevice(body: PushDeviceRegistrationRequest) async throws -> PushDeviceRegistrationResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/notifications/devices", method: "POST", body: bodyData)
+        return try decoder.decode(PushDeviceRegistrationResponse.self, from: data)
+    }
+
+    func unregisterPushDevice(token: String) async throws {
+        let body = PushDeviceUnregisterRequest(platform: "ios", token: token)
+        let bodyData = try JSONEncoder().encode(body)
+        _ = try await request(path: "/api/v1/notifications/devices", method: "DELETE", body: bodyData)
     }
 
     func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
         var path = "/api/v1/issues/\(owner)/\(repo)"
         if refresh { path += "?refresh=true" }
-        let (data, _) = try await request(path: path)
-        return try decoder.decode(IssuesResponse.self, from: data)
+        let cacheKey = "issues.\(owner).\(repo)"
+        do {
+            let (data, _) = try await request(path: path)
+            let response = try decoder.decode(IssuesResponse.self, from: data)
+            offlineCache.save(response.issues, for: cacheKey, serverURL: serverURL, cachedAt: response.cachedAt)
+            return response
+        } catch {
+            if let cached = offlineCache.load([GitHubIssue].self, for: cacheKey, serverURL: serverURL) {
+                return IssuesResponse(issues: cached.value, fromCache: true, cachedAt: cached.cachedAt)
+            }
+            throw error
+        }
     }
 
     func issueDetail(owner: String, repo: String, number: Int, refresh: Bool = false) async throws -> IssueDetailResponse {
         var path = "/api/v1/issues/\(owner)/\(repo)/\(number)"
         if refresh { path += "?refresh=true" }
-        let (data, _) = try await request(path: path)
-        return try decoder.decode(IssueDetailResponse.self, from: data)
+        let cacheKey = "issue-detail.\(owner).\(repo).\(number)"
+        do {
+            let (data, _) = try await request(path: path)
+            let response = try decoder.decode(IssueDetailResponse.self, from: data)
+            offlineCache.save(response, for: cacheKey, serverURL: serverURL)
+            return response
+        } catch {
+            if let cached = offlineCache.load(IssueDetailResponse.self, for: cacheKey, serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
     }
 
     func pulls(owner: String, repo: String, refresh: Bool = false) async throws -> PullsResponse {
         var path = "/api/v1/pulls/\(owner)/\(repo)"
         if refresh { path += "?refresh=true" }
-        let (data, _) = try await request(path: path)
-        return try decoder.decode(PullsResponse.self, from: data)
+        let cacheKey = "pulls.\(owner).\(repo)"
+        do {
+            let (data, _) = try await request(path: path)
+            let response = try decoder.decode(PullsResponse.self, from: data)
+            offlineCache.save(response.pulls, for: cacheKey, serverURL: serverURL, cachedAt: response.cachedAt)
+            return response
+        } catch {
+            if let cached = offlineCache.load([GitHubPull].self, for: cacheKey, serverURL: serverURL) {
+                return PullsResponse(pulls: cached.value, fromCache: true, cachedAt: cached.cachedAt)
+            }
+            throw error
+        }
     }
 
     func pullDetail(owner: String, repo: String, number: Int, refresh: Bool = false) async throws -> PullDetailResponse {
         var path = "/api/v1/pulls/\(owner)/\(repo)/\(number)"
         if refresh { path += "?refresh=true" }
-        let (data, _) = try await request(path: path)
-        return try decoder.decode(PullDetailResponse.self, from: data)
+        let cacheKey = "pull-detail.\(owner).\(repo).\(number)"
+        do {
+            let (data, _) = try await request(path: path)
+            let response = try decoder.decode(PullDetailResponse.self, from: data)
+            offlineCache.save(response, for: cacheKey, serverURL: serverURL, cachedAt: response.cachedAt)
+            return response
+        } catch {
+            if let cached = offlineCache.load(PullDetailResponse.self, for: cacheKey, serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
     }
 
     func activeDeployments(refresh: Bool = false, maxAge: TimeInterval = 5) async throws -> ActiveDeploymentsResponse {
@@ -236,7 +294,9 @@ final class APIClient {
 
         let task = Task { @MainActor in
             let (data, _) = try await request(path: "/api/v1/deployments")
-            return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
+            let response = try decoder.decode(ActiveDeploymentsResponse.self, from: data)
+            offlineCache.save(response, for: "deployments", serverURL: serverURL)
+            return response
         }
         activeDeploymentsTask = task
 
@@ -248,8 +308,16 @@ final class APIClient {
             return response
         } catch {
             activeDeploymentsTask = nil
+            if let cached = offlineCache.load(ActiveDeploymentsResponse.self, for: "deployments", serverURL: serverURL) {
+                return cached.value
+            }
             throw error
         }
+    }
+
+    func sessionPreviews() async throws -> SessionPreviewsResponse {
+        let (data, _) = try await request(path: "/api/v1/sessions/previews")
+        return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
     func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
@@ -300,8 +368,17 @@ final class APIClient {
     // MARK: - Drafts
 
     func listDrafts() async throws -> DraftsResponse {
-        let (data, _) = try await request(path: "/api/v1/drafts")
-        return try decoder.decode(DraftsResponse.self, from: data)
+        do {
+            let (data, _) = try await request(path: "/api/v1/drafts")
+            let response = try decoder.decode(DraftsResponse.self, from: data)
+            offlineCache.save(response, for: "drafts", serverURL: serverURL)
+            return response
+        } catch {
+            if let cached = offlineCache.load(DraftsResponse.self, for: "drafts", serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
     }
 
     func createDraft(body: CreateDraftRequestBody) async throws -> CreateDraftResponse {

@@ -648,6 +648,37 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.deployments[0].repoFullName, "org/app")
     }
 
+    func testSessionPreviewsResponseDecoding() throws {
+        let json = """
+        {
+            "previews": {
+                "7700": {
+                    "lines": ["pnpm test", "pass"],
+                    "lastUpdatedMs": 1777800000000,
+                    "lastChangedMs": 1777799999000,
+                    "status": "active"
+                },
+                "7701": {
+                    "lines": [],
+                    "lastUpdatedMs": 1777800001000,
+                    "lastChangedMs": null,
+                    "status": "unavailable"
+                }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(SessionPreviewsResponse.self, from: json)
+        XCTAssertEqual(response.previews.count, 2)
+        XCTAssertEqual(response.previewsByPort[7700]?.latestLine, "pass")
+        XCTAssertEqual(response.previewsByPort[7700]?.status, .active)
+        XCTAssertEqual(response.previewsByPort[7700]?.status.displayName, "Active")
+        XCTAssertEqual(response.previewsByPort[7700]?.status.accessibilityName, "active")
+        XCTAssertEqual(response.previewsByPort[7701]?.status, .unavailable)
+        XCTAssertEqual(response.previewsByPort[7701]?.status.displayName, "Unavailable")
+        XCTAssertEqual(response.previewsByPort[7701]?.status.accessibilityName, "preview unavailable")
+    }
+
     // MARK: - GitHubAccessibleRepo
 
     func testGitHubAccessibleRepoDecoding() throws {

@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -83,6 +83,25 @@ const CREATE_TABLES = `
     synced_at  INTEGER NOT NULL,
     PRIMARY KEY (owner, name)
   );
+
+  CREATE TABLE IF NOT EXISTS push_devices (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform                TEXT NOT NULL CHECK (platform IN ('ios')),
+    token                   TEXT NOT NULL,
+    environment             TEXT NOT NULL DEFAULT 'production'
+                            CHECK (environment IN ('development', 'production')),
+    idle_terminals          INTEGER NOT NULL DEFAULT 1 CHECK (idle_terminals IN (0, 1)),
+    new_issues              INTEGER NOT NULL DEFAULT 1 CHECK (new_issues IN (0, 1)),
+    merged_pull_requests    INTEGER NOT NULL DEFAULT 1 CHECK (merged_pull_requests IN (0, 1)),
+    enabled                 INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    last_registered_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at              TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at              TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(platform, token)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_push_devices_enabled
+    ON push_devices(enabled);
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL

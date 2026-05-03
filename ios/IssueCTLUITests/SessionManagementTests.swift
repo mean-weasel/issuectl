@@ -36,4 +36,34 @@ final class SessionManagementTests: XCTestCase {
         // Session should disappear from the list.
         waitForNonexistence("session-reenter-terminal-9001", in: app, timeout: 8)
     }
+
+    @MainActor
+    func testSessionCardShowsExpandableTerminalPreview() {
+        server.seedActiveDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("sessions-command-header", existsIn: app, timeout: 5)
+        assertElement("session-preview-9001", existsIn: app, timeout: 5)
+        let preview = element("session-preview-9001", in: app)
+
+        XCTAssertTrue(
+            app.staticTexts["pass: launch handoff"].waitForExistence(timeout: 5),
+            "Collapsed session preview did not show latest output\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Active"].waitForExistence(timeout: 3),
+            "Session preview did not show a visible active status badge\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            String(describing: preview.value ?? "").contains("pass: launch handoff"),
+            "Session preview accessibility value did not include latest output"
+        )
+
+        preview.tap()
+        XCTAssertTrue(
+            app.staticTexts["issue #101: running checks"].waitForExistence(timeout: 3),
+            "Expanded session preview did not show captured terminal lines\n\(app.debugDescription)"
+        )
+    }
 }

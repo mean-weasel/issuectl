@@ -16,6 +16,11 @@ export type {
   DraftListItem,
   IssueListItem,
   UnifiedList,
+  PushDevice,
+  PushDeviceEnvironment,
+  PushDevicePlatform,
+  PushNotificationKind,
+  PushNotificationPreferences,
 } from "./types.js";
 export { SORT_MODES } from "./types.js";
 
@@ -94,6 +99,15 @@ export {
   isValidNonce,
   DuplicateInFlightError,
 } from "./db/idempotency.js";
+export {
+  upsertPushDevice,
+  getPushDevice,
+  disablePushDevice,
+  deletePushDevice,
+  listPushDevices,
+  listPushDevicesForKind,
+  type PushDeviceInput,
+} from "./db/push-devices.js";
 // GitHub client
 export type {
   GitHubUser,

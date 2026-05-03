@@ -2,12 +2,16 @@ import SwiftUI
 
 struct SessionListView: View {
     @Environment(APIClient.self) private var api
+    @Environment(\.scenePhase) private var scenePhase
     let onShowSettings: () -> Void
     let onShowIssues: () -> Void
 
     @State private var repos: [Repo] = []
     @State private var deployments: [ActiveDeployment] = []
+    @State private var previews: [Int: SessionPreview] = [:]
+    @State private var expandedPorts: Set<Int> = []
     @State private var isLoading = true
+    @State private var isFetchingPreviews = false
     @State private var errorMessage: String?
     @State private var actionError: String?
     @State private var terminalPresentation: TerminalPresentation?
@@ -72,7 +76,7 @@ struct SessionListView: View {
                             Text(sessionErrorDescription(errorMessage))
                         } actions: {
                             HStack {
-                                Button("Retry") { Task { await load(refresh: true) } }
+                                Button("Retry") { Task { await refreshSessions() } }
                                 Button("Open Settings", action: onShowSettings)
                             }
                         }
@@ -84,7 +88,7 @@ struct SessionListView: View {
                         } actions: {
                             HStack {
                                 Button("Open Issues", action: onShowIssues)
-                                Button("Refresh") { Task { await load(refresh: true) } }
+                                Button("Refresh") { Task { await refreshSessions() } }
                             }
                         }
                     } else {
@@ -116,9 +120,17 @@ struct SessionListView: View {
                                 }
 
                                 ForEach(filteredDeployments) { deployment in
+                                    let port = deployment.ttydPort
                                     SessionRowView(
                                         deployment: deployment,
+                                        preview: port.flatMap { previews[$0] },
+                                        isPreviewExpanded: port.map { expandedPorts.contains($0) } ?? false,
                                         isEnding: endingDeploymentId == deployment.id,
+                                        onTogglePreview: {
+                                            if let port {
+                                                togglePreview(port)
+                                            }
+                                        },
                                         onOpen: {
                                             openTerminal(deployment)
                                         },
@@ -131,7 +143,7 @@ struct SessionListView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
                         }
-                        .refreshable { await load(refresh: true) }
+                        .refreshable { await refreshSessions() }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -140,6 +152,9 @@ struct SessionListView: View {
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
             .task { await load() }
+            .task(id: scenePhase) {
+                await pollPreviews()
+            }
             .onReceive(refreshTimer) { _ in
                 guard terminalPresentation == nil else { return }
                 Task { await load(includeRepos: false) }
@@ -214,7 +229,7 @@ struct SessionListView: View {
                     systemImage: "arrow.clockwise",
                     accessibilityIdentifier: "sessions-refresh-button"
                 ) {
-                    Task { await load(refresh: true) }
+                    Task { await refreshSessions() }
                 }
 
                 TopBarIconButton(
@@ -289,6 +304,17 @@ struct SessionListView: View {
         guard deployment.ttydPort != nil else { return }
         terminalPresentation = TerminalPresentation(deployment: deployment)
     }
+
+    private func togglePreview(_ port: Int) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            if expandedPorts.contains(port) {
+                expandedPorts.remove(port)
+            } else {
+                expandedPorts.insert(port)
+            }
+        }
+    }
+
     private func load(refresh: Bool = false, includeRepos: Bool? = nil) async {
         let shouldLoadRepos = includeRepos ?? (refresh || repos.isEmpty)
         let trace = PerformanceTrace.begin("sessions.load", metadata: "refresh=\(refresh) include_repos=\(shouldLoadRepos)")
@@ -306,6 +332,7 @@ struct SessionListView: View {
             }() : nil
             let response = try await deploymentsResult
             deployments = response.deployments
+            prunePreviewState()
             if let reposResult = await reposResult {
                 switch reposResult {
                 case .success(let loadedRepos):
@@ -324,6 +351,49 @@ struct SessionListView: View {
         isLoading = false
     }
 
+    private func fetchPreviews() async {
+        guard !isFetchingPreviews else { return }
+        guard !deployments.isEmpty else {
+            previews = [:]
+            expandedPorts = []
+            return
+        }
+        isFetchingPreviews = true
+        defer { isFetchingPreviews = false }
+        do {
+            let response = try await api.sessionPreviews()
+            previews = response.previewsByPort
+            prunePreviewState()
+        } catch {
+            // Preview data is supplementary; keep the session list usable if
+            // the endpoint is temporarily unavailable.
+        }
+    }
+
+    private func pollPreviews() async {
+        guard scenePhase == .active else { return }
+        while !Task.isCancelled {
+            if deployments.isEmpty {
+                previews = [:]
+                expandedPorts = []
+            } else {
+                await fetchPreviews()
+            }
+            try? await Task.sleep(for: .seconds(2))
+        }
+    }
+
+    private func refreshSessions() async {
+        await load(refresh: true)
+        await fetchPreviews()
+    }
+
+    private func prunePreviewState() {
+        let ports = Set(deployments.compactMap(\.ttydPort))
+        previews = previews.filter { ports.contains($0.key) }
+        expandedPorts = expandedPorts.intersection(ports)
+    }
+
     private func endSession(_ deployment: ActiveDeployment) async {
         endingDeploymentId = deployment.id
         do {
@@ -334,6 +404,10 @@ struct SessionListView: View {
                 issueNumber: deployment.issueNumber
             )
             deployments.removeAll { $0.id == deployment.id }
+            if let port = deployment.ttydPort {
+                previews.removeValue(forKey: port)
+                expandedPorts.remove(port)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

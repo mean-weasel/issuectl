@@ -45,6 +45,34 @@ final class APIClientExtensionTests: XCTestCase {
         return data
     }
 
+    // MARK: - Parse
+
+    @MainActor
+    func testParseNaturalLanguageUsesLongRequestTimeout() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/parse"))
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.timeoutInterval, 120)
+
+            let bodyData = self.readBody(from: request)
+            XCTAssertNotNil(bodyData)
+            if let bodyData {
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+                XCTAssertEqual(json?["input"] as? String, "Create a bug issue for the iOS timeout")
+            }
+
+            return (self.makeResponse(url: request.url!), """
+            {"parsed": {"issues": [{"id": "parsed-1", "original_text": "Create a bug issue for the iOS timeout", "title": "Fix iOS timeout", "body": "Parse requests should have enough time to complete.", "type": "bug", "repo_owner": null, "repo_name": null, "repo_confidence": 0, "suggested_labels": ["bug"], "clarity": "clear"}], "suggested_order": ["parsed-1"]}}
+            """.data(using: .utf8)!)
+        }
+
+        let parsed = try await client.parseNaturalLanguage(input: "Create a bug issue for the iOS timeout")
+
+        XCTAssertEqual(parsed.issues.count, 1)
+        XCTAssertEqual(parsed.issues[0].title, "Fix iOS timeout")
+        XCTAssertEqual(parsed.suggestedOrder, ["parsed-1"])
+    }
+
     // MARK: - Drafts (APIClient+Drafts)
 
     @MainActor

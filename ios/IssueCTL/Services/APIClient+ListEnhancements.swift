@@ -66,6 +66,7 @@ struct BatchCreateItemResult: Codable, Identifiable, Sendable {
 // MARK: - APIClient extension for list enhancements
 
 extension APIClient {
+    private static let parseRequestTimeout: TimeInterval = 120
 
     /// Fetch the authenticated GitHub user login.
     func currentUser(refresh: Bool = false, maxAge: TimeInterval = 300) async throws -> UserResponse {
@@ -83,7 +84,9 @@ extension APIClient {
 
         let task = Task { @MainActor in
             let (data, _) = try await request(path: "/api/v1/user")
-            return try decoder.decode(UserResponse.self, from: data)
+            let response = try decoder.decode(UserResponse.self, from: data)
+            offlineCache.save(response, for: "current-user", serverURL: serverURL)
+            return response
         }
         currentUserTask = task
 
@@ -95,6 +98,9 @@ extension APIClient {
             return user
         } catch {
             currentUserTask = nil
+            if let cached = offlineCache.load(UserResponse.self, for: "current-user", serverURL: serverURL) {
+                return cached.value
+            }
             throw error
         }
     }
@@ -103,7 +109,12 @@ extension APIClient {
     func parseNaturalLanguage(input: String) async throws -> ParsedIssuesData {
         let body = ParseRequestBody(input: input)
         let bodyData = try JSONEncoder().encode(body)
-        let (data, _) = try await request(path: "/api/v1/parse", method: "POST", body: bodyData)
+        let (data, _) = try await request(
+            path: "/api/v1/parse",
+            method: "POST",
+            body: bodyData,
+            timeoutInterval: Self.parseRequestTimeout
+        )
         return try decoder.decode(ParseResponse.self, from: data).parsed
     }
 

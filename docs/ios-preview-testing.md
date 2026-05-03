@@ -7,6 +7,8 @@ IssueCTL has two installable iOS app variants:
 
 The preview app is intended for development, physical-device smoke tests, and feature validation without overwriting the production app on the same iPhone.
 
+Merge queue validation should use the preview lane when a PR needs iOS smoke coverage before landing.
+
 ## App Lanes
 
 Use `IssueCTL Preview` as the active development lane. It is the app to run from feature branches, local simulator testing, and physical-device smoke tests.
