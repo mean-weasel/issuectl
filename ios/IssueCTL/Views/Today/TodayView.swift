@@ -13,6 +13,8 @@ struct TodayView: View {
     @State private var repos: [Repo] = []
     @State private var issuesByRepo: [String: [GitHubIssue]] = [:]
     @State private var pullsByRepo: [String: [GitHubPull]] = [:]
+    @State private var issueRepoLookup: [String: (repo: Repo, index: Int)] = [:]
+    @State private var pullRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var activeDeployments: [ActiveDeployment] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -417,6 +419,8 @@ struct TodayView: View {
             let loadedPulls = await pullResults
             issuesByRepo = loadedIssues.items
             pullsByRepo = loadedPulls.items
+            issueRepoLookup = makeRepoLookup(itemsByRepo: loadedIssues.items, htmlUrl: { $0.htmlUrl })
+            pullRepoLookup = makeRepoLookup(itemsByRepo: loadedPulls.items, htmlUrl: { $0.htmlUrl })
             oldestCachedAt = (loadedIssues.cachedDates + loadedPulls.cachedDates).min()
         } catch {
             errorMessage = error.localizedDescription
@@ -481,16 +485,30 @@ struct TodayView: View {
     }
 
     private func repoFor(issue: GitHubIssue) -> Repo? {
-        repoForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        issueRepoLookup[issue.htmlUrl]?.repo
     }
 
     private func repoFor(pull: GitHubPull) -> Repo? {
-        repoForItem(pull, in: pullsByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        pullRepoLookup[pull.htmlUrl]?.repo
     }
 
     private func repoColor(for repo: Repo?) -> Color {
         guard let repo, let index = repos.firstIndex(where: { $0.id == repo.id }) else { return .secondary }
         return RepoColors.color(for: index)
+    }
+
+    private func makeRepoLookup<Item>(
+        itemsByRepo: [String: [Item]],
+        htmlUrl: (Item) -> String
+    ) -> [String: (repo: Repo, index: Int)] {
+        var lookup: [String: (repo: Repo, index: Int)] = [:]
+        for (index, repo) in repos.enumerated() {
+            guard let items = itemsByRepo[repo.fullName] else { continue }
+            for item in items {
+                lookup[htmlUrl(item)] = (repo, index)
+            }
+        }
+        return lookup
     }
 
 }

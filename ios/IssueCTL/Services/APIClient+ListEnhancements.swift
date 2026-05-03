@@ -68,9 +68,35 @@ struct BatchCreateItemResult: Codable, Identifiable, Sendable {
 extension APIClient {
 
     /// Fetch the authenticated GitHub user login.
-    func currentUser() async throws -> UserResponse {
-        let (data, _) = try await request(path: "/api/v1/user")
-        return try decoder.decode(UserResponse.self, from: data)
+    func currentUser(refresh: Bool = false, maxAge: TimeInterval = 300) async throws -> UserResponse {
+        let now = Date()
+        if !refresh,
+           let cachedCurrentUser,
+           let cachedCurrentUserExpiresAt,
+           now < cachedCurrentUserExpiresAt {
+            return cachedCurrentUser
+        }
+
+        if !refresh, let currentUserTask {
+            return try await currentUserTask.value
+        }
+
+        let task = Task { @MainActor in
+            let (data, _) = try await request(path: "/api/v1/user")
+            return try decoder.decode(UserResponse.self, from: data)
+        }
+        currentUserTask = task
+
+        do {
+            let user = try await task.value
+            cachedCurrentUser = user
+            cachedCurrentUserExpiresAt = Date().addingTimeInterval(maxAge)
+            currentUserTask = nil
+            return user
+        } catch {
+            currentUserTask = nil
+            throw error
+        }
     }
 
     /// Parse natural language text into structured issues via Claude.

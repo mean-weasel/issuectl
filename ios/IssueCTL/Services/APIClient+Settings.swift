@@ -42,6 +42,7 @@ extension APIClient {
         guard response.success, let repo = response.repo else {
             throw APIError.serverError(400, response.error ?? "Failed to add repository")
         }
+        clearReposCache()
         return repo
     }
 
@@ -52,6 +53,7 @@ extension APIClient {
         guard response.success else {
             throw APIError.serverError(400, response.error ?? "Failed to remove repository")
         }
+        clearReposCache()
     }
 
     /// Fetch accessible GitHub repos (cached or refreshed).
@@ -71,6 +73,7 @@ extension APIClient {
         guard response.success, let repo = response.repo else {
             throw APIError.serverError(400, response.error ?? "Failed to update repository")
         }
+        clearReposCache()
         return repo
     }
 }

@@ -4,6 +4,15 @@ import Foundation
 final class APIClient {
     private(set) var serverURL: String = ""
     private(set) var apiToken: String = ""
+    var cachedCurrentUser: UserResponse?
+    var cachedCurrentUserExpiresAt: Date?
+    var currentUserTask: Task<UserResponse, Error>?
+    var cachedRepos: [Repo]?
+    var cachedReposExpiresAt: Date?
+    var reposTask: Task<[Repo], Error>?
+    var cachedActiveDeployments: ActiveDeploymentsResponse?
+    var cachedActiveDeploymentsExpiresAt: Date?
+    var activeDeploymentsTask: Task<ActiveDeploymentsResponse, Error>?
     var isConfigured: Bool {
         !serverURL.isEmpty && !apiToken.isEmpty
     }
@@ -31,6 +40,9 @@ final class APIClient {
     func configure(url: String, token: String) throws {
         serverURL = url
         apiToken = token
+        clearCurrentUserCache()
+        clearReposCache()
+        clearActiveDeploymentsCache()
         try KeychainService.save(key: "serverURL", value: url)
         try KeychainService.save(key: "apiToken", value: token)
     }
@@ -39,8 +51,32 @@ final class APIClient {
     func disconnect() {
         serverURL = ""
         apiToken = ""
+        clearCurrentUserCache()
+        clearReposCache()
+        clearActiveDeploymentsCache()
         KeychainService.delete(key: "serverURL")
         KeychainService.delete(key: "apiToken")
+    }
+
+    func clearCurrentUserCache() {
+        cachedCurrentUser = nil
+        cachedCurrentUserExpiresAt = nil
+        currentUserTask?.cancel()
+        currentUserTask = nil
+    }
+
+    func clearReposCache() {
+        cachedRepos = nil
+        cachedReposExpiresAt = nil
+        reposTask?.cancel()
+        reposTask = nil
+    }
+
+    func clearActiveDeploymentsCache() {
+        cachedActiveDeployments = nil
+        cachedActiveDeploymentsExpiresAt = nil
+        activeDeploymentsTask?.cancel()
+        activeDeploymentsTask = nil
     }
 
     private var baseURL: URL? {
@@ -108,10 +144,36 @@ final class APIClient {
         return try decoder.decode(ServerHealth.self, from: data)
     }
 
-    func repos() async throws -> [Repo] {
-        let (data, _) = try await request(path: "/api/v1/repos")
-        let response = try decoder.decode(ReposResponse.self, from: data)
-        return response.repos
+    func repos(refresh: Bool = false, maxAge: TimeInterval = 300) async throws -> [Repo] {
+        let now = Date()
+        if !refresh,
+           let cachedRepos,
+           let cachedReposExpiresAt,
+           now < cachedReposExpiresAt {
+            return cachedRepos
+        }
+
+        if !refresh, let reposTask {
+            return try await reposTask.value
+        }
+
+        let task = Task { @MainActor in
+            let (data, _) = try await request(path: "/api/v1/repos")
+            let response = try decoder.decode(ReposResponse.self, from: data)
+            return response.repos
+        }
+        reposTask = task
+
+        do {
+            let repos = try await task.value
+            cachedRepos = repos
+            cachedReposExpiresAt = Date().addingTimeInterval(maxAge)
+            reposTask = nil
+            return repos
+        } catch {
+            reposTask = nil
+            throw error
+        }
     }
 
     func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
@@ -142,14 +204,41 @@ final class APIClient {
         return try decoder.decode(PullDetailResponse.self, from: data)
     }
 
-    func activeDeployments() async throws -> ActiveDeploymentsResponse {
-        let (data, _) = try await request(path: "/api/v1/deployments")
-        return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
+    func activeDeployments(refresh: Bool = false, maxAge: TimeInterval = 5) async throws -> ActiveDeploymentsResponse {
+        let now = Date()
+        if !refresh,
+           let cachedActiveDeployments,
+           let cachedActiveDeploymentsExpiresAt,
+           now < cachedActiveDeploymentsExpiresAt {
+            return cachedActiveDeployments
+        }
+
+        if !refresh, let activeDeploymentsTask {
+            return try await activeDeploymentsTask.value
+        }
+
+        let task = Task { @MainActor in
+            let (data, _) = try await request(path: "/api/v1/deployments")
+            return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
+        }
+        activeDeploymentsTask = task
+
+        do {
+            let response = try await task.value
+            cachedActiveDeployments = response
+            cachedActiveDeploymentsExpiresAt = Date().addingTimeInterval(maxAge)
+            activeDeploymentsTask = nil
+            return response
+        } catch {
+            activeDeploymentsTask = nil
+            throw error
+        }
     }
 
     func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/launch/\(owner)/\(repo)/\(number)", method: "POST", body: bodyData)
+        clearActiveDeploymentsCache()
         return try decoder.decode(LaunchResponse.self, from: data)
     }
 
@@ -157,6 +246,7 @@ final class APIClient {
         let body = EndSessionRequestBody(owner: owner, repo: repo, issueNumber: issueNumber)
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/deployments/\(deploymentId)/end", method: "POST", body: bodyData)
+        clearActiveDeploymentsCache()
         return try decoder.decode(EndSessionResponse.self, from: data)
     }
 

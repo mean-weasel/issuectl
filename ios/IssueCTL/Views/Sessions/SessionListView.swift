@@ -141,7 +141,8 @@ struct SessionListView: View {
             }
             .task { await load() }
             .onReceive(refreshTimer) { _ in
-                Task { await load() }
+                guard terminalPresentation == nil else { return }
+                Task { await load(includeRepos: false) }
             }
             .autoDismissError($actionError)
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
@@ -288,24 +289,27 @@ struct SessionListView: View {
         guard deployment.ttydPort != nil else { return }
         terminalPresentation = TerminalPresentation(deployment: deployment)
     }
-    private func load(refresh: Bool = false) async {
+    private func load(refresh: Bool = false, includeRepos: Bool? = nil) async {
         if deployments.isEmpty { isLoading = true }
         errorMessage = nil
         if refresh { actionError = nil }
         do {
+            let shouldLoadRepos = includeRepos ?? (refresh || repos.isEmpty)
             async let deploymentsResult = api.activeDeployments()
-            async let reposResult: Result<[Repo], Error> = {
+            async let reposResult: Result<[Repo], Error>? = shouldLoadRepos ? {
                 do { return .success(try await api.repos()) }
                 catch { return .failure(error) }
-            }()
+            }() : nil
             let response = try await deploymentsResult
             deployments = response.deployments
-            switch await reposResult {
-            case .success(let loadedRepos):
-                repos = loadedRepos
-            case .failure(let error):
-                if repos.isEmpty {
-                    actionError = "Failed to load repos for create: \(error.localizedDescription)"
+            if let reposResult = await reposResult {
+                switch reposResult {
+                case .success(let loadedRepos):
+                    repos = loadedRepos
+                case .failure(let error):
+                    if repos.isEmpty {
+                        actionError = "Failed to load repos for create: \(error.localizedDescription)"
+                    }
                 }
             }
         } catch {

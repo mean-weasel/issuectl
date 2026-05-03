@@ -55,6 +55,20 @@ struct IssueListView: View {
         runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
     }
 
+    private var issueRepoLookup: [String: (repo: Repo, index: Int)] {
+        let reposByName = Dictionary(uniqueKeysWithValues: repos.enumerated().map { index, repo in
+            (repo.fullName, (repo, index))
+        })
+        var lookup: [String: (repo: Repo, index: Int)] = [:]
+        for (fullName, issues) in issuesByRepo {
+            guard let repoInfo = reposByName[fullName] else { continue }
+            for issue in issues {
+                lookup[issue.htmlUrl] = repoInfo
+            }
+        }
+        return lookup
+    }
+
     private var repoFilteredIssues: [GitHubIssue] {
         filterItemsByRepo(
             issuesByRepo,
@@ -68,15 +82,16 @@ struct IssueListView: View {
 
     private var filteredIssues: [GitHubIssue] {
         var items = repoFilteredIssues
+        let repoLookup = issueRepoLookup
 
         switch section {
         case .drafts: return []
         case .open: items = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return issue.isOpen }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return issue.isOpen }
             return issue.isOpen && !isRunning(issue, in: repo.fullName)
         }
         case .running: items = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return false }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return false }
             return issue.isOpen && isRunning(issue, in: repo.fullName)
         }
         case .unassigned: items = items.filter { issue in
@@ -111,12 +126,13 @@ struct IssueListView: View {
 
     private var sectionCounts: [IssueSection: Int] {
         let items = repoFilteredIssues
+        let repoLookup = issueRepoLookup
         let open = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return issue.isOpen }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return issue.isOpen }
             return issue.isOpen && !isRunning(issue, in: repo.fullName)
         }
         let running = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return false }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return false }
             return issue.isOpen && isRunning(issue, in: repo.fullName)
         }
         let unassigned = items.filter { issue in
@@ -195,11 +211,11 @@ struct IssueListView: View {
     }
 
     private func repoIndex(for issue: GitHubIssue) -> Int? {
-        repoIndexForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        issueRepoLookup[issue.htmlUrl]?.index
     }
 
     private func repoFor(issue: GitHubIssue) -> Repo? {
-        repoForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        issueRepoLookup[issue.htmlUrl]?.repo
     }
 
     var body: some View {
@@ -486,6 +502,7 @@ struct IssueListView: View {
     private var issuesList: some View {
         let allFiltered = filteredIssues
         let visibleIssues = Array(allFiltered.prefix(displayLimit))
+        let repoLookup = issueRepoLookup
         List {
             if let actionError {
                 Label(actionError, systemImage: "exclamationmark.triangle")
@@ -494,8 +511,9 @@ struct IssueListView: View {
                     .lineLimit(3)
             }
             ForEach(visibleIssues, id: \.htmlUrl) { issue in
-                let color = repoIndex(for: issue).map { RepoColors.color(for: $0) } ?? .secondary
-                let repo = repoFor(issue: issue)
+                let repoInfo = repoLookup[issue.htmlUrl]
+                let color = repoInfo.map { RepoColors.color(for: $0.index) } ?? .secondary
+                let repo = repoInfo?.repo
                 let running = repo.map { isRunning(issue, in: $0.fullName) } ?? false
 
                 if let repo {

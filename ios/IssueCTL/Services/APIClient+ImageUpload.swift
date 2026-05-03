@@ -15,13 +15,16 @@ extension APIClient {
     /// Uses multipart form data since the standard JSON request helper
     /// cannot handle file uploads.
     func uploadImage(image: UIImage, owner: String, repo: String) async throws -> String {
-        guard let base = URL(string: serverURL) else {
-            throw APIError.notConfigured
-        }
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw APIError.invalidResponse
         }
+        return try await uploadImageData(imageData, owner: owner, repo: repo)
+    }
 
+    func uploadImageData(_ imageData: Data, owner: String, repo: String) async throws -> String {
+        guard let base = URL(string: serverURL) else {
+            throw APIError.notConfigured
+        }
         let boundary = UUID().uuidString
         var urlRequest = URLRequest(url: base.appendingPathComponent("/api/v1/images/upload"))
         urlRequest.httpMethod = "POST"

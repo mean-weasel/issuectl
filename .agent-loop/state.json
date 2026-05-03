@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "goal": "Find and implement performance gains for the iOS app itself, including iOS-side caching, the connection to the local server running on this machine, and server-side optimizations that reduce iOS latency or work.",
+  "charter": {
+    "target_users": [
+      "Developers using the IssueCTL iOS app against the local issuectl web/server process on this machine."
+    ],
+    "non_goals": [
+      "Do not redesign UI unless needed to reduce measurable work.",
+      "Do not change server API contracts unless the iOS app and tests are updated together.",
+      "Do not optimize speculative paths without code evidence or a verification path."
+    ],
+    "quality_bar": [
+      "Each iteration must either land a small performance-oriented patch or add traceable evidence for the next patch.",
+      "Keep changes scoped and compatible with existing SwiftUI patterns.",
+      "Prefer bounded caching, deduplication, and off-main work over broad rewrites."
+    ],
+    "allowed_scope": [
+      "iOS SwiftUI app code under ios/IssueCTL.",
+      "iOS tests under ios/IssueCTLTests and ios/IssueCTLUITests when useful.",
+      "Server or web code only when it directly reduces iOS latency, payload size, polling cost, or cache churn.",
+      "Audit artifacts under qa-reports and loop artifacts under .agent-loop."
+    ],
+    "verification_commands": [
+      "xcodebuild build -project ios/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO"
+    ],
+    "budgets": {
+      "max_iterations": 10,
+      "max_consecutive_repairs": 2
+    }
+  },
+  "iteration": 10,
+  "completed": [
+    {
+      "iteration": 1,
+      "at": "2026-05-03T19:25:41.337Z",
+      "summary": "Reduced Sessions polling cost: automatic 10-second polls now refresh active deployments only, skip polling while a terminal full-screen cover is presented, and avoid refetching repos unless initial load or explicit refresh needs them.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/001-report.md"
+    },
+    {
+      "iteration": 2,
+      "at": "2026-05-03T19:26:43.710Z",
+      "summary": "Cached MarkdownView render work by content: fenced-code splitting and AttributedString markdown parsing now happen once per unique content string via an NSCache-backed renderer instead of on every SwiftUI body evaluation.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/002-report.md"
+    },
+    {
+      "iteration": 3,
+      "at": "2026-05-03T19:27:30.918Z",
+      "summary": "Moved image attachment preparation off-main: selected image data is now downsampled to a bounded 1600px JPEG on a detached user-initiated task, and uploads send prepared JPEG Data instead of passing a full-size UIImage through APIClient.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/003-report.md"
+    },
+    {
+      "iteration": 4,
+      "at": "2026-05-03T19:28:21.577Z",
+      "summary": "Reduced Issue list repo lookup churn: IssueListView now builds an issue URL to repo/index lookup for list derivation and row rendering, avoiding repeated scans across repo buckets for visible rows and section filtering.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/004-report.md"
+    },
+    {
+      "iteration": 5,
+      "at": "2026-05-03T19:28:56.654Z",
+      "summary": "Reduced PR list repo lookup churn: PRListView now builds a pull URL to repo/index lookup and uses it during row rendering instead of repeatedly scanning all pull buckets for each visible PR.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/005-report.md"
+    },
+    {
+      "iteration": 6,
+      "at": "2026-05-03T19:31:42.081Z",
+      "summary": "Cached the v1 API bearer token in packages/web/lib/api-auth.ts so iOS polling and parallel API calls do not hit SQLite settings on every authenticated route. Added resetApiTokenCache plus a unit test asserting repeated validation only calls getSetting once.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/006-report.md"
+    },
+    {
+      "iteration": 7,
+      "at": "2026-05-03T19:33:32.445Z",
+      "summary": "Cached /api/v1/user responses in the iOS APIClient for five minutes, de-duplicating an in-flight current-user request and invalidating the cache on configure/disconnect. Existing Today, Issues, PR, detail, and Settings call sites now avoid repeated user fetches without call-site rewrites.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/007-report.md"
+    },
+    {
+      "iteration": 8,
+      "at": "2026-05-03T19:35:23.350Z",
+      "summary": "Added a short-lived, in-flight-de-duplicated iOS cache for /api/v1/deployments in APIClient. This reduces duplicate active-deployment requests during tab/detail transitions while keeping the Sessions 10-second poll fresh, and launch/end session mutations now clear the cache.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/008-report.md"
+    },
+    {
+      "iteration": 9,
+      "at": "2026-05-03T19:36:18.237Z",
+      "summary": "Added TodayView repo lookup caches for issues and PRs, built when loaded payloads change. Today attention rows now resolve repo ownership through O(1) dictionaries instead of scanning issuesByRepo/pullsByRepo during body evaluation.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/009-report.md"
+    },
+    {
+      "iteration": 10,
+      "at": "2026-05-03T19:37:16.268Z",
+      "summary": "Cached and in-flight-de-duplicated iOS /api/v1/repos fetches in APIClient, with cache invalidation on configure/disconnect and after add/remove/update repo mutations. This reduces duplicate tracked-repo metadata requests across Today, Issues, PRs, Sessions, Settings, Launch, parse, and draft flows.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/010-report.md"
+    }
+  ],
+  "open_findings": [],
+  "candidate_tasks": [
+    {
+      "id": "T-002",
+      "title": "Cache derived issue list rows and counts outside SwiftUI body",
+      "kind": "performance",
+      "impact": 5,
+      "confidence": 5,
+      "evidence": 5,
+      "effort": 2,
+      "risk": 3,
+      "score": 40,
+      "verification": "Build IssueCTL plus ViewLogicTests where applicable."
+    },
+    {
+      "id": "T-001",
+      "title": "Avoid refetching repos on every Sessions poll tick",
+      "kind": "performance",
+      "impact": 3,
+      "confidence": 5,
+      "evidence": 5,
+      "effort": 5,
+      "risk": 5,
+      "score": 39,
+      "verification": "Build IssueCTL and inspect SessionListView load path."
+    },
+    {
+      "id": "T-003",
+      "title": "Cache parsed markdown blocks instead of parsing during render",
+      "kind": "performance",
+      "impact": 4,
+      "confidence": 5,
+      "evidence": 5,
+      "effort": 3,
+      "risk": 4,
+      "score": 39,
+      "verification": "Build IssueCTL and add focused MarkdownView tests if accessible."
+    },
+    {
+      "id": "T-004",
+      "title": "Downsample and encode image attachments off-main",
+      "kind": "performance",
+      "impact": 4,
+      "confidence": 4,
+      "evidence": 5,
+      "effort": 3,
+      "risk": 3,
+      "score": 36,
+      "verification": "Build IssueCTL and add helper tests if pure helper is introduced."
+    },
+    {
+      "id": "T-005",
+      "title": "Investigate iOS local server connection and server payload/polling reductions",
+      "kind": "performance",
+      "impact": 4,
+      "confidence": 3,
+      "evidence": 3,
+      "effort": 3,
+      "risk": 4,
+      "score": 31,
+      "verification": "Static audit first; server tests if a patch is made."
+    }
+  ],
+  "blocked": [],
+  "assumptions": [
+    {
+      "at": "2026-05-03T19:24:30.879Z",
+      "text": "Initial state was generated by autopilot-loop CLI. Charter should be refined by the agent before implementation."
+    },
+    {
+      "at": "2026-05-03T19:25:00.000Z",
+      "text": "The user requested 10 loop iterations focused on iOS performance, including iOS caching, local server connection costs, and server-side optimizations."
+    }
+  ],
+  "process_learnings": [],
+  "last_verification": [
+    "xcodebuild build -project ios/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO passed."
+  ],
+  "judge": {
+    "continue": false,
+    "confidence": 0.9,
+    "reason": "Completed the requested 10 auto-loop iterations. Implemented iOS caching, render-work reductions, upload processing changes, polling reductions, and a small server auth optimization; remaining work should be validated with simulator ETTrace/Instruments before more speculative changes.",
+    "next_focus": "Profile launch, Today load, Issues scroll, PR list load, and image upload before/after with ETTrace or Instruments to quantify wins and choose the next bottleneck."
+  }
+}

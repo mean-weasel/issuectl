@@ -7,7 +7,7 @@ vi.mock("@issuectl/core", () => ({
   getSetting: vi.fn(),
 }));
 
-import { validateApiToken, requireAuth } from "./api-auth.js";
+import { validateApiToken, requireAuth, resetApiTokenCache } from "./api-auth.js";
 import { getDb, getSetting } from "@issuectl/core";
 
 function makeRequest(headers: Record<string, string> = {}): NextRequest {
@@ -16,13 +16,24 @@ function makeRequest(headers: Record<string, string> = {}): NextRequest {
 
 describe("validateApiToken", () => {
   beforeEach(() => {
+    resetApiTokenCache();
     vi.mocked(getDb).mockReturnValue({} as any);
+    vi.mocked(getSetting).mockReset();
   });
 
   it("returns true for a valid bearer token", () => {
     vi.mocked(getSetting).mockReturnValue("abc123");
     const headers = new Headers({ Authorization: "Bearer abc123" });
     expect(validateApiToken(headers)).toBe(true);
+  });
+
+  it("reuses the stored token after the first successful lookup", () => {
+    vi.mocked(getSetting).mockReturnValue("abc123");
+    const headers = new Headers({ Authorization: "Bearer abc123" });
+
+    expect(validateApiToken(headers)).toBe(true);
+    expect(validateApiToken(headers)).toBe(true);
+    expect(getSetting).toHaveBeenCalledTimes(1);
   });
 
   it("returns false for a missing Authorization header", () => {
@@ -65,7 +76,9 @@ describe("validateApiToken", () => {
 
 describe("requireAuth", () => {
   beforeEach(() => {
+    resetApiTokenCache();
     vi.mocked(getDb).mockReturnValue({} as any);
+    vi.mocked(getSetting).mockReset();
   });
 
   it("returns null when token is valid (allows route to proceed)", () => {
@@ -91,6 +104,7 @@ describe("requireAuth", () => {
   });
 
   it("returns 500 when database is unavailable", async () => {
+    vi.mocked(getSetting).mockReturnValue("abc123");
     vi.mocked(getDb).mockImplementation(() => {
       throw new Error("SQLITE_CANTOPEN");
     });

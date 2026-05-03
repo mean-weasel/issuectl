@@ -46,6 +46,20 @@ struct PRListView: View {
         )
     }
 
+    private var pullRepoLookup: [String: (repo: Repo, index: Int)] {
+        let reposByName = Dictionary(uniqueKeysWithValues: repos.enumerated().map { index, repo in
+            (repo.fullName, (repo, index))
+        })
+        var lookup: [String: (repo: Repo, index: Int)] = [:]
+        for (fullName, pulls) in pullsByRepo {
+            guard let repoInfo = reposByName[fullName] else { continue }
+            for pull in pulls {
+                lookup[pull.htmlUrl] = repoInfo
+            }
+        }
+        return lookup
+    }
+
     private var filteredPulls: [GitHubPull] {
         var items = repoFilteredPulls
 
@@ -130,11 +144,11 @@ struct PRListView: View {
     }
 
     private func repoIndex(for pull: GitHubPull) -> Int? {
-        repoIndexForItem(pull, in: pullsByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        pullRepoLookup[pull.htmlUrl]?.index
     }
 
     private func repoFor(pull: GitHubPull) -> Repo? {
-        repoForItem(pull, in: pullsByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        pullRepoLookup[pull.htmlUrl]?.repo
     }
 
     var body: some View {
@@ -359,6 +373,7 @@ struct PRListView: View {
     private var pullsList: some View {
         let allFiltered = filteredPulls
         let visiblePulls = Array(allFiltered.prefix(displayLimit))
+        let repoLookup = pullRepoLookup
         List {
             if let actionError {
                 Label(actionError, systemImage: "exclamationmark.triangle")
@@ -367,8 +382,9 @@ struct PRListView: View {
                     .lineLimit(3)
             }
             ForEach(visiblePulls, id: \.htmlUrl) { pull in
-                let color = repoIndex(for: pull).map { RepoColors.color(for: $0) } ?? .secondary
-                let repo = repoFor(pull: pull)
+                let repoInfo = repoLookup[pull.htmlUrl]
+                let color = repoInfo.map { RepoColors.color(for: $0.index) } ?? .secondary
+                let repo = repoInfo?.repo
 
                 if let repo {
                     NavigationLink(value: PRDestination(

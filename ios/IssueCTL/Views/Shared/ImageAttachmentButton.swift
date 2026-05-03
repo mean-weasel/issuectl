@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftUI
 import UIKit
+import ImageIO
 
 struct ImageAttachmentButton: View {
     @Environment(APIClient.self) private var api
@@ -55,19 +56,52 @@ struct ImageAttachmentButton: View {
                 isUploading = false
                 return
             }
-            guard let uiImage = UIImage(data: data) else {
-                errorMessage = "Invalid image data"
-                isUploading = false
-                return
-            }
-
-            let url = try await api.uploadImage(image: uiImage, owner: owner, repo: repo)
+            let imageData = try await ImageAttachmentProcessor.preparedJPEGData(from: data)
+            let url = try await api.uploadImageData(imageData, owner: owner, repo: repo)
             let markdown = "![image](\(url))"
             onUpload(markdown)
+        } catch ImageAttachmentProcessor.ProcessingError.invalidImage {
+            errorMessage = "Invalid image data"
         } catch {
             errorMessage = "Upload failed"
         }
 
         isUploading = false
+    }
+}
+
+enum ImageAttachmentProcessor {
+    enum ProcessingError: Error {
+        case invalidImage
+    }
+
+    private static let maxPixelSize = 1_600
+    private static let compressionQuality: CGFloat = 0.8
+
+    static func preparedJPEGData(from data: Data) async throws -> Data {
+        try await Task.detached(priority: .userInitiated) {
+            guard let imageSource = CGImageSourceCreateWithData(data as CFData, [
+                kCGImageSourceShouldCache: false,
+            ] as CFDictionary) else {
+                throw ProcessingError.invalidImage
+            }
+
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            ]
+
+            guard let cgImage = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary) else {
+                throw ProcessingError.invalidImage
+            }
+
+            guard let jpegData = UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality) else {
+                throw ProcessingError.invalidImage
+            }
+
+            return jpegData
+        }.value
     }
 }
