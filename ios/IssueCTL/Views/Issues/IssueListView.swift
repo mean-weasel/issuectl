@@ -307,7 +307,10 @@ struct IssueListView: View {
                     issueTitle: target.title,
                     comments: target.comments,
                     referencedFiles: target.referencedFiles
-                )
+                ) { deployment in
+                    activeDeployments.removeAll { $0.id == deployment.id }
+                    activeDeployments.append(deployment)
+                }
                 .presentationDetents([.fraction(0.66), .large])
                 .presentationDragIndicator(.visible)
             }

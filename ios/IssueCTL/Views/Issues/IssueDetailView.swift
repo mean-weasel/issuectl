@@ -12,6 +12,7 @@ struct IssueDetailView: View {
     @State private var errorMessage: String?
     @State private var activeDetailSheet: DetailSheet?
     @State private var terminalTarget: ActiveDeployment?
+    @State private var liveDeployment: ActiveDeployment?
     @State private var isClosing = false
     @State private var isReopening = false
     @State private var activeConfirmation: ActiveConfirmation?
@@ -104,7 +105,9 @@ struct IssueDetailView: View {
                     issueTitle: detail.issue.title,
                     comments: detail.comments,
                     referencedFiles: detail.referencedFiles
-                )
+                ) { deployment in
+                    liveDeployment = deployment
+                }
                 .presentationDetents([.fraction(0.66), .large])
                 .presentationDragIndicator(.visible)
             case .edit(let detail):
@@ -551,6 +554,10 @@ struct IssueDetailView: View {
         actionError = nil
         do {
             async let detailResult = api.issueDetail(owner: owner, repo: repo, number: number, refresh: refresh)
+            async let deploymentsResult: Result<ActiveDeploymentsResponse, Error> = {
+                do { return .success(try await api.activeDeployments()) }
+                catch { return .failure(error) }
+            }()
             async let userResult: Result<UserResponse, Error> = {
                 do { return .success(try await api.currentUser()) }
                 catch { return .failure(error) }
@@ -563,6 +570,12 @@ struct IssueDetailView: View {
 
             // Supplementary fetches — failures are non-fatal but surfaced
             var failures: [String] = []
+            switch await deploymentsResult {
+            case .success(let response):
+                liveDeployment = response.deployments.first(where: isMatchingActiveDeployment)
+            case .failure:
+                break
+            }
             switch await userResult {
             case .success(let user): currentUserLogin = user.login
             case .failure: currentUserLogin = nil
@@ -583,7 +596,17 @@ struct IssueDetailView: View {
     }
 
     private func activeDeployment(from detail: IssueDetailResponse) -> ActiveDeployment? {
-        detail.deployments.first(where: { $0.isActive }).map(activeDeployment(from:))
+        if let liveDeployment, isMatchingActiveDeployment(liveDeployment) {
+            return liveDeployment
+        }
+        return detail.deployments.first(where: { $0.isActive }).map(activeDeployment(from:))
+    }
+
+    private func isMatchingActiveDeployment(_ deployment: ActiveDeployment) -> Bool {
+        deployment.isActive &&
+        deployment.owner == owner &&
+        deployment.repoName == repo &&
+        deployment.issueNumber == number
     }
 
     private func activeDeployment(from deployment: Deployment) -> ActiveDeployment {
