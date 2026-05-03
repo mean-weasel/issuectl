@@ -13,6 +13,14 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(setup.token, "abc123")
     }
 
+    func testPreviewSetupLinkParsesServerURLAndToken() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl-preview://setup?serverURL=http%3A%2F%2F192.0.2.10%3A3847&token=abc123"))
+        let setup = try XCTUnwrap(SetupLink(url: url))
+
+        XCTAssertEqual(setup.serverURL, "http://192.0.2.10:3847")
+        XCTAssertEqual(setup.token, "abc123")
+    }
+
     func testSetupLinkRejectsWrongScheme() throws {
         let url = try XCTUnwrap(URL(string: "https://setup?serverURL=http%3A%2F%2F192.0.2.10%3A3847&token=abc123"))
         XCTAssertNil(SetupLink(url: url))
