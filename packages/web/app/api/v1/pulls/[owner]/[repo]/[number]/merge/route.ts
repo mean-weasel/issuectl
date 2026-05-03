@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
+import { notifyMergedPullRequest } from "@/lib/push/notifications";
 import {
   getDb,
   getRepo,
@@ -62,6 +63,12 @@ export async function POST(
 
     clearCacheKey(db, `pull-detail:${owner}/${repo}#${pullNumber}`);
     clearCacheKey(db, `pulls-open:${owner}/${repo}`);
+    notifyMergedPullRequest({
+      owner,
+      repo,
+      pullNumber,
+      sha: result.sha,
+    });
 
     return NextResponse.json({ success: true, sha: result.sha });
   } catch (err) {

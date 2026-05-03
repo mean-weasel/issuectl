@@ -4,6 +4,7 @@ import UIKit
 struct ContentView: View {
     @Environment(APIClient.self) private var api
     @Environment(NetworkMonitor.self) private var network
+    @Environment(NotificationSettingsStore.self) private var notificationSettings
     @State private var selectedTab: AppTab = .today
     @State private var showSettings = false
 
@@ -66,6 +67,20 @@ struct ContentView: View {
         .onOpenURL { url in
             guard let setup = SetupLink(url: url) else { return }
             try? api.configure(url: setup.serverURL, token: setup.token)
+            Task { await notificationSettings.syncRegistration(apiClient: api) }
+        }
+        .task {
+            await notificationSettings.registerForRemoteNotificationsIfAllowed()
+            await notificationSettings.syncRegistration(apiClient: api)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .apnsDeviceTokenReceived)) { notification in
+            if let error = notification.userInfo?["error"] as? String {
+                notificationSettings.updateRegistrationError(error)
+                return
+            }
+            guard let token = notification.userInfo?["token"] as? String else { return }
+            notificationSettings.updateDeviceToken(token)
+            Task { await notificationSettings.syncRegistration(apiClient: api) }
         }
     }
 }

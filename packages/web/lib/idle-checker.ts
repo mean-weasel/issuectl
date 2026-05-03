@@ -1,6 +1,7 @@
 import {
   getDb,
   getActiveDeploymentByPort,
+  getRepoById,
   getActiveDeployments,
   endDeployment,
   isTmuxSessionAlive,
@@ -11,6 +12,7 @@ import {
 } from "@issuectl/core";
 import { getRegisteredPorts, getLastPtyOutput } from "./idle-registry";
 import log from "./logger";
+import { notifyIdleTerminal } from "./push/notifications";
 
 const DEFAULT_GRACE_SECONDS = 300;
 const DEFAULT_THRESHOLD_SECONDS = 300;
@@ -57,6 +59,15 @@ export function checkIdleDeployments(): void {
 
       if (isIdle && !deployment.idleSince) {
         setIdleSince(db, deployment.id);
+        const repo = getRepoById(db, deployment.repoId);
+        if (repo) {
+          notifyIdleTerminal({
+            owner: repo.owner,
+            repo: repo.name,
+            issueNumber: deployment.issueNumber,
+            deploymentId: deployment.id,
+          });
+        }
         log.info({
           msg: "idle_detected",
           port,
