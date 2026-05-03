@@ -14,6 +14,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
     var failUserProfile = false
     var failRepos = false
     var failDeployments = false
+    var issueDetailDeploymentsLagBehindLaunch = false
 
     // Settings controls.
     var defaultLaunchAgent = "claude"
@@ -563,7 +564,10 @@ final class MockIssueCTLServer: @unchecked Sendable {
     }
 
     func deployments(for issueNumber: Int) -> [[String: Any]] {
-        activeDeployments.filter { $0["issue_number"] as? Int == issueNumber }
+        if issueDetailDeploymentsLagBehindLaunch {
+            return []
+        }
+        return activeDeployments.filter { $0["issue_number"] as? Int == issueNumber }
     }
 
     // MARK: - Mutation helpers

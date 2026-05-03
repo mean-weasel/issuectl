@@ -11,6 +11,7 @@ struct LaunchView: View {
     let comments: [GitHubComment]
     let referencedFiles: [String]
     let repoLocalPath: String?
+    let onSessionAvailable: (ActiveDeployment) -> Void
 
     @State private var branchName: String
     @State private var workspaceMode: WorkspaceMode
@@ -32,7 +33,16 @@ struct LaunchView: View {
     @State private var isResettingWorktree = false
     @State private var showAdvancedOptions = false
 
-    init(owner: String, repo: String, issueNumber: Int, issueTitle: String, comments: [GitHubComment], referencedFiles: [String], repoLocalPath: String? = nil) {
+    init(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        issueTitle: String,
+        comments: [GitHubComment],
+        referencedFiles: [String],
+        repoLocalPath: String? = nil,
+        onSessionAvailable: @escaping (ActiveDeployment) -> Void = { _ in }
+    ) {
         self.owner = owner
         self.repo = repo
         self.issueNumber = issueNumber
@@ -40,6 +50,7 @@ struct LaunchView: View {
         self.comments = comments
         self.referencedFiles = referencedFiles
         self.repoLocalPath = repoLocalPath
+        self.onSessionAvailable = onSessionAvailable
 
         _branchName = State(initialValue: generateBranchName(issueNumber: issueNumber, issueTitle: issueTitle))
         let needsClone = repoLocalPath == nil || repoLocalPath?.isEmpty == true
@@ -596,6 +607,9 @@ struct LaunchView: View {
         defer { isCheckingActiveSession = false }
         do {
             existingDeployment = try await findExistingDeployment()
+            if let existingDeployment {
+                onSessionAvailable(existingDeployment)
+            }
         } catch {
             existingDeployment = nil
         }
@@ -635,6 +649,7 @@ struct LaunchView: View {
         do {
             if let existing = try await findExistingDeployment() {
                 existingDeployment = existing
+                onSessionAvailable(existing)
                 openExistingTerminal(existing)
                 return
             }
@@ -671,6 +686,7 @@ struct LaunchView: View {
                     owner: owner, repoName: repo
                 )
                 existingDeployment = deployment
+                onSessionAvailable(deployment)
                 launchedDeployment = deployment
             } else {
                 errorMessage = response.error ?? "Launch failed"

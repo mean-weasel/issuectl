@@ -252,6 +252,28 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testReturningToIssueAfterLaunchUsesLiveDeploymentState() {
+        server.issueDetailDeploymentsLagBehindLaunch = true
+        let app = launchApp(server: server)
+
+        openIssuesSection(in: app)
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        assertElement("issue-detail-launch-button", existsIn: app, timeout: 5)
+        element("issue-detail-launch-button", in: app).tap()
+
+        assertElement("launch-recommended-button", existsIn: app, timeout: 5)
+        element("launch-recommended-button", in: app).tap()
+
+        XCTAssertTrue(app.buttons["terminal-done-button"].waitForExistence(timeout: 8), app.debugDescription)
+        app.buttons["terminal-done-button"].tap()
+
+        assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
+        XCTAssertFalse(element("issue-detail-launch-button", in: app).exists, app.debugDescription)
+    }
+
+    @MainActor
     func testCodexLaunchSelectionIsSentToServer() {
         server.defaultLaunchAgent = "codex"
         let app = launchApp(server: server)
