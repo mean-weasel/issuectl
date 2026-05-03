@@ -53,7 +53,7 @@ final class TestableAPIClient {
         self.session = URLSession(configuration: config)
     }
 
-    func request(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    func request(path: String, method: String = "GET", body: Data? = nil, timeoutInterval: TimeInterval? = nil) async throws -> (Data, HTTPURLResponse) {
         guard let base = URL(string: serverURL) else {
             throw APIError.notConfigured
         }
@@ -63,6 +63,7 @@ final class TestableAPIClient {
         urlRequest.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let body { urlRequest.httpBody = body }
+        if let timeoutInterval { urlRequest.timeoutInterval = timeoutInterval }
 
         let (data, response) = try await session.data(for: urlRequest)
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -111,6 +112,18 @@ final class TestableAPIClient {
     func sessionPreviews() async throws -> SessionPreviewsResponse {
         let (data, _) = try await request(path: "/api/v1/sessions/previews")
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
+    }
+
+    func parseNaturalLanguage(input: String) async throws -> ParsedIssuesData {
+        let body = ParseRequestBody(input: input)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(
+            path: "/api/v1/parse",
+            method: "POST",
+            body: bodyData,
+            timeoutInterval: 120
+        )
+        return try decoder.decode(ParseResponse.self, from: data).parsed
     }
 
     private struct ErrorBody: Codable {

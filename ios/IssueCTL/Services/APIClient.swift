@@ -48,7 +48,7 @@ final class APIClient {
         URL(string: serverURL)
     }
 
-    func request(path: String, method: String = "GET", body: Data? = nil) async throws -> (Data, HTTPURLResponse) {
+    func request(path: String, method: String = "GET", body: Data? = nil, timeoutInterval: TimeInterval? = nil) async throws -> (Data, HTTPURLResponse) {
         guard let base = baseURL else {
             throw APIError.notConfigured
         }
@@ -61,6 +61,7 @@ final class APIClient {
         urlRequest.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let body { urlRequest.httpBody = body }
+        if let timeoutInterval { urlRequest.timeoutInterval = timeoutInterval }
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         guard let httpResponse = response as? HTTPURLResponse else {
