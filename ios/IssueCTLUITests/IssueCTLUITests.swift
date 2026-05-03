@@ -213,8 +213,12 @@ final class IssueCTLUITests: XCTestCase {
         server.seedActiveDeployment()
         let app = launchApp(server: server)
 
-        assertElement("today-active-sessions-button", existsIn: app, timeout: 8)
-        element("today-active-sessions-button", in: app).tap()
+        let activeSessionsButton = app.buttons["today-active-sessions-button"].firstMatch
+        XCTAssertTrue(
+            activeSessionsButton.waitForExistence(timeout: 8),
+            "Missing today-active-sessions-button\n\(app.debugDescription)"
+        )
+        activeSessionsButton.tap()
 
         assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app)
