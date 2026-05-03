@@ -27,6 +27,24 @@ struct IssueDetailView: View {
     @State private var isLoadingPriority = false
     @State private var staleHint: String?
     @State private var staleHintDismissTask: Task<Void, Never>?
+    @State private var hasLoadedFullDetail = false
+
+    init(owner: String, repo: String, number: Int, initialIssue: GitHubIssue? = nil) {
+        self.owner = owner
+        self.repo = repo
+        self.number = number
+        if let initialIssue {
+            _detail = State(initialValue: IssueDetailResponse(
+                issue: initialIssue,
+                comments: [],
+                deployments: [],
+                linkedPRs: [],
+                referencedFiles: [],
+                fromCache: true
+            ))
+            _isLoading = State(initialValue: false)
+        }
+    }
 
     var body: some View {
         Group {
@@ -261,7 +279,20 @@ struct IssueDetailView: View {
             )
 
             if issue.isOpen {
-                if let deployment = activeDeployment(from: detail) {
+                if !hasLoadedFullDetail {
+                    SessionStatusCard(
+                        title: "Loading Actions",
+                        subtitle: "Checking session and launch context.",
+                        status: "Loading",
+                        systemImage: "hourglass",
+                        tint: .orange,
+                        primaryTitle: nil,
+                        primarySystemImage: "hourglass",
+                        primaryAccessibilityIdentifier: nil,
+                        primaryAction: {}
+                    )
+                    .accessibilityIdentifier("issue-detail-actions-loading-card")
+                } else if let deployment = activeDeployment(from: detail) {
                     SessionStatusCard(
                         title: deployment.ttydPort == nil ? "Session Starting" : "Session Active",
                         subtitle: "\(deployment.branchName) - \(deployment.runningDuration)",
@@ -560,6 +591,7 @@ struct IssueDetailView: View {
                 catch { return .failure(error) }
             }()
             detail = try await detailResult
+            hasLoadedFullDetail = true
 
             // Supplementary fetches — failures are non-fatal but surfaced
             var failures: [String] = []
