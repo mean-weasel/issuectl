@@ -6,11 +6,18 @@ final class MockIssueCTLServer: @unchecked Sendable {
     private let listener: NWListener
     private let queue = DispatchQueue(label: "MockIssueCTLServer")
 
-    // Mutable state — seeded before launch, mutated by endpoint handlers
+    // Mutable state seeded before launch and mutated by endpoint handlers.
     private var activeDeployments: [[String: Any]] = []
     private var drafts: [[String: Any]] = []
+
+    // Failure controls for recovery-path UI tests.
     var failUserProfile = false
+    var failRepos = false
+    var failDeployments = false
+
+    // Settings controls.
     var defaultLaunchAgent = "claude"
+
     private let stateLock = NSLock()
     private var lastLaunchPayload: [String: Any] = [:]
 
@@ -20,7 +27,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
         return lastLaunchPayload["agent"] as? String
     }
 
-    // Mutable state for extended test coverage
+    // Fixture state for extended test coverage.
     var issueStates: [Int: String] = [101: "open", 102: "open"]
     var issueComments: [Int: [[String: Any]]] = [:]
     var issueLabels: [Int: [[String: Any]]] = [
@@ -29,6 +36,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
     ]
     var issuePriorities: [Int: String] = [101: "high", 102: "normal"]
     var repos: [[String: Any]] = []
+    var worktrees: [[String: Any]] = []
     private var nextCommentId: Int = 1001
 
     init() throws {
@@ -40,6 +48,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
                 listener = attempt
                 baseURL = URL(string: "http://127.0.0.1:\(port.rawValue)")!
                 repos = [defaultRepo]
+                worktrees = [activeWorktree, staleWorktree]
                 return
             } catch {
                 lastError = error
@@ -81,7 +90,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
         listener.cancel()
     }
 
-    // MARK: - Seed helpers
+    // MARK: - Seed Helpers
 
     func seedActiveDeployment() {
         activeDeployments = [deployment(issueNumber: 101)]
@@ -93,6 +102,10 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
     func seedComments(for number: Int, comments: [[String: Any]]) {
         issueComments[number] = comments
+    }
+
+    func seedSecondRepo() {
+        repos = [defaultRepo, betaRepo]
     }
 
     // MARK: - Connection handling
@@ -180,6 +193,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
             ]]
 
         case ("GET", "/api/v1/repos"):
+            if failRepos {
+                return http(status: 500, json: ["error": "repos unavailable"])
+            }
             body = ["repos": repos]
 
         case ("DELETE", "/api/v1/repos/org/alpha"):
@@ -199,6 +215,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
             body = ["labels": repoLabels]
 
         case ("GET", "/api/v1/deployments"):
+            if failDeployments {
+                return http(status: 500, json: ["error": "deployments unavailable"])
+            }
             body = ["deployments": activeDeployments]
 
         case ("POST", "/api/v1/deployments/9001/end"):
@@ -219,6 +238,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
         case ("GET", "/api/v1/issues/org/alpha"):
             body = ["issues": [issue(number: 101), issue(number: 102)], "from_cache": false, "cached_at": NSNull()]
+
+        case ("GET", "/api/v1/issues/org/beta"):
+            body = ["issues": [], "from_cache": false, "cached_at": NSNull()]
 
         case ("GET", "/api/v1/issues/org/alpha/101"):
             body = issueDetailBody(101)
@@ -290,6 +312,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
         case ("GET", "/api/v1/pulls/org/alpha"):
             body = ["pulls": pulls, "from_cache": false, "cached_at": NSNull()]
 
+        case ("GET", "/api/v1/pulls/org/beta"):
+            body = ["pulls": [], "from_cache": false, "cached_at": NSNull()]
+
         case ("GET", "/api/v1/pulls/org/alpha/7"):
             body = pullDetailBody(number: 7, title: "Pending review work", checksStatus: "pending")
 
@@ -317,6 +342,20 @@ final class MockIssueCTLServer: @unchecked Sendable {
                 "labels_warning": NSNull(),
                 "error": NSNull(),
             ]
+
+        case ("GET", "/api/v1/worktrees"):
+            body = ["worktrees": worktrees]
+
+        case ("POST", "/api/v1/worktrees/cleanup"):
+            let payload = jsonBody(from: request)
+            if let path = payload["path"] as? String {
+                worktrees.removeAll { $0["path"] as? String == path }
+                body = ["success": true]
+            } else {
+                let staleCount = worktrees.filter { ($0["stale"] as? Bool) == true }.count
+                worktrees.removeAll { ($0["stale"] as? Bool) == true }
+                body = ["success": true, "removed": staleCount, "error": NSNull()]
+            }
 
         default:
             return http(status: 404, json: ["error": "Unhandled \(method) \(path)"])
@@ -373,6 +412,41 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "local_path": "/tmp/alpha",
             "branch_pattern": NSNull(),
             "created_at": isoDate,
+        ]
+    }
+
+    var betaRepo: [String: Any] {
+        [
+            "id": 2,
+            "owner": "org",
+            "name": "beta",
+            "local_path": "/tmp/beta",
+            "branch_pattern": NSNull(),
+            "created_at": isoDate,
+        ]
+    }
+
+    var activeWorktree: [String: Any] {
+        [
+            "path": "/tmp/alpha-worktree-101",
+            "name": "alpha-worktree-101",
+            "repo": "alpha",
+            "owner": "org",
+            "local_path": "/tmp/alpha",
+            "issue_number": 101,
+            "stale": false,
+        ]
+    }
+
+    var staleWorktree: [String: Any] {
+        [
+            "path": "/tmp/alpha-worktree-stale",
+            "name": "alpha-worktree-stale",
+            "repo": "alpha",
+            "owner": "org",
+            "local_path": "/tmp/alpha",
+            "issue_number": 102,
+            "stale": true,
         ]
     }
 

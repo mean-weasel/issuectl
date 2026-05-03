@@ -2,6 +2,9 @@ import SwiftUI
 
 struct SessionListView: View {
     @Environment(APIClient.self) private var api
+    let onShowSettings: () -> Void
+    let onShowIssues: () -> Void
+
     @State private var repos: [Repo] = []
     @State private var deployments: [ActiveDeployment] = []
     @State private var isLoading = true
@@ -13,6 +16,7 @@ struct SessionListView: View {
     @State private var endingDeploymentId: Int?
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
+    @State private var isSearchVisible = false
     @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
@@ -42,9 +46,22 @@ struct SessionListView: View {
         deployments.count - readyCount
     }
 
+    private var activeRepoFullNames: [String] {
+        let names = Set(deployments.map(\.repoFullName))
+        return repos.map(\.fullName).filter { names.contains($0) }
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
+                if isSearchVisible {
+                    sessionSearchBar
+                } else {
+                    sessionHeader
+                }
+
+                RepoContextStrip(repos: repos, activeRepoFullNames: activeRepoFullNames)
+
                 Group {
                     if isLoading && deployments.isEmpty {
                         ProgressView("Loading sessions...")
@@ -52,26 +69,31 @@ struct SessionListView: View {
                         ContentUnavailableView {
                             Label("Error", systemImage: "exclamationmark.triangle")
                         } description: {
-                            Text(errorMessage)
+                            Text(sessionErrorDescription(errorMessage))
                         } actions: {
-                            Button("Retry") { Task { await load() } }
+                            HStack {
+                                Button("Retry") { Task { await load(refresh: true) } }
+                                Button("Open Settings", action: onShowSettings)
+                            }
                         }
                     } else if deployments.isEmpty {
-                        ContentUnavailableView(
-                            "No Active Sessions",
-                            systemImage: "play.circle",
-                            description: Text("Launch an agent session from an issue to see it here.")
-                        )
+                        ContentUnavailableView {
+                            Label("No Active Sessions", systemImage: "play.circle")
+                        } description: {
+                            Text("Launch an agent from an issue, then return here to open terminals and end sessions.")
+                        } actions: {
+                            HStack {
+                                Button("Open Issues", action: onShowIssues)
+                                Button("Refresh") { Task { await load(refresh: true) } }
+                            }
+                        }
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ActiveSessionsHeader(
                                     totalCount: deployments.count,
                                     readyCount: readyCount,
-                                    startingCount: startingCount,
-                                    onRefresh: {
-                                        Task { await load(refresh: true) }
-                                    }
+                                    startingCount: startingCount
                                 )
 
                                 if let actionError {
@@ -83,11 +105,13 @@ struct SessionListView: View {
                                 }
 
                                 if filteredDeployments.isEmpty {
-                                    ContentUnavailableView(
-                                        "No Matching Sessions",
-                                        systemImage: "magnifyingglass",
-                                        description: Text("Try another repo, issue number, branch, or port.")
-                                    )
+                                    ContentUnavailableView {
+                                        Label("No Matching Sessions", systemImage: "magnifyingglass")
+                                    } description: {
+                                        Text("Try another repo, issue number, branch, or port.")
+                                    } actions: {
+                                        Button("Clear Search", action: hideSearch)
+                                    }
                                     .padding(.top, 18)
                                 }
 
@@ -106,19 +130,12 @@ struct SessionListView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
-                            .padding(.bottom, 116)
                         }
                         .refreshable { await load(refresh: true) }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .safeAreaInset(edge: .bottom) {
-                sessionThumbBar
-            }
-            .navigationTitle("Active Sessions")
-            .searchable(text: $searchText, prompt: "Search sessions")
-            .searchFocused($isSearchFocused)
             .navigationDestination(for: IssueDestination.self) { dest in
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
@@ -128,6 +145,7 @@ struct SessionListView: View {
             }
             .autoDismissError($actionError)
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
+            .accessibilityTabBarClearance()
             .fullScreenCover(item: $terminalPresentation) { presentation in
                 let deployment = presentation.deployment
                 if let port = deployment.ttydPort {
@@ -179,45 +197,97 @@ struct SessionListView: View {
         }
     }
 
-    private var sessionThumbBar: some View {
-        ThumbActionBar {
-            Button {
-                showCreateSheet = true
-            } label: {
-                Label("Create Issue", systemImage: "plus")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(IssueCTLColors.action)
-            .accessibilityIdentifier("sessions-create-issue-button")
-        } secondary: {
+    private var sessionHeader: some View {
+        AppTopBar(title: "Sessions", subtitle: sessionSubtitle) {
             HStack(spacing: 8) {
-                ThumbIconButton(
-                    systemName: "magnifyingglass",
-                    accessibilityLabel: "Search sessions",
+                TopBarIconButton(
+                    title: "Search sessions",
+                    systemImage: "magnifyingglass",
                     accessibilityIdentifier: "sessions-search-button"
                 ) {
-                    isSearchFocused = true
+                    showSearch()
                 }
 
-                ThumbIconButton(
-                    systemName: "arrow.clockwise",
-                    accessibilityLabel: "Refresh sessions",
+                TopBarIconButton(
+                    title: "Refresh sessions",
+                    systemImage: "arrow.clockwise",
                     accessibilityIdentifier: "sessions-refresh-button"
                 ) {
                     Task { await load(refresh: true) }
                 }
+
+                TopBarIconButton(
+                    title: "Create Issue",
+                    systemImage: "plus",
+                    accessibilityIdentifier: "sessions-create-issue-button",
+                    isProminent: true
+                ) {
+                    showCreateSheet = true
+                }
             }
         }
-        .padding(.bottom, 14)
+    }
+
+    private var sessionSubtitle: String {
+        if deployments.isEmpty {
+            return "No active sessions"
+        } else if startingCount > 0 {
+            return "\(readyCount) ready • \(startingCount) starting"
+        } else {
+            return "\(readyCount) ready"
+        }
+    }
+
+    private var sessionSearchBar: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("Search sessions", text: $searchText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($isSearchFocused)
+                    .submitLabel(.search)
+                    .accessibilityIdentifier("sessions-search-field")
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+            }
+
+            Button("Cancel", action: hideSearch)
+                .frame(minHeight: 44)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+
+    private func showSearch() {
+        isSearchVisible = true
+        Task { @MainActor in
+            isSearchFocused = true
+        }
+    }
+
+    private func hideSearch() {
+        searchText = ""
+        isSearchFocused = false
+        isSearchVisible = false
+    }
+
+    private func sessionErrorDescription(_ message: String) -> String {
+        "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
     }
 
     private func openTerminal(_ deployment: ActiveDeployment) {
         guard deployment.ttydPort != nil else { return }
         terminalPresentation = TerminalPresentation(deployment: deployment)
     }
-
     private func load(refresh: Bool = false) async {
         if deployments.isEmpty { isLoading = true }
         errorMessage = nil
@@ -272,30 +342,16 @@ private struct ActiveSessionsHeader: View {
     let totalCount: Int
     let readyCount: Int
     let startingCount: Int
-    let onRefresh: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(totalCount) running")
-                        .font(.title3.weight(.bold))
-                    Text("Re-enter terminals without losing active agent work.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-
-                Spacer(minLength: 8)
-
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 36, height: 36)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Refresh sessions")
-                .accessibilityIdentifier("sessions-header-refresh-button")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(totalCount) running")
+                    .font(.title3.bold())
+                Text("Re-enter terminals without losing active agent work.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
 
             HStack(spacing: 10) {
@@ -320,9 +376,9 @@ private struct ActiveSessionsHeader: View {
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(value)
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.bold())
                 Text(label)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)

@@ -30,20 +30,24 @@ struct EditRepoSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    LabeledContent("Owner", value: repo.owner)
-                    LabeledContent("Name", value: repo.name)
-                } header: {
-                    Text("Repository")
+                    EditRepoStatusCard(
+                        fullName: repo.fullName,
+                        localPath: localPath.trimmingCharacters(in: .whitespacesAndNewlines),
+                        branchPattern: branchPattern.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
                 }
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
 
                 Section {
                     TextField("Local path", text: $localPath)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .textContentType(.URL)
                 } header: {
                     Text("Local Path")
                 } footer: {
-                    Text("Absolute path to the local git clone (e.g. ~/code/my-repo).")
+                    Text("Absolute path to the local git clone. Sessions use this path for worktrees and terminal launch.")
                 }
 
                 Section {
@@ -106,6 +110,73 @@ struct EditRepoSheet: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct EditRepoStatusCard: View {
+    let fullName: String
+    let localPath: String
+    let branchPattern: String
+
+    private var hasLocalPath: Bool {
+        !localPath.isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: hasLocalPath ? "folder.badge.gearshape" : "folder.badge.questionmark")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(hasLocalPath ? IssueCTLColors.action : .orange)
+                    .frame(width: 40, height: 40)
+                    .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(fullName)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text(hasLocalPath ? "Ready for local sessions." : "Add a local clone path to enable smoother launches.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                RepoSetupRow(title: "Local clone", value: hasLocalPath ? localPath : "Missing", isComplete: hasLocalPath)
+                RepoSetupRow(title: "Branch pattern", value: branchPattern.isEmpty ? "Default" : branchPattern, isComplete: true)
+            }
+        }
+        .padding(14)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct RepoSetupRow: View {
+    let title: String
+    let value: String
+    let isComplete: Bool
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: isComplete ? "checkmark.circle.fill" : "exclamationmark.circle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isComplete ? .green : .orange)
+            Text(title)
+                .font(.caption.weight(.semibold))
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
         }
     }
 }

@@ -20,7 +20,7 @@ struct SessionRowView: View {
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
                 Text("Running")
-                    .font(.caption2.weight(.bold))
+                    .font(.caption.bold())
                     .foregroundStyle(.green)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -44,7 +44,7 @@ struct SessionRowView: View {
 
             HStack(spacing: 8) {
                 Button(action: onOpen) {
-                    Label(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal", systemImage: "terminal")
+                    Label(deployment.ttydPort == nil ? "Starting..." : "Open Terminal", systemImage: "terminal")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 40)
@@ -53,7 +53,7 @@ struct SessionRowView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(deployment.ttydPort == nil || isEnding)
-                .accessibilityLabel(deployment.ttydPort == nil ? "Preparing" : "Re-enter Terminal")
+                .accessibilityLabel(deployment.ttydPort == nil ? "Starting" : "Open Terminal")
                 .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
 
                 Button(action: onControls) {
@@ -89,10 +89,10 @@ struct SessionRowView: View {
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(value)
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.bold())
                     .lineLimit(1)
                 Text(label)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)

@@ -120,6 +120,44 @@ func openIssuesSection(in app: XCUIApplication) {
 }
 
 @MainActor
+func openSettingsFromToday(in app: XCUIApplication) {
+    assertElement("today-settings-button", existsIn: app, timeout: 8)
+    element("today-settings-button", in: app).tap()
+    assertElement("settings-done-button", existsIn: app, timeout: 5)
+}
+
+@MainActor
+func closeSettings(in app: XCUIApplication) {
+    app.buttons["settings-done-button"].tap()
+    waitForButtonNonexistence("settings-done-button", in: app)
+}
+
+@MainActor
+func openWorktreesFromSettings(in app: XCUIApplication) {
+    app.buttons["Worktrees"].tap()
+    XCTAssertTrue(app.navigationBars["Worktrees"].waitForExistence(timeout: 5), app.debugDescription)
+}
+
+@MainActor
+func openSettingsFromRecovery(in app: XCUIApplication) {
+    let settingsButton = app.buttons["Open Settings"].firstMatch
+    XCTAssertTrue(settingsButton.waitForExistence(timeout: 8), "Open Settings recovery action missing\n\(app.debugDescription)")
+    settingsButton.tap()
+    assertElement("settings-done-button", existsIn: app, timeout: 5)
+    closeSettings(in: app)
+}
+
+@MainActor
+func assertRepoContext(_ expectedValue: String, in app: XCUIApplication) {
+    let context = element("repo-context-repos", in: app)
+    XCTAssertTrue(context.waitForExistence(timeout: 8), "Repo context missing\n\(app.debugDescription)")
+    XCTAssertTrue(
+        context.label.contains(expectedValue),
+        "Expected repo context to contain \(expectedValue), got \(context.label)"
+    )
+}
+
+@MainActor
 func dismissRestoredModal(in app: XCUIApplication) {
     if app.buttons["terminal-done-button"].waitForExistence(timeout: 1) {
         app.buttons["terminal-done-button"].tap()

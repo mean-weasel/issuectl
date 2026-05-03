@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PRListView: View {
     @Environment(APIClient.self) private var api
+    let onShowSettings: () -> Void
+
     @State private var repos: [Repo] = []
     @State private var pullsByRepo: [String: [GitHubPull]] = [:]
     @State private var isLoading = true
@@ -16,7 +18,6 @@ struct PRListView: View {
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
     @State private var navigationPath = NavigationPath()
-    @State private var showQuickActionsSheet = false
     @State private var showCreateSheet = false
     @State private var showFiltersSheet = false
 
@@ -29,6 +30,7 @@ struct PRListView: View {
     private let pageSize = 15
     @State private var displayLimit = 15
     @State private var searchText = ""
+    @State private var isSearchVisible = false
     @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
@@ -82,6 +84,51 @@ struct PRListView: View {
         ]
     }
 
+    private var headerSubtitle: String {
+        let reviewCount = sectionCounts[.review] ?? 0
+        let openCount = sectionCounts[.open] ?? 0
+
+        if reviewCount > 0 {
+            return "\(reviewCount) need review • \(openCount) open"
+        } else {
+            return "\(openCount) open pull requests"
+        }
+    }
+
+    private var hasActiveFilters: Bool {
+        mineOnly || !selectedRepoIds.isEmpty || sortOrder == .created
+    }
+
+    private var filterSummaryItems: [PRFilterSummaryItem] {
+        var items: [PRFilterSummaryItem] = []
+        if !selectedRepoIds.isEmpty {
+            items.append(PRFilterSummaryItem(title: "Repos", value: selectedRepoSummary, systemImage: "folder"))
+        } else if repos.count > 1 {
+            items.append(PRFilterSummaryItem(title: "Repos", value: "All \(repos.count)", systemImage: "folder"))
+        }
+        if mineOnly {
+            items.append(PRFilterSummaryItem(title: "Scope", value: "Mine", systemImage: "person.crop.circle"))
+        }
+        if sortOrder == .created {
+            items.append(PRFilterSummaryItem(title: "Sort", value: "Created", systemImage: "calendar"))
+        }
+        return items
+    }
+
+    private var selectedRepoSummary: String {
+        let names = repos
+            .filter { selectedRepoIds.contains($0.id) }
+            .map(\.name)
+
+        if names.isEmpty {
+            return "\(selectedRepoIds.count) selected"
+        }
+        if names.count <= 2 {
+            return names.joined(separator: ", ")
+        }
+        return "\(names[0]), \(names[1]) +\(names.count - 2)"
+    }
+
     private func repoIndex(for pull: GitHubPull) -> Int? {
         repoIndexForItem(pull, in: pullsByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
     }
@@ -93,10 +140,25 @@ struct PRListView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                SectionTabs(selected: $section, counts: sectionCounts)
+                if isSearchVisible {
+                    prSearchBar
+                } else {
+                    prHeader
+                }
+
+                PRSectionPicker(selected: $section, counts: sectionCounts)
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
 
                 Divider()
+
+                if !filterSummaryItems.isEmpty {
+                    prFilterSummary
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+
+                    Divider()
+                }
 
                 if let oldestCachedAt {
                     CacheAgeLabel(date: oldestCachedAt)
@@ -113,20 +175,25 @@ struct PRListView: View {
                             ContentUnavailableView {
                                 Label("Error", systemImage: "exclamationmark.triangle")
                             } description: {
-                                Text(errorMessage)
+                                Text(prErrorDescription(errorMessage))
                             } actions: {
-                                Button("Retry") { Task { await loadAll() } }
+                                HStack {
+                                    Button("Retry") { Task { await loadAll(refresh: true) } }
+                                    Button("Open Settings", action: onShowSettings)
+                                }
                             }
                             .frame(maxHeight: .infinity)
                         }
                         .refreshable { await refreshWithCooldown() }
                     } else if filteredPulls.isEmpty {
                         ScrollView {
-                            ContentUnavailableView(
-                                "No Pull Requests",
-                                systemImage: "arrow.triangle.merge",
-                                description: Text("No \(section.rawValue) pull requests.")
-                            )
+                            ContentUnavailableView {
+                                Label(emptyPullRequestTitle, systemImage: emptyPullRequestIcon)
+                            } description: {
+                                Text(emptyPullRequestDescription)
+                            } actions: {
+                                emptyPullRequestActions
+                            }
                             .frame(maxHeight: .infinity)
                         }
                         .refreshable { await refreshWithCooldown() }
@@ -135,7 +202,6 @@ struct PRListView: View {
                     }
                 }
             }
-            .navigationTitle("Pull Requests")
             .navigationDestination(for: PRDestination.self) { dest in
                 PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
@@ -156,42 +222,6 @@ struct PRListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showQuickActionsSheet) {
-                PRQuickActionsSheet(
-                    mineOnly: $mineOnly,
-                    mineFilterEnabled: currentUserLogin != nil && !userFetchFailed,
-                    reviewCount: sectionCounts[.review] ?? 0,
-                    openCount: sectionCounts[.open] ?? 0,
-                    mergedCount: sectionCounts[.merged] ?? 0,
-                    closedCount: sectionCounts[.closed] ?? 0,
-                    onCreateIssue: {
-                        showQuickActionsSheet = false
-                        showCreateSheet = true
-                    },
-                    onShowReview: {
-                        section = .review
-                        showQuickActionsSheet = false
-                    },
-                    onShowOpen: {
-                        section = .open
-                        showQuickActionsSheet = false
-                    },
-                    onShowMerged: {
-                        section = .merged
-                        showQuickActionsSheet = false
-                    },
-                    onShowClosed: {
-                        section = .closed
-                        showQuickActionsSheet = false
-                    },
-                    onRefresh: {
-                        showQuickActionsSheet = false
-                        Task { await refreshWithCooldown() }
-                    }
-                )
-                .presentationDetents([.height(360), .medium])
-                .presentationDragIndicator(.visible)
-            }
             .sheet(isPresented: $showCreateSheet) {
                 QuickCreateSheet(repos: repos, onSuccess: { warning in
                     if let warning { actionError = warning }
@@ -202,11 +232,9 @@ struct PRListView: View {
                 PRFilterSheet(
                     repos: repos,
                     selectedRepoIds: $selectedRepoIds,
-                    section: $section,
                     sortOrder: $sortOrder,
                     mineOnly: $mineOnly,
-                    mineFilterEnabled: currentUserLogin != nil && !userFetchFailed,
-                    sectionCounts: sectionCounts
+                    mineFilterEnabled: currentUserLogin != nil && !userFetchFailed
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -233,54 +261,96 @@ struct PRListView: View {
             }
             .onChange(of: searchText) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
-            .safeAreaInset(edge: .bottom) {
-                pullRequestThumbBar
-            }
+            .accessibilityTabBarClearance()
         }
-        .searchable(text: $searchText, prompt: "Search pull requests")
-        .searchFocused($isSearchFocused)
     }
 
-    private var pullRequestThumbBar: some View {
-        ThumbActionBar {
-            Button {
-                showCreateSheet = true
-            } label: {
-                Label("Create Issue", systemImage: "plus")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(IssueCTLColors.action)
-            .accessibilityIdentifier("prs-create-issue-button")
-        } secondary: {
+    private var prHeader: some View {
+        AppTopBar(title: "Pull Requests", subtitle: headerSubtitle) {
             HStack(spacing: 8) {
-                ThumbIconButton(
-                    systemName: "magnifyingglass",
-                    accessibilityLabel: "Search pull requests",
+                TopBarIconButton(
+                    title: "Search pull requests",
+                    systemImage: "magnifyingglass",
                     accessibilityIdentifier: "prs-search-button"
                 ) {
-                    isSearchFocused = true
+                    showSearch()
                 }
 
-                ThumbIconButton(
-                    systemName: "line.3.horizontal.decrease",
-                    accessibilityLabel: "Pull request filters",
-                    accessibilityIdentifier: "prs-filter-button"
+                TopBarIconButton(
+                    title: "Pull request filters",
+                    systemImage: "line.3.horizontal.decrease",
+                    accessibilityIdentifier: "prs-filter-button",
+                    showsActiveIndicator: hasActiveFilters
                 ) {
                     showFiltersSheet = true
                 }
 
-                ThumbIconButton(
-                    systemName: "bolt.fill",
-                    accessibilityLabel: "Pull request quick actions",
-                    accessibilityIdentifier: "prs-quick-actions-button"
+                TopBarIconButton(
+                    title: "Create Issue",
+                    systemImage: "plus",
+                    accessibilityIdentifier: "prs-create-issue-button",
+                    isProminent: true
                 ) {
-                    showQuickActionsSheet = true
+                    showCreateSheet = true
                 }
             }
         }
-        .padding(.bottom, 4)
+    }
+
+    private var prSearchBar: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("Search pull requests", text: $searchText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($isSearchFocused)
+                    .submitLabel(.search)
+                    .accessibilityIdentifier("prs-search-field")
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+            }
+
+            Button("Cancel", action: hideSearch)
+                .frame(minHeight: 44)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+
+    private var prFilterSummary: some View {
+        HStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(filterSummaryItems) { item in
+                        RepoContextChip(title: item.title, value: item.value, systemImage: item.systemImage)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if hasActiveFilters {
+                Button(action: resetFilters) {
+                    Label("Clear", systemImage: "xmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(IssueCTLColors.action)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(IssueCTLColors.action.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear pull request filters")
+                .accessibilityIdentifier("prs-clear-filters-button")
+            }
+        }
     }
 
     // MARK: - List
@@ -325,10 +395,84 @@ struct PRListView: View {
 
             LoadMoreButton(totalCount: allFiltered.count, displayLimit: $displayLimit, pageSize: pageSize)
         }
+        .contentMargins(.top, 12, for: .scrollContent)
         .refreshable { await refreshWithCooldown() }
     }
 
+    private var emptyPullRequestDescription: String {
+        if !searchText.isEmpty {
+            return "No \(section.rawValue) pull requests match \"\(searchText)\". Clear search to return to this section."
+        }
+        if hasActiveFilters {
+            return "No \(section.rawValue) pull requests match the current filters. Clear filters to widen the list."
+        }
+        switch section {
+        case .review:
+            return "Nothing currently needs review attention. Check open PRs or refresh after syncing issuectl web."
+        case .open:
+            return "No open pull requests are visible right now. Create an issue to start new work."
+        case .merged:
+            return "No merged pull requests are visible in the selected repos."
+        case .closed:
+            return "No closed pull requests are visible in the selected repos."
+        }
+    }
+
+    private var emptyPullRequestTitle: String {
+        if !searchText.isEmpty { return "No Matching Pull Requests" }
+        if hasActiveFilters { return "No Filtered Pull Requests" }
+        switch section {
+        case .review: return "No Review Work"
+        case .open: return "No Open Pull Requests"
+        case .merged: return "No Merged Pull Requests"
+        case .closed: return "No Closed Pull Requests"
+        }
+    }
+
+    private var emptyPullRequestIcon: String {
+        if !searchText.isEmpty { return "magnifyingglass" }
+        if hasActiveFilters { return "line.3.horizontal.decrease.circle" }
+        return section.icon
+    }
+
+    private func prErrorDescription(_ message: String) -> String {
+        "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
+    }
+
+    @ViewBuilder
+    private var emptyPullRequestActions: some View {
+        if !searchText.isEmpty {
+            Button("Clear Search", action: hideSearch)
+        } else if hasActiveFilters {
+            Button("Clear Filters", action: resetFilters)
+        } else {
+            HStack {
+                Button("Create Issue") { showCreateSheet = true }
+                Button("Refresh") { Task { await loadAll(refresh: true) } }
+            }
+        }
+    }
+
     // MARK: - Actions
+
+    private func showSearch() {
+        isSearchVisible = true
+        Task { @MainActor in
+            isSearchFocused = true
+        }
+    }
+
+    private func hideSearch() {
+        searchText = ""
+        isSearchFocused = false
+        isSearchVisible = false
+    }
+
+    private func resetFilters() {
+        selectedRepoIds.removeAll()
+        sortOrder = .updated
+        mineOnly = false
+    }
 
     private func mergePull(owner: String, repo: String, number: Int, strategy: String) async {
         actionError = nil
@@ -422,180 +566,95 @@ struct PRDestination: Hashable {
     let number: Int
 }
 
-private struct PRQuickActionsSheet: View {
-    @Binding var mineOnly: Bool
+private struct PRFilterSummaryItem: Identifiable {
+    let title: String
+    let value: String
+    let systemImage: String
 
-    let mineFilterEnabled: Bool
-    let reviewCount: Int
-    let openCount: Int
-    let mergedCount: Int
-    let closedCount: Int
-    let onCreateIssue: () -> Void
-    let onShowReview: () -> Void
-    let onShowOpen: () -> Void
-    let onShowMerged: () -> Void
-    let onShowClosed: () -> Void
-    let onRefresh: () -> Void
+    var id: String { "\(title)-\(value)" }
+}
+
+private struct PRSectionPicker: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @Binding var selected: PRSection
+    let counts: [PRSection: Int]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Quick Actions")
-                        .font(.title2.weight(.bold))
-                    Text("\(reviewCount) need review, \(openCount) open")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(spacing: 0) {
-                    sheetAction(
-                        title: "Create Issue",
-                        subtitle: "Capture follow-up work from PR review.",
-                        systemImage: "plus.circle",
-                        action: onCreateIssue
-                    )
-
-                    Divider()
-
-                    sheetAction(
-                        title: "Refresh Pull Requests",
-                        subtitle: "Fetch the latest PR state.",
-                        systemImage: "arrow.clockwise",
-                        action: onRefresh
-                    )
-                }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-
-                VStack(spacing: 0) {
-                    sheetAction(
-                        title: "Review Queue",
-                        subtitle: "\(reviewCount) PRs need attention",
-                        systemImage: "exclamationmark.bubble",
-                        action: onShowReview
-                    )
-
-                    Divider()
-
-                    sheetAction(
-                        title: "Open PRs",
-                        subtitle: "\(openCount) currently open",
-                        systemImage: "arrow.triangle.merge",
-                        action: onShowOpen
-                    )
-
-                    Divider()
-
-                    sheetAction(
-                        title: "Merged PRs",
-                        subtitle: "\(mergedCount) merged",
-                        systemImage: "checkmark.seal",
-                        action: onShowMerged
-                    )
-
-                    Divider()
-
-                    sheetAction(
-                        title: "Closed PRs",
-                        subtitle: "\(closedCount) closed without merge",
-                        systemImage: "checkmark.circle",
-                        action: onShowClosed
-                    )
-
-                    Divider()
-
-                    Toggle(isOn: $mineOnly) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "person.crop.circle")
-                                .frame(width: 26)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Mine Only")
-                                    .font(.subheadline.weight(.semibold))
-                                Text(mineFilterEnabled ? "Assigned to your GitHub login." : "User profile unavailable.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(PRSection.allCases, id: \.self) { section in
+                            sectionButton(section)
+                                .frame(minWidth: 128)
                         }
                     }
-                    .disabled(!mineFilterEnabled)
-                    .padding(12)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-
-                Spacer(minLength: 0)
+            } else {
+                HStack(spacing: 4) {
+                    ForEach(PRSection.allCases, id: \.self) { section in
+                        sectionButton(section)
+                    }
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 24)
-            .padding(.bottom, 16)
+        }
+        .padding(4)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
         }
     }
 
-    private func sheetAction(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.tertiary)
+    private func sectionButton(_ section: PRSection) -> some View {
+        Button {
+            selected = section
+        } label: {
+            HStack(spacing: 4) {
+                Text(section.rawValue.capitalized)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Text("\(counts[section] ?? 0)")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
-            .padding(12)
+            .font(.subheadline.bold())
+            .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 44 : 36)
+            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 10 : 4)
+            .background(
+                selected == section ? Color.primary.opacity(0.12) : Color.clear,
+                in: RoundedRectangle(cornerRadius: IssueCTLColors.controlCornerRadius)
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .foregroundStyle(selected == section ? .primary : .secondary)
+        .accessibilityIdentifier("section-tab-\(section.rawValue)")
+        .accessibilityLabel("\(section.rawValue.capitalized), \(counts[section] ?? 0) pull requests")
     }
 }
 
 private struct PRFilterSheet: View {
     let repos: [Repo]
     @Binding var selectedRepoIds: Set<Int>
-    @Binding var section: PRSection
     @Binding var sortOrder: SortOrder
     @Binding var mineOnly: Bool
 
     let mineFilterEnabled: Bool
-    let sectionCounts: [PRSection: Int]
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Filter & Sort")
-                            .font(.title2.weight(.bold))
-                        Text("\(sectionCounts[section] ?? 0) \(section.rawValue) PRs")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 12) {
+                    sheetHeader
 
-                    sheetCard(title: "Status") {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(PRSection.allCases, id: \.self) { option in
-                                filterOption(
-                                    title: option.rawValue.capitalized,
-                                    subtitle: "\(sectionCounts[option] ?? 0) PRs",
-                                    isSelected: section == option
-                                ) {
-                                    section = option
-                                }
-                            }
-                        }
-                    }
-
-                    sheetCard(title: "Repository") {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    sheetCard(title: "Repository", systemImage: "tray.2", actionTitle: selectedRepoIds.isEmpty ? nil : "Clear") {
+                        selectedRepoIds.removeAll()
+                    } content: {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                             Button {
                                 selectedRepoIds.removeAll()
                             } label: {
@@ -619,7 +678,9 @@ private struct PRFilterSheet: View {
                         }
                     }
 
-                    sheetCard(title: "Sort") {
+                    sheetCard(title: "Sort", systemImage: "arrow.up.arrow.down", actionTitle: sortOrder == .updated ? nil : "Reset") {
+                        sortOrder = .updated
+                    } content: {
                         Picker("Sort", selection: $sortOrder) {
                             Label("Updated", systemImage: "clock").tag(SortOrder.updated)
                             Label("Created", systemImage: "calendar").tag(SortOrder.created)
@@ -627,35 +688,76 @@ private struct PRFilterSheet: View {
                         .pickerStyle(.segmented)
                     }
 
-                    Toggle(isOn: $mineOnly) {
-                        Label("Mine Only", systemImage: "person.crop.circle")
-                            .font(.subheadline.weight(.semibold))
+                    sheetCard(title: "Mine", systemImage: "person.crop.circle", actionTitle: mineOnly ? "Clear" : nil) {
+                        mineOnly = false
+                    } content: {
+                        Toggle(isOn: $mineOnly) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Mine only")
+                                    .font(.subheadline.weight(.semibold))
+                                Text(mineFilterEnabled ? "Show pull requests opened by you." : "Sign in is required for this filter.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .disabled(!mineFilterEnabled)
+                        .tint(IssueCTLColors.action)
                     }
-                    .disabled(!mineFilterEnabled)
-                    .padding(12)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 }
                 .padding(16)
             }
         }
     }
 
-    private func sheetCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private var hasActiveFilters: Bool {
+        mineOnly || !selectedRepoIds.isEmpty || sortOrder != .updated
+    }
+
+    private var sheetHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Filters")
+                    .font(.title3.bold())
+                Text(hasActiveFilters ? "Active filters applied" : "Showing default pull request order")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if hasActiveFilters {
+                Button("Reset") {
+                    resetFilters()
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(IssueCTLColors.action)
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func sheetCard<Content: View>(
+        title: String,
+        systemImage: String,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Label(title, systemImage: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let actionTitle, let action {
+                    Button(actionTitle, action: action)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(IssueCTLColors.action)
+                        .buttonStyle(.plain)
+                }
+            }
             content()
         }
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func filterOption(title: String, subtitle: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            optionContent(title: title, subtitle: subtitle, isSelected: isSelected)
-        }
-        .buttonStyle(.plain)
     }
 
     private func optionContent(title: String, subtitle: String, isSelected: Bool) -> some View {
@@ -665,16 +767,22 @@ private struct PRFilterSheet: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
             Text(subtitle)
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
         .padding(10)
         .background(isSelected ? IssueCTLColors.action.opacity(0.14) : Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isSelected ? IssueCTLColors.action.opacity(0.55) : Color.clear, lineWidth: 1)
         }
+    }
+
+    private func resetFilters() {
+        selectedRepoIds.removeAll()
+        sortOrder = .updated
+        mineOnly = false
     }
 }

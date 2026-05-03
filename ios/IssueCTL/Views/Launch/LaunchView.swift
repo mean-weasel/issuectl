@@ -102,70 +102,32 @@ struct LaunchView: View {
 
     @ViewBuilder
     private var launchForm: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Launch \(selectedAgent.displayName)")
-                            .font(.title2.weight(.bold))
-                        Text("#\(issueNumber) \(issueTitle)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                    if let existingDeployment {
-                        Text(existingDeployment.ttydPort == nil ? "Terminal is starting." : "A terminal is already running for this issue.")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("Review the launch settings, then start \(selectedAgent.displayName).")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text(recommendedSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.vertical, 4)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                launchHeaderCard
 
             if showCloneWarning {
-                Section {
-                    Label("This repository has no local clone. A fresh clone will be created.", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                        .font(.subheadline)
+                launchCard {
+                    LaunchNoticeRow(
+                        title: "Fresh Clone Required",
+                        subtitle: "This repository has no local clone. issuectl will create one before launching.",
+                        systemImage: "exclamationmark.triangle.fill",
+                        tint: .orange
+                    )
                 }
             }
 
             if let existingDeployment {
-                Section {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("A terminal is already running for this issue.", systemImage: "terminal")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.blue)
-
-                        HStack(spacing: 12) {
-                            Text(existingDeployment.runningDuration)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-
-                            Spacer()
-
-                            if existingDeployment.ttydPort == nil {
-                                Text("Terminal starting")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+                launchCard {
+                    ExistingSessionCard(
+                        deployment: existingDeployment,
+                        onOpen: { openExistingTerminal(existingDeployment) }
+                    )
                 }
             }
 
             if dirtyWorktree {
-                Section {
+                launchCard {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Previous session left uncommitted changes", systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
@@ -196,7 +158,12 @@ struct LaunchView: View {
                 }
             }
 
-            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    LaunchSectionHeader(title: "Ready Check", systemImage: "checklist")
+                    launchChecklist
+                }
+
+                launchCard {
                 DisclosureGroup(isExpanded: $showAdvancedOptions) {
                     VStack(alignment: .leading, spacing: 18) {
                         workspaceOptions
@@ -208,19 +175,30 @@ struct LaunchView: View {
                     }
                     .padding(.top, 8)
                 } label: {
-                    Label("Advanced Options", systemImage: "slider.horizontal.3")
-                        .font(.subheadline.weight(.medium))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label("Advanced Options", systemImage: "slider.horizontal.3")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Change workspace, agent, branch, context, or instructions.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .accessibilityIdentifier("launch-advanced-options")
             }
 
             if let errorMessage {
-                Section {
+                launchCard {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .font(.subheadline)
                         .foregroundStyle(.red)
                 }
             }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 72)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Launch")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -262,6 +240,82 @@ struct LaunchView: View {
                 }
             }
         }
+    }
+
+    private var launchHeaderCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: existingDeployment == nil ? "play.circle.fill" : "terminal.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(IssueCTLColors.action)
+                    .frame(width: 34, height: 34)
+                    .background(IssueCTLColors.action.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(existingDeployment == nil ? "Ready to Launch \(selectedAgent.displayName)" : "Session Already Running")
+                        .font(.headline)
+                    Text("#\(issueNumber) \(issueTitle)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Text(existingDeployment == nil ? "Confirm the checklist, then start the agent." : "Open the existing terminal instead of launching a duplicate session.")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func launchCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                    .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+            }
+    }
+
+    private var launchChecklist: some View {
+        VStack(spacing: 10) {
+            LaunchChecklistRow(
+                title: "Workspace",
+                value: workspaceSummary,
+                systemImage: "folder.badge.gearshape",
+                isReady: !showCloneWarning
+            )
+
+            LaunchChecklistRow(
+                title: "Branch",
+                value: branchName.isEmpty ? "Branch name required" : branchName,
+                systemImage: "point.topleft.down.curvedto.point.bottomright.up",
+                isReady: !branchName.isEmpty
+            )
+
+            LaunchChecklistRow(
+                title: "Context",
+                value: contextSummary,
+                systemImage: "text.bubble",
+                isReady: true
+            )
+
+            LaunchChecklistRow(
+                title: "Instructions",
+                value: preamble.isEmpty ? "No extra preamble" : "Custom preamble included",
+                systemImage: "doc.text",
+                isReady: true
+            )
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -343,6 +397,28 @@ struct LaunchView: View {
         return "\(mode.capitalized) workspace - \(branchName.isEmpty ? "generated branch" : branchName)"
     }
 
+    private var workspaceSummary: String {
+        switch workspaceMode {
+        case .worktree:
+            return showCloneWarning ? "Fresh clone required" : "New worktree"
+        case .existing:
+            return "Use existing checkout"
+        case .clone:
+            return "Fresh clone"
+        }
+    }
+
+    private var contextSummary: String {
+        var parts: [String] = []
+        if !comments.isEmpty {
+            parts.append(selectedCommentIndices.isEmpty ? "No comments" : "\(selectedCommentIndices.count) comments")
+        }
+        if !referencedFiles.isEmpty {
+            parts.append(selectedFilePaths.isEmpty ? "No files" : "\(selectedFilePaths.count) files")
+        }
+        return parts.isEmpty ? "Issue title and body" : parts.joined(separator: " - ")
+    }
+
     private var workspaceOptions: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Workspace Mode")
@@ -391,9 +467,20 @@ struct LaunchView: View {
     private var commentOptions: some View {
         if !comments.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Include Comments")
+                HStack {
+                    Text("Include Comments")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(selectedCommentIndices.count == comments.count ? "Clear" : "All") {
+                        if selectedCommentIndices.count == comments.count {
+                            selectedCommentIndices.removeAll()
+                        } else {
+                            selectedCommentIndices = Set(comments.indices)
+                        }
+                    }
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                }
                 ForEach(Array(comments.enumerated()), id: \.offset) { index, comment in
                     Toggle(isOn: Binding(
                         get: { selectedCommentIndices.contains(index) },
@@ -422,9 +509,20 @@ struct LaunchView: View {
     private var fileOptions: some View {
         if !referencedFiles.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Include Files")
+                HStack {
+                    Text("Include Files")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(selectedFilePaths.count == referencedFiles.count ? "Clear" : "All") {
+                        if selectedFilePaths.count == referencedFiles.count {
+                            selectedFilePaths.removeAll()
+                        } else {
+                            selectedFilePaths = Set(referencedFiles)
+                        }
+                    }
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                }
                 ForEach(referencedFiles, id: \.self) { filePath in
                     Toggle(isOn: Binding(
                         get: { selectedFilePaths.contains(filePath) },
@@ -580,5 +678,122 @@ struct LaunchView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct LaunchSectionHeader: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct LaunchChecklistRow: View {
+    let title: String
+    let value: String
+    let systemImage: String
+    let isReady: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: isReady ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(isReady ? .green : .orange)
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 3)
+        }
+        .padding(10)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct LaunchNoticeRow: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct ExistingSessionCard: View {
+    let deployment: ActiveDeployment
+    let onOpen: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "terminal.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.blue)
+                    .frame(width: 28, height: 28)
+                    .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(deployment.ttydPort == nil ? "Terminal Starting" : "Terminal Running")
+                        .font(.subheadline.weight(.semibold))
+                    Text("\(deployment.branchName) - \(deployment.runningDuration)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            Button {
+                onOpen()
+            } label: {
+                Label(deployment.ttydPort == nil ? "Terminal Starting" : "Open Existing Terminal", systemImage: "terminal")
+                    .font(.caption.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(deployment.ttydPort == nil)
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }

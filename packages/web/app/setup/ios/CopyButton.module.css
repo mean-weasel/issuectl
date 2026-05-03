@@ -1,0 +1,24 @@
+.button {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: var(--paper-bg-warm);
+  color: var(--paper-ink-muted);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  font-size: var(--paper-fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 52px;
+  text-align: center;
+}
+
+.button:hover {
+  background: var(--paper-bg-warmer);
+  color: var(--paper-ink-soft);
+  border-color: var(--paper-accent);
+}
+
+.button:active {
+  transform: scale(0.95);
+}

@@ -7,65 +7,123 @@ struct OnboardingView: View {
     @State private var showToken = false
     @State private var isChecking = false
     @State private var errorMessage: String?
+    @State private var showConnectionHelp = false
+
+    private var trimmedServerURL: String {
+        serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedAPIToken: String {
+        apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canConnect: Bool {
+        !trimmedServerURL.isEmpty && !trimmedAPIToken.isEmpty && !isChecking
+    }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text("Connect to your issuectl server running on your Mac. On a physical iPhone, use your Mac's Wi-Fi IP address instead of localhost.")
-                        .foregroundStyle(.secondary)
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ConnectionStatusPanel(
+                        hasServerURL: !trimmedServerURL.isEmpty,
+                        hasToken: !trimmedAPIToken.isEmpty,
+                        isChecking: isChecking,
+                        errorMessage: errorMessage
+                    )
 
-                Section("Server URL") {
-                    TextField("http://192.168.1.x:3847", text: $serverURL)
-                        .textContentType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                }
+                    VStack(alignment: .leading, spacing: 12) {
+                        SetupFieldContainer(title: "Server URL", systemImage: "network") {
+                            TextField("http://192.168.1.x:3847", text: $serverURL)
+                                .textContentType(.URL)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.URL)
+                                .autocorrectionDisabled()
+                                .accessibilityLabel("Server URL")
+                        }
 
-                Section("API Token") {
-                    HStack {
-                        APITokenField(
-                            placeholder: "Paste your API token",
-                            text: $apiToken,
-                            isMasked: !showToken
-                        )
+                        SetupFieldContainer(title: "API Token", systemImage: "key") {
+                            HStack(spacing: 8) {
+                                APITokenField(
+                                    placeholder: "Paste your API token",
+                                    text: $apiToken,
+                                    isMasked: !showToken
+                                )
+                                .accessibilityLabel("API Token")
+                                .accessibilityIdentifier("onboarding-api-token-field")
+                                Button {
+                                    showToken.toggle()
+                                } label: {
+                                    Image(systemName: showToken ? "eye.slash" : "eye")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 34, height: 34)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(showToken ? "Hide API token" : "Show API token")
+                            }
+                            .accessibilityElement(children: .contain)
+                        }
+
                         Button {
-                            showToken.toggle()
+                            Task { await connect() }
                         } label: {
-                            Image(systemName: showToken ? "eye.slash" : "eye")
-                                .foregroundStyle(.secondary)
+                            HStack {
+                                if isChecking {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "arrow.right.circle.fill")
+                                }
+                                Text(isChecking ? "Checking" : "Connect")
+                            }
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderedProminent)
+                        .tint(IssueCTLColors.action)
+                        .disabled(!canConnect)
+                        .accessibilityIdentifier("onboarding-connect-button")
+                    }
+                    .padding(14)
+                    .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                            .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
                     }
 
-                    Text("Run `issuectl web` on your Mac and use the iOS server URL and API token shown there.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let errorMessage {
-                    Section {
-                        Label(errorMessage, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section {
-                    Button {
-                        Task { await connect() }
+                    DisclosureGroup(isExpanded: $showConnectionHelp) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HelpRow(
+                                systemImage: "macbook.and.iphone",
+                                text: "Run issuectl web on your Mac and keep it open."
+                            )
+                            HelpRow(
+                                systemImage: "wifi",
+                                text: "Use the iOS server URL. On a real iPhone, prefer your Mac's Wi-Fi IP address."
+                            )
+                            HelpRow(
+                                systemImage: "link",
+                                text: "Setup links can fill both fields when opened on this device."
+                            )
+                        }
+                        .padding(.top, 10)
                     } label: {
-                        if isChecking {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("Connect")
-                                .frame(maxWidth: .infinity)
-                        }
+                        Label("Connection help", systemImage: "info.circle")
+                            .font(.subheadline.weight(.semibold))
                     }
-                    .disabled(serverURL.isEmpty || apiToken.isEmpty || isChecking)
+                    .padding(14)
+                    .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                            .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+                    }
                 }
+                .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Setup")
         }
     }
@@ -110,6 +168,153 @@ struct OnboardingView: View {
         }
 
         isChecking = false
+    }
+}
+
+private struct ConnectionStatusPanel: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let hasServerURL: Bool
+    let hasToken: Bool
+    let isChecking: Bool
+    let errorMessage: String?
+
+    private var statusTitle: String {
+        if isChecking { return "Checking connection" }
+        if errorMessage != nil { return "Connection needs attention" }
+        if hasServerURL && hasToken { return "Ready to connect" }
+        return "Connect to desktop"
+    }
+
+    private var statusSubtitle: String {
+        if isChecking { return "Verifying the server URL and token." }
+        if let errorMessage { return errorMessage }
+        if hasServerURL && hasToken { return "Server URL and token are ready." }
+        return "Enter the URL and token shown by issuectl web."
+    }
+
+    private var statusIcon: String {
+        if isChecking { return "arrow.triangle.2.circlepath" }
+        if errorMessage != nil { return "exclamationmark.triangle.fill" }
+        if hasServerURL && hasToken { return "checkmark.circle.fill" }
+        return "iphone.and.arrow.forward"
+    }
+
+    private var statusColor: Color {
+        if errorMessage != nil { return .red }
+        if hasServerURL && hasToken { return .green }
+        return IssueCTLColors.action
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Image(systemName: statusIcon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(statusColor)
+
+                if isChecking {
+                    ProgressView()
+                        .controlSize(.small)
+                        .opacity(0.001)
+                }
+            }
+            .frame(width: 42, height: 42)
+            .background(statusColor.opacity(0.12), in: RoundedRectangle(cornerRadius: IssueCTLColors.controlCornerRadius))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(statusTitle)
+                    .font(.headline)
+                Text(statusSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(errorMessage == nil ? Color.secondary : Color.red)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SetupStatusPill(title: "URL", isComplete: hasServerURL)
+                            SetupStatusPill(title: "Token", isComplete: hasToken)
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            SetupStatusPill(title: "URL", isComplete: hasServerURL)
+                            SetupStatusPill(title: "Token", isComplete: hasToken)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct SetupStatusPill: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let isComplete: Bool
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: isComplete ? "checkmark.circle.fill" : "circle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isComplete ? .green : .secondary)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isComplete ? .primary : .secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.secondary.opacity(0.12), in: Capsule())
+        .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 116 : nil, alignment: .leading)
+    }
+}
+
+private struct SetupFieldContainer<Content: View>: View {
+    let title: String
+    let systemImage: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content
+                .padding(.horizontal, 12)
+                .frame(minHeight: 46)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: IssueCTLColors.controlCornerRadius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: IssueCTLColors.controlCornerRadius)
+                        .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+                }
+        }
+    }
+}
+
+private struct HelpRow: View {
+    let systemImage: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

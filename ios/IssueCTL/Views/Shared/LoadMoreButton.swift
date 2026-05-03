@@ -10,7 +10,7 @@ struct LoadMoreButton: View {
             Button {
                 displayLimit += pageSize
             } label: {
-                Text("Load More (\(totalCount - displayLimit) remaining)")
+                Text("Show More (\(totalCount - displayLimit))")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity)
             }

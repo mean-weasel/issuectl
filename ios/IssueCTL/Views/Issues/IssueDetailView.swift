@@ -55,6 +55,7 @@ struct IssueDetailView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
                             headerSection(detail.issue)
+                            primaryActionSection(detail)
                             bodySection(detail.issue)
                             if !detail.linkedPRs.isEmpty {
                                 linkedPRsSection(detail.linkedPRs)
@@ -69,13 +70,18 @@ struct IssueDetailView: View {
                         .padding()
                     }
                     .refreshable { await load(refresh: true) }
-
-                    actionBar(for: detail.issue)
                 }
             }
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if detail != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    issueActionsMenu
+                }
+            }
+        }
         .navigationDestination(for: PRDestination.self) { dest in
             PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
         }
@@ -246,11 +252,70 @@ struct IssueDetailView: View {
     }
 
     @ViewBuilder
+    private func primaryActionSection(_ detail: IssueDetailResponse) -> some View {
+        let issue = detail.issue
+        VStack(alignment: .leading, spacing: 12) {
+            IssueDetailSectionHeader(
+                title: issue.isOpen ? "Next Action" : "Issue Closed",
+                systemImage: issue.isOpen ? "bolt.fill" : "checkmark.circle.fill"
+            )
+
+            if issue.isOpen {
+                if let deployment = activeDeployment(from: detail) {
+                    SessionStatusCard(
+                        title: deployment.ttydPort == nil ? "Session Starting" : "Session Active",
+                        subtitle: "\(deployment.branchName) - \(deployment.runningDuration)",
+                        status: deployment.ttydPort == nil ? "Terminal not ready" : "Terminal ready",
+                        systemImage: deployment.ttydPort == nil ? "hourglass" : "terminal",
+                        tint: deployment.ttydPort == nil ? .orange : .green,
+                        primaryTitle: deployment.ttydPort == nil ? nil : "Open Terminal",
+                        primarySystemImage: "terminal",
+                        primaryAccessibilityIdentifier: "issue-detail-reenter-terminal-button",
+                        primaryAction: {
+                            openTerminal(deployment)
+                        }
+                    )
+                    .accessibilityIdentifier("issue-detail-session-status-card")
+                } else {
+                    SessionStatusCard(
+                        title: "Ready to Launch",
+                        subtitle: "Start an agent session for this issue.",
+                        status: "No active session",
+                        systemImage: "play.circle.fill",
+                        tint: IssueCTLColors.action,
+                        primaryTitle: "Launch Agent",
+                        primarySystemImage: "play.fill",
+                        primaryAccessibilityIdentifier: "issue-detail-launch-button",
+                        primaryAction: {
+                            activeDetailSheet = .launch(detail)
+                        }
+                    )
+                    .accessibilityIdentifier("issue-detail-launch-status-card")
+                }
+            } else {
+                SessionStatusCard(
+                    title: "Closed",
+                    subtitle: "Reopen this issue to continue work.",
+                    status: "Closed issue",
+                    systemImage: "checkmark.circle.fill",
+                    tint: .purple,
+                    primaryTitle: "Reopen",
+                    primarySystemImage: "arrow.uturn.backward.circle",
+                    primaryAccessibilityIdentifier: "issue-detail-reopen-button",
+                    primaryAction: {
+                        activeConfirmation = .reopenIssue
+                    }
+                )
+                .accessibilityIdentifier("issue-detail-closed-status-card")
+            }
+        }
+    }
+
+    @ViewBuilder
     private func linkedPRsSection(_ prs: [GitHubPull]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("Linked Pull Requests", systemImage: "arrow.triangle.merge")
-                .font(.headline)
+            IssueDetailSectionHeader(title: "Linked Pull Requests", systemImage: "arrow.triangle.merge")
 
             ForEach(prs) { pr in
                 NavigationLink(value: PRDestination(owner: owner, repo: repo, number: pr.number)) {
@@ -278,8 +343,7 @@ struct IssueDetailView: View {
     private func deploymentsSection(_ deployments: [Deployment]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("Deployments", systemImage: "play.circle")
-                .font(.headline)
+            IssueDetailSectionHeader(title: "Sessions", systemImage: "play.circle")
 
             ForEach(deployments) { deployment in
                 if deployment.isActive, deployment.ttydPort != nil {
@@ -321,8 +385,10 @@ struct IssueDetailView: View {
     private func commentsSection(_ comments: [GitHubComment]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("\(comments.count) Comment\(comments.count == 1 ? "" : "s")", systemImage: "bubble.left")
-                .font(.headline)
+            IssueDetailSectionHeader(
+                title: "\(comments.count) Comment\(comments.count == 1 ? "" : "s")",
+                systemImage: "bubble.left"
+            )
 
             ForEach(comments) { comment in
                 let isOwnComment = currentUserLogin != nil && comment.user?.login == currentUserLogin
@@ -349,66 +415,6 @@ struct IssueDetailView: View {
                     Divider()
                 }
             }
-        }
-    }
-
-    // MARK: - Action Bar
-
-    @ViewBuilder
-    private func actionBar(for issue: GitHubIssue) -> some View {
-        if issue.isOpen {
-            ThumbActionBar {
-                if let detail, let deployment = activeDeployment(from: detail) {
-                    Button {
-                        openTerminal(deployment)
-                    } label: {
-                        Label(deployment.ttydPort == nil ? "Terminal Starting" : "Re-enter Terminal", systemImage: "terminal")
-                            .font(.subheadline.weight(.bold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(IssueCTLColors.action)
-                    .disabled(deployment.ttydPort == nil)
-                    .accessibilityIdentifier("issue-detail-reenter-terminal-button")
-                } else if let detail {
-                    Button {
-                        activeDetailSheet = .launch(detail)
-                    } label: {
-                        Label("Launch Agent", systemImage: "play.fill")
-                            .font(.subheadline.weight(.bold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(IssueCTLColors.action)
-                    .accessibilityIdentifier("issue-detail-launch-button")
-                }
-            } secondary: {
-                issueActionsMenu
-            }
-            .padding(.bottom, 4)
-        } else {
-            ThumbActionBar {
-                Button {
-                    activeConfirmation = .reopenIssue
-                } label: {
-                    HStack {
-                        if isReopening {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Label("Reopen", systemImage: "arrow.uturn.backward.circle")
-                        }
-                    }
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(isReopening)
-                .accessibilityIdentifier("issue-detail-reopen-button")
-            } secondary: {
-                issueActionsMenu
-            }
-            .padding(.bottom, 4)
         }
     }
 
@@ -692,6 +698,112 @@ struct IssueDetailView: View {
 }
 
 // MARK: - Supporting Views
+
+private struct IssueDetailSectionHeader: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct SessionStatusCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let subtitle: String
+    let status: String
+    let systemImage: String
+    let tint: Color
+    let primaryTitle: String?
+    let primarySystemImage: String
+    let primaryAccessibilityIdentifier: String?
+    let primaryAction: () -> Void
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    statusContent
+                    primaryButton
+                }
+            } else {
+                HStack(alignment: .center, spacing: 10) {
+                    statusContent
+                    Spacer(minLength: 0)
+                    primaryButton
+                }
+            }
+        }
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var statusContent: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: IssueCTLColors.iconCornerRadius))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+
+                    Text(status)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(tint)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(tint.opacity(0.12), in: Capsule())
+                        .lineLimit(1)
+                }
+
+                Text(subtitle)
+                    .font(dynamicTypeSize.isAccessibilitySize ? .subheadline : .caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var primaryButton: some View {
+        if let primaryTitle {
+            Button {
+                primaryAction()
+            } label: {
+                if dynamicTypeSize.isAccessibilitySize {
+                    Label(primaryTitle, systemImage: primarySystemImage)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 44)
+                } else {
+                    Image(systemName: primarySystemImage)
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 36, height: 36)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(dynamicTypeSize.isAccessibilitySize ? .roundedRectangle : .circle)
+            .tint(tint)
+            .accessibilityLabel(primaryTitle)
+            .accessibilityIdentifier(primaryAccessibilityIdentifier ?? "")
+        }
+    }
+}
 
 struct StateBadge: View {
     let isOpen: Bool

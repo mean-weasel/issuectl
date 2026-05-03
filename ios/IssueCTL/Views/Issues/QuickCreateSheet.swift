@@ -30,9 +30,24 @@ struct QuickCreateSheet: View {
 
     private var buttonLabel: String {
         if let repo = selectedRepo {
-            return "Create Issue in \(repo.name)"
+            return "Create in \(repo.name)"
         }
         return "Create Draft"
+    }
+
+    private var destinationTitle: String {
+        selectedRepo.map { "GitHub issue in \($0.name)" } ?? "Local draft"
+    }
+
+    private var metadataSummary: String {
+        var parts: [String] = []
+        if priority != .normal {
+            parts.append(priority.rawValue.capitalized)
+        }
+        if !selectedLabels.isEmpty {
+            parts.append("\(selectedLabels.count) labels")
+        }
+        return parts.isEmpty ? "No extra metadata" : parts.joined(separator: " - ")
     }
 
     var body: some View {
@@ -42,15 +57,21 @@ struct QuickCreateSheet: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Create Issue")
                             .font(.title2.weight(.bold))
-                        Text("Fast capture first. Add metadata only when needed.")
+                        Text("Capture the work, then add only the metadata you need.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.top, 4)
 
+                    QuickCreateStatusCard(
+                        destination: destinationTitle,
+                        metadata: metadataSummary,
+                        hasTitle: !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+
                     sheetCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Repository")
+                            Text("Destination")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                             repoSelector
@@ -146,7 +167,7 @@ struct QuickCreateSheet: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("More Options")
                                     .font(.subheadline.weight(.semibold))
-                                Text("Labels, attachments, priority, and local drafts.")
+                                Text("Labels, attachments, and priority.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -310,7 +331,7 @@ struct QuickCreateSheet: View {
         content()
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
     }
 
     private func loadLabels(owner: String, repo: String) async {
@@ -381,5 +402,46 @@ struct QuickCreateSheet: View {
             errorMessage = error.localizedDescription
         }
         isSubmitting = false
+    }
+}
+
+private struct QuickCreateStatusCard: View {
+    let destination: String
+    let metadata: String
+    let hasTitle: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: hasTitle ? "checkmark.circle.fill" : "square.and.pencil")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(hasTitle ? .green : IssueCTLColors.action)
+                .frame(width: 32, height: 32)
+                .background(
+                    (hasTitle ? Color.green : IssueCTLColors.action).opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: IssueCTLColors.iconCornerRadius)
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(hasTitle ? "Ready to create" : "Start with a title")
+                    .font(.subheadline.weight(.semibold))
+                Text(destination)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(metadata)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
     }
 }

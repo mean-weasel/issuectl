@@ -35,6 +35,7 @@ struct PRDetailView: View {
                         VStack(alignment: .leading, spacing: 20) {
                             headerSection(detail.pull)
                             branchSection(detail.pull)
+                            reviewStatusSection(detail)
                             bodySection(detail.pull)
                             if !detail.checks.isEmpty {
                                 checksSection(detail.checks)
@@ -58,13 +59,18 @@ struct PRDetailView: View {
                         .padding()
                     }
                     .refreshable { await load(refresh: true) }
-
-                    actionBar(for: detail.pull)
                 }
             }
         }
         .navigationTitle("#\(number)")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if detail != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    pullActionsMenu
+                }
+            }
+        }
         .task { await load() }
         .onAppear {
             actionError = nil
@@ -141,12 +147,36 @@ struct PRDetailView: View {
         }
     }
 
+    private func reviewStatusSection(_ detail: PullDetailResponse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            PRDetailSectionHeader(title: "Review Status", systemImage: "checkmark.shield")
+
+            PRStatusActionCard(
+                title: statusTitle(for: detail),
+                subtitle: statusSubtitle(for: detail),
+                status: statusPill(for: detail),
+                systemImage: statusIcon(for: detail),
+                tint: statusColor(for: detail),
+                primaryTint: primaryActionColor(for: detail.pull),
+                primaryTitle: primaryActionTitle(for: detail.pull),
+                primarySystemImage: primaryActionIcon(for: detail.pull),
+                primaryAction: {
+                    if detail.pull.isOpen && !detail.pull.merged {
+                        showMergeConfirm = true
+                    } else if let url = URL(string: detail.pull.htmlUrl) {
+                        openURL(url)
+                    }
+                }
+            )
+            .accessibilityIdentifier("pr-detail-review-status-card")
+        }
+    }
+
     @ViewBuilder
     private func checksSection(_ checks: [GitHubCheck]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("Checks", systemImage: "checkmark.shield")
-                .font(.headline)
+            PRDetailSectionHeader(title: "Checks", systemImage: "checkmark.shield")
 
             ForEach(checks) { check in
                 HStack(spacing: 8) {
@@ -169,8 +199,7 @@ struct PRDetailView: View {
     private func filesSection(_ files: [GitHubPullFile]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("Changed Files", systemImage: "doc.text")
-                .font(.headline)
+            PRDetailSectionHeader(title: "Changed Files", systemImage: "doc.text")
 
             ForEach(files) { file in
                 HStack(spacing: 8) {
@@ -192,8 +221,7 @@ struct PRDetailView: View {
     private func linkedIssueSection(_ issue: GitHubIssue) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("Linked Issue", systemImage: "link")
-                .font(.headline)
+            PRDetailSectionHeader(title: "Linked Issue", systemImage: "link")
 
             HStack(spacing: 6) {
                 StateBadge(isOpen: issue.isOpen)
@@ -212,8 +240,7 @@ struct PRDetailView: View {
     private func reviewsSection(_ reviews: [GitHubPullReview]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
-            Label("Reviews", systemImage: "eye")
-                .font(.headline)
+            PRDetailSectionHeader(title: "Reviews", systemImage: "eye")
 
             ForEach(reviews) { review in
                 HStack(spacing: 8) {
@@ -263,43 +290,10 @@ struct PRDetailView: View {
         }
     }
 
-    // MARK: - Action Bar
-
-    private func actionBar(for pull: GitHubPull) -> some View {
-        ThumbActionBar {
-            if pull.isOpen && !pull.merged {
-                Button {
-                    showMergeConfirm = true
-                } label: {
-                    if isMerging {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Label("Merge", systemImage: "arrow.triangle.merge")
-                            .font(.subheadline.weight(.bold))
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(IssueCTLColors.action)
-                .disabled(isMerging)
-                .accessibilityIdentifier("pr-detail-merge-button")
-            } else {
-                Button {
-                    if let url = URL(string: pull.htmlUrl) {
-                        openURL(url)
-                    }
-                } label: {
-                    Label("Open GitHub", systemImage: "safari")
-                        .font(.subheadline.weight(.bold))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(IssueCTLColors.action)
-                .accessibilityIdentifier("pr-detail-open-github-button")
-            }
-        } secondary: {
-            Menu {
+    private var pullActionsMenu: some View {
+        Menu {
+            if let detail {
+                let pull = detail.pull
                 if pull.isOpen && !pull.merged {
                     Button {
                         Task { await approve() }
@@ -327,23 +321,82 @@ struct PRDetailView: View {
 
                 Divider()
 
-                if let detail, let url = URL(string: detail.pull.htmlUrl) {
+                if let url = URL(string: pull.htmlUrl) {
                     Button {
                         openURL(url)
                     } label: {
                         Label("Open on GitHub", systemImage: "safari")
                     }
                 }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 44, height: 36)
             }
-            .buttonStyle(.bordered)
-            .accessibilityLabel("Pull request actions")
-            .accessibilityIdentifier("pr-detail-actions-menu")
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 44, height: 36)
         }
-        .padding(.bottom, 4)
+        .buttonStyle(.bordered)
+        .accessibilityLabel("Pull request actions")
+        .accessibilityIdentifier("pr-detail-actions-menu")
+    }
+
+    private func statusTitle(for detail: PullDetailResponse) -> String {
+        let pull = detail.pull
+        if pull.merged { return "Merged" }
+        if !pull.isOpen { return "Closed" }
+        if detail.checks.contains(where: \.isFailing) { return "Checks Failing" }
+        if detail.checks.contains(where: \.isPending) { return "Checks Pending" }
+        if detail.reviews.contains(where: \.isChangesRequested) { return "Changes Requested" }
+        if detail.reviews.contains(where: \.isApproved) { return "Approved" }
+        return "Ready for Review"
+    }
+
+    private func statusSubtitle(for detail: PullDetailResponse) -> String {
+        let pull = detail.pull
+        let reviewCount = detail.reviews.count
+        let checkCount = detail.checks.count
+        return "\(pull.diffSummary) - \(pull.changedFiles) file\(pull.changedFiles == 1 ? "" : "s") - \(checkCount) checks - \(reviewCount) reviews"
+    }
+
+    private func statusPill(for detail: PullDetailResponse) -> String {
+        let pull = detail.pull
+        if pull.merged { return "Merged" }
+        if !pull.isOpen { return "Closed" }
+        switch pull.checksStatus {
+        case "failure": return "Failing"
+        case "pending": return "Pending"
+        case "success": return "Passing"
+        default: return "Open"
+        }
+    }
+
+    private func statusIcon(for detail: PullDetailResponse) -> String {
+        if detail.pull.merged { return "checkmark.circle.fill" }
+        if detail.checks.contains(where: \.isFailing) { return "exclamationmark.triangle.fill" }
+        if detail.checks.contains(where: \.isPending) { return "clock.fill" }
+        return "arrow.triangle.merge"
+    }
+
+    private func statusColor(for detail: PullDetailResponse) -> Color {
+        if detail.pull.merged { return .purple }
+        if detail.checks.contains(where: \.isFailing) || detail.reviews.contains(where: \.isChangesRequested) {
+            return .red
+        }
+        if detail.checks.contains(where: \.isPending) {
+            return .orange
+        }
+        return IssueCTLColors.action
+    }
+
+    private func primaryActionTitle(for pull: GitHubPull) -> String {
+        pull.isOpen && !pull.merged ? "Merge" : "Open GitHub"
+    }
+
+    private func primaryActionIcon(for pull: GitHubPull) -> String {
+        pull.isOpen && !pull.merged ? "arrow.triangle.merge" : "safari"
+    }
+
+    private func primaryActionColor(for pull: GitHubPull) -> Color {
+        pull.isOpen && !pull.merged ? IssueCTLColors.action : IssueCTLColors.action
     }
 
     // MARK: - Loading
@@ -395,6 +448,108 @@ struct PRDetailView: View {
 }
 
 // MARK: - Supporting Views
+
+private struct PRDetailSectionHeader: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct PRStatusActionCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let subtitle: String
+    let status: String
+    let systemImage: String
+    let tint: Color
+    let primaryTint: Color
+    let primaryTitle: String
+    let primarySystemImage: String
+    let primaryAction: () -> Void
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    statusContent
+                    primaryButton
+                }
+            } else {
+                HStack(alignment: .center, spacing: 10) {
+                    statusContent
+                    Spacer(minLength: 0)
+                    primaryButton
+                }
+            }
+        }
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var statusContent: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: IssueCTLColors.iconCornerRadius))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+
+                    Text(status)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(tint)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(tint.opacity(0.12), in: Capsule())
+                        .lineLimit(1)
+                }
+
+                Text(subtitle)
+                    .font(dynamicTypeSize.isAccessibilitySize ? .subheadline : .caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+            }
+        }
+    }
+
+    private var primaryButton: some View {
+        Button {
+            primaryAction()
+        } label: {
+            if dynamicTypeSize.isAccessibilitySize {
+                Label(primaryTitle, systemImage: primarySystemImage)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            } else {
+                Image(systemName: primarySystemImage)
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 36, height: 36)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(dynamicTypeSize.isAccessibilitySize ? .roundedRectangle : .circle)
+        .tint(primaryTint)
+        .accessibilityLabel(primaryTitle)
+    }
+}
 
 private struct BranchLabel: View {
     let name: String

@@ -105,7 +105,7 @@ struct DraftDetailView: View {
                         .font(.subheadline)
                 }
 
-                repositorySelectionButton(title: "None (keep as draft)", isSelected: selectedRepoId == nil) {
+                repositorySelectionButton(title: "Keep as Draft", isSelected: selectedRepoId == nil) {
                     selectedRepoId = nil
                 }
                 .accessibilityIdentifier("assign-repo-none-button")
@@ -158,7 +158,7 @@ struct DraftDetailView: View {
                                 .frame(maxWidth: .infinity)
                         } else {
                             let repoName = repos.first(where: { $0.id == selectedRepoId })?.name ?? "Repo"
-                            Label("Create Issue in \(repoName)", systemImage: "arrow.up.circle")
+                            Label("Create in \(repoName)", systemImage: "arrow.up.circle")
                                 .frame(maxWidth: .infinity)
                         }
                     }

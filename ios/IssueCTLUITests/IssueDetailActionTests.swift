@@ -24,8 +24,9 @@ final class IssueDetailActionTests: XCTestCase {
         element("issue-row-101", in: app).tap()
 
         // Open the actions menu and tap Close Issue.
-        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 5)
-        element("issue-detail-actions-menu", in: app).tap()
+        let actionsMenu = app.buttons["issue-detail-actions-menu"]
+        XCTAssertTrue(actionsMenu.waitForExistence(timeout: 5), "Issue actions menu missing\n\(app.debugDescription)")
+        actionsMenu.tap()
 
         let closeButton = app.buttons["Close Issue"]
         XCTAssertTrue(closeButton.waitForExistence(timeout: 3), "Close Issue menu item missing")
@@ -37,7 +38,7 @@ final class IssueDetailActionTests: XCTestCase {
         confirmButton.tap()
 
         // Issue should now show the Reopen button instead of Launch.
-        assertElement("issue-detail-reopen-button", existsIn: app, timeout: 5)
+        XCTAssertTrue(app.buttons["Reopen"].firstMatch.waitForExistence(timeout: 5), app.debugDescription)
     }
 
     @MainActor
@@ -49,10 +50,11 @@ final class IssueDetailActionTests: XCTestCase {
         element("issue-row-101", in: app).tap()
 
         // Open the actions menu and tap Comment.
-        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 5)
-        element("issue-detail-actions-menu", in: app).tap()
+        let actionsMenu = app.buttons["issue-detail-actions-menu"]
+        XCTAssertTrue(actionsMenu.waitForExistence(timeout: 5), "Issue actions menu missing\n\(app.debugDescription)")
+        actionsMenu.tap()
 
-        let commentButton = app.buttons["Comment"]
+        let commentButton = app.collectionViews.buttons["Comment"].firstMatch
         XCTAssertTrue(commentButton.waitForExistence(timeout: 3), "Comment menu item missing")
         commentButton.tap()
 
@@ -81,8 +83,9 @@ final class IssueDetailActionTests: XCTestCase {
         element("issue-row-101", in: app).tap()
 
         // Open the actions menu and look for Priority submenu.
-        assertElement("issue-detail-actions-menu", existsIn: app, timeout: 5)
-        element("issue-detail-actions-menu", in: app).tap()
+        let actionsMenu = app.buttons["issue-detail-actions-menu"]
+        XCTAssertTrue(actionsMenu.waitForExistence(timeout: 5), "Issue actions menu missing\n\(app.debugDescription)")
+        actionsMenu.tap()
 
         let priorityButton = app.buttons["Priority"]
         XCTAssertTrue(priorityButton.waitForExistence(timeout: 3), "Priority menu item missing")
@@ -119,15 +122,17 @@ final class IssueDetailActionTests: XCTestCase {
         element("issue-row-101", in: app).tap()
 
         // Tap the Reopen button.
-        assertElement("issue-detail-reopen-button", existsIn: app, timeout: 5)
-        element("issue-detail-reopen-button", in: app).tap()
+        let reopenButton = app.buttons["Reopen"].firstMatch
+        XCTAssertTrue(reopenButton.waitForExistence(timeout: 5), "Reopen button missing\n\(app.debugDescription)")
+        reopenButton.tap()
 
         // Confirmation dialog — tap Reopen (firstMatch disambiguates from any list swipe buttons).
         let confirmButton = app.buttons["Reopen"].firstMatch
         XCTAssertTrue(confirmButton.waitForExistence(timeout: 3), "Reopen confirmation missing")
         confirmButton.tap()
 
-        // After reopen, the Launch button should appear.
-        assertElement("issue-detail-launch-button", existsIn: app, timeout: 5)
+        // After reopen, the launch status card should appear.
+        assertElement("issue-detail-launch-status-card", existsIn: app, timeout: 5)
+        XCTAssertTrue(app.buttons["Launch Agent"].firstMatch.waitForExistence(timeout: 5), app.debugDescription)
     }
 }
