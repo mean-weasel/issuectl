@@ -12,15 +12,16 @@ final class APIClient {
         // Support environment variables for automated testing:
         // ISSUECTL_SERVER_URL=http://... ISSUECTL_API_TOKEN=abc123
         let env = ProcessInfo.processInfo.environment
+        let isTesting = env["ISSUECTL_UI_TESTING"] == "1"
         if let url = env["ISSUECTL_SERVER_URL"], !url.isEmpty {
             self.serverURL = url
-            try? KeychainService.save(key: "serverURL", value: url)
+            if !isTesting { try? KeychainService.save(key: "serverURL", value: url) }
         } else {
             self.serverURL = KeychainService.load(key: "serverURL") ?? ""
         }
         if let token = env["ISSUECTL_API_TOKEN"], !token.isEmpty {
             self.apiToken = token
-            try? KeychainService.save(key: "apiToken", value: token)
+            if !isTesting { try? KeychainService.save(key: "apiToken", value: token) }
         } else {
             self.apiToken = KeychainService.load(key: "apiToken") ?? ""
         }

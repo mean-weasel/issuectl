@@ -1,0 +1,128 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.card {
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-xl);
+  padding: 32px 24px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+}
+
+.qrCode {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.qrCode img {
+  border-radius: var(--paper-radius-lg);
+}
+
+.title {
+  font-family: var(--paper-serif);
+  font-size: var(--paper-fs-2xl);
+  font-weight: 600;
+  color: var(--paper-ink);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: var(--paper-fs-md);
+  color: var(--paper-ink-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.connectButton {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-lg);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--paper-radius-lg);
+  transition: background 0.15s;
+}
+
+.connectButton:hover {
+  background: var(--paper-accent-dim);
+}
+
+.connectButton:active {
+  transform: scale(0.98);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: var(--paper-ink-muted);
+  font-size: var(--paper-fs-sm);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--paper-line);
+}
+
+.field {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.field:last-of-type {
+  margin-bottom: 0;
+}
+
+.label {
+  display: block;
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  color: var(--paper-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.valueRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper-bg);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  padding: 8px 10px;
+}
+
+.value {
+  flex: 1;
+  font-family: var(--paper-mono);
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-soft);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.hint {
+  margin-top: 20px;
+  font-size: var(--paper-fs-sm);
+  color: var(--paper-ink-muted);
+  text-align: center;
+}

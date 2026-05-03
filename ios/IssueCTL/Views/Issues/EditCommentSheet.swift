@@ -61,7 +61,7 @@ struct EditCommentSheet: View {
                             ProgressView()
                                 .frame(maxWidth: .infinity)
                         } else {
-                            Label("Save Changes", systemImage: "checkmark.circle")
+                            Label("Save", systemImage: "checkmark.circle")
                                 .frame(maxWidth: .infinity)
                         }
                     }

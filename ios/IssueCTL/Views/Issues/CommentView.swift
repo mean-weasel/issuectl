@@ -4,7 +4,7 @@ struct CommentView: View {
     let comment: GitHubComment
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 if let user = comment.user {
                     AsyncImage(url: URL(string: user.avatarUrl)) { image in
@@ -17,6 +17,7 @@ struct CommentView: View {
 
                     Text(user.login)
                         .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -28,7 +29,19 @@ struct CommentView: View {
 
             MarkdownView(content: comment.body)
         }
-        .padding(.vertical, 4)
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var accessibilitySummary: String {
+        let author = comment.user?.login ?? "Unknown author"
+        return "Comment by \(author), \(comment.timeAgo), \(comment.body)"
     }
 }
 

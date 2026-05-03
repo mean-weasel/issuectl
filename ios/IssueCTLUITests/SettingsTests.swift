@@ -19,10 +19,7 @@ final class SettingsTests: XCTestCase {
     func testDisconnectShowsOnboarding() {
         let app = launchApp(server: server)
 
-        // Open settings from Today.
-        assertElement("today-settings-button", existsIn: app, timeout: 8)
-        element("today-settings-button", in: app).tap()
-        assertElement("settings-done-button", existsIn: app, timeout: 3)
+        openSettingsFromToday(in: app)
 
         // Scroll to find the Disconnect button at bottom of settings sheet.
         let disconnectButton = app.buttons.matching(NSPredicate(format: "label == %@", "Disconnect")).firstMatch
@@ -47,9 +44,7 @@ final class SettingsTests: XCTestCase {
     func testSettingsShowsServerInfoAndRepos() {
         let app = launchApp(server: server)
 
-        assertElement("today-settings-button", existsIn: app, timeout: 8)
-        element("today-settings-button", in: app).tap()
-        assertElement("settings-done-button", existsIn: app, timeout: 3)
+        openSettingsFromToday(in: app)
 
         // Verify server URL is displayed (serverURL contains "127.0.0.1").
         let serverText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "127.0.0.1")).firstMatch
@@ -59,8 +54,24 @@ final class SettingsTests: XCTestCase {
         let repoText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "org/alpha")).firstMatch
         XCTAssertTrue(repoText.waitForExistence(timeout: 5), "Repo not shown in settings\n\(app.debugDescription)")
 
-        // Dismiss settings.
-        app.buttons["settings-done-button"].tap()
-        waitForButtonNonexistence("settings-done-button", in: app)
+        closeSettings(in: app)
+    }
+
+    @MainActor
+    func testWorktreesCleanupRequiresConfirmation() {
+        let app = launchApp(server: server)
+
+        openSettingsFromToday(in: app)
+        openWorktreesFromSettings(in: app)
+        XCTAssertTrue(app.staticTexts["Cleanup Available"].waitForExistence(timeout: 5), app.debugDescription)
+
+        let cleanupButton = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Clean Up Stale Worktrees")).firstMatch
+        XCTAssertTrue(cleanupButton.waitForExistence(timeout: 5), "Stale cleanup button missing\n\(app.debugDescription)")
+        cleanupButton.tap()
+        let confirmButton = app.buttons["Clean Up 1 Stale"]
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 3), "Stale cleanup confirmation missing\n\(app.debugDescription)")
+        confirmButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Worktrees Clear"].waitForExistence(timeout: 5), app.debugDescription)
     }
 }

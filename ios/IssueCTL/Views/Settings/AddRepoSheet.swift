@@ -36,29 +36,38 @@ struct AddRepoSheet: View {
         NavigationStack {
             Form {
                 Section {
+                    AddRepoSetupCard(
+                        owner: owner.trimmingCharacters(in: .whitespacesAndNewlines),
+                        name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                        isValid: isValid
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+
+                Section {
                     TextField("Owner", text: $owner)
                         .textContentType(.organizationName)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .submitLabel(.next)
 
                     TextField("Repository name", text: $name)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .submitLabel(.done)
                 } header: {
                     Text("GitHub Repository")
                 } footer: {
-                    Text("Enter the owner and name exactly as they appear on GitHub, or browse your accessible repos below.")
+                    Text("Use owner/name exactly as GitHub shows them. You can add the local clone path after the repo is tracked.")
                 }
 
                 Section {
                     Button {
-                        showBrowse.toggle()
-                        if showBrowse && browseRepos.isEmpty {
-                            Task { await loadBrowseRepos(refresh: false) }
-                        }
+                        toggleBrowse()
                     } label: {
                         HStack {
-                            Label("Browse Accessible Repos", systemImage: "list.bullet.rectangle")
+                            Label("Browse GitHub Repos", systemImage: "list.bullet.rectangle")
                             Spacer()
                             Image(systemName: showBrowse ? "chevron.up" : "chevron.down")
                                 .foregroundStyle(.secondary)
@@ -101,6 +110,13 @@ struct AddRepoSheet: View {
         }
     }
 
+    private func toggleBrowse() {
+        showBrowse.toggle()
+        if showBrowse && browseRepos.isEmpty {
+            Task { await loadBrowseRepos(refresh: false) }
+        }
+    }
+
     // MARK: - Browse Content
 
     @ViewBuilder
@@ -121,7 +137,7 @@ struct AddRepoSheet: View {
                 Task { await loadBrowseRepos(refresh: true) }
             } label: {
                 HStack {
-                    Label("Refresh from GitHub", systemImage: "arrow.clockwise")
+                    Label("Refresh", systemImage: "arrow.clockwise")
                     if isRefreshing {
                         Spacer()
                         ProgressView()
@@ -213,5 +229,61 @@ struct AddRepoSheet: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct AddRepoSetupCard: View {
+    let owner: String
+    let name: String
+    let isValid: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: isValid ? "checkmark.circle.fill" : "folder.badge.plus")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(isValid ? .green : IssueCTLColors.action)
+                    .frame(width: 38, height: 38)
+                    .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isValid ? "\(owner)/\(name)" : "Choose a repository")
+                        .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text("Track it in issuectl first, then connect the local clone path from Settings.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 8) {
+                SetupStepPill(title: owner.isEmpty ? "Owner" : "Owner set", isComplete: !owner.isEmpty)
+                SetupStepPill(title: name.isEmpty ? "Name" : "Name set", isComplete: !name.isEmpty)
+            }
+        }
+        .padding(14)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct SetupStepPill: View {
+    let title: String
+    let isComplete: Bool
+
+    var body: some View {
+        Label(title, systemImage: isComplete ? "checkmark.circle.fill" : "circle")
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .foregroundStyle(isComplete ? .green : .secondary)
+            .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
     }
 }

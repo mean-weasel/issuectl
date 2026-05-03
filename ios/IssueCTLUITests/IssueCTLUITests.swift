@@ -23,10 +23,8 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("today-metric-prs", existsIn: app, timeout: 5)
         assertElement("today-metric-issues", existsIn: app, timeout: 5)
 
-        element("today-settings-button", in: app).tap()
-        assertElement("settings-done-button", existsIn: app, timeout: 3)
-        app.buttons["settings-done-button"].tap()
-        waitForButtonNonexistence("settings-done-button", in: app)
+        openSettingsFromToday(in: app)
+        closeSettings(in: app)
 
         element("today-search-button", in: app).tap()
         assertElement("today-search-field", existsIn: app, timeout: 3)
@@ -49,17 +47,88 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
         assertElement("issues-search-button", existsIn: app)
         assertElement("issues-filter-button", existsIn: app)
+        element("issues-search-button", in: app).tap()
+        assertElement("issues-search-field", existsIn: app, timeout: 3)
+        app.buttons["Cancel"].tap()
+        waitForNonexistence("issues-search-field", in: app)
 
         tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("prs-create-issue-button", existsIn: app, timeout: 5)
         assertElement("prs-search-button", existsIn: app)
-        assertElement("prs-quick-actions-button", existsIn: app, timeout: 5)
         assertElement("prs-filter-button", existsIn: app)
+        element("prs-search-button", in: app).tap()
+        assertElement("prs-search-field", existsIn: app, timeout: 3)
+        app.buttons["Cancel"].tap()
+        waitForNonexistence("prs-search-field", in: app)
 
         tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-create-issue-button", existsIn: app, timeout: 5)
         assertElement("sessions-search-button", existsIn: app)
         assertElement("sessions-refresh-button", existsIn: app)
+        element("sessions-search-button", in: app).tap()
+        assertElement("sessions-search-field", existsIn: app, timeout: 3)
+        app.buttons["Cancel"].tap()
+        waitForNonexistence("sessions-search-field", in: app)
+    }
+
+    @MainActor
+    func testRepoContextIsVisibleAcrossPrimaryTabs() {
+        server.seedSecondRepo()
+        server.seedActiveDeployment()
+        let app = launchApp(server: server)
+
+        assertRepoContext("All 2", in: app)
+
+        tapElement("issues-tab", in: app)
+        assertElement("issue-row-102", existsIn: app, timeout: 8)
+        assertRepoContext("All 2", in: app)
+
+        tapElement("prs-tab", in: app)
+        assertElement("pr-row-7", existsIn: app, timeout: 8)
+        assertRepoContext("All 2", in: app)
+
+        tapElement("active-tab", in: app)
+        assertElement("sessions-command-header", existsIn: app, timeout: 8)
+        assertRepoContext("All 2", in: app)
+        let activeContext = element("repo-context-active", in: app)
+        XCTAssertTrue(activeContext.waitForExistence(timeout: 3), "Active repo context missing\n\(app.debugDescription)")
+        XCTAssertTrue(activeContext.label.contains("1"), "Expected one active repo context, got \(activeContext.label)")
+    }
+
+    @MainActor
+    func testRecoveryOpenSettingsActionsRouteFromListErrors() {
+        server.failRepos = true
+        let app = launchApp(server: server)
+
+        tapElement("issues-tab", in: app)
+        openSettingsFromRecovery(in: app)
+
+        tapElement("prs-tab", in: app)
+        openSettingsFromRecovery(in: app)
+    }
+
+    @MainActor
+    func testRecoveryOpenSettingsActionRoutesFromSessionError() {
+        server.failDeployments = true
+        let app = launchApp(server: server)
+
+        tapElement("active-tab", in: app)
+        openSettingsFromRecovery(in: app)
+    }
+
+    @MainActor
+    func testIssueAndPullRowsAreImmediatelyVisibleBelowSectionPicker() {
+        let app = launchApp(server: server)
+
+        tapElement("issues-tab", in: app)
+        let issueRow = element("issue-row-101", in: app)
+        XCTAssertTrue(issueRow.waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(issueRow.isHittable, "Issue row should be visible without scrolling\n\(app.debugDescription)")
+
+        tapElement("prs-tab", in: app)
+        let prRow = element("pr-row-7", in: app)
+        XCTAssertTrue(prRow.waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(prRow.isHittable, "PR row should be visible without scrolling\n\(app.debugDescription)")
     }
 
     @MainActor
@@ -222,7 +291,7 @@ final class IssueCTLUITests: XCTestCase {
         let app = launchApp(server: server)
 
         openIssuesSection(in: app)
-        let runningSegment = app.buttons.containing(NSPredicate(format: "label == %@", "Running, 1")).firstMatch
+        let runningSegment = element("section-tab-running", in: app)
         XCTAssertTrue(runningSegment.waitForExistence(timeout: 5), app.debugDescription)
         runningSegment.tap()
         assertElement("issue-row-101", existsIn: app, timeout: 8)

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct IssueListView: View {
     @Environment(APIClient.self) private var api
+    let onShowSettings: () -> Void
+
     @State private var repos: [Repo] = []
     @State private var issuesByRepo: [String: [GitHubIssue]] = [:]
     @State private var drafts: [Draft] = []
@@ -44,6 +46,7 @@ struct IssueListView: View {
     private let pageSize = 15
     @State private var displayLimit = 15
     @State private var searchText = ""
+    @State private var isSearchVisible = false
     @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
@@ -129,6 +132,59 @@ struct IssueListView: View {
         ]
     }
 
+    private var headerSubtitle: String {
+        let openCount = sectionCounts[.open] ?? 0
+        let runningCount = sectionCounts[.running] ?? 0
+        let draftCount = sectionCounts[.drafts] ?? 0
+
+        if runningCount > 0 {
+            return "\(runningCount) running • \(openCount) open"
+        } else if draftCount > 0 {
+            return "\(openCount) open • \(draftCount) drafts"
+        } else {
+            return "\(openCount) open issues"
+        }
+    }
+
+    private var hasActiveFilters: Bool {
+        mineOnly || !selectedRepoIds.isEmpty || sortOrder != .updated
+    }
+
+    private var filterSummaryItems: [IssueFilterSummaryItem] {
+        var items: [IssueFilterSummaryItem] = []
+        if !selectedRepoIds.isEmpty {
+            items.append(IssueFilterSummaryItem(title: "Repos", value: selectedRepoSummary, systemImage: "folder"))
+        } else if repos.count > 1 {
+            items.append(IssueFilterSummaryItem(title: "Repos", value: "All \(repos.count)", systemImage: "folder"))
+        }
+        if mineOnly {
+            items.append(IssueFilterSummaryItem(title: "Scope", value: "Mine", systemImage: "person.crop.circle"))
+        }
+        switch sortOrder {
+        case .updated:
+            break
+        case .created:
+            items.append(IssueFilterSummaryItem(title: "Sort", value: "Created", systemImage: "calendar"))
+        case .priority:
+            items.append(IssueFilterSummaryItem(title: "Sort", value: "Priority", systemImage: "arrow.up.arrow.down"))
+        }
+        return items
+    }
+
+    private var selectedRepoSummary: String {
+        let names = repos
+            .filter { selectedRepoIds.contains($0.id) }
+            .map(\.name)
+
+        if names.isEmpty {
+            return "\(selectedRepoIds.count) selected"
+        }
+        if names.count <= 2 {
+            return names.joined(separator: ", ")
+        }
+        return "\(names[0]), \(names[1]) +\(names.count - 2)"
+    }
+
     private var filteredDrafts: [Draft] {
         guard !searchText.isEmpty else { return drafts }
         let query = searchText.lowercased()
@@ -149,10 +205,25 @@ struct IssueListView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                SectionTabs(selected: $section, counts: sectionCounts)
+                if isSearchVisible {
+                    issueSearchBar
+                } else {
+                    issueHeader
+                }
+
+                IssueSectionPicker(selected: $section, counts: sectionCounts)
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
 
                 Divider()
+
+                if !filterSummaryItems.isEmpty {
+                    issueFilterSummary
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+
+                    Divider()
+                }
 
                 if let oldestCachedAt {
                     CacheAgeLabel(date: oldestCachedAt)
@@ -169,9 +240,12 @@ struct IssueListView: View {
                             ContentUnavailableView {
                                 Label("Error", systemImage: "exclamationmark.triangle")
                             } description: {
-                                Text(errorMessage)
+                                Text(issueErrorDescription(errorMessage))
                             } actions: {
-                                Button("Retry") { Task { await loadAll() } }
+                                HStack {
+                                    Button("Retry") { Task { await loadAll(refresh: true) } }
+                                    Button("Open Settings", action: onShowSettings)
+                                }
                             }
                             .frame(maxHeight: .infinity)
                         }
@@ -180,11 +254,13 @@ struct IssueListView: View {
                         draftsList
                     } else if filteredIssues.isEmpty {
                         ScrollView {
-                            ContentUnavailableView(
-                                "No Issues",
-                                systemImage: "checkmark.circle",
-                                description: Text("No \(section.rawValue) issues.")
-                            )
+                            ContentUnavailableView {
+                                Label(emptyIssueTitle, systemImage: emptyIssueIcon)
+                            } description: {
+                                Text(emptyIssueDescription)
+                            } actions: {
+                                emptyIssueActions
+                            }
                             .frame(maxHeight: .infinity)
                         }
                         .refreshable { await refreshWithCooldown() }
@@ -193,7 +269,6 @@ struct IssueListView: View {
                     }
                 }
             }
-            .navigationTitle("Issues")
             .navigationDestination(for: IssueDestination.self) { dest in
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
@@ -213,11 +288,9 @@ struct IssueListView: View {
                 IssueFilterSheet(
                     repos: repos,
                     selectedRepoIds: $selectedRepoIds,
-                    section: $section,
                     sortOrder: $sortOrder,
                     mineOnly: $mineOnly,
                     mineFilterEnabled: currentUserLogin != nil && !userFetchFailed,
-                    sectionCounts: sectionCounts,
                     onParseWithAI: {
                         showFiltersSheet = false
                         showParseSheet = true
@@ -299,56 +372,104 @@ struct IssueListView: View {
             }
             .onChange(of: searchText) { _, _ in displayLimit = pageSize }
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
-            .safeAreaInset(edge: .bottom) {
-                if navigationPath.isEmpty {
-                    issueThumbBar
-                }
-            }
+            .accessibilityTabBarClearance()
         }
-        .searchable(text: $searchText, prompt: "Search issues")
-        .searchFocused($isSearchFocused)
     }
 
-    private var issueThumbBar: some View {
-        ThumbActionBar {
-            Button {
-                showCreateSheet = true
-            } label: {
-                Label("Create Issue", systemImage: "plus")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(IssueCTLColors.action)
-            .accessibilityIdentifier("issues-create-issue-button")
-        } secondary: {
+    private var issueHeader: some View {
+        AppTopBar(title: "Issues", subtitle: headerSubtitle) {
             HStack(spacing: 8) {
-                ThumbIconButton(
-                    systemName: "text.viewfinder",
-                    accessibilityLabel: "Parse with AI",
+                TopBarIconButton(
+                    title: "Parse with AI",
+                    systemImage: "text.viewfinder",
                     accessibilityIdentifier: "issues-parse-ai-button"
                 ) {
                     showParseSheet = true
                 }
 
-                ThumbIconButton(
-                    systemName: "magnifyingglass",
-                    accessibilityLabel: "Search issues",
+                TopBarIconButton(
+                    title: "Search issues",
+                    systemImage: "magnifyingglass",
                     accessibilityIdentifier: "issues-search-button"
                 ) {
-                    isSearchFocused = true
+                    showSearch()
                 }
 
-                ThumbIconButton(
-                    systemName: "line.3.horizontal.decrease",
-                    accessibilityLabel: "Issue filters",
-                    accessibilityIdentifier: "issues-filter-button"
+                TopBarIconButton(
+                    title: "Issue filters",
+                    systemImage: "line.3.horizontal.decrease",
+                    accessibilityIdentifier: "issues-filter-button",
+                    showsActiveIndicator: hasActiveFilters
                 ) {
                     showFiltersSheet = true
                 }
+
+                TopBarIconButton(
+                    title: "Create Issue",
+                    systemImage: "plus",
+                    accessibilityIdentifier: "issues-create-issue-button",
+                    isProminent: true
+                ) {
+                    showCreateSheet = true
+                }
             }
         }
-        .padding(.bottom, 4)
+    }
+
+    private var issueSearchBar: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("Search issues", text: $searchText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($isSearchFocused)
+                    .submitLabel(.search)
+                    .accessibilityIdentifier("issues-search-field")
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+            }
+
+            Button("Cancel", action: hideSearch)
+                .frame(minHeight: 44)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+
+    private var issueFilterSummary: some View {
+        HStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(filterSummaryItems) { item in
+                        RepoContextChip(title: item.title, value: item.value, systemImage: item.systemImage)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if hasActiveFilters {
+                Button(action: resetFilters) {
+                    Label("Clear", systemImage: "xmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(IssueCTLColors.action)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(IssueCTLColors.action.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear issue filters")
+                .accessibilityIdentifier("issues-clear-filters-button")
+            }
+        }
     }
 
     // MARK: - Lists
@@ -430,6 +551,7 @@ struct IssueListView: View {
 
             LoadMoreButton(totalCount: allFiltered.count, displayLimit: $displayLimit, pageSize: pageSize)
         }
+        .contentMargins(.top, 12, for: .scrollContent)
         .refreshable { await refreshWithCooldown() }
     }
 
@@ -437,11 +559,13 @@ struct IssueListView: View {
     private var draftsList: some View {
         if filteredDrafts.isEmpty {
             ScrollView {
-                ContentUnavailableView(
-                    "No Drafts",
-                    systemImage: "doc.text",
-                    description: Text("Tap + to create a draft.")
-                )
+                ContentUnavailableView {
+                    Label("No Drafts", systemImage: "doc.text")
+                } description: {
+                    Text(emptyDraftDescription)
+                } actions: {
+                    emptyDraftActions
+                }
                 .frame(maxHeight: .infinity)
             }
             .refreshable { await refreshWithCooldown() }
@@ -461,7 +585,7 @@ struct IssueListView: View {
                             }
                             if let priority = draft.priority, priority != .normal {
                                 Text(priority.rawValue.capitalized)
-                                    .font(.caption2)
+                                    .font(.caption)
                                     .foregroundStyle(priority == .high ? .red : .secondary)
                             }
                         }
@@ -477,12 +601,106 @@ struct IssueListView: View {
                         }
                     }
                 }
+
             }
+            .contentMargins(.top, 12, for: .scrollContent)
             .refreshable { await refreshWithCooldown() }
         }
     }
 
+    private var emptyIssueDescription: String {
+        if !searchText.isEmpty {
+            return "No \(section.rawValue) issues match \"\(searchText)\". Clear search to return to this section."
+        }
+        if hasActiveFilters {
+            return "No \(section.rawValue) issues match the current filters. Clear filters to widen the list."
+        }
+        switch section {
+        case .open:
+            return "There are no open issues in the selected repos. Create one or refresh after syncing issuectl web."
+        case .running:
+            return "No issues have active agent sessions. Launch an agent from any open issue."
+        case .unassigned:
+            return "Every visible issue has an owner. Create a new issue or adjust filters."
+        case .closed:
+            return "No closed issues are visible right now. Refresh if you recently closed one."
+        case .drafts:
+            return emptyDraftDescription
+        }
+    }
+
+    private var emptyIssueTitle: String {
+        if !searchText.isEmpty { return "No Matching Issues" }
+        if hasActiveFilters { return "No Filtered Issues" }
+        switch section {
+        case .drafts: return "No Drafts"
+        case .open: return "No Open Issues"
+        case .running: return "No Running Issues"
+        case .unassigned: return "No Unassigned Issues"
+        case .closed: return "No Closed Issues"
+        }
+    }
+
+    private var emptyIssueIcon: String {
+        if !searchText.isEmpty { return "magnifyingglass" }
+        if hasActiveFilters { return "line.3.horizontal.decrease.circle" }
+        return section.icon
+    }
+
+    private var emptyDraftDescription: String {
+        if !searchText.isEmpty {
+            return "No drafts match \"\(searchText)\"."
+        }
+        return "Tap + to create a draft."
+    }
+
+    private func issueErrorDescription(_ message: String) -> String {
+        "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
+    }
+
+    @ViewBuilder
+    private var emptyIssueActions: some View {
+        if !searchText.isEmpty {
+            Button("Clear Search", action: hideSearch)
+        } else if hasActiveFilters {
+            Button("Clear Filters", action: resetFilters)
+        } else {
+            HStack {
+                Button("Create Issue") { showCreateSheet = true }
+                Button("Refresh") { Task { await loadAll(refresh: true) } }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var emptyDraftActions: some View {
+        if !searchText.isEmpty {
+            Button("Clear Search", action: hideSearch)
+        } else {
+            Button("Create Issue") { showCreateSheet = true }
+        }
+    }
+
     // MARK: - Actions
+
+    private func showSearch() {
+        isSearchVisible = true
+        Task { @MainActor in
+            isSearchFocused = true
+        }
+    }
+
+    private func hideSearch() {
+        searchText = ""
+        isSearchFocused = false
+        isSearchVisible = false
+    }
+
+    private func resetFilters() {
+        selectedRepoIds.removeAll()
+        sortOrder = .updated
+        mineOnly = false
+    }
 
     private func prepareLaunch(owner: String, repo: String, number: Int, title: String) async {
         let targetId = "\(owner)/\(repo)#\(number)"
@@ -713,45 +931,102 @@ struct DraftDestination: Hashable {
     }
 }
 
+private struct IssueFilterSummaryItem: Identifiable {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var id: String { "\(title)-\(value)" }
+}
+
+private struct IssueSectionPicker: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @Binding var selected: IssueSection
+    let counts: [IssueSection: Int]
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 4),
+        GridItem(.flexible(), spacing: 4),
+        GridItem(.flexible(), spacing: 4),
+    ]
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(IssueSection.allCases, id: \.self) { section in
+                            sectionButton(section)
+                                .frame(minWidth: 132)
+                        }
+                    }
+                }
+            } else {
+                LazyVGrid(columns: columns, spacing: 4) {
+                    ForEach(IssueSection.allCases, id: \.self) { section in
+                        sectionButton(section)
+                    }
+                }
+            }
+        }
+        .padding(4)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+    }
+
+    private func sectionButton(_ section: IssueSection) -> some View {
+        Button {
+            selected = section
+        } label: {
+            HStack(spacing: 4) {
+                Text(section.rawValue.capitalized)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text("\(counts[section] ?? 0)")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .font(.subheadline.bold())
+            .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 44 : 36)
+            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 10 : 4)
+            .background(
+                selected == section ? Color.primary.opacity(0.12) : Color.clear,
+                in: RoundedRectangle(cornerRadius: IssueCTLColors.controlCornerRadius)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(selected == section ? .primary : .secondary)
+        .accessibilityIdentifier("section-tab-\(section.rawValue)")
+        .accessibilityLabel("\(section.rawValue.capitalized), \(counts[section] ?? 0) items")
+    }
+}
+
 private struct IssueFilterSheet: View {
     let repos: [Repo]
     @Binding var selectedRepoIds: Set<Int>
-    @Binding var section: IssueSection
     @Binding var sortOrder: SortOrder
     @Binding var mineOnly: Bool
 
     let mineFilterEnabled: Bool
-    let sectionCounts: [IssueSection: Int]
     let onParseWithAI: () -> Void
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Filter & Sort")
-                            .font(.title2.weight(.bold))
-                        Text("\(sectionCounts[section] ?? 0) \(section.rawValue) items")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 12) {
+                    sheetHeader
 
-                    sheetCard(title: "Status") {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(IssueSection.allCases, id: \.self) { option in
-                                filterOption(
-                                    title: option.rawValue.capitalized,
-                                    subtitle: "\(sectionCounts[option] ?? 0) items",
-                                    isSelected: section == option
-                                ) {
-                                    section = option
-                                }
-                            }
-                        }
-                    }
-
-                    sheetCard(title: "Repository") {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    sheetCard(title: "Repository", systemImage: "tray.2", actionTitle: selectedRepoIds.isEmpty ? nil : "Clear") {
+                        selectedRepoIds.removeAll()
+                    } content: {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                             Button {
                                 selectedRepoIds.removeAll()
                             } label: {
@@ -775,7 +1050,9 @@ private struct IssueFilterSheet: View {
                         }
                     }
 
-                    sheetCard(title: "Sort") {
+                    sheetCard(title: "Sort", systemImage: "arrow.up.arrow.down", actionTitle: sortOrder == .updated ? nil : "Reset") {
+                        sortOrder = .updated
+                    } content: {
                         Picker("Sort", selection: $sortOrder) {
                             Label("Priority", systemImage: "arrow.up.arrow.down").tag(SortOrder.priority)
                             Label("Updated", systemImage: "clock").tag(SortOrder.updated)
@@ -784,59 +1061,87 @@ private struct IssueFilterSheet: View {
                         .pickerStyle(.segmented)
                     }
 
-                    VStack(spacing: 0) {
+                    sheetCard(title: "Mine", systemImage: "person.crop.circle", actionTitle: mineOnly ? "Clear" : nil) {
+                        mineOnly = false
+                    } content: {
                         Toggle(isOn: $mineOnly) {
-                            Label("Mine Only", systemImage: "person.crop.circle")
-                                .font(.subheadline.weight(.semibold))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Mine only")
+                                    .font(.subheadline.weight(.semibold))
+                                Text(mineFilterEnabled ? "Show items opened by you." : "Sign in is required for this filter.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .disabled(!mineFilterEnabled)
-                        .padding(12)
+                        .tint(IssueCTLColors.action)
+                    }
 
-                        Divider()
-
+                    sheetCard(title: "Actions", systemImage: "wand.and.stars") {
                         Button(action: onParseWithAI) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "text.viewfinder")
-                                    .frame(width: 24)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Parse with AI")
-                                        .font(.subheadline.weight(.semibold))
-                                    Text("Create a structured draft from rough notes.")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(12)
+                            actionRow(
+                                title: "Parse with AI",
+                                subtitle: "Create a structured draft from rough notes.",
+                                systemImage: "text.viewfinder"
+                            )
                         }
                         .buttonStyle(.plain)
                     }
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 }
                 .padding(16)
             }
         }
     }
 
-    private func sheetCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private var hasActiveFilters: Bool {
+        mineOnly || !selectedRepoIds.isEmpty || sortOrder != .updated
+    }
+
+    private var sheetHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Filters")
+                    .font(.title3.bold())
+                Text(hasActiveFilters ? "Active filters applied" : "Showing default issue order")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if hasActiveFilters {
+                Button("Reset") {
+                    resetFilters()
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(IssueCTLColors.action)
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func sheetCard<Content: View>(
+        title: String,
+        systemImage: String,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Label(title, systemImage: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let actionTitle, let action {
+                    Button(actionTitle, action: action)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(IssueCTLColors.action)
+                        .buttonStyle(.plain)
+                }
+            }
             content()
         }
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func filterOption(title: String, subtitle: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            optionContent(title: title, subtitle: subtitle, isSelected: isSelected)
-        }
-        .buttonStyle(.plain)
     }
 
     private func optionContent(title: String, subtitle: String, isSelected: Bool) -> some View {
@@ -846,16 +1151,47 @@ private struct IssueFilterSheet: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
             Text(subtitle)
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
         .padding(10)
         .background(isSelected ? IssueCTLColors.action.opacity(0.14) : Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isSelected ? IssueCTLColors.action.opacity(0.55) : Color.clear, lineWidth: 1)
         }
+    }
+
+    private func actionRow(title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(IssueCTLColors.action)
+                .frame(width: 34, height: 34)
+                .background(IssueCTLColors.action.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(10)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func resetFilters() {
+        selectedRepoIds.removeAll()
+        sortOrder = .updated
+        mineOnly = false
     }
 }

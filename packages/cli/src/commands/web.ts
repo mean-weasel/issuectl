@@ -35,6 +35,7 @@ export async function webCommand(options: { port: string }): Promise<void> {
     log.info(`iOS API token: ${token}`);
     log.info(`iOS setup link: ${setupUrl}`);
     log.info(`iOS preview setup link: ${previewSetupUrl}`);
+    log.info(`iOS setup page: ${iosServerUrl}/setup/ios`);
     log.info("Scan this QR code with your iPhone Camera to configure the iOS app:");
     qrcode.generate(setupUrl, { small: true }, (qr) => {
       console.error(qr);

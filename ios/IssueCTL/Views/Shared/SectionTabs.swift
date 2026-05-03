@@ -1,6 +1,10 @@
 import SwiftUI
 
-struct SectionTabs<Section: Hashable & CaseIterable & RawRepresentable>: View where Section.AllCases: RandomAccessCollection, Section.RawValue == String {
+protocol SectionTabItem: Hashable, CaseIterable, RawRepresentable where RawValue == String, AllCases: RandomAccessCollection {
+    var icon: String { get }
+}
+
+struct SectionTabs<Section: SectionTabItem>: View {
     @Binding var selected: Section
     let counts: [Section: Int]
 
@@ -13,6 +17,8 @@ struct SectionTabs<Section: Hashable & CaseIterable & RawRepresentable>: View wh
                         selected = section
                     } label: {
                         HStack(spacing: 4) {
+                            Image(systemName: section.icon)
+                                .font(.caption)
                             Text(section.rawValue.capitalized)
                                 .font(.subheadline.weight(selected == section ? .semibold : .regular))
                             Text("\(count)")
@@ -37,12 +43,31 @@ struct SectionTabs<Section: Hashable & CaseIterable & RawRepresentable>: View wh
     }
 }
 
-enum IssueSection: String, CaseIterable {
+enum IssueSection: String, CaseIterable, SectionTabItem {
     case drafts, open, running, unassigned, closed
+
+    var icon: String {
+        switch self {
+        case .drafts: "doc.text"
+        case .open: "circle"
+        case .running: "play.circle"
+        case .unassigned: "person.badge.minus"
+        case .closed: "checkmark.circle"
+        }
+    }
 }
 
-enum PRSection: String, CaseIterable {
+enum PRSection: String, CaseIterable, SectionTabItem {
     case review, open, merged, closed
+
+    var icon: String {
+        switch self {
+        case .review: "eye"
+        case .open: "circle"
+        case .merged: "arrow.triangle.merge"
+        case .closed: "xmark.circle"
+        }
+    }
 }
 
 enum SortOrder: String, CaseIterable {

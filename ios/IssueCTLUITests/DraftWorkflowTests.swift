@@ -20,8 +20,7 @@ final class DraftWorkflowTests: XCTestCase {
         let app = launchApp(server: server)
 
         // Create a draft first (reuse the existing pattern from IssueCTLUITests).
-        assertElement("today-create-issue-button", existsIn: app, timeout: 8)
-        element("today-create-issue-button", in: app).tap()
+        openQuickCreate(in: app)
 
         assertElement("issue-title-field", existsIn: app, timeout: 3)
         element("quick-create-repo-more-button", in: app).tap()
@@ -68,5 +67,17 @@ final class DraftWorkflowTests: XCTestCase {
         // After assignment the view dismisses and we return to the list.
         // The draft is consumed; navigate to Open issues to verify we are back.
         openIssuesSection(in: app)
+    }
+
+    @MainActor
+    private func openQuickCreate(in app: XCUIApplication) {
+        if element("today-create-issue-button", in: app).waitForExistence(timeout: 5) {
+            element("today-create-issue-button", in: app).tap()
+            return
+        }
+
+        tapElement("issues-tab", in: app)
+        assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
+        element("issues-create-issue-button", in: app).tap()
     }
 }

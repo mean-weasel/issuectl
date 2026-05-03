@@ -50,6 +50,6 @@ final class PRBrowseTests: XCTestCase {
         tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("prs-filter-button", existsIn: app, timeout: 5)
         assertElement("prs-search-button", existsIn: app, timeout: 3)
-        assertElement("prs-quick-actions-button", existsIn: app, timeout: 3)
+        assertElement("prs-create-issue-button", existsIn: app, timeout: 3)
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct TodayView: View {
     @Environment(APIClient.self) private var api
     @Environment(NetworkMonitor.self) private var network
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let onShowSettings: () -> Void
     let onShowIssues: () -> Void
@@ -24,6 +25,7 @@ struct TodayView: View {
     @State private var actionError: String?
     @State private var navigationPath = NavigationPath()
 
+
     private var allIssues: [GitHubIssue] {
         issuesByRepo.values.flatMap { $0 }
     }
@@ -40,12 +42,33 @@ struct TodayView: View {
         todayIssueMetricLabel(currentUserLogin: currentUserLogin, userFetchFailed: userFetchFailed)
     }
 
-    private var attentionSubtitle: String {
-        todayAttentionSubtitle(count: attentionItems.count)
-    }
-
     private var reviewPulls: [GitHubPull] {
         todayReviewPulls(allPulls)
+    }
+
+    private var attentionSubtitle: String {
+        if activeDeployments.count > 0 {
+            return "\(attentionItems.count) queued - \(activeDeployments.count) active"
+        }
+        return todayAttentionSubtitle(count: attentionItems.count)
+    }
+
+    private var attentionQueueSubtitle: String {
+        if attentionItems.isEmpty {
+            return "Nothing urgent is waiting right now."
+        }
+
+        var parts: [String] = []
+        if !reviewPulls.isEmpty {
+            parts.append("\(reviewPulls.count) PRs")
+        }
+        if !assignedIssues.isEmpty {
+            parts.append("\(assignedIssues.count) issues")
+        }
+        if activeDeployments.count > 0 {
+            parts.append("\(activeDeployments.count) sessions")
+        }
+        return parts.isEmpty ? "Up next from your repos" : parts.joined(separator: " - ")
     }
 
     private var attentionItems: [TodayAttentionItem] {
@@ -70,28 +93,59 @@ struct TodayView: View {
         return Array(items.prefix(4))
     }
 
+    private var activeRepoFullNames: [String] {
+        let names = Set(
+            issuesByRepo.filter { !$0.value.isEmpty }.map(\.key) +
+            pullsByRepo.filter { !$0.value.isEmpty }.map(\.key) +
+            activeDeployments.map(\.repoFullName)
+        )
+        return repos.map(\.fullName).filter { names.contains($0) }
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 AppTopBar(title: "Today", subtitle: attentionSubtitle) {
-                    IconChromeButton(
-                        systemName: "magnifyingglass",
-                        accessibilityLabel: "Search",
-                        accessibilityIdentifier: "today-search-button"
-                    ) {
-                        showSearchSheet = true
+                    HStack(spacing: 8) {
+                        if !activeDeployments.isEmpty {
+                            TopBarIconButton(
+                                title: "\(activeDeployments.count) active sessions",
+                                systemImage: "terminal",
+                                accessibilityIdentifier: "today-active-sessions-button",
+                                badge: activeSessionBadge,
+                                action: onShowSessions
+                            )
+                        }
+
+                        TopBarIconButton(
+                            title: "Search",
+                            systemImage: "magnifyingglass",
+                            accessibilityIdentifier: "today-search-button"
+                        ) {
+                            showSearchSheet = true
+                        }
+
+                        TopBarIconButton(
+                            title: "Settings",
+                            systemImage: "gearshape",
+                            accessibilityIdentifier: "today-settings-button",
+                            action: onShowSettings
+                        )
+
+                        TopBarIconButton(
+                            title: "Create Issue",
+                            systemImage: "plus",
+                            accessibilityIdentifier: "today-create-issue-button",
+                            isProminent: true
+                        ) {
+                            showCreateSheet = true
+                        }
                     }
-                    IconChromeButton(
-                        systemName: "gearshape",
-                        accessibilityLabel: "Settings",
-                        accessibilityIdentifier: "today-settings-button",
-                        action: onShowSettings
-                    )
                 }
 
-                content
+                RepoContextStrip(repos: repos, activeRepoFullNames: activeRepoFullNames)
 
-                todayBottomActions
+                content
             }
             .navigationBarHidden(true)
             .navigationDestination(for: TodayDestination.self) { destination in
@@ -129,44 +183,8 @@ struct TodayView: View {
             .autoDismissError($actionError)
             .task { await load() }
             .refreshable { await load(refresh: true) }
+            .accessibilityTabBarClearance()
         }
-    }
-
-    private var todayBottomActions: some View {
-        ThumbActionBar {
-            Button {
-                showCreateSheet = true
-            } label: {
-                Label("Create Issue", systemImage: "plus")
-                    .font(.subheadline.weight(.bold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(IssueCTLColors.action)
-            .contentShape(Rectangle())
-            .accessibilityIdentifier("today-create-issue-button")
-        } secondary: {
-            HStack(spacing: 8) {
-                if !activeDeployments.isEmpty {
-                    ThumbIconButton(
-                        systemName: "terminal",
-                        accessibilityLabel: "\(activeDeployments.count) active sessions",
-                        accessibilityIdentifier: "today-active-sessions-button",
-                        badge: activeSessionBadge,
-                        action: onShowSessions
-                    )
-                }
-
-                ThumbIconButton(
-                    systemName: "magnifyingglass",
-                    accessibilityLabel: "Search",
-                    accessibilityIdentifier: "today-bottom-search-button"
-                ) {
-                    showSearchSheet = true
-                }
-            }
-        }
-        .padding(.bottom, 8)
     }
 
     private var activeSessionBadge: String {
@@ -182,9 +200,12 @@ struct TodayView: View {
             ContentUnavailableView {
                 Label("Error", systemImage: "exclamationmark.triangle")
             } description: {
-                Text(errorMessage)
+                Text(todayErrorDescription(errorMessage))
             } actions: {
-                Button("Retry") { Task { await load(refresh: true) } }
+                HStack {
+                    Button("Retry") { Task { await load(refresh: true) } }
+                    Button("Open Settings", action: onShowSettings)
+                }
             }
             .frame(maxHeight: .infinity)
         } else {
@@ -196,27 +217,28 @@ struct TodayView: View {
 
                     metrics
 
-                    HStack {
-                        Text("Needs Attention")
-                            .font(.headline)
-                        Spacer()
-                        Button("Refresh") { Task { await load(refresh: true) } }
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(IssueCTLColors.action)
-                            .accessibilityIdentifier("today-refresh-button")
-                    }
+                    TodayQueueHeader(
+                        title: "Work Queue",
+                        subtitle: attentionQueueSubtitle,
+                        action: { Task { await load(refresh: true) } }
+                    )
                     .padding(.top, 4)
 
                     if attentionItems.isEmpty {
-                        ContentUnavailableView(
-                            "No Attention Items",
-                            systemImage: "checkmark.circle",
-                            description: Text("Nothing urgent is waiting right now.")
-                        )
+                        ContentUnavailableView {
+                            Label("Queue Clear", systemImage: "checkmark.circle")
+                        } description: {
+                            Text("No reviews, assigned issues, or blocked work need attention. Browse issues or PRs when you want to pick up more work.")
+                        } actions: {
+                            HStack {
+                                Button("Open Issues", action: onShowIssues)
+                                Button("View PRs", action: onShowPullRequests)
+                            }
+                        }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 28)
                     } else {
-                        VStack(spacing: 10) {
+                        VStack(spacing: 8) {
                             ForEach(attentionItems) { item in
                                 attentionRow(for: item)
                             }
@@ -224,32 +246,52 @@ struct TodayView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
             }
         }
     }
 
+    private func todayErrorDescription(_ message: String) -> String {
+        "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
+    }
     private var metrics: some View {
-        HStack(spacing: 8) {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        metricCards(cardWidth: 172)
+                    }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    metricCards()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func metricCards(cardWidth: CGFloat? = nil) -> some View {
             StatusMetricCard(
                 value: "\(activeDeployments.count)",
                 label: "running sessions",
                 accessibilityIdentifier: "today-metric-sessions",
                 action: onShowSessions
             )
+            .frame(width: cardWidth)
             StatusMetricCard(
                 value: "\(reviewPulls.count)",
                 label: "PRs need review",
                 accessibilityIdentifier: "today-metric-prs",
                 action: onShowPullRequests
             )
+            .frame(width: cardWidth)
             StatusMetricCard(
                 value: "\(assignedIssues.count)",
                 label: issueMetricLabel,
                 accessibilityIdentifier: "today-metric-issues",
                 action: onShowIssues
             )
-        }
+            .frame(width: cardWidth)
     }
 
     private func attentionRow(for item: TodayAttentionItem) -> some View {
@@ -257,10 +299,13 @@ struct TodayView: View {
         case .issue(let issue, let repo, let isAttention):
             return AttentionRow(
                 color: repoColor(for: repo),
-                kicker: "\(repo?.fullName ?? "Unknown repo") - Issue #\(issue.number)",
+                icon: issueAttentionIcon(for: issue),
+                kind: "Issue",
+                meta: "\(repo?.fullName ?? "Unknown repo") #\(issue.number)",
                 title: issue.title,
                 chips: issueChips(for: issue),
                 isAttention: isAttention,
+                actionTitle: issueActionTitle(for: issue),
                 action: {
                     if let repo {
                         navigationPath.append(TodayDestination.issue(owner: repo.owner, repo: repo.name, number: issue.number))
@@ -270,10 +315,13 @@ struct TodayView: View {
         case .pull(let pull, let repo, let isAttention):
             return AttentionRow(
                 color: IssueCTLColors.action,
-                kicker: "\(repo?.fullName ?? "Unknown repo") - PR #\(pull.number)",
+                icon: pull.checksStatus == "failure" ? "exclamationmark.triangle.fill" : "arrow.triangle.merge",
+                kind: "PR",
+                meta: "\(repo?.fullName ?? "Unknown repo") #\(pull.number)",
                 title: pull.title,
                 chips: pullChips(for: pull),
                 isAttention: isAttention,
+                actionTitle: "Review",
                 action: {
                     if let repo {
                         navigationPath.append(TodayDestination.pull(owner: repo.owner, repo: repo.name, number: pull.number))
@@ -288,11 +336,11 @@ struct TodayView: View {
         if issue.labels.contains(where: { $0.name.lowercased().contains("block") }) {
             chips.append(.orange("Blocked"))
         } else {
-            chips.append(.green("Ready to start"))
+            chips.append(.green("Ready"))
         }
         if let assignees = issue.assignees, !assignees.isEmpty {
             if let currentUserLogin, assignees.contains(where: { $0.login == currentUserLogin }) {
-                chips.append(.neutral("Assigned to you"))
+                chips.append(.neutral("Mine"))
             } else {
                 chips.append(.neutral("Assigned"))
             }
@@ -303,13 +351,25 @@ struct TodayView: View {
     private func pullChips(for pull: GitHubPull) -> [AttentionChip] {
         var chips: [AttentionChip] = []
         switch pull.checksStatus {
-        case "failure": chips.append(.red("Checks failing"))
-        case "success": chips.append(.green("Checks pass"))
-        case "pending": chips.append(.orange("Checks pending"))
+        case "failure": chips.append(.red("Failing"))
+        case "success": chips.append(.green("Passing"))
+        case "pending": chips.append(.orange("Pending"))
         default: break
         }
-        chips.append(.blue("Review requested"))
+        chips.append(.blue("Review"))
         return chips
+    }
+
+    private func issueAttentionIcon(for issue: GitHubIssue) -> String {
+        issue.labels.contains { $0.name.lowercased().contains("block") }
+            ? "exclamationmark.octagon.fill"
+            : "smallcircle.filled.circle"
+    }
+
+    private func issueActionTitle(for issue: GitHubIssue) -> String {
+        issue.labels.contains { $0.name.lowercased().contains("block") }
+            ? "Unblock"
+            : "Open"
     }
 
     private var cacheMessage: String {
