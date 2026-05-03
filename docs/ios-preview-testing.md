@@ -7,6 +7,20 @@ IssueCTL has two installable iOS app variants:
 
 The preview app is intended for development, physical-device smoke tests, and feature validation without overwriting the production app on the same iPhone.
 
+## App Lanes
+
+Use `IssueCTL Preview` as the active development lane. It is the app to run from feature branches, local simulator testing, and physical-device smoke tests.
+
+Keep `IssueCTL` as the stable production lane. Update it from trusted integration points such as `main`, tags, or release branches.
+
+A third `IssueCTL Dev` app is not needed yet. Add one only if we need three simultaneous installed states on the same phone, for example:
+
+- production: stable daily-use app
+- preview: release candidate or branch under review
+- development: local experimental build with intentionally unstable services/data
+
+Until that need is real, a third target would add signing, scheme, URL, keychain, and CI surface area without changing the main workflow.
+
 ## Local Smoke Tests
 
 Run the preview smoke suite on an available simulator:
@@ -28,6 +42,18 @@ IOS_DEVICE_ID=<device-udid> pnpm ios:preview-device-smoke:fast
 ```
 
 Use the CoreDevice identifier from `pnpm ios:list-devices` for `IOS_DEVICE_ID`. In practice this can differ from the lower-level hardware id shown by some Xcode destination output.
+
+The physical-device wrapper checks that the iPhone is visible through CoreDevice before launching Xcode. Keep the iPhone unlocked and awake until the test runner starts. By default, physical runs time out instead of waiting indefinitely:
+
+- `fast`: 420 seconds
+- `pr`: 600 seconds
+- `full`: 900 seconds
+
+Override the timeout when needed:
+
+```bash
+IOS_DEVICE_ID=<device-udid> IOS_UI_SMOKE_TIMEOUT=1200 pnpm ios:preview-device-smoke:full
+```
 
 You can also pass a full Xcode destination:
 

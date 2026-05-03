@@ -98,6 +98,9 @@ if [ -n "$sim_id" ]; then
 fi
 
 echo "Running $PROFILE iOS UI smoke tests on: $DESTINATION"
+if [ -n "${IOS_UI_SMOKE_TIMEOUT:-}" ]; then
+  echo "Timeout: ${IOS_UI_SMOKE_TIMEOUT}s"
+fi
 printf 'Selected tests:\n'
 printf '  %s\n' "${TESTS[@]}"
 printf 'Started at: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -108,9 +111,36 @@ finish() {
 }
 trap finish EXIT
 
-if command -v xcpretty >/dev/null 2>&1; then
-  set -o pipefail
-  xcodebuild "${args[@]}" | xcpretty
+run_xcodebuild() {
+  if command -v xcpretty >/dev/null 2>&1; then
+    set -o pipefail
+    xcodebuild "${args[@]}" | xcpretty
+  else
+    xcodebuild "${args[@]}"
+  fi
+}
+
+if [ -n "${IOS_UI_SMOKE_TIMEOUT:-}" ]; then
+  run_xcodebuild &
+  xcodebuild_pid=$!
+  deadline=$((SECONDS + IOS_UI_SMOKE_TIMEOUT))
+
+  while kill -0 "$xcodebuild_pid" 2>/dev/null; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "Timed out after ${IOS_UI_SMOKE_TIMEOUT}s waiting for iOS UI smoke tests to finish." >&2
+      echo "If this was a physical-device run, unlock the iPhone, keep it awake, and retry." >&2
+      pkill -TERM -P "$xcodebuild_pid" 2>/dev/null || true
+      kill -TERM "$xcodebuild_pid" 2>/dev/null || true
+      sleep 2
+      pkill -KILL -P "$xcodebuild_pid" 2>/dev/null || true
+      kill -KILL "$xcodebuild_pid" 2>/dev/null || true
+      wait "$xcodebuild_pid" 2>/dev/null || true
+      exit 124
+    fi
+    sleep 2
+  done
+
+  wait "$xcodebuild_pid"
 else
-  xcodebuild "${args[@]}"
+  run_xcodebuild
 fi
