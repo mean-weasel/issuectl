@@ -66,6 +66,7 @@ struct BatchCreateItemResult: Codable, Identifiable, Sendable {
 // MARK: - APIClient extension for list enhancements
 
 extension APIClient {
+    private static let parseRequestTimeout: TimeInterval = 120
 
     /// Fetch the authenticated GitHub user login.
     func currentUser() async throws -> UserResponse {
@@ -86,7 +87,12 @@ extension APIClient {
     func parseNaturalLanguage(input: String) async throws -> ParsedIssuesData {
         let body = ParseRequestBody(input: input)
         let bodyData = try JSONEncoder().encode(body)
-        let (data, _) = try await request(path: "/api/v1/parse", method: "POST", body: bodyData)
+        let (data, _) = try await request(
+            path: "/api/v1/parse",
+            method: "POST",
+            body: bodyData,
+            timeoutInterval: Self.parseRequestTimeout
+        )
         return try decoder.decode(ParseResponse.self, from: data).parsed
     }
 
