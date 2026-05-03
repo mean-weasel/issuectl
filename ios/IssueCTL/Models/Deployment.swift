@@ -110,6 +110,65 @@ struct ActiveDeploymentsResponse: Codable, Sendable {
     let deployments: [ActiveDeployment]
 }
 
+enum SessionPreviewStatus: String, Codable, Sendable {
+    case active
+    case idle
+    case error
+    case unavailable
+
+    var displayName: String {
+        switch self {
+        case .active:
+            return "Active"
+        case .idle:
+            return "Idle"
+        case .error:
+            return "Error"
+        case .unavailable:
+            return "Unavailable"
+        }
+    }
+
+    var accessibilityName: String {
+        switch self {
+        case .active:
+            return "active"
+        case .idle:
+            return "idle"
+        case .error:
+            return "error"
+        case .unavailable:
+            return "preview unavailable"
+        }
+    }
+}
+
+struct SessionPreview: Codable, Sendable {
+    let lines: [String]
+    let lastUpdatedMs: Int
+    let lastChangedMs: Int?
+    let status: SessionPreviewStatus
+
+    var latestLine: String? {
+        lines.last
+    }
+
+    var lastUpdatedDate: Date {
+        Date(timeIntervalSince1970: TimeInterval(lastUpdatedMs) / 1000)
+    }
+}
+
+struct SessionPreviewsResponse: Codable, Sendable {
+    let previews: [String: SessionPreview]
+
+    var previewsByPort: [Int: SessionPreview] {
+        Dictionary(uniqueKeysWithValues: previews.compactMap { key, value in
+            guard let port = Int(key) else { return nil }
+            return (port, value)
+        })
+    }
+}
+
 struct LaunchRequestBody: Encodable, Sendable {
     let agent: LaunchAgent
     let branchName: String

@@ -108,6 +108,11 @@ final class TestableAPIClient {
         return try decoder.decode(ActiveDeploymentsResponse.self, from: data)
     }
 
+    func sessionPreviews() async throws -> SessionPreviewsResponse {
+        let (data, _) = try await request(path: "/api/v1/sessions/previews")
+        return try decoder.decode(SessionPreviewsResponse.self, from: data)
+    }
+
     private struct ErrorBody: Codable {
         let error: String
     }
@@ -274,6 +279,21 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.activeDeployments()
+    }
+
+    @MainActor
+    func testSessionPreviewsEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/sessions/previews"))
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {"previews": {}}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        _ = try await client.sessionPreviews()
     }
 
     // MARK: - Successful Responses

@@ -217,6 +217,11 @@ final class APIClient {
         }
     }
 
+    func sessionPreviews() async throws -> SessionPreviewsResponse {
+        let (data, _) = try await request(path: "/api/v1/sessions/previews")
+        return try decoder.decode(SessionPreviewsResponse.self, from: data)
+    }
+
     func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/launch/\(owner)/\(repo)/\(number)", method: "POST", body: bodyData)
