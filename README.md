@@ -1,5 +1,7 @@
 # issuectl
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?style=flat&logo=discord&logoColor=white)](https://discord.gg/7xsxU4ZG6A)
+
 > **Terminal launch prerequisites.** Local launch sessions require `ttyd` and `tmux` on the machine running `issuectl web`.
 
 Cross-repo GitHub issue command center with Claude Code and Codex launch integration.
