@@ -270,7 +270,12 @@ struct IssueListView: View {
                 }
             }
             .navigationDestination(for: IssueDestination.self) { dest in
-                IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
+                IssueDetailView(
+                    owner: dest.owner,
+                    repo: dest.repo,
+                    number: dest.number,
+                    initialIssue: dest.initialIssue
+                )
             }
             .navigationDestination(for: DraftDestination.self) { dest in
                 DraftDetailView(draft: dest.draft, onSaved: { Task { await loadAll(refresh: true) } })
@@ -494,7 +499,8 @@ struct IssueListView: View {
                     NavigationLink(value: IssueDestination(
                         owner: repo.owner,
                         repo: repo.name,
-                        number: issue.number
+                        number: issue.number,
+                        initialIssue: issue
                     )) {
                         IssueRowView(issue: issue, repoColor: color, isRunning: running)
                     }
@@ -906,6 +912,26 @@ struct IssueDestination: Hashable {
     let owner: String
     let repo: String
     let number: Int
+    let initialIssue: GitHubIssue?
+
+    init(owner: String, repo: String, number: Int, initialIssue: GitHubIssue? = nil) {
+        self.owner = owner
+        self.repo = repo
+        self.number = number
+        self.initialIssue = initialIssue
+    }
+
+    static func == (lhs: IssueDestination, rhs: IssueDestination) -> Bool {
+        lhs.owner == rhs.owner &&
+            lhs.repo == rhs.repo &&
+            lhs.number == rhs.number
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(owner)
+        hasher.combine(repo)
+        hasher.combine(number)
+    }
 }
 
 struct LaunchTarget: Identifiable, Sendable {
