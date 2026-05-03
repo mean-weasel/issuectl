@@ -77,36 +77,24 @@ struct AdvancedSettingsView: View {
                 }
 
                 Section {
-                    Picker("Default Launch Agent", selection: $launchAgent) {
+                    Picker("Default Agent", selection: $launchAgent) {
                         ForEach(LaunchAgent.allCases) { agent in
                             Text(agent.displayName).tag(agent)
                         }
                     }
                     .pickerStyle(.segmented)
-                } header: {
-                    Text("Launch Agent")
-                } footer: {
-                    Text("Default agent used when launching a new terminal session.")
-                }
 
-                Section {
-                    TextField("Extra arguments", text: $claudeExtraArgs)
+                    TextField("Claude Code extra args", text: $claudeExtraArgs)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+
+                    TextField("Codex extra args", text: $codexExtraArgs)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                 } header: {
-                    Text("Claude CLI")
+                    Text("Agent Harness")
                 } footer: {
-                    Text("Additional arguments passed to Claude Code on launch.")
-                }
-
-                Section {
-                    TextField("Extra arguments", text: $codexExtraArgs)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                } header: {
-                    Text("Codex CLI")
-                } footer: {
-                    Text("Additional arguments passed to Codex on launch.")
+                    Text("Choose the default agent for new launches and set harness-specific CLI arguments. The launch sheet can still override the agent for one session.")
                 }
 
                 Section {
@@ -161,7 +149,7 @@ struct AdvancedSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Advanced Settings")
+        .navigationTitle("Agent Harness & Defaults")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

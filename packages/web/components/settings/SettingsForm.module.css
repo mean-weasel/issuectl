@@ -45,11 +45,6 @@
   min-height: 44px;
 }
 
-.select {
-  composes: input;
-  appearance: auto;
-}
-
 .input:focus {
   outline: none;
   border-color: var(--paper-accent);
@@ -61,7 +56,6 @@
   }
 
   .input,
-  .select,
   .inputReadonly {
     max-width: none;
   }
@@ -78,6 +72,62 @@
   font-size: 11px;
   color: var(--paper-ink-muted);
   margin-top: 4px;
+}
+
+.helpBlock {
+  max-width: 560px;
+  margin: -8px 0 14px;
+  color: var(--paper-ink-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.agentOptions {
+  display: grid;
+  gap: 8px;
+  max-width: 560px;
+  margin-bottom: 16px;
+}
+
+.agentOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  cursor: pointer;
+}
+
+.agentOptionSelected {
+  background: var(--paper-accent-soft);
+  border-color: var(--paper-accent);
+}
+
+.agentOptionDisabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.agentRadio {
+  margin-top: 2px;
+  accent-color: var(--paper-accent);
+}
+
+.agentLabel {
+  display: block;
+  color: var(--paper-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.agentDetail {
+  display: block;
+  margin-top: 2px;
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .saveRow {

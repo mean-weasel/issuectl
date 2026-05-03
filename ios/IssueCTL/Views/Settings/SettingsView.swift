@@ -174,7 +174,7 @@ struct SettingsView: View {
     private var managementSection: some View {
         Section("Management") {
             NavigationLink(value: SettingsDestination.advancedSettings) {
-                Label("Advanced Settings", systemImage: "slider.horizontal.3")
+                Label("Agent Harness & Defaults", systemImage: "terminal")
             }
             NavigationLink(value: SettingsDestination.worktrees) {
                 Label("Worktrees", systemImage: "arrow.triangle.branch")

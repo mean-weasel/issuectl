@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { updateSettings } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/paper";
+import { cn } from "@/lib/cn";
 import * as validation from "@issuectl/core/validation";
 import type { SettingKey } from "@issuectl/core";
 import { LAUNCH_AGENTS, launchAgentCommand, launchAgentLabel, normalizeLaunchAgent, type LaunchAgent } from "@/components/launch/agent";
@@ -13,6 +14,11 @@ import styles from "./SettingsForm.module.css";
 // toast is the global + screen-reader path, but after clicking the
 // user's eyes are on the button, not the toast region.
 const SAVED_FLASH_MS = 2500;
+
+const AGENT_DETAILS: Record<LaunchAgent, string> = {
+  claude: "Use Claude Code by default for new agent sessions.",
+  codex: "Use Codex by default for new agent sessions.",
+};
 
 type Props = {
   branchPattern: string;
@@ -198,30 +204,47 @@ export function SettingsForm({
               enterKeyHint="done"
             />
           </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-launch-agent">Launch Agent</label>
-            <select
-              id="sf-launch-agent"
-              className={styles.select}
-              value={values.launch_agent}
-              onChange={(e) => handleChange("launch_agent", normalizeLaunchAgent(e.target.value))}
-              disabled={isPending}
-            >
-              {LAUNCH_AGENTS.map((agent) => (
-                <option key={agent} value={agent}>
-                  {launchAgentLabel(agent)}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionTitle}>Claude</div>
+        <div className={styles.sectionTitle}>Agent Harness</div>
+        <div className={styles.helpBlock}>
+          Choose the default agentic harness for launches. You can still override
+          the agent from the launch dialog for a single session.
+        </div>
+        <div className={styles.agentOptions} role="radiogroup" aria-labelledby="sf-launch-agent-label">
+          <div id="sf-launch-agent-label" className={styles.label}>Default Agent</div>
+          {LAUNCH_AGENTS.map((agent) => {
+            const isSelected = values.launch_agent === agent;
+            return (
+              <label
+                key={agent}
+                className={cn(
+                  styles.agentOption,
+                  isSelected && styles.agentOptionSelected,
+                  isPending && styles.agentOptionDisabled,
+                )}
+              >
+                <input
+                  type="radio"
+                  name="sf-launch-agent"
+                  className={styles.agentRadio}
+                  checked={isSelected}
+                  disabled={isPending}
+                  onChange={() => handleChange("launch_agent", agent)}
+                />
+                <span>
+                  <span className={styles.agentLabel}>{launchAgentLabel(agent)}</span>
+                  <span className={styles.agentDetail}>{AGENT_DETAILS[agent]}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
         <div className={styles.row}>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-claude-args">Extra Args</label>
+            <label className={styles.label} htmlFor="sf-claude-args">Claude Extra Args</label>
             <input
               id="sf-claude-args"
               className={styles.input}
@@ -236,7 +259,8 @@ export function SettingsForm({
               enterKeyHint="done"
             />
             <div className={styles.help}>
-              Passed verbatim after <code>claude</code> at launch. Leave empty for defaults.
+              Passed verbatim after <code>{launchAgentCommand("claude")}</code> when launching Claude Code.
+              Leave empty for defaults.
             </div>
             {claudeArgsValidation.errors.length > 0 && (
               <div className={styles.fieldError} role="alert">
@@ -270,7 +294,8 @@ export function SettingsForm({
               enterKeyHint="done"
             />
             <div className={styles.help}>
-              Passed verbatim after <code>{launchAgentCommand("codex")}</code> at launch. Leave empty for defaults.
+              Passed verbatim after <code>{launchAgentCommand("codex")}</code> when launching Codex.
+              Leave empty for defaults.
             </div>
             {codexArgsValidation.errors.length > 0 && (
               <div className={styles.fieldError} role="alert">
