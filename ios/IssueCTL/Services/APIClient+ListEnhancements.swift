@@ -69,8 +69,17 @@ extension APIClient {
 
     /// Fetch the authenticated GitHub user login.
     func currentUser() async throws -> UserResponse {
-        let (data, _) = try await request(path: "/api/v1/user")
-        return try decoder.decode(UserResponse.self, from: data)
+        do {
+            let (data, _) = try await request(path: "/api/v1/user")
+            let response = try decoder.decode(UserResponse.self, from: data)
+            offlineCache.save(response, for: "current-user", serverURL: serverURL)
+            return response
+        } catch {
+            if let cached = offlineCache.load(UserResponse.self, for: "current-user", serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
     }
 
     /// Parse natural language text into structured issues via Claude.
