@@ -2,6 +2,7 @@ import SwiftUI
 import UserNotifications
 
 struct NotificationSettingsView: View {
+    @Environment(APIClient.self) private var api
     @Environment(NotificationSettingsStore.self) private var notificationSettings
     @Environment(\.scenePhase) private var scenePhase
     @State private var isRequestingAuthorization = false
@@ -13,7 +14,10 @@ struct NotificationSettingsView: View {
             Section {
                 Toggle(isOn: Binding(
                     get: { notificationSettings.preferences.idleTerminals },
-                    set: { notificationSettings.setIdleTerminals($0) }
+                    set: {
+                        notificationSettings.setIdleTerminals($0)
+                        Task { await notificationSettings.syncRegistration(apiClient: api) }
+                    }
                 )) {
                     Label("Idle Terminals", systemImage: "terminal")
                 }
@@ -21,7 +25,10 @@ struct NotificationSettingsView: View {
 
                 Toggle(isOn: Binding(
                     get: { notificationSettings.preferences.newIssues },
-                    set: { notificationSettings.setNewIssues($0) }
+                    set: {
+                        notificationSettings.setNewIssues($0)
+                        Task { await notificationSettings.syncRegistration(apiClient: api) }
+                    }
                 )) {
                     Label("New Issues", systemImage: "number")
                 }
@@ -29,7 +36,10 @@ struct NotificationSettingsView: View {
 
                 Toggle(isOn: Binding(
                     get: { notificationSettings.preferences.mergedPullRequests },
-                    set: { notificationSettings.setMergedPullRequests($0) }
+                    set: {
+                        notificationSettings.setMergedPullRequests($0)
+                        Task { await notificationSettings.syncRegistration(apiClient: api) }
+                    }
                 )) {
                     Label("Merged Pull Requests", systemImage: "arrow.triangle.merge")
                 }
@@ -43,10 +53,12 @@ struct NotificationSettingsView: View {
         .navigationTitle("Notifications")
         .task {
             await notificationSettings.refreshAuthorizationStatus()
+            await notificationSettings.syncRegistration(apiClient: api)
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             Task { await notificationSettings.refreshAuthorizationStatus() }
+            Task { await notificationSettings.syncRegistration(apiClient: api) }
         }
     }
 
@@ -83,6 +95,21 @@ struct NotificationSettingsView: View {
                 }
                 .disabled(isRequestingAuthorization)
                 .accessibilityIdentifier("notifications-enable-button")
+            }
+
+            if notificationSettings.isSyncing {
+                HStack {
+                    Text("Syncing with server")
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else if let lastSyncError = notificationSettings.lastSyncError {
+                Text(lastSyncError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -144,6 +171,7 @@ struct NotificationSettingsView: View {
     private func requestAuthorization() async {
         isRequestingAuthorization = true
         _ = await notificationSettings.requestAuthorization()
+        await notificationSettings.syncRegistration(apiClient: api)
         isRequestingAuthorization = false
     }
 }

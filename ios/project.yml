@@ -45,8 +45,15 @@ targets:
         ISSUECTL_KEYCHAIN_SERVICE: com.issuectl.ios
         ISSUECTL_URL_SCHEME: issuectl
         ISSUECTL_LOCAL_NETWORK_USAGE_DESCRIPTION: IssueCTL connects to the issuectl server running on your Mac.
+        CODE_SIGN_ENTITLEMENTS: IssueCTL/IssueCTL.entitlements
+        APS_ENVIRONMENT: development
         DEVELOPMENT_TEAM: B3A6AN2HA4
         CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
     preBuildScripts:
       - name: Generate AppVersion.swift
         basedOnDependencyAnalysis: false
@@ -113,8 +120,15 @@ targets:
         ISSUECTL_KEYCHAIN_SERVICE: com.issuectl.ios.preview
         ISSUECTL_URL_SCHEME: issuectl-preview
         ISSUECTL_LOCAL_NETWORK_USAGE_DESCRIPTION: IssueCTL Preview connects to the issuectl server running on your Mac.
+        CODE_SIGN_ENTITLEMENTS: IssueCTL/IssueCTL.entitlements
+        APS_ENVIRONMENT: development
         DEVELOPMENT_TEAM: B3A6AN2HA4
         CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
     preBuildScripts:
       - name: Generate AppVersion.swift
         basedOnDependencyAnalysis: false

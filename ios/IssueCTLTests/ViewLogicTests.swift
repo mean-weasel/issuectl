@@ -82,6 +82,33 @@ final class ViewLogicTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testNotificationDeviceTokenPersists() throws {
+        let suiteName = "issuectl.tests.notification-token.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = NotificationSettingsStore(defaults: defaults)
+
+        store.updateDeviceToken("abcdef123456")
+
+        let reloaded = NotificationSettingsStore(defaults: defaults)
+        XCTAssertEqual(reloaded.deviceToken, "abcdef123456")
+    }
+
+    @MainActor
+    func testNotificationRegistrationErrorIsRecordedAndClearedByToken() throws {
+        let suiteName = "issuectl.tests.notification-error.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = NotificationSettingsStore(defaults: defaults)
+
+        store.updateRegistrationError("registration failed")
+        XCTAssertEqual(store.lastSyncError, "registration failed")
+
+        store.updateDeviceToken("abcdef123456")
+        XCTAssertNil(store.lastSyncError)
+    }
+
     // MARK: - Branch Name Generation
 
     func testBasicSlugGeneration() {

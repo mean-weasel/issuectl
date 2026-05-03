@@ -28,21 +28,22 @@ describe("initSchema", () => {
       "drafts",
       "github_accessible_repos",
       "issue_metadata",
+      "push_devices",
       "repos",
       "schema_version",
       "settings",
     ]);
   });
 
-  it("sets schema_version to 13", () => {
+  it("sets schema_version to 14", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
   });
 });
 
@@ -59,7 +60,7 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
   });
 
   it("migrates v1 schema through v9 and drops claude_aliases", () => {
@@ -75,7 +76,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -99,7 +100,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -142,7 +143,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -161,7 +162,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
   it("initSchema on a fresh DB produces schema version 9", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -237,7 +238,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -325,7 +326,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -408,7 +409,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db
@@ -560,7 +561,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -590,7 +591,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -605,7 +606,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(pkCols).toEqual(["name", "owner"]);
   });
 
-  it("v12 to v13 migration adds deployment agent and default settings", () => {
+  it("v12 to v14 migration adds deployment agent, default settings, and push devices", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -641,7 +642,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(13);
+    expect(getSchemaVersion(db)).toBe(14);
     const deployment = db
       .prepare("SELECT agent FROM deployments WHERE id = 1")
       .get() as { agent: string };
@@ -657,5 +658,9 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(() =>
       db.prepare("UPDATE deployments SET agent = 'unknown' WHERE id = 1").run(),
     ).toThrow();
+    const pushDeviceCols = db
+      .prepare("PRAGMA table_info(push_devices)")
+      .all() as { name: string }[];
+    expect(pushDeviceCols.map((c) => c.name)).toContain("merged_pull_requests");
   });
 });

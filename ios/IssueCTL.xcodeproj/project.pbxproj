@@ -153,6 +153,8 @@
 		DFD20FE91CC408AA0423C202 /* PRRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75027D57516F296784BEDA4B /* PRRowView.swift */; };
 		E2D468E8711EE284137A31FF /* LaunchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EBC2D036E0950B774A3A43 /* LaunchView.swift */; };
 		E35D59719FABCC9A185D8366 /* EditIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22DECFEBB9C9FEB55E9A1045 /* EditIssueSheet.swift */; };
+		E79CA4CB4A4EAC6D5623771D /* PushDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0296223F49033E2D87EA88F /* PushDevice.swift */; };
+		E7AFF7B8A0822FEB2ED1C9DC /* PushDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0296223F49033E2D87EA88F /* PushDevice.swift */; };
 		E807BE283E8635AEE32B9058 /* IssueDetailActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9ADC50FA06EBF2CB8A11E6 /* IssueDetailActionTests.swift */; };
 		E996836A5A715FE47B402A6A /* SectionTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */; };
 		EA782E1A1F8C5112A664DAAA /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5695C48F5E921940A3CBDA5A /* AppVersion.swift */; };
@@ -271,6 +273,8 @@
 		AD3C1581E55A12781F1E76A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AEDAC9B7D3D9CF86D6381DAE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AFD45B1F8D03F28DE1ECAA00 /* GitHubAccessibleRepo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubAccessibleRepo.swift; sourceTree = "<group>"; };
+		B0296223F49033E2D87EA88F /* PushDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushDevice.swift; sourceTree = "<group>"; };
+		B3E09DBD6D633B291650EFBE /* IssueCTL.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IssueCTL.entitlements; sourceTree = "<group>"; };
 		B7701223E13D43C4F74244B0 /* Repo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repo.swift; sourceTree = "<group>"; };
 		BC00C899D2ADA14475787AE7 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		BC1D044DCA62B13F4196F816 /* SetupLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupLink.swift; sourceTree = "<group>"; };
@@ -422,6 +426,7 @@
 				AFD45B1F8D03F28DE1ECAA00 /* GitHubAccessibleRepo.swift */,
 				80A4F0FF399CC75CAB4F1A1C /* Issue.swift */,
 				FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */,
+				B0296223F49033E2D87EA88F /* PushDevice.swift */,
 				B7701223E13D43C4F74244B0 /* Repo.swift */,
 				BE5C5A4C468148B6D09FDA6F /* ServerHealth.swift */,
 			);
@@ -507,6 +512,7 @@
 			isa = PBXGroup;
 			children = (
 				AEDAC9B7D3D9CF86D6381DAE /* Info.plist */,
+				B3E09DBD6D633B291650EFBE /* IssueCTL.entitlements */,
 				19FC5A79EAAEE874C3E00DC4 /* App */,
 				588A6B273EDAC92EB9CC34D7 /* Generated */,
 				ED2CC4AD425EA63DC9DADA90 /* Helpers */,
@@ -832,6 +838,7 @@
 				6BD63A6BA0C7651A5C860A82 /* ParseResultRow.swift in Sources */,
 				327EF2CAB79710212AEE37A6 /* ParseView.swift in Sources */,
 				9E992E49A2D7059EA9BC4F34 /* PullRequest.swift in Sources */,
+				E79CA4CB4A4EAC6D5623771D /* PushDevice.swift in Sources */,
 				0B585381530245167B82950D /* QuickCreateSheet.swift in Sources */,
 				435164D5164B0B7D5FA9917F /* ReassignSheet.swift in Sources */,
 				59D20056C3E281403735631D /* Repo.swift in Sources */,
@@ -913,6 +920,7 @@
 				1D5A7B3B1899F179EA4EB9AE /* ParseResultRow.swift in Sources */,
 				581AE97A9F49881B53EF3D39 /* ParseView.swift in Sources */,
 				7A144A11958A6F173128CE49 /* PullRequest.swift in Sources */,
+				E7AFF7B8A0822FEB2ED1C9DC /* PushDevice.swift in Sources */,
 				9D86848D19E2C82D05E7DBC6 /* QuickCreateSheet.swift in Sources */,
 				43E594DAA101C705A5CBF4B6 /* ReassignSheet.swift in Sources */,
 				267E4F891530E9024D710531 /* Repo.swift in Sources */,
@@ -987,7 +995,9 @@
 		0054D3D69C742503141BCA2C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = IssueCTL/IssueCTL.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = B3A6AN2HA4;
@@ -1178,7 +1188,9 @@
 		9A5A01FEE56B7EF3CA31CC62 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = IssueCTL/IssueCTL.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = B3A6AN2HA4;
@@ -1236,7 +1248,9 @@
 		CA1F3322A8D6FCFC5B4D19F2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = IssueCTL/IssueCTL.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = B3A6AN2HA4;
@@ -1348,7 +1362,9 @@
 		D9A22A0BB67B1A1A61E5313F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = IssueCTL/IssueCTL.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = B3A6AN2HA4;

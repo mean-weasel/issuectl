@@ -109,6 +109,18 @@ final class APIClient {
         return try decoder.decode(ServerHealth.self, from: data)
     }
 
+    func registerPushDevice(body: PushDeviceRegistrationRequest) async throws -> PushDeviceRegistrationResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/notifications/devices", method: "POST", body: bodyData)
+        return try decoder.decode(PushDeviceRegistrationResponse.self, from: data)
+    }
+
+    func unregisterPushDevice(token: String) async throws {
+        let body = PushDeviceUnregisterRequest(platform: "ios", token: token)
+        let bodyData = try JSONEncoder().encode(body)
+        _ = try await request(path: "/api/v1/notifications/devices", method: "DELETE", body: bodyData)
+    }
+
     func repos() async throws -> [Repo] {
         do {
             let (data, _) = try await request(path: "/api/v1/repos")

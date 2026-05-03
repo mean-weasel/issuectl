@@ -122,3 +122,29 @@ export type UnifiedList = {
   running: IssueListItem[];
   closed: IssueListItem[];
 };
+
+export type PushNotificationKind =
+  | "idleTerminals"
+  | "newIssues"
+  | "mergedPullRequests";
+
+export type PushNotificationPreferences = {
+  idleTerminals: boolean;
+  newIssues: boolean;
+  mergedPullRequests: boolean;
+};
+
+export type PushDeviceEnvironment = "development" | "production";
+export type PushDevicePlatform = "ios";
+
+export type PushDevice = {
+  id: number;
+  platform: PushDevicePlatform;
+  token: string;
+  environment: PushDeviceEnvironment;
+  preferences: PushNotificationPreferences;
+  enabled: boolean;
+  lastRegisteredAt: string;
+  createdAt: string;
+  updatedAt: string;
+};

@@ -20,6 +20,7 @@ import {
   type ReassignResult,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
+import { notifyNewIssue } from "@/lib/push/notifications";
 
 const MAX_TITLE = 256;
 const MAX_BODY = 65536;
@@ -76,6 +77,12 @@ export async function createIssue(data: {
       ? await withIdempotency(db, "create-issue", idempotencyKey, runCreate)
       : await runCreate();
     issueNumber = result.number;
+    notifyNewIssue({
+      owner,
+      repo,
+      issueNumber,
+      title: title.trim(),
+    });
     try {
       setSetting(db, "default_repo_id", String(trackedRepo.id));
     } catch (err) {
