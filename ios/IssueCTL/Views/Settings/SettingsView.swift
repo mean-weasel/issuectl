@@ -39,6 +39,8 @@ struct SettingsView: View {
                 switch dest {
                 case .advancedSettings:
                     AdvancedSettingsView()
+                case .notifications:
+                    NotificationSettingsView()
                 case .worktrees:
                     WorktreeListView()
                 }
@@ -176,6 +178,10 @@ struct SettingsView: View {
             NavigationLink(value: SettingsDestination.advancedSettings) {
                 Label("Agent Harness & Defaults", systemImage: "terminal")
             }
+            NavigationLink(value: SettingsDestination.notifications) {
+                Label("Notifications", systemImage: "bell.badge")
+            }
+            .accessibilityIdentifier("settings-notifications-link")
             NavigationLink(value: SettingsDestination.worktrees) {
                 Label("Worktrees", systemImage: "arrow.triangle.branch")
             }
@@ -261,6 +267,7 @@ struct SettingsView: View {
 
 enum SettingsDestination: Hashable {
     case advancedSettings
+    case notifications
     case worktrees
 }
 
