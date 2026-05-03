@@ -3,6 +3,7 @@ import {
   dbExists,
   getDb,
   getOctokit,
+  getSetting,
   listRepos,
   listLabels,
 } from "@issuectl/core";
@@ -10,6 +11,7 @@ import type { GitHubLabel } from "@issuectl/core";
 import type { RepoOption } from "@/lib/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { NewIssuePage } from "./NewIssuePage";
+import { getDefaultRepoOption, parseDefaultRepoId } from "./default-repo";
 import type { Metadata } from "next";
 import styles from "./page.module.css";
 
@@ -51,6 +53,10 @@ export default async function NewIssueRoute() {
   }
 
   const repos: RepoOption[] = dbRepos.map((r) => ({ owner: r.owner, repo: r.name }));
+  const defaultRepo = getDefaultRepoOption(
+    dbRepos,
+    parseDefaultRepoId(getSetting(db, "default_repo_id")),
+  );
   const labelsPerRepo: Record<string, GitHubLabel[]> = {};
   let loadError: string | undefined;
 
@@ -82,7 +88,7 @@ export default async function NewIssueRoute() {
   return (
     <NewIssuePage
       repos={repos}
-      defaultRepo={repos[0]}
+      defaultRepo={defaultRepo}
       labelsPerRepo={labelsPerRepo}
       initError={loadError}
     />

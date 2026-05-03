@@ -3,6 +3,7 @@
 import {
   getDb,
   getRepo,
+  setSetting,
   createIssue as coreCreateIssue,
   updateIssue as coreUpdateIssue,
   closeIssue as coreCloseIssue,
@@ -56,7 +57,8 @@ export async function createIssue(data: {
   let issueNumber: number;
   try {
     const db = getDb();
-    if (!getRepo(db, owner, repo)) {
+    const trackedRepo = getRepo(db, owner, repo);
+    if (!trackedRepo) {
       return { success: false, error: "Repository is not tracked" };
     }
     const runCreate = async () => {
@@ -74,6 +76,15 @@ export async function createIssue(data: {
       ? await withIdempotency(db, "create-issue", idempotencyKey, runCreate)
       : await runCreate();
     issueNumber = result.number;
+    try {
+      setSetting(db, "default_repo_id", String(trackedRepo.id));
+    } catch (err) {
+      console.warn(
+        "[issuectl] Failed to update default repo after issue creation",
+        { owner, repo },
+        err,
+      );
+    }
   } catch (err) {
     if (err instanceof DuplicateInFlightError) {
       return {
