@@ -80,6 +80,7 @@ jobs:
         if: steps.resolve.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_QUEUE_TOKEN: ${{ secrets.MERGE_QUEUE_TOKEN }}
           PR_TARGET: ${{ steps.resolve.outputs.pr }}
         run: |
           set -euo pipefail
@@ -141,7 +142,12 @@ jobs:
             exit 0
           fi
 
-          response="$(gh api graphql \
+          if [ -z "$GH_QUEUE_TOKEN" ]; then
+            echo "::error title=MERGE_QUEUE_TOKEN is required::Configure a repository secret named MERGE_QUEUE_TOKEN with permission to enqueue pull requests. Enqueuing with GITHUB_TOKEN created a merge queue entry for PR #385 without dispatching merge_group workflow runs."
+            exit 1
+          fi
+
+          response="$(GH_TOKEN="$GH_QUEUE_TOKEN" gh api graphql \
             -f query='mutation($pullRequestId:ID!) { enqueuePullRequest(input:{pullRequestId:$pullRequestId}) { mergeQueueEntry { position state } } }' \
             -f pullRequestId="$pr_id" 2>&1)" || true
 
