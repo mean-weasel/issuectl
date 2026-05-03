@@ -221,6 +221,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
             }
             body = ["deployments": activeDeployments]
 
+        case ("GET", "/api/v1/sessions/previews"):
+            body = ["previews": sessionPreviews()]
+
         case ("POST", "/api/v1/deployments/9001/end"):
             activeDeployments.removeAll { $0["id"] as? Int == 9001 }
             body = ["success": true]
@@ -568,6 +571,24 @@ final class MockIssueCTLServer: @unchecked Sendable {
             return []
         }
         return activeDeployments.filter { $0["issue_number"] as? Int == issueNumber }
+    }
+
+    func sessionPreviews() -> [String: Any] {
+        var previews: [String: Any] = [:]
+        for deployment in activeDeployments {
+            guard let port = deployment["ttyd_port"] as? Int else { continue }
+            let issueNumber = deployment["issue_number"] as? Int ?? 0
+            previews[String(port)] = [
+                "lines": [
+                    "issue #\(issueNumber): running checks",
+                    issueNumber == 101 ? "pass: launch handoff" : "waiting for agent output",
+                ],
+                "lastUpdatedMs": 1_777_800_000_000,
+                "lastChangedMs": 1_777_799_999_000,
+                "status": issueNumber == 101 ? "active" : "idle",
+            ]
+        }
+        return previews
     }
 
     // MARK: - Mutation helpers
