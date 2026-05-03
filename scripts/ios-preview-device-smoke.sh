@@ -48,10 +48,8 @@ echo "Keep the iPhone unlocked and awake until the UI test starts."
 
 ready_deadline=$((SECONDS + IOS_DEVICE_READY_TIMEOUT))
 while true; do
-  if xcrun devicectl list devices 2>/dev/null | grep -F "$device_id" | grep -q "connected"; then
-    if xcrun devicectl device info details --device "$device_id" --quiet --timeout 10 >/dev/null 2>&1; then
-      break
-    fi
+  if xcrun devicectl device info details --device "$device_id" --quiet --timeout 10 >/dev/null 2>&1; then
+    break
   fi
 
   if [ "$SECONDS" -ge "$ready_deadline" ]; then
