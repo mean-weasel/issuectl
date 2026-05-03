@@ -12,10 +12,14 @@ export function detectLanIp(): string | null {
   return null;
 }
 
-export function buildIosSetupUrl(serverUrl: string, token: string): string {
+export function buildIosSetupUrl(
+  serverUrl: string,
+  token: string,
+  scheme = "issuectl",
+): string {
   const params = new URLSearchParams({
     serverURL: serverUrl,
     token,
   });
-  return `issuectl://setup?${params.toString()}`;
+  return `${scheme}://setup?${params.toString()}`;
 }

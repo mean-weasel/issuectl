@@ -38,7 +38,7 @@ final class DraftWorkflowTests: XCTestCase {
         waitForNonexistence("issue-title-field", in: app)
 
         // Navigate to drafts.
-        tapElement("issues-tab", in: app)
+        tapMainTab("issues-tab", label: "Issues", in: app)
         assertElement("section-tab-drafts", existsIn: app, timeout: 8)
         element("section-tab-drafts", in: app).tap()
 

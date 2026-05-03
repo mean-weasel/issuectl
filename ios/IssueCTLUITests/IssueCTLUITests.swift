@@ -45,18 +45,18 @@ final class IssueCTLUITests: XCTestCase {
     func testListToolbarActionsAreReachableFromTabs() {
         let app = launchApp(server: server)
 
-        tapElement("issues-tab", in: app)
+        tapMainTab("issues-tab", label: "Issues", in: app)
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
         assertElement("issues-search-button", existsIn: app)
         assertElement("issues-filter-button", existsIn: app)
 
-        tapElement("prs-tab", in: app)
+        tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("prs-create-issue-button", existsIn: app, timeout: 5)
         assertElement("prs-search-button", existsIn: app)
         assertElement("prs-quick-actions-button", existsIn: app, timeout: 5)
         assertElement("prs-filter-button", existsIn: app)
 
-        tapElement("active-tab", in: app)
+        tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-create-issue-button", existsIn: app, timeout: 5)
         assertElement("sessions-search-button", existsIn: app)
         assertElement("sessions-refresh-button", existsIn: app)
@@ -134,7 +134,7 @@ final class IssueCTLUITests: XCTestCase {
 
     @MainActor
     private func openDraftsSection(in app: XCUIApplication) {
-        tapElement("issues-tab", in: app)
+        tapMainTab("issues-tab", label: "Issues", in: app)
         assertElement("section-tab-drafts", existsIn: app, timeout: 8)
         element("section-tab-drafts", in: app).tap()
     }
@@ -169,7 +169,7 @@ final class IssueCTLUITests: XCTestCase {
         app.buttons["terminal-done-button"].tap()
         assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
 
-        tapElement("active-tab", in: app)
+        tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         element("session-reenter-terminal-9001", in: app).tap()
@@ -208,7 +208,7 @@ final class IssueCTLUITests: XCTestCase {
 
         launchIssueSession(102, in: app)
 
-        tapElement("active-tab", in: app)
+        tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9002", existsIn: app, timeout: 5)
@@ -244,7 +244,7 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issue-row-101", existsIn: app, timeout: 8)
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
 
-        tapElement("prs-tab", in: app)
+        tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("pr-row-7", existsIn: app, timeout: 8)
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "user profile")).firstMatch.exists)
     }

@@ -18,7 +18,7 @@ final class PRBrowseTests: XCTestCase {
     func testPRListShowsOpenPRsWithCheckStatus() {
         let app = launchApp(server: server)
 
-        tapElement("prs-tab", in: app)
+        tapMainTab("prs-tab", label: "PRs", in: app)
         // PR #7 has checksStatus "pending" → visible in default "review" section.
         assertElement("pr-row-7", existsIn: app, timeout: 8)
 
@@ -31,7 +31,7 @@ final class PRBrowseTests: XCTestCase {
     func testPRDetailShowsChecksAndBranchInfo() {
         let app = launchApp(server: server)
 
-        tapElement("prs-tab", in: app)
+        tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("pr-row-7", existsIn: app, timeout: 8)
         element("pr-row-7", in: app).tap()
 
@@ -47,7 +47,7 @@ final class PRBrowseTests: XCTestCase {
     func testPRFilterAndSearchButtons() {
         let app = launchApp(server: server)
 
-        tapElement("prs-tab", in: app)
+        tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("prs-filter-button", existsIn: app, timeout: 5)
         assertElement("prs-search-button", existsIn: app, timeout: 3)
         assertElement("prs-quick-actions-button", existsIn: app, timeout: 3)

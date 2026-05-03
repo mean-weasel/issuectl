@@ -5,7 +5,7 @@ struct SetupLink: Equatable, Sendable {
     let token: String
 
     init?(url: URL) {
-        guard url.scheme == "issuectl", url.host == "setup" else {
+        guard ["issuectl", "issuectl-preview"].contains(url.scheme), url.host == "setup" else {
             return nil
         }
 
