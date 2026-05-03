@@ -47,13 +47,17 @@ struct ImageAttachmentButton: View {
     }
 
     private func upload(item: PhotosPickerItem) async {
+        let trace = PerformanceTrace.begin("image_attachment.upload", metadata: "repo=\(owner)/\(repo)")
         isUploading = true
         errorMessage = nil
+        defer {
+            PerformanceTrace.end(trace, metadata: "success=\(errorMessage == nil)")
+            isUploading = false
+        }
 
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
                 errorMessage = "Could not load image"
-                isUploading = false
                 return
             }
             let imageData = try await ImageAttachmentProcessor.preparedJPEGData(from: data)
@@ -65,8 +69,6 @@ struct ImageAttachmentButton: View {
         } catch {
             errorMessage = "Upload failed"
         }
-
-        isUploading = false
     }
 }
 

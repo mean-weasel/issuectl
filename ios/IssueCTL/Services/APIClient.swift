@@ -88,6 +88,13 @@ final class APIClient {
             throw APIError.notConfigured
         }
 
+        let trace = PerformanceTrace.begin("api.request", metadata: "method=\(method) path=\(path)")
+        var statusCode = 0
+        var responseBytes = 0
+        defer {
+            PerformanceTrace.end(trace, metadata: "status=\(statusCode) bytes=\(responseBytes)")
+        }
+
         guard let url = URL(string: path, relativeTo: base) else {
             throw APIError.invalidPath(path)
         }
@@ -98,9 +105,11 @@ final class APIClient {
         if let body { urlRequest.httpBody = body }
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        responseBytes = data.count
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
+        statusCode = httpResponse.statusCode
 
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
@@ -125,6 +134,12 @@ final class APIClient {
         guard let base = URL(string: url) else {
             throw APIError.notConfigured
         }
+        let trace = PerformanceTrace.begin("api.check_health", metadata: "url=\(url)")
+        var statusCode = 0
+        var responseBytes = 0
+        defer {
+            PerformanceTrace.end(trace, metadata: "status=\(statusCode) bytes=\(responseBytes)")
+        }
         guard let healthURL = URL(string: "/api/v1/health", relativeTo: base) else {
             throw APIError.invalidPath("/api/v1/health")
         }
@@ -133,9 +148,11 @@ final class APIClient {
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        responseBytes = data.count
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
+        statusCode = httpResponse.statusCode
         if httpResponse.statusCode == 401 { throw APIError.unauthorized }
         if httpResponse.statusCode >= 400 {
             let errorBody = try? JSONDecoder().decode(ErrorResponse.self, from: data)

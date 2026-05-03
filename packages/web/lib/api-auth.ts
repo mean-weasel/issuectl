@@ -5,19 +5,26 @@ import log from "./logger";
 
 let cachedApiToken: string | undefined;
 let hasLoadedApiToken = false;
+let cachedApiTokenLoadedAt = 0;
+const API_TOKEN_CACHE_TTL_MS = 30_000;
 
 function getApiToken(): string | undefined {
-  if (hasLoadedApiToken) return cachedApiToken;
+  const now = Date.now();
+  if (hasLoadedApiToken && now - cachedApiTokenLoadedAt < API_TOKEN_CACHE_TTL_MS) {
+    return cachedApiToken;
+  }
 
   const db = getDb();
   cachedApiToken = getSetting(db, "api_token");
-  hasLoadedApiToken = true;
+  hasLoadedApiToken = Boolean(cachedApiToken);
+  cachedApiTokenLoadedAt = now;
   return cachedApiToken;
 }
 
 export function resetApiTokenCache(): void {
   cachedApiToken = undefined;
   hasLoadedApiToken = false;
+  cachedApiTokenLoadedAt = 0;
 }
 
 /**

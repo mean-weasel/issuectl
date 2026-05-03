@@ -26,6 +26,7 @@ struct TodayView: View {
     @State private var pendingSearchDestination: TodayDestination?
     @State private var actionError: String?
     @State private var navigationPath = NavigationPath()
+    @State private var didMarkLaunchUsable = false
 
 
     private var allIssues: [GitHubIssue] {
@@ -183,7 +184,13 @@ struct TodayView: View {
                 .presentationDragIndicator(.visible)
             }
             .autoDismissError($actionError)
-            .task { await load() }
+            .task {
+                await load()
+                if !didMarkLaunchUsable {
+                    didMarkLaunchUsable = true
+                    PerformanceTrace.markAppLaunchUsable("today")
+                }
+            }
             .refreshable { await load(refresh: true) }
             .accessibilityTabBarClearance()
         }
@@ -384,8 +391,12 @@ struct TodayView: View {
     }
 
     private func load(refresh: Bool = false) async {
+        let trace = PerformanceTrace.begin("today.load", metadata: "refresh=\(refresh)")
         isLoading = true
         errorMessage = nil
+        defer {
+            PerformanceTrace.end(trace, metadata: "repos=\(repos.count) issues=\(allIssues.count) pulls=\(allPulls.count) deployments=\(activeDeployments.count)")
+        }
         do {
             repos = try await api.repos()
 

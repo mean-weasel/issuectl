@@ -6,6 +6,7 @@ struct IssueListView: View {
 
     @State private var repos: [Repo] = []
     @State private var issuesByRepo: [String: [GitHubIssue]] = [:]
+    @State private var issueRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var drafts: [Draft] = []
     @State private var activeDeployments: [ActiveDeployment] = []
     @State private var isLoading = true
@@ -53,20 +54,6 @@ struct IssueListView: View {
 
     private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
         runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
-    }
-
-    private var issueRepoLookup: [String: (repo: Repo, index: Int)] {
-        let reposByName = Dictionary(uniqueKeysWithValues: repos.enumerated().map { index, repo in
-            (repo.fullName, (repo, index))
-        })
-        var lookup: [String: (repo: Repo, index: Int)] = [:]
-        for (fullName, issues) in issuesByRepo {
-            guard let repoInfo = reposByName[fullName] else { continue }
-            for issue in issues {
-                lookup[issue.htmlUrl] = repoInfo
-            }
-        }
-        return lookup
     }
 
     private var repoFilteredIssues: [GitHubIssue] {
@@ -730,10 +717,12 @@ struct IssueListView: View {
     }
 
     private func prepareLaunch(owner: String, repo: String, number: Int, title: String) async {
+        let trace = PerformanceTrace.begin("issues.prepare_launch", metadata: "repo=\(owner)/\(repo) number=\(number)")
         let targetId = "\(owner)/\(repo)#\(number)"
         loadingLaunchTargetId = targetId
         actionError = nil
         defer {
+            PerformanceTrace.end(trace, metadata: "target_ready=\(launchTarget != nil) terminal_ready=\(terminalTarget != nil)")
             if loadingLaunchTargetId == targetId {
                 loadingLaunchTargetId = nil
             }
@@ -796,9 +785,13 @@ struct IssueListView: View {
     // MARK: - Loading
 
     private func loadAll(refresh: Bool = false) async {
+        let trace = PerformanceTrace.begin("issues.load_all", metadata: "refresh=\(refresh)")
         isLoading = true
         errorMessage = nil
         actionError = nil
+        defer {
+            PerformanceTrace.end(trace, metadata: "repos=\(repos.count) issues=\(issuesByRepo.values.reduce(0) { $0 + $1.count }) drafts=\(drafts.count) deployments=\(activeDeployments.count)")
+        }
         do {
             repos = try await api.repos()
 
@@ -867,6 +860,7 @@ struct IssueListView: View {
                 }
             }
             issuesByRepo = nextIssuesByRepo
+            issueRepoLookup = makeIssueRepoLookup(itemsByRepo: nextIssuesByRepo)
             oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
@@ -926,6 +920,17 @@ struct IssueListView: View {
         }
         lastRefreshDate = Date()
         await loadAll(refresh: true)
+    }
+
+    private func makeIssueRepoLookup(itemsByRepo: [String: [GitHubIssue]]) -> [String: (repo: Repo, index: Int)] {
+        var lookup: [String: (repo: Repo, index: Int)] = [:]
+        for (index, repo) in repos.enumerated() {
+            guard let issues = itemsByRepo[repo.fullName] else { continue }
+            for issue in issues {
+                lookup[issue.htmlUrl] = (repo, index)
+            }
+        }
+        return lookup
     }
 }
 

@@ -290,11 +290,15 @@ struct SessionListView: View {
         terminalPresentation = TerminalPresentation(deployment: deployment)
     }
     private func load(refresh: Bool = false, includeRepos: Bool? = nil) async {
+        let shouldLoadRepos = includeRepos ?? (refresh || repos.isEmpty)
+        let trace = PerformanceTrace.begin("sessions.load", metadata: "refresh=\(refresh) include_repos=\(shouldLoadRepos)")
         if deployments.isEmpty { isLoading = true }
         errorMessage = nil
         if refresh { actionError = nil }
+        defer {
+            PerformanceTrace.end(trace, metadata: "deployments=\(deployments.count) repos=\(repos.count)")
+        }
         do {
-            let shouldLoadRepos = includeRepos ?? (refresh || repos.isEmpty)
             async let deploymentsResult = api.activeDeployments()
             async let reposResult: Result<[Repo], Error>? = shouldLoadRepos ? {
                 do { return .success(try await api.repos()) }

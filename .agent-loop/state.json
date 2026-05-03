@@ -29,7 +29,7 @@
       "max_consecutive_repairs": 2
     }
   },
-  "iteration": 10,
+  "iteration": 15,
   "completed": [
     {
       "iteration": 1,
@@ -90,6 +90,36 @@
       "at": "2026-05-03T19:37:16.268Z",
       "summary": "Cached and in-flight-de-duplicated iOS /api/v1/repos fetches in APIClient, with cache invalidation on configure/disconnect and after add/remove/update repo mutations. This reduces duplicate tracked-repo metadata requests across Today, Issues, PRs, Sessions, Settings, Launch, parse, and draft flows.",
       "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/010-report.md"
+    },
+    {
+      "iteration": 11,
+      "at": "2026-05-03T21:17:19.513Z",
+      "summary": "Added lightweight iOS performance timing logs for app launch readiness, Today refresh, Issues refresh, PR refresh, Sessions polling, issue launch prep, and image attachment upload so the next profiling pass can compare concrete flow timings.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/011-report.md"
+    },
+    {
+      "iteration": 12,
+      "at": "2026-05-03T21:17:56.610Z",
+      "summary": "Moved IssueListView's issue URL to repo/index lookup from a recomputed property into state refreshed after issue payload loads. This avoids rebuilding the lookup repeatedly during section counts, filtering, sorting, and visible row rendering.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/012-report.md"
+    },
+    {
+      "iteration": 13,
+      "at": "2026-05-03T21:18:33.512Z",
+      "summary": "Moved PRListView's pull URL to repo/index lookup from a recomputed property into state refreshed after pull payload loads. This mirrors the Issues change and avoids rebuilding repo lookup data during PR counts, filters, and row rendering.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/013-report.md"
+    },
+    {
+      "iteration": 14,
+      "at": "2026-05-03T21:19:34.696Z",
+      "summary": "Made the server API token cache bounded and safer for token creation or rotation: cached tokens now expire after 30 seconds, missing tokens are not cached permanently, and focused tests cover reuse, TTL refresh, and no-token recovery.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/014-report.md"
+    },
+    {
+      "iteration": 15,
+      "at": "2026-05-03T21:20:31.122Z",
+      "summary": "Added APIClient request timing logs for every iOS API call, including method, path, status code, response bytes, and elapsed time. This separates local-server/network latency from SwiftUI screen-load work during the next simulator and device measurement pass.",
+      "report": "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-performance-audit/.agent-loop/iterations/015-report.md"
     }
   ],
   "open_findings": [],
@@ -173,7 +203,7 @@
   "judge": {
     "continue": false,
     "confidence": 0.9,
-    "reason": "Completed the requested 10 auto-loop iterations. Implemented iOS caching, render-work reductions, upload processing changes, polling reductions, and a small server auth optimization; remaining work should be validated with simulator ETTrace/Instruments before more speculative changes.",
-    "next_focus": "Profile launch, Today load, Issues scroll, PR list load, and image upload before/after with ETTrace or Instruments to quantify wins and choose the next bottleneck."
+    "reason": "Completed the requested five additional audit-loop iterations. Added iOS timing instrumentation, removed repeated Issues/PR lookup rebuilds, bounded server API token cache staleness, and added iOS API request timing. Further loops should wait for simulator/device measurement data from these traces.",
+    "next_focus": "Run simulator and physical-device timing captures using the new PerformanceTrace logs, then target the slowest measured flow."
   }
 }

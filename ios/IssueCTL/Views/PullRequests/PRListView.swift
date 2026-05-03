@@ -6,6 +6,7 @@ struct PRListView: View {
 
     @State private var repos: [Repo] = []
     @State private var pullsByRepo: [String: [GitHubPull]] = [:]
+    @State private var pullRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var section: PRSection = .review
@@ -44,20 +45,6 @@ struct PRListView: View {
             currentUserLogin: currentUserLogin,
             userLogin: { $0.user?.login }
         )
-    }
-
-    private var pullRepoLookup: [String: (repo: Repo, index: Int)] {
-        let reposByName = Dictionary(uniqueKeysWithValues: repos.enumerated().map { index, repo in
-            (repo.fullName, (repo, index))
-        })
-        var lookup: [String: (repo: Repo, index: Int)] = [:]
-        for (fullName, pulls) in pullsByRepo {
-            guard let repoInfo = reposByName[fullName] else { continue }
-            for pull in pulls {
-                lookup[pull.htmlUrl] = repoInfo
-            }
-        }
-        return lookup
     }
 
     private var filteredPulls: [GitHubPull] {
@@ -508,9 +495,13 @@ struct PRListView: View {
     // MARK: - Loading
 
     private func loadAll(refresh: Bool = false) async {
+        let trace = PerformanceTrace.begin("pulls.load_all", metadata: "refresh=\(refresh)")
         isLoading = true
         errorMessage = nil
         actionError = nil
+        defer {
+            PerformanceTrace.end(trace, metadata: "repos=\(repos.count) pulls=\(pullsByRepo.values.reduce(0) { $0 + $1.count })")
+        }
         do {
             repos = try await api.repos()
 
@@ -557,6 +548,7 @@ struct PRListView: View {
                 }
             }
             pullsByRepo = nextPullsByRepo
+            pullRepoLookup = makePullRepoLookup(itemsByRepo: nextPullsByRepo)
             oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
@@ -573,6 +565,17 @@ struct PRListView: View {
         }
         lastRefreshDate = Date()
         await loadAll(refresh: true)
+    }
+
+    private func makePullRepoLookup(itemsByRepo: [String: [GitHubPull]]) -> [String: (repo: Repo, index: Int)] {
+        var lookup: [String: (repo: Repo, index: Int)] = [:]
+        for (index, repo) in repos.enumerated() {
+            guard let pulls = itemsByRepo[repo.fullName] else { continue }
+            for pull in pulls {
+                lookup[pull.htmlUrl] = (repo, index)
+            }
+        }
+        return lookup
     }
 }
 
