@@ -330,6 +330,23 @@ final class EdgeCaseModelTests: XCTestCase {
         XCTAssertEqual(deployment.runningDuration, "")
     }
 
+    func testDeploymentRunningDurationParsesSQLiteDate() throws {
+        let json = """
+        {
+            "id": 1, "repo_id": 1, "issue_number": 1,
+            "branch_name": "b", "workspace_mode": "worktree",
+            "workspace_path": "/tmp", "linked_pr_number": null,
+            "state": "active",
+            "launched_at": "2026-04-29 08:00:00", "ended_at": null,
+            "ttyd_port": 7682, "ttyd_pid": 100
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(Deployment.self, from: json)
+        XCTAssertNotNil(deployment.launchedDate)
+        XCTAssertFalse(deployment.runningDuration.isEmpty)
+    }
+
     func testActiveDeploymentLaunchedDate() throws {
         let json = """
         {

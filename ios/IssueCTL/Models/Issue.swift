@@ -14,9 +14,18 @@ nonisolated(unsafe) private let sharedISO8601FormatterWithoutFractionalSeconds: 
     return f
 }()
 
+nonisolated(unsafe) private let sharedSQLiteDateFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = TimeZone(secondsFromGMT: 0)
+    f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    return f
+}()
+
 func parseIssueCTLDate(_ value: String) -> Date? {
     sharedISO8601Formatter.date(from: value)
         ?? sharedISO8601FormatterWithoutFractionalSeconds.date(from: value)
+        ?? sharedSQLiteDateFormatter.date(from: value)
 }
 
 struct GitHubUser: Codable, Sendable {
