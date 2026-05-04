@@ -4,6 +4,8 @@ import OSLog
 enum PerformanceTrace {
     private static let logger = Logger(subsystem: "com.issuectl.ios", category: "performance")
     private static let appLaunchStartedAt = Date()
+    private static let testLogQueue = DispatchQueue(label: "com.issuectl.ios.performance-trace-test-log")
+    private static let testLogFileName = "IssueCTLPerformanceTrace.log"
 
     struct Token {
         let name: String
@@ -12,6 +14,7 @@ enum PerformanceTrace {
 
     static func markAppLaunchStarted() {
         _ = appLaunchStartedAt
+        resetTestLog()
     }
 
     static func begin(_ name: String, metadata: String = "") -> Token {
@@ -34,7 +37,49 @@ enum PerformanceTrace {
 
     private static func testLog(_ message: String) {
         guard ProcessInfo.processInfo.environment["ISSUECTL_UI_TESTING"] == "1" else { return }
-        NSLog("[PerformanceTrace] %@", message)
+        let line = "[PerformanceTrace] \(message)"
+        NSLog("%@", line)
+        writeTestLog(line)
+    }
+
+    private static func resetTestLog() {
+        guard ProcessInfo.processInfo.environment["ISSUECTL_UI_TESTING"] == "1" else { return }
+        testLogQueue.sync {
+            do {
+                try FileManager.default.createDirectory(
+                    at: testLogURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try Data().write(to: testLogURL, options: .atomic)
+            } catch {
+                NSLog("[PerformanceTrace] failed_to_reset_file error=%@", error.localizedDescription)
+            }
+        }
+    }
+
+    private static func writeTestLog(_ line: String) {
+        testLogQueue.sync {
+            do {
+                try FileManager.default.createDirectory(
+                    at: testLogURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                if !FileManager.default.fileExists(atPath: testLogURL.path) {
+                    FileManager.default.createFile(atPath: testLogURL.path, contents: nil)
+                }
+                let handle = try FileHandle(forWritingTo: testLogURL)
+                try handle.seekToEnd()
+                try handle.write(contentsOf: Data((line + "\n").utf8))
+                try handle.close()
+            } catch {
+                NSLog("[PerformanceTrace] failed_to_write_file error=%@", error.localizedDescription)
+            }
+        }
+    }
+
+    private static var testLogURL: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(testLogFileName)
     }
 }
 
