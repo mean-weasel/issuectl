@@ -4,23 +4,40 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+device_name="${IOS_DEVICE_NAME:-iPhone-preview}"
 device_id="${IOS_DEVICE_ID:-}"
 
 if [ -z "${IOS_DESTINATION:-}" ]; then
   if [ -z "$device_id" ]; then
-    echo "Set IOS_DEVICE_ID=<device-udid> or IOS_DESTINATION='platform=iOS,id=<device-udid>'." >&2
-    echo "Run 'pnpm ios:list-devices' to find the CoreDevice identifier." >&2
-    exit 64
+    echo "Resolving physical preview device by name: $device_name"
+    resolver_output="$(./scripts/ios-resolve-preview-device.sh shell)"
+    eval "$resolver_output"
+    device_id="$IOS_DEVICE_ID"
+    export IOS_DEVICE_ID
+    export IOS_XCODE_DEVICE_ID
+    export IOS_DESTINATION
+  else
+    if [ -z "${IOS_XCODE_DEVICE_ID:-}" ]; then
+      provided_device_id="$device_id"
+      resolver_output="$(./scripts/ios-resolve-preview-device.sh shell)"
+      eval "$resolver_output"
+      device_id="$provided_device_id"
+    fi
+    export IOS_DEVICE_ID="$device_id"
+    export IOS_DESTINATION="platform=iOS,id=${IOS_XCODE_DEVICE_ID:-$device_id}"
   fi
-  export IOS_DESTINATION="platform=iOS,id=${device_id}"
 else
-  device_id="$(printf '%s\n' "$IOS_DESTINATION" | sed -n 's/.*id=\([^,]*\).*/\1/p')"
+  destination_id="$(printf '%s\n' "$IOS_DESTINATION" | sed -n 's/.*id=\([^,]*\).*/\1/p')"
+  if [ -z "$device_id" ]; then
+    device_id="$destination_id"
+  fi
 fi
 
 export IOS_SCHEME="${IOS_SCHEME:-IssueCTLPreview-UISmoke}"
 export IOS_CONFIGURATION="${IOS_CONFIGURATION:-Debug}"
 export IOS_UI_SMOKE_PROFILE="${IOS_UI_SMOKE_PROFILE:-fast}"
 export IOS_DEVICE_READY_TIMEOUT="${IOS_DEVICE_READY_TIMEOUT:-45}"
+export IOS_XCODEBUILD_EXTRA_ARGS="${IOS_XCODEBUILD_EXTRA_ARGS:--allowProvisioningUpdates -allowProvisioningDeviceRegistration}"
 
 case "$IOS_UI_SMOKE_PROFILE" in
   fast)
@@ -44,6 +61,8 @@ if [ -z "$device_id" ]; then
 fi
 
 echo "Checking physical iOS device readiness for: $device_id"
+echo "Device role: $device_name"
+echo "Xcode destination: $IOS_DESTINATION"
 echo "Keep the iPhone unlocked and awake until the UI test starts."
 
 ready_deadline=$((SECONDS + IOS_DEVICE_READY_TIMEOUT))
@@ -68,5 +87,14 @@ EOF
 
   sleep 3
 done
+
+lock_json="$(mktemp "${TMPDIR:-/tmp}/issuectl-device-lock.XXXXXX")"
+trap 'rm -f "$lock_json"' EXIT
+if xcrun devicectl device info lockState --device "$device_id" --json-output "$lock_json" --quiet --timeout 10 >/dev/null 2>&1; then
+  echo "Device lock state:"
+  jq -r '.result | "  passcodeRequired=\(.passcodeRequired) unlockedSinceBoot=\(.unlockedSinceBoot)"' "$lock_json"
+else
+  echo "Could not read device lock state; continuing to xcodebuild, which will fail if the phone is locked." >&2
+fi
 
 exec ./scripts/ios-ui-smoke.sh

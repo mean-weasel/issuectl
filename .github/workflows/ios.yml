@@ -59,7 +59,7 @@ jobs:
           echo "Changed files:"
           printf '%s\n' "$changed_files"
 
-          if printf '%s\n' "$changed_files" | grep -E -q '^(ios/|scripts/ios-ui-smoke\.sh$|package\.json$|\.husky/pre-push$|\.github/workflows/ios\.yml$)'; then
+          if printf '%s\n' "$changed_files" | grep -E -q '^(ios/|scripts/ios-.*\.sh$|package\.json$|\.husky/pre-push$|\.github/workflows/ios(-physical-preview)?\.yml$)'; then
             echo "run_smoke=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_smoke=false" >> "$GITHUB_OUTPUT"
