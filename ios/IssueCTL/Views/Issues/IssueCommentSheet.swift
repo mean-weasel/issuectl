@@ -2,12 +2,29 @@ import SwiftUI
 
 struct IssueCommentSheet: View {
     @Environment(APIClient.self) private var api
+    @Environment(NetworkMonitor.self) private var network
+    @Environment(OfflineSyncService.self) private var offlineSync
     @Environment(\.dismiss) private var dismiss
 
     let owner: String
     let repo: String
     let number: Int
     let onSuccess: () -> Void
+    let onQueued: () -> Void
+
+    init(
+        owner: String,
+        repo: String,
+        number: Int,
+        onSuccess: @escaping () -> Void,
+        onQueued: @escaping () -> Void = {}
+    ) {
+        self.owner = owner
+        self.repo = repo
+        self.number = number
+        self.onSuccess = onSuccess
+        self.onQueued = onQueued
+    }
 
     @State private var commentBody = ""
     @State private var isSubmitting = false
@@ -75,7 +92,14 @@ struct IssueCommentSheet: View {
                 errorMessage = response.error ?? "Failed to add comment"
             }
         } catch {
-            errorMessage = error.localizedDescription
+            let trimmed = commentBody.trimmingCharacters(in: .whitespacesAndNewlines)
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueComment(owner: owner, repo: repo, issueNumber: number, body: trimmed)
+                onQueued()
+                dismiss()
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
         isSubmitting = false
     }

@@ -33,12 +33,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct IssueCTLApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var apiClient = APIClient()
+    @State private var apiClient: APIClient
     @State private var networkMonitor = NetworkMonitor()
     @State private var notificationSettings = NotificationSettingsStore()
+    @State private var offlineSync: OfflineSyncService
 
     init() {
         PerformanceTrace.markAppLaunchStarted()
+        let apiClient = APIClient()
+        _apiClient = State(initialValue: apiClient)
+        _offlineSync = State(initialValue: OfflineSyncService(client: apiClient))
     }
 
     var body: some Scene {
@@ -47,6 +51,7 @@ struct IssueCTLApp: App {
                 .environment(apiClient)
                 .environment(networkMonitor)
                 .environment(notificationSettings)
+                .environment(offlineSync)
         }
     }
 }

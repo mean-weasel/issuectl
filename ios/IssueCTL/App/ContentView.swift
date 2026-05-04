@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(APIClient.self) private var api
     @Environment(NetworkMonitor.self) private var network
     @Environment(NotificationSettingsStore.self) private var notificationSettings
+    @Environment(OfflineSyncService.self) private var offlineSync
     @State private var selectedTab: AppTab = .today
     @State private var showSettings = false
     private let launchNotificationSyncDelay: Duration = .seconds(1)
@@ -58,12 +59,34 @@ struct ContentView: View {
                     SettingsView()
                 }
                 .overlay(alignment: .top) {
-                    OfflineBanner()
+                    VStack(spacing: 8) {
+                        OfflineBanner()
+                        OfflineQueueBanner(
+                            pendingCount: offlineSync.pendingCount,
+                            failedCount: offlineSync.failedCount,
+                            isSyncing: offlineSync.isSyncing,
+                            onSync: {
+                                offlineSync.retryFailedActions()
+                                await offlineSync.syncPendingActions()
+                            },
+                            onDismissFailed: {
+                                offlineSync.clearFailedActions()
+                            }
+                        )
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
                 }
                 .animation(.easeInOut(duration: 0.3), value: network.isConnected)
+                .animation(.easeInOut(duration: 0.25), value: offlineSync.pendingCount)
+                .animation(.easeInOut(duration: 0.25), value: offlineSync.failedCount)
             } else {
                 OnboardingView()
             }
+        }
+        .onChange(of: network.isConnected) { _, isConnected in
+            guard isConnected else { return }
+            Task { await offlineSync.syncPendingActions() }
         }
         .onOpenURL { url in
             guard let setup = SetupLink(url: url) else { return }

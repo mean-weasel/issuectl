@@ -16,6 +16,8 @@ final class MockIssueCTLServer: @unchecked Sendable {
     var failRepos = false
     var failDeployments = false
     var issueDetailDeploymentsLagBehindLaunch = false
+    var dropIssueCommentRequests = false
+    var dropIssueStateRequests = false
 
     // Settings controls.
     var defaultLaunchAgent = "claude"
@@ -121,6 +123,18 @@ final class MockIssueCTLServer: @unchecked Sendable {
         issueComments[number] = comments
     }
 
+    func commentBodies(for number: Int) -> [String] {
+        queue.sync {
+            issueComments[number]?.compactMap { $0["body"] as? String } ?? []
+        }
+    }
+
+    func issueState(for number: Int) -> String? {
+        queue.sync {
+            issueStates[number]
+        }
+    }
+
     func seedSecondRepo() {
         repos = [defaultRepo, betaRepo]
     }
@@ -154,6 +168,10 @@ final class MockIssueCTLServer: @unchecked Sendable {
                     connection.cancel()
                     return
                 }
+                if self.shouldDropResponse(for: request) {
+                    connection.cancel()
+                    return
+                }
                 let response = self.response(for: request)
                 connection.send(content: response, completion: .contentProcessed { sendError in
                     if let sendError { print("[MockServer] send error: \(sendError)") }
@@ -180,6 +198,25 @@ final class MockIssueCTLServer: @unchecked Sendable {
             } ?? 0
         let bodyStart = request.distance(from: request.startIndex, to: headerRange.upperBound)
         return data.count >= bodyStart + contentLength
+    }
+
+    private func shouldDropResponse(for request: String) -> Bool {
+        let firstLine = request.split(separator: "\r\n", maxSplits: 1).first ?? ""
+        let parts = firstLine.split(separator: " ")
+        let method = parts.indices.contains(0) ? String(parts[0]) : "GET"
+        let rawPath = parts.indices.contains(1) ? String(parts[1]) : "/"
+        let path = rawPath.split(separator: "?", maxSplits: 1).first.map(String.init) ?? rawPath
+        guard method == "POST", path.hasPrefix("/api/v1/issues/") else { return false }
+
+        if dropIssueCommentRequests, path.hasSuffix("/comments") {
+            return true
+        }
+
+        if dropIssueStateRequests, path.hasSuffix("/state") {
+            return true
+        }
+
+        return false
     }
 
     // MARK: - Router

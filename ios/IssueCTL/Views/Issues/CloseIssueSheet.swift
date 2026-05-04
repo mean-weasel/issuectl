@@ -2,12 +2,29 @@ import SwiftUI
 
 struct CloseIssueSheet: View {
     @Environment(APIClient.self) private var api
+    @Environment(NetworkMonitor.self) private var network
+    @Environment(OfflineSyncService.self) private var offlineSync
     @Environment(\.dismiss) private var dismiss
 
     let owner: String
     let repo: String
     let number: Int
     let onSuccess: () -> Void
+    let onQueued: () -> Void
+
+    init(
+        owner: String,
+        repo: String,
+        number: Int,
+        onSuccess: @escaping () -> Void,
+        onQueued: @escaping () -> Void = {}
+    ) {
+        self.owner = owner
+        self.repo = repo
+        self.number = number
+        self.onSuccess = onSuccess
+        self.onQueued = onQueued
+    }
 
     @State private var closingComment = ""
     @State private var isSubmitting = false
@@ -71,7 +88,20 @@ struct CloseIssueSheet: View {
                 errorMessage = response.error ?? "Failed to close issue"
             }
         } catch {
-            errorMessage = error.localizedDescription
+            let trimmed = closingComment.trimmingCharacters(in: .whitespacesAndNewlines)
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueState(
+                    owner: owner,
+                    repo: repo,
+                    issueNumber: number,
+                    state: "closed",
+                    comment: trimmed.isEmpty ? nil : trimmed
+                )
+                onQueued()
+                dismiss()
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
         isSubmitting = false
     }

@@ -58,6 +58,17 @@ final class SettingsTests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsOpensOfflineQueue() {
+        let app = launchApp(server: server)
+
+        openSettingsFromToday(in: app)
+        app.buttons["settings-offline-queue-link"].tap()
+
+        XCTAssertTrue(app.navigationBars["Offline Queue"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Queue Empty"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    @MainActor
     func testWorktreesCleanupRequiresConfirmation() {
         let app = launchApp(server: server)
 

@@ -58,6 +58,7 @@
 		4BB20ADE0BE999E563444C1B /* RepoListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C48C04AAB5D9F17D9DD63684 /* RepoListView.swift */; };
 		5029F9DC560599B76834000C /* APIClient+Priority.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3079E105A528EED5BBA37B20 /* APIClient+Priority.swift */; };
 		51D419285114BB9B1F7B6D5A /* GitHubAccessibleRepo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFD45B1F8D03F28DE1ECAA00 /* GitHubAccessibleRepo.swift */; };
+		52543EF1C7077597CC6DC8F0 /* OfflineSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 244DA774E9D8E1B7695BD3BA /* OfflineSyncServiceTests.swift */; };
 		5317AF616D7D3E184371FA9B /* APIClient+ListEnhancements.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */; };
 		54C6FF5A24ED1F784D022F19 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C78179FB5D86E7E107E81B /* NotificationSettingsView.swift */; };
 		554B56D3274A1BC49D0B3939 /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5C5A4C468148B6D09FDA6F /* ServerHealth.swift */; };
@@ -85,6 +86,7 @@
 		78C4075442E5AFA3CEC1CDD5 /* IssueCTLApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223E1C810B3BD014B117301B /* IssueCTLApp.swift */; };
 		7A144A11958A6F173128CE49 /* PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */; };
 		7AB66E17B8510A46A4AA9825 /* RepoFilterHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41967EFA522B03BFB6FDADA7 /* RepoFilterHelpers.swift */; };
+		7DCCB51EE3C4FBCD4C6719A3 /* OfflineQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF37EEF251C5C18C03E86D4 /* OfflineQueueView.swift */; };
 		811BB01A63344A1A3CFCA423 /* PRBrowseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1A0D520FF36C8DB326D31F /* PRBrowseTests.swift */; };
 		81AFBA58B00DCECA768B0079 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4403330B1342AA7C19FA797D /* Constants.swift */; };
 		83664A1EEF860FABA2F49FDD /* APIClient+DetailActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B94F959305A936F2643E3F6 /* APIClient+DetailActions.swift */; };
@@ -104,6 +106,7 @@
 		9D86848D19E2C82D05E7DBC6 /* QuickCreateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFD0A91C6E351AA292D51EA2 /* QuickCreateSheet.swift */; };
 		9DB9BDF2F2C21E172E73D8D2 /* APIClient+ListEnhancements.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D5A265D82B7D9C9716818D /* APIClient+ListEnhancements.swift */; };
 		9E992E49A2D7059EA9BC4F34 /* PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7ECAC829C2F7C7E8DE88F9 /* PullRequest.swift */; };
+		9EE10C9DAB5A8E58DFFD571E /* OfflineQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF37EEF251C5C18C03E86D4 /* OfflineQueueView.swift */; };
 		9F4A5C1ED1DFDCBC5EA8D823 /* InteractivePopDisabler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCED89BF4650BDFC4262B48D /* InteractivePopDisabler.swift */; };
 		9FC4A8A601C39FEEDE496822 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA58C21063864ADB4BAC822 /* TodayView.swift */; };
 		A0D87C6AEC928127B7E8C4B2 /* OfflineCacheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344AF8ECD4E65221811E904A /* OfflineCacheStore.swift */; };
@@ -139,12 +142,14 @@
 		C8222FD4B618852C6CE61ACA /* ImageLightbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39642CB180355E5C62A75E /* ImageLightbox.swift */; };
 		C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */; };
 		CAE2CE1A865667A1E4BD7CBC /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9F091BF822565D8E0F15E7A /* APIClient.swift */; };
+		CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		CC83F861B2A764DB8AA4FC4A /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
 		CDB684F0D93BA2822BCFC541 /* APIClient+ImageUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */; };
 		CF8A626D972649C230E5C866 /* WorktreeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */; };
 		CFB583BFD7F691C6730C4CEA /* IssueCTLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864FC68F504BF4FA08B86548 /* IssueCTLUITests.swift */; };
 		D1B085BF32A2BA054762456F /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC00C899D2ADA14475787AE7 /* APIClientTests.swift */; };
 		D52DC5DDE3BE88CF966B0675 /* IssueCTLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864FC68F504BF4FA08B86548 /* IssueCTLUITests.swift */; };
+		D54371BD0B51A23079CEEEFF /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF815A24660864A5AA69B05 /* LaunchProgressView.swift */; };
 		D9D891AEA02391C6479319B5 /* NotificationSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B8353783F6D7E7BC9420E5 /* NotificationSettingsStore.swift */; };
 		DBAAAF7B3925847446CC5E39 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 533CCB5045E471F6D1675F9D /* ModelDecodingTests.swift */; };
@@ -219,6 +224,7 @@
 		223E1C810B3BD014B117301B /* IssueCTLApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCTLApp.swift; sourceTree = "<group>"; };
 		22DECFEBB9C9FEB55E9A1045 /* EditIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditIssueSheet.swift; sourceTree = "<group>"; };
 		22FAF4DCDBAB6A7A58E076C4 /* APIClient+Assignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Assignment.swift"; sourceTree = "<group>"; };
+		244DA774E9D8E1B7695BD3BA /* OfflineSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncServiceTests.swift; sourceTree = "<group>"; };
 		2841D89323711B68449BB980 /* CacheAgeLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheAgeLabel.swift; sourceTree = "<group>"; };
 		28E6C0859937F6A85F709D99 /* Deployment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deployment.swift; sourceTree = "<group>"; };
 		2A0C921D1804F0904F029CC8 /* EnumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnumTests.swift; sourceTree = "<group>"; };
@@ -246,6 +252,7 @@
 		5809ACB6716C100004867EC9 /* IssueCTLPreviewUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = IssueCTLPreviewUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5CE9191D87F0834C417E13B0 /* AssigneeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssigneeSheet.swift; sourceTree = "<group>"; };
 		5CEF9A9D19EA4BD4284C8F00 /* SessionManagementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManagementTests.swift; sourceTree = "<group>"; };
+		5CF37EEF251C5C18C03E86D4 /* OfflineQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineQueueView.swift; sourceTree = "<group>"; };
 		5D7F67955189D36EB74DEA6A /* APIClient+ImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+ImageUpload.swift"; sourceTree = "<group>"; };
 		61B8353783F6D7E7BC9420E5 /* NotificationSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsStore.swift; sourceTree = "<group>"; };
 		62E30AE4ECDAC300ED2EE8F2 /* APIClientExtensionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientExtensionTests.swift; sourceTree = "<group>"; };
@@ -266,6 +273,7 @@
 		87C78179FB5D86E7E107E81B /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAttachmentButton.swift; sourceTree = "<group>"; };
 		9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditRepoSheet.swift; sourceTree = "<group>"; };
+		9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncService.swift; sourceTree = "<group>"; };
 		9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestChangesSheet.swift; sourceTree = "<group>"; };
 		A6B7390E54A0BCD855ECC978 /* APIClient+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Settings.swift"; sourceTree = "<group>"; };
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -372,6 +380,7 @@
 				FAC4DF9BB857B451A1F2B5B3 /* NetworkMonitor.swift */,
 				61B8353783F6D7E7BC9420E5 /* NotificationSettingsStore.swift */,
 				344AF8ECD4E65221811E904A /* OfflineCacheStore.swift */,
+				9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */,
 				BC1D044DCA62B13F4196F816 /* SetupLink.swift */,
 			);
 			path = Services;
@@ -400,6 +409,7 @@
 				6E52120CCBF1B17E45E2DDC1 /* AdvancedSettingsView.swift */,
 				9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */,
 				87C78179FB5D86E7E107E81B /* NotificationSettingsView.swift */,
+				5CF37EEF251C5C18C03E86D4 /* OfflineQueueView.swift */,
 				093FBA8D5D66DBDDCAB85BC4 /* SettingsView.swift */,
 				723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */,
 			);
@@ -414,6 +424,7 @@
 				F3CF16B90E6F234095B67412 /* EdgeCaseModelTests.swift */,
 				2A0C921D1804F0904F029CC8 /* EnumTests.swift */,
 				533CCB5045E471F6D1675F9D /* ModelDecodingTests.swift */,
+				244DA774E9D8E1B7695BD3BA /* OfflineSyncServiceTests.swift */,
 				F63680089A3314AB67CE5883 /* ViewLogicTests.swift */,
 			);
 			path = IssueCTLTests;
@@ -773,6 +784,7 @@
 				57F286E2B3615BA000C1987C /* EdgeCaseModelTests.swift in Sources */,
 				A6691865FCEEB29344BCCBAE /* EnumTests.swift in Sources */,
 				DBAAAF7B3925847446CC5E39 /* ModelDecodingTests.swift in Sources */,
+				52543EF1C7077597CC6DC8F0 /* OfflineSyncServiceTests.swift in Sources */,
 				EE5CBD61D807436206C48637 /* ViewLogicTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -831,6 +843,8 @@
 				D9D891AEA02391C6479319B5 /* NotificationSettingsStore.swift in Sources */,
 				55AEB0B56C5CDDF6FD4B7B0F /* NotificationSettingsView.swift in Sources */,
 				16F841C2C2ACBFE1AC1D4AA6 /* OfflineCacheStore.swift in Sources */,
+				9EE10C9DAB5A8E58DFFD571E /* OfflineQueueView.swift in Sources */,
+				D54371BD0B51A23079CEEEFF /* OfflineSyncService.swift in Sources */,
 				2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */,
 				A9B2111D17EC7F6C48EEE268 /* PRDetailView.swift in Sources */,
 				65142BB24364562CB5305E0F /* PRListView.swift in Sources */,
@@ -913,6 +927,8 @@
 				B6466C355DE3B70971FA8D7D /* NotificationSettingsStore.swift in Sources */,
 				54C6FF5A24ED1F784D022F19 /* NotificationSettingsView.swift in Sources */,
 				A0D87C6AEC928127B7E8C4B2 /* OfflineCacheStore.swift in Sources */,
+				7DCCB51EE3C4FBCD4C6719A3 /* OfflineQueueView.swift in Sources */,
+				CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */,
 				227F5D726370EBF5F1C55F98 /* OnboardingView.swift in Sources */,
 				B5F6E35A791604A67AB43860 /* PRDetailView.swift in Sources */,
 				29142761332EA217923C5D78 /* PRListView.swift in Sources */,
