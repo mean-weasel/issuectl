@@ -45,9 +45,33 @@ healthcheck() {
   curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1
 }
 
+ios_api_status() {
+  curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}/api/v1/sessions/previews" 2>/dev/null || true
+}
+
+assert_compatible_web_server() {
+  local status
+  status="$(ios_api_status)"
+  case "$status" in
+    200|401|500)
+      return 0
+      ;;
+    404)
+      echo "Port ${PORT} is already running an issuectl web server without the current iOS session preview API." >&2
+      echo "Stop that process, or rerun with IOS_DEV_PORT set to a free port." >&2
+      exit 1
+      ;;
+    *)
+      echo "Port ${PORT} is responding, but the current iOS API could not be verified (HTTP ${status:-none})." >&2
+      echo "Stop that process, or rerun with IOS_DEV_PORT set to a free port." >&2
+      exit 1
+      ;;
+  esac
+}
+
 wait_for_web() {
   for _ in $(seq 1 60); do
-    if healthcheck; then
+    if healthcheck && [ "$(ios_api_status)" != "404" ]; then
       return 0
     fi
     sleep 1
@@ -100,6 +124,7 @@ echo "Building issuectl CLI..."
 pnpm --filter @issuectl/cli build
 
 if healthcheck; then
+  assert_compatible_web_server
   echo "Reusing existing issuectl web server on port ${PORT}."
 else
   echo "Starting issuectl web on port ${PORT}..."
