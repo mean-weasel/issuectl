@@ -398,8 +398,6 @@ struct TodayView: View {
             PerformanceTrace.end(trace, metadata: "repos=\(repos.count) issues=\(allIssues.count) pulls=\(allPulls.count) deployments=\(activeDeployments.count)")
         }
         do {
-            repos = try await api.repos()
-
             async let deploymentsResult: Result<ActiveDeploymentsResponse, Error> = {
                 do { return .success(try await api.activeDeployments()) }
                 catch { return .failure(error) }
@@ -409,7 +407,10 @@ struct TodayView: View {
                 catch { return .failure(error) }
             }()
 
-            let repoSnapshot = repos.map { (fullName: $0.fullName, owner: $0.owner, name: $0.name) }
+            let loadedRepos = try await api.repos()
+            repos = loadedRepos
+
+            let repoSnapshot = loadedRepos.map { (fullName: $0.fullName, owner: $0.owner, name: $0.name) }
             async let issueResults = loadIssues(for: repoSnapshot, refresh: refresh)
             async let pullResults = loadPulls(for: repoSnapshot, refresh: refresh)
 
