@@ -99,7 +99,8 @@ Use the existing preview smoke wrapper to collect app-side `PerformanceTrace` ti
 Prerequisites:
 
 - `iPhone-preview` is connected, trusted, unlocked, and awake
-- `idevicesyslog` is available for live physical-device logs
+- `idevice_id` and `idevicesyslog` are available for live physical-device logs
+- `idevice_id -l` or `idevice_id -n -l` lists the `iPhone-preview` Xcode destination UDID
 - signing preflight passes:
 
 ```bash
@@ -120,7 +121,7 @@ The script writes artifacts to `/tmp` by default:
 
 Use `pnpm ios:preview-perf:full` when you need broader timing coverage across the preview smoke suite. Prefer the fast profile for quick before/after comparisons because it keeps the physical-device run shorter and reduces test-runner restart variance.
 
-If no `PerformanceTrace` lines appear, verify that the run used `IssueCTLPreview-UISmoke` and not the production scheme, then retry while the phone is unlocked. If `idevicesyslog` cannot attach by `IOS_XCODE_DEVICE_ID`, run `pnpm ios:list-devices` and use the physical device UDID shown for `iPhone-preview`.
+The wrapper fails the run if it cannot attach to the live device log stream or if the log stream produces no `PerformanceTrace` lines. If Xcode can run tests but `idevice_id` does not list the phone, reconnect or re-pair `iPhone-preview` so libimobiledevice can see it, then retry.
 
 ## Optional Pre-Push Check
 
