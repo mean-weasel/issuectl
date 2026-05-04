@@ -9,6 +9,23 @@ The preview app is intended for development, physical-device smoke tests, and fe
 
 Merge queue validation should use the preview lane when a PR needs iOS smoke coverage before landing.
 
+## Physical Device Roles
+
+Use `IPhone-preivew` as the only/default physical iPhone for preview-app deployment and testing. This is the device for:
+
+- `IssueCTL Preview` installs
+- preview smoke tests
+- preview performance timing
+- future preview/GitHub Actions runner workflows
+
+Keep `Iphone-prod` reserved for production `IssueCTL` installs and production validation. Do not run preview deployments or preview smoke tests on `Iphone-prod` unless explicitly doing a production-device check.
+
+When commands require `IOS_DEVICE_ID` or an Xcode destination id, list the currently connected devices and choose the identifier for `IPhone-preivew`:
+
+```bash
+pnpm ios:list-devices
+```
+
 ## App Lanes
 
 Use `IssueCTL Preview` as the active development lane. It is the app to run from feature branches, local simulator testing, and physical-device smoke tests.
