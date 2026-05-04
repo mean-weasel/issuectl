@@ -85,16 +85,31 @@ struct RepoContextStrip: View {
     let repos: [Repo]
     var activeRepoFullNames: [String] = []
     var leadingTitle = "Repos"
+    var valueOverride: String?
+    var onTap: (() -> Void)?
 
     var body: some View {
         if shouldShow {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    RepoContextChip(
-                        title: leadingTitle,
-                        value: repoSummary,
-                        systemImage: "folder"
-                    )
+                    if let onTap {
+                        Button(action: onTap) {
+                            RepoContextChip(
+                                title: leadingTitle,
+                                value: displayedRepoSummary,
+                                systemImage: "folder"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens repository filters")
+                        .accessibilityIdentifier("repo-context-filter-button")
+                    } else {
+                        RepoContextChip(
+                            title: leadingTitle,
+                            value: displayedRepoSummary,
+                            systemImage: "folder"
+                        )
+                    }
 
                     if !activeRepoFullNames.isEmpty && activeRepoFullNames.count < repos.count {
                         RepoContextChip(
@@ -124,5 +139,9 @@ struct RepoContextStrip: View {
             return repos[0].name
         }
         return "All \(repos.count)"
+    }
+
+    private var displayedRepoSummary: String {
+        valueOverride ?? repoSummary
     }
 }

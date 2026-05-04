@@ -9,7 +9,6 @@ struct SessionListView: View {
     @State private var repos: [Repo] = []
     @State private var deployments: [ActiveDeployment] = []
     @State private var previews: [Int: SessionPreview] = [:]
-    @State private var expandedPorts: Set<Int> = []
     @State private var isLoading = true
     @State private var isFetchingPreviews = false
     @State private var errorMessage: String?
@@ -23,14 +22,23 @@ struct SessionListView: View {
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
     @State private var isSearchVisible = false
+    @State private var selectedRepoIds: Set<Int> = []
+    @State private var showFiltersSheet = false
+    @State private var collapsedPreviewPorts: Set<Int> = []
     @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
     private var filteredDeployments: [ActiveDeployment] {
-        guard !searchText.isEmpty else { return deployments }
+        var items = deployments
+
+        if !selectedRepoIds.isEmpty {
+            items = items.filter { selectedRepoIds.contains($0.repoId) }
+        }
+
+        guard !searchText.isEmpty else { return items }
         let query = searchText.lowercased()
-        return deployments.filter { deployment in
+        return items.filter { deployment in
             [
                 deployment.repoFullName,
                 "#\(deployment.issueNumber)",
@@ -78,6 +86,27 @@ struct SessionListView: View {
         return repos.map(\.fullName).filter { names.contains($0) }
     }
 
+    private var hasActiveFilters: Bool {
+        !selectedRepoIds.isEmpty
+    }
+
+    private var selectedRepoSummary: String {
+        let names = repos
+            .filter { selectedRepoIds.contains($0.id) }
+            .map(\.name)
+
+        if selectedRepoIds.isEmpty {
+            return repos.count > 1 ? "All \(repos.count)" : repos.first?.name ?? "None"
+        }
+        if names.isEmpty {
+            return "\(selectedRepoIds.count) selected"
+        }
+        if names.count <= 2 {
+            return names.joined(separator: ", ")
+        }
+        return "\(names[0]), \(names[1]) +\(names.count - 2)"
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
@@ -87,7 +116,12 @@ struct SessionListView: View {
                     sessionHeader
                 }
 
-                RepoContextStrip(repos: repos, activeRepoFullNames: activeRepoFullNames)
+                RepoContextStrip(
+                    repos: repos,
+                    activeRepoFullNames: activeRepoFullNames,
+                    valueOverride: selectedRepoSummary,
+                    onTap: { showFiltersSheet = true }
+                )
 
                 Group {
                     if isLoading && deployments.isEmpty {
@@ -121,14 +155,6 @@ struct SessionListView: View {
                                     OfflineStatusBanner(message: staleDataMessage(kind: "sessions", cachedAt: cachedDeploymentsAt))
                                 }
 
-                                ActiveSessionsHeader(
-                                    totalCount: deployments.count,
-                                    activeCount: activeTerminalCount,
-                                    idleCount: idleTerminalCount,
-                                    checkingCount: checkingTerminalCount,
-                                    startingCount: startingCount
-                                )
-
                                 if let actionError {
                                     Label(actionError, systemImage: "exclamationmark.triangle")
                                         .foregroundStyle(.red)
@@ -143,7 +169,7 @@ struct SessionListView: View {
                                     } description: {
                                         Text("Try another repo, issue number, branch, or port.")
                                     } actions: {
-                                        Button("Clear Search", action: hideSearch)
+                                        Button(hasActiveFilters ? "Clear Filters" : "Clear Search", action: resetFiltersAndSearch)
                                     }
                                     .padding(.top, 18)
                                 }
@@ -153,7 +179,7 @@ struct SessionListView: View {
                                     SessionRowView(
                                         deployment: deployment,
                                         preview: port.flatMap { previews[$0] },
-                                        isPreviewExpanded: port.map { expandedPorts.contains($0) } ?? false,
+                                        isPreviewExpanded: port.map { previews[$0] != nil && !collapsedPreviewPorts.contains($0) } ?? false,
                                         isEnding: endingDeploymentId == deployment.id,
                                         onTogglePreview: {
                                             if let port {
@@ -239,6 +265,15 @@ struct SessionListView: View {
                     Task { await load(refresh: true) }
                 })
             }
+            .sheet(isPresented: $showFiltersSheet) {
+                SessionFilterSheet(
+                    repos: repos,
+                    selectedRepoIds: $selectedRepoIds,
+                    selectedRepoSummary: selectedRepoSummary
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
         }
     }
 
@@ -259,6 +294,15 @@ struct SessionListView: View {
                     accessibilityIdentifier: "sessions-refresh-button"
                 ) {
                     Task { await refreshSessions() }
+                }
+
+                TopBarIconButton(
+                    title: "Session filters",
+                    systemImage: "line.3.horizontal.decrease",
+                    accessibilityIdentifier: "sessions-filter-button",
+                    showsActiveIndicator: hasActiveFilters
+                ) {
+                    showFiltersSheet = true
                 }
 
                 TopBarIconButton(
@@ -333,6 +377,11 @@ struct SessionListView: View {
         isSearchVisible = false
     }
 
+    private func resetFiltersAndSearch() {
+        selectedRepoIds.removeAll()
+        hideSearch()
+    }
+
     private func sessionErrorDescription(_ message: String) -> String {
         "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
     }
@@ -344,10 +393,10 @@ struct SessionListView: View {
 
     private func togglePreview(_ port: Int) {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-            if expandedPorts.contains(port) {
-                expandedPorts.remove(port)
+            if collapsedPreviewPorts.contains(port) {
+                collapsedPreviewPorts.remove(port)
             } else {
-                expandedPorts.insert(port)
+                collapsedPreviewPorts.insert(port)
             }
         }
     }
@@ -394,7 +443,7 @@ struct SessionListView: View {
         guard !isFetchingPreviews else { return }
         guard !deployments.isEmpty else {
             previews = [:]
-            expandedPorts = []
+            collapsedPreviewPorts = []
             return
         }
         isFetchingPreviews = true
@@ -414,7 +463,7 @@ struct SessionListView: View {
         while !Task.isCancelled {
             if deployments.isEmpty {
                 previews = [:]
-                expandedPorts = []
+                collapsedPreviewPorts = []
             } else {
                 await fetchPreviews()
             }
@@ -430,7 +479,7 @@ struct SessionListView: View {
     private func prunePreviewState() {
         let ports = Set(deployments.compactMap(\.ttydPort))
         previews = previews.filter { ports.contains($0.key) }
-        expandedPorts = expandedPorts.intersection(ports)
+        collapsedPreviewPorts = collapsedPreviewPorts.intersection(ports)
     }
 
     private func endSession(_ deployment: ActiveDeployment) async {
@@ -445,7 +494,7 @@ struct SessionListView: View {
             deployments.removeAll { $0.id == deployment.id }
             if let port = deployment.ttydPort {
                 previews.removeValue(forKey: port)
-                expandedPorts.remove(port)
+                collapsedPreviewPorts.remove(port)
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -459,69 +508,105 @@ private struct TerminalPresentation: Identifiable {
     let deployment: ActiveDeployment
 }
 
-private struct ActiveSessionsHeader: View {
-    let totalCount: Int
-    let activeCount: Int
-    let idleCount: Int
-    let checkingCount: Int
-    let startingCount: Int
+private struct SessionFilterSheet: View {
+    let repos: [Repo]
+    @Binding var selectedRepoIds: Set<Int>
+    let selectedRepoSummary: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(totalCount) running")
-                    .font(.title3.bold())
-                Text("Re-enter terminals without losing active agent work.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    sheetHeader
 
-            HStack(spacing: 10) {
-                metric(value: "\(activeCount)", label: "active", systemImage: "bolt.fill", accessibilityIdentifier: "sessions-active-count")
-                metric(value: "\(idleCount)", label: "idle", systemImage: "pause.circle", accessibilityIdentifier: "sessions-idle-count")
-                if checkingCount > 0 {
-                    metric(value: "\(checkingCount)", label: "checking", systemImage: "dot.radiowaves.left.and.right", accessibilityIdentifier: "sessions-checking-count")
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Label("Repository", systemImage: "tray.2")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if !selectedRepoIds.isEmpty {
+                                Button("Clear") {
+                                    selectedRepoIds.removeAll()
+                                }
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(IssueCTLColors.action)
+                                .buttonStyle(.plain)
+                            }
+                        }
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                            Button {
+                                selectedRepoIds.removeAll()
+                            } label: {
+                                optionContent(title: "All Repos", subtitle: "\(repos.count) configured", isSelected: selectedRepoIds.isEmpty)
+                            }
+                            .buttonStyle(.plain)
+
+                            ForEach(repos) { repo in
+                                let isSelected = selectedRepoIds.contains(repo.id)
+                                Button {
+                                    if isSelected {
+                                        selectedRepoIds.remove(repo.id)
+                                    } else {
+                                        selectedRepoIds.insert(repo.id)
+                                    }
+                                } label: {
+                                    optionContent(title: repo.name, subtitle: repo.owner, isSelected: isSelected)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 }
-                metric(value: "\(startingCount)", label: "starting", systemImage: "hourglass", accessibilityIdentifier: "sessions-starting-count")
+                .padding(16)
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: 18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
-        }
-        .accessibilityIdentifier("sessions-command-header")
     }
 
-    private func metric(
-        value: String,
-        label: String,
-        systemImage: String,
-        accessibilityIdentifier: String
-    ) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: systemImage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value)
-                    .font(.subheadline.bold())
-                Text(label)
+    private var sheetHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Filters")
+                    .font(.title3.bold())
+                Text("Showing \(selectedRepoSummary)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 0)
+            Spacer()
+            if !selectedRepoIds.isEmpty {
+                Button("Reset") {
+                    selectedRepoIds.removeAll()
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(IssueCTLColors.action)
+                .buttonStyle(.plain)
+            }
         }
-        .padding(9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IssueCTLColors.elevatedBackground, in: RoundedRectangle(cornerRadius: 12))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label) sessions")
-        .accessibilityValue(value)
-        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func optionContent(title: String, subtitle: String, isSelected: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .padding(10)
+        .background(isSelected ? IssueCTLColors.action.opacity(0.14) : Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? IssueCTLColors.action.opacity(0.55) : Color.clear, lineWidth: 1)
+        }
     }
 }
 

@@ -149,7 +149,9 @@ func openSettingsFromRecovery(in app: XCUIApplication) {
 
 @MainActor
 func assertRepoContext(_ expectedValue: String, in app: XCUIApplication) {
-    let context = element("repo-context-repos", in: app)
+    let staticContext = element("repo-context-repos", in: app)
+    let tappableContext = element("repo-context-filter-button", in: app)
+    let context = staticContext.exists ? staticContext : tappableContext
     XCTAssertTrue(context.waitForExistence(timeout: 8), "Repo context missing\n\(app.debugDescription)")
     XCTAssertTrue(
         context.label.contains(expectedValue),

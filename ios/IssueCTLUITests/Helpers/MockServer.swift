@@ -110,6 +110,15 @@ final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
+    func seedDeploymentsAcrossRepos() {
+        hiddenPreviewIssueNumbers = []
+        repos = [defaultRepo, betaRepo]
+        activeDeployments = [
+            deployment(issueNumber: 101),
+            deployment(issueNumber: 201, repoId: 2, owner: "org", repoName: "beta"),
+        ]
+    }
+
     func seedDeploymentWithMissingPreview() {
         activeDeployments = [deployment(issueNumber: 101)]
         hiddenPreviewIssueNumbers = [101]
@@ -597,23 +606,23 @@ final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
-    func deployment(issueNumber: Int) -> [String: Any] {
+    func deployment(issueNumber: Int, repoId: Int = 1, owner: String = "org", repoName: String = "alpha") -> [String: Any] {
         let id = 8900 + issueNumber
         return [
             "id": id,
-            "repo_id": 1,
+            "repo_id": repoId,
             "issue_number": issueNumber,
             "branch_name": branchName(for: issueNumber),
             "workspace_mode": "worktree",
-            "workspace_path": "/tmp/alpha-worktree-\(issueNumber)",
+            "workspace_path": "/tmp/\(repoName)-worktree-\(issueNumber)",
             "linked_pr_number": NSNull(),
             "state": "active",
             "launched_at": "2026-04-29 08:00:00",
             "ended_at": NSNull(),
             "ttyd_port": 19000 + issueNumber,
             "ttyd_pid": 12000 + issueNumber,
-            "owner": "org",
-            "repo_name": "alpha",
+            "owner": owner,
+            "repo_name": repoName,
         ]
     }
 
