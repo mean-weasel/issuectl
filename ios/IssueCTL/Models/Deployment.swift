@@ -108,6 +108,25 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
 
 struct ActiveDeploymentsResponse: Codable, Sendable {
     let deployments: [ActiveDeployment]
+    let fromCache: Bool
+    let cachedAt: String?
+
+    init(deployments: [ActiveDeployment], fromCache: Bool = false, cachedAt: String? = nil) {
+        self.deployments = deployments
+        self.fromCache = fromCache
+        self.cachedAt = cachedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        deployments = try container.decode([ActiveDeployment].self, forKey: .deployments)
+        fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
+        cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case deployments, fromCache, cachedAt
+    }
 }
 
 enum SessionPreviewStatus: String, Codable, Sendable {

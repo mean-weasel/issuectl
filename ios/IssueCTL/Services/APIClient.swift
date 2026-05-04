@@ -239,7 +239,16 @@ final class APIClient {
             return response
         } catch {
             if let cached = offlineCache.load(IssueDetailResponse.self, for: cacheKey, serverURL: serverURL) {
-                return cached.value
+                let value = cached.value
+                return IssueDetailResponse(
+                    issue: value.issue,
+                    comments: value.comments,
+                    deployments: value.deployments,
+                    linkedPRs: value.linkedPRs,
+                    referencedFiles: value.referencedFiles,
+                    fromCache: true,
+                    cachedAt: cached.cachedAt
+                )
             }
             throw error
         }
@@ -273,7 +282,16 @@ final class APIClient {
             return response
         } catch {
             if let cached = offlineCache.load(PullDetailResponse.self, for: cacheKey, serverURL: serverURL) {
-                return cached.value
+                let value = cached.value
+                return PullDetailResponse(
+                    pull: value.pull,
+                    checks: value.checks,
+                    files: value.files,
+                    linkedIssue: value.linkedIssue,
+                    reviews: value.reviews,
+                    fromCache: true,
+                    cachedAt: cached.cachedAt
+                )
             }
             throw error
         }
@@ -309,7 +327,11 @@ final class APIClient {
         } catch {
             activeDeploymentsTask = nil
             if let cached = offlineCache.load(ActiveDeploymentsResponse.self, for: "deployments", serverURL: serverURL) {
-                return cached.value
+                return ActiveDeploymentsResponse(
+                    deployments: cached.value.deployments,
+                    fromCache: true,
+                    cachedAt: cached.cachedAt
+                )
             }
             throw error
         }

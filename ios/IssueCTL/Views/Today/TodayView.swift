@@ -19,6 +19,7 @@ struct TodayView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var oldestCachedAt: Date?
+    @State private var isShowingCachedData = false
     @State private var currentUserLogin: String?
     @State private var userFetchFailed = false
     @State private var showCreateSheet = false
@@ -220,7 +221,7 @@ struct TodayView: View {
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    if !network.isConnected {
+                    if isShowingCachedData || !network.isConnected {
                         OfflineStatusBanner(message: cacheMessage)
                     }
 
@@ -382,6 +383,9 @@ struct TodayView: View {
     }
 
     private var cacheMessage: String {
+        if isShowingCachedData {
+            return staleDataMessage(kind: "today data", cachedAt: oldestCachedAt)
+        }
         if let oldestCachedAt {
             let formatter = RelativeDateTimeFormatter()
             formatter.unitsStyle = .abbreviated
@@ -414,8 +418,15 @@ struct TodayView: View {
             async let issueResults = loadIssues(for: repoSnapshot, refresh: refresh)
             async let pullResults = loadPulls(for: repoSnapshot, refresh: refresh)
 
+            var deploymentCachedDates: [Date] = []
+            var didUseCachedData = false
             switch await deploymentsResult {
-            case .success(let response): activeDeployments = response.deployments
+            case .success(let response):
+                activeDeployments = response.deployments
+                didUseCachedData = didUseCachedData || response.fromCache
+                if let cachedAt = response.cachedAt, let date = parseIssueCTLDate(cachedAt) {
+                    deploymentCachedDates.append(date)
+                }
             case .failure: activeDeployments = []
             }
             switch await userResult {
@@ -433,7 +444,8 @@ struct TodayView: View {
             pullsByRepo = loadedPulls.items
             issueRepoLookup = makeRepoLookup(itemsByRepo: loadedIssues.items, htmlUrl: { $0.htmlUrl })
             pullRepoLookup = makeRepoLookup(itemsByRepo: loadedPulls.items, htmlUrl: { $0.htmlUrl })
-            oldestCachedAt = (loadedIssues.cachedDates + loadedPulls.cachedDates).min()
+            oldestCachedAt = (deploymentCachedDates + loadedIssues.cachedDates + loadedPulls.cachedDates).min()
+            isShowingCachedData = didUseCachedData || loadedIssues.usedCache || loadedPulls.usedCache
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -443,56 +455,60 @@ struct TodayView: View {
     private func loadIssues(
         for repos: [(fullName: String, owner: String, name: String)],
         refresh: Bool
-    ) async -> (items: [String: [GitHubIssue]], cachedDates: [Date]) {
-        await withTaskGroup(of: (String, [GitHubIssue]?, String?).self) { group in
+    ) async -> (items: [String: [GitHubIssue]], cachedDates: [Date], usedCache: Bool) {
+        await withTaskGroup(of: (String, [GitHubIssue]?, String?, Bool).self) { group in
             for repo in repos {
                 group.addTask { [api] in
                     do {
                         let response = try await api.issues(owner: repo.owner, repo: repo.name, refresh: refresh)
-                        return (repo.fullName, response.issues, response.cachedAt)
+                        return (repo.fullName, response.issues, response.cachedAt, response.fromCache)
                     } catch {
-                        return (repo.fullName, nil, nil)
+                        return (repo.fullName, nil, nil, false)
                     }
                 }
             }
 
             var items: [String: [GitHubIssue]] = [:]
             var cachedDates: [Date] = []
-            for await (fullName, issues, cachedAt) in group {
+            var usedCache = false
+            for await (fullName, issues, cachedAt, fromCache) in group {
                 if let issues { items[fullName] = issues }
+                usedCache = usedCache || fromCache
                 if let cachedAt, let date = parseIssueCTLDate(cachedAt) {
                     cachedDates.append(date)
                 }
             }
-            return (items, cachedDates)
+            return (items, cachedDates, usedCache)
         }
     }
 
     private func loadPulls(
         for repos: [(fullName: String, owner: String, name: String)],
         refresh: Bool
-    ) async -> (items: [String: [GitHubPull]], cachedDates: [Date]) {
-        await withTaskGroup(of: (String, [GitHubPull]?, String?).self) { group in
+    ) async -> (items: [String: [GitHubPull]], cachedDates: [Date], usedCache: Bool) {
+        await withTaskGroup(of: (String, [GitHubPull]?, String?, Bool).self) { group in
             for repo in repos {
                 group.addTask { [api] in
                     do {
                         let response = try await api.pulls(owner: repo.owner, repo: repo.name, refresh: refresh)
-                        return (repo.fullName, response.pulls, response.cachedAt)
+                        return (repo.fullName, response.pulls, response.cachedAt, response.fromCache)
                     } catch {
-                        return (repo.fullName, nil, nil)
+                        return (repo.fullName, nil, nil, false)
                     }
                 }
             }
 
             var items: [String: [GitHubPull]] = [:]
             var cachedDates: [Date] = []
-            for await (fullName, pulls, cachedAt) in group {
+            var usedCache = false
+            for await (fullName, pulls, cachedAt, fromCache) in group {
                 if let pulls { items[fullName] = pulls }
+                usedCache = usedCache || fromCache
                 if let cachedAt, let date = parseIssueCTLDate(cachedAt) {
                     cachedDates.append(date)
                 }
             }
-            return (items, cachedDates)
+            return (items, cachedDates, usedCache)
         }
     }
 

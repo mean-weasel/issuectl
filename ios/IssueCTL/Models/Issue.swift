@@ -95,6 +95,40 @@ struct IssueDetailResponse: Codable, Sendable {
     let linkedPRs: [GitHubPull]
     let referencedFiles: [String]
     let fromCache: Bool
+    let cachedAt: String?
+
+    init(
+        issue: GitHubIssue,
+        comments: [GitHubComment],
+        deployments: [Deployment],
+        linkedPRs: [GitHubPull],
+        referencedFiles: [String],
+        fromCache: Bool,
+        cachedAt: String? = nil
+    ) {
+        self.issue = issue
+        self.comments = comments
+        self.deployments = deployments
+        self.linkedPRs = linkedPRs
+        self.referencedFiles = referencedFiles
+        self.fromCache = fromCache
+        self.cachedAt = cachedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        issue = try container.decode(GitHubIssue.self, forKey: .issue)
+        comments = try container.decode([GitHubComment].self, forKey: .comments)
+        deployments = try container.decode([Deployment].self, forKey: .deployments)
+        linkedPRs = try container.decode([GitHubPull].self, forKey: .linkedPRs)
+        referencedFiles = try container.decode([String].self, forKey: .referencedFiles)
+        fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
+        cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case issue, comments, deployments, linkedPRs, referencedFiles, fromCache, cachedAt
+    }
 }
 
 struct IssueStateRequestBody: Encodable, Sendable {

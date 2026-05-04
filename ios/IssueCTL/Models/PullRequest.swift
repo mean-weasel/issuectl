@@ -83,6 +83,24 @@ struct PullDetailResponse: Codable, Sendable {
     let fromCache: Bool
     let cachedAt: String?
 
+    init(
+        pull: GitHubPull,
+        checks: [GitHubCheck],
+        files: [GitHubPullFile],
+        linkedIssue: GitHubIssue?,
+        reviews: [GitHubPullReview],
+        fromCache: Bool,
+        cachedAt: String? = nil
+    ) {
+        self.pull = pull
+        self.checks = checks
+        self.files = files
+        self.linkedIssue = linkedIssue
+        self.reviews = reviews
+        self.fromCache = fromCache
+        self.cachedAt = cachedAt
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         pull = try container.decode(GitHubPull.self, forKey: .pull)
