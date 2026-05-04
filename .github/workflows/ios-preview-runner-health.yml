@@ -22,7 +22,7 @@ jobs:
       IOS_PREVIEW_KEYCHAIN_PASSWORD: ${{ secrets.IOS_PREVIEW_KEYCHAIN_PASSWORD }}
       IOS_PREVIEW_SET_KEY_PARTITION_LIST: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Preflight runner, signing, and iPhone-preview
         run: ./scripts/ios-preview-runner-preflight.sh
