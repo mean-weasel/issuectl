@@ -1,0 +1,71 @@
+name: iOS Physical Preview
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref or SHA to test. Defaults to the dispatch ref.'
+        required: false
+        type: string
+      smoke_profile:
+        description: 'Physical iPhone preview smoke profile to run'
+        required: true
+        default: pr
+        type: choice
+        options:
+          - fast
+          - pr
+          - full
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  physical-preview:
+    name: Physical iPhone Preview Smoke
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","macOS","issuectl-ios","iphone-preview"]') }}
+    timeout-minutes: 25
+    env:
+      IOS_DEVICE_NAME: iPhone-preview
+      IOS_SCHEME: IssueCTLPreview-UISmoke
+      IOS_CONFIGURATION: Debug
+      IOS_DEVICE_READY_TIMEOUT: 60
+      IOS_XCODEBUILD_EXTRA_ARGS: -allowProvisioningUpdates -allowProvisioningDeviceRegistration
+    steps:
+      - name: PR placeholder
+        if: github.event_name == 'pull_request'
+        run: echo "Physical iPhone preview smoke runs against the merge queue tip on merge_group."
+
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Show build environment
+        if: github.event_name != 'pull_request'
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve iPhone-preview
+        if: github.event_name != 'pull_request'
+        run: ./scripts/ios-resolve-preview-device.sh
+
+      - name: List iOS devices
+        if: github.event_name != 'pull_request'
+        run: ./scripts/ios-list-devices.sh
+
+      - name: Run physical preview smoke
+        if: github.event_name != 'pull_request'
+        env:
+          IOS_UI_SMOKE_PROFILE: ${{ inputs.smoke_profile || 'pr' }}
+        run: ./scripts/ios-preview-device-smoke.sh

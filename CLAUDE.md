@@ -104,6 +104,8 @@ Use these device roles for physical iPhone deploys and testing:
 
 Do not deploy `IssueCTL Preview`, run preview smoke tests, or run preview performance timing on `iPhone-prod` unless the user explicitly asks for a production-device check. When a workflow asks for a physical preview device, select `iPhone-preview` from `pnpm ios:list-devices`, Xcode destinations, or CoreDevice output and use that device's current identifier.
 
+The required physical preview merge-queue check is `Physical iPhone Preview Smoke` in `.github/workflows/ios-physical-preview.yml`. It must run only on the repo-scoped self-hosted runner named `issuectl-iphone-preview` with labels `issuectl-ios` and `iphone-preview`, and it should use `IOS_DEVICE_NAME=iPhone-preview` instead of hard-coded device identifiers. The runner is installed at `~/issuectl-iphone-preview-runner`; manage it with `./svc.sh status`, `./svc.sh start`, and `./svc.sh stop` from that directory.
+
 ### iOS performance timing
 
 The iOS app has lightweight `PerformanceTrace` instrumentation for measuring app-side performance. It logs:

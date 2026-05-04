@@ -72,7 +72,14 @@ case "$PROFILE" in
     ;;
 esac
 
-args=(
+args=()
+if [ -n "${IOS_XCODEBUILD_EXTRA_ARGS:-}" ]; then
+  # shellcheck disable=SC2206
+  XCODEBUILD_EXTRA_ARGS=($IOS_XCODEBUILD_EXTRA_ARGS)
+  args+=("${XCODEBUILD_EXTRA_ARGS[@]}")
+fi
+
+args+=(
   test
   -project "$PROJECT"
   -scheme "$SCHEME"

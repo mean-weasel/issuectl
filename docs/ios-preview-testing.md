@@ -60,7 +60,7 @@ Run the preview smoke suite on a physical iPhone:
 IOS_DEVICE_ID=<device-udid> pnpm ios:preview-device-smoke:fast
 ```
 
-Use the CoreDevice identifier from `pnpm ios:list-devices` for `IOS_DEVICE_ID`. In practice this can differ from the lower-level hardware id shown by some Xcode destination output.
+By default, the physical-device wrapper resolves `iPhone-preview` by name and uses the correct CoreDevice id for readiness checks and Xcode destination id for `xcodebuild`. Use `IOS_DEVICE_ID`, `IOS_XCODE_DEVICE_ID`, or `IOS_DESTINATION` only when overriding that default.
 
 The physical-device wrapper checks that the iPhone is visible through CoreDevice before launching Xcode. Keep the iPhone unlocked and awake until the test runner starts. By default, physical runs time out instead of waiting indefinitely:
 
@@ -101,6 +101,30 @@ The existing simulator smoke hook is still available:
 ```bash
 RUN_IOS_UI_SMOKE=1 git push
 ```
+
+## Self-Hosted Merge Queue Runner
+
+The required physical-device merge queue lane runs on the repo-scoped self-hosted runner attached to `iPhone-preview`.
+
+Runner defaults:
+
+- Runner name: `issuectl-iphone-preview`
+- Runner labels: `self-hosted`, `macOS`, `issuectl-ios`, `iphone-preview`
+- Runner install path: `~/issuectl-iphone-preview-runner`
+- GitHub check name: `Physical iPhone Preview Smoke`
+- Workflow: `.github/workflows/ios-physical-preview.yml`
+- Test command: `IOS_DEVICE_NAME=iPhone-preview IOS_UI_SMOKE_PROFILE=pr ./scripts/ios-preview-device-smoke.sh`
+
+The workflow emits a lightweight passing `pull_request` check so PRs can enter the merge queue. The actual physical-device run happens on `merge_group` and `workflow_dispatch`, which validates the queue tip rather than the stale PR head.
+
+Register the runner from repository settings with the GitHub-provided command, then add the custom labels above. Install it as a launchd service on the MacBook so it survives logout/reboot. To inspect the installed service locally:
+
+```bash
+cd ~/issuectl-iphone-preview-runner
+./svc.sh status
+```
+
+After the workflow has run once and created the `Physical iPhone Preview Smoke` check context, add that check to the `main-protection` ruleset required status checks. Keep `iPhone-preview` unlocked and awake when the merge queue is active; the required check intentionally fails instead of skipping if the phone is unavailable.
 
 ## Project Generation
 
