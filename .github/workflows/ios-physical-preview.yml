@@ -46,7 +46,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: echo "Physical iPhone preview smoke runs against the merge queue tip on merge_group."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: github.event_name != 'pull_request'
         with:
           fetch-depth: 0
