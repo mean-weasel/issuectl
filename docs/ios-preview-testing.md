@@ -92,6 +92,46 @@ List available device identifiers and preview destinations:
 pnpm ios:list-devices
 ```
 
+## Physical Preview Performance Timing
+
+Use the existing preview smoke wrapper to collect app-side `PerformanceTrace` timings from `iPhone-preview`. The wrapper resolves `iPhone-preview`, checks that the phone is visible and unlocked, and runs the `IssueCTLPreview-UISmoke` scheme with `ISSUECTL_UI_TESTING=1`, which mirrors timing events to device logs with a `[PerformanceTrace]` prefix.
+
+Prerequisites:
+
+- `iPhone-preview` is connected, trusted, unlocked, and awake
+- `idevicesyslog` is available for live physical-device logs
+- signing preflight passes:
+
+```bash
+pnpm ios:preview-runner-preflight
+```
+
+Run a repeatable timing pass and save both the live PerformanceTrace log and the Xcode result bundle:
+
+```bash
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+perf_log="/tmp/issuectl-preview-perf-$stamp.log"
+result_bundle="/tmp/issuectl-preview-perf-$stamp.xcresult"
+
+eval "$(IOS_DEVICE_NAME=iPhone-preview ./scripts/ios-resolve-preview-device.sh shell)"
+export IOS_DEVICE_NAME IOS_DEVICE_ID IOS_XCODE_DEVICE_ID IOS_DESTINATION
+
+idevicesyslog -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors \
+  > "$perf_log" 2>&1 &
+log_pid=$!
+
+IOS_XCODEBUILD_EXTRA_ARGS="-allowProvisioningUpdates -allowProvisioningDeviceRegistration -resultBundlePath $result_bundle" \
+  pnpm ios:preview-device-smoke:fast
+
+kill "$log_pid" 2>/dev/null || true
+grep -n 'PerformanceTrace' "$perf_log"
+printf 'PerformanceTrace log: %s\nXcode result bundle: %s\n' "$perf_log" "$result_bundle"
+```
+
+Use `pnpm ios:preview-device-smoke:full` with the same log capture when you need broader timing coverage across the preview smoke suite. Prefer the fast profile for quick before/after comparisons because it keeps the physical-device run shorter and reduces test-runner restart variance.
+
+If no `PerformanceTrace` lines appear, verify that the run used `IssueCTLPreview-UISmoke` and not the production scheme, then retry while the phone is unlocked. If `idevicesyslog` cannot attach by `IOS_XCODE_DEVICE_ID`, run `pnpm ios:list-devices` and use the physical device UDID shown for `iPhone-preview`.
+
 ## Optional Pre-Push Check
 
 Normal pushes do not require a connected iPhone. To opt into physical preview E2E before pushing iOS-related changes:
@@ -122,6 +162,64 @@ Runner defaults:
 - Test command: `IOS_DEVICE_NAME=iPhone-preview IOS_UI_SMOKE_PROFILE=pr ./scripts/ios-preview-device-smoke.sh`
 
 The workflow emits a lightweight passing `pull_request` check so PRs can enter the merge queue. The actual physical-device run happens on `merge_group` and `workflow_dispatch`, which validates the queue tip rather than the stale PR head.
+
+## Manual Preview Operations
+
+Use `iOS Preview Runner Health` when you only need to check whether the self-hosted runner, signing keychain, Automation Mode, and `iPhone-preview` are ready. It is a manual `workflow_dispatch` workflow and does not build, install, or test the app.
+
+Use `iOS Preview Install` when you need to install `IssueCTL Preview` on `iPhone-preview` from a selected ref. The workflow:
+
+- accepts an optional `ref`
+- builds the `IssueCTLPreview` scheme
+- verifies the bundle id is `com.issuectl.ios.preview`
+- installs only on `iPhone-preview`
+- can optionally run physical preview UI smoke after install
+
+These workflows are intentionally manual operational tools. Merge queue enforcement still happens through `iOS Physical Preview` and its required `Physical iPhone Preview Smoke` check.
+
+## Manual Merge Queue Tip Testing
+
+Use this flow when a PR needs a hands-on check of the exact merge queue build that will land on `main`.
+
+Before enqueueing, make sure `iPhone-preview` is connected to the runner Mac, trusted, unlocked, and awake:
+
+```bash
+pnpm ios:list-devices
+```
+
+Confirm the resolver output names `iPhone-preview`. Do not continue with `iPhone-prod`; it is reserved for the production `IssueCTL` app and production validation.
+
+Enqueue the PR from the GitHub PR page with **Merge when ready** or from the CLI:
+
+```bash
+gh pr merge <pr-number> --auto
+```
+
+For a branch protected by a merge queue, `gh pr merge` does not need a merge strategy. If required checks are still running, `--auto` enables auto-merge and GitHub enqueues the PR after the requirements pass. If requirements have already passed, GitHub adds the PR to the merge queue immediately.
+
+After the PR enters the queue, open the merge queue entry or the PR checks list and watch the `merge_group` run for `iOS Physical Preview`. The check to verify is:
+
+```text
+Physical iPhone Preview Smoke
+```
+
+This check must run on the self-hosted `issuectl-iphone-preview` runner with the `iphone-preview` label. The `pull_request` check is only a placeholder; the manual test should use the `merge_group` check because it builds the merge queue tip commit.
+
+When the `merge_group` check is running or has passed, verify the queue-tip app is installed on the physical preview phone:
+
+1. On `iPhone-preview`, find `IssueCTL Preview` on the Home Screen or App Library. It should be installed separately from `IssueCTL`.
+2. Open `IssueCTL Preview`, go to Settings, and check the app version/build string.
+3. Compare the short build SHA in Settings with the merge queue tip SHA shown in the GitHub `merge_group` run. They should match.
+4. Manually inspect the flow under review in `IssueCTL Preview`. Keep the phone unlocked and awake until inspection is complete.
+
+Use the installed app identity to distinguish the two physical-device lanes:
+
+| Device role | App to inspect | Bundle id | URL scheme | Use for |
+|---|---|---|---|---|
+| `iPhone-preview` | `IssueCTL Preview` | `com.issuectl.ios.preview` | `issuectl-preview` | merge queue tip builds, preview smoke tests, PR validation |
+| `iPhone-prod` | `IssueCTL` | `com.issuectl.ios` | `issuectl` | production installs and production validation |
+
+If `IssueCTL Preview` is missing from `iPhone-preview`, rerun or redispatch the `iOS Physical Preview` workflow for the merge queue ref. If the workflow cannot resolve the phone, unlock `iPhone-preview`, verify it appears in `pnpm ios:list-devices`, and rerun the failed check. Do not switch the merge queue check to `iPhone-prod`.
 
 Register the runner from repository settings with the GitHub-provided command, then add the custom labels above. Install it as a launchd service on the MacBook so it survives logout/reboot. To inspect the installed service locally:
 

@@ -1,0 +1,78 @@
+name: iOS Preview Install
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref or SHA to install. Defaults to the dispatch ref.'
+        required: false
+        type: string
+      configuration:
+        description: 'Build configuration for IssueCTLPreview'
+        required: true
+        default: Debug
+        type: choice
+        options:
+          - Debug
+          - Release
+      run_ui_smoke:
+        description: 'Run physical preview UI smoke after install'
+        required: true
+        default: false
+        type: boolean
+      smoke_profile:
+        description: 'UI smoke profile when run_ui_smoke is enabled'
+        required: true
+        default: fast
+        type: choice
+        options:
+          - fast
+          - pr
+          - full
+
+concurrency:
+  group: ${{ github.workflow }}-iphone-preview
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  install-preview:
+    name: Install IssueCTL Preview on iPhone-preview
+    runs-on: [self-hosted, macOS, issuectl-ios, iphone-preview]
+    timeout-minutes: 25
+    env:
+      IOS_DEVICE_NAME: iPhone-preview
+      IOS_SCHEME: IssueCTLPreview
+      IOS_CONFIGURATION: ${{ inputs.configuration }}
+      IOS_DEVICE_READY_TIMEOUT: 60
+      IOS_XCODEBUILD_EXTRA_ARGS: -allowProvisioningUpdates -allowProvisioningDeviceRegistration
+      IOS_PREVIEW_KEYCHAIN_PASSWORD: ${{ secrets.IOS_PREVIEW_KEYCHAIN_PASSWORD }}
+      IOS_PREVIEW_SET_KEY_PARTITION_LIST: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Preflight runner, signing, and iPhone-preview
+        run: ./scripts/ios-preview-runner-preflight.sh
+
+      - name: Show build environment
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve iPhone-preview
+        run: ./scripts/ios-resolve-preview-device.sh
+
+      - name: Install IssueCTL Preview
+        run: ./scripts/ios-preview-install.sh
+
+      - name: Run physical preview smoke
+        if: inputs.run_ui_smoke
+        env:
+          IOS_SCHEME: IssueCTLPreview-UISmoke
+          IOS_UI_SMOKE_PROFILE: ${{ inputs.smoke_profile }}
+        run: ./scripts/ios-preview-device-smoke.sh

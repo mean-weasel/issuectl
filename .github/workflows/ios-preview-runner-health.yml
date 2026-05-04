@@ -1,0 +1,28 @@
+name: iOS Preview Runner Health
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  runner-health:
+    name: iPhone Preview Runner Preflight
+    runs-on: [self-hosted, macOS, issuectl-ios, iphone-preview]
+    timeout-minutes: 10
+    env:
+      IOS_DEVICE_NAME: iPhone-preview
+      IOS_SCHEME: IssueCTLPreview-UISmoke
+      IOS_PROJECT: ios/IssueCTL.xcodeproj
+      IOS_PREVIEW_KEYCHAIN_PASSWORD: ${{ secrets.IOS_PREVIEW_KEYCHAIN_PASSWORD }}
+      IOS_PREVIEW_SET_KEY_PARTITION_LIST: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preflight runner, signing, and iPhone-preview
+        run: ./scripts/ios-preview-runner-preflight.sh
