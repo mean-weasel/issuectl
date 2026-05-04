@@ -95,6 +95,15 @@ xcodebuildmcp tools                      # list all 72 tools
 - All `--simulator-id` values come from `xcodebuildmcp simulator list`
 - Use `--help` on any command to discover flags — don't guess
 
+### iOS physical-device roles
+
+Use these device roles for physical iPhone deploys and testing:
+
+- `IPhone-preivew`: the only/default iPhone for preview-app deployments, preview UI tests, physical-device performance timing, and future GitHub Actions runner work.
+- `Iphone-prod`: the production iPhone. Use it only for production app installs and production validation.
+
+Do not deploy `IssueCTL Preview`, run preview smoke tests, or run preview performance timing on `Iphone-prod` unless the user explicitly asks for a production-device check. When a workflow asks for a physical preview device, select `IPhone-preivew` from `pnpm ios:list-devices`, Xcode destinations, or CoreDevice output and use that device's current identifier.
+
 ### iOS performance timing
 
 The iOS app has lightweight `PerformanceTrace` instrumentation for measuring app-side performance. It logs:
