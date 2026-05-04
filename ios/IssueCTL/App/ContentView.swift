@@ -7,6 +7,7 @@ struct ContentView: View {
     @Environment(NotificationSettingsStore.self) private var notificationSettings
     @State private var selectedTab: AppTab = .today
     @State private var showSettings = false
+    private let launchNotificationSyncDelay: Duration = .seconds(1)
 
     init() {
         let appearance = UITabBarAppearance()
@@ -70,6 +71,7 @@ struct ContentView: View {
             Task { await notificationSettings.syncRegistration(apiClient: api) }
         }
         .task {
+            try? await Task.sleep(for: launchNotificationSyncDelay)
             await notificationSettings.registerForRemoteNotificationsIfAllowed()
             await notificationSettings.syncRegistration(apiClient: api)
         }
