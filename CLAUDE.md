@@ -108,6 +108,10 @@ The required physical preview merge-queue check is `Physical iPhone Preview Smok
 
 Before physical preview builds, run `pnpm ios:preview-runner-preflight`. The GitHub workflow runs the same script to unlock the signing keychain from `IOS_PREVIEW_KEYCHAIN_PASSWORD`, verify a visible Apple Development identity, verify Automation Mode, resolve `iPhone-preview`, and fail fast if the phone is locked. If the LaunchAgent runner reports `errSecInternalComponent` during `CodeSign`, treat it as a service keychain/signing-access failure first; do not switch preview tests to `iPhone-prod`.
 
+Manual operational workflows:
+- `iOS Preview Runner Health`: preflight only; use it to verify runner/signing/phone readiness without building.
+- `iOS Preview Install`: installs `IssueCTL Preview` on `iPhone-preview` from a selected ref and can optionally run physical preview smoke.
+
 ### iOS performance timing
 
 The iOS app has lightweight `PerformanceTrace` instrumentation for measuring app-side performance. It logs:
@@ -141,27 +145,33 @@ xcrun simctl spawn <simulator-id> log show --last 3m --style compact \
 Useful physical-device capture pattern:
 
 ```bash
-idevicesyslog -u <device-udid> -m '[PerformanceTrace]' --no-colors \
-  > /tmp/issuectl-device-perf-live.log 2>&1 &
+pnpm ios:preview-runner-preflight
+
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+perf_log="/tmp/issuectl-preview-perf-$stamp.log"
+result_bundle="/tmp/issuectl-preview-perf-$stamp.xcresult"
+
+eval "$(IOS_DEVICE_NAME=iPhone-preview ./scripts/ios-resolve-preview-device.sh shell)"
+export IOS_DEVICE_NAME IOS_DEVICE_ID IOS_XCODE_DEVICE_ID IOS_DESTINATION
+
+idevicesyslog -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors \
+  > "$perf_log" 2>&1 &
 log_pid=$!
 
-xcodebuild test \
-  -project ios/IssueCTL.xcodeproj \
-  -scheme IssueCTLPreview-UISmoke \
-  -configuration Debug \
-  -destination 'platform=iOS,id=<xcode-device-id>' \
-  -only-testing:IssueCTLPreviewUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs \
-  -resultBundlePath /tmp/issuectl-perf-device.xcresult
+IOS_XCODEBUILD_EXTRA_ARGS="-allowProvisioningUpdates -allowProvisioningDeviceRegistration -resultBundlePath $result_bundle" \
+  pnpm ios:preview-device-smoke:fast
 
 kill "$log_pid" 2>/dev/null || true
-grep -n 'PerformanceTrace' /tmp/issuectl-device-perf-live.log
+grep -n 'PerformanceTrace' "$perf_log"
 ```
 
 Notes:
 
 - Prefer `IssueCTLPreview-UISmoke` for repeatable timing runs because its mock server removes internet/GitHub variance.
-- A single focused UI test is more stable on physical devices than a multi-test run; Xcode may mark multi-test physical sessions failed after test-runner restarts even when later individual tests pass.
+- Prefer `pnpm ios:preview-device-smoke:fast` for quick before/after timing comparisons. Use `pnpm ios:preview-device-smoke:full` with the same log capture when broader preview-smoke coverage is needed.
+- Use `iPhone-preview` for physical preview timing. Do not switch to `iPhone-prod` unless the user explicitly asks for a production-device check.
 - If `xcodebuildmcp` device log capture fails with CoreDevice provider errors, `idevicesyslog` works for live physical-device timing logs without root. `/usr/bin/log collect --device-*` requires root on this machine.
+- If `idevicesyslog` cannot attach by `IOS_XCODE_DEVICE_ID`, run `pnpm ios:list-devices` and use the physical device UDID shown for `iPhone-preview`.
 - Restore `ios/IssueCTL/Generated/AppVersion.swift` after Xcode builds if it is modified by the build script.
 
 ## Logging
