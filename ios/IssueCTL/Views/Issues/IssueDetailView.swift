@@ -2,6 +2,8 @@ import SwiftUI
 
 struct IssueDetailView: View {
     @Environment(APIClient.self) private var api
+    @Environment(NetworkMonitor.self) private var network
+    @Environment(OfflineSyncService.self) private var offlineSync
     @Environment(\.openURL) private var openURL
     let owner: String
     let repo: String
@@ -150,12 +152,14 @@ struct IssueDetailView: View {
             case .comment:
                 IssueCommentSheet(
                     owner: owner, repo: repo, number: number,
-                    onSuccess: { Task { await load(refresh: true) } }
+                    onSuccess: { Task { await load(refresh: true) } },
+                    onQueued: { showStaleHint("Comment queued - will sync when you're back online") }
                 )
             case .closeWithComment:
                 CloseIssueSheet(
                     owner: owner, repo: repo, number: number,
-                    onSuccess: { Task { await load(refresh: true) } }
+                    onSuccess: { Task { await load(refresh: true) } },
+                    onQueued: { showStaleHint("Issue close queued - will sync when you're back online") }
                 )
             case .editComment(let comment):
                 EditCommentSheet(
@@ -699,7 +703,12 @@ struct IssueDetailView: View {
                 actionError = response.error ?? "Failed to close issue"
             }
         } catch {
-            actionError = error.localizedDescription
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueState(owner: owner, repo: repo, issueNumber: number, state: "closed")
+                showStaleHint("Issue close queued - will sync when you're back online")
+            } else {
+                actionError = error.localizedDescription
+            }
         }
     }
 
@@ -717,7 +726,12 @@ struct IssueDetailView: View {
                 actionError = response.error ?? "Failed to reopen issue"
             }
         } catch {
-            actionError = error.localizedDescription
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueState(owner: owner, repo: repo, issueNumber: number, state: "open")
+                showStaleHint("Issue reopen queued - will sync when you're back online")
+            } else {
+                actionError = error.localizedDescription
+            }
         }
     }
 

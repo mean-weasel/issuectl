@@ -62,6 +62,304 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertNil(cache.load([Repo].self, for: "repos", serverURL: "http://two.example"))
     }
 
+    // MARK: - Offline Action Queue
+
+    func testOfflineActionQueuePersistsIssueComments() throws {
+        let suiteName = "issuectl.tests.offline-actions.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let createdAt = Date(timeIntervalSince1970: 0)
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        let action = store.enqueueIssueComment(
+            owner: "owner",
+            repo: "repo",
+            issueNumber: 42,
+            body: "Queued comment",
+            id: "action-1",
+            now: createdAt
+        )
+
+        XCTAssertEqual(action.id, "action-1")
+        XCTAssertEqual(action.status, .pending)
+        XCTAssertEqual(action.retryCount, 0)
+        XCTAssertNil(action.lastError)
+        XCTAssertEqual(action.createdAt, sharedISO8601Formatter.string(from: createdAt))
+        XCTAssertEqual(action.updatedAt, sharedISO8601Formatter.string(from: createdAt))
+
+        let reloaded = OfflineActionQueueStore(defaults: defaults)
+        let persisted = try XCTUnwrap(reloaded.allActions().first)
+        XCTAssertEqual(persisted.id, "action-1")
+        guard case let .issueComment(comment) = persisted.kind else {
+            return XCTFail("Expected issue comment action")
+        }
+        XCTAssertEqual(comment.owner, "owner")
+        XCTAssertEqual(comment.repo, "repo")
+        XCTAssertEqual(comment.issueNumber, 42)
+        XCTAssertEqual(comment.body, "Queued comment")
+    }
+
+    func testOfflineActionQueuePersistsIssueStateActions() throws {
+        let suiteName = "issuectl.tests.offline-action-state.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let createdAt = Date(timeIntervalSince1970: 100)
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        let action = store.enqueueIssueState(
+            owner: "owner",
+            repo: "repo",
+            issueNumber: 42,
+            state: "closed",
+            comment: "Closing while offline",
+            id: "state-1",
+            now: createdAt
+        )
+
+        XCTAssertEqual(action.id, "state-1")
+        XCTAssertEqual(action.status, .pending)
+        XCTAssertEqual(action.retryCount, 0)
+        XCTAssertNil(action.lastError)
+        XCTAssertEqual(action.createdAt, sharedISO8601Formatter.string(from: createdAt))
+        XCTAssertEqual(action.updatedAt, sharedISO8601Formatter.string(from: createdAt))
+
+        let reloaded = OfflineActionQueueStore(defaults: defaults)
+        let persisted = try XCTUnwrap(reloaded.allActions().first)
+        XCTAssertEqual(persisted.id, "state-1")
+        guard case let .issueState(stateAction) = persisted.kind else {
+            return XCTFail("Expected issue state action")
+        }
+        XCTAssertEqual(stateAction.owner, "owner")
+        XCTAssertEqual(stateAction.repo, "repo")
+        XCTAssertEqual(stateAction.issueNumber, 42)
+        XCTAssertEqual(stateAction.state, "closed")
+        XCTAssertEqual(stateAction.comment, "Closing while offline")
+    }
+
+    func testOfflineActionQueueListsPendingFailedAndAll() throws {
+        let suiteName = "issuectl.tests.offline-action-filters.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(
+            owner: "a",
+            repo: "one",
+            issueNumber: 1,
+            body: "first",
+            id: "pending",
+            now: Date(timeIntervalSince1970: 1)
+        )
+        store.enqueueIssueComment(
+            owner: "a",
+            repo: "two",
+            issueNumber: 2,
+            body: "second",
+            id: "failed",
+            now: Date(timeIntervalSince1970: 2)
+        )
+        store.enqueueIssueComment(
+            owner: "a",
+            repo: "three",
+            issueNumber: 3,
+            body: "third",
+            id: "in-flight",
+            now: Date(timeIntervalSince1970: 3)
+        )
+
+        store.markFailed(id: "failed", error: "Network unavailable", now: Date(timeIntervalSince1970: 4))
+        store.markInFlight(id: "in-flight", now: Date(timeIntervalSince1970: 5))
+
+        XCTAssertEqual(store.pendingActions().map(\.id), ["pending"])
+        XCTAssertEqual(store.failedActions().map(\.id), ["failed"])
+        XCTAssertEqual(store.allActions().map(\.id), ["pending", "failed", "in-flight"])
+    }
+
+    func testOfflineActionQueuePreservesFIFOOrderingWithMixedActionKinds() throws {
+        let suiteName = "issuectl.tests.offline-action-mixed-fifo.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(owner: "a", repo: "one", issueNumber: 1, body: "one", id: "comment-1", now: Date(timeIntervalSince1970: 1))
+        store.enqueueIssueState(owner: "a", repo: "one", issueNumber: 1, state: "closed", comment: nil, id: "state-1", now: Date(timeIntervalSince1970: 2))
+        store.enqueueIssueComment(owner: "a", repo: "two", issueNumber: 2, body: "two", id: "comment-2", now: Date(timeIntervalSince1970: 3))
+        store.enqueueIssueState(owner: "a", repo: "two", issueNumber: 2, state: "open", comment: "Reopening", id: "state-2", now: Date(timeIntervalSince1970: 4))
+        store.markInFlight(id: "comment-2", now: Date(timeIntervalSince1970: 5))
+
+        XCTAssertEqual(store.allActions().map(\.id), ["comment-1", "state-1", "comment-2", "state-2"])
+        XCTAssertEqual(store.pendingActions().map(\.id), ["comment-1", "state-1", "state-2"])
+    }
+
+    func testOfflineActionQueueLifecycleUpdatesIssueStateActionStatus() throws {
+        let suiteName = "issuectl.tests.offline-action-state-lifecycle.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueState(
+            owner: "owner",
+            repo: "repo",
+            issueNumber: 7,
+            state: "closed",
+            comment: nil,
+            id: "state-action",
+            now: Date(timeIntervalSince1970: 10)
+        )
+
+        let inFlightAt = Date(timeIntervalSince1970: 20)
+        let inFlight = try XCTUnwrap(store.markInFlight(id: "state-action", now: inFlightAt))
+        XCTAssertEqual(inFlight.status, .inFlight)
+        XCTAssertEqual(inFlight.updatedAt, sharedISO8601Formatter.string(from: inFlightAt))
+
+        let failedAt = Date(timeIntervalSince1970: 30)
+        let failed = try XCTUnwrap(store.markFailed(id: "state-action", error: "Timed out", now: failedAt))
+        XCTAssertEqual(failed.status, .failed)
+        XCTAssertEqual(failed.retryCount, 1)
+        XCTAssertEqual(failed.lastError, "Timed out")
+        XCTAssertEqual(failed.updatedAt, sharedISO8601Formatter.string(from: failedAt))
+
+        let pendingAt = Date(timeIntervalSince1970: 40)
+        let pending = try XCTUnwrap(store.markPending(id: "state-action", now: pendingAt))
+        XCTAssertEqual(pending.status, .pending)
+        XCTAssertEqual(pending.retryCount, 1)
+        XCTAssertEqual(pending.lastError, "Timed out")
+        XCTAssertEqual(pending.updatedAt, sharedISO8601Formatter.string(from: pendingAt))
+
+        store.markCompleted(id: "state-action")
+        XCTAssertTrue(store.allActions().isEmpty)
+    }
+
+    func testOfflineActionQueueLifecycleUpdatesMetadataAndRemovesCompletedActions() throws {
+        let suiteName = "issuectl.tests.offline-action-lifecycle.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(
+            owner: "owner",
+            repo: "repo",
+            issueNumber: 7,
+            body: "body",
+            id: "action",
+            now: Date(timeIntervalSince1970: 10)
+        )
+
+        let inFlightAt = Date(timeIntervalSince1970: 20)
+        let inFlight = try XCTUnwrap(store.markInFlight(id: "action", now: inFlightAt))
+        XCTAssertEqual(inFlight.status, .inFlight)
+        XCTAssertEqual(inFlight.updatedAt, sharedISO8601Formatter.string(from: inFlightAt))
+
+        let failedAt = Date(timeIntervalSince1970: 30)
+        let failed = try XCTUnwrap(store.markFailed(id: "action", error: "Timed out", now: failedAt))
+        XCTAssertEqual(failed.status, .failed)
+        XCTAssertEqual(failed.retryCount, 1)
+        XCTAssertEqual(failed.lastError, "Timed out")
+        XCTAssertEqual(failed.updatedAt, sharedISO8601Formatter.string(from: failedAt))
+
+        XCTAssertNil(store.markFailed(id: "missing", error: "No action", now: Date()))
+
+        store.markCompleted(id: "action")
+        XCTAssertTrue(store.allActions().isEmpty)
+    }
+
+    func testOfflineActionQueueFallsBackSafelyForCorruptedStoredData() throws {
+        let suiteName = "issuectl.tests.offline-action-corrupt.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(Data("not valid queue json".utf8), forKey: "issuectl.offlineActionQueue")
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        XCTAssertTrue(store.allActions().isEmpty)
+        XCTAssertTrue(store.pendingActions().isEmpty)
+        XCTAssertTrue(store.failedActions().isEmpty)
+
+        store.enqueueIssueComment(
+            owner: "owner",
+            repo: "repo",
+            issueNumber: 1,
+            body: "recovered",
+            id: "recovered",
+            now: Date(timeIntervalSince1970: 1)
+        )
+
+        let reloaded = OfflineActionQueueStore(defaults: defaults)
+        XCTAssertEqual(reloaded.allActions().map(\.id), ["recovered"])
+    }
+
+    func testOfflineActionQueueRemovesFailedActionsOnly() throws {
+        let suiteName = "issuectl.tests.offline-action-failed-cleanup.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(owner: "a", repo: "one", issueNumber: 1, body: "one", id: "pending", now: Date(timeIntervalSince1970: 1))
+        store.enqueueIssueComment(owner: "a", repo: "two", issueNumber: 2, body: "two", id: "failed", now: Date(timeIntervalSince1970: 2))
+        store.enqueueIssueComment(owner: "a", repo: "three", issueNumber: 3, body: "three", id: "in-flight", now: Date(timeIntervalSince1970: 3))
+        store.markFailed(id: "failed", error: "rejected", now: Date(timeIntervalSince1970: 4))
+        store.markInFlight(id: "in-flight", now: Date(timeIntervalSince1970: 5))
+
+        store.removeFailedActions()
+
+        XCTAssertEqual(store.allActions().map(\.id), ["pending", "in-flight"])
+        XCTAssertTrue(store.failedActions().isEmpty)
+    }
+
+    func testOfflineActionQueueMarkPendingPreservesRetryMetadata() throws {
+        let suiteName = "issuectl.tests.offline-action-retry-metadata.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(
+            owner: "owner",
+            repo: "repo",
+            issueNumber: 9,
+            body: "retry",
+            id: "action",
+            now: Date(timeIntervalSince1970: 10)
+        )
+        store.markFailed(id: "action", error: "first failure", now: Date(timeIntervalSince1970: 20))
+
+        let pendingAt = Date(timeIntervalSince1970: 30)
+        let pending = try XCTUnwrap(store.markPending(id: "action", now: pendingAt))
+
+        XCTAssertEqual(pending.status, .pending)
+        XCTAssertEqual(pending.retryCount, 1)
+        XCTAssertEqual(pending.lastError, "first failure")
+        XCTAssertEqual(pending.updatedAt, sharedISO8601Formatter.string(from: pendingAt))
+    }
+
+    func testOfflineActionQueuePreservesFIFOOrdering() throws {
+        let suiteName = "issuectl.tests.offline-action-fifo.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(owner: "a", repo: "one", issueNumber: 1, body: "one", id: "first", now: Date(timeIntervalSince1970: 1))
+        store.enqueueIssueComment(owner: "a", repo: "two", issueNumber: 2, body: "two", id: "second", now: Date(timeIntervalSince1970: 2))
+        store.enqueueIssueComment(owner: "a", repo: "three", issueNumber: 3, body: "three", id: "third", now: Date(timeIntervalSince1970: 3))
+        store.markInFlight(id: "second", now: Date(timeIntervalSince1970: 4))
+
+        XCTAssertEqual(store.allActions().map(\.id), ["first", "second", "third"])
+        XCTAssertEqual(store.pendingActions().map(\.id), ["first", "third"])
+    }
+
+    func testOfflineActionQueueRemoveMissingIDIsNoOp() throws {
+        let suiteName = "issuectl.tests.offline-action-remove-missing.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OfflineActionQueueStore(defaults: defaults)
+
+        store.enqueueIssueComment(owner: "a", repo: "one", issueNumber: 1, body: "one", id: "first", now: Date(timeIntervalSince1970: 1))
+        store.enqueueIssueComment(owner: "a", repo: "two", issueNumber: 2, body: "two", id: "second", now: Date(timeIntervalSince1970: 2))
+        let before = store.allActions()
+
+        store.remove(id: "missing")
+
+        XCTAssertEqual(store.allActions(), before)
+    }
+
     // MARK: - Notification Preferences
 
     @MainActor

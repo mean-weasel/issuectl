@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(APIClient.self) private var api
+    @Environment(OfflineSyncService.self) private var offlineSync
     @Environment(\.dismiss) private var dismiss
     @State private var showDisconnectConfirm = false
     @State private var showAddRepo = false
@@ -43,6 +44,8 @@ struct SettingsView: View {
                     NotificationSettingsView()
                 case .worktrees:
                     WorktreeListView()
+                case .offlineQueue:
+                    OfflineQueueView()
                 }
             }
             .sheet(isPresented: $showAddRepo) {
@@ -185,7 +188,30 @@ struct SettingsView: View {
             NavigationLink(value: SettingsDestination.worktrees) {
                 Label("Worktrees", systemImage: "arrow.triangle.branch")
             }
+            NavigationLink(value: SettingsDestination.offlineQueue) {
+                HStack {
+                    Label("Offline Queue", systemImage: "tray.and.arrow.up")
+                    Spacer()
+                    if offlineSync.pendingCount > 0 || offlineSync.failedCount > 0 {
+                        Text(queueSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .accessibilityIdentifier("settings-offline-queue-link")
         }
+    }
+
+    private var queueSummary: String {
+        var parts: [String] = []
+        if offlineSync.pendingCount > 0 {
+            parts.append("\(offlineSync.pendingCount) pending")
+        }
+        if offlineSync.failedCount > 0 {
+            parts.append("\(offlineSync.failedCount) failed")
+        }
+        return parts.joined(separator: ", ")
     }
 
     // MARK: - Disconnect Section
@@ -269,6 +295,7 @@ enum SettingsDestination: Hashable {
     case advancedSettings
     case notifications
     case worktrees
+    case offlineQueue
 }
 
 // MARK: - Repo Row

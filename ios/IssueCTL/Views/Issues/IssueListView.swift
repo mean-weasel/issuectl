@@ -2,6 +2,8 @@ import SwiftUI
 
 struct IssueListView: View {
     @Environment(APIClient.self) private var api
+    @Environment(NetworkMonitor.self) private var network
+    @Environment(OfflineSyncService.self) private var offlineSync
     let onShowSettings: () -> Void
 
     @State private var repos: [Repo] = []
@@ -764,7 +766,19 @@ struct IssueListView: View {
                 actionError = response.error ?? "Failed to \(verb) issue"
             }
         } catch {
-            actionError = error.localizedDescription
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueState(
+                    owner: owner,
+                    repo: repo,
+                    issueNumber: number,
+                    state: state
+                )
+                actionError = state == "closed"
+                    ? "Issue close queued - will sync when you're back online"
+                    : "Issue reopen queued - will sync when you're back online"
+            } else {
+                actionError = error.localizedDescription
+            }
         }
     }
 
