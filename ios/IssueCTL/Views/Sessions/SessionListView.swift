@@ -14,6 +14,8 @@ struct SessionListView: View {
     @State private var isFetchingPreviews = false
     @State private var errorMessage: String?
     @State private var actionError: String?
+    @State private var cachedDeploymentsAt: Date?
+    @State private var isShowingCachedDeployments = false
     @State private var terminalPresentation: TerminalPresentation?
     @State private var sessionControlsTarget: ActiveDeployment?
     @State private var showCreateSheet = false
@@ -115,6 +117,10 @@ struct SessionListView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 12) {
+                                if isShowingCachedDeployments {
+                                    OfflineStatusBanner(message: staleDataMessage(kind: "sessions", cachedAt: cachedDeploymentsAt))
+                                }
+
                                 ActiveSessionsHeader(
                                     totalCount: deployments.count,
                                     activeCount: activeTerminalCount,
@@ -363,6 +369,8 @@ struct SessionListView: View {
             }() : nil
             let response = try await deploymentsResult
             deployments = response.deployments
+            isShowingCachedDeployments = response.fromCache
+            cachedDeploymentsAt = response.cachedAt.flatMap(parseIssueCTLDate)
             prunePreviewState()
             if let reposResult = await reposResult {
                 switch reposResult {

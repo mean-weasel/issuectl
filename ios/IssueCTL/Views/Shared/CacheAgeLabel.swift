@@ -26,3 +26,13 @@ struct CacheAgeLabel: View {
         }
     }
 }
+
+func staleDataMessage(kind: String, cachedAt: Date?) -> String {
+    guard let cachedAt else {
+        return "Showing cached \(kind)"
+    }
+
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .abbreviated
+    return "Showing cached \(kind) from \(formatter.localizedString(for: cachedAt, relativeTo: Date()))"
+}

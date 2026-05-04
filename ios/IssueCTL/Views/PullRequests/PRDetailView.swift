@@ -31,6 +31,12 @@ struct PRDetailView: View {
                 }
             } else if let detail {
                 VStack(spacing: 0) {
+                    if detail.fromCache {
+                        OfflineStatusBanner(message: staleDataMessage(kind: "pull request detail", cachedAt: detail.cachedAt.flatMap(parseIssueCTLDate)))
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                    }
+
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
                             headerSection(detail.pull)

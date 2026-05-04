@@ -639,13 +639,17 @@ final class ModelDecodingTests: XCTestCase {
                     "owner": "org",
                     "repo_name": "app"
                 }
-            ]
+            ],
+            "from_cache": true,
+            "cached_at": "2026-04-27T09:00:00Z"
         }
         """.data(using: .utf8)!
 
         let response = try decoder.decode(ActiveDeploymentsResponse.self, from: json)
         XCTAssertEqual(response.deployments.count, 1)
         XCTAssertEqual(response.deployments[0].repoFullName, "org/app")
+        XCTAssertTrue(response.fromCache)
+        XCTAssertEqual(response.cachedAt, "2026-04-27T09:00:00Z")
     }
 
     func testSessionPreviewsResponseDecoding() throws {

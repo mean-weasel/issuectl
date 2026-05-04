@@ -46,6 +46,7 @@ struct IssueListView: View {
     @State private var isLoadingPriorities = false
 
     @State private var oldestCachedAt: Date?
+    @State private var isShowingCachedData = false
     private let pageSize = 15
     @State private var displayLimit = 15
     @State private var searchText = ""
@@ -53,7 +54,7 @@ struct IssueListView: View {
     @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
-    private typealias RepoIssueLoadResult = (fullName: String, name: String, issues: [GitHubIssue]?, cachedAt: String?, error: Error?)
+    private typealias RepoIssueLoadResult = (fullName: String, name: String, issues: [GitHubIssue]?, cachedAt: String?, fromCache: Bool, error: Error?)
 
     private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
         runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
@@ -231,7 +232,11 @@ struct IssueListView: View {
                     Divider()
                 }
 
-                if let oldestCachedAt {
+                if isShowingCachedData {
+                    OfflineStatusBanner(message: staleDataMessage(kind: "issues", cachedAt: oldestCachedAt))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
+                } else if let oldestCachedAt {
                     CacheAgeLabel(date: oldestCachedAt)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
@@ -840,9 +845,9 @@ struct IssueListView: View {
                     group.addTask { [api] in
                         do {
                             let response = try await api.issues(owner: repo.owner, repo: repo.name, refresh: refresh)
-                            return (repo.fullName, repo.name, response.issues, response.cachedAt, nil)
+                            return (repo.fullName, repo.name, response.issues, response.cachedAt, response.fromCache, nil)
                         } catch {
-                            return (repo.fullName, repo.name, nil, nil, error)
+                            return (repo.fullName, repo.name, nil, nil, false, error)
                         }
                     }
                 }
@@ -869,10 +874,12 @@ struct IssueListView: View {
             }
 
             var cachedDates: [Date] = []
+            var didUseCachedData = false
             var nextIssuesByRepo: [String: [GitHubIssue]] = [:]
-            for (fullName, name, issues, cachedAt, error) in repoResults {
+            for (fullName, name, issues, cachedAt, fromCache, error) in repoResults {
                 if let issues {
                     nextIssuesByRepo[fullName] = issues
+                    didUseCachedData = didUseCachedData || fromCache
                     if let cachedAt, let date = sharedISO8601Formatter.date(from: cachedAt) {
                         cachedDates.append(date)
                     }
@@ -885,6 +892,7 @@ struct IssueListView: View {
             issuesByRepo = nextIssuesByRepo
             issueRepoLookup = makeIssueRepoLookup(itemsByRepo: nextIssuesByRepo)
             oldestCachedAt = cachedDates.min()
+            isShowingCachedData = didUseCachedData
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }

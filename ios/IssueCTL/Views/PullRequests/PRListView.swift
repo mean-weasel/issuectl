@@ -28,6 +28,7 @@ struct PRListView: View {
     @State private var actionError: String?
 
     @State private var oldestCachedAt: Date?
+    @State private var isShowingCachedData = false
     private let pageSize = 15
     @State private var displayLimit = 15
     @State private var searchText = ""
@@ -161,7 +162,11 @@ struct PRListView: View {
                     Divider()
                 }
 
-                if let oldestCachedAt {
+                if isShowingCachedData {
+                    OfflineStatusBanner(message: staleDataMessage(kind: "pull requests", cachedAt: oldestCachedAt))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
+                } else if let oldestCachedAt {
                     CacheAgeLabel(date: oldestCachedAt)
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
@@ -516,28 +521,30 @@ struct PRListView: View {
                 currentUserLogin = nil
             }
 
-            let repoResults = await withTaskGroup(of: (String, String, [GitHubPull]?, String?, Error?).self) { group in
+            let repoResults = await withTaskGroup(of: (String, String, [GitHubPull]?, String?, Bool, Error?).self) { group in
                 for repo in repos {
                     group.addTask {
                         do {
                             let response = try await api.pulls(owner: repo.owner, repo: repo.name, refresh: refresh)
-                            return (repo.fullName, repo.name, response.pulls, response.cachedAt, nil)
+                            return (repo.fullName, repo.name, response.pulls, response.cachedAt, response.fromCache, nil)
                         } catch {
-                            return (repo.fullName, repo.name, nil, nil, error)
+                            return (repo.fullName, repo.name, nil, nil, false, error)
                         }
                     }
                 }
-                var collected: [(String, String, [GitHubPull]?, String?, Error?)] = []
+                var collected: [(String, String, [GitHubPull]?, String?, Bool, Error?)] = []
                 for await result in group {
                     collected.append(result)
                 }
                 return collected
             }
             var cachedDates: [Date] = []
+            var didUseCachedData = false
             var nextPullsByRepo: [String: [GitHubPull]] = [:]
-            for (fullName, name, pulls, cachedAt, error) in repoResults {
+            for (fullName, name, pulls, cachedAt, fromCache, error) in repoResults {
                 if let pulls {
                     nextPullsByRepo[fullName] = pulls
+                    didUseCachedData = didUseCachedData || fromCache
                     if let cachedAt, let date = sharedISO8601Formatter.date(from: cachedAt) {
                         cachedDates.append(date)
                     }
@@ -550,6 +557,7 @@ struct PRListView: View {
             pullsByRepo = nextPullsByRepo
             pullRepoLookup = makePullRepoLookup(itemsByRepo: nextPullsByRepo)
             oldestCachedAt = cachedDates.min()
+            isShowingCachedData = didUseCachedData
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }

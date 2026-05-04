@@ -63,6 +63,12 @@ struct IssueDetailView: View {
                 }
             } else if let detail {
                 VStack(spacing: 0) {
+                    if detail.fromCache {
+                        OfflineStatusBanner(message: staleDataMessage(kind: "issue detail", cachedAt: detail.cachedAt.flatMap(parseIssueCTLDate)))
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                    }
+
                     if let staleHint {
                         Label(staleHint, systemImage: "arrow.clockwise")
                             .font(.caption)
