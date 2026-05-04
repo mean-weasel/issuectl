@@ -53,6 +53,7 @@ struct IssueListView: View {
     @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
+    private typealias RepoIssueLoadResult = (fullName: String, name: String, issues: [GitHubIssue]?, cachedAt: String?, error: Error?)
 
     private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
         runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
@@ -806,6 +807,9 @@ struct IssueListView: View {
         defer {
             PerformanceTrace.end(trace, metadata: "repos=\(repos.count) issues=\(issuesByRepo.values.reduce(0) { $0 + $1.count }) drafts=\(drafts.count) deployments=\(activeDeployments.count)")
         }
+        defer {
+            isLoading = false
+        }
         do {
             repos = try await api.repos()
 
@@ -821,30 +825,17 @@ struct IssueListView: View {
                 do { return .success(try await api.activeDeployments()) }
                 catch { return .failure(error) }
             }()
-            switch await draftsFetch {
-            case .success(let result): drafts = result.drafts
-            case .failure(let error): failures.append("drafts (\(error.localizedDescription))")
-            }
-            switch await deploymentsFetch {
-            case .success(let result): activeDeployments = result.deployments
-            case .failure(let error): failures.append("sessions (\(error.localizedDescription))")
-            }
-
-            do {
-                let user = try await api.currentUser()
-                currentUserLogin = user.login
-                userFetchFailed = false
-            } catch {
-                userFetchFailed = true
-                currentUserLogin = nil
-            }
-
             // Snapshot repos to a local Sendable value so child tasks don't
             // capture main-actor state. Each child returns its result; the
             // sequential `for await` loop collects them without data races.
             let repoSnapshot = repos.map { (fullName: $0.fullName, owner: $0.owner, name: $0.name) }
-            var repoResults: [(String, String, [GitHubIssue]?, String?, Error?)] = []
-            await withTaskGroup(of: (String, String, [GitHubIssue]?, String?, Error?).self) { group in
+            async let userFetch: Result<UserResponse, Error> = {
+                do { return .success(try await api.currentUser()) }
+                catch { return .failure(error) }
+            }()
+
+            var repoResults: [RepoIssueLoadResult] = []
+            await withTaskGroup(of: RepoIssueLoadResult.self) { group in
                 for repo in repoSnapshot {
                     group.addTask { [api] in
                         do {
@@ -859,6 +850,24 @@ struct IssueListView: View {
                     repoResults.append(result)
                 }
             }
+
+            switch await draftsFetch {
+            case .success(let result): drafts = result.drafts
+            case .failure(let error): failures.append("drafts (\(error.localizedDescription))")
+            }
+            switch await deploymentsFetch {
+            case .success(let result): activeDeployments = result.deployments
+            case .failure(let error): failures.append("sessions (\(error.localizedDescription))")
+            }
+            switch await userFetch {
+            case .success(let user):
+                currentUserLogin = user.login
+                userFetchFailed = false
+            case .failure:
+                userFetchFailed = true
+                currentUserLogin = nil
+            }
+
             var cachedDates: [Date] = []
             var nextIssuesByRepo: [String: [GitHubIssue]] = [:]
             for (fullName, name, issues, cachedAt, error) in repoResults {
@@ -880,16 +889,19 @@ struct IssueListView: View {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
 
-            // Fetch priorities for all displayed issues — failures are non-fatal
-            let priorityFailures = await loadPriorities()
-            if !priorityFailures.isEmpty && failures.isEmpty {
-                // Only show priority failures if there aren't already more important errors
-                actionError = "Failed to load: \(priorityFailures.joined(separator: ", "))"
-            }
+            loadPrioritiesInBackground(showFailureBanner: failures.isEmpty)
         } catch {
             errorMessage = error.localizedDescription
         }
-        isLoading = false
+    }
+
+    private func loadPrioritiesInBackground(showFailureBanner: Bool) {
+        Task {
+            let priorityFailures = await loadPriorities()
+            if !priorityFailures.isEmpty && showFailureBanner {
+                actionError = "Failed to load: \(priorityFailures.joined(separator: ", "))"
+            }
+        }
     }
 
     private func loadPriorities() async -> [String] {
