@@ -60,6 +60,12 @@ Run the preview smoke suite on a physical iPhone:
 IOS_DEVICE_ID=<device-udid> pnpm ios:preview-device-smoke:fast
 ```
 
+Run the same preflight that GitHub Actions uses before a physical-device build:
+
+```bash
+pnpm ios:preview-runner-preflight
+```
+
 By default, the physical-device wrapper resolves `iPhone-preview` by name and uses the correct CoreDevice id for readiness checks and Xcode destination id for `xcodebuild`. Use `IOS_DEVICE_ID`, `IOS_XCODE_DEVICE_ID`, or `IOS_DESTINATION` only when overriding that default.
 
 The physical-device wrapper checks that the iPhone is visible through CoreDevice before launching Xcode. Keep the iPhone unlocked and awake until the test runner starts. By default, physical runs time out instead of waiting indefinitely:
@@ -122,6 +128,29 @@ Register the runner from repository settings with the GitHub-provided command, t
 ```bash
 cd ~/issuectl-iphone-preview-runner
 ./svc.sh status
+```
+
+The LaunchAgent service runs without the same interactive keychain session as a terminal. The physical workflow therefore runs `scripts/ios-preview-runner-preflight.sh` before building. That preflight:
+
+- unlocks the configured signing keychain when `IOS_PREVIEW_KEYCHAIN_PASSWORD` is set
+- optionally refreshes the key partition list for non-interactive `codesign` access
+- verifies an Apple Development signing identity is visible
+- verifies Automation Mode does not require local authentication
+- resolves `iPhone-preview` by name
+- fails fast if the phone is unavailable or locked
+
+Set the repository secret `IOS_PREVIEW_KEYCHAIN_PASSWORD` to the password for the login keychain or a dedicated preview signing keychain. The workflow passes that secret only to the self-hosted `merge_group` and `workflow_dispatch` job. The default keychain path is:
+
+```bash
+~/Library/Keychains/login.keychain-db
+```
+
+Override it with `IOS_PREVIEW_KEYCHAIN_PATH` only if the runner uses a dedicated CI keychain. If `codesign` fails from the LaunchAgent with `errSecInternalComponent`, run the preflight from the service-backed workflow first; the failure usually means the service cannot unlock or use the signing identity.
+
+Automation Mode must be prepared once from an interactive admin session on the runner Mac:
+
+```bash
+automationmodetool enable-automationmode-without-authentication
 ```
 
 After the workflow has run once and created the `Physical iPhone Preview Smoke` check context, add that check to the `main-protection` ruleset required status checks. Keep `iPhone-preview` unlocked and awake when the merge queue is active; the required check intentionally fails instead of skipping if the phone is unavailable.
