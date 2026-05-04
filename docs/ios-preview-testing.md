@@ -106,29 +106,19 @@ Prerequisites:
 pnpm ios:preview-runner-preflight
 ```
 
-Run a repeatable timing pass and save both the live PerformanceTrace log and the Xcode result bundle:
+Run a repeatable timing pass and save the live PerformanceTrace log, summary, and Xcode result bundle:
 
 ```bash
-stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-perf_log="/tmp/issuectl-preview-perf-$stamp.log"
-result_bundle="/tmp/issuectl-preview-perf-$stamp.xcresult"
-
-eval "$(IOS_DEVICE_NAME=iPhone-preview ./scripts/ios-resolve-preview-device.sh shell)"
-export IOS_DEVICE_NAME IOS_DEVICE_ID IOS_XCODE_DEVICE_ID IOS_DESTINATION
-
-idevicesyslog -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors \
-  > "$perf_log" 2>&1 &
-log_pid=$!
-
-IOS_XCODEBUILD_EXTRA_ARGS="-allowProvisioningUpdates -allowProvisioningDeviceRegistration -resultBundlePath $result_bundle" \
-  pnpm ios:preview-device-smoke:fast
-
-kill "$log_pid" 2>/dev/null || true
-grep -n 'PerformanceTrace' "$perf_log"
-printf 'PerformanceTrace log: %s\nXcode result bundle: %s\n' "$perf_log" "$result_bundle"
+pnpm ios:preview-perf:fast
 ```
 
-Use `pnpm ios:preview-device-smoke:full` with the same log capture when you need broader timing coverage across the preview smoke suite. Prefer the fast profile for quick before/after comparisons because it keeps the physical-device run shorter and reduces test-runner restart variance.
+The script writes artifacts to `/tmp` by default:
+
+- `/tmp/issuectl-preview-perf-<timestamp>.log`
+- `/tmp/issuectl-preview-perf-<timestamp>.summary.txt`
+- `/tmp/issuectl-preview-perf-<timestamp>.xcresult`
+
+Use `pnpm ios:preview-perf:full` when you need broader timing coverage across the preview smoke suite. Prefer the fast profile for quick before/after comparisons because it keeps the physical-device run shorter and reduces test-runner restart variance.
 
 If no `PerformanceTrace` lines appear, verify that the run used `IssueCTLPreview-UISmoke` and not the production scheme, then retry while the phone is unlocked. If `idevicesyslog` cannot attach by `IOS_XCODE_DEVICE_ID`, run `pnpm ios:list-devices` and use the physical device UDID shown for `iPhone-preview`.
 
