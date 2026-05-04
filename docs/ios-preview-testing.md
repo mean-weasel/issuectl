@@ -99,8 +99,7 @@ Use the existing preview smoke wrapper to collect app-side `PerformanceTrace` ti
 Prerequisites:
 
 - `iPhone-preview` is connected, trusted, unlocked, and awake
-- `idevice_id` and `idevicesyslog` are available for live physical-device logs
-- `idevice_id -l` or `idevice_id -n -l` lists the `iPhone-preview` Xcode destination UDID
+- `idevice_id` and `idevicesyslog` are available when using live physical-device logs
 - signing preflight passes:
 
 ```bash
@@ -119,9 +118,9 @@ The script writes artifacts to `/tmp` by default:
 - `/tmp/issuectl-preview-perf-<timestamp>.summary.txt`
 - `/tmp/issuectl-preview-perf-<timestamp>.xcresult`
 
-Use `pnpm ios:preview-perf:full` when you need broader timing coverage across the preview smoke suite. Prefer the fast profile for quick before/after comparisons because it keeps the physical-device run shorter and reduces test-runner restart variance.
+Use `pnpm ios:preview-perf:full` when you need broader timing coverage across the preview smoke suite. Prefer the fast profile for quick before/after comparisons because it keeps the physical-device run shorter and reduces test-runner restart variance. The performance wrapper disables Xcode code coverage for these runs to avoid runtime-profile overhead and device file-service failures that are not relevant to timing.
 
-The wrapper fails the run if it cannot attach to the live device log stream or if the log stream produces no `PerformanceTrace` lines. If Xcode can run tests but `idevice_id` does not list the phone, reconnect or re-pair `iPhone-preview` so libimobiledevice can see it, then retry.
+The wrapper prefers live `idevicesyslog` capture when libimobiledevice can see the phone. If Xcode can run tests but `idevice_id` does not list the phone, the preview app writes the same `PerformanceTrace` lines to `Library/Caches/IssueCTLPerformanceTrace.log`, and the wrapper copies that file back through CoreDevice after XCTest. The wrapper fails the run if neither capture path produces `PerformanceTrace` lines.
 
 ## Optional Pre-Push Check
 

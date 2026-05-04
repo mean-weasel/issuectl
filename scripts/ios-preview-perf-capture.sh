@@ -11,19 +11,16 @@ OUTPUT_DIR="${IOS_PREVIEW_PERF_OUTPUT_DIR:-/tmp}"
 LOG_FILE="${IOS_PREVIEW_PERF_LOG:-$OUTPUT_DIR/issuectl-preview-perf-$STAMP.log}"
 SUMMARY_FILE="${IOS_PREVIEW_PERF_SUMMARY:-$OUTPUT_DIR/issuectl-preview-perf-$STAMP.summary.txt}"
 RESULT_BUNDLE="${IOS_PREVIEW_PERF_XCRESULT:-$OUTPUT_DIR/issuectl-preview-perf-$STAMP.xcresult}"
+APP_BUNDLE_ID="com.issuectl.ios.preview"
+APP_TRACE_SOURCE="Library/Caches/IssueCTLPerformanceTrace.log"
 
 if [ "$DEVICE_NAME" != "iPhone-preview" ]; then
   echo "Refusing to capture preview performance on unexpected device '$DEVICE_NAME'." >&2
   exit 64
 fi
 
-if ! command -v idevicesyslog >/dev/null 2>&1; then
-  echo "idevicesyslog is required for physical-device PerformanceTrace capture." >&2
-  exit 69
-fi
-
-if ! command -v idevice_id >/dev/null 2>&1; then
-  echo "idevice_id is required to verify physical-device log capture availability." >&2
+if ! command -v xcrun >/dev/null 2>&1; then
+  echo "xcrun is required for physical-device PerformanceTrace capture." >&2
   exit 69
 fi
 
@@ -44,41 +41,67 @@ echo "Xcode result bundle: $RESULT_BUNDLE"
 
 rm -f "$LOG_FILE" "$SUMMARY_FILE"
 rm -rf "$RESULT_BUNDLE"
+touch "$LOG_FILE"
 
 syslog_args=()
-if idevice_id -l | grep -Fxq "$IOS_XCODE_DEVICE_ID"; then
-  :
-elif idevice_id -n -l | grep -Fxq "$IOS_XCODE_DEVICE_ID"; then
-  syslog_args=(-n)
+use_syslog=0
+if command -v idevicesyslog >/dev/null 2>&1 && command -v idevice_id >/dev/null 2>&1; then
+  if idevice_id -l | grep -Fxq "$IOS_XCODE_DEVICE_ID"; then
+    use_syslog=1
+  elif idevice_id -n -l | grep -Fxq "$IOS_XCODE_DEVICE_ID"; then
+    syslog_args=(-n)
+    use_syslog=1
+  else
+    echo "libimobiledevice cannot see $DEVICE_NAME; will copy PerformanceTrace file via CoreDevice after XCTest."
+  fi
 else
-  cat >&2 <<EOF
-idevicesyslog cannot see $DEVICE_NAME ($IOS_XCODE_DEVICE_ID), so PerformanceTrace logs cannot be captured.
-Xcode/CoreDevice may still be able to run tests over local-network pairing, but this wrapper requires libimobiledevice log access.
-Connect or re-pair $DEVICE_NAME so 'idevice_id -l' or 'idevice_id -n -l' lists $IOS_XCODE_DEVICE_ID, then retry.
-EOF
-  exit 70
+  echo "libimobiledevice tools are unavailable; will copy PerformanceTrace file via CoreDevice after XCTest."
 fi
 
 echo "Running preview performance preflight."
 IOS_DEVICE_NAME="$DEVICE_NAME" pnpm ios:preview-runner-preflight
 
-idevicesyslog "${syslog_args[@]}" -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors > "$LOG_FILE" 2>&1 &
-log_pid=$!
+log_pid=""
+if [ "$use_syslog" -eq 1 ]; then
+  idevicesyslog "${syslog_args[@]}" -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors > "$LOG_FILE" 2>&1 &
+  log_pid=$!
+fi
 
 cleanup() {
-  kill "$log_pid" 2>/dev/null || true
+  if [ -n "$log_pid" ]; then
+    kill "$log_pid" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT
 
 started_at="$SECONDS"
 IOS_UI_SMOKE_PROFILE="$PROFILE" \
-IOS_XCODEBUILD_EXTRA_ARGS="-allowProvisioningUpdates -allowProvisioningDeviceRegistration -resultBundlePath $RESULT_BUNDLE ${IOS_XCODEBUILD_EXTRA_ARGS:-}" \
+IOS_XCODEBUILD_EXTRA_ARGS="-allowProvisioningUpdates -allowProvisioningDeviceRegistration -enableCodeCoverage NO -resultBundlePath $RESULT_BUNDLE ${IOS_XCODEBUILD_EXTRA_ARGS:-}" \
   ./scripts/ios-preview-device-smoke.sh
 wrapper_elapsed=$((SECONDS - started_at))
 
 sleep 2
 cleanup
 trap - EXIT
+
+if ! grep -Fq '[PerformanceTrace]' "$LOG_FILE"; then
+  trace_copy_dir="$(mktemp -d "$OUTPUT_DIR/issuectl-preview-perf-trace.XXXXXX")"
+  copied_trace="$trace_copy_dir/$(basename "$APP_TRACE_SOURCE")"
+  if xcrun devicectl device copy from \
+      --device "$IOS_DEVICE_ID" \
+      --domain-type appDataContainer \
+      --domain-identifier "$APP_BUNDLE_ID" \
+      --source "$APP_TRACE_SOURCE" \
+      --destination "$copied_trace" \
+      --quiet \
+      --timeout 30 >/dev/null 2>&1; then
+    if [ -f "$copied_trace" ]; then
+      cp "$copied_trace" "$LOG_FILE"
+    fi
+  else
+    echo "CoreDevice trace file copy failed from $APP_TRACE_SOURCE." >> "$LOG_FILE"
+  fi
+fi
 
 {
   printf 'iOS Preview Performance Summary\n'
@@ -92,36 +115,36 @@ trap - EXIT
   printf 'Xcode result bundle: %s\n' "$RESULT_BUNDLE"
   printf '\nKey timings:\n'
 
-  if grep -q 'PerformanceTrace' "$LOG_FILE"; then
+  if grep -Fq '[PerformanceTrace]' "$LOG_FILE"; then
     awk '
-      /PerformanceTrace/ && /app_launch_usable/ {
+      /\[PerformanceTrace\]/ && /app_launch_usable/ {
         if (match($0, /screen=[^ ]+/)) screen = substr($0, RSTART, RLENGTH);
         if (match($0, /elapsed_ms=[0-9]+/)) print "app_launch_usable " screen " " substr($0, RSTART, RLENGTH);
       }
-      /PerformanceTrace/ && /end today\.load/ {
+      /\[PerformanceTrace\]/ && /end today\.load/ {
         if (match($0, /elapsed_ms=[0-9]+/)) print "today.load " substr($0, RSTART, RLENGTH);
       }
-      /PerformanceTrace/ && /end issues\.load_all/ {
+      /\[PerformanceTrace\]/ && /end issues\.load_all/ {
         if (match($0, /elapsed_ms=[0-9]+/)) print "issues.load_all " substr($0, RSTART, RLENGTH);
       }
-      /PerformanceTrace/ && /end pulls\.load_all/ {
+      /\[PerformanceTrace\]/ && /end pulls\.load_all/ {
         if (match($0, /elapsed_ms=[0-9]+/)) print "pulls.load_all " substr($0, RSTART, RLENGTH);
       }
-      /PerformanceTrace/ && /end sessions\.load/ {
+      /\[PerformanceTrace\]/ && /end sessions\.load/ {
         if (match($0, /elapsed_ms=[0-9]+/)) print "sessions.load " substr($0, RSTART, RLENGTH);
       }
     ' "$LOG_FILE"
 
     printf '\nSlowest API requests:\n'
     awk '
-      /PerformanceTrace/ && /begin api\.request/ {
+      /\[PerformanceTrace\]/ && /begin api\.request/ {
         method = "";
         path = "";
         if (match($0, /method=[^ ]+/)) method = substr($0, RSTART, RLENGTH);
         if (match($0, /path=[^ ]+/)) path = substr($0, RSTART, RLENGTH);
         pending[++tail] = method " " path;
       }
-      /PerformanceTrace/ && /end api\.request/ {
+      /\[PerformanceTrace\]/ && /end api\.request/ {
         elapsed = "";
         request = "";
         status = "";
@@ -137,9 +160,9 @@ trap - EXIT
 } | tee "$SUMMARY_FILE"
 
 printf '\nPerformanceTrace lines:\n'
-grep -n 'PerformanceTrace' "$LOG_FILE" || true
+grep -Fn '[PerformanceTrace]' "$LOG_FILE" || true
 
-if ! grep -q 'PerformanceTrace' "$LOG_FILE"; then
-  echo "No PerformanceTrace lines were captured; treating this as a failed performance capture." >&2
+if ! grep -Fq '[PerformanceTrace]' "$LOG_FILE"; then
+  echo "No PerformanceTrace lines were captured from live syslog or CoreDevice app-container file copy." >&2
   exit 70
 fi
