@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
+import { iosSetupCommand } from "./commands/ios.js";
 import { webCommand } from "./commands/web.js";
 import {
   repoAddCommand,
@@ -27,6 +28,19 @@ program
   .description("Start the web dashboard")
   .option("-p, --port <port>", "Port number", "3847")
   .action(webCommand);
+
+const ios = program
+  .command("ios")
+  .description("iOS development helpers");
+
+ios
+  .command("setup")
+  .description("Print iOS setup credentials, or open the setup link in the booted simulator")
+  .option("-p, --port <port>", "Port number", "3847")
+  .option("--server-url <url>", "Server URL reachable from the app")
+  .option("--simulator", "Open the setup deep link in the booted simulator")
+  .option("--preview", "Use the preview app URL scheme when opening the simulator")
+  .action(iosSetupCommand);
 
 const repo = program
   .command("repo")
