@@ -59,8 +59,8 @@ jobs:
     if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -74,8 +74,8 @@ jobs:
     if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -89,8 +89,8 @@ jobs:
     if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -104,8 +104,8 @@ jobs:
     if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -119,8 +119,8 @@ jobs:
     if: needs.changes.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
