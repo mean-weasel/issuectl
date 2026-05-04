@@ -5,6 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PORT="${IOS_DEV_PORT:-3847}"
+PORT_WAS_EXPLICIT="0"
+if [ -n "${IOS_DEV_PORT:-}" ]; then
+  PORT_WAS_EXPLICIT="1"
+fi
 PROJECT="${IOS_DEV_PROJECT:-ios/IssueCTL.xcodeproj}"
 SCHEME="${IOS_DEV_SCHEME:-IssueCTL}"
 CONFIGURATION="${IOS_DEV_CONFIGURATION:-Debug}"
@@ -45,28 +49,52 @@ healthcheck() {
   curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1
 }
 
+port_is_listening() {
+  lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1
+}
+
 ios_api_status() {
   curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}/api/v1/sessions/previews" 2>/dev/null || true
 }
 
-assert_compatible_web_server() {
+compatible_web_server() {
   local status
   status="$(ios_api_status)"
   case "$status" in
     200|401|500)
       return 0
       ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+explain_incompatible_web_server() {
+  local status
+  status="$(ios_api_status)"
+  case "$status" in
     404)
       echo "Port ${PORT} is already running an issuectl web server without the current iOS session preview API." >&2
-      echo "Stop that process, or rerun with IOS_DEV_PORT set to a free port." >&2
-      exit 1
       ;;
     *)
       echo "Port ${PORT} is responding, but the current iOS API could not be verified (HTTP ${status:-none})." >&2
-      echo "Stop that process, or rerun with IOS_DEV_PORT set to a free port." >&2
-      exit 1
       ;;
   esac
+}
+
+find_free_port() {
+  local start="$1"
+  local candidate
+  for candidate in $(seq "$((start + 1))" "$((start + 50))"); do
+    if ! port_is_listening "$candidate"; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  echo "Could not find a free port near ${start}." >&2
+  exit 1
 }
 
 wait_for_web() {
@@ -124,14 +152,40 @@ echo "Building issuectl CLI..."
 pnpm --filter @issuectl/cli build
 
 if healthcheck; then
-  assert_compatible_web_server
-  echo "Reusing existing issuectl web server on port ${PORT}."
-else
+  if compatible_web_server; then
+    echo "Reusing existing issuectl web server on port ${PORT}."
+  elif [ "$PORT_WAS_EXPLICIT" = "1" ]; then
+    explain_incompatible_web_server
+    echo "Stop that process, or rerun with IOS_DEV_PORT set to a free port." >&2
+    exit 1
+  else
+    explain_incompatible_web_server
+    fallback_port="$(find_free_port "$PORT")"
+    echo "Using free port ${fallback_port} for this iOS dev session."
+    PORT="$fallback_port"
+  fi
+elif port_is_listening "$PORT"; then
+  if [ "$PORT_WAS_EXPLICIT" = "1" ]; then
+    echo "Port ${PORT} is already in use." >&2
+    echo "Stop that process, or rerun with IOS_DEV_PORT set to a free port." >&2
+    exit 1
+  fi
+  fallback_port="$(find_free_port "$PORT")"
+  echo "Port ${PORT} is already in use. Using free port ${fallback_port} for this iOS dev session."
+  PORT="$fallback_port"
+fi
+
+if ! healthcheck; then
+  if [ "$PORT" != "${IOS_DEV_PORT:-3847}" ]; then
+    WEB_LOG="/tmp/issuectl-ios-dev-web-${PORT}.log"
+  fi
   echo "Starting issuectl web on port ${PORT}..."
   : > "$WEB_LOG"
   node packages/cli/dist/index.js web --port "$PORT" >"$WEB_LOG" 2>&1 &
   web_pid="$!"
   wait_for_web
+else
+  echo "Using issuectl web on port ${PORT}."
 fi
 
 destination_id="$(resolve_destination_id)"
