@@ -22,10 +22,12 @@ if ! command -v idevicesyslog >/dev/null 2>&1; then
   exit 69
 fi
 
-mkdir -p "$OUTPUT_DIR"
+if ! command -v idevice_id >/dev/null 2>&1; then
+  echo "idevice_id is required to verify physical-device log capture availability." >&2
+  exit 69
+fi
 
-echo "Running preview performance preflight."
-IOS_DEVICE_NAME="$DEVICE_NAME" pnpm ios:preview-runner-preflight
+mkdir -p "$OUTPUT_DIR"
 
 resolver_output="$(IOS_DEVICE_NAME="$DEVICE_NAME" ./scripts/ios-resolve-preview-device.sh shell)"
 eval "$resolver_output"
@@ -43,7 +45,24 @@ echo "Xcode result bundle: $RESULT_BUNDLE"
 rm -f "$LOG_FILE" "$SUMMARY_FILE"
 rm -rf "$RESULT_BUNDLE"
 
-idevicesyslog -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors > "$LOG_FILE" 2>&1 &
+syslog_args=()
+if idevice_id -l | grep -Fxq "$IOS_XCODE_DEVICE_ID"; then
+  :
+elif idevice_id -n -l | grep -Fxq "$IOS_XCODE_DEVICE_ID"; then
+  syslog_args=(-n)
+else
+  cat >&2 <<EOF
+idevicesyslog cannot see $DEVICE_NAME ($IOS_XCODE_DEVICE_ID), so PerformanceTrace logs cannot be captured.
+Xcode/CoreDevice may still be able to run tests over local-network pairing, but this wrapper requires libimobiledevice log access.
+Connect or re-pair $DEVICE_NAME so 'idevice_id -l' or 'idevice_id -n -l' lists $IOS_XCODE_DEVICE_ID, then retry.
+EOF
+  exit 70
+fi
+
+echo "Running preview performance preflight."
+IOS_DEVICE_NAME="$DEVICE_NAME" pnpm ios:preview-runner-preflight
+
+idevicesyslog "${syslog_args[@]}" -u "$IOS_XCODE_DEVICE_ID" -m '[PerformanceTrace]' --no-colors > "$LOG_FILE" 2>&1 &
 log_pid=$!
 
 cleanup() {
@@ -119,3 +138,8 @@ trap - EXIT
 
 printf '\nPerformanceTrace lines:\n'
 grep -n 'PerformanceTrace' "$LOG_FILE" || true
+
+if ! grep -q 'PerformanceTrace' "$LOG_FILE"; then
+  echo "No PerformanceTrace lines were captured; treating this as a failed performance capture." >&2
+  exit 70
+fi
