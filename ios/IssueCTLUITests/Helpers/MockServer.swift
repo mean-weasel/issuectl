@@ -9,6 +9,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
     // Mutable state seeded before launch and mutated by endpoint handlers.
     private var activeDeployments: [[String: Any]] = []
     private var drafts: [[String: Any]] = []
+    private var hiddenPreviewIssueNumbers: Set<Int> = []
 
     // Failure controls for recovery-path UI tests.
     var failUserProfile = false
@@ -94,7 +95,22 @@ final class MockIssueCTLServer: @unchecked Sendable {
     // MARK: - Seed Helpers
 
     func seedActiveDeployment() {
+        hiddenPreviewIssueNumbers = []
         activeDeployments = [deployment(issueNumber: 101)]
+    }
+
+    func seedMixedActivityDeployments() {
+        hiddenPreviewIssueNumbers = []
+        activeDeployments = [
+            deployment(issueNumber: 101),
+            deployment(issueNumber: 102),
+            deployment(issueNumber: 103),
+        ]
+    }
+
+    func seedDeploymentWithMissingPreview() {
+        activeDeployments = [deployment(issueNumber: 101)]
+        hiddenPreviewIssueNumbers = [101]
     }
 
     func seedClosedIssue(_ number: Int) {
@@ -545,25 +561,34 @@ final class MockIssueCTLServer: @unchecked Sendable {
     }
 
     func deployment(issueNumber: Int) -> [String: Any] {
-        let id = issueNumber == 101 ? 9001 : 9002
+        let id = 8900 + issueNumber
         return [
             "id": id,
             "repo_id": 1,
             "issue_number": issueNumber,
-            "branch_name": issueNumber == 101
-                ? "issue-101-improve-launch-handoff"
-                : "issue-102-persist-multiple-sessions",
+            "branch_name": branchName(for: issueNumber),
             "workspace_mode": "worktree",
             "workspace_path": "/tmp/alpha-worktree-\(issueNumber)",
             "linked_pr_number": NSNull(),
             "state": "active",
-            "launched_at": isoDate,
+            "launched_at": "2026-04-29 08:00:00",
             "ended_at": NSNull(),
-            "ttyd_port": issueNumber == 101 ? 19001 : 19002,
-            "ttyd_pid": issueNumber == 101 ? 12345 : 12346,
+            "ttyd_port": 19000 + issueNumber,
+            "ttyd_pid": 12000 + issueNumber,
             "owner": "org",
             "repo_name": "alpha",
         ]
+    }
+
+    private func branchName(for issueNumber: Int) -> String {
+        switch issueNumber {
+        case 101:
+            return "issue-101-improve-launch-handoff"
+        case 102:
+            return "issue-102-persist-multiple-sessions"
+        default:
+            return "issue-\(issueNumber)-terminal-activity"
+        }
     }
 
     func deployments(for issueNumber: Int) -> [[String: Any]] {
@@ -578,6 +603,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
         for deployment in activeDeployments {
             guard let port = deployment["ttyd_port"] as? Int else { continue }
             let issueNumber = deployment["issue_number"] as? Int ?? 0
+            guard !hiddenPreviewIssueNumbers.contains(issueNumber) else { continue }
             previews[String(port)] = [
                 "lines": [
                     "issue #\(issueNumber): running checks",
@@ -585,7 +611,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
                 ],
                 "lastUpdatedMs": 1_777_800_000_000,
                 "lastChangedMs": 1_777_799_999_000,
-                "status": issueNumber == 101 ? "active" : "idle",
+                "status": issueNumber == 102 ? "idle" : "active",
             ]
         }
         return previews

@@ -66,4 +66,30 @@ final class SessionManagementTests: XCTestCase {
             "Expanded session preview did not show captured terminal lines\n\(app.debugDescription)"
         )
     }
+
+    @MainActor
+    func testSessionHeaderCountsActiveAndIdleTerminalPreviews() {
+        server.seedMixedActivityDeployments()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("sessions-command-header", existsIn: app, timeout: 5)
+        XCTAssertTrue(
+            app.staticTexts["2 active • 1 idle"].waitForExistence(timeout: 8),
+            "Expected Sessions subtitle to count active and idle terminal previews\n\(app.debugDescription)"
+        )
+    }
+
+    @MainActor
+    func testSessionHeaderShowsCheckingForMissingTerminalPreview() {
+        server.seedDeploymentWithMissingPreview()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("sessions-command-header", existsIn: app, timeout: 5)
+        XCTAssertTrue(
+            app.staticTexts["0 active • 0 idle • 1 checking"].waitForExistence(timeout: 8),
+            "Expected Sessions subtitle to show ready terminals waiting for preview data\n\(app.debugDescription)"
+        )
+    }
 }

@@ -46,6 +46,27 @@ struct SessionListView: View {
         deployments.filter { $0.ttydPort != nil }.count
     }
 
+    private var activeTerminalCount: Int {
+        deployments.filter { deployment in
+            guard let port = deployment.ttydPort else { return false }
+            return previews[port]?.status == .active
+        }.count
+    }
+
+    private var idleTerminalCount: Int {
+        deployments.filter { deployment in
+            guard let port = deployment.ttydPort else { return false }
+            return previews[port]?.status == .idle
+        }.count
+    }
+
+    private var checkingTerminalCount: Int {
+        deployments.filter { deployment in
+            guard let port = deployment.ttydPort else { return false }
+            return previews[port] == nil
+        }.count
+    }
+
     private var startingCount: Int {
         deployments.count - readyCount
     }
@@ -96,7 +117,9 @@ struct SessionListView: View {
                             LazyVStack(spacing: 12) {
                                 ActiveSessionsHeader(
                                     totalCount: deployments.count,
-                                    readyCount: readyCount,
+                                    activeCount: activeTerminalCount,
+                                    idleCount: idleTerminalCount,
+                                    checkingCount: checkingTerminalCount,
                                     startingCount: startingCount
                                 )
 
@@ -247,11 +270,19 @@ struct SessionListView: View {
     private var sessionSubtitle: String {
         if deployments.isEmpty {
             return "No active sessions"
-        } else if startingCount > 0 {
-            return "\(readyCount) ready • \(startingCount) starting"
-        } else {
-            return "\(readyCount) ready"
         }
+
+        var parts = [
+            "\(activeTerminalCount) active",
+            "\(idleTerminalCount) idle",
+        ]
+        if checkingTerminalCount > 0 {
+            parts.append("\(checkingTerminalCount) checking")
+        }
+        if startingCount > 0 {
+            parts.append("\(startingCount) starting")
+        }
+        return parts.joined(separator: " • ")
     }
 
     private var sessionSearchBar: some View {
@@ -422,7 +453,9 @@ private struct TerminalPresentation: Identifiable {
 
 private struct ActiveSessionsHeader: View {
     let totalCount: Int
-    let readyCount: Int
+    let activeCount: Int
+    let idleCount: Int
+    let checkingCount: Int
     let startingCount: Int
 
     var body: some View {
@@ -437,8 +470,12 @@ private struct ActiveSessionsHeader: View {
             }
 
             HStack(spacing: 10) {
-                metric(value: "\(readyCount)", label: "ready", systemImage: "terminal")
-                metric(value: "\(startingCount)", label: "starting", systemImage: "hourglass")
+                metric(value: "\(activeCount)", label: "active", systemImage: "bolt.fill", accessibilityIdentifier: "sessions-active-count")
+                metric(value: "\(idleCount)", label: "idle", systemImage: "pause.circle", accessibilityIdentifier: "sessions-idle-count")
+                if checkingCount > 0 {
+                    metric(value: "\(checkingCount)", label: "checking", systemImage: "dot.radiowaves.left.and.right", accessibilityIdentifier: "sessions-checking-count")
+                }
+                metric(value: "\(startingCount)", label: "starting", systemImage: "hourglass", accessibilityIdentifier: "sessions-starting-count")
             }
         }
         .padding(14)
@@ -451,7 +488,12 @@ private struct ActiveSessionsHeader: View {
         .accessibilityIdentifier("sessions-command-header")
     }
 
-    private func metric(value: String, label: String, systemImage: String) -> some View {
+    private func metric(
+        value: String,
+        label: String,
+        systemImage: String,
+        accessibilityIdentifier: String
+    ) -> some View {
         HStack(spacing: 7) {
             Image(systemName: systemImage)
                 .font(.caption)
@@ -468,6 +510,10 @@ private struct ActiveSessionsHeader: View {
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(IssueCTLColors.elevatedBackground, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label) sessions")
+        .accessibilityValue(value)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 }
 
