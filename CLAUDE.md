@@ -106,6 +106,8 @@ Do not deploy `IssueCTL Preview`, run preview smoke tests, or run preview perfor
 
 The required physical preview merge-queue check is `Physical iPhone Preview Smoke` in `.github/workflows/ios-physical-preview.yml`. It must run only on the repo-scoped self-hosted runner named `issuectl-iphone-preview` with labels `issuectl-ios` and `iphone-preview`, and it should use `IOS_DEVICE_NAME=iPhone-preview` instead of hard-coded device identifiers. The runner is installed at `~/issuectl-iphone-preview-runner`; manage it with `./svc.sh status`, `./svc.sh start`, and `./svc.sh stop` from that directory.
 
+Before physical preview builds, run `pnpm ios:preview-runner-preflight`. The GitHub workflow runs the same script to unlock the signing keychain from `IOS_PREVIEW_KEYCHAIN_PASSWORD`, verify a visible Apple Development identity, verify Automation Mode, resolve `iPhone-preview`, and fail fast if the phone is locked. If the LaunchAgent runner reports `errSecInternalComponent` during `CodeSign`, treat it as a service keychain/signing-access failure first; do not switch preview tests to `iPhone-prod`.
+
 ### iOS performance timing
 
 The iOS app has lightweight `PerformanceTrace` instrumentation for measuring app-side performance. It logs:

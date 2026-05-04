@@ -39,6 +39,8 @@ jobs:
       IOS_CONFIGURATION: Debug
       IOS_DEVICE_READY_TIMEOUT: 60
       IOS_XCODEBUILD_EXTRA_ARGS: -allowProvisioningUpdates -allowProvisioningDeviceRegistration
+      IOS_PREVIEW_KEYCHAIN_PASSWORD: ${{ secrets.IOS_PREVIEW_KEYCHAIN_PASSWORD }}
+      IOS_PREVIEW_SET_KEY_PARTITION_LIST: '1'
     steps:
       - name: PR placeholder
         if: github.event_name == 'pull_request'
@@ -50,11 +52,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.ref || github.ref }}
 
+      - name: Preflight runner, signing, and iPhone-preview
+        if: github.event_name != 'pull_request'
+        run: ./scripts/ios-preview-runner-preflight.sh
+
       - name: Show build environment
         if: github.event_name != 'pull_request'
-        run: |
-          xcodebuild -version
-          swift --version
+        run: swift --version
 
       - name: Resolve iPhone-preview
         if: github.event_name != 'pull_request'
