@@ -11,16 +11,16 @@ Merge queue validation should use the preview lane when a PR needs iOS smoke cov
 
 ## Physical Device Roles
 
-Use `IPhone-preivew` as the only/default physical iPhone for preview-app deployment and testing. This is the device for:
+Use `iPhone-preview` as the only/default physical iPhone for preview-app deployment and testing. This is the device for:
 
 - `IssueCTL Preview` installs
 - preview smoke tests
 - preview performance timing
 - future preview/GitHub Actions runner workflows
 
-Keep `Iphone-prod` reserved for production `IssueCTL` installs and production validation. Do not run preview deployments or preview smoke tests on `Iphone-prod` unless explicitly doing a production-device check.
+Keep `iPhone-prod` reserved for production `IssueCTL` installs and production validation. Do not run preview deployments or preview smoke tests on `iPhone-prod` unless explicitly doing a production-device check.
 
-When commands require `IOS_DEVICE_ID` or an Xcode destination id, list the currently connected devices and choose the identifier for `IPhone-preivew`:
+When commands require `IOS_DEVICE_ID` or an Xcode destination id, list the currently connected devices and choose the identifier for `iPhone-preview`:
 
 ```bash
 pnpm ios:list-devices
