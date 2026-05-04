@@ -156,7 +156,8 @@ struct SessionListView: View {
                 await pollPreviews()
             }
             .onReceive(refreshTimer) { _ in
-                Task { await load() }
+                guard terminalPresentation == nil else { return }
+                Task { await load(includeRepos: false) }
             }
             .autoDismissError($actionError)
             .interactivePopDisabled(isAtRoot: navigationPath.isEmpty)
@@ -314,25 +315,32 @@ struct SessionListView: View {
         }
     }
 
-    private func load(refresh: Bool = false) async {
+    private func load(refresh: Bool = false, includeRepos: Bool? = nil) async {
+        let shouldLoadRepos = includeRepos ?? (refresh || repos.isEmpty)
+        let trace = PerformanceTrace.begin("sessions.load", metadata: "refresh=\(refresh) include_repos=\(shouldLoadRepos)")
         if deployments.isEmpty { isLoading = true }
         errorMessage = nil
         if refresh { actionError = nil }
+        defer {
+            PerformanceTrace.end(trace, metadata: "deployments=\(deployments.count) repos=\(repos.count)")
+        }
         do {
             async let deploymentsResult = api.activeDeployments()
-            async let reposResult: Result<[Repo], Error> = {
+            async let reposResult: Result<[Repo], Error>? = shouldLoadRepos ? {
                 do { return .success(try await api.repos()) }
                 catch { return .failure(error) }
-            }()
+            }() : nil
             let response = try await deploymentsResult
             deployments = response.deployments
             prunePreviewState()
-            switch await reposResult {
-            case .success(let loadedRepos):
-                repos = loadedRepos
-            case .failure(let error):
-                if repos.isEmpty {
-                    actionError = "Failed to load repos for create: \(error.localizedDescription)"
+            if let reposResult = await reposResult {
+                switch reposResult {
+                case .success(let loadedRepos):
+                    repos = loadedRepos
+                case .failure(let error):
+                    if repos.isEmpty {
+                        actionError = "Failed to load repos for create: \(error.localizedDescription)"
+                    }
                 }
             }
         } catch {

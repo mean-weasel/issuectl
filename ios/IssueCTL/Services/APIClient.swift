@@ -5,6 +5,15 @@ final class APIClient {
     private(set) var serverURL: String = ""
     private(set) var apiToken: String = ""
     let offlineCache = OfflineCacheStore()
+    var cachedCurrentUser: UserResponse?
+    var cachedCurrentUserExpiresAt: Date?
+    var currentUserTask: Task<UserResponse, Error>?
+    var cachedRepos: [Repo]?
+    var cachedReposExpiresAt: Date?
+    var reposTask: Task<[Repo], Error>?
+    var cachedActiveDeployments: ActiveDeploymentsResponse?
+    var cachedActiveDeploymentsExpiresAt: Date?
+    var activeDeploymentsTask: Task<ActiveDeploymentsResponse, Error>?
     var isConfigured: Bool {
         !serverURL.isEmpty && !apiToken.isEmpty
     }
@@ -32,6 +41,9 @@ final class APIClient {
     func configure(url: String, token: String) throws {
         serverURL = url
         apiToken = token
+        clearCurrentUserCache()
+        clearReposCache()
+        clearActiveDeploymentsCache()
         try KeychainService.save(key: "serverURL", value: url)
         try KeychainService.save(key: "apiToken", value: token)
     }
@@ -40,8 +52,32 @@ final class APIClient {
     func disconnect() {
         serverURL = ""
         apiToken = ""
+        clearCurrentUserCache()
+        clearReposCache()
+        clearActiveDeploymentsCache()
         KeychainService.delete(key: "serverURL")
         KeychainService.delete(key: "apiToken")
+    }
+
+    func clearCurrentUserCache() {
+        cachedCurrentUser = nil
+        cachedCurrentUserExpiresAt = nil
+        currentUserTask?.cancel()
+        currentUserTask = nil
+    }
+
+    func clearReposCache() {
+        cachedRepos = nil
+        cachedReposExpiresAt = nil
+        reposTask?.cancel()
+        reposTask = nil
+    }
+
+    func clearActiveDeploymentsCache() {
+        cachedActiveDeployments = nil
+        cachedActiveDeploymentsExpiresAt = nil
+        activeDeploymentsTask?.cancel()
+        activeDeploymentsTask = nil
     }
 
     private var baseURL: URL? {
@@ -51,6 +87,13 @@ final class APIClient {
     func request(path: String, method: String = "GET", body: Data? = nil, timeoutInterval: TimeInterval? = nil) async throws -> (Data, HTTPURLResponse) {
         guard let base = baseURL else {
             throw APIError.notConfigured
+        }
+
+        let trace = PerformanceTrace.begin("api.request", metadata: "method=\(method) path=\(path)")
+        var statusCode = 0
+        var responseBytes = 0
+        defer {
+            PerformanceTrace.end(trace, metadata: "status=\(statusCode) bytes=\(responseBytes)")
         }
 
         guard let url = URL(string: path, relativeTo: base) else {
@@ -64,9 +107,11 @@ final class APIClient {
         if let timeoutInterval { urlRequest.timeoutInterval = timeoutInterval }
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        responseBytes = data.count
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
+        statusCode = httpResponse.statusCode
 
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
@@ -91,6 +136,12 @@ final class APIClient {
         guard let base = URL(string: url) else {
             throw APIError.notConfigured
         }
+        let trace = PerformanceTrace.begin("api.check_health", metadata: "url=\(url)")
+        var statusCode = 0
+        var responseBytes = 0
+        defer {
+            PerformanceTrace.end(trace, metadata: "status=\(statusCode) bytes=\(responseBytes)")
+        }
         guard let healthURL = URL(string: "/api/v1/health", relativeTo: base) else {
             throw APIError.invalidPath("/api/v1/health")
         }
@@ -99,15 +150,53 @@ final class APIClient {
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        responseBytes = data.count
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
+        statusCode = httpResponse.statusCode
         if httpResponse.statusCode == 401 { throw APIError.unauthorized }
         if httpResponse.statusCode >= 400 {
             let errorBody = try? JSONDecoder().decode(ErrorResponse.self, from: data)
             throw APIError.serverError(httpResponse.statusCode, errorBody?.error ?? "Unknown error")
         }
         return try decoder.decode(ServerHealth.self, from: data)
+    }
+
+    func repos(refresh: Bool = false, maxAge: TimeInterval = 300) async throws -> [Repo] {
+        let now = Date()
+        if !refresh,
+           let cachedRepos,
+           let cachedReposExpiresAt,
+           now < cachedReposExpiresAt {
+            return cachedRepos
+        }
+
+        if !refresh, let reposTask {
+            return try await reposTask.value
+        }
+
+        let task = Task { @MainActor in
+            let (data, _) = try await request(path: "/api/v1/repos")
+            let response = try decoder.decode(ReposResponse.self, from: data)
+            offlineCache.save(response.repos, for: "repos", serverURL: serverURL)
+            return response.repos
+        }
+        reposTask = task
+
+        do {
+            let repos = try await task.value
+            cachedRepos = repos
+            cachedReposExpiresAt = Date().addingTimeInterval(maxAge)
+            reposTask = nil
+            return repos
+        } catch {
+            reposTask = nil
+            if let cached = offlineCache.load([Repo].self, for: "repos", serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
     }
 
     func registerPushDevice(body: PushDeviceRegistrationRequest) async throws -> PushDeviceRegistrationResponse {
@@ -120,20 +209,6 @@ final class APIClient {
         let body = PushDeviceUnregisterRequest(platform: "ios", token: token)
         let bodyData = try JSONEncoder().encode(body)
         _ = try await request(path: "/api/v1/notifications/devices", method: "DELETE", body: bodyData)
-    }
-
-    func repos() async throws -> [Repo] {
-        do {
-            let (data, _) = try await request(path: "/api/v1/repos")
-            let response = try decoder.decode(ReposResponse.self, from: data)
-            offlineCache.save(response.repos, for: "repos", serverURL: serverURL)
-            return response.repos
-        } catch {
-            if let cached = offlineCache.load([Repo].self, for: "repos", serverURL: serverURL) {
-                return cached.value
-            }
-            throw error
-        }
     }
 
     func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
@@ -204,13 +279,35 @@ final class APIClient {
         }
     }
 
-    func activeDeployments() async throws -> ActiveDeploymentsResponse {
-        do {
+    func activeDeployments(refresh: Bool = false, maxAge: TimeInterval = 5) async throws -> ActiveDeploymentsResponse {
+        let now = Date()
+        if !refresh,
+           let cachedActiveDeployments,
+           let cachedActiveDeploymentsExpiresAt,
+           now < cachedActiveDeploymentsExpiresAt {
+            return cachedActiveDeployments
+        }
+
+        if !refresh, let activeDeploymentsTask {
+            return try await activeDeploymentsTask.value
+        }
+
+        let task = Task { @MainActor in
             let (data, _) = try await request(path: "/api/v1/deployments")
             let response = try decoder.decode(ActiveDeploymentsResponse.self, from: data)
             offlineCache.save(response, for: "deployments", serverURL: serverURL)
             return response
+        }
+        activeDeploymentsTask = task
+
+        do {
+            let response = try await task.value
+            cachedActiveDeployments = response
+            cachedActiveDeploymentsExpiresAt = Date().addingTimeInterval(maxAge)
+            activeDeploymentsTask = nil
+            return response
         } catch {
+            activeDeploymentsTask = nil
             if let cached = offlineCache.load(ActiveDeploymentsResponse.self, for: "deployments", serverURL: serverURL) {
                 return cached.value
             }
@@ -226,6 +323,7 @@ final class APIClient {
     func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/launch/\(owner)/\(repo)/\(number)", method: "POST", body: bodyData)
+        clearActiveDeploymentsCache()
         return try decoder.decode(LaunchResponse.self, from: data)
     }
 
@@ -233,6 +331,7 @@ final class APIClient {
         let body = EndSessionRequestBody(owner: owner, repo: repo, issueNumber: issueNumber)
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/deployments/\(deploymentId)/end", method: "POST", body: bodyData)
+        clearActiveDeploymentsCache()
         return try decoder.decode(EndSessionResponse.self, from: data)
     }
 

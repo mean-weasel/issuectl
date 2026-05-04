@@ -3,6 +3,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, getSetting } from "@issuectl/core";
 import log from "./logger";
 
+let cachedApiToken: string | undefined;
+let hasLoadedApiToken = false;
+let cachedApiTokenLoadedAt = 0;
+const API_TOKEN_CACHE_TTL_MS = 30_000;
+
+function getApiToken(): string | undefined {
+  const now = Date.now();
+  if (hasLoadedApiToken && now - cachedApiTokenLoadedAt < API_TOKEN_CACHE_TTL_MS) {
+    return cachedApiToken;
+  }
+
+  const db = getDb();
+  cachedApiToken = getSetting(db, "api_token");
+  hasLoadedApiToken = Boolean(cachedApiToken);
+  cachedApiTokenLoadedAt = now;
+  return cachedApiToken;
+}
+
+export function resetApiTokenCache(): void {
+  cachedApiToken = undefined;
+  hasLoadedApiToken = false;
+  cachedApiTokenLoadedAt = 0;
+}
+
 /**
  * Validate a bearer token from request headers against the stored api_token.
  * Uses timing-safe comparison to prevent timing attacks. Note: a length
@@ -15,8 +39,7 @@ export function validateApiToken(headers: Headers): boolean {
 
   const provided = authHeader.slice(7);
   if (!provided) return false;
-  const db = getDb();
-  const stored = getSetting(db, "api_token");
+  const stored = getApiToken();
   if (!stored) return false;
 
   // Timing-safe comparison — both must be the same length

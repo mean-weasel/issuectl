@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // Mock @issuectl/core before importing the module under test
@@ -7,22 +7,62 @@ vi.mock("@issuectl/core", () => ({
   getSetting: vi.fn(),
 }));
 
-import { validateApiToken, requireAuth } from "./api-auth.js";
+import { validateApiToken, requireAuth, resetApiTokenCache } from "./api-auth.js";
 import { getDb, getSetting } from "@issuectl/core";
 
 function makeRequest(headers: Record<string, string> = {}): NextRequest {
   return new NextRequest("http://localhost:3847/api/v1/test", { headers });
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("validateApiToken", () => {
   beforeEach(() => {
+    resetApiTokenCache();
     vi.mocked(getDb).mockReturnValue({} as any);
+    vi.mocked(getSetting).mockReset();
   });
 
   it("returns true for a valid bearer token", () => {
     vi.mocked(getSetting).mockReturnValue("abc123");
     const headers = new Headers({ Authorization: "Bearer abc123" });
     expect(validateApiToken(headers)).toBe(true);
+  });
+
+  it("reuses the stored token after the first successful lookup", () => {
+    vi.mocked(getSetting).mockReturnValue("abc123");
+    const headers = new Headers({ Authorization: "Bearer abc123" });
+
+    expect(validateApiToken(headers)).toBe(true);
+    expect(validateApiToken(headers)).toBe(true);
+    expect(getSetting).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the cached token after the cache ttl", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-03T00:00:00Z"));
+    vi.mocked(getSetting)
+      .mockReturnValueOnce("abc123")
+      .mockReturnValueOnce("def456");
+
+    expect(validateApiToken(new Headers({ Authorization: "Bearer abc123" }))).toBe(true);
+
+    vi.setSystemTime(new Date("2026-05-03T00:00:31Z"));
+
+    expect(validateApiToken(new Headers({ Authorization: "Bearer def456" }))).toBe(true);
+    expect(getSetting).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not cache a missing stored token", () => {
+    vi.mocked(getSetting)
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce("abc123");
+
+    expect(validateApiToken(new Headers({ Authorization: "Bearer abc123" }))).toBe(false);
+    expect(validateApiToken(new Headers({ Authorization: "Bearer abc123" }))).toBe(true);
+    expect(getSetting).toHaveBeenCalledTimes(2);
   });
 
   it("returns false for a missing Authorization header", () => {
@@ -65,7 +105,9 @@ describe("validateApiToken", () => {
 
 describe("requireAuth", () => {
   beforeEach(() => {
+    resetApiTokenCache();
     vi.mocked(getDb).mockReturnValue({} as any);
+    vi.mocked(getSetting).mockReset();
   });
 
   it("returns null when token is valid (allows route to proceed)", () => {
@@ -91,6 +133,7 @@ describe("requireAuth", () => {
   });
 
   it("returns 500 when database is unavailable", async () => {
+    vi.mocked(getSetting).mockReturnValue("abc123");
     vi.mocked(getDb).mockImplementation(() => {
       throw new Error("SQLITE_CANTOPEN");
     });

@@ -37,6 +37,10 @@ struct IssueCTLApp: App {
     @State private var networkMonitor = NetworkMonitor()
     @State private var notificationSettings = NotificationSettingsStore()
 
+    init() {
+        PerformanceTrace.markAppLaunchStarted()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

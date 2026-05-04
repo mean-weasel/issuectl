@@ -69,13 +69,35 @@ extension APIClient {
     private static let parseRequestTimeout: TimeInterval = 120
 
     /// Fetch the authenticated GitHub user login.
-    func currentUser() async throws -> UserResponse {
-        do {
+    func currentUser(refresh: Bool = false, maxAge: TimeInterval = 300) async throws -> UserResponse {
+        let now = Date()
+        if !refresh,
+           let cachedCurrentUser,
+           let cachedCurrentUserExpiresAt,
+           now < cachedCurrentUserExpiresAt {
+            return cachedCurrentUser
+        }
+
+        if !refresh, let currentUserTask {
+            return try await currentUserTask.value
+        }
+
+        let task = Task { @MainActor in
             let (data, _) = try await request(path: "/api/v1/user")
             let response = try decoder.decode(UserResponse.self, from: data)
             offlineCache.save(response, for: "current-user", serverURL: serverURL)
             return response
+        }
+        currentUserTask = task
+
+        do {
+            let user = try await task.value
+            cachedCurrentUser = user
+            cachedCurrentUserExpiresAt = Date().addingTimeInterval(maxAge)
+            currentUserTask = nil
+            return user
         } catch {
+            currentUserTask = nil
             if let cached = offlineCache.load(UserResponse.self, for: "current-user", serverURL: serverURL) {
                 return cached.value
             }

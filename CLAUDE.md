@@ -65,7 +65,7 @@ issuectl web                    # Start dashboard (localhost:3847)
 
 ### iOS build & run
 
-Use the `xcodebuildmcp` CLI for all iOS build, test, run, and simulator operations. Never use raw `xcodebuild`, `xcrun simctl`, or `simctl` directly.
+Use the `xcodebuildmcp` CLI for normal iOS build, test, run, and simulator operations. Avoid raw `xcodebuild`, `xcrun simctl`, or `simctl` unless a documented workflow below needs behavior the MCP wrapper does not expose reliably.
 
 **Discovery pattern:**
 ```bash
@@ -94,6 +94,62 @@ xcodebuildmcp tools                      # list all 72 tools
 - Session defaults auto-fill `--scheme`, `--project-path`, `--simulator-name` from config
 - All `--simulator-id` values come from `xcodebuildmcp simulator list`
 - Use `--help` on any command to discover flags — don't guess
+
+### iOS performance timing
+
+The iOS app has lightweight `PerformanceTrace` instrumentation for measuring app-side performance. It logs:
+
+- `app_launch_usable` — app launch to first usable Today screen
+- `today.load`
+- `issues.load_all`
+- `pulls.load_all`
+- `sessions.load`
+- `issues.prepare_launch`
+- `image_attachment.upload`
+- `api.request` and `api.check_health`
+
+During UI tests, `PerformanceTrace` mirrors the same timings through `NSLog` with a `[PerformanceTrace]` prefix, guarded by `ISSUECTL_UI_TESTING=1`. This makes timings parseable from simulator or physical-device logs without affecting normal app launches.
+
+Useful simulator capture pattern:
+
+```bash
+xcodebuild test \
+  -project ios/IssueCTL.xcodeproj \
+  -scheme IssueCTLPreview-UISmoke \
+  -configuration Debug \
+  -destination 'id=<simulator-id>' \
+  -only-testing:IssueCTLPreviewUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs \
+  -resultBundlePath /tmp/issuectl-perf-sim.xcresult
+
+xcrun simctl spawn <simulator-id> log show --last 3m --style compact \
+  --predicate 'eventMessage CONTAINS "[PerformanceTrace]"'
+```
+
+Useful physical-device capture pattern:
+
+```bash
+idevicesyslog -u <device-udid> -m '[PerformanceTrace]' --no-colors \
+  > /tmp/issuectl-device-perf-live.log 2>&1 &
+log_pid=$!
+
+xcodebuild test \
+  -project ios/IssueCTL.xcodeproj \
+  -scheme IssueCTLPreview-UISmoke \
+  -configuration Debug \
+  -destination 'platform=iOS,id=<xcode-device-id>' \
+  -only-testing:IssueCTLPreviewUITests/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs \
+  -resultBundlePath /tmp/issuectl-perf-device.xcresult
+
+kill "$log_pid" 2>/dev/null || true
+grep -n 'PerformanceTrace' /tmp/issuectl-device-perf-live.log
+```
+
+Notes:
+
+- Prefer `IssueCTLPreview-UISmoke` for repeatable timing runs because its mock server removes internet/GitHub variance.
+- A single focused UI test is more stable on physical devices than a multi-test run; Xcode may mark multi-test physical sessions failed after test-runner restarts even when later individual tests pass.
+- If `xcodebuildmcp` device log capture fails with CoreDevice provider errors, `idevicesyslog` works for live physical-device timing logs without root. `/usr/bin/log collect --device-*` requires root on this machine.
+- Restore `ios/IssueCTL/Generated/AppVersion.swift` after Xcode builds if it is modified by the build script.
 
 ## Logging
 

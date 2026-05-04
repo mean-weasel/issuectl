@@ -1,4 +1,42 @@
 import SwiftUI
+import OSLog
+
+enum PerformanceTrace {
+    private static let logger = Logger(subsystem: "com.issuectl.ios", category: "performance")
+    private static let appLaunchStartedAt = Date()
+
+    struct Token {
+        let name: String
+        let startedAt: Date
+    }
+
+    static func markAppLaunchStarted() {
+        _ = appLaunchStartedAt
+    }
+
+    static func begin(_ name: String, metadata: String = "") -> Token {
+        logger.debug("begin \(name, privacy: .public) \(metadata, privacy: .public)")
+        testLog("begin \(name) \(metadata)")
+        return Token(name: name, startedAt: Date())
+    }
+
+    static func end(_ token: Token, metadata: String = "") {
+        let elapsedMs = Int(Date().timeIntervalSince(token.startedAt) * 1_000)
+        logger.info("end \(token.name, privacy: .public) elapsed_ms=\(elapsedMs, privacy: .public) \(metadata, privacy: .public)")
+        testLog("end \(token.name) elapsed_ms=\(elapsedMs) \(metadata)")
+    }
+
+    static func markAppLaunchUsable(_ screen: String) {
+        let elapsedMs = Int(Date().timeIntervalSince(appLaunchStartedAt) * 1_000)
+        logger.info("app_launch_usable screen=\(screen, privacy: .public) elapsed_ms=\(elapsedMs, privacy: .public)")
+        testLog("app_launch_usable screen=\(screen) elapsed_ms=\(elapsedMs)")
+    }
+
+    private static func testLog(_ message: String) {
+        guard ProcessInfo.processInfo.environment["ISSUECTL_UI_TESTING"] == "1" else { return }
+        NSLog("[PerformanceTrace] %@", message)
+    }
+}
 
 enum RepoColors {
     /// Same 7-color palette as the web (REPO_COLORS in packages/web/lib/constants.ts).

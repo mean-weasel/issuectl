@@ -6,6 +6,7 @@ struct IssueListView: View {
 
     @State private var repos: [Repo] = []
     @State private var issuesByRepo: [String: [GitHubIssue]] = [:]
+    @State private var issueRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var drafts: [Draft] = []
     @State private var activeDeployments: [ActiveDeployment] = []
     @State private var isLoading = true
@@ -68,15 +69,16 @@ struct IssueListView: View {
 
     private var filteredIssues: [GitHubIssue] {
         var items = repoFilteredIssues
+        let repoLookup = issueRepoLookup
 
         switch section {
         case .drafts: return []
         case .open: items = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return issue.isOpen }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return issue.isOpen }
             return issue.isOpen && !isRunning(issue, in: repo.fullName)
         }
         case .running: items = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return false }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return false }
             return issue.isOpen && isRunning(issue, in: repo.fullName)
         }
         case .unassigned: items = items.filter { issue in
@@ -111,12 +113,13 @@ struct IssueListView: View {
 
     private var sectionCounts: [IssueSection: Int] {
         let items = repoFilteredIssues
+        let repoLookup = issueRepoLookup
         let open = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return issue.isOpen }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return issue.isOpen }
             return issue.isOpen && !isRunning(issue, in: repo.fullName)
         }
         let running = items.filter { issue in
-            guard let repo = repoFor(issue: issue) else { return false }
+            guard let repo = repoLookup[issue.htmlUrl]?.repo else { return false }
             return issue.isOpen && isRunning(issue, in: repo.fullName)
         }
         let unassigned = items.filter { issue in
@@ -195,11 +198,11 @@ struct IssueListView: View {
     }
 
     private func repoIndex(for issue: GitHubIssue) -> Int? {
-        repoIndexForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        issueRepoLookup[issue.htmlUrl]?.index
     }
 
     private func repoFor(issue: GitHubIssue) -> Repo? {
-        repoForItem(issue, in: issuesByRepo, repos: repos, htmlUrl: { $0.htmlUrl })
+        issueRepoLookup[issue.htmlUrl]?.repo
     }
 
     var body: some View {
@@ -486,6 +489,7 @@ struct IssueListView: View {
     private var issuesList: some View {
         let allFiltered = filteredIssues
         let visibleIssues = Array(allFiltered.prefix(displayLimit))
+        let repoLookup = issueRepoLookup
         List {
             if let actionError {
                 Label(actionError, systemImage: "exclamationmark.triangle")
@@ -494,8 +498,9 @@ struct IssueListView: View {
                     .lineLimit(3)
             }
             ForEach(visibleIssues, id: \.htmlUrl) { issue in
-                let color = repoIndex(for: issue).map { RepoColors.color(for: $0) } ?? .secondary
-                let repo = repoFor(issue: issue)
+                let repoInfo = repoLookup[issue.htmlUrl]
+                let color = repoInfo.map { RepoColors.color(for: $0.index) } ?? .secondary
+                let repo = repoInfo?.repo
                 let running = repo.map { isRunning(issue, in: $0.fullName) } ?? false
 
                 if let repo {
@@ -712,10 +717,12 @@ struct IssueListView: View {
     }
 
     private func prepareLaunch(owner: String, repo: String, number: Int, title: String) async {
+        let trace = PerformanceTrace.begin("issues.prepare_launch", metadata: "repo=\(owner)/\(repo) number=\(number)")
         let targetId = "\(owner)/\(repo)#\(number)"
         loadingLaunchTargetId = targetId
         actionError = nil
         defer {
+            PerformanceTrace.end(trace, metadata: "target_ready=\(launchTarget != nil) terminal_ready=\(terminalTarget != nil)")
             if loadingLaunchTargetId == targetId {
                 loadingLaunchTargetId = nil
             }
@@ -778,9 +785,13 @@ struct IssueListView: View {
     // MARK: - Loading
 
     private func loadAll(refresh: Bool = false) async {
+        let trace = PerformanceTrace.begin("issues.load_all", metadata: "refresh=\(refresh)")
         isLoading = true
         errorMessage = nil
         actionError = nil
+        defer {
+            PerformanceTrace.end(trace, metadata: "repos=\(repos.count) issues=\(issuesByRepo.values.reduce(0) { $0 + $1.count }) drafts=\(drafts.count) deployments=\(activeDeployments.count)")
+        }
         do {
             repos = try await api.repos()
 
@@ -849,6 +860,7 @@ struct IssueListView: View {
                 }
             }
             issuesByRepo = nextIssuesByRepo
+            issueRepoLookup = makeIssueRepoLookup(itemsByRepo: nextIssuesByRepo)
             oldestCachedAt = cachedDates.min()
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
@@ -908,6 +920,17 @@ struct IssueListView: View {
         }
         lastRefreshDate = Date()
         await loadAll(refresh: true)
+    }
+
+    private func makeIssueRepoLookup(itemsByRepo: [String: [GitHubIssue]]) -> [String: (repo: Repo, index: Int)] {
+        var lookup: [String: (repo: Repo, index: Int)] = [:]
+        for (index, repo) in repos.enumerated() {
+            guard let issues = itemsByRepo[repo.fullName] else { continue }
+            for issue in issues {
+                lookup[issue.htmlUrl] = (repo, index)
+            }
+        }
+        return lookup
     }
 }
 

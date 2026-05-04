@@ -11,7 +11,7 @@ struct MarkdownView: View {
     let content: String
 
     var body: some View {
-        let blocks = splitCodeBlocks(content)
+        let blocks = MarkdownRenderCache.shared.blocks(for: content)
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 if block.isCode {
@@ -27,7 +27,7 @@ struct MarkdownView: View {
                         }
                         .textSelection(.enabled)
                 } else {
-                    markdownText(block.text)
+                    markdownText(block)
                         .textSelection(.enabled)
                 }
             }
@@ -36,39 +36,62 @@ struct MarkdownView: View {
 
     // MARK: - Inline Markdown
 
-    private func parseMarkdown(_ source: String) -> AttributedString? {
-        do {
-            return try AttributedString(
-                markdown: source,
-                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-            )
-        } catch {
-            #if DEBUG
-            print("[MarkdownView] Parse failed: \(error.localizedDescription)")
-            #endif
-            return nil
-        }
-    }
-
     @ViewBuilder
-    private func markdownText(_ source: String) -> some View {
-        let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
+    private func markdownText(_ block: MarkdownBlock) -> some View {
+        if block.text.isEmpty {
             EmptyView()
-        } else if let attributed = parseMarkdown(trimmed) {
+        } else if let attributed = block.attributedText {
             Text(attributed)
                 .font(.body)
         } else {
-            Text(trimmed)
+            Text(block.text)
                 .font(.body)
+        }
+    }
+}
+
+private final class MarkdownRenderCache {
+    nonisolated(unsafe) static let shared = MarkdownRenderCache()
+
+    private let cache = NSCache<NSString, MarkdownRenderStorage>()
+
+    func blocks(for content: String) -> [MarkdownBlock] {
+        let key = content as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached.blocks
+        }
+
+        let blocks = MarkdownParser.blocks(from: content)
+        cache.setObject(MarkdownRenderStorage(blocks: blocks), forKey: key)
+        return blocks
+    }
+}
+
+private final class MarkdownRenderStorage {
+    let blocks: [MarkdownBlock]
+
+    init(blocks: [MarkdownBlock]) {
+        self.blocks = blocks
+    }
+}
+
+private enum MarkdownParser {
+    static func blocks(from source: String) -> [MarkdownBlock] {
+        splitCodeBlocks(source).map { block in
+            guard !block.isCode else { return block }
+            return MarkdownBlock(
+                text: block.text,
+                isCode: false,
+                attributedText: parseMarkdown(block.text)
+            )
         }
     }
 
     // MARK: - Code Block Splitting
 
     /// Splits markdown into alternating prose / fenced-code-block segments.
-    private func splitCodeBlocks(_ source: String) -> [Block] {
-        var blocks: [Block] = []
+    private static func splitCodeBlocks(_ source: String) -> [MarkdownBlock] {
+        var blocks: [MarkdownBlock] = []
         var current = ""
         var insideCode = false
         let lines = source.components(separatedBy: "\n")
@@ -77,14 +100,14 @@ struct MarkdownView: View {
             if line.hasPrefix("```") {
                 if insideCode {
                     // Closing fence — finish the code block
-                    blocks.append(Block(text: current, isCode: true))
+                    blocks.append(MarkdownBlock(text: current, isCode: true))
                     current = ""
                     insideCode = false
                 } else {
                     // Opening fence — flush any prose before it
                     let prose = current.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !prose.isEmpty {
-                        blocks.append(Block(text: prose, isCode: false))
+                        blocks.append(MarkdownBlock(text: prose, isCode: false))
                     }
                     current = ""
                     insideCode = true
@@ -97,14 +120,35 @@ struct MarkdownView: View {
         // Handle any remaining text
         let remaining = current.trimmingCharacters(in: .whitespacesAndNewlines)
         if !remaining.isEmpty {
-            blocks.append(Block(text: remaining, isCode: insideCode))
+            blocks.append(MarkdownBlock(text: remaining, isCode: insideCode))
         }
 
         return blocks
     }
+
+    private static func parseMarkdown(_ source: String) -> AttributedString? {
+        do {
+            return try AttributedString(
+                markdown: source,
+                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+            )
+        } catch {
+            #if DEBUG
+            print("[MarkdownView] Parse failed: \(error.localizedDescription)")
+            #endif
+            return nil
+        }
+    }
 }
 
-private struct Block {
+private struct MarkdownBlock {
     let text: String
     let isCode: Bool
+    let attributedText: AttributedString?
+
+    init(text: String, isCode: Bool, attributedText: AttributedString? = nil) {
+        self.text = text
+        self.isCode = isCode
+        self.attributedText = attributedText
+    }
 }
