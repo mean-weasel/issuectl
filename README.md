@@ -13,6 +13,8 @@ pnpm install
 pnpm turbo build
 issuectl init        # First-time setup (creates DB)
 issuectl web         # Start dashboard and print iOS setup link/QR
+pnpm ios:setup-sim   # Configure the booted iOS Simulator from the saved API token
+pnpm ios:dev         # Start web, build/run iOS Simulator, and apply setup link
 ```
 
 ## What it does

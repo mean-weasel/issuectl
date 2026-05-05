@@ -21,7 +21,6 @@ final class SessionManagementTests: XCTestCase {
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
 
         // Tap session controls to open the control sheet.
@@ -43,7 +42,6 @@ final class SessionManagementTests: XCTestCase {
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-preview-9001", existsIn: app, timeout: 5)
         let preview = element("session-preview-9001", in: app)
 
@@ -59,11 +57,9 @@ final class SessionManagementTests: XCTestCase {
             String(describing: preview.value ?? "").contains("pass: launch handoff"),
             "Session preview accessibility value did not include latest output"
         )
-
-        preview.tap()
         XCTAssertTrue(
             app.staticTexts["issue #101: running checks"].waitForExistence(timeout: 3),
-            "Expanded session preview did not show captured terminal lines\n\(app.debugDescription)"
+            "Session preview did not show captured terminal lines by default\n\(app.debugDescription)"
         )
     }
 
@@ -73,7 +69,6 @@ final class SessionManagementTests: XCTestCase {
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         XCTAssertTrue(
             app.staticTexts["2 active • 1 idle"].waitForExistence(timeout: 8),
             "Expected Sessions subtitle to count active and idle terminal previews\n\(app.debugDescription)"
@@ -86,10 +81,31 @@ final class SessionManagementTests: XCTestCase {
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         XCTAssertTrue(
             app.staticTexts["0 active • 0 idle • 1 checking"].waitForExistence(timeout: 8),
             "Expected Sessions subtitle to show ready terminals waiting for preview data\n\(app.debugDescription)"
         )
+    }
+
+    @MainActor
+    func testRepoContextChipOpensSessionFiltersAndFiltersRunningSessions() {
+        server.seedDeploymentsAcrossRepos()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9101", existsIn: app, timeout: 5)
+
+        assertElement("repo-context-filter-button", existsIn: app, timeout: 5)
+        element("repo-context-filter-button", in: app).tap()
+
+        XCTAssertTrue(app.staticTexts["Filters"].waitForExistence(timeout: 3), app.debugDescription)
+        app.buttons["beta, org"].tap()
+
+        XCTAssertTrue(app.staticTexts["Showing beta"].waitForExistence(timeout: 3), app.debugDescription)
+        app.swipeDown()
+
+        waitForNonexistence("session-reenter-terminal-9001", in: app, timeout: 5)
+        assertElement("session-reenter-terminal-9101", existsIn: app, timeout: 5)
     }
 }

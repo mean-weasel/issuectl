@@ -88,7 +88,7 @@ final class IssueCTLUITests: XCTestCase {
         assertRepoContext("All 2", in: app)
 
         tapElement("active-tab", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 8)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 8)
         assertRepoContext("All 2", in: app)
         let activeContext = element("repo-context-active", in: app)
         XCTAssertTrue(activeContext.waitForExistence(timeout: 3), "Active repo context missing\n\(app.debugDescription)")
@@ -220,7 +220,6 @@ final class IssueCTLUITests: XCTestCase {
         )
         activeSessionsButton.tap()
 
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app)
     }
 
@@ -243,7 +242,6 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issue-detail-reenter-terminal-button", existsIn: app, timeout: 5)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         element("session-reenter-terminal-9001", in: app).tap()
 
@@ -304,7 +302,6 @@ final class IssueCTLUITests: XCTestCase {
         launchIssueSession(102, in: app)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("sessions-command-header", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
         assertElement("session-reenter-terminal-9002", existsIn: app, timeout: 5)
         XCTAssertTrue(element("session-reenter-terminal-9001", in: app).isEnabled)
