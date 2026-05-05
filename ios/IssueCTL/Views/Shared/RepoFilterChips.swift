@@ -86,6 +86,7 @@ struct RepoContextStrip: View {
     var activeRepoFullNames: [String] = []
     var leadingTitle = "Repos"
     var valueOverride: String?
+    var showsActiveSummary = true
     var onTap: (() -> Void)?
 
     var body: some View {
@@ -111,7 +112,7 @@ struct RepoContextStrip: View {
                         )
                     }
 
-                    if !activeRepoFullNames.isEmpty && activeRepoFullNames.count < repos.count {
+                    if showsActiveSummary && !activeRepoFullNames.isEmpty && activeRepoFullNames.count < repos.count {
                         RepoContextChip(
                             title: "Active",
                             value: "\(activeRepoFullNames.count)",

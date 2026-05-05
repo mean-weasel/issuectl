@@ -37,53 +37,62 @@ final class SessionManagementTests: XCTestCase {
     }
 
     @MainActor
-    func testSessionCardShowsExpandableTerminalPreview() {
+    func testSessionCardOmitsTerminalPreviewOutput() {
         server.seedActiveDeployment()
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
-        assertElement("session-preview-9001", existsIn: app, timeout: 5)
-        let preview = element("session-preview-9001", in: app)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
 
         XCTAssertTrue(
-            app.staticTexts["pass: launch handoff"].waitForExistence(timeout: 5),
-            "Collapsed session preview did not show latest output\n\(app.debugDescription)"
+            app.staticTexts["Running"].waitForExistence(timeout: 5),
+            "Session card did not show running status\n\(app.debugDescription)"
         )
-        XCTAssertTrue(
-            app.staticTexts["Active"].waitForExistence(timeout: 3),
-            "Session preview did not show a visible active status badge\n\(app.debugDescription)"
+        XCTAssertFalse(
+            app.staticTexts["pass: launch handoff"].waitForExistence(timeout: 2),
+            "Session card should not render terminal preview output\n\(app.debugDescription)"
         )
-        XCTAssertTrue(
-            String(describing: preview.value ?? "").contains("pass: launch handoff"),
-            "Session preview accessibility value did not include latest output"
-        )
-        XCTAssertTrue(
-            app.staticTexts["issue #101: running checks"].waitForExistence(timeout: 3),
-            "Session preview did not show captured terminal lines by default\n\(app.debugDescription)"
+        XCTAssertFalse(
+            app.staticTexts["issue #101: running checks"].waitForExistence(timeout: 2),
+            "Session card should not render expanded terminal preview lines\n\(app.debugDescription)"
         )
     }
 
     @MainActor
-    func testSessionHeaderCountsActiveAndIdleTerminalPreviews() {
+    func testIdleSessionsSortToTop() {
         server.seedMixedActivityDeployments()
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9002", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9003", existsIn: app, timeout: 5)
+
         XCTAssertTrue(
-            app.staticTexts["2 active • 1 idle"].waitForExistence(timeout: 8),
-            "Expected Sessions subtitle to count active and idle terminal previews\n\(app.debugDescription)"
+            app.staticTexts["Idle"].waitForExistence(timeout: 8),
+            "Expected idle status to appear after preview polling\n\(app.debugDescription)"
         )
+
+        let idleFrame = element("session-reenter-terminal-9002", in: app).frame
+        let firstActiveFrame = element("session-reenter-terminal-9001", in: app).frame
+        let secondActiveFrame = element("session-reenter-terminal-9003", in: app).frame
+        XCTAssertLessThan(idleFrame.minY, firstActiveFrame.minY, "Idle session should sort before active sessions")
+        XCTAssertLessThan(idleFrame.minY, secondActiveFrame.minY, "Idle session should sort before active sessions")
     }
 
     @MainActor
-    func testSessionHeaderShowsCheckingForMissingTerminalPreview() {
+    func testSessionHeaderOmitsPreviewStats() {
         server.seedDeploymentWithMissingPreview()
         let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
         XCTAssertTrue(
-            app.staticTexts["0 active • 0 idle • 1 checking"].waitForExistence(timeout: 8),
-            "Expected Sessions subtitle to show ready terminals waiting for preview data\n\(app.debugDescription)"
+            app.staticTexts["Running sessions"].waitForExistence(timeout: 5),
+            "Expected simplified Sessions subtitle\n\(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            app.staticTexts["0 active • 0 idle • 1 checking"].waitForExistence(timeout: 2),
+            "Sessions subtitle should not render preview stats\n\(app.debugDescription)"
         )
     }
 

@@ -24,7 +24,6 @@ struct SessionListView: View {
     @State private var isSearchVisible = false
     @State private var selectedRepoIds: Set<Int> = []
     @State private var showFiltersSheet = false
-    @State private var collapsedPreviewPorts: Set<Int> = []
     @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
@@ -36,9 +35,12 @@ struct SessionListView: View {
             items = items.filter { selectedRepoIds.contains($0.repoId) }
         }
 
-        guard !searchText.isEmpty else { return items }
+        if searchText.isEmpty {
+            return sortDeploymentsForInvestigation(items)
+        }
+
         let query = searchText.lowercased()
-        return items.filter { deployment in
+        let matchingItems = items.filter { deployment in
             [
                 deployment.repoFullName,
                 "#\(deployment.issueNumber)",
@@ -50,40 +52,7 @@ struct SessionListView: View {
             .lowercased()
             .contains(query)
         }
-    }
-
-    private var readyCount: Int {
-        deployments.filter { $0.ttydPort != nil }.count
-    }
-
-    private var activeTerminalCount: Int {
-        deployments.filter { deployment in
-            guard let port = deployment.ttydPort else { return false }
-            return previews[port]?.status == .active
-        }.count
-    }
-
-    private var idleTerminalCount: Int {
-        deployments.filter { deployment in
-            guard let port = deployment.ttydPort else { return false }
-            return previews[port]?.status == .idle
-        }.count
-    }
-
-    private var checkingTerminalCount: Int {
-        deployments.filter { deployment in
-            guard let port = deployment.ttydPort else { return false }
-            return previews[port] == nil
-        }.count
-    }
-
-    private var startingCount: Int {
-        deployments.count - readyCount
-    }
-
-    private var activeRepoFullNames: [String] {
-        let names = Set(deployments.map(\.repoFullName))
-        return repos.map(\.fullName).filter { names.contains($0) }
+        return sortDeploymentsForInvestigation(matchingItems)
     }
 
     private var hasActiveFilters: Bool {
@@ -118,8 +87,8 @@ struct SessionListView: View {
 
                 RepoContextStrip(
                     repos: repos,
-                    activeRepoFullNames: activeRepoFullNames,
                     valueOverride: selectedRepoSummary,
+                    showsActiveSummary: false,
                     onTap: { showFiltersSheet = true }
                 )
 
@@ -179,13 +148,7 @@ struct SessionListView: View {
                                     SessionRowView(
                                         deployment: deployment,
                                         preview: port.flatMap { previews[$0] },
-                                        isPreviewExpanded: port.map { previews[$0] != nil && !collapsedPreviewPorts.contains($0) } ?? false,
                                         isEnding: endingDeploymentId == deployment.id,
-                                        onTogglePreview: {
-                                            if let port {
-                                                togglePreview(port)
-                                            }
-                                        },
                                         onOpen: {
                                             openTerminal(deployment)
                                         },
@@ -322,17 +285,7 @@ struct SessionListView: View {
             return "No active sessions"
         }
 
-        var parts = [
-            "\(activeTerminalCount) active",
-            "\(idleTerminalCount) idle",
-        ]
-        if checkingTerminalCount > 0 {
-            parts.append("\(checkingTerminalCount) checking")
-        }
-        if startingCount > 0 {
-            parts.append("\(startingCount) starting")
-        }
-        return parts.joined(separator: " • ")
+        return "Running sessions"
     }
 
     private var sessionSearchBar: some View {
@@ -382,6 +335,37 @@ struct SessionListView: View {
         hideSearch()
     }
 
+    private func sortDeploymentsForInvestigation(_ items: [ActiveDeployment]) -> [ActiveDeployment] {
+        items
+            .enumerated()
+            .sorted { lhs, rhs in
+                let lhsRank = sessionSortRank(lhs.element)
+                let rhsRank = sessionSortRank(rhs.element)
+                if lhsRank != rhsRank {
+                    return lhsRank < rhsRank
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
+    }
+
+    private func sessionSortRank(_ deployment: ActiveDeployment) -> Int {
+        guard let port = deployment.ttydPort else {
+            return 4
+        }
+
+        switch previews[port]?.status {
+        case .idle:
+            return 0
+        case .error:
+            return 1
+        case .unavailable, nil:
+            return 2
+        case .active:
+            return 3
+        }
+    }
+
     private func sessionErrorDescription(_ message: String) -> String {
         "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
     }
@@ -389,16 +373,6 @@ struct SessionListView: View {
     private func openTerminal(_ deployment: ActiveDeployment) {
         guard deployment.ttydPort != nil else { return }
         terminalPresentation = TerminalPresentation(deployment: deployment)
-    }
-
-    private func togglePreview(_ port: Int) {
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-            if collapsedPreviewPorts.contains(port) {
-                collapsedPreviewPorts.remove(port)
-            } else {
-                collapsedPreviewPorts.insert(port)
-            }
-        }
     }
 
     private func load(refresh: Bool = false, includeRepos: Bool? = nil) async {
@@ -443,7 +417,6 @@ struct SessionListView: View {
         guard !isFetchingPreviews else { return }
         guard !deployments.isEmpty else {
             previews = [:]
-            collapsedPreviewPorts = []
             return
         }
         isFetchingPreviews = true
@@ -463,7 +436,6 @@ struct SessionListView: View {
         while !Task.isCancelled {
             if deployments.isEmpty {
                 previews = [:]
-                collapsedPreviewPorts = []
             } else {
                 await fetchPreviews()
             }
@@ -479,7 +451,6 @@ struct SessionListView: View {
     private func prunePreviewState() {
         let ports = Set(deployments.compactMap(\.ttydPort))
         previews = previews.filter { ports.contains($0.key) }
-        collapsedPreviewPorts = collapsedPreviewPorts.intersection(ports)
     }
 
     private func endSession(_ deployment: ActiveDeployment) async {
@@ -494,7 +465,6 @@ struct SessionListView: View {
             deployments.removeAll { $0.id == deployment.id }
             if let port = deployment.ttydPort {
                 previews.removeValue(forKey: port)
-                collapsedPreviewPorts.remove(port)
             }
         } catch {
             errorMessage = error.localizedDescription
