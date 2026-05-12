@@ -2,6 +2,9 @@ import SwiftUI
 
 struct MacSettingsView: View {
     @Environment(APIClient.self) private var api
+    @Environment(MacSidebarPreferences.self) private var preferences
+    @Environment(\.resetSidebarLayout) private var resetSidebarLayout
+    @State private var isUpdatingLaunchAtLogin = false
 
     var body: some View {
         Form {
@@ -10,9 +13,62 @@ struct MacSettingsView: View {
                 Text(api.apiToken.isEmpty ? "No API token saved" : "API token saved")
                     .foregroundStyle(.secondary)
             }
+
+            Section("Mac Sidebar") {
+                Toggle("Launch at Login", isOn: launchAtLoginBinding)
+                    .disabled(isUpdatingLaunchAtLogin)
+
+                if isUpdatingLaunchAtLogin {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+
+                if let error = preferences.launchAtLoginError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Toggle("Open Collapsed on Next Launch", isOn: collapsedOnLaunchBinding)
+
+                HStack {
+                    Text("Saved Width")
+                    Spacer()
+                    Text("\(Int(preferences.expandedWidth)) px")
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Reset Sidebar Layout") {
+                    resetSidebarLayout()
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 420)
         .padding()
+        .task {
+            preferences.refreshLaunchAtLoginStatus()
+        }
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.launchAtLogin },
+            set: { newValue in
+                isUpdatingLaunchAtLogin = true
+                Task {
+                    await preferences.setLaunchAtLogin(newValue)
+                    isUpdatingLaunchAtLogin = false
+                }
+            }
+        )
+    }
+
+    private var collapsedOnLaunchBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.isCollapsed },
+            set: { preferences.isCollapsed = $0 }
+        )
     }
 }

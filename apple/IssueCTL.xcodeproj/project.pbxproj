@@ -137,6 +137,7 @@
 		A18D8982D49319C633EE661A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3C1581E55A12781F1E76A1 /* ContentView.swift */; };
 		A2F5F2C02EF56C3F98D596E8 /* EditRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */; };
 		A642DAF085F1B5DD608BF523 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1162B5421C0F279C8492942 /* APIClient.swift */; };
+		A66082BC0A4EF30F160CF9C5 /* MacSidebarPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708F54652A23B2732C519A72 /* MacSidebarPreferences.swift */; };
 		A6691865FCEEB29344BCCBAE /* EnumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0C921D1804F0904F029CC8 /* EnumTests.swift */; };
 		A9B2111D17EC7F6C48EEE268 /* PRDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 767FFF9158E604C69C4007DB /* PRDetailView.swift */; };
 		A9B874605B9902D25572BC69 /* AdvancedSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E52120CCBF1B17E45E2DDC1 /* AdvancedSettingsView.swift */; };
@@ -299,6 +300,7 @@
 		6D9ADC50FA06EBF2CB8A11E6 /* IssueDetailActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailActionTests.swift; sourceTree = "<group>"; };
 		6E3F3CE4A721136E587B4C67 /* NetworkErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkErrorBanner.swift; sourceTree = "<group>"; };
 		6E52120CCBF1B17E45E2DDC1 /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsView.swift; sourceTree = "<group>"; };
+		708F54652A23B2732C519A72 /* MacSidebarPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSidebarPreferences.swift; sourceTree = "<group>"; };
 		723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeListView.swift; sourceTree = "<group>"; };
 		72AB7A2B9999184E67A3064A /* IssueCTLMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCTLMacApp.swift; sourceTree = "<group>"; };
 		75027D57516F296784BEDA4B /* PRRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRRowView.swift; sourceTree = "<group>"; };
@@ -501,6 +503,7 @@
 		6FAB6ED3CEA82D4567F1E04B /* Platform */ = {
 			isa = PBXGroup;
 			children = (
+				708F54652A23B2732C519A72 /* MacSidebarPreferences.swift */,
 				EEA90F554E1CF22EA56B51AB /* PerformanceTrace.swift */,
 				8FB818A0B361A38DCB604FB7 /* SidebarPanelController.swift */,
 			);
@@ -1148,6 +1151,7 @@
 				250D0308D12F0EE129E4C7E2 /* MacIssuesView.swift in Sources */,
 				BDDD77609BB45F218D8DBFDC /* MacSessionsView.swift in Sources */,
 				AAFAE2475EF1A39328204F4F /* MacSettingsView.swift in Sources */,
+				A66082BC0A4EF30F160CF9C5 /* MacSidebarPreferences.swift in Sources */,
 				BFC0A82D9CCFD653415A4A82 /* MacSidebarRootView.swift in Sources */,
 				22B99716E42E20F0DA147C5B /* MacSidebarStore.swift in Sources */,
 				B4AF2A85F0768942BCD81D8C /* NetworkMonitor.swift in Sources */,

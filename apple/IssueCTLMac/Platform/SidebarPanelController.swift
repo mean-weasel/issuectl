@@ -9,6 +9,10 @@ private struct ToggleSidebarCollapsedKey: EnvironmentKey {
     static let defaultValue: @MainActor () -> Void = {}
 }
 
+private struct ResetSidebarLayoutKey: EnvironmentKey {
+    static let defaultValue: @MainActor () -> Void = {}
+}
+
 extension EnvironmentValues {
     var hideSidebar: @MainActor () -> Void {
         get { self[HideSidebarKey.self] }
@@ -19,6 +23,11 @@ extension EnvironmentValues {
         get { self[ToggleSidebarCollapsedKey.self] }
         set { self[ToggleSidebarCollapsedKey.self] = newValue }
     }
+
+    var resetSidebarLayout: @MainActor () -> Void {
+        get { self[ResetSidebarLayoutKey.self] }
+        set { self[ResetSidebarLayoutKey.self] = newValue }
+    }
 }
 
 @Observable @MainActor
@@ -28,25 +37,36 @@ final class SidebarChromeState {
 }
 
 @MainActor
-final class SidebarPanelController {
+final class SidebarPanelController: NSObject, NSWindowDelegate {
     private enum Metrics {
         static let collapsedWidth: CGFloat = 76
-        static let expandedMinWidth: CGFloat = 340
-        static let expandedMaxWidth: CGFloat = 560
-        static let defaultExpandedWidth: CGFloat = 380
+        static let expandedMinWidth = MacSidebarPreferences.minimumExpandedWidth
+        static let expandedMaxWidth = MacSidebarPreferences.maximumExpandedWidth
+        static let defaultExpandedWidth = MacSidebarPreferences.defaultExpandedWidth
         static let horizontalInset: CGFloat = 12
         static let verticalInset: CGFloat = 12
         static let minimumHeight: CGFloat = 480
     }
 
-    private let panel: NSPanel
+    private var panel: NSPanel!
     private let chrome: SidebarChromeState
-    private var expandedWidth = Metrics.defaultExpandedWidth
+    private let preferences: MacSidebarPreferences
+    private var expandedWidth: CGFloat
 
-    init<Content: View>(rootView: Content, chrome: SidebarChromeState) {
+    init<Content: View>(
+        rootView: Content,
+        chrome: SidebarChromeState,
+        preferences: MacSidebarPreferences
+    ) {
         self.chrome = chrome
+        self.preferences = preferences
+        expandedWidth = MacSidebarPreferences.clampedWidth(preferences.expandedWidth)
+
+        super.init()
+
         let hostingController = NSHostingController(rootView: rootView)
-        let frame = Self.defaultFrame()
+        chrome.isCollapsed = preferences.isCollapsed
+        let frame = Self.defaultFrame(width: preferences.isCollapsed ? Metrics.collapsedWidth : expandedWidth)
 
         panel = NSPanel(
             contentRect: frame,
@@ -62,8 +82,8 @@ final class SidebarPanelController {
         panel.hidesOnDeactivate = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
-        panel.minSize = NSSize(width: Metrics.expandedMinWidth, height: Metrics.minimumHeight)
-        panel.maxSize = NSSize(width: Metrics.expandedMaxWidth, height: CGFloat.greatestFiniteMagnitude)
+        panel.delegate = self
+        updateSizeConstraints()
     }
 
     func show() {
@@ -92,27 +112,54 @@ final class SidebarPanelController {
     func setCollapsed(_ isCollapsed: Bool) {
         guard chrome.isCollapsed != isCollapsed else { return }
 
-        if isCollapsed {
-            expandedWidth = min(max(panel.frame.width, Metrics.expandedMinWidth), Metrics.expandedMaxWidth)
-            panel.minSize = NSSize(width: Metrics.collapsedWidth, height: Metrics.minimumHeight)
-            panel.maxSize = NSSize(width: Metrics.collapsedWidth, height: CGFloat.greatestFiniteMagnitude)
-        } else {
-            panel.minSize = NSSize(width: Metrics.expandedMinWidth, height: Metrics.minimumHeight)
-            panel.maxSize = NSSize(width: Metrics.expandedMaxWidth, height: CGFloat.greatestFiniteMagnitude)
+        if isCollapsed, panel.frame.width != Metrics.collapsedWidth {
+            saveExpandedWidth(panel.frame.width)
         }
 
         chrome.isCollapsed = isCollapsed
+        preferences.isCollapsed = isCollapsed
+        updateSizeConstraints()
         panel.setFrame(Self.defaultFrame(width: currentWidth), display: true, animate: true)
         if !panel.isVisible {
             show()
         }
     }
 
+    func applyPreferencesLayout() {
+        expandedWidth = MacSidebarPreferences.clampedWidth(preferences.expandedWidth)
+        chrome.isCollapsed = preferences.isCollapsed
+        updateSizeConstraints()
+        panel.setFrame(Self.defaultFrame(width: currentWidth), display: true, animate: true)
+        if !panel.isVisible {
+            show()
+        }
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard !chrome.isCollapsed else { return }
+        saveExpandedWidth(panel.frame.width)
+    }
+
     private var currentWidth: CGFloat {
         if chrome.isCollapsed {
             return Metrics.collapsedWidth
         }
-        return min(max(expandedWidth, Metrics.expandedMinWidth), Metrics.expandedMaxWidth)
+        return MacSidebarPreferences.clampedWidth(expandedWidth)
+    }
+
+    private func updateSizeConstraints() {
+        if chrome.isCollapsed {
+            panel.minSize = NSSize(width: Metrics.collapsedWidth, height: Metrics.minimumHeight)
+            panel.maxSize = NSSize(width: Metrics.collapsedWidth, height: CGFloat.greatestFiniteMagnitude)
+        } else {
+            panel.minSize = NSSize(width: Metrics.expandedMinWidth, height: Metrics.minimumHeight)
+            panel.maxSize = NSSize(width: Metrics.expandedMaxWidth, height: CGFloat.greatestFiniteMagnitude)
+        }
+    }
+
+    private func saveExpandedWidth(_ width: CGFloat) {
+        expandedWidth = MacSidebarPreferences.clampedWidth(width)
+        preferences.expandedWidth = expandedWidth
     }
 
     private static func defaultFrame(width requestedWidth: CGFloat = Metrics.defaultExpandedWidth) -> NSRect {
