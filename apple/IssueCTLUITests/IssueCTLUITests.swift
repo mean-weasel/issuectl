@@ -15,6 +15,15 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testAppVersionBadgeIsVisibleInPrimaryTabs() {
+        let app = launchApp(server: server)
+
+        let versionBadge = element("app-version-badge", in: app)
+        XCTAssertTrue(versionBadge.waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(versionBadge.label.contains("IssueCTL version"), "Unexpected version badge label: \(versionBadge.label)")
+    }
+
+    @MainActor
     func testCommandCenterActionsAreReachableFromTabs() {
         let app = launchApp(server: server)
 

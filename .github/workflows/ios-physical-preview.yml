@@ -31,7 +31,7 @@ permissions:
 jobs:
   physical-preview:
     name: Physical iPhone Preview Smoke
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","macOS","issuectl-ios","iphone-preview"]') }}
+    runs-on: ${{ fromJSON(github.event_name != 'workflow_dispatch' && '["ubuntu-latest"]' || '["self-hosted","macOS","issuectl-ios","iphone-preview"]') }}
     timeout-minutes: 25
     env:
       IOS_DEVICE_NAME: iPhone-preview
@@ -41,35 +41,36 @@ jobs:
       IOS_XCODEBUILD_EXTRA_ARGS: -allowProvisioningUpdates -allowProvisioningDeviceRegistration
       IOS_PREVIEW_KEYCHAIN_PASSWORD: ${{ secrets.IOS_PREVIEW_KEYCHAIN_PASSWORD }}
       IOS_PREVIEW_SET_KEY_PARTITION_LIST: '1'
+      SHOULD_RUN_PHYSICAL_PREVIEW: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
     steps:
-      - name: PR placeholder
-        if: github.event_name == 'pull_request'
-        run: echo "Physical iPhone preview smoke runs against the merge queue tip on merge_group."
+      - name: Queue placeholder
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW != '1'
+        run: echo "Physical iPhone preview smoke runs only via workflow_dispatch."
 
       - uses: actions/checkout@v6
-        if: github.event_name != 'pull_request'
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW == '1'
         with:
           fetch-depth: 0
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Preflight runner, signing, and iPhone-preview
-        if: github.event_name != 'pull_request'
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW == '1'
         run: ./scripts/ios-preview-runner-preflight.sh
 
       - name: Show build environment
-        if: github.event_name != 'pull_request'
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW == '1'
         run: swift --version
 
       - name: Resolve iPhone-preview
-        if: github.event_name != 'pull_request'
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW == '1'
         run: ./scripts/ios-resolve-preview-device.sh
 
       - name: List iOS devices
-        if: github.event_name != 'pull_request'
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW == '1'
         run: ./scripts/ios-list-devices.sh
 
       - name: Run physical preview smoke
-        if: github.event_name != 'pull_request'
+        if: env.SHOULD_RUN_PHYSICAL_PREVIEW == '1'
         env:
           IOS_UI_SMOKE_PROFILE: ${{ inputs.smoke_profile || 'pr' }}
         run: ./scripts/ios-preview-device-smoke.sh

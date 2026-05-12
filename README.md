@@ -21,6 +21,8 @@ pnpm ios:dev         # Start web, build/run iOS Simulator, and apply setup link
 
 issuectl tracks GitHub issues across multiple repos and launches agent sessions with full issue context — comments, referenced files, and branch setup — in a single click from the web dashboard or iOS app.
 
+Native Apple clients live in `apple/`: the iOS app, the macOS sidebar app, and shared Swift models/services used by both.
+
 ## Launch agents
 
 issuectl can launch issues with either Claude Code or Codex. Choose a default agent in Settings, or select an agent per launch from the web and iOS launch flows.

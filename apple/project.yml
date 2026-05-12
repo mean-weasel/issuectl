@@ -3,13 +3,33 @@ options:
   bundleIdPrefix: com.issuectl
   deploymentTarget:
     iOS: "18.0"
+    macOS: "15.0"
   createIntermediateGroups: true
 targets:
+  IssueCTLMac:
+    type: application
+    supportedDestinations: [macOS]
+    sources:
+      - path: IssueCTLMac
+      - path: IssueCTLShared
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.mac
+        PRODUCT_NAME: IssueCTLMac
+        INFOPLIST_KEY_CFBundleDisplayName: IssueCTL Mac
+        INFOPLIST_KEY_LSUIElement: true
+        ISSUECTL_KEYCHAIN_SERVICE: com.issuectl.mac
+        DEVELOPMENT_TEAM: B3A6AN2HA4
+        CODE_SIGN_STYLE: Automatic
+    scheme: {}
   IssueCTL:
     type: application
     supportedDestinations: [iOS]
     sources:
       - path: IssueCTL
+      - path: IssueCTLShared
     info:
       path: IssueCTL/Info.plist
       properties:
@@ -85,6 +105,7 @@ targets:
     supportedDestinations: [iOS]
     sources:
       - path: IssueCTL
+      - path: IssueCTLShared
     info:
       path: IssueCTL/Info.plist
       properties:
