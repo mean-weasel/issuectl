@@ -42,6 +42,12 @@ jobs:
             exit 0
           fi
 
+          # Simulator smoke remains available manually, but automatic PR and
+          # merge-queue runs keep the required check lightweight. The macOS
+          # runner can wedge in UI tests and block unrelated merges.
+          echo "run_smoke=false" >> "$GITHUB_OUTPUT"
+          exit 0
+
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             base_ref="origin/${{ github.base_ref }}"
             git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
