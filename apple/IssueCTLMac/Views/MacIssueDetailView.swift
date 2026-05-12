@@ -17,6 +17,8 @@ struct MacIssueDetailView: View {
     @State private var isSubmittingComment = false
     @State private var isUpdatingState = false
     @State private var isUpdatingPriority = false
+    @State private var isLaunching = false
+    @State private var activeSession: ActiveDeployment?
     @State private var errorMessage: String?
 
     private var issue: GitHubIssue {
@@ -38,6 +40,7 @@ struct MacIssueDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         issueSummary
+                        launchSection
                         actionBar
                         issueBody
                         commentComposer
@@ -143,6 +146,56 @@ struct MacIssueDetailView: View {
         }
     }
 
+    private var launchSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: sessionIcon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(sessionTint)
+                    .frame(width: 30, height: 30)
+                    .background(sessionTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(sessionTitle)
+                        .font(.subheadline.weight(.semibold))
+                    Text(sessionSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                if let activeSession {
+                    Button {
+                        openTerminal(activeSession)
+                    } label: {
+                        Label(activeSession.ttydPort == nil ? "Starting" : "Open", systemImage: "terminal")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(activeSession.ttydPort == nil)
+                } else {
+                    Button {
+                        Task { await launchIssue() }
+                    } label: {
+                        if isLaunching {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Label("Launch", systemImage: "play.fill")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isLaunching || !issue.isOpen)
+                }
+            }
+            .padding(10)
+            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
     private var actionBar: some View {
         HStack(spacing: 8) {
             Button {
@@ -183,6 +236,35 @@ struct MacIssueDetailView: View {
 
             Spacer()
         }
+    }
+
+    private var sessionTitle: String {
+        if let activeSession {
+            return activeSession.ttydPort == nil ? "Session Starting" : "Session Active"
+        }
+        return issue.isOpen ? "Ready to Launch" : "Issue Closed"
+    }
+
+    private var sessionSubtitle: String {
+        if let activeSession {
+            let terminalState = activeSession.ttydPort.map { "port \($0)" } ?? "terminal preparing"
+            return "\(activeSession.branchName) - \(terminalState)"
+        }
+        return issue.isOpen ? "Start an agent session with the shared launch settings." : "Reopen the issue before launching."
+    }
+
+    private var sessionIcon: String {
+        if let activeSession {
+            return activeSession.ttydPort == nil ? "hourglass" : "terminal"
+        }
+        return issue.isOpen ? "play.circle.fill" : "checkmark.circle.fill"
+    }
+
+    private var sessionTint: Color {
+        if let activeSession {
+            return activeSession.ttydPort == nil ? .orange : .green
+        }
+        return issue.isOpen ? .blue : .purple
     }
 
     @ViewBuilder
@@ -284,6 +366,8 @@ struct MacIssueDetailView: View {
             }()
 
             detail = try await detailResult
+            await store.refreshSessions(api: api)
+            activeSession = store.activeSession(for: item)
             switch await priorityResult {
             case .success(let loadedPriority):
                 priority = loadedPriority
@@ -337,6 +421,36 @@ struct MacIssueDetailView: View {
             committedPriority = newPriority
         } catch {
             priority = oldPriority
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func launchIssue() async {
+        isLaunching = true
+        errorMessage = nil
+        defer { isLaunching = false }
+
+        do {
+            let session = try await store.launchIssue(api: api, item: item, detail: detail)
+            activeSession = session
+            if session.ttydPort != nil {
+                await openTerminalAsync(session)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func openTerminal(_ session: ActiveDeployment) {
+        Task { await openTerminalAsync(session) }
+    }
+
+    private func openTerminalAsync(_ session: ActiveDeployment) async {
+        errorMessage = nil
+        do {
+            let url = try await store.terminalURL(api: api, session: session)
+            openURL(url)
+        } catch {
             errorMessage = error.localizedDescription
         }
     }

@@ -149,6 +149,106 @@ final class MacSidebarStore {
         }
     }
 
+    func refreshSessions(api: APIClient) async {
+        do {
+            sessions = try await api.activeDeployments(refresh: true).deployments
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func activeSession(for item: MacIssueListItem) -> ActiveDeployment? {
+        sessions.first { session in
+            session.isActive &&
+            session.owner == item.repo.owner &&
+            session.repoName == item.repo.name &&
+            session.issueNumber == item.issue.number
+        }
+    }
+
+    func launchIssue(api: APIClient, item: MacIssueListItem, detail: IssueDetailResponse?) async throws -> ActiveDeployment {
+        await refreshSessions(api: api)
+        if let existing = activeSession(for: item) {
+            return existing
+        }
+
+        let settings = try? await api.getSettings()
+        let agent = LaunchAgent.settingValue(settings?["launch_agent"])
+        let branchName = generateBranchName(issueNumber: item.issue.number, issueTitle: item.issue.title)
+        let workspaceMode: WorkspaceMode = item.repo.localPath?.isEmpty == false ? .worktree : .clone
+        let body = LaunchRequestBody(
+            agent: agent,
+            branchName: branchName,
+            workspaceMode: workspaceMode,
+            selectedCommentIndices: [],
+            selectedFilePaths: [],
+            preamble: nil,
+            forceResume: nil,
+            idempotencyKey: UUID().uuidString
+        )
+
+        let response = try await api.launch(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: body
+        )
+        guard response.success, let deploymentId = response.deploymentId else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to launch issue")
+        }
+
+        await refreshSessions(api: api)
+        return activeSession(for: item) ?? ActiveDeployment(
+            id: deploymentId,
+            repoId: item.repo.id,
+            issueNumber: item.issue.number,
+            branchName: branchName,
+            workspaceMode: workspaceMode,
+            workspacePath: "",
+            linkedPrNumber: nil,
+            state: .active,
+            launchedAt: sharedISO8601Formatter.string(from: Date()),
+            endedAt: nil,
+            ttydPort: response.ttydPort,
+            ttydPid: nil,
+            owner: item.repo.owner,
+            repoName: item.repo.name
+        )
+    }
+
+    func terminalURL(api: APIClient, session: ActiveDeployment) async throws -> URL {
+        let result = try await api.ensureTtyd(deploymentId: session.id)
+        switch result {
+        case .available(let port, let token, _):
+            var components = URLComponents(string: "\(api.serverURL)/api/terminal/\(port)/")
+            components?.queryItems = [
+                URLQueryItem(name: "terminalToken", value: token),
+                URLQueryItem(name: "lineHeight", value: "1.25"),
+                URLQueryItem(name: "disableResizeOverlay", value: "true"),
+                URLQueryItem(name: "rendererType", value: "canvas"),
+            ]
+            guard let url = components?.url else {
+                throw MacSidebarStoreError.operationFailed("Invalid terminal URL")
+            }
+            return url
+        case .unavailable(let error):
+            throw MacSidebarStoreError.operationFailed(error ?? "Terminal is not ready")
+        }
+    }
+
+    func endSession(api: APIClient, session: ActiveDeployment) async throws {
+        let response = try await api.endSession(
+            deploymentId: session.id,
+            owner: session.owner,
+            repo: session.repoName,
+            issueNumber: session.issueNumber
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to end session")
+        }
+        sessions.removeAll { $0.id == session.id }
+    }
+
     private func replaceIssue(_ issue: GitHubIssue, in repo: Repo) {
         let item = MacIssueListItem(issue: issue, repo: repo, repoIndex: repos.firstIndex(where: { $0.id == repo.id }) ?? 0)
         if let index = issues.firstIndex(where: { $0.id == item.id }) {
