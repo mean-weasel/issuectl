@@ -11,6 +11,8 @@ targets:
     supportedDestinations: [macOS]
     sources:
       - path: IssueCTLMac
+        excludes:
+          - QA.md
       - path: IssueCTLShared
     settings:
       base:
@@ -23,7 +25,9 @@ targets:
         ISSUECTL_KEYCHAIN_SERVICE: com.issuectl.mac
         DEVELOPMENT_TEAM: B3A6AN2HA4
         CODE_SIGN_STYLE: Automatic
-    scheme: {}
+    scheme:
+      testTargets:
+        - IssueCTLMacTests
   IssueCTL:
     type: application
     supportedDestinations: [iOS]
@@ -222,6 +226,20 @@ targets:
         DEVELOPMENT_TEAM: B3A6AN2HA4
         CODE_SIGN_STYLE: Automatic
         BUNDLE_LOADER: ""  # UI tests run out-of-process; no bundle injection
+  IssueCTLMacTests:
+    type: bundle.unit-test
+    supportedDestinations: [macOS]
+    sources:
+      - path: IssueCTLMacTests
+    dependencies:
+      - target: IssueCTLMac
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.mac.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/IssueCTLMac.app/Contents/MacOS/IssueCTLMac"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 # Standalone schemes (supplement the per-target inline scheme above)
 schemes:
   IssueCTL-Production:
