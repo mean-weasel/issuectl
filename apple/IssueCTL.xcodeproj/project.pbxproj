@@ -179,6 +179,7 @@
 		CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		CC16C63936A1F4ECDEB3133E /* NotificationPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2438738AD84484EC2E7B20C9 /* NotificationPreferences.swift */; };
 		CC83F861B2A764DB8AA4FC4A /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
+		CCD66F76181E54FD2700F813 /* MacSidebarPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C02C0464A65420CBD5D90E /* MacSidebarPreferencesTests.swift */; };
 		CCEACC5EE38BAC8DEC2DF70F /* PushDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013A1B391EF1CD6F786CEE87 /* PushDevice.swift */; };
 		CD346337E88C758F51FECA8B /* APIClient+ListEnhancements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48746522237ABF37AF77B1DA /* APIClient+ListEnhancements.swift */; };
 		CF8A626D972649C230E5C866 /* WorktreeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */; };
@@ -227,6 +228,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 364129AB76D09B38C3DD6476;
 			remoteInfo = IssueCTLPreview;
+		};
+		BE6D29DCAC3866F179F9C3EB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EF5E413184FCD5C1D397759F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B09EBAF173B9C47BCA316EE2;
+			remoteInfo = IssueCTLMac;
 		};
 		CC2BD2F35AE9F4F4FD860CF7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -300,11 +308,13 @@
 		6D9ADC50FA06EBF2CB8A11E6 /* IssueDetailActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailActionTests.swift; sourceTree = "<group>"; };
 		6E3F3CE4A721136E587B4C67 /* NetworkErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkErrorBanner.swift; sourceTree = "<group>"; };
 		6E52120CCBF1B17E45E2DDC1 /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsView.swift; sourceTree = "<group>"; };
+		6F07F4595D2598182637073E /* IssueCTLMacTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = IssueCTLMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		708F54652A23B2732C519A72 /* MacSidebarPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSidebarPreferences.swift; sourceTree = "<group>"; };
 		723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeListView.swift; sourceTree = "<group>"; };
 		72AB7A2B9999184E67A3064A /* IssueCTLMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCTLMacApp.swift; sourceTree = "<group>"; };
 		75027D57516F296784BEDA4B /* PRRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRRowView.swift; sourceTree = "<group>"; };
 		767FFF9158E604C69C4007DB /* PRDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRDetailView.swift; sourceTree = "<group>"; };
+		78C02C0464A65420CBD5D90E /* MacSidebarPreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSidebarPreferencesTests.swift; sourceTree = "<group>"; };
 		78D638F823877AD0CAA946A4 /* CommentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentView.swift; sourceTree = "<group>"; };
 		79D271A21BE61236E7F177D4 /* IssueCTLMac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTLMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueRowView.swift; sourceTree = "<group>"; };
@@ -527,12 +537,21 @@
 			children = (
 				AB6764D0DF2A55EB3796889D /* IssueCTL.app */,
 				79D271A21BE61236E7F177D4 /* IssueCTLMac.app */,
+				6F07F4595D2598182637073E /* IssueCTLMacTests.xctest */,
 				2D10373E745B3E9EC223B684 /* IssueCTLPreview.app */,
 				5809ACB6716C100004867EC9 /* IssueCTLPreviewUITests.xctest */,
 				0075145AA41F584D8D58036B /* IssueCTLTests.xctest */,
 				0CF6456214BCA5794B4D8A25 /* IssueCTLUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		82D31594429EC9DE06A2DFF6 /* IssueCTLMacTests */ = {
+			isa = PBXGroup;
+			children = (
+				78C02C0464A65420CBD5D90E /* MacSidebarPreferencesTests.swift */,
+			);
+			path = IssueCTLMacTests;
 			sourceTree = "<group>";
 		};
 		90117C5D62583C300C6DA37E /* Services */ = {
@@ -559,6 +578,7 @@
 			children = (
 				D5E657213913F2B68B41C505 /* IssueCTL */,
 				DA7D2CCD426BE9BEFF0C149F /* IssueCTLMac */,
+				82D31594429EC9DE06A2DFF6 /* IssueCTLMacTests */,
 				0DB8D12D04D2C393548E5DB0 /* IssueCTLShared */,
 				679803C9E7560FAB9A36EE85 /* IssueCTLTests */,
 				BFBE2D0C9B03282DA5585CAC /* IssueCTLUITests */,
@@ -794,6 +814,24 @@
 			productReference = 79D271A21BE61236E7F177D4 /* IssueCTLMac.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CEE9BB5CF15E3B33594AF851 /* IssueCTLMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AEE0642504D39CB13C230E81 /* Build configuration list for PBXNativeTarget "IssueCTLMacTests" */;
+			buildPhases = (
+				409394BA89CDA6FF4077B446 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FF5A729EC7F7C96C05584622 /* PBXTargetDependency */,
+			);
+			name = IssueCTLMacTests;
+			packageProductDependencies = (
+			);
+			productName = IssueCTLMacTests;
+			productReference = 6F07F4595D2598182637073E /* IssueCTLMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		E733D5763E64E8270AF7A0E2 /* IssueCTLUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BAF8116DB5A235F69E11B3A1 /* Build configuration list for PBXNativeTarget "IssueCTLUITests" */;
@@ -861,6 +899,7 @@
 			targets = (
 				791AFA96580A5FB3D384B678 /* IssueCTL */,
 				B09EBAF173B9C47BCA316EE2 /* IssueCTLMac */,
+				CEE9BB5CF15E3B33594AF851 /* IssueCTLMacTests */,
 				364129AB76D09B38C3DD6476 /* IssueCTLPreview */,
 				8FA5DBB4D9BC0711D23A3797 /* IssueCTLPreviewUITests */,
 				74A5540D3FF8CC05F0E56974 /* IssueCTLTests */,
@@ -1097,6 +1136,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		409394BA89CDA6FF4077B446 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CCD66F76181E54FD2700F813 /* MacSidebarPreferencesTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6CC27A3A4AB52D4C60C6B85C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1183,6 +1230,11 @@
 			isa = PBXTargetDependency;
 			target = 791AFA96580A5FB3D384B678 /* IssueCTL */;
 			targetProxy = CC2BD2F35AE9F4F4FD860CF7 /* PBXContainerItemProxy */;
+		};
+		FF5A729EC7F7C96C05584622 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B09EBAF173B9C47BCA316EE2 /* IssueCTLMac */;
+			targetProxy = BE6D29DCAC3866F179F9C3EB /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1356,6 +1408,28 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = IssueCTLPreview;
+			};
+			name = Debug;
+		};
+		7081DB104F1066B62A0EB981 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.issuectl.mac.tests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IssueCTLMac.app/Contents/MacOS/IssueCTLMac";
 			};
 			name = Debug;
 		};
@@ -1644,6 +1718,28 @@
 			};
 			name = Release;
 		};
+		E77B32435105D33ABD58F821 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.issuectl.mac.tests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IssueCTLMac.app/Contents/MacOS/IssueCTLMac";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1679,6 +1775,15 @@
 			buildConfigurations = (
 				CA1F3322A8D6FCFC5B4D19F2 /* Debug */,
 				0054D3D69C742503141BCA2C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AEE0642504D39CB13C230E81 /* Build configuration list for PBXNativeTarget "IssueCTLMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7081DB104F1066B62A0EB981 /* Debug */,
+				E77B32435105D33ABD58F821 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -65,6 +65,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(systemSymbolName: "list.bullet.rectangle", accessibilityDescription: "IssueCTL")
         item.button?.imagePosition = .imageOnly
+        item.button?.toolTip = "IssueCTL"
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Toggle Sidebar", action: #selector(toggleSidebar), keyEquivalent: "s"))
