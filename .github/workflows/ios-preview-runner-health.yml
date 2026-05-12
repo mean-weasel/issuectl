@@ -18,7 +18,7 @@ jobs:
     env:
       IOS_DEVICE_NAME: iPhone-preview
       IOS_SCHEME: IssueCTLPreview-UISmoke
-      IOS_PROJECT: ios/IssueCTL.xcodeproj
+      IOS_PROJECT: apple/IssueCTL.xcodeproj
       IOS_PREVIEW_KEYCHAIN_PASSWORD: ${{ secrets.IOS_PREVIEW_KEYCHAIN_PASSWORD }}
       IOS_PREVIEW_SET_KEY_PARTITION_LIST: '1'
     steps:

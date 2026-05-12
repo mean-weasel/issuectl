@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-PROJECT="${IOS_PROJECT:-ios/IssueCTL.xcodeproj}"
+PROJECT="${IOS_PROJECT:-apple/IssueCTL.xcodeproj}"
 SCHEME="${IOS_SCHEME:-IssueCTLPreview-UISmoke}"
 DEVICE_NAME="${IOS_DEVICE_NAME:-iPhone-preview}"
 MODE="${1:-human}"

@@ -8,7 +8,7 @@ Cross-repo GitHub issue command center with Claude Code and Codex launch integra
   - `packages/core` — shared business logic (SQLite, Octokit, launch flow)
   - `packages/cli` — CLI entry point (`issuectl init`, `issuectl web`, `issuectl repo`)
   - `packages/web` — Next.js App Router dashboard (Server Components + Server Actions)
-  - `ios/` — native SwiftUI iOS app (connects to the web server's REST API)
+  - `apple/` — native SwiftUI Apple clients: iOS app, macOS sidebar app, and shared Swift API/model layer
 - **Spec:** `docs/specs/2026-04-06-issuectl-design.md`
 - **Implementation plan:** `docs/specs/2026-04-06-implementation-plan.md`
 - **Mockups:** `docs/mockups/web.html` (primary reference), `docs/mockups/index.html` (gallery)
@@ -28,9 +28,9 @@ Cross-repo GitHub issue command center with Claude Code and Codex launch integra
 | Terminal | ttyd (web-based, embedded in dashboard) |
 | Launch agents | Claude Code or Codex, selectable per launch or via settings |
 | Styling | CSS Modules + global design tokens (no Tailwind) |
-| iOS target | iOS 18+, Swift 6.0, SwiftUI only |
-| iOS project gen | XcodeGen (`ios/project.yml`) |
-| iOS networking | URLSession async/await → server REST API (`/api/v1/`) |
+| Apple targets | iOS 18+ and macOS 15+, Swift 6.0, SwiftUI |
+| Apple project gen | XcodeGen (`apple/project.yml`) |
+| Apple client networking | URLSession async/await → server REST API (`/api/v1/`) |
 
 ## Code conventions
 
@@ -43,14 +43,14 @@ Cross-repo GitHub issue command center with Claude Code and Codex launch integra
 - **Server Components for reads.** Pages are Server Components that call core data functions directly.
 - **CSS Modules for component styles.** One `.module.css` file per component. Global tokens in `app/globals.css`. Match the design tokens from the mockup HTML files.
 
-### iOS conventions (`ios/`)
+### Apple client conventions (`apple/`)
 
-- **SwiftUI only.** No UIKit unless absolutely necessary (WKWebView wrapper is the exception).
+- **SwiftUI first.** Keep platform-specific UIKit/AppKit bridges isolated to app-specific files.
 - **No third-party dependencies.** Use only Apple frameworks.
 - **Async/await everywhere.** No completion handlers.
-- **@Observable macro** for state management (iOS 18+).
-- **XcodeGen for project generation.** `ios/project.yml` is the source of truth. Run `xcodegen generate` from the `ios/` directory after modifying it. The `.xcodeproj` is checked in for convenience.
-- **File organization:** `ios/IssueCTL/App/` (entry point), `Models/` (Codable structs), `Services/` (APIClient, Keychain), `Views/` (organized by feature).
+- **@Observable macro** for state management.
+- **XcodeGen for project generation.** `apple/project.yml` is the source of truth. Run `xcodegen generate` from the `apple/` directory after modifying it. The `.xcodeproj` is checked in for convenience.
+- **File organization:** `apple/IssueCTL/` is the iOS app, `apple/IssueCTLMac/` is the macOS sidebar app, and `apple/IssueCTLShared/` contains shared Codable models, API services, and helpers used by both.
 
 ## Build and run
 
@@ -131,7 +131,7 @@ Useful simulator capture pattern:
 
 ```bash
 xcodebuild test \
-  -project ios/IssueCTL.xcodeproj \
+  -project apple/IssueCTL.xcodeproj \
   -scheme IssueCTLPreview-UISmoke \
   -configuration Debug \
   -destination 'id=<simulator-id>' \
@@ -172,7 +172,7 @@ Notes:
 - Use `iPhone-preview` for physical preview timing. Do not switch to `iPhone-prod` unless the user explicitly asks for a production-device check.
 - If `xcodebuildmcp` device log capture fails with CoreDevice provider errors, `idevicesyslog` works for live physical-device timing logs without root. `/usr/bin/log collect --device-*` requires root on this machine.
 - If `idevicesyslog` cannot attach by `IOS_XCODE_DEVICE_ID`, run `pnpm ios:list-devices` and use the physical device UDID shown for `iPhone-preview`.
-- Restore `ios/IssueCTL/Generated/AppVersion.swift` after Xcode builds if it is modified by the build script.
+- Restore `apple/IssueCTL/Generated/AppVersion.swift` after Xcode builds if it is modified by the build script.
 
 ## Logging
 

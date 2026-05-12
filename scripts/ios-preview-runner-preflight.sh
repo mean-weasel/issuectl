@@ -6,7 +6,7 @@ cd "$ROOT_DIR"
 
 device_name="${IOS_DEVICE_NAME:-iPhone-preview}"
 scheme="${IOS_SCHEME:-IssueCTLPreview-UISmoke}"
-project="${IOS_PROJECT:-ios/IssueCTL.xcodeproj}"
+project="${IOS_PROJECT:-apple/IssueCTL.xcodeproj}"
 keychain="${IOS_PREVIEW_KEYCHAIN_PATH:-$HOME/Library/Keychains/login.keychain-db}"
 identity_pattern="${IOS_PREVIEW_SIGNING_IDENTITY_PATTERN:-Apple Development:}"
 

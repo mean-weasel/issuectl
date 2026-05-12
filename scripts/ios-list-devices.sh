@@ -11,6 +11,6 @@ echo "Default preview device resolution:"
 echo
 echo "Xcode destinations for IssueCTLPreview-UISmoke:"
 xcodebuild \
-  -project ios/IssueCTL.xcodeproj \
+  -project apple/IssueCTL.xcodeproj \
   -scheme IssueCTLPreview-UISmoke \
   -showdestinations 2>/dev/null

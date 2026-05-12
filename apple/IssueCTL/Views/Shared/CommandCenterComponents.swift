@@ -77,7 +77,34 @@ struct AppTopBar<Trailing: View>: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
+            AppVersionBadge()
         }
+    }
+}
+
+struct AppVersionBadge: View {
+    var body: some View {
+        Label {
+            Text("IssueCTL \(AppVersion.display)")
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        } icon: {
+            Image(systemName: "number.circle.fill")
+                .imageScale(.small)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(IssueCTLColors.elevatedBackground, in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("app-version-badge")
+        .accessibilityLabel("IssueCTL version \(AppVersion.display)")
     }
 }
 

@@ -9,7 +9,7 @@ PORT_WAS_EXPLICIT="0"
 if [ -n "${IOS_DEV_PORT:-}" ]; then
   PORT_WAS_EXPLICIT="1"
 fi
-PROJECT="${IOS_DEV_PROJECT:-ios/IssueCTL.xcodeproj}"
+PROJECT="${IOS_DEV_PROJECT:-apple/IssueCTL.xcodeproj}"
 SCHEME="${IOS_DEV_SCHEME:-IssueCTL}"
 CONFIGURATION="${IOS_DEV_CONFIGURATION:-Debug}"
 DERIVED_DATA="${IOS_DEV_DERIVED_DATA:-/tmp/issuectl-ios-dev-derived-data}"

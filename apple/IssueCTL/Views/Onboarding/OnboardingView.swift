@@ -25,6 +25,8 @@ struct OnboardingView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    AppVersionBadge()
+
                     ConnectionStatusPanel(
                         hasServerURL: !trimmedServerURL.isEmpty,
                         hasToken: !trimmedAPIToken.isEmpty,

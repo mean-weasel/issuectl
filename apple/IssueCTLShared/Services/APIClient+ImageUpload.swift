@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - Image Upload Response
 
@@ -11,6 +13,7 @@ struct ImageUploadResponse: Codable, Sendable {
 
 extension APIClient {
 
+    #if canImport(UIKit)
     /// Upload an image to GitHub via the server's image upload endpoint.
     /// Uses multipart form data since the standard JSON request helper
     /// cannot handle file uploads.
@@ -20,6 +23,7 @@ extension APIClient {
         }
         return try await uploadImageData(imageData, owner: owner, repo: repo)
     }
+    #endif
 
     func uploadImageData(_ imageData: Data, owner: String, repo: String) async throws -> String {
         guard let base = URL(string: serverURL) else {

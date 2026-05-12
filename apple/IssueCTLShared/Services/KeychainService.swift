@@ -31,7 +31,9 @@ enum KeychainService {
 
         var add = query
         add[kSecValueData as String] = data
+        #if !os(macOS)
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        #endif
 
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess else {

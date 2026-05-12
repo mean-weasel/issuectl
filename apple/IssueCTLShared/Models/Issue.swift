@@ -14,7 +14,7 @@ nonisolated(unsafe) private let sharedISO8601FormatterWithoutFractionalSeconds: 
     return f
 }()
 
-nonisolated(unsafe) private let sharedSQLiteDateFormatter: DateFormatter = {
+private let sharedSQLiteDateFormatter: DateFormatter = {
     let f = DateFormatter()
     f.locale = Locale(identifier: "en_US_POSIX")
     f.timeZone = TimeZone(secondsFromGMT: 0)
