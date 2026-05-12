@@ -97,7 +97,7 @@ jobs:
         if: steps.ios_changes.outputs.run_smoke == 'true'
         run: |
           profile="full"
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] || [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
             profile="pr"
           fi
           if [ -n "${{ inputs.smoke_profile }}" ]; then
