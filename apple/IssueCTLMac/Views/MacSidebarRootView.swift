@@ -3,6 +3,7 @@ import SwiftUI
 struct MacSidebarRootView: View {
     @Environment(APIClient.self) private var api
     @Environment(SidebarChromeState.self) private var chrome
+    @Environment(MacSidebarPreferences.self) private var preferences
     @Environment(\.hideSidebar) private var hideSidebar
     @Environment(\.toggleSidebarCollapsed) private var toggleSidebarCollapsed
 
@@ -24,6 +25,15 @@ struct MacSidebarRootView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .onExitCommand {
             hideSidebar()
+        }
+        .onAppear {
+            selectedSection = MacSidebarSection(rawValue: preferences.selectedSectionRawValue) ?? .issues
+        }
+        .onChange(of: selectedSection) { _, newValue in
+            preferences.selectedSectionRawValue = newValue.rawValue
+        }
+        .onChange(of: preferences.selectedSectionRawValue) { _, newValue in
+            selectedSection = MacSidebarSection(rawValue: newValue) ?? .issues
         }
     }
 
