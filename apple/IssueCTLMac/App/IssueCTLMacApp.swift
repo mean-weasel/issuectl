@@ -17,6 +17,7 @@ struct IssueCTLMacApp: App {
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     let apiClient = APIClient()
     private let networkMonitor = NetworkMonitor()
+    private let sidebarChrome = SidebarChromeState()
     private var panelController: SidebarPanelController?
     private var statusItem: NSStatusItem?
 
@@ -27,11 +28,15 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         let rootView = MacSidebarRootView()
             .environment(apiClient)
             .environment(networkMonitor)
+            .environment(sidebarChrome)
             .environment(\.hideSidebar) { [weak self] in
                 self?.panelController?.hide()
             }
+            .environment(\.toggleSidebarCollapsed) { [weak self] in
+                self?.panelController?.toggleCollapsed()
+            }
 
-        let panelController = SidebarPanelController(rootView: rootView)
+        let panelController = SidebarPanelController(rootView: rootView, chrome: sidebarChrome)
         self.panelController = panelController
         panelController.show()
 
@@ -44,7 +49,8 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         item.button?.imagePosition = .imageOnly
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Show Sidebar", action: #selector(showSidebar), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Toggle Sidebar", action: #selector(toggleSidebar), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Collapse or Expand", action: #selector(toggleCollapsed), keyEquivalent: "m"))
         menu.addItem(NSMenuItem(title: "Hide Sidebar", action: #selector(hideSidebar), keyEquivalent: "w"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit IssueCTL", action: #selector(quit), keyEquivalent: "q"))
@@ -54,8 +60,12 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
     }
 
-    @objc private func showSidebar() {
-        panelController?.show()
+    @objc private func toggleSidebar() {
+        panelController?.toggleVisibility()
+    }
+
+    @objc private func toggleCollapsed() {
+        panelController?.toggleCollapsed()
     }
 
     @objc private func hideSidebar() {
