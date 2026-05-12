@@ -173,6 +173,7 @@
 		C8217EC2C8B846855E630648 /* IssueDetailActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9ADC50FA06EBF2CB8A11E6 /* IssueDetailActionTests.swift */; };
 		C8222FD4B618852C6CE61ACA /* ImageLightbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39642CB180355E5C62A75E /* ImageLightbox.swift */; };
 		C8A54852FF04208EE66FB764 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */; };
+		C9D9618A4076FAE0E98D71AC /* MacIssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF37A7CB40F1701C4C149CE2 /* MacIssueDetailView.swift */; };
 		CA0880B76E28E6276050AEB3 /* IssueCTLMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AB7A2B9999184E67A3064A /* IssueCTLMacApp.swift */; };
 		CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		CC16C63936A1F4ECDEB3133E /* NotificationPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2438738AD84484EC2E7B20C9 /* NotificationPreferences.swift */; };
@@ -320,6 +321,7 @@
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD3C1581E55A12781F1E76A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AEDAC9B7D3D9CF86D6381DAE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AF37A7CB40F1701C4C149CE2 /* MacIssueDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacIssueDetailView.swift; sourceTree = "<group>"; };
 		B3E09DBD6D633B291650EFBE /* IssueCTL.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IssueCTL.entitlements; sourceTree = "<group>"; };
 		BC00C899D2ADA14475787AE7 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		BC1D044DCA62B13F4196F816 /* SetupLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupLink.swift; sourceTree = "<group>"; };
@@ -636,6 +638,7 @@
 			isa = PBXGroup;
 			children = (
 				0C9BFED5728AF737B76F2F26 /* MacDraftsView.swift */,
+				AF37A7CB40F1701C4C149CE2 /* MacIssueDetailView.swift */,
 				43A60283ECC077E01E26EAC1 /* MacIssuesView.swift */,
 				26774436FC5A498AFD32CF2B /* MacSessionsView.swift */,
 				959347AB556CB71BEA308105 /* MacSettingsView.swift */,
@@ -1141,6 +1144,7 @@
 				CA0880B76E28E6276050AEB3 /* IssueCTLMacApp.swift in Sources */,
 				0C49D98F7B92CA24BCC44AEB /* KeychainService.swift in Sources */,
 				5E6741980731284F38AF3827 /* MacDraftsView.swift in Sources */,
+				C9D9618A4076FAE0E98D71AC /* MacIssueDetailView.swift in Sources */,
 				250D0308D12F0EE129E4C7E2 /* MacIssuesView.swift in Sources */,
 				BDDD77609BB45F218D8DBFDC /* MacSessionsView.swift in Sources */,
 				AAFAE2475EF1A39328204F4F /* MacSettingsView.swift in Sources */,

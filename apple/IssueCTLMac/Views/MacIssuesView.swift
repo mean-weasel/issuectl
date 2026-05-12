@@ -5,6 +5,7 @@ struct MacIssuesView: View {
 
     @State private var searchText = ""
     @State private var selectedFilter: IssueFilter = .open
+    @State private var selectedIssue: MacIssueListItem?
 
     private var visibleIssues: [MacIssueListItem] {
         let filtered = store.issues.filter { item in
@@ -42,10 +43,18 @@ struct MacIssuesView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(visibleIssues) { item in
-                    MacIssueRow(item: item, isRunning: isRunning(item))
+                    Button {
+                        selectedIssue = item
+                    } label: {
+                        MacIssueRow(item: item, isRunning: isRunning(item))
+                    }
+                    .buttonStyle(.plain)
                 }
                 .listStyle(.plain)
             }
+        }
+        .sheet(item: $selectedIssue) { item in
+            MacIssueDetailView(item: item, store: store)
         }
     }
 

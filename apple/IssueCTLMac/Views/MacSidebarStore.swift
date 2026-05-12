@@ -101,6 +101,65 @@ final class MacSidebarStore {
         }
         drafts.removeAll { $0.id == id }
     }
+
+    func issueDetail(api: APIClient, item: MacIssueListItem, refresh: Bool) async throws -> IssueDetailResponse {
+        let detail = try await api.issueDetail(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            refresh: refresh
+        )
+        replaceIssue(detail.issue, in: item.repo)
+        return detail
+    }
+
+    func commentOnIssue(api: APIClient, item: MacIssueListItem, body: String) async throws {
+        let response = try await api.commentOnIssue(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: IssueCommentRequestBody(body: body)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to add comment")
+        }
+    }
+
+    func updateIssueState(api: APIClient, item: MacIssueListItem, state: String) async throws {
+        let response = try await api.updateIssueState(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: IssueStateRequestBody(state: state, comment: nil)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update issue")
+        }
+    }
+
+    func setPriority(api: APIClient, item: MacIssueListItem, priority: Priority) async throws {
+        let response = try await api.setPriority(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            priority: priority
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to set priority")
+        }
+    }
+
+    private func replaceIssue(_ issue: GitHubIssue, in repo: Repo) {
+        let item = MacIssueListItem(issue: issue, repo: repo, repoIndex: repos.firstIndex(where: { $0.id == repo.id }) ?? 0)
+        if let index = issues.firstIndex(where: { $0.id == item.id }) {
+            issues[index] = item
+        } else {
+            issues.append(item)
+        }
+        issues.sort { lhs, rhs in
+            (lhs.issue.updatedDate ?? .distantPast) > (rhs.issue.updatedDate ?? .distantPast)
+        }
+    }
 }
 
 struct MacIssueListItem: Identifiable {
