@@ -2,7 +2,9 @@ import SwiftUI
 
 struct MacSidebarRootView: View {
     @Environment(APIClient.self) private var api
+    @Environment(SidebarChromeState.self) private var chrome
     @Environment(\.hideSidebar) private var hideSidebar
+    @Environment(\.toggleSidebarCollapsed) private var toggleSidebarCollapsed
 
     @State private var selectedSection: MacSidebarSection = .issues
     @State private var serverURL = "http://localhost:3847"
@@ -12,6 +14,20 @@ struct MacSidebarRootView: View {
     @State private var store = MacSidebarStore()
 
     var body: some View {
+        Group {
+            if chrome.isCollapsed {
+                collapsedRail
+            } else {
+                expandedSidebar
+            }
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onExitCommand {
+            hideSidebar()
+        }
+    }
+
+    private var expandedSidebar: some View {
         VStack(spacing: 0) {
             header
             Divider()
@@ -23,10 +39,6 @@ struct MacSidebarRootView: View {
             }
         }
         .frame(minWidth: 340, idealWidth: 380, minHeight: 480)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .onExitCommand {
-            hideSidebar()
-        }
     }
 
     private var header: some View {
@@ -37,9 +49,17 @@ struct MacSidebarRootView: View {
                 .font(.headline)
             Spacer()
             Button {
-                hideSidebar()
+                toggleSidebarCollapsed()
             } label: {
                 Image(systemName: "sidebar.right")
+            }
+            .buttonStyle(.borderless)
+            .help("Collapse Sidebar")
+
+            Button {
+                hideSidebar()
+            } label: {
+                Image(systemName: "xmark")
             }
             .buttonStyle(.borderless)
             .help("Hide Sidebar")
@@ -57,6 +77,78 @@ struct MacSidebarRootView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private var collapsedRail: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "list.bullet.rectangle")
+                .font(.title3.weight(.semibold))
+                .padding(.top, 12)
+
+            Divider()
+
+            ForEach(MacSidebarSection.allCases) { section in
+                Button {
+                    selectedSection = section
+                } label: {
+                    Image(systemName: section.systemImage)
+                        .frame(width: 36, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(selectedSection == section ? Color.accentColor.opacity(0.16) : Color.clear)
+                )
+                .help(section.title)
+            }
+
+            Divider()
+
+            Button {
+                Task { await store.load(api: api, refresh: true) }
+            } label: {
+                if store.isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 36, height: 32)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .frame(width: 36, height: 32)
+                }
+            }
+            .buttonStyle(.borderless)
+            .disabled(!api.isConfigured || store.isLoading)
+            .help("Refresh")
+
+            Spacer()
+
+            Button {
+                toggleSidebarCollapsed()
+            } label: {
+                Image(systemName: "sidebar.leading")
+                    .frame(width: 36, height: 32)
+            }
+            .buttonStyle(.borderless)
+            .help("Expand Sidebar")
+
+            Button {
+                hideSidebar()
+            } label: {
+                Image(systemName: "xmark")
+                    .frame(width: 36, height: 32)
+            }
+            .buttonStyle(.borderless)
+            .help("Hide Sidebar")
+            .padding(.bottom, 12)
+        }
+        .frame(width: 76)
+        .frame(minHeight: 480)
+        .task {
+            if api.isConfigured {
+                await store.load(api: api, refresh: false)
+            }
+        }
     }
 
     private var dashboard: some View {

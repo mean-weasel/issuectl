@@ -1,0 +1,95 @@
+name: macOS
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Mac App
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine macOS build relevance
+        id: macos_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            changed_files="$(git diff --name-only "$base_ref"...HEAD)"
+          elif [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
+            if git rev-parse --verify HEAD^1 >/dev/null 2>&1; then
+              changed_files="$(git diff --name-only HEAD^1 HEAD)"
+            else
+              changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+            fi
+          else
+            changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+          fi
+
+          echo "Changed files:"
+          printf '%s\n' "$changed_files"
+
+          if printf '%s\n' "$changed_files" | grep -E -q '^(apple/|\.github/workflows/macos\.yml$)'; then
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Select Xcode
+        if: steps.macos_changes.outputs.run_build == 'true'
+        run: |
+          for developer_dir in \
+            /Applications/Xcode_16.4.app/Contents/Developer \
+            /Applications/Xcode_16.3.app/Contents/Developer \
+            /Applications/Xcode.app/Contents/Developer
+          do
+            if [ -d "$developer_dir" ]; then
+              sudo xcode-select -s "$developer_dir"
+              echo "Selected $developer_dir"
+              exit 0
+            fi
+          done
+
+          echo "No Xcode installation found" >&2
+          exit 70
+
+      - name: Show build environment
+        if: steps.macos_changes.outputs.run_build == 'true'
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build IssueCTLMac
+        if: steps.macos_changes.outputs.run_build == 'true'
+        run: |
+          xcodebuild \
+            -project apple/IssueCTL.xcodeproj \
+            -scheme IssueCTLMac \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Skip macOS build
+        if: steps.macos_changes.outputs.run_build != 'true'
+        run: echo "No macOS-relevant changes detected; required macOS check passes without building."
