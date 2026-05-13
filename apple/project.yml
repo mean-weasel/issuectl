@@ -13,6 +13,7 @@ targets:
       - path: IssueCTLMac
         excludes:
           - QA.md
+          - RELEASE.md
       - path: IssueCTLShared
     settings:
       base:
