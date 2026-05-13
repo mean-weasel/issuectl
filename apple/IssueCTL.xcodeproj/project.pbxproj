@@ -216,6 +216,7 @@
 		F799F1B8BFD81FB4ED400EDD /* LoadMoreButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4497D324AB6CE09260737497 /* LoadMoreButton.swift */; };
 		F7DAA0E5DD04C7761ED3B88F /* MineFilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F986D8BED54A08D7E977D0CB /* MineFilterChip.swift */; };
 		F8A3608F607F4CB92B7D3385 /* SectionTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E7D37C5FD046CB71BBE8BE /* SectionTabs.swift */; };
+		F8E1839B4CE74D977900874C /* MacRecoveryBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2F4EB488F40667A6499CFC /* MacRecoveryBanner.swift */; };
 		FA79A078516F768487A8D9D6 /* RequestChangesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */; };
 		FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */; };
 		FC628F6EB78E8E0AAF2DCB5A /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4010BC691DB71B872353344A /* SessionListView.swift */; };
@@ -346,6 +347,7 @@
 		C7B6A1C8520C31500949F0CF /* IssueDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailView.swift; sourceTree = "<group>"; };
 		CA3814ACC4885AAA637A3041 /* DraftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftDetailView.swift; sourceTree = "<group>"; };
 		CAB04FB5543994CCE2DE041E /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		CB2F4EB488F40667A6499CFC /* MacRecoveryBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRecoveryBanner.swift; sourceTree = "<group>"; };
 		CCED89BF4650BDFC4262B48D /* InteractivePopDisabler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractivePopDisabler.swift; sourceTree = "<group>"; };
 		D15A1E2EA43AFA474E8518F5 /* CloseIssueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseIssueSheet.swift; sourceTree = "<group>"; };
 		D882E51722D47D736257AB4F /* IssueListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueListView.swift; sourceTree = "<group>"; };
@@ -666,6 +668,7 @@
 				0C9BFED5728AF737B76F2F26 /* MacDraftsView.swift */,
 				AF37A7CB40F1701C4C149CE2 /* MacIssueDetailView.swift */,
 				43A60283ECC077E01E26EAC1 /* MacIssuesView.swift */,
+				CB2F4EB488F40667A6499CFC /* MacRecoveryBanner.swift */,
 				26774436FC5A498AFD32CF2B /* MacSessionsView.swift */,
 				959347AB556CB71BEA308105 /* MacSettingsView.swift */,
 				134385CA01429770C742CD89 /* MacSidebarRootView.swift */,
@@ -1211,6 +1214,7 @@
 				5E6741980731284F38AF3827 /* MacDraftsView.swift in Sources */,
 				C9D9618A4076FAE0E98D71AC /* MacIssueDetailView.swift in Sources */,
 				250D0308D12F0EE129E4C7E2 /* MacIssuesView.swift in Sources */,
+				F8E1839B4CE74D977900874C /* MacRecoveryBanner.swift in Sources */,
 				BDDD77609BB45F218D8DBFDC /* MacSessionsView.swift in Sources */,
 				AAFAE2475EF1A39328204F4F /* MacSettingsView.swift in Sources */,
 				A66082BC0A4EF30F160CF9C5 /* MacSidebarPreferences.swift in Sources */,

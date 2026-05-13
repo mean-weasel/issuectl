@@ -45,10 +45,19 @@ struct MacSessionsView: View {
             }
 
             if let errorMessage {
-                Label(errorMessage, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 8)
+
+                    Button("Retry Refresh") {
+                        Task { await retryRefresh() }
+                    }
+                    .controlSize(.small)
+                }
             }
         }
         .padding(12)
@@ -133,6 +142,14 @@ struct MacSessionsView: View {
             try await store.endSession(api: api, session: session)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func retryRefresh() async {
+        errorMessage = nil
+        await store.refreshSessions(api: api)
+        if let storeError = store.errorMessage {
+            errorMessage = storeError
         }
     }
 }

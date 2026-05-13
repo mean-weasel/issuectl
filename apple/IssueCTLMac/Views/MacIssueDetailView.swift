@@ -34,8 +34,24 @@ struct MacIssueDetailView: View {
                 ProgressView("Loading issue...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let errorMessage, detail == nil {
-                ContentUnavailableView("Could not load issue", systemImage: "wifi.exclamationmark", description: Text(errorMessage))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView {
+                    Label("Could not load issue", systemImage: "wifi.exclamationmark")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button {
+                        Task { await load(refresh: true) }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(isRefreshing)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {

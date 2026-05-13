@@ -70,14 +70,6 @@ struct MacIssuesView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-
-            if let errorMessage = store.errorMessage, !store.issues.isEmpty {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
         .padding(12)
     }
