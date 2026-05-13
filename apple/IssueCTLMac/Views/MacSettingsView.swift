@@ -32,6 +32,29 @@ struct MacSettingsView: View {
 
                 Toggle("Open Collapsed on Next Launch", isOn: collapsedOnLaunchBinding)
 
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Text Size")
+                        Spacer()
+                        Text("\(Int(preferences.textScale * 100))%")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Slider(
+                        value: textScaleBinding,
+                        in: MacSidebarPreferences.minimumTextScale...MacSidebarPreferences.maximumTextScale,
+                        step: 0.05
+                    )
+
+                    HStack {
+                        Text("Smaller")
+                        Spacer()
+                        Text("Larger")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
                 HStack {
                     Text("Saved Width")
                     Spacer()
@@ -70,6 +93,13 @@ struct MacSettingsView: View {
         Binding(
             get: { preferences.isCollapsed },
             set: { preferences.isCollapsed = $0 }
+        )
+    }
+
+    private var textScaleBinding: Binding<Double> {
+        Binding(
+            get: { preferences.textScale },
+            set: { preferences.textScale = MacSidebarPreferences.clampedTextScale($0) }
         )
     }
 }

@@ -1,15 +1,25 @@
 import SwiftUI
 
 struct MacIssuesView: View {
+    @Environment(\.macSidebarTextScale) private var textScale
+
     let store: MacSidebarStore
 
     @State private var searchText = ""
     @State private var selectedFilter: IssueFilter = .open
+    @State private var selectedRepoIds = Set<Int>()
+    @State private var knownRepoIds = Set<Int>()
+    @State private var hasInitializedRepoSelection = false
+    @State private var isRepoFilterExpanded = true
+    @State private var visiblePageCount = 1
     @State private var selectedIssue: MacIssueListItem?
+
+    private let pageSize = 50
 
     private var visibleIssues: [MacIssueListItem] {
         let filtered = store.issues.filter { item in
-            switch selectedFilter {
+            let matchesRepo = selectedRepoIds.contains(item.repo.id)
+            let matchesState = switch selectedFilter {
             case .open:
                 item.issue.isOpen
             case .all:
@@ -17,6 +27,7 @@ struct MacIssuesView: View {
             case .unassigned:
                 item.issue.isOpen && (item.issue.assignees ?? []).isEmpty
             }
+            return matchesRepo && matchesState
         }
 
         guard !searchText.isEmpty else { return filtered }
@@ -26,6 +37,31 @@ struct MacIssuesView: View {
                 || (item.issue.body ?? "").lowercased().contains(query)
                 || item.repoFullName.lowercased().contains(query)
         }
+    }
+
+    private var pagedIssues: [MacIssueListItem] {
+        Array(visibleIssues.prefix(visibleLimit))
+    }
+
+    private var visibleLimit: Int {
+        max(pageSize, visiblePageCount * pageSize)
+    }
+
+    private var hasMoreIssues: Bool {
+        visibleIssues.count > pagedIssues.count
+    }
+
+    private var repoFilterSummary: String {
+        if store.repos.isEmpty {
+            return "No repos"
+        }
+        if selectedRepoIds.isEmpty {
+            return "No repos selected"
+        }
+        if selectedRepoIds.count == store.repos.count {
+            return "All repos"
+        }
+        return "\(selectedRepoIds.count) of \(store.repos.count) repos"
     }
 
     var body: some View {
@@ -42,36 +78,152 @@ struct MacIssuesView: View {
                 ContentUnavailableView(emptyTitle, systemImage: "tray", description: Text(emptyDescription))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(visibleIssues) { item in
-                    Button {
-                        selectedIssue = item
-                    } label: {
-                        MacIssueRow(item: item, isRunning: isRunning(item))
+                List {
+                    ForEach(pagedIssues) { item in
+                        Button {
+                            selectedIssue = item
+                        } label: {
+                            MacIssueRow(item: item, isRunning: isRunning(item))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+
+                    if hasMoreIssues {
+                        HStack {
+                            Spacer()
+                            Button {
+                                visiblePageCount += 1
+                            } label: {
+                                Label("Show 50 More", systemImage: "chevron.down")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            Spacer()
+                        }
+                        .padding(.vertical, 10)
+                    } else if visibleIssues.count > pageSize {
+                        Text("Showing all \(visibleIssues.count) matching issues")
+                            .font(.macSidebar(size: 11, scale: textScale))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
                 }
                 .listStyle(.plain)
             }
         }
+        .onChange(of: searchText) { _, _ in resetPaging() }
+        .onChange(of: selectedFilter) { _, _ in resetPaging() }
+        .onChange(of: selectedRepoIds) { _, _ in resetPaging() }
+        .onChange(of: store.issues.count) { _, _ in
+            syncRepoSelection()
+            resetPaging()
+        }
+        .onChange(of: store.repos.count) { _, _ in syncRepoSelection() }
+        .onAppear { syncRepoSelection() }
         .sheet(item: $selectedIssue) { item in
             MacIssueDetailView(item: item, store: store)
         }
     }
 
     private var controls: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             TextField("Search issues", text: $searchText)
                 .textFieldStyle(.roundedBorder)
 
-            Picker("Filter", selection: $selectedFilter) {
-                ForEach(IssueFilter.allCases) { filter in
-                    Text(filter.title).tag(filter)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Filters")
+                    .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                    .foregroundStyle(.secondary)
+
+                Picker("Issue state", selection: $selectedFilter) {
+                    ForEach(IssueFilter.allCases) { filter in
+                        Text(filter.title).tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
+            DisclosureGroup(isExpanded: $isRepoFilterExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Button("All") {
+                            selectedRepoIds = Set(store.repos.map(\.id))
+                        }
+                        .controlSize(.small)
+
+                        Button("None") {
+                            selectedRepoIds.removeAll()
+                        }
+                        .controlSize(.small)
+
+                        Spacer()
+                    }
+
+                    ForEach(store.repos) { repo in
+                        Toggle(repo.fullName, isOn: repoBinding(repo))
+                            .toggleStyle(.checkbox)
+                            .font(.macSidebar(size: 12, scale: textScale))
+                    }
+                }
+                .padding(.top, 4)
+            } label: {
+                HStack {
+                    Text("Repositories")
+                        .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                    Spacer()
+                    Text(repoFilterSummary)
+                        .font(.macSidebar(size: 11, scale: textScale))
+                        .foregroundStyle(.secondary)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+
+            Text("Showing \(pagedIssues.count) of \(visibleIssues.count) matching issues")
+                .font(.macSidebar(size: 11, scale: textScale))
+                .foregroundStyle(.secondary)
         }
         .padding(12)
+    }
+
+    private func repoBinding(_ repo: Repo) -> Binding<Bool> {
+        Binding(
+            get: { selectedRepoIds.contains(repo.id) },
+            set: { isSelected in
+                if isSelected {
+                    selectedRepoIds.insert(repo.id)
+                } else {
+                    selectedRepoIds.remove(repo.id)
+                }
+            }
+        )
+    }
+
+    private func resetPaging() {
+        visiblePageCount = 1
+    }
+
+    private func syncRepoSelection() {
+        let repoIds = Set(store.repos.map(\.id))
+        guard !repoIds.isEmpty else {
+            selectedRepoIds.removeAll()
+            knownRepoIds.removeAll()
+            return
+        }
+
+        if !hasInitializedRepoSelection {
+            selectedRepoIds = repoIds
+            knownRepoIds = repoIds
+            hasInitializedRepoSelection = true
+            return
+        }
+
+        if selectedRepoIds == knownRepoIds {
+            selectedRepoIds = repoIds
+        } else {
+            selectedRepoIds = selectedRepoIds.intersection(repoIds)
+        }
+        knownRepoIds = repoIds
     }
 
     private func isRunning(_ item: MacIssueListItem) -> Bool {
@@ -90,6 +242,12 @@ struct MacIssuesView: View {
     private var emptyDescription: String {
         if !searchText.isEmpty {
             return "Clear search to show visible issues."
+        }
+        if selectedRepoIds.isEmpty && !store.repos.isEmpty {
+            return "Select at least one repository to show issues."
+        }
+        if selectedRepoIds.count < store.repos.count {
+            return "No issues match the selected repositories."
         }
         switch selectedFilter {
         case .open:
@@ -119,6 +277,8 @@ private enum IssueFilter: String, CaseIterable, Identifiable {
 }
 
 private struct MacIssueRow: View {
+    @Environment(\.macSidebarTextScale) private var textScale
+
     let item: MacIssueListItem
     let isRunning: Bool
 
@@ -126,7 +286,7 @@ private struct MacIssueRow: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(item.issue.title)
-                    .font(.subheadline.weight(.medium))
+                    .font(.macSidebar(size: 14, weight: .medium, scale: textScale))
                     .lineLimit(2)
                 if isRunning {
                     Image(systemName: "terminal.fill")
@@ -157,8 +317,8 @@ private struct MacIssueRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .font(.caption)
+            .font(.macSidebar(size: 12, scale: textScale))
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 6)
     }
 }
