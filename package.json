@@ -27,6 +27,7 @@
     "ios:setup-preview-sim": "pnpm --filter @issuectl/cli build && node packages/cli/dist/index.js ios setup --simulator --preview",
     "ios:dev": "./scripts/ios-dev.sh",
     "ios:dev-preview": "IOS_DEV_SCHEME=IssueCTLPreview ./scripts/ios-dev.sh",
+    "mac:sidebar:dev": "./scripts/mac-sidebar-dev.sh",
     "dev": "turbo dev",
     "prepare": "husky"
   },

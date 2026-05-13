@@ -26,6 +26,7 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertFalse(preferences.isCollapsed)
         XCTAssertEqual(preferences.selectedSectionRawValue, "issues")
         XCTAssertEqual(preferences.expandedWidth, MacSidebarPreferences.defaultExpandedWidth)
+        XCTAssertEqual(preferences.textScale, MacSidebarPreferences.defaultTextScale)
     }
 
     func testPersistsCollapsedSelectedSectionAndExpandedWidth() {
@@ -34,11 +35,13 @@ final class MacSidebarPreferencesTests: XCTestCase {
         preferences.isCollapsed = true
         preferences.selectedSectionRawValue = "drafts"
         preferences.expandedWidth = 440
+        preferences.textScale = 1.25
 
         let reloaded = MacSidebarPreferences(defaults: defaults)
         XCTAssertTrue(reloaded.isCollapsed)
         XCTAssertEqual(reloaded.selectedSectionRawValue, "drafts")
         XCTAssertEqual(reloaded.expandedWidth, 440)
+        XCTAssertEqual(reloaded.textScale, 1.25)
     }
 
     func testLoadsExpandedWidthClampedToSupportedRange() {
@@ -55,22 +58,39 @@ final class MacSidebarPreferencesTests: XCTestCase {
         )
     }
 
+    func testLoadsTextScaleClampedToSupportedRange() {
+        defaults.set(0.5, forKey: "mac.sidebar.textScale")
+        XCTAssertEqual(
+            MacSidebarPreferences(defaults: defaults).textScale,
+            MacSidebarPreferences.minimumTextScale
+        )
+
+        defaults.set(2.0, forKey: "mac.sidebar.textScale")
+        XCTAssertEqual(
+            MacSidebarPreferences(defaults: defaults).textScale,
+            MacSidebarPreferences.maximumTextScale
+        )
+    }
+
     func testResetLayoutRestoresAndPersistsDefaults() {
         let preferences = MacSidebarPreferences(defaults: defaults)
         preferences.isCollapsed = true
         preferences.selectedSectionRawValue = "settings"
         preferences.expandedWidth = 520
+        preferences.textScale = 1.3
 
         preferences.resetLayout()
 
         XCTAssertFalse(preferences.isCollapsed)
         XCTAssertEqual(preferences.selectedSectionRawValue, "issues")
         XCTAssertEqual(preferences.expandedWidth, MacSidebarPreferences.defaultExpandedWidth)
+        XCTAssertEqual(preferences.textScale, MacSidebarPreferences.defaultTextScale)
 
         let reloaded = MacSidebarPreferences(defaults: defaults)
         XCTAssertFalse(reloaded.isCollapsed)
         XCTAssertEqual(reloaded.selectedSectionRawValue, "issues")
         XCTAssertEqual(reloaded.expandedWidth, MacSidebarPreferences.defaultExpandedWidth)
+        XCTAssertEqual(reloaded.textScale, MacSidebarPreferences.defaultTextScale)
     }
 
     func testClampedWidthEdgeValues() {
@@ -93,6 +113,29 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertEqual(
             MacSidebarPreferences.clampedWidth(MacSidebarPreferences.maximumExpandedWidth + 1),
             MacSidebarPreferences.maximumExpandedWidth
+        )
+    }
+
+    func testClampedTextScaleEdgeValues() {
+        XCTAssertEqual(
+            MacSidebarPreferences.clampedTextScale(MacSidebarPreferences.minimumTextScale - 0.1),
+            MacSidebarPreferences.minimumTextScale
+        )
+        XCTAssertEqual(
+            MacSidebarPreferences.clampedTextScale(MacSidebarPreferences.minimumTextScale),
+            MacSidebarPreferences.minimumTextScale
+        )
+        XCTAssertEqual(
+            MacSidebarPreferences.clampedTextScale(MacSidebarPreferences.defaultTextScale),
+            MacSidebarPreferences.defaultTextScale
+        )
+        XCTAssertEqual(
+            MacSidebarPreferences.clampedTextScale(MacSidebarPreferences.maximumTextScale),
+            MacSidebarPreferences.maximumTextScale
+        )
+        XCTAssertEqual(
+            MacSidebarPreferences.clampedTextScale(MacSidebarPreferences.maximumTextScale + 0.1),
+            MacSidebarPreferences.maximumTextScale
         )
     }
 }

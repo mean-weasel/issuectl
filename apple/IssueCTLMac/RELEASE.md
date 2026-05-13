@@ -10,6 +10,12 @@ Replace the asset catalog when final shared Apple branding is available.
 From the repo root:
 
 ```sh
+pnpm mac:sidebar:dev --no-open
+```
+
+Or run the build commands directly:
+
+```sh
 xcodegen generate --spec apple/project.yml
 xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build
 ```

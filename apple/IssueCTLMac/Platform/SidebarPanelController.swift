@@ -70,25 +70,33 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
 
         panel = NSPanel(
             contentRect: frame,
-            styleMask: [.nonactivatingPanel, .titled, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         panel.contentViewController = hostingController
         panel.title = "IssueCTL"
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .visible
+        panel.titlebarAppearsTransparent = false
+        panel.backgroundColor = .windowBackgroundColor
+        panel.isOpaque = true
+        panel.hasShadow = true
         panel.isFloatingPanel = true
+        panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
         panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+        panel.collectionBehavior = [.moveToActiveSpace]
         panel.delegate = self
         updateSizeConstraints()
     }
 
     func show() {
         panel.setFrame(Self.defaultFrame(width: currentWidth), display: true)
+        alignToSidebarPosition()
+        panel.level = .statusBar
+        panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
         chrome.isVisible = true
     }
 
@@ -120,6 +128,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         preferences.isCollapsed = isCollapsed
         updateSizeConstraints()
         panel.setFrame(Self.defaultFrame(width: currentWidth), display: true, animate: true)
+        alignToSidebarPosition()
         if !panel.isVisible {
             show()
         }
@@ -130,6 +139,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         chrome.isCollapsed = preferences.isCollapsed
         updateSizeConstraints()
         panel.setFrame(Self.defaultFrame(width: currentWidth), display: true, animate: true)
+        alignToSidebarPosition()
         if !panel.isVisible {
             show()
         }
@@ -138,6 +148,11 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     func windowDidResize(_ notification: Notification) {
         guard !chrome.isCollapsed else { return }
         saveExpandedWidth(panel.frame.width)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        hide()
+        return false
     }
 
     private var currentWidth: CGFloat {
@@ -162,16 +177,31 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         preferences.expandedWidth = expandedWidth
     }
 
+    private func alignToSidebarPosition() {
+        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+
+        panel.center()
+
+        var frame = panel.frame
+        frame.origin.x = visibleFrame.maxX - frame.width - Metrics.horizontalInset
+        frame.origin.y = min(
+            max(frame.origin.y, visibleFrame.minY + Metrics.verticalInset),
+            visibleFrame.maxY - frame.height - Metrics.verticalInset
+        )
+        panel.setFrame(frame, display: true)
+    }
+
     private static func defaultFrame(width requestedWidth: CGFloat = Metrics.defaultExpandedWidth) -> NSRect {
         let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let width = requestedWidth == Metrics.collapsedWidth
             ? Metrics.collapsedWidth
             : min(max(requestedWidth, Metrics.expandedMinWidth), Metrics.expandedMaxWidth)
+        let height = min(max(Metrics.minimumHeight, 720), max(screenFrame.height - (Metrics.verticalInset * 2), Metrics.minimumHeight))
         return NSRect(
             x: screenFrame.maxX - width - Metrics.horizontalInset,
-            y: screenFrame.minY + Metrics.verticalInset,
+            y: screenFrame.maxY - height - Metrics.verticalInset,
             width: width,
-            height: max(screenFrame.height - (Metrics.verticalInset * 2), Metrics.minimumHeight)
+            height: height
         )
     }
 }

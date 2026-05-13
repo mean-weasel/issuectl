@@ -8,6 +8,7 @@ final class MacSidebarPreferences {
         static let isCollapsed = "mac.sidebar.isCollapsed"
         static let selectedSection = "mac.sidebar.selectedSection"
         static let expandedWidth = "mac.sidebar.expandedWidth"
+        static let textScale = "mac.sidebar.textScale"
     }
 
     private let defaults: UserDefaults
@@ -24,6 +25,10 @@ final class MacSidebarPreferences {
         didSet { defaults.set(Double(expandedWidth), forKey: Keys.expandedWidth) }
     }
 
+    var textScale: Double {
+        didSet { defaults.set(textScale, forKey: Keys.textScale) }
+    }
+
     var launchAtLogin = false
     var launchAtLoginError: String?
 
@@ -32,6 +37,7 @@ final class MacSidebarPreferences {
         isCollapsed = defaults.object(forKey: Keys.isCollapsed) as? Bool ?? false
         selectedSectionRawValue = defaults.string(forKey: Keys.selectedSection) ?? "issues"
         expandedWidth = Self.clampedWidth(defaults.object(forKey: Keys.expandedWidth) as? Double ?? 380)
+        textScale = Self.clampedTextScale(defaults.object(forKey: Keys.textScale) as? Double ?? Self.defaultTextScale)
         refreshLaunchAtLoginStatus()
     }
 
@@ -61,11 +67,15 @@ final class MacSidebarPreferences {
         isCollapsed = false
         selectedSectionRawValue = "issues"
         expandedWidth = Self.defaultExpandedWidth
+        textScale = Self.defaultTextScale
     }
 
     nonisolated static let defaultExpandedWidth: CGFloat = 380
     nonisolated static let minimumExpandedWidth: CGFloat = 340
     nonisolated static let maximumExpandedWidth: CGFloat = 560
+    nonisolated static let defaultTextScale = 1.1
+    nonisolated static let minimumTextScale = 0.95
+    nonisolated static let maximumTextScale = 1.35
 
     nonisolated static func clampedWidth(_ width: CGFloat) -> CGFloat {
         min(max(width, minimumExpandedWidth), maximumExpandedWidth)
@@ -73,5 +83,9 @@ final class MacSidebarPreferences {
 
     nonisolated static func clampedWidth(_ width: Double) -> CGFloat {
         clampedWidth(CGFloat(width))
+    }
+
+    nonisolated static func clampedTextScale(_ scale: Double) -> Double {
+        min(max(scale, minimumTextScale), maximumTextScale)
     }
 }

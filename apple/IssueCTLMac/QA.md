@@ -1,12 +1,16 @@
 # IssueCTLMac Sidebar Manual QA
 
-Use this checklist for manual regression passes on the native macOS sidebar. Run against a local `issuectl web` server with at least one tracked repo, one open issue, and a valid API token.
+Use this checklist for manual regression passes on the native macOS sidebar. Run against a local `issuectl web` server with at least one tracked repo, one open issue, and a saved local API token.
+
+For fresh-clone setup on another Mac, follow [macOS Sidebar Dogfood Setup](../../docs/workflows/macos-sidebar-dogfood.md) first.
 
 ## Build And Launch
 
-- [ ] From the repo root, build the macOS target:
-  `xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' build`
-- [ ] Launch `IssueCTLMac` from Xcode with the `IssueCTLMac` scheme.
+- [ ] From the repo root, build and launch the macOS target:
+  `pnpm mac:sidebar:dev`
+- [ ] Or build manually with `xcodegen generate --spec apple/project.yml`, then:
+  `xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build`
+- [ ] Launch `IssueCTLMac` from Xcode with the `IssueCTLMac` scheme, or open the built app from DerivedData.
 - [ ] Confirm the app starts as a menu bar/accessory app, without a Dock window.
 - [ ] Confirm the IssueCTL sidebar appears automatically on launch.
 - [ ] Confirm the sidebar is positioned on the right side of the visible screen with usable height.
@@ -28,9 +32,9 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 - [ ] Use the menu bar Toggle Sidebar command and confirm the panel reappears.
 - [ ] Use Escape while the sidebar has focus and confirm the panel hides.
 - [ ] Click the header Collapse Sidebar button and confirm the panel animates to the narrow rail.
-- [ ] In collapsed mode, verify the rail shows Issues, Drafts, Active, Refresh, Expand Sidebar, and Hide Sidebar controls.
+- [ ] In collapsed mode, verify the rail shows a labeled Expand control near the top plus Issues, Drafts, Active, Refresh, and Hide Sidebar controls.
+- [ ] Click the labeled Expand control and confirm the full sidebar returns.
 - [ ] Select each collapsed rail section and confirm the selected icon highlight moves.
-- [ ] Click Expand Sidebar and confirm the full sidebar returns.
 - [ ] Resize the expanded sidebar narrower and wider; confirm it respects the min and max width limits.
 - [ ] Collapse and expand after resizing; confirm the previous expanded width is restored.
 
@@ -51,16 +55,19 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 - [ ] Toggle Launch at Login off and confirm no error is shown.
 - [ ] Toggle Open Collapsed on Next Launch on, relaunch, and confirm the sidebar starts collapsed.
 - [ ] Toggle Open Collapsed on Next Launch off, relaunch, and confirm the sidebar starts expanded.
+- [ ] Adjust Text Size, quit, relaunch, and confirm the saved text scale is restored.
 - [ ] Resize the expanded sidebar and confirm Saved Width updates in Settings.
 - [ ] Click Reset Sidebar Layout and confirm the sidebar state changes immediately.
 
 ## Connection
 
-- [ ] Start the server with `issuectl web` and copy the printed API token.
-- [ ] Launch the macOS app with no saved connection and confirm the connection form appears.
+- [ ] Start the server with `issuectl web`.
+- [ ] Confirm `issuectl web` is running on the same Mac as `IssueCTLMac` when using `http://localhost:3847`.
+- [ ] Launch the macOS app with no saved Keychain connection and confirm it auto-connects from `~/.issuectl/issuectl.db`.
+- [ ] If `issuectl web` is stopped or the local token is missing, confirm the connection form appears.
 - [ ] Enter an invalid server URL or token and confirm an inline error appears.
 - [ ] After a failed connection, confirm Retry Connect is visible and reuses the entered URL/token.
-- [ ] Enter `http://localhost:3847` and a valid API token, then click Connect.
+- [ ] Enter `http://localhost:3847` and a valid API token, then click Connect to verify manual fallback.
 - [ ] Confirm the dashboard replaces the connection form after a successful health check.
 - [ ] Confirm the toolbar summary shows issue, draft, and active session counts.
 - [ ] Click Refresh and confirm loading state appears without duplicating rows.
@@ -72,6 +79,8 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 
 - [ ] Open the Issues tab and confirm open issues load for tracked repos.
 - [ ] Verify the Open, Unassigned, and All filters update the visible list.
+- [ ] Use the Repositories filter to select one repo, all repos, and no repos; confirm the visible issue count updates.
+- [ ] If more than 50 issues match, confirm the list stops at the first batch and Show 50 More appends the next batch.
 - [ ] Search by issue title and confirm matching rows remain.
 - [ ] Search by repo full name and confirm matching rows remain.
 - [ ] Open an issue row and confirm the detail sheet loads title, repo, issue number, labels, assignees, body, and comments.

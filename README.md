@@ -23,6 +23,12 @@ issuectl tracks GitHub issues across multiple repos and launches agent sessions 
 
 Native Apple clients live in `apple/`: the iOS app, the macOS sidebar app, and shared Swift models/services used by both.
 
+For native macOS sidebar dogfooding from a fresh clone, see [macOS Sidebar Dogfood Setup](docs/workflows/macos-sidebar-dogfood.md). The helper command is:
+
+```bash
+pnpm mac:sidebar:dev
+```
+
 ## Launch agents
 
 issuectl can launch issues with either Claude Code or Codex. Choose a default agent in Settings, or select an agent per launch from the web and iOS launch flows.

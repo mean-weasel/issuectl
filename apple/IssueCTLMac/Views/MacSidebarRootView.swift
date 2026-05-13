@@ -11,6 +11,8 @@ struct MacSidebarRootView: View {
     @State private var serverURL = "http://localhost:3847"
     @State private var apiToken = ""
     @State private var isCheckingConnection = false
+    @State private var isAutoConnecting = false
+    @State private var hasAttemptedAutoConnect = false
     @State private var connectionError: String?
     @State private var store = MacSidebarStore()
 
@@ -26,8 +28,12 @@ struct MacSidebarRootView: View {
         .onExitCommand {
             hideSidebar()
         }
+        .environment(\.macSidebarTextScale, preferences.textScale)
         .onAppear {
             selectedSection = MacSidebarSection(rawValue: preferences.selectedSectionRawValue) ?? .issues
+        }
+        .task {
+            await autoConnectIfAvailable()
         }
         .onChange(of: selectedSection) { _, newValue in
             preferences.selectedSectionRawValue = newValue.rawValue
@@ -82,6 +88,7 @@ struct MacSidebarRootView: View {
                 Button {
                     api.disconnect()
                     store.reset()
+                    hasAttemptedAutoConnect = true
                 } label: {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                 }
@@ -100,6 +107,24 @@ struct MacSidebarRootView: View {
             Image(systemName: "list.bullet.rectangle")
                 .font(.title3.weight(.semibold))
                 .padding(.top, 12)
+
+            Button {
+                toggleSidebarCollapsed()
+            } label: {
+                VStack(spacing: 3) {
+                    Image(systemName: "sidebar.leading")
+                        .font(.system(size: 17, weight: .semibold))
+                    Text("Expand")
+                        .font(.caption2.weight(.semibold))
+                }
+                .frame(width: 60, height: 48)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityLabel("Expand Sidebar")
+            .help("Expand Sidebar")
+            .accessibilityIdentifier("mac-sidebar-expand-button")
 
             Divider()
 
@@ -138,17 +163,6 @@ struct MacSidebarRootView: View {
             .help("Refresh")
 
             Spacer()
-
-            Button {
-                toggleSidebarCollapsed()
-            } label: {
-                Image(systemName: "sidebar.leading")
-                    .frame(width: 36, height: 32)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Expand Sidebar")
-            .help("Expand Sidebar")
-            .accessibilityIdentifier("mac-sidebar-expand-button")
 
             Button {
                 hideSidebar()
@@ -242,11 +256,21 @@ struct MacSidebarRootView: View {
     private var connectionView: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Connect to issuectl web")
+                Text(isAutoConnecting ? "Connecting to local issuectl web" : "Connect to issuectl web")
                     .font(.title3.weight(.semibold))
-                Text("Start `issuectl web`, then use the API token printed by the server.")
+                Text(connectionHelpText)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if isAutoConnecting {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Using the local server token from ~/.issuectl/issuectl.db")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             TextField("Server URL", text: $serverURL)
@@ -265,7 +289,7 @@ struct MacSidebarRootView: View {
             Button {
                 Task { await connect() }
             } label: {
-                if isCheckingConnection {
+                if isCheckingConnection || isAutoConnecting {
                     ProgressView()
                         .controlSize(.small)
                 } else {
@@ -273,11 +297,40 @@ struct MacSidebarRootView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(isCheckingConnection || serverURL.isEmpty || apiToken.isEmpty)
+            .disabled(isCheckingConnection || isAutoConnecting || serverURL.isEmpty || apiToken.isEmpty)
 
             Spacer()
         }
         .padding(18)
+    }
+
+    private var connectionHelpText: String {
+        if isAutoConnecting {
+            return "The mac sidebar runs on the same Mac as `issuectl web`, so it can connect automatically."
+        }
+        return "Start `issuectl web`; the sidebar will try localhost automatically. You can still enter a URL and token manually."
+    }
+
+    private func autoConnectIfAvailable() async {
+        guard !api.isConfigured, !hasAttemptedAutoConnect, !isAutoConnecting else { return }
+
+        hasAttemptedAutoConnect = true
+        isAutoConnecting = true
+        connectionError = nil
+        defer { isAutoConnecting = false }
+
+        let localConnection = LocalIssueCTLConnection()
+
+        do {
+            guard let token = try localConnection.apiToken() else { return }
+            _ = try await api.checkHealth(url: localConnection.serverURL, token: token)
+            try api.configure(url: localConnection.serverURL, token: token)
+            serverURL = localConnection.serverURL
+            apiToken = token
+            await store.load(api: api, refresh: true)
+        } catch {
+            connectionError = "Could not auto-connect to local issuectl web: \(error.localizedDescription)"
+        }
     }
 
     private func connect() async {
