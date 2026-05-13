@@ -115,6 +115,6 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 
 - [ ] Global hotkey to show/hide the sidebar.
 - [ ] Keyboard navigation for switching sections, selecting rows, opening details, and activating primary actions.
-- [ ] Automated UI coverage for native macOS sidebar visibility, collapse state, and persistence.
+- [ ] Automated UI coverage for sidebar persistence and deeper menu/window edge cases.
 - [ ] Multi-display placement preferences beyond the current main-screen default.
 - [ ] Additional recovery actions for draft save and session terminal failures.
