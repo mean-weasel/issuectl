@@ -47,6 +47,7 @@ struct MacSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 420)
         .padding()
+        .accessibilityIdentifier("mac-settings-view")
         .task {
             preferences.refreshLaunchAtLoginStatus()
         }

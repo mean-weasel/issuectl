@@ -50,6 +50,17 @@
                ReferencedContainer = "container:IssueCTL.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "81439CED3977C7BE2701B25F"
+               BuildableName = "IssueCTLMacUITests.xctest"
+               BlueprintName = "IssueCTLMacUITests"
+               ReferencedContainer = "container:IssueCTL.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

@@ -64,7 +64,9 @@ struct MacSidebarRootView: View {
                 Image(systemName: "sidebar.right")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Collapse Sidebar")
             .help("Collapse Sidebar")
+            .accessibilityIdentifier("mac-sidebar-collapse-button")
 
             Button {
                 hideSidebar()
@@ -72,7 +74,9 @@ struct MacSidebarRootView: View {
                 Image(systemName: "xmark")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Hide Sidebar")
             .help("Hide Sidebar")
+            .accessibilityIdentifier("mac-sidebar-hide-button")
 
             if api.isConfigured {
                 Button {
@@ -82,7 +86,9 @@ struct MacSidebarRootView: View {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Disconnect")
                 .help("Disconnect")
+                .accessibilityIdentifier("mac-sidebar-disconnect-button")
             }
         }
         .padding(.horizontal, 14)
@@ -140,7 +146,9 @@ struct MacSidebarRootView: View {
                     .frame(width: 36, height: 32)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Expand Sidebar")
             .help("Expand Sidebar")
+            .accessibilityIdentifier("mac-sidebar-expand-button")
 
             Button {
                 hideSidebar()
@@ -149,7 +157,9 @@ struct MacSidebarRootView: View {
                     .frame(width: 36, height: 32)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Hide Sidebar")
             .help("Hide Sidebar")
+            .accessibilityIdentifier("mac-sidebar-collapsed-hide-button")
             .padding(.bottom, 12)
         }
         .frame(width: 76)

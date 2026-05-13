@@ -27,6 +27,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private var panelController: SidebarPanelController?
     private var statusItem: NSStatusItem?
     private var collapseMenuItem: NSMenuItem?
+    private var settingsWindowController: NSWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         PerformanceTrace.markAppLaunchStarted()
@@ -98,8 +99,10 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
+        let windowController = settingsWindowController ?? makeSettingsWindowController()
+        settingsWindowController = windowController
+        windowController.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     @objc private func quit() {
@@ -118,5 +121,22 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatusMenuTitles() {
         collapseMenuItem?.title = collapsedMenuTitle
+    }
+
+    private func makeSettingsWindowController() -> NSWindowController {
+        let settingsView = MacSettingsView()
+            .environment(apiClient)
+            .environment(sidebarPreferences)
+            .environment(sidebarChrome)
+            .environment(\.resetSidebarLayout) { [weak self] in
+                self?.resetSidebarLayout()
+            }
+        let hostingController = NSHostingController(rootView: settingsView)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "IssueCTL Settings"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        return NSWindowController(window: window)
     }
 }

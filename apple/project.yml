@@ -29,6 +29,7 @@ targets:
     scheme:
       testTargets:
         - IssueCTLMacTests
+        - IssueCTLMacUITests
   IssueCTL:
     type: application
     supportedDestinations: [iOS]
@@ -241,6 +242,22 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.mac.tests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/IssueCTLMac.app/Contents/MacOS/IssueCTLMac"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  IssueCTLMacUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [macOS]
+    sources:
+      - path: IssueCTLMacUITests
+    dependencies:
+      - target: IssueCTLMac
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.issuectl.mac.uitests
+        TEST_TARGET_NAME: IssueCTLMac
+        DEVELOPMENT_TEAM: B3A6AN2HA4
+        CODE_SIGN_STYLE: Automatic
+        BUNDLE_LOADER: ""
 # Standalone schemes (supplement the per-target inline scheme above)
 schemes:
   IssueCTL-Production:
