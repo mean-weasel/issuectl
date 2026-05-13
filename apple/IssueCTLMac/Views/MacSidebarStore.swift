@@ -66,6 +66,7 @@ final class MacSidebarStore {
     }
 
     func refreshDrafts(api: APIClient) async {
+        errorMessage = nil
         do {
             drafts = try await api.listDrafts().drafts
         } catch {
@@ -150,6 +151,7 @@ final class MacSidebarStore {
     }
 
     func refreshSessions(api: APIClient) async {
+        errorMessage = nil
         do {
             sessions = try await api.activeDeployments(refresh: true).deployments
         } catch {

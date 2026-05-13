@@ -164,6 +164,15 @@ struct MacSidebarRootView: View {
     private var dashboard: some View {
         VStack(spacing: 0) {
             dashboardToolbar
+            if let errorMessage = store.errorMessage {
+                MacRecoveryBanner(
+                    message: errorMessage,
+                    actionTitle: "Retry",
+                    isActionDisabled: store.isLoading
+                ) {
+                    Task { await store.load(api: api, refresh: true) }
+                }
+            }
             Picker("Section", selection: $selectedSection) {
                 ForEach(MacSidebarSection.allCases) { section in
                     Label(section.title, systemImage: section.systemImage)
@@ -250,7 +259,7 @@ struct MacSidebarRootView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Label("Connect", systemImage: "bolt.horizontal.circle")
+                    Label(connectionError == nil ? "Connect" : "Retry Connect", systemImage: "bolt.horizontal.circle")
                 }
             }
             .buttonStyle(.borderedProminent)

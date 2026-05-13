@@ -73,6 +73,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         collapseMenuItem = collapseItem
         menu.addItem(collapseItem)
         menu.addItem(NSMenuItem(title: "Hide Sidebar", action: #selector(hideSidebar), keyEquivalent: "w"))
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit IssueCTL", action: #selector(quit), keyEquivalent: "q"))
         menu.items.forEach { $0.target = self }
@@ -94,6 +95,11 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     @objc private func hideSidebar() {
         panelController?.hide()
         updateStatusMenuTitles()
+    }
+
+    @objc private func openSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     @objc private func quit() {

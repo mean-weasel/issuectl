@@ -10,7 +10,8 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 - [ ] Confirm the app starts as a menu bar/accessory app, without a Dock window.
 - [ ] Confirm the IssueCTL sidebar appears automatically on launch.
 - [ ] Confirm the sidebar is positioned on the right side of the visible screen with usable height.
-- [ ] Open the IssueCTL menu bar item and verify these menu commands are present: Toggle Sidebar, Collapse Sidebar or Expand Sidebar, Hide Sidebar, Quit IssueCTL.
+- [ ] Open the IssueCTL menu bar item and verify these menu commands are present: Toggle Sidebar, Collapse Sidebar or Expand Sidebar, Hide Sidebar, Settings, Quit IssueCTL.
+- [ ] Open the IssueCTL menu bar item, choose Settings, and confirm the Settings window appears in front.
 - [ ] Use Quit IssueCTL and confirm the app exits cleanly.
 
 ## Spaces And Window Behavior
@@ -58,12 +59,14 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 - [ ] Start the server with `issuectl web` and copy the printed API token.
 - [ ] Launch the macOS app with no saved connection and confirm the connection form appears.
 - [ ] Enter an invalid server URL or token and confirm an inline error appears.
+- [ ] After a failed connection, confirm Retry Connect is visible and reuses the entered URL/token.
 - [ ] Enter `http://localhost:3847` and a valid API token, then click Connect.
 - [ ] Confirm the dashboard replaces the connection form after a successful health check.
 - [ ] Confirm the toolbar summary shows issue, draft, and active session counts.
 - [ ] Click Refresh and confirm loading state appears without duplicating rows.
 - [ ] Use Disconnect from the header and confirm the sidebar returns to the connection form and clears loaded data.
 - [ ] Stop `issuectl web`, refresh, and confirm the sidebar reports a useful connection/load error without crashing.
+- [ ] Restart `issuectl web`, use Retry from the dashboard error banner, and confirm the sidebar reloads.
 
 ## Issues And Actions
 
@@ -72,6 +75,7 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 - [ ] Search by issue title and confirm matching rows remain.
 - [ ] Search by repo full name and confirm matching rows remain.
 - [ ] Open an issue row and confirm the detail sheet loads title, repo, issue number, labels, assignees, body, and comments.
+- [ ] Simulate an issue detail load failure and confirm the detail sheet shows Retry without closing.
 - [ ] In the issue detail sheet, click Refresh and confirm the loading state completes.
 - [ ] Change Priority and confirm the badge updates, then refresh and confirm the persisted priority is shown.
 - [ ] Add a comment and confirm the composer clears and the comment appears after reload.
@@ -102,6 +106,7 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 - [ ] When terminal setup is ready, click Open and confirm the browser opens the terminal URL.
 - [ ] Open the Active tab and confirm the active session row shows repo, issue number, branch, duration, workspace path, and Ready or Starting.
 - [ ] Click the Active tab Refresh control and confirm session state updates.
+- [ ] Simulate an Active tab refresh/open/end failure and confirm Retry Refresh is shown without dismissing the tab.
 - [ ] Click Open on a ready session and confirm the terminal opens.
 - [ ] Click End, confirm the progress state appears, and confirm the ended session is removed from the Active list.
 - [ ] Confirm launching a second time for the same issue reuses the existing active session instead of creating a duplicate.
@@ -110,7 +115,6 @@ Use this checklist for manual regression passes on the native macOS sidebar. Run
 
 - [ ] Global hotkey to show/hide the sidebar.
 - [ ] Keyboard navigation for switching sections, selecting rows, opening details, and activating primary actions.
-- [ ] Menu item or command for opening Settings directly from the IssueCTL menu bar item.
 - [ ] Automated UI coverage for native macOS sidebar visibility, collapse state, and persistence.
 - [ ] Multi-display placement preferences beyond the current main-screen default.
-- [ ] More explicit empty/error recovery actions for connection, repo load, draft save, and session terminal failures.
+- [ ] Additional recovery actions for draft save and session terminal failures.
