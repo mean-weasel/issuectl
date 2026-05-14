@@ -331,7 +331,7 @@ tasks:
   - id: T011
     type: worker
     assignee: Worker
-    status: blocked
+    status: done
     reasoning_hint: medium
     objective: "Add deterministic Mac UI coverage for the native repository settings section without relying on the flaky status-menu path."
     inputs:
@@ -356,12 +356,15 @@ tasks:
       - "Need files outside allowed_files."
       - "The test hook would affect non-UI-testing app behavior."
     receipt:
-      result: blocked
+      result: superseded
       note: "notes/T011-mac-ui-settings-test.md"
-      summary: "Tried a UI-testing-only direct Settings launch hook, but the focused Mac UI test still hung; removed the failed hook/test and left PR #423 draft pending dogfood or a dedicated UI automation fix."
+      summary: "Tried a UI-testing-only direct Settings launch hook, but the focused Mac UI test still hung; removed the failed hook/test. This blocked attempt was superseded by T013/T014, which repaired the UI harness and merged PR #423."
       warnings:
         - "xcodebuild UI test attempt was interrupted after hanging with no test output after launch."
       blocker: "Mac accessory app UI automation still hangs even when bypassing the status menu."
+      superseded_by:
+        - "T013"
+        - "T014"
 
   - id: T012
     type: pm
