@@ -23,6 +23,7 @@ struct MacIssueDetailView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var activeSheet: MacIssueDetailSheet?
+    @State private var lightboxImage: MacLightboxImage?
     @State private var isShowingCloseWithComment = false
     @State private var commentPendingDeletion: GitHubComment?
 
@@ -127,6 +128,11 @@ struct MacIssueDetailView: View {
                     successMessage = "Reassigned to \(owner)/\(repo)#\(number)"
                     activeSheet = nil
                 }
+            }
+        }
+        .sheet(item: $lightboxImage) { image in
+            MacImageLightbox(url: image.url, altText: image.altText) {
+                lightboxImage = nil
             }
         }
         .sheet(isPresented: $isShowingCloseWithComment) {
@@ -429,8 +435,10 @@ struct MacIssueDetailView: View {
                 Divider()
                 Text("Description")
                     .font(.headline)
-                MacMarkdownView(content: body)
                     .accessibilityIdentifier("mac-issue-detail-body-markdown")
+                MacMarkdownView(content: body, accessibilityPrefix: "mac-issue-body") { image in
+                    lightboxImage = image
+                }
             }
         }
     }
@@ -487,7 +495,9 @@ struct MacIssueDetailView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        MacMarkdownView(content: comment.body)
+                        MacMarkdownView(content: comment.body, accessibilityPrefix: "mac-comment-\(comment.id)") { image in
+                            lightboxImage = image
+                        }
 
                         if isOwnComment(comment) {
                             HStack(spacing: 8) {
@@ -1402,12 +1412,21 @@ private extension Color {
     }
 }
 
+private struct MacLightboxImage: Identifiable {
+    let url: URL
+    let altText: String
+
+    var id: String { url.absoluteString }
+}
+
 private struct MacMarkdownView: View {
     let content: String
+    let accessibilityPrefix: String
+    let openImage: (MacLightboxImage) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(MacMarkdownParser.blocks(from: content).enumerated()), id: \.offset) { _, block in
+            ForEach(Array(MacMarkdownParser.blocks(from: content).enumerated()), id: \.offset) { index, block in
                 if block.isCode {
                     Text(block.text)
                         .font(.body.monospaced())
@@ -1415,6 +1434,11 @@ private struct MacMarkdownView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
                         .textSelection(.enabled)
+                } else if let image = block.image {
+                    MacMarkdownImageButton(image: image) {
+                        openImage(image)
+                    }
+                    .accessibilityIdentifier("\(accessibilityPrefix)-image-\(index)")
                 } else if let attributed = block.attributedText {
                     Text(attributed)
                         .font(.body)
@@ -1431,18 +1455,154 @@ private struct MacMarkdownView: View {
     }
 }
 
+private struct MacMarkdownImageButton: View {
+    let image: MacLightboxImage
+    let openImage: () -> Void
+
+    var body: some View {
+        Button(action: openImage) {
+            VStack(alignment: .leading, spacing: 6) {
+                if let fixtureImage = MacFixtureImageStore.image(for: image.url) {
+                    Image(nsImage: fixtureImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 260, maxHeight: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .accessibilityIdentifier("mac-markdown-image-loaded")
+                } else {
+                    AsyncImage(url: image.url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 180, height: 110)
+                                .accessibilityIdentifier("mac-markdown-image-loading")
+                        case .success(let loadedImage):
+                            loadedImage
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: 260, maxHeight: 180)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .accessibilityIdentifier("mac-markdown-image-loaded")
+                        case .failure:
+                            Label("Image unavailable", systemImage: "photo.badge.exclamationmark")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("mac-markdown-image-error")
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                }
+
+                if !image.altText.isEmpty {
+                    Text(image.altText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(image.altText.isEmpty ? "Image attachment" : image.altText)
+    }
+}
+
+private struct MacImageLightbox: View {
+    let url: URL
+    let altText: String
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+
+            Group {
+                if let fixtureImage = MacFixtureImageStore.image(for: url) {
+                    Image(nsImage: fixtureImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding(24)
+                        .accessibilityIdentifier("mac-image-lightbox-loaded-image")
+                } else {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .tint(.white)
+                                .accessibilityIdentifier("mac-image-lightbox-loading")
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .padding(24)
+                                .accessibilityIdentifier("mac-image-lightbox-loaded-image")
+                        case .failure:
+                            ContentUnavailableView {
+                                Label("Failed to Load", systemImage: "photo.badge.exclamationmark")
+                                    .foregroundStyle(.white)
+                            } description: {
+                                Text("Could not load image")
+                                    .foregroundStyle(.white.opacity(0.75))
+                            }
+                            .accessibilityIdentifier("mac-image-lightbox-error")
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Button(action: onClose) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, .white.opacity(0.35))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(28)
+            .accessibilityLabel("Close image")
+            .accessibilityIdentifier("mac-image-lightbox-close-button")
+        }
+        .frame(minWidth: 520, minHeight: 420)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(altText.isEmpty ? "Image preview" : altText)
+    }
+}
+
+private enum MacFixtureImageStore {
+    static func image(for url: URL) -> NSImage? {
+        guard url.host == "issuectl-ui-test.local",
+              url.path == "/fixtures/alpha.png",
+              let data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=") else {
+            return nil
+        }
+        return NSImage(data: data)
+    }
+}
+
 private enum MacMarkdownParser {
     static func blocks(from source: String) -> [MacMarkdownBlock] {
-        splitCodeBlocks(source).map { block in
-            guard !block.isCode else { return block }
-            return MacMarkdownBlock(
-                text: block.text,
-                isCode: false,
-                attributedText: try? AttributedString(
-                    markdown: block.text,
-                    options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        splitCodeBlocks(source).flatMap { block -> [MacMarkdownBlock] in
+            guard !block.isCode else { return [block] }
+
+            return splitImageBlocks(block.text).map { imageBlock in
+                guard imageBlock.image == nil else { return imageBlock }
+                return MacMarkdownBlock(
+                    text: imageBlock.text,
+                    isCode: false,
+                    attributedText: try? AttributedString(
+                        markdown: imageBlock.text,
+                        options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -1476,17 +1636,73 @@ private enum MacMarkdownParser {
         }
         return blocks
     }
+
+    private static func splitImageBlocks(_ source: String) -> [MacMarkdownBlock] {
+        let pattern = #"!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return [MacMarkdownBlock(text: source, isCode: false)]
+        }
+
+        let nsSource = source as NSString
+        let fullRange = NSRange(location: 0, length: nsSource.length)
+        let matches = regex.matches(in: source, range: fullRange)
+        guard !matches.isEmpty else {
+            return [MacMarkdownBlock(text: source, isCode: false)]
+        }
+
+        var blocks: [MacMarkdownBlock] = []
+        var cursor = 0
+
+        for match in matches {
+            if match.range.location > cursor {
+                let text = nsSource.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty {
+                    blocks.append(MacMarkdownBlock(text: text, isCode: false))
+                }
+            }
+
+            let altText = match.range(at: 1).location == NSNotFound ? "" : nsSource.substring(with: match.range(at: 1))
+            let rawURL = match.range(at: 2).location == NSNotFound ? "" : nsSource.substring(with: match.range(at: 2))
+            if let url = URL(string: rawURL) {
+                blocks.append(MacMarkdownBlock(image: MacLightboxImage(url: url, altText: altText)))
+            } else {
+                blocks.append(MacMarkdownBlock(text: nsSource.substring(with: match.range), isCode: false))
+            }
+
+            cursor = match.range.location + match.range.length
+        }
+
+        if cursor < nsSource.length {
+            let text = nsSource.substring(with: NSRange(location: cursor, length: nsSource.length - cursor))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                blocks.append(MacMarkdownBlock(text: text, isCode: false))
+            }
+        }
+
+        return blocks
+    }
 }
 
 private struct MacMarkdownBlock {
     let text: String
     let isCode: Bool
     let attributedText: AttributedString?
+    let image: MacLightboxImage?
 
     init(text: String, isCode: Bool, attributedText: AttributedString? = nil) {
         self.text = text
         self.isCode = isCode
         self.attributedText = attributedText
+        self.image = nil
+    }
+
+    init(image: MacLightboxImage) {
+        self.text = ""
+        self.isCode = false
+        self.attributedText = nil
+        self.image = image
     }
 }
 

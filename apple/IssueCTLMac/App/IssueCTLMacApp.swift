@@ -193,6 +193,19 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return
         }
 
+        if let imageData = Self.fixtureImageData(for: url.path) {
+            let response = HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/png"]
+            )!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: imageData)
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+
         let payload = Self.payload(for: request)
         let status = payload == nil ? 404 : 200
         let data = Self.jsonData(payload ?? ["error": "Unhandled \(url.path)"])
@@ -423,14 +436,14 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     ]
 
     nonisolated(unsafe) private static var detailIssueTitle = "Open alpha issue"
-    nonisolated(unsafe) private static var detailIssueBody = "Searchable **alpha** body\n\n```swift\nlet value = 1\n```"
+    nonisolated(unsafe) private static var detailIssueBody = "Searchable **alpha** body\n\n![Alpha diagram](https://issuectl-ui-test.local/fixtures/alpha.png)\n\n```swift\nlet value = 1\n```"
     nonisolated(unsafe) private static var detailIssueState = "open"
     nonisolated(unsafe) private static var detailIssueLabels = ["bug"]
     nonisolated(unsafe) private static var detailIssueAssignees = ["bob"]
     nonisolated(unsafe) private static var reassignedIssueNumber: Int?
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
-        commentFixture(id: 102, body: "Bob comment", author: "bob"),
+        commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
     ]
 
     private static var issues: [[String: Any]] {
@@ -551,6 +564,11 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             "updated_at": isoDate,
             "html_url": "https://github.com/org/alpha/issues/1#issuecomment-\(id)",
         ]
+    }
+
+    private static func fixtureImageData(for path: String) -> Data? {
+        guard path == "/fixtures/alpha.png" else { return nil }
+        return Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP8z8AARLJgYGBgYAAAAP//AwAFxgICFhZbkAAAAABJRU5ErkJggg==")
     }
 
     private static var availableLabels: [[String: Any]] {
