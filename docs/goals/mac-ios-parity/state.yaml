@@ -2101,7 +2101,11 @@ tasks:
         url: "https://github.com/mean-weasel/issuectl/pull/435"
         branch: "mac-parity-phase-7b-pr-actions"
         base: "mac-sidebar-spaces-option-a"
-        draft: true
+        draft: false
+        merged: true
+        head_sha: "9e195982ee89cd51eccd590eece5e5f230a332a4"
+        merge_commit_sha: "449bc1fd4c0096d201a9b030f2c9ba537570a6ed"
+        merged_at: "2026-05-14T19:30:41Z"
       changed_files:
         - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
         - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
@@ -2124,6 +2128,40 @@ tasks:
           status: pass
           warnings: "Existing warnings only."
       summary: "Implemented Mac PR detail actions for comment, approve, request changes, and merge methods with fixture-backed UI coverage for success, refresh, hidden actions after merge, and failure text preservation."
+
+  - id: T042
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: low
+    objective: "Record the Phase 7B PR #435 merge into the integration branch."
+    inputs:
+      - "PR #435"
+      - "T041 receipt"
+    constraints:
+      - "Do not implement product changes."
+      - "Record CI or replacement validation used for the merge gate."
+    receipt:
+      result: done
+      note: "notes/T042-pr435-merge.md"
+      pr:
+        number: 435
+        url: "https://github.com/mean-weasel/issuectl/pull/435"
+        branch: "mac-parity-phase-7b-pr-actions"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "9e195982ee89cd51eccd590eece5e5f230a332a4"
+        merge_commit_sha: "449bc1fd4c0096d201a9b030f2c9ba537570a6ed"
+        merged_at: "2026-05-14T19:30:41Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-7b-pr-actions branch."
+        replacement_validation:
+          - "git diff --check"
+          - "MacIssueFilterStateTests: 19 tests passed"
+          - "MacSidebarSmokeTests focused PR actions: 2 tests passed"
+          - "MacSidebarSmokeTests full suite: 24 tests passed"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+      summary: "Marked PR #435 ready, confirmed no GitHub checks were configured, and merged Phase 7B Mac PR detail actions into mac-sidebar-spaces-option-a."
 
   - id: T999
     type: judge
