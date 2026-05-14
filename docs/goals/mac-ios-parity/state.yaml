@@ -2406,7 +2406,7 @@ tasks:
         base: "mac-sidebar-spaces-option-a"
         draft: false
         merge_state: "CLEAN"
-        checks: "No GitHub status checks reported on head 3459f29fc4966adc31047e161b07629fa275a2ea."
+        checks: "No GitHub status checks reported on head 9df754c1118de5b75dc6acb08c4e1f6d171bdd98."
       commands:
         - cmd: "git diff --check"
           status: pass
