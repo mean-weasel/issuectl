@@ -72,6 +72,22 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertEqual(preferences.issueFilterRawValue, "unassigned")
     }
 
+    func testRepoNameInputParsesOwnerAndName() throws {
+        let input = try MacRepoNameInput.parse(" mean-weasel/issuectl ")
+
+        XCTAssertEqual(input.owner, "mean-weasel")
+        XCTAssertEqual(input.name, "issuectl")
+        XCTAssertEqual(input.fullName, "mean-weasel/issuectl")
+    }
+
+    func testRepoNameInputRejectsMalformedNames() {
+        XCTAssertThrowsError(try MacRepoNameInput.parse(""))
+        XCTAssertThrowsError(try MacRepoNameInput.parse("mean-weasel"))
+        XCTAssertThrowsError(try MacRepoNameInput.parse("mean-weasel/"))
+        XCTAssertThrowsError(try MacRepoNameInput.parse("/issuectl"))
+        XCTAssertThrowsError(try MacRepoNameInput.parse("mean-weasel/issuectl/extra"))
+    }
+
     private var repos: [Repo] {
         [
             repo(id: 1, owner: "mean-weasel", name: "issuectl"),
