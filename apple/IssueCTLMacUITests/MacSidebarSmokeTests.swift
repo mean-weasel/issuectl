@@ -34,8 +34,47 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(title.waitForNonExistence(timeout: 3), app.debugDescription)
     }
 
+    func testIssueListFiltersSortsResetsAndLoadsMore() {
+        XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issues-section-counts"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issues-filter-summary"].waitForExistence(timeout: 5), app.debugDescription)
+
+        let loadMore = app.buttons["mac-issues-load-more-button"]
+        XCTAssertTrue(loadMore.waitForExistence(timeout: 5), app.debugDescription)
+        loadMore.click()
+        XCTAssertTrue(issueRow("org/alpha", 55).waitForExistence(timeout: 5), app.debugDescription)
+
+        issueState("Running").click()
+        XCTAssertTrue(issueRow("org/alpha", 2).waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(issueRow("org/alpha", 1).exists, app.debugDescription)
+
+        issueState("Closed").click()
+        XCTAssertTrue(issueRow("org/alpha", 4).waitForExistence(timeout: 5), app.debugDescription)
+
+        issueState("Drafts").click()
+        XCTAssertTrue(draftRow("draft-1").waitForExistence(timeout: 5), app.debugDescription)
+
+        issueState("Open").click()
+        issueSort("Priority").click()
+        XCTAssertTrue(issueRow("org/alpha", 3).waitForExistence(timeout: 5), app.debugDescription)
+
+        let mine = app.checkBoxes["mac-issues-mine-filter"]
+        XCTAssertTrue(mine.waitForExistence(timeout: 5), app.debugDescription)
+        mine.click()
+
+        let search = app.textFields["mac-issues-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
+        search.click()
+        search.typeText("unassigned")
+        XCTAssertTrue(issueRow("org/alpha", 3).waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(issueRow("org/alpha", 6).exists, app.debugDescription)
+
+        app.buttons["mac-issues-reset-filters-button"].click()
+        XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testStatusMenuOpensSettings() {
-        openSettings()
+        openSettingsFromStatusMenu()
 
         let settingsView = app.descendants(matching: .any)["mac-settings-view"]
         XCTAssertTrue(settingsView.waitForExistence(timeout: 5), app.debugDescription)
@@ -125,6 +164,17 @@ final class MacSidebarSmokeTests: XCTestCase {
     }
 
     private func openSettings() {
+        app.typeKey(",", modifierFlags: .command)
+
+        let settingsView = app.descendants(matching: .any)["mac-settings-view"]
+        if settingsView.waitForExistence(timeout: 2) {
+            return
+        }
+
+        openSettingsFromStatusMenu()
+    }
+
+    private func openSettingsFromStatusMenu() {
         let statusItem = app.statusItems["IssueCTL"].firstMatch
         XCTAssertTrue(statusItem.waitForExistence(timeout: 8), app.debugDescription)
 
@@ -132,5 +182,21 @@ final class MacSidebarSmokeTests: XCTestCase {
         let settingsItem = app.menuItems["Settings..."].firstMatch
         XCTAssertTrue(settingsItem.waitForExistence(timeout: 3), app.debugDescription)
         settingsItem.click()
+    }
+
+    private func issueRow(_ repoFullName: String, _ number: Int) -> XCUIElement {
+        app.descendants(matching: .any)["mac-issue-row-\(repoFullName)-\(number)"]
+    }
+
+    private func draftRow(_ id: String) -> XCUIElement {
+        app.descendants(matching: .any)["mac-draft-row-\(id)"]
+    }
+
+    private func issueState(_ title: String) -> XCUIElement {
+        app.descendants(matching: .any)["mac-issues-section-picker"].radioButtons[title]
+    }
+
+    private func issueSort(_ title: String) -> XCUIElement {
+        app.descendants(matching: .any)["mac-issues-sort-picker"].radioButtons[title]
     }
 }

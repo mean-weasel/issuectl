@@ -255,13 +255,43 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 ["owner": "org", "name": "gamma", "private": true, "pushed_at": isoDate],
             ], "synced_at": 1_775_000_000, "is_stale": false]
         case ("GET", "/api/v1/deployments"):
-            return ["deployments": []]
+            return ["deployments": [
+                [
+                    "id": 2,
+                    "repo_id": 1,
+                    "issue_number": 2,
+                    "branch_name": "issue-2-running",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/issue-2",
+                    "linked_pr_number": NSNull(),
+                    "state": "active",
+                    "launched_at": isoDate,
+                    "ended_at": NSNull(),
+                    "ttyd_port": NSNull(),
+                    "ttyd_pid": NSNull(),
+                    "owner": "org",
+                    "repo_name": "alpha",
+                ],
+            ]]
         case ("GET", "/api/v1/sessions/previews"):
             return ["previews": []]
         case ("GET", "/api/v1/drafts"):
-            return ["drafts": []]
+            return ["drafts": [
+                [
+                    "id": "draft-1",
+                    "title": "Draft offline idea",
+                    "body": "draft body",
+                    "priority": "normal",
+                    "created_at": 1_775_000_000,
+                ],
+            ]]
         case ("GET", "/api/v1/issues/org/alpha"):
-            return ["issues": [], "from_cache": false, "cached_at": NSNull()]
+            return ["issues": issues, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/issues/org/alpha/priorities"):
+            return ["priorities": [
+                ["repo_id": 1, "issue_number": 1, "priority": "low", "updated_at": 1_775_000_000],
+                ["repo_id": 1, "issue_number": 3, "priority": "high", "updated_at": 1_775_000_000],
+            ]]
         default:
             return nil
         }
@@ -298,6 +328,50 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             "stale": true,
         ],
     ]
+
+    private static var issues: [[String: Any]] {
+        [
+            issue(number: 1, title: "Open alpha issue", body: "Searchable alpha body", state: "open", assignees: ["bob"], author: "alice", updatedAt: "2026-05-14T10:00:00.000Z"),
+            issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
+            issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
+            issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
+        ] + (5...55).map { number in
+            issue(
+                number: number,
+                title: "Paged issue \(number)",
+                body: "Pagination fixture",
+                state: "open",
+                assignees: ["alice"],
+                author: number.isMultiple(of: 2) ? "alice" : "bob",
+                updatedAt: String(format: "2026-05-13T%02d:00:00.000Z", number % 24)
+            )
+        }
+    }
+
+    private static func issue(
+        number: Int,
+        title: String,
+        body: String,
+        state: String,
+        assignees: [String],
+        author: String,
+        updatedAt: String
+    ) -> [String: Any] {
+        [
+            "number": number,
+            "title": title,
+            "body": body,
+            "state": state,
+            "labels": [],
+            "assignees": assignees.map { ["login": $0, "avatar_url": "https://example.com/\($0).png"] },
+            "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
+            "comment_count": 0,
+            "created_at": "2026-05-12T10:00:00.000Z",
+            "updated_at": updatedAt,
+            "closed_at": state == "closed" ? "2026-05-14T14:00:00.000Z" : NSNull(),
+            "html_url": "https://github.com/org/alpha/issues/\(number)",
+        ]
+    }
 
     private static var isoDate: String {
         "2026-05-14T00:00:00Z"

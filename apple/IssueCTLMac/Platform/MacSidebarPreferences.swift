@@ -114,6 +114,18 @@ final class MacSidebarDisplayPreferences {
         didSet { defaults.set(issueFilterRawValue, forKey: key("issueFilter")) }
     }
 
+    var issueSortRawValue: String {
+        didSet { defaults.set(issueSortRawValue, forKey: key("issueSort")) }
+    }
+
+    var issueMineOnly: Bool {
+        didSet { defaults.set(issueMineOnly, forKey: key("issueMineOnly")) }
+    }
+
+    var issueSearchText: String {
+        didSet { defaults.set(issueSearchText, forKey: key("issueSearchText")) }
+    }
+
     var selectedRepoKeys: Set<String> {
         didSet { defaults.set(Array(selectedRepoKeys).sorted(), forKey: key("selectedRepoKeys")) }
     }
@@ -146,6 +158,9 @@ final class MacSidebarDisplayPreferences {
                 ?? MacSidebarPreferences.defaultExpandedWidth
         )
         issueFilterRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueFilter")) ?? "open"
+        issueSortRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueSort")) ?? "updated"
+        issueMineOnly = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueMineOnly")) as? Bool ?? false
+        issueSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueSearchText")) ?? ""
         selectedRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedRepoKeys")) ?? [])
         isRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isRepoFilterExpanded")) as? Bool ?? true
         isEnabled = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isEnabled")) as? Bool ?? true
@@ -156,6 +171,9 @@ final class MacSidebarDisplayPreferences {
         selectedSectionRawValue = "issues"
         expandedWidth = MacSidebarPreferences.defaultExpandedWidth
         issueFilterRawValue = "open"
+        issueSortRawValue = "updated"
+        issueMineOnly = false
+        issueSearchText = ""
         selectedRepoKeys.removeAll()
         isRepoFilterExpanded = true
         isEnabled = true

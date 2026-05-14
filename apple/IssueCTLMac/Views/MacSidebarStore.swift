@@ -6,6 +6,10 @@ final class MacSidebarStore {
     private(set) var issues: [MacIssueListItem] = []
     private(set) var drafts: [Draft] = []
     private(set) var sessions: [ActiveDeployment] = []
+    private(set) var currentUserLogin: String?
+    private(set) var userFetchFailed = false
+    private(set) var priorities: [String: Priority] = [:]
+    private(set) var isLoadingPriorities = false
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var lastLoadedAt: Date?
@@ -19,6 +23,10 @@ final class MacSidebarStore {
         issues = []
         drafts = []
         sessions = []
+        currentUserLogin = nil
+        userFetchFailed = false
+        priorities = [:]
+        isLoadingPriorities = false
         errorMessage = nil
         lastLoadedAt = nil
     }
@@ -34,6 +42,10 @@ final class MacSidebarStore {
             let loadedRepos = try await api.repos(refresh: refresh)
             async let draftsResult = api.listDrafts()
             async let sessionsResult = api.activeDeployments(refresh: refresh)
+            async let userResult: Result<UserResponse, Error> = {
+                do { return .success(try await api.currentUser(refresh: refresh)) }
+                catch { return .failure(error) }
+            }()
 
             var loadedIssues: [MacIssueListItem] = []
             var issueFailures: [String] = []
@@ -55,13 +67,46 @@ final class MacSidebarStore {
             }
             drafts = try await draftsResult.drafts
             sessions = try await sessionsResult.deployments
+            switch await userResult {
+            case .success(let user):
+                currentUserLogin = user.login
+                userFetchFailed = false
+            case .failure:
+                currentUserLogin = nil
+                userFetchFailed = true
+            }
             lastLoadedAt = Date()
+            await loadPriorities(api: api, repos: loadedRepos)
 
             if !issueFailures.isEmpty {
                 errorMessage = "Some repos failed to load: \(issueFailures.joined(separator: "; "))"
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadPriorities(api: APIClient, repos: [Repo]? = nil) async {
+        let reposToLoad = repos ?? self.repos
+        isLoadingPriorities = true
+        defer { isLoadingPriorities = false }
+
+        var loadedPriorities: [String: Priority] = [:]
+        var failures: [String] = []
+        for repo in reposToLoad {
+            do {
+                let items = try await api.listPriorities(owner: repo.owner, repo: repo.name)
+                for item in items {
+                    loadedPriorities["\(repo.owner)/\(repo.name)#\(item.issueNumber)"] = item.priority
+                }
+            } catch {
+                failures.append("\(repo.name) priorities (\(error.localizedDescription))")
+            }
+        }
+
+        priorities = loadedPriorities
+        if !failures.isEmpty {
+            errorMessage = "Some priorities failed to load: \(failures.joined(separator: "; "))"
         }
     }
 
