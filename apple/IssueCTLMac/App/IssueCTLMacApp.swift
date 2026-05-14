@@ -288,6 +288,11 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             ]]
         case ("GET", "/api/v1/sessions/previews"):
             return ["previews": []]
+        case ("POST", "/api/v1/images/upload"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_IMAGE_UPLOAD_FAILURE"] == "1" {
+                return ["error": "Fixture image upload failed"]
+            }
+            return ["url": "https://issuectl-ui-test.local/fixtures/uploaded.png"]
         case ("GET", "/api/v1/drafts"):
             return ["drafts": drafts]
         case ("POST", "/api/v1/drafts"):
@@ -329,6 +334,8 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["issues": betaIssues, "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/1"):
             return issueDetail()
+        case ("GET", "/api/v1/issues/org/alpha/89"):
+            return quickCreatedIssueDetail()
         case ("GET", "/api/v1/repos/org/alpha/labels"):
             return ["labels": availableLabels]
         case ("GET", "/api/v1/repos/org/alpha/collaborators"):
@@ -631,6 +638,27 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         ]
     }
 
+    private static func quickCreatedIssueDetail() -> [String: Any] {
+        [
+            "issue": issue(
+                number: 89,
+                title: quickCreatedIssueTitle,
+                body: quickCreatedIssueBody ?? "",
+                state: "open",
+                labels: quickCreatedIssueLabels,
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: isoDate
+            ),
+            "comments": [],
+            "deployments": [],
+            "linkedPRs": [],
+            "referencedFiles": [],
+            "fromCache": false,
+            "cachedAt": NSNull(),
+        ]
+    }
+
     private static func commentFixture(id: Int, body: String, author: String) -> [String: Any] {
         [
             "id": id,
@@ -643,8 +671,8 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     }
 
     private static func fixtureImageData(for path: String) -> Data? {
-        guard path == "/fixtures/alpha.png" else { return nil }
-        return Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP8z8AARLJgYGBgYAAAAP//AwAFxgICFhZbkAAAAABJRU5ErkJggg==")
+        guard path == "/fixtures/alpha.png" || path == "/fixtures/uploaded.png" else { return nil }
+        return Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAAqADAAQAAAABAAAAAgAAAADtGLyqAAAAEklEQVQIHWP8DwQMQMAEIkAAAD34BACALvQ5AAAAAElFTkSuQmCC")
     }
 
     private static var availableLabels: [[String: Any]] {

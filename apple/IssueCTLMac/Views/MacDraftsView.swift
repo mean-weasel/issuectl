@@ -1,4 +1,7 @@
+import AppKit
+import ImageIO
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MacDraftsView: View {
     @Environment(APIClient.self) private var api
@@ -80,11 +83,11 @@ struct MacDraftsView: View {
                     try await api.repoLabels(owner: repo.owner, repo: repo.name)
                 }
             case .new:
-                DraftEditorSheet(mode: .new) { title, body, priority in
+                DraftEditorSheet(mode: .new, repos: store.repos) { title, body, priority in
                     try await store.createDraft(api: api, title: title, body: body, priority: priority)
                 }
             case .edit(let draft):
-                DraftEditorSheet(mode: .edit(draft)) { title, body, priority in
+                DraftEditorSheet(mode: .edit(draft), repos: store.repos) { title, body, priority in
                     try await store.updateDraft(api: api, id: draft.id, title: title, body: body, priority: priority)
                 }
             case .assign(let draft):
@@ -250,6 +253,7 @@ private struct DirectIssueCreateSheet: View {
     @State private var selectedLabels: Set<String> = []
     @State private var isLoadingLabels = false
     @State private var isCreating = false
+    @State private var isUploadingImage = false
     @State private var errorMessage: String?
 
     init(
@@ -319,6 +323,17 @@ private struct DirectIssueCreateSheet: View {
                     }
                     .accessibilityIdentifier("mac-quick-create-body-field")
 
+                if let selectedRepo {
+                    MacImageAttachmentButton(
+                        owner: selectedRepo.owner,
+                        repo: selectedRepo.name,
+                        accessibilityPrefix: "mac-quick-create",
+                        isUploading: $isUploadingImage
+                    ) { markdown in
+                        appendMarkdown(markdown, to: &bodyText)
+                    }
+                }
+
                 Picker("Priority", selection: $priority) {
                     Text("Low").tag(Priority.low)
                     Text("Normal").tag(Priority.normal)
@@ -371,7 +386,7 @@ private struct DirectIssueCreateSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(isCreating || selectedRepo == nil || trimmedTitle.isEmpty)
+                .disabled(isCreating || isUploadingImage || selectedRepo == nil || trimmedTitle.isEmpty)
                 .accessibilityIdentifier("mac-quick-create-submit-button")
             }
         }
@@ -619,17 +634,22 @@ private struct DraftEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: DraftEditorMode
+    let repos: [Repo]
     let onSave: (String, String?, Priority) async throws -> Void
 
     @State private var title: String
     @State private var bodyText: String
+    @State private var attachmentRepoId: Int?
     @State private var priority: Priority
     @State private var isSaving = false
+    @State private var isUploadingImage = false
     @State private var errorMessage: String?
 
-    init(mode: DraftEditorMode, onSave: @escaping (String, String?, Priority) async throws -> Void) {
+    init(mode: DraftEditorMode, repos: [Repo], onSave: @escaping (String, String?, Priority) async throws -> Void) {
         self.mode = mode
+        self.repos = repos
         self.onSave = onSave
+        _attachmentRepoId = State(initialValue: repos.first?.id)
 
         switch mode {
         case .new:
@@ -641,6 +661,11 @@ private struct DraftEditorSheet: View {
             _bodyText = State(initialValue: draft.body ?? "")
             _priority = State(initialValue: draft.priority ?? .normal)
         }
+    }
+
+    private var attachmentRepo: Repo? {
+        guard let attachmentRepoId else { return nil }
+        return repos.first { $0.id == attachmentRepoId }
     }
 
     var body: some View {
@@ -679,6 +704,34 @@ private struct DraftEditorSheet: View {
                     }
             }
 
+            if !repos.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Attachments")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Picker("Upload to", selection: $attachmentRepoId) {
+                            ForEach(repos) { repo in
+                                Text(repo.fullName).tag(Optional(repo.id))
+                            }
+                        }
+                        .frame(maxWidth: 260)
+                        .accessibilityIdentifier("mac-draft-attachment-repo-picker")
+
+                        if let attachmentRepo {
+                            MacImageAttachmentButton(
+                                owner: attachmentRepo.owner,
+                                repo: attachmentRepo.name,
+                                accessibilityPrefix: "mac-draft",
+                                isUploading: $isUploadingImage
+                            ) { markdown in
+                                appendMarkdown(markdown, to: &bodyText)
+                            }
+                        }
+                    }
+                }
+            }
+
             Picker("Priority", selection: $priority) {
                 ForEach(Priority.allCases, id: \.self) { priority in
                     Text(priority.displayName).tag(priority)
@@ -713,7 +766,7 @@ private struct DraftEditorSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(isSaving || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(isSaving || isUploadingImage || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding(20)
@@ -735,6 +788,146 @@ private struct DraftEditorSheet: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+struct MacImageAttachmentButton: View {
+    @Environment(APIClient.self) private var api
+
+    let owner: String
+    let repo: String
+    let accessibilityPrefix: String
+    @Binding var isUploading: Bool
+    let onUpload: (String) -> Void
+
+    @State private var errorMessage: String?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                Task { await chooseAndUploadImage() }
+            } label: {
+                if isUploading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Label("Attach Image", systemImage: "photo")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isUploading)
+            .accessibilityIdentifier("\(accessibilityPrefix)-image-attachment-button")
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("\(accessibilityPrefix)-image-attachment-error")
+            }
+        }
+    }
+
+    @MainActor
+    private func chooseAndUploadImage() async {
+        errorMessage = nil
+
+        if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_API"] == "1" {
+            await uploadFixtureImage()
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            await uploadImageData(data)
+        } catch {
+            errorMessage = "Could not load image"
+        }
+    }
+
+    private func uploadFixtureImage() async {
+        if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_IMAGE_UPLOAD_FAILURE"] == "1" {
+            isUploading = true
+            try? await Task.sleep(for: .milliseconds(150))
+            errorMessage = "Upload failed"
+            isUploading = false
+            return
+        }
+
+        await uploadImageData(MacImageAttachmentProcessor.fixturePNGData)
+    }
+
+    private func uploadImageData(_ data: Data) async {
+        let trace = PerformanceTrace.begin("mac_image_attachment.upload", metadata: "repo=\(owner)/\(repo)")
+        isUploading = true
+        errorMessage = nil
+        defer {
+            PerformanceTrace.end(trace, metadata: "success=\(errorMessage == nil)")
+            isUploading = false
+        }
+
+        do {
+            let imageData = try await MacImageAttachmentProcessor.preparedJPEGData(from: data)
+            let url = try await api.uploadImageData(imageData, owner: owner, repo: repo)
+            onUpload("![image](\(url))")
+        } catch MacImageAttachmentProcessor.ProcessingError.invalidImage {
+            errorMessage = "Invalid image data"
+        } catch {
+            errorMessage = "Upload failed"
+        }
+    }
+}
+
+enum MacImageAttachmentProcessor {
+    enum ProcessingError: Error {
+        case invalidImage
+    }
+
+    static let fixturePNGData = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAAqADAAQAAAABAAAAAgAAAADtGLyqAAAAEklEQVQIHWP8DwQMQMAEIkAAAD34BACALvQ5AAAAAElFTkSuQmCC")!
+
+    private static let maxPixelSize = 1_600
+    private static let compressionQuality: CGFloat = 0.8
+
+    static func preparedJPEGData(from data: Data) async throws -> Data {
+        try await Task.detached(priority: .userInitiated) {
+            guard let imageSource = CGImageSourceCreateWithData(data as CFData, [
+                kCGImageSourceShouldCache: false,
+            ] as CFDictionary) else {
+                throw ProcessingError.invalidImage
+            }
+
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            ]
+
+            guard let cgImage = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary) else {
+                throw ProcessingError.invalidImage
+            }
+
+            let bitmap = NSBitmapImageRep(cgImage: cgImage)
+            guard let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality]) else {
+                throw ProcessingError.invalidImage
+            }
+            return jpegData
+        }.value
+    }
+}
+
+func appendMarkdown(_ markdown: String, to text: inout String) {
+    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        text = markdown
+    } else {
+        text += "\n\n\(markdown)"
     }
 }
 
