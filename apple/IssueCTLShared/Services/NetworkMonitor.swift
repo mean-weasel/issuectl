@@ -38,6 +38,11 @@ final class NetworkMonitor {
     }
 
     init() {
+        if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE"] == "1" {
+            isConnected = false
+            connectionType = .unknown
+            return
+        }
         startMonitoring()
     }
 

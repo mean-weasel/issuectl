@@ -490,9 +490,9 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 "error": NSNull(),
             ]
         case ("GET", "/api/v1/issues/org/alpha"):
-            return ["issues": issues, "from_cache": false, "cached_at": NSNull()]
+            return issuesResponse(issues)
         case ("GET", "/api/v1/issues/org/beta"):
-            return ["issues": betaIssues, "from_cache": false, "cached_at": NSNull()]
+            return issuesResponse(betaIssues)
         case ("GET", "/api/v1/pulls/org/alpha"):
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULLS_FAILURE"] == "1" {
                 return ["error": "Fixture pulls failed"]
@@ -1016,9 +1016,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 ],
             ],
             "referencedFiles": ["Sources/Alpha.swift"],
-            "fromCache": false,
-            "cachedAt": NSNull(),
-        ]
+        ].merging(cacheMetadata()) { _, new in new }
     }
 
     private static func runningIssueDetail() -> [String: Any] {
@@ -1132,6 +1130,18 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
 
     private static var isoDate: String {
         "2026-05-14T00:00:00Z"
+    }
+
+    private static func cacheMetadata() -> [String: Any] {
+        let isCached = ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_CACHED_DATA"] == "1"
+        return [
+            "from_cache": isCached,
+            "cached_at": isCached ? isoDate : NSNull(),
+        ]
+    }
+
+    private static func issuesResponse(_ issues: [[String: Any]]) -> [String: Any] {
+        ["issues": issues].merging(cacheMetadata()) { _, new in new }
     }
 
     private static func jsonData(_ object: Any) -> Data {

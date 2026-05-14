@@ -67,6 +67,9 @@ struct MacIssueDetailView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                     Divider()
+                    if let detail {
+                        cacheIndicator(for: detail)
+                    }
 
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
@@ -685,6 +688,28 @@ struct MacIssueDetailView: View {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    @ViewBuilder
+    private func cacheIndicator(for detail: IssueDetailResponse) -> some View {
+        if detail.fromCache {
+            Label(MacCacheIndicatorModel.cachedBannerText(kind: "issue detail", cachedAt: detail.cachedAt), systemImage: "externaldrive.badge.clock")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.10))
+                .accessibilityIdentifier("mac-issue-detail-cached-banner")
+        } else if let updatedText = MacCacheIndicatorModel.updatedText(cachedAt: detail.cachedAt) {
+            Text(updatedText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .accessibilityIdentifier("mac-issue-detail-cache-age")
         }
     }
 

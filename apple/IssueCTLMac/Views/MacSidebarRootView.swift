@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MacSidebarRootView: View {
     @Environment(APIClient.self) private var api
+    @Environment(NetworkMonitor.self) private var network
     @Environment(SidebarChromeState.self) private var chrome
     @Environment(MacSidebarPreferences.self) private var preferences
     @Environment(MacSidebarDisplayPreferences.self) private var displayPreferences
@@ -193,6 +194,9 @@ struct MacSidebarRootView: View {
     private var dashboard: some View {
         VStack(spacing: 0) {
             dashboardToolbar
+            if !network.isConnected {
+                offlineBanner
+            }
             if let errorMessage = store.errorMessage {
                 MacRecoveryBanner(
                     message: errorMessage,
@@ -232,6 +236,22 @@ struct MacSidebarRootView: View {
         .task {
             await store.load(api: api, refresh: false)
         }
+    }
+
+    private var offlineBanner: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Label("Offline - showing cached data when available", systemImage: "wifi.slash")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
+        .accessibilityIdentifier("mac-sidebar-offline-banner")
     }
 
     private var dashboardToolbar: some View {

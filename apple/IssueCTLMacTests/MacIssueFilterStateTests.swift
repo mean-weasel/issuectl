@@ -239,6 +239,42 @@ final class MacIssueFilterStateTests: XCTestCase {
         }
     }
 
+    func testMacCacheIndicatorFormatsAgeBuckets() {
+        let now = Date(timeIntervalSince1970: 3_600)
+
+        XCTAssertEqual(
+            MacCacheIndicatorModel.cacheAgeText(cachedAt: Date(timeIntervalSince1970: 3_575), now: now),
+            "just now"
+        )
+        XCTAssertEqual(
+            MacCacheIndicatorModel.cacheAgeText(cachedAt: Date(timeIntervalSince1970: 3_000), now: now),
+            "10m ago"
+        )
+        XCTAssertEqual(
+            MacCacheIndicatorModel.cacheAgeText(cachedAt: Date(timeIntervalSince1970: 0), now: now),
+            "1h ago"
+        )
+        XCTAssertEqual(
+            MacCacheIndicatorModel.cacheAgeText(cachedAt: Date(timeIntervalSince1970: -86_400), now: now),
+            "1d ago"
+        )
+    }
+
+    func testMacCacheIndicatorBuildsBannerAndUpdatedCopy() {
+        let now = Date(timeIntervalSince1970: 3_600)
+        let cachedAt = "1970-01-01T00:50:00Z"
+
+        XCTAssertEqual(
+            MacCacheIndicatorModel.cachedBannerText(kind: "issues", cachedAt: cachedAt, now: now),
+            "Showing cached issues from 10m ago"
+        )
+        XCTAssertEqual(
+            MacCacheIndicatorModel.updatedText(cachedAt: cachedAt, now: now),
+            "Updated 10m ago"
+        )
+        XCTAssertNil(MacCacheIndicatorModel.updatedText(cachedAt: nil, now: now))
+    }
+
     func testMacParseReviewStateAutoSelectsConfidentRepoAndAcceptedIssues() {
         let state = MacParseReviewState(parsedIssues: [
             parsedIssue(id: "parsed-1", owner: "mean-weasel", repo: "issuectl", confidence: 0.9),

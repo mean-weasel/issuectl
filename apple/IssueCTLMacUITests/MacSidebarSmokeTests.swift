@@ -80,6 +80,21 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testIssueCacheAndOfflineIndicators() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_CACHED_DATA"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE"] = "1"
+        app.launch()
+
+        XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-sidebar-offline-banner"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issues-cached-banner"].waitForExistence(timeout: 5), app.debugDescription)
+
+        issueRow("org/alpha", 1).click()
+        XCTAssertTrue(app.buttons["mac-issue-detail-edit-button"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-cached-banner"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testPullRequestListFiltersPaginatesAndOpensDetail() {
         selectRootSection("PRs")
 
