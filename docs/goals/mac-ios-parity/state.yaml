@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T014
+active_task: T015
 
 tasks:
   - id: T001
@@ -441,7 +441,7 @@ tasks:
   - id: T014
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: default
     objective: "Update PR #423 with the resolved Mac Settings UI evidence, mark it ready if no new blocker is present, and merge it into the integration branch under the documented no-CI replacement validation."
     inputs:
@@ -456,6 +456,74 @@ tasks:
       - "PR #423 marked ready and merged, or blocked with a concrete reason."
       - "Updated board receipt."
       - "Next active PR-sized parity slice."
+    receipt:
+      result: done
+      decision: merged
+      full_outcome_complete: false
+      note: "notes/T014-pr423-merged.md"
+      pr:
+        number: 423
+        url: "https://github.com/mean-weasel/issuectl/pull/423"
+        branch: "mac-parity-phase-1-repos"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "d2cd6b86dca2cf79f92b2230ef1b74567550091f"
+        merge_commit: "48a3550bb20fab24cd675b4f512a47cef60d8f1b"
+        merged_at: "2026-05-14T15:14:55Z"
+        checks: "No checks reported."
+      summary: "Marked PR #423 ready and merged it into the integration branch using the recorded local-validation replacement gate."
+      next_task: T015
+
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 2 Connection And Mac Settings Hub Parity as the next PR-sized slice from mac-sidebar-spaces-option-a."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-2-connection-and-mac-settings-hub-parity"
+      - "T014 receipt"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Platform/LocalIssueCTLConnection.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Settings.swift"
+    constraints:
+      - "Create a child branch from mac-sidebar-spaces-option-a and open a draft PR early."
+      - "Preserve local token auto-connect from issuectl web."
+      - "Keep Mac-only sidebar settings working."
+      - "Do not remove the Phase 1 native repository settings."
+      - "Split the phase only if the advanced settings surface becomes too large for one reviewable PR."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Platform/LocalIssueCTLConnection.swift"
+      - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLTests/APIClientTests.swift"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Settings.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLShared/Models/**"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,OS=18.6,name=iPhone 16' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Backend settings APIs do not support required Phase 2 fields."
+      - "Need to change backend routes or schema."
+      - "Mac UI test harness regresses to hanging."
+      - "Advanced settings scope becomes too large for one reviewable PR."
     receipt: null
 
   - id: T999
