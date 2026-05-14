@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T062
+active_task: T063
 
 tasks:
   - id: T001
@@ -3217,7 +3217,7 @@ tasks:
   - id: T062
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #442 Phase 9B offline queue foundation for acceptance coverage, GitHub check state, merge readiness, and next Phase 9 slice selection."
     inputs:
@@ -3234,6 +3234,83 @@ tasks:
       - "PR check state and local replacement validation."
       - "Merge result or required fixes."
       - "Next PR-sized parity task."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T062-pr442-merge-and-phase-9c.md"
+      pr:
+        number: 442
+        url: "https://github.com/mean-weasel/issuectl/pull/442"
+        branch: "mac-parity-phase-9b-offline-queue"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "510223c0a533b6a01837728293dd4373ac7259dc"
+        merge_commit_sha: "b05421175375367decd76fa03cdd7abb9cb1a3aa"
+        merged_at: "2026-05-14T22:24:15Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-9b-offline-queue branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "IssueCTLTests/OfflineSyncServiceTests: 8 tests passed"
+          - "IssueCTLMacTests/MacIssueFilterStateTests: 24 tests passed"
+          - "MacSidebarSmokeTests focused queue/settings tests: 2 tests passed"
+          - "MacSidebarSmokeTests full suite: 37 tests passed"
+      selected_worker: "T063"
+      selected_slice: "Phase 9C Offline Queue Hardening And Dogfood"
+      summary: "Marked PR #442 ready, accepted local replacement validation because no GitHub checks were configured, merged Phase 9B into mac-sidebar-spaces-option-a, and selected a Phase 9C hardening slice before moving to notifications."
+
+  - id: T063
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 9C Mac offline queue hardening and dogfood evidence: add deterministic Mac-specific coverage for queue visibility/actions and replay behavior, improve settings accessibility for queue rows if needed, and record dogfood steps for stopping/restarting the local web server."
+    inputs:
+      - "T062 receipt"
+      - "T061 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 9"
+      - "apple/IssueCTL/Services/OfflineSyncService.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+    constraints:
+      - "Start from a fresh branch off mac-sidebar-spaces-option-a and open a draft PR before broad implementation."
+      - "Do not add notifications or Today work in this slice."
+      - "Do not broaden queueable operations beyond issue comments and close/reopen state changes unless a Judge explicitly approves it."
+      - "Prefer deterministic fixture-backed Mac tests over brittle accessibility assumptions."
+      - "If settings queue summary remains inaccessible, add a small stable test hook or unit-level projection instead of hiding the risk."
+      - "Record branch, PR URL, local validation, CI state, dogfood status, and merge readiness before merge."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLTests/OfflineSyncServiceTests.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Mac settings queue visibility is covered by deterministic test evidence."
+      - "Sync, retry failed, clear failed, and remove controls have deterministic coverage at UI or unit projection level."
+      - "A queued Mac issue comment or state action replays successfully when the fixture/server returns."
+      - "Failed queued actions preserve visible error details and can be retried or removed."
+      - "Non-queueable Mac issue/PR actions are confirmed not to enter the offline queue."
+      - "Dogfood notes describe stop web, queue action, restart web, and confirm sync behavior, or record a concrete blocker."
+    verify:
+      - "git diff --check"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9c-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+    stop_if:
+      - "Mac settings queue visibility cannot be tested without a broad settings architecture rewrite."
+      - "Replay verification requires destructive real GitHub operations instead of local fixture behavior."
+      - "Dogfood requires credentials or machine state not available in this run."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
