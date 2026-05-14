@@ -59,6 +59,8 @@ struct MacSettingsView: View {
 
                 worktreesSection
 
+                notificationsSection
+
                 Section("Mac Sidebar") {
                     Toggle("Launch at Login", isOn: launchAtLoginBinding)
                         .disabled(isUpdatingLaunchAtLogin)
@@ -493,6 +495,33 @@ struct MacSettingsView: View {
                     }
                 }
             }
+        }
+    }
+
+    private var notificationsSection: some View {
+        let projection = MacNotificationUnavailableProjection()
+
+        return Section("Notifications") {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: projection.iconName)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(projection.title)
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("mac-settings-notifications-title")
+                    Text(projection.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("mac-settings-notifications-message")
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(projection.accessibilityLabel)
+            .accessibilityIdentifier("mac-settings-notifications-unavailable")
         }
     }
 
@@ -1259,6 +1288,16 @@ struct MacOfflineQueueActionProjection: Equatable {
         case .failed:
             .orange
         }
+    }
+}
+
+struct MacNotificationUnavailableProjection: Equatable {
+    let title = "Notifications are iOS-only for now"
+    let message = "Mac push registration is deferred while backend platform support is tracked in issue #444."
+    let iconName = "bell.slash"
+
+    var accessibilityLabel: String {
+        "\(title), \(message)"
     }
 }
 

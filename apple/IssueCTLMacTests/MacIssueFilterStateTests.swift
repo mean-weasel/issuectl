@@ -243,6 +243,15 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertTrue(failedState.accessibilityLabel.contains("GitHub rejected the state change"))
     }
 
+    func testMacNotificationUnavailableProjectionDocumentsDeferredPath() {
+        let projection = MacNotificationUnavailableProjection()
+
+        XCTAssertEqual(projection.title, "Notifications are iOS-only for now")
+        XCTAssertEqual(projection.iconName, "bell.slash")
+        XCTAssertTrue(projection.message.contains("issue #444"))
+        XCTAssertTrue(projection.accessibilityLabel.contains("backend platform support"))
+    }
+
     func testMacOfflineSyncServiceReplaysAndControlsQueue() async throws {
         let store = OfflineActionQueueStore(defaults: defaults)
         store.enqueueIssueComment(
