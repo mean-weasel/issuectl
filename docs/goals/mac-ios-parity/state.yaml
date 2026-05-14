@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T058
+active_task: T059
 
 tasks:
   - id: T001
@@ -2944,7 +2944,7 @@ tasks:
   - id: T058
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Choose the next safe PR-sized parity slice after Phase 8D, likely the first Phase 9 offline/cache/reliability slice unless a smaller prerequisite is safer."
     inputs:
@@ -2963,6 +2963,67 @@ tasks:
       - "PR branch/base strategy."
       - "Acceptance evidence and validation commands."
       - "Stop conditions and excluded scope."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T058-next-phase-9a-cache-visibility.md"
+      selected_worker: "T059"
+      selected_slice: "Phase 9A Mac Cache And Offline Visibility"
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-9a-cache-visibility"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      summary: "Approved a narrow Phase 9A slice for visible offline/network and cached-data indicators before implementing offline mutation queue/replay."
+
+  - id: T059
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 9A Mac cache/offline visibility: show network/offline status in the Mac sidebar, surface cached-data and cache-age indicators for issue list and issue detail, preserve existing PR/session cache banners, and add deterministic tests for cache age formatting and cached/offline UI."
+    inputs:
+      - "T058 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 9"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLShared/Services/NetworkMonitor.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+    constraints:
+      - "Open a draft PR early from mac-parity-phase-9a-cache-visibility into mac-sidebar-spaces-option-a."
+      - "Keep this slice to visibility and formatting; do not implement offline action queue, replay, settings queue management, notifications, or Today."
+      - "Use existing API fromCache/cachedAt metadata and NetworkMonitor where available."
+      - "If backend fixture support is needed for cached responses, keep it local to Mac UI fixture routes."
+      - "Record local validation, CI state, and any dogfood evidence before merge."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLShared/Services/NetworkMonitor.swift"
+      - "apple/IssueCTLShared/Models/**"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9a-cache -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9a-cache -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+    stop_if:
+      - "Accurate issue detail cache indicators require backend/API contract changes outside existing fromCache/cachedAt fields."
+      - "NetworkMonitor cannot be observed in the Mac sidebar without broader coordinator architecture changes."
+      - "Offline queue/replay work becomes necessary to make the visibility slice coherent."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
