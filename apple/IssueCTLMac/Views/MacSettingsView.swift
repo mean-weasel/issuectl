@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct MacSettingsView: View {
@@ -55,6 +56,15 @@ struct MacSettingsView: View {
                 }
             }
 
+            Section("Repositories") {
+                Text("Tracked repositories are managed in web settings.")
+                    .foregroundStyle(.secondary)
+
+                Button("Open Web Settings") {
+                    openWebSettings()
+                }
+            }
+
             Section("Learned Desktops") {
                 if sidebarCoordinator.spaceStates.isEmpty {
                     Text("No desktops learned yet")
@@ -71,7 +81,8 @@ struct MacSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420)
+        .frame(width: 460)
+        .frame(minHeight: 560)
         .padding()
         .accessibilityIdentifier("mac-settings-view")
         .task {
@@ -97,6 +108,13 @@ struct MacSettingsView: View {
             get: { preferences.textScale },
             set: { preferences.textScale = MacSidebarPreferences.clampedTextScale($0) }
         )
+    }
+
+    private func openWebSettings() {
+        let baseURL = api.serverURL.isEmpty ? "http://localhost:3847" : api.serverURL
+        let trimmedBaseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let url = URL(string: "\(trimmedBaseURL)/settings") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func spaceSettingsRow(_ spaceState: MacSidebarSpaceState) -> some View {

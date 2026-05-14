@@ -148,9 +148,15 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
                 self?.resetSidebarLayout()
             }
         let hostingController = NSHostingController(rootView: settingsView)
-        let window = NSWindow(contentViewController: hostingController)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 640),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = hostingController
         window.title = "IssueCTL Settings"
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.minSize = NSSize(width: 480, height: 520)
         window.isReleasedWhenClosed = false
         window.center()
         return NSWindowController(window: window)
