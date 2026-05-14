@@ -500,8 +500,8 @@ struct MacSettingsView: View {
         GroupBox("Offline Queue") {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Image(systemName: offlineSync.failedCount > 0 ? "exclamationmark.arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath")
-                    Text("\(offlineSync.pendingCount) pending, \(offlineSync.failedCount) failed")
+                    Image(systemName: MacOfflineQueueSummaryProjection(pendingCount: offlineSync.pendingCount, failedCount: offlineSync.failedCount).iconName)
+                    Text(MacOfflineQueueSummaryProjection(pendingCount: offlineSync.pendingCount, failedCount: offlineSync.failedCount).text)
                         .accessibilityIdentifier("mac-settings-offline-queue-summary")
 
                     Spacer()
@@ -551,6 +551,7 @@ struct MacSettingsView: View {
                 }
             }
         }
+        .accessibilityIdentifier("mac-settings-offline-queue-section")
     }
 
     private var staleWorktrees: [WorktreeInfo] {
@@ -1151,21 +1152,25 @@ private struct MacOfflineQueueRow: View {
     let action: QueuedOfflineAction
     let onRemove: () -> Void
 
+    private var projection: MacOfflineQueueActionProjection {
+        MacOfflineQueueActionProjection(action: action)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: iconName)
-                .foregroundStyle(statusColor)
+            Image(systemName: projection.iconName)
+                .foregroundStyle(projection.statusColor)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(projection.title)
                     .font(.subheadline.weight(.medium))
-                Text(detail)
+                Text(projection.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
 
-                if let lastError = action.lastError, !lastError.isEmpty {
+                if let lastError = projection.lastError {
                     Text(lastError)
                         .font(.caption)
                         .foregroundStyle(.orange)
@@ -1184,10 +1189,29 @@ private struct MacOfflineQueueRow: View {
             .help("Remove queued action")
             .accessibilityIdentifier("mac-settings-offline-queue-remove-\(action.id)")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(projection.accessibilityLabel)
         .accessibilityIdentifier("mac-settings-offline-queue-row-\(action.id)")
     }
+}
 
-    private var title: String {
+struct MacOfflineQueueSummaryProjection: Equatable {
+    let pendingCount: Int
+    let failedCount: Int
+
+    var text: String {
+        "\(pendingCount) pending, \(failedCount) failed"
+    }
+
+    var iconName: String {
+        failedCount > 0 ? "exclamationmark.arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath"
+    }
+}
+
+struct MacOfflineQueueActionProjection: Equatable {
+    let action: QueuedOfflineAction
+
+    var title: String {
         switch action.kind {
         case .issueComment(let comment):
             "Comment on \(comment.owner)/\(comment.repo)#\(comment.issueNumber)"
@@ -1196,12 +1220,26 @@ private struct MacOfflineQueueRow: View {
         }
     }
 
-    private var detail: String {
+    var detail: String {
         let status = action.status.rawValue
         return "\(status) - queued \(action.createdAt)"
     }
 
-    private var iconName: String {
+    var lastError: String? {
+        guard let lastError = action.lastError, !lastError.isEmpty else {
+            return nil
+        }
+        return lastError
+    }
+
+    var accessibilityLabel: String {
+        if let lastError {
+            return "\(title), \(detail), \(lastError)"
+        }
+        return "\(title), \(detail)"
+    }
+
+    var iconName: String {
         switch action.status {
         case .pending:
             "clock.arrow.circlepath"
@@ -1212,7 +1250,7 @@ private struct MacOfflineQueueRow: View {
         }
     }
 
-    private var statusColor: Color {
+    var statusColor: Color {
         switch action.status {
         case .pending:
             .secondary

@@ -221,6 +221,98 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertThrowsError(try MacRepoNameInput.parse("mean-weasel/issuectl/extra"))
     }
 
+    func testMacOfflineQueueSummaryAndRowsExposeActionDetails() {
+        let pendingSummary = MacOfflineQueueSummaryProjection(pendingCount: 2, failedCount: 0)
+        XCTAssertEqual(pendingSummary.text, "2 pending, 0 failed")
+        XCTAssertEqual(pendingSummary.iconName, "arrow.triangle.2.circlepath")
+
+        let failedSummary = MacOfflineQueueSummaryProjection(pendingCount: 1, failedCount: 1)
+        XCTAssertEqual(failedSummary.text, "1 pending, 1 failed")
+        XCTAssertEqual(failedSummary.iconName, "exclamationmark.arrow.triangle.2.circlepath")
+
+        let comment = MacOfflineQueueActionProjection(action: queuedComment(status: .pending))
+        XCTAssertEqual(comment.title, "Comment on org/alpha#1")
+        XCTAssertTrue(comment.detail.contains("pending - queued 2026-05-14T00:00:00Z"))
+        XCTAssertNil(comment.lastError)
+        XCTAssertEqual(comment.iconName, "clock.arrow.circlepath")
+
+        let failedState = MacOfflineQueueActionProjection(action: queuedState(status: .failed, lastError: "GitHub rejected the state change"))
+        XCTAssertEqual(failedState.title, "Close org/alpha#1")
+        XCTAssertEqual(failedState.lastError, "GitHub rejected the state change")
+        XCTAssertEqual(failedState.iconName, "exclamationmark.triangle")
+        XCTAssertTrue(failedState.accessibilityLabel.contains("GitHub rejected the state change"))
+    }
+
+    func testMacOfflineSyncServiceReplaysAndControlsQueue() async throws {
+        let store = OfflineActionQueueStore(defaults: defaults)
+        store.enqueueIssueComment(
+            owner: "org",
+            repo: "alpha",
+            issueNumber: 1,
+            body: "Queued from Mac",
+            id: "comment-1",
+            now: Date(timeIntervalSince1970: 0)
+        )
+        store.enqueueIssueState(
+            owner: "org",
+            repo: "alpha",
+            issueNumber: 1,
+            state: "closed",
+            comment: "Close from Mac",
+            id: "state-1",
+            now: Date(timeIntervalSince1970: 1)
+        )
+        let client = MacOfflineQueueFakeClient(
+            commentResponses: [.success(IssueCommentResponse(success: true, commentId: 501, error: nil))],
+            stateResponses: [.success(IssueStateResponse(success: true, commentPosted: true, error: nil))]
+        )
+        let service = OfflineSyncService(store: store, client: client)
+
+        let result = await service.syncPendingActions()
+
+        XCTAssertEqual(result.attempted, 2)
+        XCTAssertEqual(result.completed, 2)
+        XCTAssertEqual(result.failed, 0)
+        XCTAssertTrue(store.allActions().isEmpty)
+        XCTAssertEqual(client.requests, [
+            .comment(owner: "org", repo: "alpha", number: 1, body: "Queued from Mac"),
+            .state(owner: "org", repo: "alpha", number: 1, state: "closed", comment: "Close from Mac"),
+        ])
+    }
+
+    func testMacOfflineSyncRetryClearAndRemoveControlsMutateQueue() throws {
+        let store = OfflineActionQueueStore(defaults: defaults)
+        store.enqueueIssueComment(
+            owner: "org",
+            repo: "alpha",
+            issueNumber: 1,
+            body: "Queued from Mac",
+            id: "comment-1",
+            now: Date(timeIntervalSince1970: 0)
+        )
+        store.markFailed(id: "comment-1", error: "network unavailable", now: Date(timeIntervalSince1970: 1))
+        let service = OfflineSyncService(store: store, client: MacOfflineQueueFakeClient())
+
+        service.retryFailedActions()
+
+        XCTAssertEqual(service.pendingCount, 1)
+        XCTAssertEqual(service.failedCount, 0)
+        XCTAssertEqual(store.allActions().first?.lastError, "network unavailable")
+
+        store.markFailed(id: "comment-1", error: "still offline", now: Date(timeIntervalSince1970: 2))
+        service.refreshCounts()
+        XCTAssertEqual(service.failedCount, 1)
+
+        service.clearFailedActions()
+        XCTAssertTrue(service.actions.isEmpty)
+
+        service.enqueueIssueState(owner: "org", repo: "alpha", issueNumber: 1, state: "open")
+        let actionID = try XCTUnwrap(service.actions.first?.id)
+        service.removeAction(id: actionID)
+
+        XCTAssertTrue(service.actions.isEmpty)
+    }
+
     func testMacImageAttachmentProcessorPreparesFixtureJPEGData() async throws {
         let data = try await MacImageAttachmentProcessor.preparedJPEGData(from: MacImageAttachmentProcessor.fixturePNGData)
 
@@ -578,5 +670,86 @@ final class MacIssueFilterStateTests: XCTestCase {
             owner: owner,
             repoName: repo
         )
+    }
+
+    private func queuedComment(status: OfflineActionStatus, lastError: String? = nil) -> QueuedOfflineAction {
+        QueuedOfflineAction(
+            id: "comment-1",
+            kind: .issueComment(IssueCommentOfflineAction(
+                owner: "org",
+                repo: "alpha",
+                issueNumber: 1,
+                body: "Queued from Mac"
+            )),
+            status: status,
+            retryCount: status == .failed ? 1 : 0,
+            lastError: lastError,
+            createdAt: "2026-05-14T00:00:00Z",
+            updatedAt: "2026-05-14T00:00:00Z"
+        )
+    }
+
+    private func queuedState(status: OfflineActionStatus, lastError: String? = nil) -> QueuedOfflineAction {
+        QueuedOfflineAction(
+            id: "state-1",
+            kind: .issueState(IssueStateOfflineAction(
+                owner: "org",
+                repo: "alpha",
+                issueNumber: 1,
+                state: "closed",
+                comment: "Close from Mac"
+            )),
+            status: status,
+            retryCount: status == .failed ? 1 : 0,
+            lastError: lastError,
+            createdAt: "2026-05-14T00:00:00Z",
+            updatedAt: "2026-05-14T00:00:00Z"
+        )
+    }
+}
+
+private enum MacOfflineQueueFakeRequest: Equatable {
+    case comment(owner: String, repo: String, number: Int, body: String)
+    case state(owner: String, repo: String, number: Int, state: String, comment: String?)
+}
+
+@MainActor
+private final class MacOfflineQueueFakeClient: OfflineIssueCommentPosting, OfflineIssueStateUpdating {
+    private var commentResponses: [Result<IssueCommentResponse, Error>]
+    private var stateResponses: [Result<IssueStateResponse, Error>]
+    private(set) var requests: [MacOfflineQueueFakeRequest] = []
+
+    init(
+        commentResponses: [Result<IssueCommentResponse, Error>] = [],
+        stateResponses: [Result<IssueStateResponse, Error>] = []
+    ) {
+        self.commentResponses = commentResponses
+        self.stateResponses = stateResponses
+    }
+
+    func commentOnIssue(
+        owner: String,
+        repo: String,
+        number: Int,
+        body: IssueCommentRequestBody
+    ) async throws -> IssueCommentResponse {
+        requests.append(.comment(owner: owner, repo: repo, number: number, body: body.body))
+        guard !commentResponses.isEmpty else {
+            return IssueCommentResponse(success: true, commentId: nil, error: nil)
+        }
+        return try commentResponses.removeFirst().get()
+    }
+
+    func updateIssueState(
+        owner: String,
+        repo: String,
+        number: Int,
+        body: IssueStateRequestBody
+    ) async throws -> IssueStateResponse {
+        requests.append(.state(owner: owner, repo: repo, number: number, state: body.state, comment: body.comment))
+        guard !stateResponses.isEmpty else {
+            return IssueStateResponse(success: true, commentPosted: nil, error: nil)
+        }
+        return try stateResponses.removeFirst().get()
     }
 }

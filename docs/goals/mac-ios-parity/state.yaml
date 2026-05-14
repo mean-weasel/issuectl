@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T063
+active_task: T064
 
 tasks:
   - id: T001
@@ -3264,7 +3264,7 @@ tasks:
   - id: T063
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 9C Mac offline queue hardening and dogfood evidence: add deterministic Mac-specific coverage for queue visibility/actions and replay behavior, improve settings accessibility for queue rows if needed, and record dogfood steps for stopping/restarting the local web server."
     inputs:
@@ -3311,6 +3311,64 @@ tasks:
       - "Replay verification requires destructive real GitHub operations instead of local fixture behavior."
       - "Dogfood requires credentials or machine state not available in this run."
       - "Local validation fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      note: "notes/T063-phase-9c-offline-queue-hardening.md"
+      pr:
+        number: 443
+        url: "https://github.com/mean-weasel/issuectl/pull/443"
+        branch: "mac-parity-phase-9c-offline-queue-hardening"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha_before_receipt: "f1e62caadfe9821d58f130818a7f4e0cb9661c9d"
+        draft: true
+        merge_state: "CLEAN"
+        checks: "No checks reported."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      acceptance_evidence:
+        - "Mac settings queue visibility covered by MacSidebarSmokeTests/testSettingsShowsSeededOfflineQueue."
+        - "Sync, retry failed, clear failed, and remove controls covered by MacIssueFilterStateTests queue tests."
+        - "Queued Mac comment and state replay covered by MacOfflineSyncService replay test."
+        - "Failed queued action visible details covered by MacOfflineQueueActionProjection tests."
+        - "Full Mac sidebar smoke suite continued to cover non-queueable issue/PR action behavior."
+      dogfood:
+        status: replacement_evidence
+        note: "Real stop-web/restart-web dogfood was not performed to avoid disrupting the user's local machine session; deterministic UI fixture and sync replay tests are recorded as replacement evidence."
+      validation:
+        - "git diff --check: pass"
+        - "pnpm typecheck: pass"
+        - "pnpm lint: pass with existing warnings only"
+        - "Focused Phase 9C Mac tests: 3 unit tests and 1 UI test passed"
+        - "IssueCTLMacTests/MacIssueFilterStateTests: 27 tests passed"
+        - "IssueCTLTests/OfflineSyncServiceTests: 8 tests passed"
+        - "IssueCTLMacUITests/MacSidebarSmokeTests: 38 tests passed"
+      summary: "Added deterministic Mac offline queue projections, accessibility hooks, unit replay/control coverage, and a seeded Settings queue UI test in draft PR #443."
+
+  - id: T064
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #443 Phase 9C offline queue hardening for acceptance coverage, dogfood replacement adequacy, GitHub check state, merge readiness, and the next Phase 10 notification slice."
+    inputs:
+      - "T063 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/443"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 9 and Phase 10"
+    constraints:
+      - "Do not implement."
+      - "Decide whether replacement evidence is sufficient or real stop-web dogfood is required before merge."
+      - "Merge only if PR checks are green, or if no checks are configured and local validation from T063 is accepted as replacement evidence."
+      - "If merge-ready, mark the PR ready, merge into mac-sidebar-spaces-option-a, record the merge commit, and choose the next safe PR-sized slice."
+      - "Do not mark the overall goal complete."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "PR check state and local replacement validation."
+      - "Dogfood adequacy decision."
+      - "Merge result or required fixes."
+      - "Next PR-sized parity task."
     receipt: null
 
   - id: T999
@@ -3340,11 +3398,12 @@ checks:
   dirty_fingerprint: unknown
   last_verification:
     result: pass
-    task: T061
+    task: T063
     commands:
       - "git diff --check"
       - "pnpm typecheck"
       - "pnpm lint"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9b-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacOfflineQueueSummaryAndRowsExposeActionDetails -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacOfflineSyncServiceReplaysAndControlsQueue -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacOfflineSyncRetryClearAndRemoveControlsMutateQueue -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsSeededOfflineQueue"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9c-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"

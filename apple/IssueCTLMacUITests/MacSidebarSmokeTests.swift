@@ -875,6 +875,22 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.buttons["Cancel"].click()
     }
 
+    func testSettingsShowsSeededOfflineQueue() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE_QUEUE"] = "1"
+        app.launch()
+
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-offline-queue-summary"].waitForExistence(timeout: 5), app.debugDescription)
+        let removeQueuedAction = app.buttons
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "mac-settings-offline-queue-remove-"))
+            .firstMatch
+        XCTAssertTrue(removeQueuedAction.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-settings-offline-queue-sync-button"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-settings-offline-queue-empty"].exists, app.debugDescription)
+    }
+
     func testSettingsShowsConnectionAndSavesAdvancedSettings() {
         openSettings()
 
