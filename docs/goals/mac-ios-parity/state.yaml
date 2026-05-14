@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T030
+active_task: T031
 
 tasks:
   - id: T001
@@ -1384,7 +1384,7 @@ tasks:
   - id: T030
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 6B Mac direct quick issue creation from the sidebar: create an issue without first creating a draft, with repo, title/body, priority, labels, failure preservation, and issue refresh/selection where feasible."
     inputs:
@@ -1434,6 +1434,67 @@ tasks:
       - "Direct issue creation requires backend endpoints not present in shared API/client fixtures."
       - "Image upload or parse scope becomes necessary to safely complete direct creation."
       - "Required files fall outside the allowed scope."
+    receipt:
+      result: done
+      note: "notes/T030-phase-6b-quick-create.md"
+      pr:
+        number: 431
+        url: "https://github.com/mean-weasel/issuectl/pull/431"
+        branch: "mac-parity-phase-6b-quick-create"
+        base: "mac-sidebar-spaces-option-a"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase6b-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testQuickCreateIssueWithLabelsRefreshesIssues -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testQuickCreateFailurePreservesInput"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-tests-derived -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-api-derived -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+      acceptance:
+        - "Direct Mac quick creation works without first creating or assigning a visible draft."
+        - "The flow supports tracked repo, title/body, priority, and labels loaded for the selected repo."
+        - "Successful creation refreshes issues and shows created issue org/alpha#89."
+        - "Failed creation preserves the entered title and selected label while showing a recoverable error."
+        - "Existing draft and sidebar workflows remain covered by the full MacSidebarSmokeTests suite."
+      warnings:
+        - "pnpm lint passed with existing warnings."
+      summary: "Implemented direct Mac quick issue creation from the Drafts sidebar surface with repo/priority/label inputs, refresh behavior, failure preservation, and UI fixture coverage."
+
+  - id: T031
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #431 for Phase 6B acceptance coverage, GitHub/check status, merge readiness, and the next Phase 6 slice."
+    inputs:
+      - "T030 receipt"
+      - "PR #431 diff and metadata"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not merge red CI without an explicit recorded exception."
+      - "If GitHub reports no configured checks, document the accepted local validation replacement gate before merge."
+      - "Reject merge if quick-create success, label selection, issue refresh, or failure preservation acceptance criteria are missing."
+      - "Preserve PR-sized slices and size image upload or AI parse/batch creation separately."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance coverage map."
+      - "CI or accepted replacement validation status."
+      - "Merge decision."
+      - "Next task recommendation."
     receipt: null
 
   - id: T999

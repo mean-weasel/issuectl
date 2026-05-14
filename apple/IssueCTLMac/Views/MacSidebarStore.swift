@@ -129,6 +129,31 @@ final class MacSidebarStore {
         await refreshDrafts(api: api)
     }
 
+    func createIssue(
+        api: APIClient,
+        title: String,
+        body: String?,
+        priority: Priority,
+        repo: Repo,
+        labels: [String]
+    ) async throws -> AssignDraftResponse {
+        let createResponse = try await api.createDraft(
+            body: CreateDraftRequestBody(title: title, body: body, priority: priority)
+        )
+        guard createResponse.success, let draftId = createResponse.id else {
+            throw MacSidebarStoreError.operationFailed(createResponse.error ?? "Failed to create issue")
+        }
+        let assignResponse = try await api.assignDraftWithLabels(
+            id: draftId,
+            body: AssignDraftWithLabelsRequestBody(repoId: repo.id, labels: labels.isEmpty ? nil : labels)
+        )
+        guard assignResponse.success else {
+            throw MacSidebarStoreError.operationFailed(assignResponse.error ?? "Failed to create issue")
+        }
+        await load(api: api, refresh: true)
+        return assignResponse
+    }
+
     func updateDraft(api: APIClient, id: String, title: String, body: String?, priority: Priority) async throws {
         let response = try await api.updateDraft(
             id: id,

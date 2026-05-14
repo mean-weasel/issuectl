@@ -290,6 +290,11 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["previews": []]
         case ("GET", "/api/v1/drafts"):
             return ["drafts": drafts]
+        case ("POST", "/api/v1/drafts"):
+            let payload = jsonBody(from: request)
+            quickCreatedIssueTitle = payload["title"] as? String ?? "Untitled quick issue"
+            quickCreatedIssueBody = payload["body"] as? String
+            return ["success": true, "id": "quick-draft-1", "error": NSNull()]
         case ("POST", "/api/v1/drafts/draft-1/assign"):
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_DRAFT_ASSIGN_FAILURE"] == "1" {
                 return ["success": false, "error": "Fixture draft assignment failed"]
@@ -300,6 +305,20 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 "success": true,
                 "issue_number": 88,
                 "issue_url": "https://github.com/org/alpha/issues/88",
+                "cleanup_warning": NSNull(),
+                "labels_warning": NSNull(),
+                "error": NSNull(),
+            ]
+        case ("POST", "/api/v1/drafts/quick-draft-1/assign"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_QUICK_CREATE_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture quick create failed"]
+            }
+            quickCreatedIssueLabels = jsonBody(from: request)["labels"] as? [String] ?? []
+            quickCreatedIssueNumber = 89
+            return [
+                "success": true,
+                "issue_number": 89,
+                "issue_url": "https://github.com/org/alpha/issues/89",
                 "cleanup_warning": NSNull(),
                 "labels_warning": NSNull(),
                 "error": NSNull(),
@@ -449,6 +468,10 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var reassignedIssueNumber: Int?
     nonisolated(unsafe) private static var draftAssignedIssueNumber: Int?
     nonisolated(unsafe) private static var draftAssignmentLabels: [String] = []
+    nonisolated(unsafe) private static var quickCreatedIssueNumber: Int?
+    nonisolated(unsafe) private static var quickCreatedIssueTitle = "Quick created issue"
+    nonisolated(unsafe) private static var quickCreatedIssueBody: String?
+    nonisolated(unsafe) private static var quickCreatedIssueLabels: [String] = []
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
@@ -473,7 +496,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
             issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
             issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
-        ] + assignedDraftIssues + (5...55).map { number in
+        ] + assignedDraftIssues + quickCreatedIssues + (5...55).map { number in
             issue(
                 number: number,
                 title: "Paged issue \(number)",
@@ -484,6 +507,22 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 updatedAt: String(format: "2026-05-13T%02d:00:00.000Z", number % 24)
             )
         }
+    }
+
+    private static var quickCreatedIssues: [[String: Any]] {
+        guard let quickCreatedIssueNumber else { return [] }
+        return [
+            issue(
+                number: quickCreatedIssueNumber,
+                title: quickCreatedIssueTitle,
+                body: quickCreatedIssueBody ?? "",
+                state: "open",
+                labels: quickCreatedIssueLabels,
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: "2026-05-14T16:00:00.000Z"
+            ),
+        ]
     }
 
     private static var assignedDraftIssues: [[String: Any]] {
