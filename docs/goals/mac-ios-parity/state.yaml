@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T040
+active_task: T041
 
 tasks:
   - id: T001
@@ -2005,7 +2005,7 @@ tasks:
   - id: T040
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Choose the next safe Mac iOS parity slice after Phase 7A PR browse/detail has merged."
     inputs:
@@ -2024,6 +2024,75 @@ tasks:
       - "PR branch/base strategy."
       - "Allowed files and verification commands."
       - "Risks or excluded follow-up scope."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T040-next-phase-7b-slice.md"
+      next_worker: T041
+      worker_objective: "Implement Phase 7B Mac PR detail actions: comment, approve, request changes, and merge methods from the detail sheet."
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-7b-pr-actions"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      excluded_from_next_slice:
+        - "List-row or swipe merge actions."
+        - "Linked issue navigation from PR detail into Mac issue detail."
+        - "Issue linked-context navigation back to PR detail."
+      allowed_files_for_t041:
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/**"
+        - "apple/IssueCTLMacUITests/**"
+        - "docs/goals/mac-ios-parity/**"
+      summary: "Selected a bounded Phase 7B PR detail action slice after Phase 7A browse/detail merged."
+
+  - id: T041
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 7B Mac PR detail actions: comment, approve, request changes, and merge methods from the Mac PR detail sheet."
+    inputs:
+      - "T040 receipt"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTL/Views/PullRequests/PRDetailView.swift"
+      - "apple/IssueCTL/Views/PullRequests/CommentSheet.swift"
+      - "apple/IssueCTL/Views/PullRequests/RequestChangesSheet.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLShared/Models/PullRequest.swift"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR before implementation."
+      - "Use shared PR action APIs: mergePull, reviewPull, and commentOnPull."
+      - "Keep actions on PR detail; do not add list swipe actions in this slice."
+      - "Preserve typed comment/request-changes text across failed submissions."
+      - "Refresh PR detail after successful actions where practical."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Open PR detail exposes Comment, Approve, Request Changes, and Merge actions for open unmerged PRs."
+      - "Comment action posts body through the shared PR comment endpoint and refreshes detail or shows success."
+      - "Approve action posts an APPROVE review through the shared PR review endpoint and refreshes detail or shows success."
+      - "Request Changes action requires text, posts REQUEST_CHANGES through the shared PR review endpoint, and preserves text on failure."
+      - "Merge action supports merge, squash, and rebase methods through the shared PR merge endpoint."
+      - "Failed PR actions show recoverable errors and preserve typed comment/request text."
+      - "Closed or merged PRs do not expose mutating actions."
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase7b-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase7b-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Shared PR action APIs require backend changes outside allowed files."
+      - "Action UI needs broad Mac navigation changes outside the PR detail surface."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
