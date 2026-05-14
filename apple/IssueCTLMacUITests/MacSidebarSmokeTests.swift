@@ -164,6 +164,32 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(successText.contains("org/beta#77"), "\(successText)\n\(app.debugDescription)")
     }
 
+    func testIssueDetailMarkdownImagesOpenLightbox() {
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+
+        let imageAttachment = app.descendants(matching: .any)["mac-issue-body-image-1"]
+        firstIssue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        if !imageAttachment.waitForExistence(timeout: 2) {
+            firstIssue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        }
+
+        XCTAssertTrue(imageAttachment.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertGreaterThan(imageAttachment.frame.height, 100, app.debugDescription)
+
+        imageAttachment.click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-image-lightbox-loaded-image"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-image-lightbox-close-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-image-lightbox-loaded-image"].waitForNonExistence(timeout: 5), app.debugDescription)
+
+        let missingImageAttachment = app.descendants(matching: .any)["mac-comment-102-image-1"]
+        XCTAssertTrue(missingImageAttachment.waitForExistence(timeout: 5), app.debugDescription)
+        missingImageAttachment.click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-image-lightbox-error"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-image-lightbox-close-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-image-lightbox-error"].waitForNonExistence(timeout: 5), app.debugDescription)
+    }
+
     func testStatusMenuOpensSettings() {
         openSettingsFromStatusMenu()
 

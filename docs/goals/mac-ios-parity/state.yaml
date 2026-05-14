@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T026
+active_task: T027
 
 tasks:
   - id: T001
@@ -1126,7 +1126,7 @@ tasks:
   - id: T026
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 5C Mac issue-detail markdown/image presentation and image lightbox support as a PR-sized slice."
     inputs:
@@ -1170,6 +1170,65 @@ tasks:
       - "Lightbox support requires large cross-platform renderer extraction outside this PR-sized slice."
       - "Remote image loading cannot be made deterministic enough for local UI validation without a fixture strategy."
       - "Required files fall outside the allowed scope."
+    receipt:
+      result: done
+      note: "notes/T026-phase-5c-markdown-lightbox.md"
+      pr:
+        number: 429
+        url: "https://github.com/mean-weasel/issuectl/pull/429"
+        branch: "mac-parity-phase-5c-markdown-lightbox"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending post-push review in T027."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase5c-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase5c-tests -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-phase5c-tests -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testIssueDetailMarkdownImagesOpenLightbox"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass_with_existing_warnings
+      acceptance:
+        - "Mac detail markdown image syntax is parsed into rendered image attachments for issue body and comments."
+        - "Loaded fixture image attachments open and dismiss a nonblank lightbox in UI automation."
+        - "Broken fixture image attachments open and dismiss a lightbox error state without crashing detail."
+        - "Existing Phase 5A/5B detail actions remained covered by the full MacSidebarSmokeTests suite."
+      summary: "Implemented Mac detail markdown image rendering and lightbox support with deterministic loaded/error UI automation coverage."
+
+  - id: T027
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #429 for Phase 5C acceptance coverage, GitHub/check status, merge readiness, and next-slice sizing."
+    inputs:
+      - "T026 receipt"
+      - "PR #429 diff and metadata"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not implement product changes unless a merge-blocking defect is found and can be fixed inside the current slice."
+      - "Reject merge if markdown/image/lightbox acceptance criteria are not covered."
+      - "If GitHub reports no configured checks, document the accepted local validation replacement gate before merge."
+      - "Preserve the PR-sized slice cadence and activate the next safe Worker only after merge or an explicit blocker."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance coverage map."
+      - "CI or accepted replacement validation status."
+      - "Merge decision."
+      - "Next task recommendation."
     receipt: null
 
   - id: T999
@@ -1198,8 +1257,13 @@ tasks:
 checks:
   dirty_fingerprint: unknown
   last_verification:
-    result: partial
-    task: T010
+    result: pass
+    task: T026
     commands:
       - "git diff --check"
-      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,OS=18.6,name=iPhone 16' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase5c-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase5c-tests -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-phase5c-tests -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
