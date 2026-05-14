@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T021
+active_task: T022
 
 tasks:
   - id: T001
@@ -836,7 +836,7 @@ tasks:
   - id: T021
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Size Phase 5 Issue Detail Action Parity into the next PR-sized slice with acceptance criteria, allowed files, validation commands, and merge gate."
     inputs:
@@ -856,6 +856,72 @@ tasks:
       - "PR branch/base strategy."
       - "Acceptance criteria evidence map for the chosen slice."
       - "allowed_files, verify commands, and stop_if conditions."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T021-phase-5-slice-plan.md"
+      summary: "Approved splitting Phase 5. The next PR-sized slice is Phase 5A: Mac issue-detail core actions and context display, deferring labels, assignees, reassign, and image lightbox to a follow-up slice."
+      branch_strategy:
+        worker_branch: "mac-parity-phase-5a-detail-core-actions"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      allowed_files_for_t022:
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/**"
+        - "apple/IssueCTLMacUITests/**"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "docs/goals/mac-ios-parity/**"
+      verify_for_t022:
+        - "git diff --check"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+        - "pnpm typecheck"
+        - "pnpm lint"
+      next_task: T022
+
+  - id: T022
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 5A Mac issue-detail core actions and context display as a PR-sized slice."
+    inputs:
+      - "T021 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "Relevant iOS detail action views"
+    constraints:
+      - "Open or update a draft PR early."
+      - "Keep changes within allowed_files."
+      - "Do not include labels, assignees, reassign, or image lightbox in this slice unless Judge scope is updated."
+      - "Record branch, PR URL, local validation, CI/check status, and merge readiness in the receipt."
+      - "Do not merge without green CI or a documented accepted replacement validation."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "API payloads required by the Mac action UI do not match shared API client methods."
+      - "UI tests cannot deterministically reach detail action controls after one stabilization attempt."
+      - "Implementing labels, assignees, reassign, or image lightbox becomes necessary to keep this PR coherent."
+      - "Any required files fall outside the allowed scope."
     receipt: null
 
   - id: T999
