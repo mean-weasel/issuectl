@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T031
+active_task: T032
 
 tasks:
   - id: T001
@@ -1477,7 +1477,7 @@ tasks:
   - id: T031
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #431 for Phase 6B acceptance coverage, GitHub/check status, merge readiness, and the next Phase 6 slice."
     inputs:
@@ -1495,6 +1495,76 @@ tasks:
       - "CI or accepted replacement validation status."
       - "Merge decision."
       - "Next task recommendation."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T031-pr431-merged-and-phase-6c.md"
+      pr:
+        number: 431
+        url: "https://github.com/mean-weasel/issuectl/pull/431"
+        branch: "mac-parity-phase-6b-quick-create"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "941a17fb6839b9f2ac117bbc17a309c5afd151b0"
+        merge_commit: "87524eeccca48d58ad09faf5544d6b204ac414ad"
+        merged_at: "2026-05-14T18:06:12Z"
+        checks: "No checks reported."
+      accepted_replacement_validation: "Local validation from T030 covered the Phase 6B acceptance map; GitHub reported no configured checks or workflow runs."
+      summary: "Marked PR #431 ready, accepted the documented local validation gate, squash-merged it into the integration branch, and sized Phase 6C as Mac image attachment upload for creation and comment/editing workflows."
+      next_task: T032
+
+  - id: T032
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 6C Mac image attachment upload for creation and comment/editing workflows, matching the iOS shared image upload behavior where practical."
+    inputs:
+      - "T031 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-6-draft-quick-create-image-attachment-and-parse-workflows"
+      - "apple/IssueCTL/Views/Issues/QuickCreateSheet.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Drafts.swift"
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "Mac UI fixture API"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR before implementation."
+      - "Keep this slice focused on image upload and markdown insertion; do not implement AI parse/batch create in this PR."
+      - "Use shared upload APIs/types where available; add only narrowly scoped Mac helpers if needed."
+      - "Support upload progress, invalid image/upload failure errors, and preservation of existing editor content."
+      - "Do not disturb existing quick-create, draft, comment, and lightbox behavior."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Drafts.swift"
+      - "apple/IssueCTLShared/Models/Issue.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "A Mac user can attach an image while creating a direct issue or draft, and the uploaded image markdown is inserted into the editor body."
+      - "A Mac user can attach an image while adding or editing a comment, and the uploaded image markdown is inserted into the comment editor."
+      - "The UI shows upload progress and disables duplicate submit/upload actions while upload is in flight."
+      - "Invalid image selection or upload failure shows a recoverable error and preserves existing title/body/comment text."
+      - "Existing markdown rendering and image lightbox behavior still works for uploaded image markdown."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "The backend image upload API is missing or incompatible with Mac sandboxed file access."
+      - "Required file-picker automation cannot be tested deterministically; record a replacement fixture strategy before continuing."
+      - "Required files fall outside the allowed scope."
     receipt: null
 
   - id: T999
