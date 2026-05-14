@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T055
+active_task: T056
 
 tasks:
   - id: T001
@@ -2797,7 +2797,7 @@ tasks:
   - id: T055
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Choose the next safe Phase 8 slice after launch readiness merged, likely embedded Mac terminal window parity unless a smaller prerequisite is safer."
     inputs:
@@ -2811,6 +2811,60 @@ tasks:
       - "Do not implement inside the judge task."
       - "Prefer a PR-sized slice that closes embedded terminal-window parity without mixing unrelated later phases."
       - "Define branch/base, allowed files, verification commands, dogfood evidence, and excluded follow-up scope."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T055-next-phase-8d-terminal-slice.md"
+      selected_worker: "T056"
+      selected_slice: "Phase 8D Embedded Mac Terminal Window"
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-8d-terminal-window"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      summary: "Approved a bounded embedded Mac terminal window slice using existing ensure-ttyd, terminal URL, session duration, and end-session infrastructure."
+
+  - id: T056
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 8D embedded terminal parity for the Mac app: a native embedded terminal surface from issue detail and Active Sessions backed by ensure-ttyd, with loading/error states, text-size control, reconnect/respawn, visible duration, and end-session control."
+    inputs:
+      - "T055 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 8"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "Existing Mac terminal access and end-session tests"
+    constraints:
+      - "Open a draft PR early from mac-parity-phase-8d-terminal-window into mac-sidebar-spaces-option-a."
+      - "Keep the slice focused on embedded terminal window parity and terminal controls."
+      - "Reuse the existing ensure-ttyd/token URL path instead of introducing a custom terminal emulator."
+      - "Do not include offline/cache, notifications, Today extension, or per-Space filter work."
+      - "Record local validation, CI state, and dogfood evidence before merge."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8d-terminal -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8d-terminal -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+    stop_if:
+      - "Embedding WKWebView requires broad app architecture changes outside the allowed files."
+      - "A backend API contract change is required beyond existing ensure-ttyd/end-session semantics."
+      - "Terminal UI automation cannot deterministically observe the embedded surface or controls after two focused attempts."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
