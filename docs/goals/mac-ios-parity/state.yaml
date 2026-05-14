@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T025
+active_task: T026
 
 tasks:
   - id: T001
@@ -1087,7 +1087,7 @@ tasks:
   - id: T025
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review Phase 5B PR #428 for CI/merge readiness, merge it if green or accepted replacement validation applies, and size the next parity slice."
     inputs:
@@ -1105,6 +1105,71 @@ tasks:
       - "CI or accepted replacement validation status."
       - "Merge result when ready."
       - "Next task recommendation and allowed scope."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T025-pr428-merged-and-phase-5c.md"
+      pr:
+        number: 428
+        url: "https://github.com/mean-weasel/issuectl/pull/428"
+        branch: "mac-parity-phase-5b-detail-management"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "301bfd071d00931ce6408924e4fef9bef104368d"
+        merge_commit: "ea23e13457a891a8e361d36bdbef8f5dbc10ebaf"
+        merged_at: "2026-05-14T17:12:32Z"
+        checks: "No checks reported."
+      accepted_replacement_validation: "Local validation from T024 covered the Phase 5B acceptance map; GitHub reported no configured checks."
+      summary: "Marked PR #428 ready, accepted the documented local validation gate, squash-merged it into the integration branch, and sized Phase 5C as markdown/image presentation plus image lightbox support."
+      next_task: T026
+
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 5C Mac issue-detail markdown/image presentation and image lightbox support as a PR-sized slice."
+    inputs:
+      - "T025 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
+      - "apple/IssueCTL/Views/Shared/ImageLightbox.swift"
+      - "apple/IssueCTL/Views/Shared/MarkdownView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "Mac issue-detail fixture data and UI tests"
+    constraints:
+      - "Open or update a draft PR early."
+      - "Keep the slice focused on rendered markdown/image presentation and lightbox; do not start draft/create/parse parity."
+      - "Prefer shared rendering behavior where feasible, but avoid broad iOS refactors unless required for Mac compile or tests."
+      - "Preserve Phase 5A and 5B actions and state refresh behavior."
+      - "Record branch, PR URL, local validation, CI/check status, and merge readiness in the receipt."
+      - "Do not merge without green CI or a documented accepted replacement validation."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTL/Views/Shared/ImageLightbox.swift"
+      - "apple/IssueCTL/Views/Shared/MarkdownView.swift"
+      - "apple/IssueCTLShared/**"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Mac issue body and comments render markdown links instead of plain text where feasible."
+      - "Rendered image links in Mac issue body/comments are visually identifiable and can be opened in a lightbox."
+      - "The Mac lightbox supports close/dismiss and at least a nonblank loaded-image state in UI automation or deterministic view/unit coverage."
+      - "Broken/unsupported image URLs show a recoverable loading/error state without crashing detail."
+      - "Existing Phase 5A/5B actions remain available after rendering changes."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Lightbox support requires large cross-platform renderer extraction outside this PR-sized slice."
+      - "Remote image loading cannot be made deterministic enough for local UI validation without a fixture strategy."
+      - "Required files fall outside the allowed scope."
     receipt: null
 
   - id: T999
