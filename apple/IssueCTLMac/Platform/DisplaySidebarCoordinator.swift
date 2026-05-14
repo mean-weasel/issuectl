@@ -135,11 +135,13 @@ final class SpaceSidebarCoordinator {
         if controllers[state.id] == nil {
             let controller = makePanelController(for: state)
             controllers[state.id] = controller
-            if showNewPanel, state.preferences.isEnabled {
-                controller.show()
-            }
         } else {
             realignActiveSpacePanel()
+        }
+
+        hideInactivePanels(activeSpaceKey: state.id)
+        if showNewPanel, state.preferences.isEnabled {
+            controllers[state.id]?.show()
         }
     }
 
@@ -149,10 +151,18 @@ final class SpaceSidebarCoordinator {
     }
 
     func toggleVisibility(spaceKey: String) {
-        controllers[spaceKey]?.toggleVisibility()
+        guard let state = statesByKey[spaceKey], let controller = controllers[spaceKey] else { return }
+        if state.chrome.isVisible {
+            state.preferences.isEnabled = false
+            controller.hide()
+        } else {
+            state.preferences.isEnabled = true
+            controller.show()
+        }
     }
 
     func hide(spaceKey: String) {
+        statesByKey[spaceKey]?.preferences.isEnabled = false
         controllers[spaceKey]?.hide()
     }
 
@@ -186,11 +196,13 @@ final class SpaceSidebarCoordinator {
 
     func showCurrentSpace() {
         guard let state = currentSpaceState else { return }
+        state.preferences.isEnabled = true
         controllers[state.id]?.show()
     }
 
     func hideCurrentSpace() {
         guard let state = currentSpaceState else { return }
+        state.preferences.isEnabled = false
         controllers[state.id]?.hide()
     }
 
@@ -202,6 +214,12 @@ final class SpaceSidebarCoordinator {
     private func stateForActiveSpace() -> MacSidebarSpaceState? {
         spaceStates.first { state in
             state.anchorWindow.isOnActiveSpace || controllers[state.id]?.isOnActiveSpace == true
+        }
+    }
+
+    private func hideInactivePanels(activeSpaceKey: String) {
+        for (spaceKey, controller) in controllers where spaceKey != activeSpaceKey {
+            controller.hide()
         }
     }
 
