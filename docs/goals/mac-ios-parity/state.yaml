@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T064
+active_task: T065
 
 tasks:
   - id: T001
@@ -3350,7 +3350,7 @@ tasks:
   - id: T064
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #443 Phase 9C offline queue hardening for acceptance coverage, dogfood replacement adequacy, GitHub check state, merge readiness, and the next Phase 10 notification slice."
     inputs:
@@ -3369,6 +3369,57 @@ tasks:
       - "Dogfood adequacy decision."
       - "Merge result or required fixes."
       - "Next PR-sized parity task."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T064-pr443-merge-and-phase-10.md"
+      pr:
+        number: 443
+        url: "https://github.com/mean-weasel/issuectl/pull/443"
+        branch: "mac-parity-phase-9c-offline-queue-hardening"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "4062709233aa39b2f2d67e26346021572d0592e4"
+        merge_commit_sha: "69af7900cd5fdf0b5167f16d066b19b732652907"
+        merged_at: "2026-05-14T22:45:14Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-9c-offline-queue-hardening branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "Focused Phase 9C Mac tests: 3 unit tests and 1 UI test passed"
+          - "IssueCTLMacTests/MacIssueFilterStateTests: 27 tests passed"
+          - "IssueCTLTests/OfflineSyncServiceTests: 8 tests passed"
+          - "IssueCTLMacUITests/MacSidebarSmokeTests: 38 tests passed"
+      dogfood_decision: "Replacement evidence accepted because the active local dev server on :3847 made real stop-web/restart-web dogfood disruptive."
+      selected_worker: "T065"
+      selected_slice: "Phase 10 Notifications Decision Gate"
+      summary: "Marked PR #443 ready, accepted local replacement validation because no GitHub checks were configured, merged Phase 9C into mac-sidebar-spaces-option-a, and selected the Phase 10 notification decision gate."
+
+  - id: T065
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Decide the Phase 10 Mac notifications path before implementation: implement macOS notifications, keep notifications iOS-only with clear Mac settings copy, or defer with a linked backend/platform issue."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 10"
+      - "iOS notification implementation and settings surfaces"
+      - "Mac settings architecture"
+      - "Backend notification registration APIs"
+    constraints:
+      - "Do not implement product code in this decision task."
+      - "Document the selected path before any Phase 10 Worker starts."
+      - "If selecting implementation, define entitlement, permission, persistence, registration, unregister, backend-failure, and UI validation requirements."
+      - "If selecting iOS-only or defer, define exact Mac settings copy and tests proving no broken toggles are exposed."
+      - "Keep the next Worker PR-sized."
+    expected_output:
+      - "Decision: implement_macos_notifications | ios_only_copy | defer_with_issue | blocked."
+      - "Rationale and selected scope."
+      - "Allowed files for the next Worker."
+      - "Acceptance criteria and validation commands."
+      - "Stop conditions for the next Worker."
     receipt: null
 
   - id: T999
