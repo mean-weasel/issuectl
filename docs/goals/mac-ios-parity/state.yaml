@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T015
+active_task: T016
 
 tasks:
   - id: T001
@@ -476,7 +476,7 @@ tasks:
   - id: T015
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 2 Connection And Mac Settings Hub Parity as the next PR-sized slice from mac-sidebar-spaces-option-a."
     inputs:
@@ -524,6 +524,61 @@ tasks:
       - "Need to change backend routes or schema."
       - "Mac UI test harness regresses to hanging."
       - "Advanced settings scope becomes too large for one reviewable PR."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      note: "notes/T015-phase-2-settings-parity.md"
+      pr:
+        number: 424
+        url: "https://github.com/mean-weasel/issuectl/pull/424"
+        branch: "mac-parity-phase-2-settings"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Not monitored yet; PR remains draft pending review task."
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "apple/IssueCTLTests/APIClientTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+      warnings:
+        - "The iOS API test destination failed with a generic name/OS selector before passing with the concrete simulator id."
+        - "pnpm lint passed with pre-existing warnings."
+      summary: "Implemented native Mac connection status and editing, local reconnect/disconnect controls, shared advanced settings editing, fixture API support, and focused API/UI coverage for Phase 2."
+
+  - id: T016
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #424 Phase 2 for acceptance coverage, CI/check status, merge readiness, and next-slice sizing."
+    inputs:
+      - "T015 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/424"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-2-connection-and-mac-settings-hub-parity"
+    constraints:
+      - "Do not implement product changes unless review finds a small blocking fix."
+      - "Do not mark ready or merge if required acceptance criteria are missing."
+      - "If GitHub reports no checks, document the accepted local replacement gate before merge."
+      - "Choose the next PR-sized parity task after the PR is ready or merged."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance criteria evidence map."
+      - "CI or replacement validation status."
+      - "Merge recommendation and next active task."
     receipt: null
 
   - id: T999

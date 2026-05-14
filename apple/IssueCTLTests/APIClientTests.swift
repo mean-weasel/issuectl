@@ -133,6 +133,17 @@ final class TestableAPIClient {
         return repo
     }
 
+    func getSettings() async throws -> [String: String] {
+        let (data, _) = try await request(path: "/api/v1/settings")
+        return try decoder.decode(SettingsResponse.self, from: data).settings
+    }
+
+    func updateSettings(_ updates: [String: String]) async throws -> SuccessResponse {
+        let bodyData = try JSONEncoder().encode(updates)
+        let (data, _) = try await request(path: "/api/v1/settings", method: "PATCH", body: bodyData)
+        return try decoder.decode(SuccessResponse.self, from: data)
+    }
+
     func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
         var path = "/api/v1/issues/\(owner)/\(repo)"
         if refresh { path += "?refresh=true" }

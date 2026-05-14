@@ -55,6 +55,27 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.buttons["Cancel"].click()
     }
 
+    func testSettingsShowsConnectionAndSavesAdvancedSettings() {
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-connection-status"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-settings-edit-connection-button"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-settings-reconnect-local-button"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-settings-disconnect-button"].waitForExistence(timeout: 3), app.debugDescription)
+
+        let cacheTTL = app.textFields["mac-settings-cache-ttl-field"]
+        XCTAssertTrue(cacheTTL.waitForExistence(timeout: 5), app.debugDescription)
+        cacheTTL.click()
+        cacheTTL.typeKey("a", modifierFlags: .command)
+        cacheTTL.typeText("600")
+
+        let saveButton = app.buttons["mac-settings-save-advanced-button"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5), app.debugDescription)
+        saveButton.click()
+
+        XCTAssertFalse(app.descendants(matching: .any)["mac-settings-advanced-save-error"].waitForExistence(timeout: 1), app.debugDescription)
+    }
+
     private func openSettings() {
         let statusItem = app.statusItems["IssueCTL"].firstMatch
         XCTAssertTrue(statusItem.waitForExistence(timeout: 8), app.debugDescription)
