@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MacIssueDetailView: View {
     @Environment(APIClient.self) private var api
+    @Environment(OfflineSyncService.self) private var offlineSync
+    @Environment(NetworkMonitor.self) private var network
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
@@ -156,8 +158,7 @@ struct MacIssueDetailView: View {
         }
         .sheet(isPresented: $isShowingCloseWithComment) {
             MacCloseIssueSheet(issueNumber: issue.number, owner: item.repo.owner, repo: item.repo.name) { comment in
-                try await store.updateIssueState(api: api, item: item, state: "closed", comment: comment)
-                await load(refresh: true)
+                try await closeIssue(comment: comment)
                 isShowingCloseWithComment = false
             }
         }
@@ -736,7 +737,18 @@ struct MacIssueDetailView: View {
             commentBody = ""
             await load(refresh: true)
         } catch {
-            errorMessage = error.localizedDescription
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueComment(
+                    owner: item.repo.owner,
+                    repo: item.repo.name,
+                    issueNumber: item.issue.number,
+                    body: trimmed
+                )
+                commentBody = ""
+                successMessage = "Comment queued - will sync when you're back online"
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -749,7 +761,40 @@ struct MacIssueDetailView: View {
             try await store.updateIssueState(api: api, item: item, state: state)
             await load(refresh: true)
         } catch {
-            errorMessage = error.localizedDescription
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueState(
+                    owner: item.repo.owner,
+                    repo: item.repo.name,
+                    issueNumber: item.issue.number,
+                    state: state
+                )
+                successMessage = state == "closed"
+                    ? "Issue close queued - will sync when you're back online"
+                    : "Issue reopen queued - will sync when you're back online"
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func closeIssue(comment: String?) async throws {
+        errorMessage = nil
+        do {
+            try await store.updateIssueState(api: api, item: item, state: "closed", comment: comment)
+            await load(refresh: true)
+        } catch {
+            if isQueueableNetworkFailure(error, isConnected: network.isConnected) {
+                offlineSync.enqueueIssueState(
+                    owner: item.repo.owner,
+                    repo: item.repo.name,
+                    issueNumber: item.issue.number,
+                    state: "closed",
+                    comment: comment
+                )
+                successMessage = "Issue close queued - will sync when you're back online"
+            } else {
+                throw error
+            }
         }
     }
 

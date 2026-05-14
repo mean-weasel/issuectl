@@ -186,6 +186,7 @@
 		CA0880B76E28E6276050AEB3 /* IssueCTLMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AB7A2B9999184E67A3064A /* IssueCTLMacApp.swift */; };
 		CAB1C0D607788F1D1314C3E5 /* MacSidebarSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0E8C15D2965C1673B992B7 /* MacSidebarSmokeTests.swift */; };
 		CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
+		CB63E6EB1583F4E24A18E9B2 /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		CC16C63936A1F4ECDEB3133E /* NotificationPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2438738AD84484EC2E7B20C9 /* NotificationPreferences.swift */; };
 		CC83F861B2A764DB8AA4FC4A /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
 		CCD66F76181E54FD2700F813 /* MacSidebarPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C02C0464A65420CBD5D90E /* MacSidebarPreferencesTests.swift */; };
@@ -1307,6 +1308,7 @@
 				B4AF2A85F0768942BCD81D8C /* NetworkMonitor.swift in Sources */,
 				D9E454235B1E43451B1B9597 /* NotificationPreferences.swift in Sources */,
 				3F98C9896C5653D619ABA40F /* OfflineCacheStore.swift in Sources */,
+				CB63E6EB1583F4E24A18E9B2 /* OfflineSyncService.swift in Sources */,
 				74BBC81070D4A029011534E6 /* PerformanceTrace.swift in Sources */,
 				B3D5E3FD4EF67AE7FA0244FA /* PullRequest.swift in Sources */,
 				358CDAE5EB531763716F6364 /* PushDevice.swift in Sources */,

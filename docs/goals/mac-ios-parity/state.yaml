@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T061
+active_task: T062
 
 tasks:
   - id: T001
@@ -3111,7 +3111,7 @@ tasks:
   - id: T061
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 9B Mac offline queue foundation: wire the existing offline sync service into the Mac app, queue add-comment and close/reopen issue actions on queueable network failures, expose pending/failed queue status and basic sync/retry/clear/remove controls in Mac settings or issue surfaces, and add deterministic unit/UI tests for queue visibility and replay behavior."
     inputs:
@@ -3165,6 +3165,75 @@ tasks:
       - "Mock outage/replay tests require backend behavior not available in local fixture routes."
       - "Queue state management requires a larger settings architecture rewrite."
       - "Local validation fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T061-phase-9b-offline-queue.md"
+      pr:
+        number: 442
+        url: "https://github.com/mean-weasel/issuectl/pull/442"
+        branch: "mac-parity-phase-9b-offline-queue"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        head_sha: "See current PR head after receipt commit is pushed."
+      changed_files:
+        - "apple/IssueCTL.xcodeproj/project.pbxproj"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Platform/DisplaySidebarCoordinator.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      acceptance:
+        - "Mac app uses the existing OfflineSyncService instead of a second queue format."
+        - "Issue comments queue on queueable network failures."
+        - "Issue close/reopen actions queue on queueable network failures."
+        - "Mac settings exposes pending/failed queue status and sync/retry/clear/remove controls."
+        - "Non-queueable actions remain outside the offline queue slice."
+        - "Shared replay behavior remains covered by OfflineSyncServiceTests."
+      validation:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass_with_existing_warnings
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9b-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
+          status: pass
+          tests: 8
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+          status: pass
+          tests: 24
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testOfflineIssueCommentQueuesFromIssueDetail -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsNativeRepositoryManagement"
+          status: pass
+          tests: 2
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+          tests: 37
+      residual_risk:
+        - "Settings queue row visibility is implemented but not asserted by UI test because macOS accessibility did not reliably expose the queue summary during earlier attempts."
+      summary: "Wired Mac to the shared offline sync queue, queued issue comment and close/reopen actions on queueable failures, exposed queue controls in Mac settings, and validated with shared replay tests plus full Mac sidebar smoke coverage."
+
+  - id: T062
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #442 Phase 9B offline queue foundation for acceptance coverage, GitHub check state, merge readiness, and next Phase 9 slice selection."
+    inputs:
+      - "T061 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/442"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 9"
+    constraints:
+      - "Do not expand Phase 9B implementation scope."
+      - "Merge only if PR checks are green, or if no checks are configured and local validation from T061 is accepted as replacement evidence."
+      - "If merge-ready, mark the PR ready, merge into mac-sidebar-spaces-option-a, record the merge commit, and choose the next safe PR-sized slice."
+      - "Do not mark the overall goal complete."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "PR check state and local replacement validation."
+      - "Merge result or required fixes."
+      - "Next PR-sized parity task."
     receipt: null
 
   - id: T999
@@ -3194,11 +3263,11 @@ checks:
   dirty_fingerprint: unknown
   last_verification:
     result: pass
-    task: T059
+    task: T061
     commands:
       - "git diff --check"
       - "pnpm typecheck"
       - "pnpm lint"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9a-cache -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9a-cache -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testIssueCacheAndOfflineIndicators"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9a-cache -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9b-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"

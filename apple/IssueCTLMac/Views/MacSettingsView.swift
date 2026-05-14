@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MacSettingsView: View {
     @Environment(APIClient.self) private var api
+    @Environment(OfflineSyncService.self) private var offlineSync
     @Environment(MacSidebarPreferences.self) private var preferences
     @Environment(SpaceSidebarCoordinator.self) private var sidebarCoordinator
     @Environment(\.resetSidebarLayout) private var resetSidebarLayout
@@ -45,136 +46,141 @@ struct MacSettingsView: View {
     @State private var editingRepo: Repo?
     @State private var repoPendingRemoval: Repo?
     @State private var removingRepoFullName: String?
+    @State private var isSyncingOfflineQueue = false
 
     var body: some View {
-        Form {
-            connectionSection
+        VStack(alignment: .leading, spacing: 12) {
+            offlineQueueSection
 
-            advancedSettingsSection
+            Form {
+                connectionSection
 
-            worktreesSection
+                advancedSettingsSection
 
-            Section("Mac Sidebar") {
-                Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                    .disabled(isUpdatingLaunchAtLogin)
+                worktreesSection
 
-                if isUpdatingLaunchAtLogin {
-                    ProgressView()
-                        .controlSize(.small)
-                }
+                Section("Mac Sidebar") {
+                    Toggle("Launch at Login", isOn: launchAtLoginBinding)
+                        .disabled(isUpdatingLaunchAtLogin)
 
-                if let error = preferences.launchAtLoginError {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Text Size")
-                        Spacer()
-                        Text("\(Int(preferences.textScale * 100))%")
-                            .foregroundStyle(.secondary)
+                    if isUpdatingLaunchAtLogin {
+                        ProgressView()
+                            .controlSize(.small)
                     }
 
-                    Slider(
-                        value: textScaleBinding,
-                        in: MacSidebarPreferences.minimumTextScale...MacSidebarPreferences.maximumTextScale,
-                        step: 0.05
-                    )
-
-                    HStack {
-                        Text("Smaller")
-                        Spacer()
-                        Text("Larger")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("Repositories") {
-                HStack {
-                    Button {
-                        showAddRepo = true
-                    } label: {
-                        Label("Add Repository", systemImage: "plus")
-                    }
-                    .accessibilityIdentifier("mac-settings-add-repository-button")
-
-                    Spacer()
-
-                    Button {
-                        Task { await loadRepos(refresh: true) }
-                    } label: {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(isLoadingRepos)
-                    .accessibilityIdentifier("mac-settings-refresh-repositories-button")
-                }
-
-                if isLoadingRepos && repos.isEmpty {
-                    ProgressView("Loading repositories...")
-                        .accessibilityIdentifier("mac-settings-repositories-loading")
-                } else if let repoError, repos.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label(repoError, systemImage: "exclamationmark.triangle")
+                    if let error = preferences.launchAtLoginError {
+                        Text(error)
+                            .font(.caption)
                             .foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("mac-settings-repositories-error")
-                        Button("Retry") {
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Text Size")
+                            Spacer()
+                            Text("\(Int(preferences.textScale * 100))%")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Slider(
+                            value: textScaleBinding,
+                            in: MacSidebarPreferences.minimumTextScale...MacSidebarPreferences.maximumTextScale,
+                            step: 0.05
+                        )
+
+                        HStack {
+                            Text("Smaller")
+                            Spacer()
+                            Text("Larger")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Repositories") {
+                    HStack {
+                        Button {
+                            showAddRepo = true
+                        } label: {
+                            Label("Add Repository", systemImage: "plus")
+                        }
+                        .accessibilityIdentifier("mac-settings-add-repository-button")
+
+                        Spacer()
+
+                        Button {
                             Task { await loadRepos(refresh: true) }
+                        } label: {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                        }
+                        .disabled(isLoadingRepos)
+                        .accessibilityIdentifier("mac-settings-refresh-repositories-button")
+                    }
+
+                    if isLoadingRepos && repos.isEmpty {
+                        ProgressView("Loading repositories...")
+                            .accessibilityIdentifier("mac-settings-repositories-loading")
+                    } else if let repoError, repos.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(repoError, systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("mac-settings-repositories-error")
+                            Button("Retry") {
+                                Task { await loadRepos(refresh: true) }
+                            }
+                        }
+                    } else if repos.isEmpty {
+                        ContentUnavailableView(
+                            "No Repositories",
+                            systemImage: "folder",
+                            description: Text("Add a repo to populate sidebar issue filters.")
+                        )
+                        .accessibilityIdentifier("mac-settings-repositories-empty")
+                    } else {
+                        ForEach(repos) { repo in
+                            MacSettingsRepoRow(
+                                repo: repo,
+                                isRemoving: removingRepoFullName == repo.fullName,
+                                onEdit: { editingRepo = repo },
+                                onRemove: { repoPendingRemoval = repo }
+                            )
                         }
                     }
-                } else if repos.isEmpty {
-                    ContentUnavailableView(
-                        "No Repositories",
-                        systemImage: "folder",
-                        description: Text("Add a repo to populate sidebar issue filters.")
-                    )
-                    .accessibilityIdentifier("mac-settings-repositories-empty")
-                } else {
-                    ForEach(repos) { repo in
-                        MacSettingsRepoRow(
-                            repo: repo,
-                            isRemoving: removingRepoFullName == repo.fullName,
-                            onEdit: { editingRepo = repo },
-                            onRemove: { repoPendingRemoval = repo }
-                        )
+
+                    if let repoError, !repos.isEmpty {
+                        Label(repoError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("mac-settings-repositories-refresh-error")
+                    }
+
+                    Button("Open Web Settings") {
+                        openWebSettings()
+                    }
+                    .accessibilityIdentifier("mac-settings-open-web-settings-button")
+                }
+
+                Section("Learned Desktops") {
+                    if sidebarCoordinator.spaceStates.isEmpty {
+                        Text("No desktops learned yet")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(sidebarCoordinator.spaceStates, id: \.id) { spaceState in
+                            spaceSettingsRow(spaceState)
+                        }
+                    }
+
+                    Button("Reset All Desktop Sidebar Layouts") {
+                        resetSidebarLayout()
                     }
                 }
-
-                if let repoError, !repos.isEmpty {
-                    Label(repoError, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("mac-settings-repositories-refresh-error")
-                }
-
-                Button("Open Web Settings") {
-                    openWebSettings()
-                }
-                .accessibilityIdentifier("mac-settings-open-web-settings-button")
             }
-
-            Section("Learned Desktops") {
-                if sidebarCoordinator.spaceStates.isEmpty {
-                    Text("No desktops learned yet")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(sidebarCoordinator.spaceStates, id: \.id) { spaceState in
-                        spaceSettingsRow(spaceState)
-                    }
-                }
-
-                Button("Reset All Desktop Sidebar Layouts") {
-                    resetSidebarLayout()
-                }
-            }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
         .frame(width: 500)
         .frame(minHeight: 640)
         .padding()
@@ -490,6 +496,63 @@ struct MacSettingsView: View {
         }
     }
 
+    private var offlineQueueSection: some View {
+        GroupBox("Offline Queue") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: offlineSync.failedCount > 0 ? "exclamationmark.arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath")
+                    Text("\(offlineSync.pendingCount) pending, \(offlineSync.failedCount) failed")
+                        .accessibilityIdentifier("mac-settings-offline-queue-summary")
+
+                    Spacer()
+
+                    Button {
+                        Task { await syncOfflineQueue() }
+                    } label: {
+                        if isSyncingOfflineQueue || offlineSync.isSyncing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Label("Sync", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(isSyncingOfflineQueue || offlineSync.isSyncing || offlineSync.pendingCount == 0)
+                    .accessibilityIdentifier("mac-settings-offline-queue-sync-button")
+                }
+
+                if offlineSync.failedCount > 0 {
+                    HStack {
+                        Button {
+                            offlineSync.retryFailedActions()
+                        } label: {
+                            Label("Retry Failed", systemImage: "arrow.uturn.forward")
+                        }
+                        .accessibilityIdentifier("mac-settings-offline-queue-retry-failed-button")
+
+                        Button(role: .destructive) {
+                            offlineSync.clearFailedActions()
+                        } label: {
+                            Label("Clear Failed", systemImage: "trash")
+                        }
+                        .accessibilityIdentifier("mac-settings-offline-queue-clear-failed-button")
+                    }
+                }
+
+                if offlineSync.actions.isEmpty {
+                    Text("No queued actions")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("mac-settings-offline-queue-empty")
+                } else {
+                    ForEach(offlineSync.actions) { action in
+                        MacOfflineQueueRow(action: action) {
+                            offlineSync.removeAction(id: action.id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var staleWorktrees: [WorktreeInfo] {
         worktrees.filter(\.stale)
     }
@@ -556,6 +619,13 @@ struct MacSettingsView: View {
         async let advancedTask: () = loadAdvancedSettings()
         async let worktreesTask: () = loadWorktrees()
         _ = await (connectionTask, reposTask, advancedTask, worktreesTask)
+        offlineSync.refreshCounts()
+    }
+
+    private func syncOfflineQueue() async {
+        isSyncingOfflineQueue = true
+        defer { isSyncingOfflineQueue = false }
+        _ = await offlineSync.syncPendingActions()
     }
 
     private func loadConnectionStatus() async {
@@ -1074,6 +1144,83 @@ private struct MacSettingsWorktreeRow: View {
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("mac-settings-worktree-row-\(worktree.name)")
+    }
+}
+
+private struct MacOfflineQueueRow: View {
+    let action: QueuedOfflineAction
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: iconName)
+                .foregroundStyle(statusColor)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                if let lastError = action.lastError, !lastError.isEmpty {
+                    Text(lastError)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer()
+
+            Button(role: .destructive) {
+                onRemove()
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .help("Remove queued action")
+            .accessibilityIdentifier("mac-settings-offline-queue-remove-\(action.id)")
+        }
+        .accessibilityIdentifier("mac-settings-offline-queue-row-\(action.id)")
+    }
+
+    private var title: String {
+        switch action.kind {
+        case .issueComment(let comment):
+            "Comment on \(comment.owner)/\(comment.repo)#\(comment.issueNumber)"
+        case .issueState(let issueState):
+            "\(issueState.state == "closed" ? "Close" : "Reopen") \(issueState.owner)/\(issueState.repo)#\(issueState.issueNumber)"
+        }
+    }
+
+    private var detail: String {
+        let status = action.status.rawValue
+        return "\(status) - queued \(action.createdAt)"
+    }
+
+    private var iconName: String {
+        switch action.status {
+        case .pending:
+            "clock.arrow.circlepath"
+        case .inFlight:
+            "arrow.triangle.2.circlepath"
+        case .failed:
+            "exclamationmark.triangle"
+        }
+    }
+
+    private var statusColor: Color {
+        switch action.status {
+        case .pending:
+            .secondary
+        case .inFlight:
+            .blue
+        case .failed:
+            .orange
+        }
     }
 }
 
