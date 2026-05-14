@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T035
+active_task: T036
 
 tasks:
   - id: T001
@@ -1735,6 +1735,69 @@ tasks:
       - "The flow requires real Claude/GitHub calls for deterministic UI validation."
       - "Required files fall outside the allowed scope."
       - "Local validation fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T035-phase-6d-parse.md"
+      pr:
+        number: 433
+        url: "https://github.com/mean-weasel/issuectl/pull/433"
+        branch: "mac-parity-phase-6d-parse"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      acceptance:
+        - "Drafts surface opens the Mac parse flow."
+        - "Free-form input parses via the shared parse API with loading and errors."
+        - "Parsed issues can be accepted/rejected and repo-selected before creation."
+        - "Batch create submits only accepted reviewed issues."
+        - "Success and failure paths preserve or refresh state as appropriate."
+      validation:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase6d-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-tests-derived -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+          tests: 33
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+          tests: 20
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-api-derived -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+          tests: 37
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass_with_existing_warnings
+      summary: "Added a native Mac parse/review/create sheet from Drafts, deterministic parse/create fixture endpoints, unit coverage for review state, and UI coverage for successful creation plus create failure preservation."
+
+  - id: T036
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #433 for merge readiness, check CI/status, merge when acceptable, then record the merge receipt and select the next parity slice."
+    inputs:
+      - "T035 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/433"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+      - "docs/goals/mac-ios-parity/goal.md"
+    constraints:
+      - "Do not expand Phase 6D implementation scope."
+      - "Merge only if PR checks are green, or if no checks are configured and local validation from T035 is accepted as replacement evidence."
+      - "After merge, record PR number, merge commit, validation/check status, and next active task."
+      - "Do not mark the overall goal complete."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "PR check state."
+      - "Merge result or required fixes."
+      - "Next PR-sized parity task."
     receipt: null
 
   - id: T999

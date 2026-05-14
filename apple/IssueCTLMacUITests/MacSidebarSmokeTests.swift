@@ -321,6 +321,66 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(bugLabel.exists, app.debugDescription)
     }
 
+    func testParseIssuesCreatesAcceptedIssueAndRefreshesList() {
+        selectRootSection("Drafts")
+
+        app.buttons["mac-drafts-parse-ai-button"].click()
+        let input = app.textViews["mac-parse-input-field"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5), app.debugDescription)
+        input.click()
+        input.typeText("Fix parsed alpha bug\nDocument parsed beta workflow")
+
+        app.buttons["mac-parse-submit-button"].click()
+        let firstParsedIssue = app.descendants(matching: .any)["mac-parse-issue-parsed-1-title"]
+        XCTAssertTrue(firstParsedIssue.waitForExistence(timeout: 8), app.debugDescription)
+        let secondParsedIssue = app.descendants(matching: .any)["mac-parse-issue-parsed-2-title"]
+        XCTAssertTrue(secondParsedIssue.waitForExistence(timeout: 5), app.debugDescription)
+
+        let createButton = app.buttons["mac-parse-create-button"]
+        XCTAssertTrue(createButton.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(createButton.isEnabled, app.debugDescription)
+
+        app.buttons["mac-parse-issue-parsed-2-accept-toggle"].click()
+        XCTAssertTrue(createButton.isEnabled, app.debugDescription)
+        createButton.click()
+
+        let resultSummary = app.staticTexts["mac-parse-result-summary"]
+        XCTAssertTrue(resultSummary.waitForExistence(timeout: 5), app.debugDescription)
+        let resultText = (resultSummary.value as? String) ?? resultSummary.label
+        XCTAssertTrue(resultText.contains("1 issue created"), "\(resultText)\n\(app.debugDescription)")
+
+        app.buttons["mac-parse-done-button"].click()
+        XCTAssertTrue(input.waitForNonExistence(timeout: 5), app.debugDescription)
+
+        selectRootSection("Issues")
+        XCTAssertTrue(issueRow("org/alpha", 90).waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testParseCreateFailurePreservesReviewState() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_PARSE_CREATE_FAILURE"] = "1"
+        app.launch()
+
+        selectRootSection("Drafts")
+
+        app.buttons["mac-drafts-parse-ai-button"].click()
+        let input = app.textViews["mac-parse-input-field"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5), app.debugDescription)
+        input.click()
+        input.typeText("Fix parsed alpha bug")
+
+        app.buttons["mac-parse-submit-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-parse-issue-parsed-1-title"].waitForExistence(timeout: 8), app.debugDescription)
+        let secondParsedIssue = app.descendants(matching: .any)["mac-parse-issue-parsed-2-title"]
+        XCTAssertTrue(secondParsedIssue.waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-parse-issue-parsed-2-accept-toggle"].click()
+
+        app.buttons["mac-parse-create-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-parse-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-parse-issue-parsed-1-title"].exists, app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-parse-create-button"].exists, app.debugDescription)
+    }
+
     func testCommentImageAttachmentUploadsAndRenders() {
         let firstIssue = issueRow("org/alpha", 1)
         XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
