@@ -2573,8 +2573,9 @@ tasks:
         url: "https://github.com/mean-weasel/issuectl/pull/438"
         branch: "mac-parity-phase-8b-sessions"
         base: "mac-sidebar-spaces-option-a"
-        draft: true
-        merge_state: "pending push/check review"
+        draft: false
+        merge_state: "CLEAN"
+        checks: "No GitHub status checks reported on the pushed PR head."
       commands:
         - cmd: "git diff --check"
           status: pass
@@ -2597,6 +2598,39 @@ tasks:
         - "Rows support View Issue, Open Terminal through ensure-ttyd, and End Session with recoverable error display."
         - "Fixture-backed UI tests cover filtering, preview text, issue navigation, terminal open, successful end, and end failure recovery."
       summary: "Implemented Phase 8B Active Sessions parity: visible repo/search filters, preview-backed search, session preview loading, polling, issue navigation, ensure-ttyd terminal open, end-session recovery, fixture API routes, unit coverage, and full Mac smoke coverage."
+
+  - id: T051
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: low
+    objective: "Record the Phase 8B PR #438 merge into the integration branch."
+    inputs:
+      - "PR #438"
+      - "T050 receipt"
+    constraints:
+      - "Do not implement product changes."
+      - "Record CI or replacement validation used for the merge gate."
+    receipt:
+      result: done
+      note: "notes/T051-pr438-merge.md"
+      pr:
+        number: 438
+        url: "https://github.com/mean-weasel/issuectl/pull/438"
+        branch: "mac-parity-phase-8b-sessions"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "93fb9ffbe7bf60e5bbf77d825088deecf6e915b5"
+        merge_commit_sha: "48a70c4743daf4d7bd8632bde239553c8c4799f6"
+        merged_at: "2026-05-14T20:32:09Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-8b-sessions branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "MacIssueFilterStateTests full suite: 22 tests passed"
+          - "MacSidebarSmokeTests full suite: 29 tests passed"
+      summary: "Marked PR #438 ready, confirmed no GitHub checks were configured, and merged Phase 8B Mac Active Sessions parity into mac-sidebar-spaces-option-a."
 
   - id: T999
     type: judge
