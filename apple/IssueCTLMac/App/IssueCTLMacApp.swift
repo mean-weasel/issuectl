@@ -268,7 +268,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 ["owner": "org", "name": "gamma", "private": true, "pushed_at": isoDate],
             ], "synced_at": 1_775_000_000, "is_stale": false]
         case ("GET", "/api/v1/deployments"):
-            return ["deployments": [
+            return ["deployments": launchedDeployments + [
                 [
                     "id": 2,
                     "repo_id": 1,
@@ -286,6 +286,24 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                     "repo_name": "alpha",
                 ],
             ]]
+        case ("POST", "/api/v1/launch/org/alpha/1"):
+            let payload = jsonBody(from: request)
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CUSTOM_LAUNCH"] == "1" {
+                let selectedComments = payload["selectedCommentIndices"] as? [Int] ?? []
+                let selectedFiles = payload["selectedFilePaths"] as? [String] ?? []
+                guard payload["agent"] as? String == "claude",
+                      payload["workspaceMode"] as? String == "clone",
+                      payload["branchName"] as? String == "custom-mac-launch",
+                      selectedComments == [0],
+                      selectedFiles == ["Sources/Alpha.swift"],
+                      payload["preamble"] as? String == "Custom Mac preamble",
+                      payload["forceResume"] as? Bool == true else {
+                    return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture custom launch assertion failed", "label_warning": NSNull()]
+                }
+            }
+            let deploymentId = 700 + launchedDeployments.count
+            launchedDeployments.append(launchedDeployment(id: deploymentId, payload: payload))
+            return ["success": true, "deployment_id": deploymentId, "ttyd_port": NSNull(), "error": NSNull(), "label_warning": NSNull()]
         case ("GET", "/api/v1/sessions/previews"):
             return ["previews": []]
         case ("POST", "/api/v1/parse"):
@@ -601,6 +619,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var pullCommentBodies: [String] = []
     nonisolated(unsafe) private static var pullMerged = false
     nonisolated(unsafe) private static var pullMergeMethod: String?
+    nonisolated(unsafe) private static var launchedDeployments: [[String: Any]] = []
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
@@ -910,9 +929,28 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                     "checks_status": "success",
                 ],
             ],
-            "referencedFiles": [],
+            "referencedFiles": ["Sources/Alpha.swift"],
             "fromCache": false,
             "cachedAt": NSNull(),
+        ]
+    }
+
+    private static func launchedDeployment(id: Int, payload: [String: Any]) -> [String: Any] {
+        [
+            "id": id,
+            "repo_id": 1,
+            "issue_number": 1,
+            "branch_name": payload["branchName"] as? String ?? "issue-1-open-alpha-issue",
+            "workspace_mode": payload["workspaceMode"] as? String ?? "worktree",
+            "workspace_path": "/tmp/issuectl-launch-\(id)",
+            "linked_pr_number": NSNull(),
+            "state": "active",
+            "launched_at": isoDate,
+            "ended_at": NSNull(),
+            "ttyd_port": NSNull(),
+            "ttyd_pid": 3210 + id,
+            "owner": "org",
+            "repo_name": "alpha",
         ]
     }
 

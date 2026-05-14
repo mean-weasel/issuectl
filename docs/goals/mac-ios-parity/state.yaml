@@ -2351,7 +2351,7 @@ tasks:
   - id: T047
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 8A Mac launch options sheet and request construction while preserving one-click launch defaults."
     inputs:
@@ -2390,7 +2390,47 @@ tasks:
       - "Launch options require shared API/model changes outside allowed files."
       - "Dirty worktree checks require unimplemented backend behavior."
       - "Local validation fails twice for the same unexplained reason."
-    receipt: null
+    receipt:
+      result: done
+      note: "notes/T047-phase-8a-launch-options.md"
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      pr:
+        number: 437
+        url: "https://github.com/mean-weasel/issuectl/pull/437"
+        branch: "mac-parity-phase-8a-launch-options"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        merge_state: "pending push and CI check after receipt commit"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+          note: "Passed with pre-existing warnings."
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8a-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+          status: pass
+          summary: "21 tests, 0 failures."
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8a-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+          summary: "27 tests, 0 failures."
+      acceptance:
+        - "One-click launch remains available and sends default request values through the existing Launch button."
+        - "Open issue detail exposes an Options launch sheet when no active session exists."
+        - "Options sheet covers agent, workspace mode, branch, comments, referenced files, preamble, and resume/reset behavior."
+        - "Fixture-backed launch route asserts customized LaunchRequestBody payload construction."
+        - "Store still refreshes active sessions before launch and returns an existing session instead of duplicate launching."
+      excluded_follow_up:
+        - "Embedded terminal window and controls."
+        - "Active sessions search/repo filters and polling."
+        - "Dirty worktree readiness checks."
+      summary: "Implemented Phase 8A launch options: Mac issue detail now preserves one-click launch while adding a configurable options sheet wired into LaunchRequestBody with unit and fixture-backed UI coverage."
 
   - id: T999
     type: judge

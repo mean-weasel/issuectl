@@ -223,6 +223,53 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Open alpha issue"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testDefaultIssueLaunchUsesExistingOneClickFlow() {
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        let launchButton = app.buttons["mac-issue-detail-launch-button"]
+        XCTAssertTrue(launchButton.waitForExistence(timeout: 5), app.debugDescription)
+        launchButton.click()
+
+        XCTAssertTrue(app.staticTexts["Session Starting"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["issue-1-open-alpha-issue - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testCustomIssueLaunchOptionsBuildLaunchRequest() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CUSTOM_LAUNCH"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        app.buttons["mac-issue-detail-launch-options-button"].click()
+        let branchField = app.textFields["mac-launch-options-branch-field"]
+        XCTAssertTrue(branchField.waitForExistence(timeout: 5), app.debugDescription)
+
+        app.descendants(matching: .any)["mac-launch-options-agent-picker"].radioButtons["Claude Code"].click()
+        app.descendants(matching: .any)["mac-launch-options-workspace-picker"].radioButtons["Clone"].click()
+        app.descendants(matching: .any)["mac-launch-options-resume-picker"].radioButtons["Resume"].click()
+
+        branchField.click()
+        branchField.typeKey("a", modifierFlags: .command)
+        branchField.typeText("custom-mac-launch")
+
+        app.checkBoxes["mac-launch-options-comment-0"].click()
+        app.checkBoxes["mac-launch-options-file-Sources/Alpha.swift"].click()
+
+        let preamble = app.textViews["mac-launch-options-preamble-field"]
+        XCTAssertTrue(preamble.waitForExistence(timeout: 5), app.debugDescription)
+        preamble.click()
+        preamble.typeText("Custom Mac preamble")
+
+        app.buttons["mac-launch-options-submit-button"].click()
+        XCTAssertTrue(app.staticTexts["custom-mac-launch - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
+    }
+
     func testPullRequestFailuresAreRecoverableAndPreserveFilters() {
         app.terminate()
         app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_BETA_PULLS_FAILURE"] = "1"
