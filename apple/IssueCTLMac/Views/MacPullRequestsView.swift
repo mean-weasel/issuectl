@@ -616,6 +616,10 @@ private struct MacPullRequestDetailView: View {
     @State private var detail: PullDetailResponse?
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var actionError: String?
+    @State private var successMessage: String?
+    @State private var isSubmittingAction = false
+    @State private var textAction: MacPullRequestTextAction?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -633,6 +637,22 @@ private struct MacPullRequestDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         MacPullRequestDetailHeader(detail: detail)
+                        if canMutate(detail.pull) {
+                            actionBar
+                        }
+                        if let successMessage {
+                            Label(successMessage, systemImage: "checkmark.circle")
+                                .font(.macSidebar(size: 12, weight: .semibold, scale: textScale))
+                                .foregroundStyle(.green)
+                                .accessibilityIdentifier("mac-pr-detail-success-message")
+                        }
+                        if let actionError {
+                            Text(actionError)
+                                .font(.macSidebar(size: 12, scale: textScale))
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("mac-pr-detail-action-error")
+                        }
                         if let body = detail.pull.body, !body.isEmpty {
                             MacDetailSection(title: "Description", systemImage: "text.alignleft") {
                                 Text(body)
@@ -675,6 +695,16 @@ private struct MacPullRequestDetailView: View {
         }
         .frame(width: 560, height: 620)
         .task { await load(refresh: false) }
+        .sheet(item: $textAction) { action in
+            MacPullRequestTextActionSheet(action: action) { body in
+                switch action {
+                case .comment:
+                    return await submitComment(body)
+                case .requestChanges:
+                    return await submitReview(event: "REQUEST_CHANGES", body: body, successMessage: "Changes requested")
+                }
+            }
+        }
     }
 
     private var header: some View {
@@ -704,6 +734,63 @@ private struct MacPullRequestDetailView: View {
         .padding(14)
     }
 
+    private var actionBar: some View {
+        HStack(spacing: 8) {
+            Button {
+                textAction = .comment
+            } label: {
+                Label("Comment", systemImage: "bubble.left")
+            }
+            .controlSize(.small)
+            .accessibilityIdentifier("mac-pr-detail-comment-button")
+
+            Button {
+                Task { await approve() }
+            } label: {
+                if isSubmittingAction {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Label("Approve", systemImage: "checkmark.circle")
+                }
+            }
+            .controlSize(.small)
+            .disabled(isSubmittingAction)
+            .accessibilityIdentifier("mac-pr-detail-approve-button")
+
+            Button {
+                textAction = .requestChanges
+            } label: {
+                Label("Request Changes", systemImage: "xmark.circle")
+            }
+            .controlSize(.small)
+            .accessibilityIdentifier("mac-pr-detail-request-changes-button")
+
+            Menu {
+                Button("Merge Commit") {
+                    Task { await merge(method: "merge", label: "Merge commit") }
+                }
+                .accessibilityIdentifier("mac-pr-detail-merge-merge-button")
+
+                Button("Squash and Merge") {
+                    Task { await merge(method: "squash", label: "Squash merge") }
+                }
+                .accessibilityIdentifier("mac-pr-detail-merge-squash-button")
+
+                Button("Rebase and Merge") {
+                    Task { await merge(method: "rebase", label: "Rebase merge") }
+                }
+                .accessibilityIdentifier("mac-pr-detail-merge-rebase-button")
+            } label: {
+                Label("Merge", systemImage: "arrow.triangle.merge")
+            }
+            .controlSize(.small)
+            .disabled(isSubmittingAction)
+            .accessibilityIdentifier("mac-pr-detail-merge-menu")
+        }
+        .font(.macSidebar(size: 12, scale: textScale))
+    }
+
     private func load(refresh: Bool) async {
         guard !isLoading else { return }
         isLoading = true
@@ -717,6 +804,89 @@ private struct MacPullRequestDetailView: View {
         }
     }
 
+    private func canMutate(_ pull: GitHubPull) -> Bool {
+        pull.isOpen && !pull.merged
+    }
+
+    private func approve() async {
+        await submitAction {
+            await submitReview(event: "APPROVE", body: nil, successMessage: "Pull request approved")
+        }
+    }
+
+    private func merge(method: String, label: String) async {
+        await submitAction {
+            do {
+                let response = try await api.mergePull(
+                    owner: item.repo.owner,
+                    repo: item.repo.name,
+                    number: item.pull.number,
+                    body: MergeRequestBody(mergeMethod: method)
+                )
+                guard response.success else {
+                    return response.error ?? "Failed to merge pull request"
+                }
+                successMessage = "\(label) complete"
+                await load(refresh: true)
+                return nil
+            } catch {
+                return error.localizedDescription
+            }
+        }
+    }
+
+    private func submitAction(_ action: () async -> String?) async {
+        guard !isSubmittingAction else { return }
+        isSubmittingAction = true
+        actionError = nil
+        successMessage = nil
+        defer { isSubmittingAction = false }
+
+        if let error = await action() {
+            actionError = error
+        }
+    }
+
+    private func submitComment(_ body: String) async -> String? {
+        actionError = nil
+        successMessage = nil
+        do {
+            let response = try await api.commentOnPull(
+                owner: item.repo.owner,
+                repo: item.repo.name,
+                number: item.pull.number,
+                body: PullCommentRequestBody(body: body)
+            )
+            guard response.success else {
+                return response.error ?? "Failed to add comment"
+            }
+            successMessage = "Comment posted"
+            await load(refresh: true)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    private func submitReview(event: String, body: String?, successMessage: String) async -> String? {
+        do {
+            let response = try await api.reviewPull(
+                owner: item.repo.owner,
+                repo: item.repo.name,
+                number: item.pull.number,
+                body: ReviewRequestBody(event: event, body: body)
+            )
+            guard response.success else {
+                return response.error ?? "Failed to submit review"
+            }
+            self.successMessage = successMessage
+            await load(refresh: true)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
     private func detailRow(title: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
@@ -727,6 +897,118 @@ private struct MacPullRequestDetailView: View {
                 .font(.macSidebar(size: 11, scale: textScale))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
+        }
+    }
+}
+
+private enum MacPullRequestTextAction: String, Identifiable {
+    case comment
+    case requestChanges
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .comment: "Comment"
+        case .requestChanges: "Request Changes"
+        }
+    }
+
+    var placeholder: String {
+        switch self {
+        case .comment: "Add a pull request comment"
+        case .requestChanges: "Describe the required changes"
+        }
+    }
+
+    var submitTitle: String {
+        switch self {
+        case .comment: "Post Comment"
+        case .requestChanges: "Submit Review"
+        }
+    }
+
+    var accessibilityPrefix: String {
+        switch self {
+        case .comment: "mac-pr-comment"
+        case .requestChanges: "mac-pr-request-changes"
+        }
+    }
+}
+
+private struct MacPullRequestTextActionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let action: MacPullRequestTextAction
+    let submit: (String) async -> String?
+
+    @State private var bodyText = ""
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(action.title)
+                .font(.headline)
+
+            TextEditor(text: $bodyText)
+                .font(.body)
+                .frame(minHeight: 140)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.25))
+                )
+                .accessibilityIdentifier("\(action.accessibilityPrefix)-body-field")
+
+            if bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(action.placeholder)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("\(action.accessibilityPrefix)-error")
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    dismiss()
+                }
+                Button {
+                    Task { await submitBody() }
+                } label: {
+                    if isSubmitting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text(action.submitTitle)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
+                .accessibilityIdentifier("\(action.accessibilityPrefix)-submit-button")
+            }
+        }
+        .padding(18)
+        .frame(width: 420)
+    }
+
+    private func submitBody() async {
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+
+        let trimmed = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let error = await submit(trimmed) {
+            errorMessage = error
+        } else {
+            dismiss()
         }
     }
 }

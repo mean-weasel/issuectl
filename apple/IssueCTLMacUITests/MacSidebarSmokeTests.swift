@@ -134,9 +134,68 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-file-Sources/Alpha.swift"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-review-301"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-linked-issue-1"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["Merge"].exists, app.debugDescription)
-        XCTAssertFalse(app.buttons["Approve"].exists, app.debugDescription)
         app.typeKey(.escape, modifierFlags: [])
+    }
+
+    func testPullRequestDetailActionsSucceedAndRefresh() {
+        selectRootSection("PRs")
+        openPullRequest(prRow("org/alpha", 10))
+
+        XCTAssertTrue(app.buttons["mac-pr-detail-comment-button"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-pr-detail-approve-button"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-pr-detail-request-changes-button"].waitForExistence(timeout: 5), app.debugDescription)
+        let mergeMenu = app.descendants(matching: .any)["mac-pr-detail-merge-menu"]
+        XCTAssertTrue(mergeMenu.waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-pr-detail-comment-button"].click()
+        let commentBody = app.textViews["mac-pr-comment-body-field"]
+        XCTAssertTrue(commentBody.waitForExistence(timeout: 5), app.debugDescription)
+        commentBody.click()
+        commentBody.typeText("Mac PR comment")
+        app.buttons["mac-pr-comment-submit-button"].click()
+        XCTAssertTrue(commentBody.waitForNonExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["mac-pr-detail-success-message"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-body"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-pr-detail-approve-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-review-401"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-pr-detail-request-changes-button"].click()
+        let requestChangesBody = app.textViews["mac-pr-request-changes-body-field"]
+        XCTAssertTrue(requestChangesBody.waitForExistence(timeout: 5), app.debugDescription)
+        requestChangesBody.click()
+        requestChangesBody.typeText("Please adjust the Mac implementation")
+        app.buttons["mac-pr-request-changes-submit-button"].click()
+        XCTAssertTrue(requestChangesBody.waitForNonExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-review-402"].waitForExistence(timeout: 5), app.debugDescription)
+
+        mergeMenu.click()
+        app.menuItems["Squash and Merge"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["mac-pr-detail-success-message"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-pr-detail-comment-button"].waitForNonExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.buttons["mac-pr-detail-approve-button"].exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["mac-pr-detail-request-changes-button"].exists, app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-pr-detail-merge-menu"].exists, app.debugDescription)
+    }
+
+    func testPullRequestActionFailurePreservesTypedText() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] = "1"
+        app.launch()
+
+        selectRootSection("PRs")
+        openPullRequest(prRow("org/alpha", 10))
+
+        app.buttons["mac-pr-detail-request-changes-button"].click()
+        let requestChangesBody = app.textViews["mac-pr-request-changes-body-field"]
+        XCTAssertTrue(requestChangesBody.waitForExistence(timeout: 5), app.debugDescription)
+        requestChangesBody.click()
+        requestChangesBody.typeText("Keep this review text")
+        app.buttons["mac-pr-request-changes-submit-button"].click()
+
+        XCTAssertTrue(app.staticTexts["mac-pr-request-changes-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(waitForValue(of: requestChangesBody, containing: "Keep this review text", timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-pr-request-changes-submit-button"].exists, app.debugDescription)
     }
 
     func testPullRequestFailuresAreRecoverableAndPreserveFilters() {
