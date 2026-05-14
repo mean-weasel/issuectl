@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T068
+active_task: T069
 
 tasks:
   - id: T001
@@ -3553,7 +3553,7 @@ tasks:
   - id: T068
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Decide the Phase 11 Mac Today/Attention surface shape before implementation: full Today window, compact sidebar Attention section, or staged compact-first implementation."
     inputs:
@@ -3573,6 +3573,62 @@ tasks:
       - "Allowed files for the next Worker."
       - "Acceptance criteria and validation commands."
       - "Stop conditions for the next Worker."
+    receipt:
+      result: done
+      decision: staged_compact_first
+      full_outcome_complete: false
+      note: "notes/T068-phase-11-today-decision.md"
+      selected_worker: "T069"
+      selected_slice: "Phase 11A compact Mac Today / Attention sidebar section"
+      rationale: "A sidebar-native Today section closes the immediate work-queue gap while preserving the Mac app shape and reusing existing Mac issue, PR, session, and create surfaces."
+
+  - id: T069
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 11A compact Mac Today / Attention sidebar section with metrics, attention rows, search, quick navigation, quick create, and cached/offline indicators."
+    inputs:
+      - "T068 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 11"
+      - "iOS Today implementation"
+      - "Existing Mac issue, PR, session, and direct issue creation views"
+    constraints:
+      - "Do not add a separate full Today window in this slice."
+      - "Do not add new backend endpoints."
+      - "Reuse existing Mac detail/create/session behavior where feasible."
+      - "Preserve per-Desktop selected sidebar section persistence."
+      - "Open or update a draft PR early."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacTodayView.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Mac sidebar has a Today section in expanded and collapsed section controls."
+      - "User can see active-session, review-needed PR, and assigned/open issue counts from Mac."
+      - "Attention rows include review-needed PRs, assigned/blocking issues, and active sessions when fixture data provides them."
+      - "Rows open existing Mac PR detail, issue detail, or session terminal/open behavior."
+      - "Search filters matching issues and PRs by title/body/repo/number and preserves navigation."
+      - "Quick create opens the existing Mac direct issue creation flow and refreshes Today data after success."
+      - "Cached/offline indicators reflect underlying issue, PR, or session cache metadata."
+    verify:
+      - "git diff --check"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase11a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase11a-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testTodayAttentionSectionShowsMetricsSearchAndNavigation"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase11a-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testTodayQuickCreateOpensDirectIssueFlow"
+    stop_if:
+      - "Adding the section requires rewriting sidebar navigation or per-Desktop state."
+      - "Reusing the direct issue creation sheet requires a broad extraction beyond a small access-level change."
+      - "Stable UI navigation cannot be tested without brittle menu-bar automation."
+      - "The fixture server lacks enough issue/PR/session data and cannot be extended inside the allowed file set."
     receipt: null
 
   - id: T999
