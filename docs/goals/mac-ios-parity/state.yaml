@@ -5,7 +5,7 @@ goal:
   slug: "mac-ios-parity"
   kind: existing_plan
   tranche: "Validate and execute docs/specs/2026-05-14-mac-ios-parity-plan.md through successive PR-sized verified slices, starting with Phase 1 unless validation identifies a safer prerequisite."
-  status: active
+  status: complete
   intake:
     original_request: "$goalbuddy plan in docs/specs/2026-05-14-mac-ios-parity-plan.md - will want to discuss how we create prs / monitor their ci / merge them along the way to keep code changes managable"
     interpreted_outcome: "Create a GoalBuddy board that drives Mac app iOS parity implementation through manageable PRs with CI monitoring and merge gates."
@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T999
+active_task: null
 
 tasks:
   - id: T001
@@ -3716,7 +3716,7 @@ tasks:
   - id: T999
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Final audit that the Mac app satisfies the parity plan and every required feature discrepancy has implementation, tests, CI, and dogfood evidence."
     inputs:
@@ -3734,7 +3734,17 @@ tasks:
       - "full_outcome_complete: true | false"
       - "Evidence map by parity phase."
       - "Missing work or residual risk."
-    receipt: null
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      note: "notes/T999-final-audit.md"
+      integration_branch: "mac-sidebar-spaces-option-a"
+      final_integration_commit: "1036836"
+      open_child_prs: "None targeting mac-sidebar-spaces-option-a."
+      residual_follow_up:
+        - "Real macOS push notification registration remains deferred to issue #444 by the Phase 10 decision."
+      summary: "Final audit confirms all required parity phases from the plan have implementation, validation receipts, merge records, and either completed feature coverage or an explicit accepted deferral."
 
 checks:
   dirty_fingerprint: unknown
