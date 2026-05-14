@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T057
+active_task: T058
 
 tasks:
   - id: T001
@@ -2899,7 +2899,7 @@ tasks:
   - id: T057
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Gate PR #440 for Phase 8D: inspect the pushed diff, confirm CI or accepted replacement validation, complete a focused dogfood pass if possible, decide merge readiness, and select the next PR-sized parity slice."
     inputs:
@@ -2917,6 +2917,52 @@ tasks:
       - "CI or replacement validation status."
       - "Dogfood result or explicit skipped reason."
       - "Merge action and next task recommendation."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T057-pr440-merge.md"
+      pr:
+        number: 440
+        url: "https://github.com/mean-weasel/issuectl/pull/440"
+        branch: "mac-parity-phase-8d-terminal-window"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "8c175f2f077b6764b5304dd9841f316d460dd87e"
+        merge_commit_sha: "55a7945e8ab6f5fddbc4ed685940f4541f8f3987"
+        merged_at: "2026-05-14T21:27:04Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-8d-terminal-window branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "MacIssueFilterStateTests full suite: 22 tests passed"
+          - "MacSidebarSmokeTests full suite: 35 tests passed"
+        dogfood: "Interactive terminal dogfood was deferred; deterministic Mac UI smoke coverage exercised connected, respawned, failure/retry, text-size, reconnect, and end-session terminal flows."
+      summary: "Marked PR #440 ready, confirmed no GitHub checks were configured, and merged Phase 8D embedded Mac terminal parity into mac-sidebar-spaces-option-a."
+
+  - id: T058
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Choose the next safe PR-sized parity slice after Phase 8D, likely the first Phase 9 offline/cache/reliability slice unless a smaller prerequisite is safer."
+    inputs:
+      - "T057 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 9"
+      - "Current Mac cache/offline surfaces"
+      - "Shared iOS offline/cache behavior"
+    constraints:
+      - "Do not implement inside the judge task."
+      - "Prefer a narrow slice with visible user value and deterministic tests."
+      - "Avoid combining offline queue, cache banners, retry policy, notifications, and Today into one PR."
+      - "Define branch/base, allowed files, verification commands, and excluded follow-up scope."
+    expected_output:
+      - "Decision: approved | revise_plan | blocked."
+      - "Selected Worker objective."
+      - "PR branch/base strategy."
+      - "Acceptance evidence and validation commands."
+      - "Stop conditions and excluded scope."
     receipt: null
 
   - id: T999
