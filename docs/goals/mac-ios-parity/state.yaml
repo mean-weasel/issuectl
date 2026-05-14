@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T020
+active_task: T021
 
 tasks:
   - id: T001
@@ -799,7 +799,7 @@ tasks:
   - id: T020
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #426 Phase 4 Issue List Parity for acceptance coverage, CI/check status, merge readiness, and next-slice sizing."
     inputs:
@@ -816,6 +816,46 @@ tasks:
       - "Acceptance criteria evidence map."
       - "CI or replacement validation status."
       - "Merge recommendation and next active task."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T020-pr426-merged.md"
+      pr:
+        number: 426
+        url: "https://github.com/mean-weasel/issuectl/pull/426"
+        branch: "mac-parity-phase-4-issue-list"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "d0b233bd2307be0375bb1ae902b883b3468a3a72"
+        merge_commit: "121f6a2f17a24861cf3e3113189b8a413686e58a"
+        merged_at: "2026-05-14T16:11:29Z"
+        checks: "No checks reported."
+      summary: "Reviewed Phase 4 acceptance coverage, marked PR #426 ready, and squash-merged it into the integration branch using the recorded local-validation replacement gate."
+      next_task: T021
+
+  - id: T021
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Size Phase 5 Issue Detail Action Parity into the next PR-sized slice with acceptance criteria, allowed files, validation commands, and merge gate."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
+      - "T020 receipt"
+      - "Current Mac issue detail implementation"
+      - "Relevant iOS issue detail/action implementation"
+    constraints:
+      - "Do not implement product changes."
+      - "Preserve the Phase 5 checklist, but split it if one PR would be too large."
+      - "Prefer a vertical slice that can be validated with Mac unit tests, Mac UI tests, mock-server assertions, and a dogfood note."
+      - "Define exact allowed_files for the next Worker."
+      - "Do not choose a slice that depends on unresolved backend/API behavior without recording the blocker."
+    expected_output:
+      - "Decision: approved | revise_plan | blocked."
+      - "Next Worker objective."
+      - "PR branch/base strategy."
+      - "Acceptance criteria evidence map for the chosen slice."
+      - "allowed_files, verify commands, and stop_if conditions."
     receipt: null
 
   - id: T999
