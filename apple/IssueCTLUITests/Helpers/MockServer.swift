@@ -303,8 +303,10 @@ final class MockIssueCTLServer: @unchecked Sendable {
                 for (key, value) in payload {
                     repos[idx][key] = value
                 }
+                body = ["success": true, "repo": repos[idx]]
+            } else {
+                return http(status: 404, json: ["success": false, "error": "repo not found"])
             }
-            body = ["success": true]
 
         case ("GET", "/api/v1/repos/org/alpha/labels"):
             body = ["labels": repoLabels]

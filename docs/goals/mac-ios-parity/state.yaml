@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T002
+active_task: T003
 
 tasks:
   - id: T001
@@ -128,7 +128,7 @@ tasks:
   - id: T002
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Implement the first PR-sized Mac parity slice selected by T001, expected to be Phase 1 Native Mac Repository Management unless T001 selects a safer prerequisite."
     inputs:
@@ -162,12 +162,43 @@ tasks:
       - "PR base branch is ambiguous."
       - "Local validation fails twice for the same unexplained reason."
       - "GitHub CI is unavailable or red and no safe local substitute is accepted."
-    receipt: null
+    receipt:
+      result: done
+      note: "notes/T002-native-mac-repo-settings.md"
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+      pr:
+        number: 423
+        url: "https://github.com/mean-weasel/issuectl/pull/423"
+        branch: "mac-parity-phase-1-repos"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "See current PR head; receipt commits update board state and change the SHA."
+        draft: true
+        merge_state: "CLEAN"
+        checks: "No checks reported on the mac-parity-phase-1-repos branch."
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+      warnings:
+        - "pnpm lint passed with pre-existing warnings."
+        - "IssueCTLMacUITests was attempted but interrupted after no test output for about 60 seconds; tracked as Judge review risk rather than a passing Worker command."
+      summary: "Implemented native Mac repository list/add/browse/edit/remove in settings, synced per-Desktop repo filters after mutations, added validation tests and mock-server repo add/browse endpoints, and opened draft PR #423."
 
   - id: T003
     type: judge
     assignee: Judge
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Review the first parity PR slice for acceptance criteria coverage, CI health, merge readiness, and next-slice sizing."
     inputs:
@@ -274,6 +305,12 @@ tasks:
 checks:
   dirty_fingerprint: unknown
   last_verification:
-    result: unknown
-    task: null
-    commands: []
+    result: partial
+    task: T002
+    commands:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "IssueCTLMacUITests attempted but interrupted after hang before test output"
