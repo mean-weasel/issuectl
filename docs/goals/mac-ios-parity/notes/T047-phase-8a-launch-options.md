@@ -5,8 +5,7 @@ Result: done.
 Branch: `mac-parity-phase-8a-launch-options`
 Base: `mac-sidebar-spaces-option-a`
 PR: https://github.com/mean-weasel/issuectl/pull/437
-Head: `9df754c1118de5b75dc6acb08c4e1f6d171bdd98`
-PR state: ready for review, mergeable, no GitHub status checks reported.
+PR state: ready for review, mergeable, no GitHub status checks reported on the pushed PR head.
 
 Implemented the first Phase 8 launch parity slice for the Mac app. The issue detail view keeps the existing one-click Launch button and adds a launch options sheet for open issues without active sessions. The sheet lets the user choose agent, workspace mode, branch name, selected comments, referenced files, preamble text, and automatic/resume/reset behavior.
 
