@@ -247,6 +247,18 @@ struct MacIssuesView: View {
                     .accessibilityIdentifier("mac-issues-load-more-button")
                 }
             }
+
+            if store.issuesFromCache {
+                Label(MacCacheIndicatorModel.cachedBannerText(kind: "issues", cachedAt: store.issuesCachedAt), systemImage: "externaldrive.badge.clock")
+                    .font(.macSidebar(size: 11, scale: textScale))
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("mac-issues-cached-banner")
+            } else if let updatedText = MacCacheIndicatorModel.updatedText(cachedAt: store.issuesCachedAt) {
+                Text(updatedText)
+                    .font(.macSidebar(size: 11, scale: textScale))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("mac-issues-cache-age")
+            }
         }
         .padding(12)
     }

@@ -7,6 +7,8 @@ final class MacSidebarStore {
     private(set) var drafts: [Draft] = []
     private(set) var sessions: [ActiveDeployment] = []
     private(set) var sessionPreviewsByPort: [Int: SessionPreview] = [:]
+    private(set) var issuesFromCache = false
+    private(set) var issuesCachedAt: String?
     private(set) var sessionsFromCache = false
     private(set) var sessionsCachedAt: String?
     private(set) var sessionPreviewError: String?
@@ -28,6 +30,8 @@ final class MacSidebarStore {
         drafts = []
         sessions = []
         sessionPreviewsByPort = [:]
+        issuesFromCache = false
+        issuesCachedAt = nil
         sessionsFromCache = false
         sessionsCachedAt = nil
         sessionPreviewError = nil
@@ -57,6 +61,8 @@ final class MacSidebarStore {
 
             var loadedIssues: [MacIssueListItem] = []
             var issueFailures: [String] = []
+            var cachedIssueDates: [Date] = []
+            var didUseCachedIssues = false
 
             for (index, repo) in loadedRepos.enumerated() {
                 do {
@@ -64,6 +70,10 @@ final class MacSidebarStore {
                     loadedIssues.append(contentsOf: response.issues.map { issue in
                         MacIssueListItem(issue: issue, repo: repo, repoIndex: index)
                     })
+                    didUseCachedIssues = didUseCachedIssues || response.fromCache
+                    if let cachedAt = response.cachedAt, let date = parseIssueCTLDate(cachedAt) {
+                        cachedIssueDates.append(date)
+                    }
                 } catch {
                     issueFailures.append("\(repo.fullName): \(error.localizedDescription)")
                 }
@@ -73,6 +83,8 @@ final class MacSidebarStore {
             issues = loadedIssues.sorted { lhs, rhs in
                 (lhs.issue.updatedDate ?? .distantPast) > (rhs.issue.updatedDate ?? .distantPast)
             }
+            issuesFromCache = didUseCachedIssues
+            issuesCachedAt = cachedIssueDates.min().map { sharedISO8601Formatter.string(from: $0) }
             drafts = try await draftsResult.drafts
             let loadedSessions = try await sessionsResult
             sessions = loadedSessions.deployments
@@ -534,6 +546,45 @@ struct MacTerminalPreferences: Equatable {
     var lineHeight: String
 
     static let `default` = MacTerminalPreferences(fontSize: 14, lineHeight: "1.25")
+}
+
+enum MacCacheIndicatorModel {
+    static func cacheAgeText(cachedAt: String?, now: Date = Date()) -> String? {
+        guard let cachedAt, let date = parseIssueCTLDate(cachedAt) else { return nil }
+        return cacheAgeText(cachedAt: date, now: now)
+    }
+
+    static func cacheAgeText(cachedAt date: Date, now: Date = Date()) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
+        if seconds < 60 {
+            return "just now"
+        }
+
+        let minutes = seconds / 60
+        if minutes < 60 {
+            return "\(minutes)m ago"
+        }
+
+        let hours = minutes / 60
+        if hours < 24 {
+            return "\(hours)h ago"
+        }
+
+        let days = hours / 24
+        return "\(days)d ago"
+    }
+
+    static func cachedBannerText(kind: String, cachedAt: String?, now: Date = Date()) -> String {
+        if let age = cacheAgeText(cachedAt: cachedAt, now: now) {
+            return "Showing cached \(kind) from \(age)"
+        }
+        return "Showing cached \(kind)"
+    }
+
+    static func updatedText(cachedAt: String?, now: Date = Date()) -> String? {
+        guard let age = cacheAgeText(cachedAt: cachedAt, now: now) else { return nil }
+        return "Updated \(age)"
+    }
 }
 
 struct MacTerminalAccess: Equatable {
