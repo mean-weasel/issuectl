@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T004
+active_task: T012
 
 tasks:
   - id: T001
@@ -228,7 +228,7 @@ tasks:
   - id: T004
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: default
     objective: "Merge or block the first parity PR according to T003, record the result, and activate the next PR-sized parity slice."
     inputs:
@@ -244,7 +244,23 @@ tasks:
       - "Merged PR URL and SHA, or blocked reason."
       - "Updated board with next active task."
       - "Next PR-sized slice."
-    receipt: null
+    receipt:
+      result: done
+      decision: do_not_merge
+      full_outcome_complete: false
+      note: "notes/T004-pr423-blocked.md"
+      pr:
+        number: 423
+        url: "https://github.com/mean-weasel/issuectl/pull/423"
+        branch: "mac-parity-phase-1-repos"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "3109e9ade8b36fe2b47d15aad08ac64827fe1548"
+        draft: true
+        mergeable: "MERGEABLE"
+        checks: "No checks reported."
+        comment: "https://github.com/mean-weasel/issuectl/pull/423#issuecomment-4451901227"
+      blocker: "PR #423 still needs accepted Mac Settings repository workflow dogfood evidence or a separate deterministic Mac UI automation fix before merge."
+      next_task: T012
 
   - id: T010
     type: worker
@@ -346,6 +362,28 @@ tasks:
       warnings:
         - "xcodebuild UI test attempt was interrupted after hanging with no test output after launch."
       blocker: "Mac accessory app UI automation still hangs even when bypassing the status menu."
+
+  - id: T012
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: default
+    objective: "Dogfood the native Mac Settings repository management workflow for PR #423, or choose a dedicated UI automation fix before merge."
+    inputs:
+      - "https://github.com/mean-weasel/issuectl/pull/423"
+      - "T004 receipt"
+      - "T011 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not merge PR #423 until this task has accepted evidence."
+      - "Do not mutate real repository settings without explicit owner approval."
+      - "Record the exact dogfood steps, result, and any issues found."
+      - "If the owner chooses UI automation instead, create a focused Worker task before any further parity implementation slice."
+    expected_output:
+      - "Accepted dogfood evidence and merge approval for PR #423, or a queued Worker task for UI automation repair."
+      - "Updated PR comment and board receipt."
+      - "Clear next task after PR #423 is either merged or still blocked."
+    receipt: null
 
   - id: T999
     type: judge
