@@ -289,15 +289,21 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         case ("GET", "/api/v1/sessions/previews"):
             return ["previews": []]
         case ("GET", "/api/v1/drafts"):
-            return ["drafts": [
-                [
-                    "id": "draft-1",
-                    "title": "Draft offline idea",
-                    "body": "draft body",
-                    "priority": "normal",
-                    "created_at": 1_775_000_000,
-                ],
-            ]]
+            return ["drafts": drafts]
+        case ("POST", "/api/v1/drafts/draft-1/assign"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_DRAFT_ASSIGN_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture draft assignment failed"]
+            }
+            draftAssignmentLabels = jsonBody(from: request)["labels"] as? [String] ?? []
+            draftAssignedIssueNumber = 88
+            return [
+                "success": true,
+                "issue_number": 88,
+                "issue_url": "https://github.com/org/alpha/issues/88",
+                "cleanup_warning": NSNull(),
+                "labels_warning": NSNull(),
+                "error": NSNull(),
+            ]
         case ("GET", "/api/v1/issues/org/alpha"):
             return ["issues": issues, "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/beta"):
@@ -441,10 +447,25 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var detailIssueLabels = ["bug"]
     nonisolated(unsafe) private static var detailIssueAssignees = ["bob"]
     nonisolated(unsafe) private static var reassignedIssueNumber: Int?
+    nonisolated(unsafe) private static var draftAssignedIssueNumber: Int?
+    nonisolated(unsafe) private static var draftAssignmentLabels: [String] = []
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
     ]
+
+    private static var drafts: [[String: Any]] {
+        guard draftAssignedIssueNumber == nil else { return [] }
+        return [
+            [
+                "id": "draft-1",
+                "title": "Draft offline idea",
+                "body": "draft body",
+                "priority": "normal",
+                "created_at": 1_775_000_000,
+            ],
+        ]
+    }
 
     private static var issues: [[String: Any]] {
         [
@@ -452,7 +473,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
             issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
             issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
-        ] + (5...55).map { number in
+        ] + assignedDraftIssues + (5...55).map { number in
             issue(
                 number: number,
                 title: "Paged issue \(number)",
@@ -463,6 +484,22 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 updatedAt: String(format: "2026-05-13T%02d:00:00.000Z", number % 24)
             )
         }
+    }
+
+    private static var assignedDraftIssues: [[String: Any]] {
+        guard let draftAssignedIssueNumber else { return [] }
+        return [
+            issue(
+                number: draftAssignedIssueNumber,
+                title: "Draft offline idea",
+                body: "draft body",
+                state: "open",
+                labels: draftAssignmentLabels,
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: "2026-05-14T15:00:00.000Z"
+            ),
+        ]
     }
 
     private static var betaIssues: [[String: Any]] {

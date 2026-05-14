@@ -148,6 +148,18 @@ final class MacSidebarStore {
         drafts.removeAll { $0.id == id }
     }
 
+    func assignDraftWithLabels(api: APIClient, id: String, repo: Repo, labels: [String]) async throws -> AssignDraftResponse {
+        let response = try await api.assignDraftWithLabels(
+            id: id,
+            body: AssignDraftWithLabelsRequestBody(repoId: repo.id, labels: labels.isEmpty ? nil : labels)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to assign draft")
+        }
+        await load(api: api, refresh: true)
+        return response
+    }
+
     func issueDetail(api: APIClient, item: MacIssueListItem, refresh: Bool) async throws -> IssueDetailResponse {
         let detail = try await api.issueDetail(
             owner: item.repo.owner,
