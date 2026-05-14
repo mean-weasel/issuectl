@@ -21,6 +21,7 @@ struct MacIssueDetailView: View {
     @State private var activeSession: ActiveDeployment?
     @State private var currentUserLogin: String?
     @State private var errorMessage: String?
+    @State private var successMessage: String?
     @State private var activeSheet: MacIssueDetailSheet?
     @State private var isShowingCloseWithComment = false
     @State private var commentPendingDeletion: GitHubComment?
@@ -96,6 +97,34 @@ struct MacIssueDetailView: View {
                 MacEditCommentSheet(comment: comment) { body in
                     try await store.editComment(api: api, item: item, commentId: comment.id, body: body)
                     await load(refresh: true)
+                    activeSheet = nil
+                }
+            case .labels:
+                MacLabelManagementSheet(issue: issue) {
+                    try await store.repoLabels(api: api, item: item)
+                } onToggle: { label, action in
+                    try await store.toggleLabel(api: api, item: item, label: label, action: action)
+                    await refreshAfterManagementAction()
+                }
+            case .assignees:
+                MacAssigneeManagementSheet(issue: issue) {
+                    try await store.collaborators(api: api, item: item)
+                } onUpdate: { assignees in
+                    _ = try await store.updateAssignees(api: api, item: item, assignees: assignees)
+                    await refreshAfterManagementAction()
+                }
+            case .reassign:
+                MacReassignIssueSheet(
+                    issue: issue,
+                    sourceRepo: item.repo,
+                    repos: store.repos
+                ) { target in
+                    let response = try await store.reassignIssue(api: api, item: item, target: target)
+                    await store.load(api: api, refresh: true)
+                    let owner = response.newOwner ?? target.owner
+                    let repo = response.newRepo ?? target.name
+                    let number = response.newIssueNumber.map(String.init) ?? "?"
+                    successMessage = "Reassigned to \(owner)/\(repo)#\(number)"
                     activeSheet = nil
                 }
             }
@@ -215,6 +244,14 @@ struct MacIssueDetailView: View {
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            if let successMessage {
+                Label(successMessage, systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-issue-detail-success-message")
+            }
         }
     }
 
@@ -269,66 +306,90 @@ struct MacIssueDetailView: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 8) {
-            Button {
-                activeSheet = .editIssue
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("mac-issue-detail-edit-button")
-
-            Button {
-                Task { await updateState(issue.isOpen ? "closed" : "open") }
-            } label: {
-                if isUpdatingState {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Label(issue.isOpen ? "Close" : "Reopen", systemImage: issue.isOpen ? "xmark.circle" : "arrow.uturn.backward.circle")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(issue.isOpen ? .red : .green)
-            .disabled(isUpdatingState)
-            .accessibilityIdentifier("mac-issue-detail-toggle-state-button")
-
-            if issue.isOpen {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
                 Button {
-                    activeSheet = nil
-                    isShowingCloseWithComment = true
+                    activeSheet = .editIssue
                 } label: {
-                    Label("Close With Comment", systemImage: "text.bubble")
+                    Label("Edit", systemImage: "pencil")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-issue-detail-edit-button")
+
+                Button {
+                    activeSheet = .labels
+                } label: {
+                    Label("Labels", systemImage: "tag")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-issue-detail-labels-button")
+
+                Button {
+                    activeSheet = .assignees
+                } label: {
+                    Label("Assignees", systemImage: "person.2")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-issue-detail-assignees-button")
+
+                Button {
+                    activeSheet = .reassign
+                } label: {
+                    Label("Reassign", systemImage: "arrow.triangle.swap")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-issue-detail-reassign-button")
+
+                Button {
+                    Task { await updateState(issue.isOpen ? "closed" : "open") }
+                } label: {
+                    if isUpdatingState {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label(issue.isOpen ? "Close" : "Reopen", systemImage: issue.isOpen ? "xmark.circle" : "arrow.uturn.backward.circle")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(issue.isOpen ? .red : .green)
                 .disabled(isUpdatingState)
-                .accessibilityIdentifier("mac-issue-detail-close-with-comment-button")
-            }
+                .accessibilityIdentifier("mac-issue-detail-toggle-state-button")
 
-            Picker("Priority", selection: $priority) {
-                ForEach(Priority.allCases, id: \.self) { priority in
-                    Text(priority.rawValue.capitalized).tag(priority)
+                if issue.isOpen {
+                    Button {
+                        activeSheet = nil
+                        isShowingCloseWithComment = true
+                    } label: {
+                        Label("Close With Comment", systemImage: "text.bubble")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isUpdatingState)
+                    .accessibilityIdentifier("mac-issue-detail-close-with-comment-button")
                 }
-            }
-            .pickerStyle(.menu)
-            .disabled(isUpdatingPriority)
-            .onChange(of: priority) { oldValue, newValue in
-                guard oldValue != newValue else { return }
-                guard newValue != committedPriority else { return }
-                Task { await setPriority(newValue, rollbackTo: oldValue) }
-            }
 
-            Button {
-                if let url = URL(string: issue.htmlUrl) {
-                    openURL(url)
+                Picker("Priority", selection: $priority) {
+                    ForEach(Priority.allCases, id: \.self) { priority in
+                        Text(priority.rawValue.capitalized).tag(priority)
+                    }
                 }
-            } label: {
-                Label("GitHub", systemImage: "safari")
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("mac-issue-detail-github-button")
+                .pickerStyle(.menu)
+                .disabled(isUpdatingPriority)
+                .onChange(of: priority) { oldValue, newValue in
+                    guard oldValue != newValue else { return }
+                    guard newValue != committedPriority else { return }
+                    Task { await setPriority(newValue, rollbackTo: oldValue) }
+                }
 
-            Spacer()
+                Button {
+                    if let url = URL(string: issue.htmlUrl) {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("GitHub", systemImage: "safari")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-issue-detail-github-button")
+            }
         }
     }
 
@@ -537,6 +598,7 @@ struct MacIssueDetailView: View {
         }
 
         do {
+            successMessage = nil
             async let detailResult = store.issueDetail(api: api, item: item, refresh: refresh)
             async let userResult: Result<UserResponse, Error> = {
                 do { return .success(try await api.currentUser(refresh: refresh)) }
@@ -567,6 +629,11 @@ struct MacIssueDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func refreshAfterManagementAction() async {
+        await store.load(api: api, refresh: true)
+        await load(refresh: true)
     }
 
     private func isOwnComment(_ comment: GitHubComment) -> Bool {
@@ -684,6 +751,9 @@ private enum MacIssueDetailSheet: Identifiable {
     case editIssue
     case closeWithComment
     case editComment(GitHubComment)
+    case labels
+    case assignees
+    case reassign
 
     var id: String {
         switch self {
@@ -693,6 +763,12 @@ private enum MacIssueDetailSheet: Identifiable {
             "close-with-comment"
         case .editComment(let comment):
             "edit-comment-\(comment.id)"
+        case .labels:
+            "labels"
+        case .assignees:
+            "assignees"
+        case .reassign:
+            "reassign"
         }
     }
 }
@@ -940,6 +1016,389 @@ private struct MacEditCommentSheet: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct MacLabelManagementSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let issue: GitHubIssue
+    let loadLabels: () async throws -> [GitHubLabel]
+    let onToggle: (String, String) async throws -> Void
+
+    @State private var availableLabels: [GitHubLabel] = []
+    @State private var selectedLabels: Set<String>
+    @State private var isLoading = true
+    @State private var togglingLabels: Set<String> = []
+    @State private var errorMessage: String?
+    @State private var searchText = ""
+
+    init(
+        issue: GitHubIssue,
+        loadLabels: @escaping () async throws -> [GitHubLabel],
+        onToggle: @escaping (String, String) async throws -> Void
+    ) {
+        self.issue = issue
+        self.loadLabels = loadLabels
+        self.onToggle = onToggle
+        _selectedLabels = State(initialValue: Set(issue.labels.map(\.name)))
+    }
+
+    private var filteredLabels: [GitHubLabel] {
+        guard !searchText.isEmpty else { return availableLabels }
+        return availableLabels.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Manage Labels")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }
+            }
+
+            TextField("Filter labels", text: $searchText)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("mac-label-management-search-field")
+
+            if isLoading {
+                ProgressView("Loading labels...")
+                    .frame(maxWidth: .infinity, minHeight: 180)
+            } else if availableLabels.isEmpty {
+                ContentUnavailableView("No Labels", systemImage: "tag", description: Text("This repository has no labels."))
+                    .frame(minHeight: 180)
+            } else {
+                List(filteredLabels) { label in
+                    labelRow(label)
+                }
+                .frame(minHeight: 240)
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-label-management-error")
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 420, minHeight: 360)
+        .task { await load() }
+    }
+
+    private func labelRow(_ label: GitHubLabel) -> some View {
+        let isSelected = selectedLabels.contains(label.name)
+        let isToggling = togglingLabels.contains(label.name)
+
+        return Button {
+            Task { await toggle(label, isSelected: isSelected) }
+        } label: {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(Color(macHex: label.color) ?? .secondary)
+                    .frame(width: 12, height: 12)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label.name)
+                        .font(.body)
+                    if let description = label.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                if isToggling {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.blue)
+                }
+            }
+        }
+        .disabled(isToggling)
+        .accessibilityIdentifier("mac-label-management-row-\(label.name)")
+    }
+
+    private func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            availableLabels = try await loadLabels()
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func toggle(_ label: GitHubLabel, isSelected: Bool) async {
+        togglingLabels.insert(label.name)
+        errorMessage = nil
+        defer { togglingLabels.remove(label.name) }
+
+        do {
+            try await onToggle(label.name, isSelected ? "remove" : "add")
+            if isSelected {
+                selectedLabels.remove(label.name)
+            } else {
+                selectedLabels.insert(label.name)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct MacAssigneeManagementSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let issue: GitHubIssue
+    let loadCollaborators: () async throws -> [CollaboratorInfo]
+    let onUpdate: ([String]) async throws -> Void
+
+    @State private var collaborators: [CollaboratorInfo] = []
+    @State private var selectedAssignees: Set<String>
+    @State private var isLoading = true
+    @State private var togglingAssignees: Set<String> = []
+    @State private var errorMessage: String?
+    @State private var searchText = ""
+
+    init(
+        issue: GitHubIssue,
+        loadCollaborators: @escaping () async throws -> [CollaboratorInfo],
+        onUpdate: @escaping ([String]) async throws -> Void
+    ) {
+        self.issue = issue
+        self.loadCollaborators = loadCollaborators
+        self.onUpdate = onUpdate
+        _selectedAssignees = State(initialValue: Set((issue.assignees ?? []).map(\.login)))
+    }
+
+    private var filteredCollaborators: [CollaboratorInfo] {
+        guard !searchText.isEmpty else { return collaborators }
+        return collaborators.filter { $0.login.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Manage Assignees")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }
+            }
+
+            TextField("Filter collaborators", text: $searchText)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("mac-assignee-management-search-field")
+
+            if isLoading {
+                ProgressView("Loading collaborators...")
+                    .frame(maxWidth: .infinity, minHeight: 180)
+            } else if collaborators.isEmpty {
+                ContentUnavailableView("No Collaborators", systemImage: "person.2", description: Text("This repository has no collaborators."))
+                    .frame(minHeight: 180)
+            } else {
+                List(filteredCollaborators) { collaborator in
+                    collaboratorRow(collaborator)
+                }
+                .frame(minHeight: 240)
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-assignee-management-error")
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 420, minHeight: 360)
+        .task { await load() }
+    }
+
+    private func collaboratorRow(_ collaborator: CollaboratorInfo) -> some View {
+        let isSelected = selectedAssignees.contains(collaborator.login)
+        let isToggling = togglingAssignees.contains(collaborator.login)
+
+        return Button {
+            Task { await toggle(collaborator.login, isSelected: isSelected) }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "person.circle.fill")
+                    .foregroundStyle(.secondary)
+                Text(collaborator.login)
+                    .font(.body)
+                Spacer()
+                if isToggling {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.blue)
+                }
+            }
+        }
+        .disabled(isToggling)
+        .accessibilityIdentifier("mac-assignee-management-row-\(collaborator.login)")
+    }
+
+    private func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            collaborators = try await loadCollaborators()
+                .sorted { $0.login.localizedCaseInsensitiveCompare($1.login) == .orderedAscending }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func toggle(_ login: String, isSelected: Bool) async {
+        togglingAssignees.insert(login)
+        errorMessage = nil
+        let previousAssignees = selectedAssignees
+        defer { togglingAssignees.remove(login) }
+
+        if isSelected {
+            selectedAssignees.remove(login)
+        } else {
+            selectedAssignees.insert(login)
+        }
+
+        do {
+            try await onUpdate(Array(selectedAssignees).sorted())
+        } catch {
+            selectedAssignees = previousAssignees
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct MacReassignIssueSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let issue: GitHubIssue
+    let sourceRepo: Repo
+    let repos: [Repo]
+    let onReassign: (Repo) async throws -> Void
+
+    @State private var selectedRepoId: Int?
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+
+    private var targetRepos: [Repo] {
+        repos.filter { $0.id != sourceRepo.id }
+    }
+
+    private var selectedRepo: Repo? {
+        targetRepos.first { $0.id == selectedRepoId }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Reassign Issue")
+                    .font(.headline)
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .disabled(isSubmitting)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("#\(issue.number) \(issue.title)")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                Text("From \(sourceRepo.fullName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if targetRepos.isEmpty {
+                ContentUnavailableView("No Target Repositories", systemImage: "tray", description: Text("Track another repository before reassigning this issue."))
+                    .frame(minHeight: 160)
+            } else {
+                List(targetRepos) { repo in
+                    Button {
+                        selectedRepoId = repo.id
+                    } label: {
+                        HStack {
+                            Text(repo.fullName)
+                            Spacer()
+                            if selectedRepoId == repo.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("mac-reassign-target-\(repo.fullName)")
+                }
+                .frame(minHeight: 180)
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-reassign-error")
+            }
+
+            HStack {
+                Spacer()
+                Button(role: .destructive) {
+                    Task { await submit() }
+                } label: {
+                    if isSubmitting {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Reassign", systemImage: "arrow.triangle.swap")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedRepo == nil || isSubmitting)
+                .accessibilityIdentifier("mac-reassign-submit-button")
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 440, minHeight: 360)
+    }
+
+    private func submit() async {
+        guard let selectedRepo else { return }
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+
+        do {
+            try await onReassign(selectedRepo)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private extension Color {
+    init?(macHex: String) {
+        let hex = macHex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard hex.count == 6,
+              let value = UInt64(hex, radix: 16) else { return nil }
+
+        self.init(
+            red: Double((value >> 16) & 0xFF) / 255,
+            green: Double((value >> 8) & 0xFF) / 255,
+            blue: Double(value & 0xFF) / 255
+        )
     }
 }
 

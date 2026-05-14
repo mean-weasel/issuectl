@@ -410,6 +410,40 @@ final class APIClientExtensionTests: XCTestCase {
         _ = try await client.request(path: "/api/v1/issues/o/r/1/assignees", method: "PUT", body: body)
     }
 
+    @MainActor
+    func testReassignIssueURLAndBodyEncoding() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/issues/org/source/42/reassign"))
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = self.readBody(from: request)
+            if let bodyData {
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+                XCTAssertEqual(json?["targetOwner"] as? String, "org")
+                XCTAssertEqual(json?["targetRepo"] as? String, "target")
+            }
+
+            return (self.makeResponse(url: request.url!), """
+            {"success": true, "new_issue_number": 77, "new_owner": "org", "new_repo": "target", "cleanup_warning": null, "error": null}
+            """.data(using: .utf8)!)
+        }
+
+        let body = try JSONEncoder().encode(
+            ReassignRequest(targetOwner: "org", targetRepo: "target")
+        )
+        let (data, _) = try await client.request(
+            path: "/api/v1/issues/org/source/42/reassign",
+            method: "POST",
+            body: body
+        )
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let response = try decoder.decode(ReassignResponse.self, from: data)
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.newIssueNumber, 77)
+        XCTAssertEqual(response.newRepo, "target")
+    }
+
     // MARK: - DetailActions (APIClient+DetailActions)
 
     @MainActor

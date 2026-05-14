@@ -234,7 +234,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         case ("PATCH", "/api/v1/settings"):
             return ["success": true, "error": NSNull()]
         case ("GET", "/api/v1/repos"):
-            return ["repos": [repo]]
+            return ["repos": [repo, betaRepo]]
         case ("GET", "/api/v1/worktrees"):
             return ["worktrees": worktrees]
         case ("POST", "/api/v1/worktrees/cleanup"):
@@ -287,8 +287,18 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             ]]
         case ("GET", "/api/v1/issues/org/alpha"):
             return ["issues": issues, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/issues/org/beta"):
+            return ["issues": betaIssues, "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/1"):
             return issueDetail()
+        case ("GET", "/api/v1/repos/org/alpha/labels"):
+            return ["labels": availableLabels]
+        case ("GET", "/api/v1/repos/org/alpha/collaborators"):
+            return ["collaborators": [
+                ["login": "alice", "avatar_url": "https://example.com/alice.png"],
+                ["login": "bob", "avatar_url": "https://example.com/bob.png"],
+                ["login": "carol", "avatar_url": "https://example.com/carol.png"],
+            ]]
         case ("PATCH", "/api/v1/issues/org/alpha/1"):
             let payload = jsonBody(from: request)
             if let title = payload["title"] as? String {
@@ -298,6 +308,39 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 detailIssueBody = body
             }
             return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/issues/org/alpha/1/labels"):
+            let payload = jsonBody(from: request)
+            if let label = payload["label"] as? String {
+                switch payload["action"] as? String {
+                case "remove":
+                    detailIssueLabels.removeAll { $0 == label }
+                default:
+                    if !detailIssueLabels.contains(label) {
+                        detailIssueLabels.append(label)
+                    }
+                }
+            }
+            return ["success": true, "error": NSNull()]
+        case ("PUT", "/api/v1/issues/org/alpha/1/assignees"):
+            let payload = jsonBody(from: request)
+            if let assignees = payload["assignees"] as? [String] {
+                detailIssueAssignees = assignees
+            }
+            return ["assignees": detailIssueAssignees]
+        case ("POST", "/api/v1/issues/org/alpha/1/reassign"):
+            let payload = jsonBody(from: request)
+            let targetOwner = payload["targetOwner"] as? String ?? "org"
+            let targetRepo = payload["targetRepo"] as? String ?? "beta"
+            reassignedIssueNumber = 77
+            detailIssueState = "closed"
+            return [
+                "success": true,
+                "new_issue_number": 77,
+                "new_owner": targetOwner,
+                "new_repo": targetRepo,
+                "cleanup_warning": NSNull(),
+                "error": NSNull(),
+            ]
         case ("POST", "/api/v1/issues/org/alpha/1/state"):
             let payload = jsonBody(from: request)
             detailIssueState = payload["state"] as? String ?? detailIssueState
@@ -347,6 +390,17 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         ]
     }
 
+    private static var betaRepo: [String: Any] {
+        [
+            "id": 2,
+            "owner": "org",
+            "name": "beta",
+            "local_path": "/tmp/issuectl-beta",
+            "branch_pattern": "jeremy/{slug}",
+            "created_at": isoDate,
+        ]
+    }
+
     nonisolated(unsafe) private static var worktrees: [[String: Any]] = [
         [
             "path": "/tmp/alpha-worktree-101",
@@ -371,6 +425,9 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var detailIssueTitle = "Open alpha issue"
     nonisolated(unsafe) private static var detailIssueBody = "Searchable **alpha** body\n\n```swift\nlet value = 1\n```"
     nonisolated(unsafe) private static var detailIssueState = "open"
+    nonisolated(unsafe) private static var detailIssueLabels = ["bug"]
+    nonisolated(unsafe) private static var detailIssueAssignees = ["bob"]
+    nonisolated(unsafe) private static var reassignedIssueNumber: Int?
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment", author: "bob"),
@@ -378,7 +435,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
 
     private static var issues: [[String: Any]] {
         [
-            issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, assignees: ["bob"], author: "alice", updatedAt: "2026-05-14T10:00:00.000Z"),
+            issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: "2026-05-14T10:00:00.000Z"),
             issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
             issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
             issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
@@ -395,11 +452,28 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         }
     }
 
+    private static var betaIssues: [[String: Any]] {
+        guard let reassignedIssueNumber else { return [] }
+        return [
+            issue(
+                number: reassignedIssueNumber,
+                title: detailIssueTitle,
+                body: detailIssueBody,
+                state: "open",
+                labels: detailIssueLabels,
+                assignees: detailIssueAssignees,
+                author: "alice",
+                updatedAt: isoDate
+            ),
+        ]
+    }
+
     private static func issue(
         number: Int,
         title: String,
         body: String,
         state: String,
+        labels: [String] = [],
         assignees: [String],
         author: String,
         updatedAt: String
@@ -409,7 +483,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             "title": title,
             "body": body,
             "state": state,
-            "labels": [],
+            "labels": labels.map(labelFixture),
             "assignees": assignees.map { ["login": $0, "avatar_url": "https://example.com/\($0).png"] },
             "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
             "comment_count": 0,
@@ -422,7 +496,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
 
     private static func issueDetail() -> [String: Any] {
         [
-            "issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, assignees: ["bob"], author: "alice", updatedAt: isoDate),
+            "issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: isoDate),
             "comments": detailComments,
             "deployments": [
                 [
@@ -476,6 +550,32 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             "created_at": isoDate,
             "updated_at": isoDate,
             "html_url": "https://github.com/org/alpha/issues/1#issuecomment-\(id)",
+        ]
+    }
+
+    private static var availableLabels: [[String: Any]] {
+        [
+            labelFixture("bug"),
+            labelFixture("enhancement"),
+            labelFixture("docs"),
+        ]
+    }
+
+    private static func labelFixture(_ name: String) -> [String: Any] {
+        let colors = [
+            "bug": "d73a4a",
+            "enhancement": "a2eeef",
+            "docs": "0075ca",
+        ]
+        let descriptions = [
+            "bug": "Something is not working",
+            "enhancement": "New feature or request",
+            "docs": "Documentation",
+        ]
+        return [
+            "name": name,
+            "color": colors[name] ?? "6a737d",
+            "description": descriptions[name] ?? NSNull(),
         ]
     }
 
