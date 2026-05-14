@@ -307,6 +307,58 @@ final class MacIssueFilterStateTests: XCTestCase {
         ])
     }
 
+    func testMacLaunchOptionsDefaultsUseSettingsLocalPathAndGeneratedBranch() {
+        let repo = Repo(
+            id: 1,
+            owner: "mean-weasel",
+            name: "issuectl",
+            localPath: "/tmp/issuectl",
+            branchPattern: nil,
+            createdAt: "2026-01-01T00:00:00Z"
+        )
+        let item = item(
+            number: 42,
+            repo: repo,
+            title: "Fix launch options",
+            state: "open",
+            assignees: [],
+            author: user("alice"),
+            updatedAt: "2026-05-14T10:00:00.000Z"
+        )
+
+        let options = MacIssueLaunchOptions.defaults(for: item, detail: nil, settings: ["launch_agent": "codex"])
+
+        XCTAssertEqual(options.agent, .codex)
+        XCTAssertEqual(options.workspaceMode, .worktree)
+        XCTAssertEqual(options.branchName, generateBranchName(issueNumber: 42, issueTitle: "Fix launch options"))
+        XCTAssertTrue(options.selectedCommentIndices.isEmpty)
+        XCTAssertTrue(options.selectedFilePaths.isEmpty)
+        XCTAssertEqual(options.resumeBehavior, .automatic)
+    }
+
+    func testMacLaunchOptionsBuildRequestBodyWithExplicitChoices() {
+        let options = MacIssueLaunchOptions(
+            agent: .claude,
+            branchName: "custom-mac-launch",
+            workspaceMode: .clone,
+            selectedCommentIndices: [2, 0],
+            selectedFilePaths: ["Sources/Beta.swift", "Sources/Alpha.swift"],
+            preamble: "Custom Mac preamble",
+            resumeBehavior: .resume
+        )
+
+        let body = options.requestBody(idempotencyKey: "launch-id")
+
+        XCTAssertEqual(body.agent, .claude)
+        XCTAssertEqual(body.branchName, "custom-mac-launch")
+        XCTAssertEqual(body.workspaceMode, .clone)
+        XCTAssertEqual(body.selectedCommentIndices, [0, 2])
+        XCTAssertEqual(body.selectedFilePaths, ["Sources/Alpha.swift", "Sources/Beta.swift"])
+        XCTAssertEqual(body.preamble, "Custom Mac preamble")
+        XCTAssertEqual(body.forceResume, true)
+        XCTAssertEqual(body.idempotencyKey, "launch-id")
+    }
+
     private var repos: [Repo] {
         [
             repo(id: 1, owner: "mean-weasel", name: "issuectl"),

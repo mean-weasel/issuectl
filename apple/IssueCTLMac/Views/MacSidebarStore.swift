@@ -329,26 +329,25 @@ final class MacSidebarStore {
         }
     }
 
-    func launchIssue(api: APIClient, item: MacIssueListItem, detail: IssueDetailResponse?) async throws -> ActiveDeployment {
+    func launchIssue(
+        api: APIClient,
+        item: MacIssueListItem,
+        detail: IssueDetailResponse?,
+        options providedOptions: MacIssueLaunchOptions? = nil
+    ) async throws -> ActiveDeployment {
         await refreshSessions(api: api)
         if let existing = activeSession(for: item) {
             return existing
         }
 
-        let settings = try? await api.getSettings()
-        let agent = LaunchAgent.settingValue(settings?["launch_agent"])
-        let branchName = generateBranchName(issueNumber: item.issue.number, issueTitle: item.issue.title)
-        let workspaceMode: WorkspaceMode = item.repo.localPath?.isEmpty == false ? .worktree : .clone
-        let body = LaunchRequestBody(
-            agent: agent,
-            branchName: branchName,
-            workspaceMode: workspaceMode,
-            selectedCommentIndices: [],
-            selectedFilePaths: [],
-            preamble: nil,
-            forceResume: nil,
-            idempotencyKey: UUID().uuidString
-        )
+        let options: MacIssueLaunchOptions
+        if let providedOptions {
+            options = providedOptions
+        } else {
+            let settings = try? await api.getSettings()
+            options = MacIssueLaunchOptions.defaults(for: item, detail: detail, settings: settings)
+        }
+        let body = options.requestBody(idempotencyKey: UUID().uuidString)
 
         let response = try await api.launch(
             owner: item.repo.owner,
@@ -365,8 +364,8 @@ final class MacSidebarStore {
             id: deploymentId,
             repoId: item.repo.id,
             issueNumber: item.issue.number,
-            branchName: branchName,
-            workspaceMode: workspaceMode,
+            branchName: options.branchName,
+            workspaceMode: options.workspaceMode,
             workspacePath: "",
             linkedPrNumber: nil,
             state: .active,
@@ -422,6 +421,77 @@ final class MacSidebarStore {
         issues.sort { lhs, rhs in
             (lhs.issue.updatedDate ?? .distantPast) > (rhs.issue.updatedDate ?? .distantPast)
         }
+    }
+}
+
+enum MacLaunchResumeBehavior: String, CaseIterable, Identifiable {
+    case automatic
+    case resume
+    case reset
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .automatic: "Auto"
+        case .resume: "Resume"
+        case .reset: "Reset"
+        }
+    }
+
+    var forceResume: Bool? {
+        switch self {
+        case .automatic: nil
+        case .resume: true
+        case .reset: false
+        }
+    }
+
+    static func behavior(forceResume: Bool?) -> MacLaunchResumeBehavior {
+        switch forceResume {
+        case true: .resume
+        case false: .reset
+        case nil: .automatic
+        }
+    }
+}
+
+struct MacIssueLaunchOptions: Equatable {
+    var agent: LaunchAgent
+    var branchName: String
+    var workspaceMode: WorkspaceMode
+    var selectedCommentIndices: Set<Int>
+    var selectedFilePaths: Set<String>
+    var preamble: String
+    var resumeBehavior: MacLaunchResumeBehavior
+
+    static func defaults(
+        for item: MacIssueListItem,
+        detail: IssueDetailResponse?,
+        settings: [String: String]?
+    ) -> MacIssueLaunchOptions {
+        MacIssueLaunchOptions(
+            agent: LaunchAgent.settingValue(settings?["launch_agent"]),
+            branchName: generateBranchName(issueNumber: item.issue.number, issueTitle: item.issue.title),
+            workspaceMode: item.repo.localPath?.isEmpty == false ? .worktree : .clone,
+            selectedCommentIndices: [],
+            selectedFilePaths: [],
+            preamble: "",
+            resumeBehavior: .automatic
+        )
+    }
+
+    func requestBody(idempotencyKey: String?) -> LaunchRequestBody {
+        LaunchRequestBody(
+            agent: agent,
+            branchName: branchName,
+            workspaceMode: workspaceMode,
+            selectedCommentIndices: selectedCommentIndices.sorted(),
+            selectedFilePaths: selectedFilePaths.sorted(),
+            preamble: preamble.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : preamble,
+            forceResume: resumeBehavior.forceResume,
+            idempotencyKey: idempotencyKey
+        )
     }
 }
 

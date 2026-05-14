@@ -28,6 +28,7 @@ struct MacIssueDetailView: View {
     @State private var isShowingCloseWithComment = false
     @State private var commentPendingDeletion: GitHubComment?
     @State private var selectedLinkedPullRequest: MacPullRequestListItem?
+    @State private var isShowingLaunchOptions = false
 
     private var issue: GitHubIssue {
         detail?.issue ?? item.issue
@@ -134,6 +135,16 @@ struct MacIssueDetailView: View {
         }
         .sheet(item: $selectedLinkedPullRequest) { pullRequest in
             MacPullRequestDetailView(item: pullRequest, store: store)
+        }
+        .sheet(isPresented: $isShowingLaunchOptions) {
+            MacLaunchOptionsSheet(
+                item: item,
+                detail: detail,
+                initialOptions: MacIssueLaunchOptions.defaults(for: item, detail: detail, settings: nil)
+            ) { options in
+                await launchIssue(options: options, openTerminalWhenReady: true)
+            }
+            .environment(api)
         }
         .sheet(item: $lightboxImage) { image in
             MacImageLightbox(url: image.url, altText: image.altText) {
@@ -255,6 +266,7 @@ struct MacIssueDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-issue-detail-error-message")
             }
 
             if let successMessage {
@@ -298,18 +310,30 @@ struct MacIssueDetailView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(activeSession.ttydPort == nil)
                 } else {
-                    Button {
-                        Task { await launchIssue() }
-                    } label: {
-                        if isLaunching {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Label("Launch", systemImage: "play.fill")
+                    HStack(spacing: 8) {
+                        Button {
+                            Task { await launchIssue(options: nil, openTerminalWhenReady: true) }
+                        } label: {
+                            if isLaunching {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Label("Launch", systemImage: "play.fill")
+                            }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isLaunching || !issue.isOpen)
+                        .accessibilityIdentifier("mac-issue-detail-launch-button")
+
+                        Button {
+                            isShowingLaunchOptions = true
+                        } label: {
+                            Label("Options", systemImage: "slider.horizontal.3")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isLaunching || !issue.isOpen)
+                        .accessibilityIdentifier("mac-issue-detail-launch-options-button")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isLaunching || !issue.isOpen)
                 }
             }
             .padding(10)
@@ -730,15 +754,16 @@ struct MacIssueDetailView: View {
         }
     }
 
-    private func launchIssue() async {
+    private func launchIssue(options: MacIssueLaunchOptions?, openTerminalWhenReady: Bool) async {
         isLaunching = true
         errorMessage = nil
         defer { isLaunching = false }
 
         do {
-            let session = try await store.launchIssue(api: api, item: item, detail: detail)
+            let session = try await store.launchIssue(api: api, item: item, detail: detail, options: options)
             activeSession = session
-            if session.ttydPort != nil {
+            isShowingLaunchOptions = false
+            if openTerminalWhenReady, session.ttydPort != nil {
                 await openTerminalAsync(session)
             }
         } catch {
@@ -803,6 +828,287 @@ private enum MacIssueDetailSheet: Identifiable {
         case .reassign:
             "reassign"
         }
+    }
+}
+
+private struct MacLaunchOptionsSheet: View {
+    @Environment(APIClient.self) private var api
+    @Environment(\.dismiss) private var dismiss
+
+    let item: MacIssueListItem
+    let detail: IssueDetailResponse?
+    let submit: (MacIssueLaunchOptions) async -> Void
+
+    @State private var options: MacIssueLaunchOptions
+    @State private var isSubmitting = false
+
+    init(
+        item: MacIssueListItem,
+        detail: IssueDetailResponse?,
+        initialOptions: MacIssueLaunchOptions,
+        submit: @escaping (MacIssueLaunchOptions) async -> Void
+    ) {
+        self.item = item
+        self.detail = detail
+        self.submit = submit
+        _options = State(initialValue: initialOptions)
+    }
+
+    private var comments: [GitHubComment] {
+        detail?.comments ?? []
+    }
+
+    private var referencedFiles: [String] {
+        detail?.referencedFiles ?? []
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    agentSection
+                    workspaceSection
+                    branchSection
+                    resumeSection
+                    commentsSection
+                    filesSection
+                    preambleSection
+                }
+                .padding(16)
+            }
+
+            Divider()
+            footer
+        }
+        .frame(width: 520, height: 620)
+        .task { await loadSavedAgent() }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Launch Options")
+                .font(.headline)
+            Text("\(item.repoFullName)#\(item.issue.number)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+    }
+
+    private var agentSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Agent")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker("Agent", selection: $options.agent) {
+                ForEach(LaunchAgent.allCases) { agent in
+                    Text(agent.displayName).tag(agent)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("mac-launch-options-agent-picker")
+        }
+    }
+
+    private var workspaceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Workspace")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker("Workspace", selection: $options.workspaceMode) {
+                Text("Worktree").tag(WorkspaceMode.worktree)
+                Text("Existing").tag(WorkspaceMode.existing)
+                Text("Clone").tag(WorkspaceMode.clone)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("mac-launch-options-workspace-picker")
+
+            if item.repo.localPath?.isEmpty != false, options.workspaceMode == .worktree {
+                Label("This repo has no local path; clone mode is usually safer.", systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-launch-options-workspace-warning")
+            }
+        }
+    }
+
+    private var branchSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Branch")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            TextField("Branch name", text: $options.branchName)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(.body, design: .monospaced))
+                .accessibilityIdentifier("mac-launch-options-branch-field")
+        }
+    }
+
+    private var resumeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Existing Changes")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker("Existing changes", selection: $options.resumeBehavior) {
+                ForEach(MacLaunchResumeBehavior.allCases) { behavior in
+                    Text(behavior.title).tag(behavior)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("mac-launch-options-resume-picker")
+        }
+    }
+
+    @ViewBuilder
+    private var commentsSection: some View {
+        if !comments.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Comments")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(options.selectedCommentIndices.count == comments.count ? "Clear" : "All") {
+                        if options.selectedCommentIndices.count == comments.count {
+                            options.selectedCommentIndices.removeAll()
+                        } else {
+                            options.selectedCommentIndices = Set(comments.indices)
+                        }
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-launch-options-comments-toggle-all")
+                }
+
+                ForEach(Array(comments.enumerated()), id: \.offset) { index, comment in
+                    Toggle(isOn: commentBinding(index)) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(comment.user?.login ?? "Unknown")
+                                .font(.caption.weight(.medium))
+                            Text(comment.body)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    .toggleStyle(.checkbox)
+                    .accessibilityIdentifier("mac-launch-options-comment-\(index)")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var filesSection: some View {
+        if !referencedFiles.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Files")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(options.selectedFilePaths.count == referencedFiles.count ? "Clear" : "All") {
+                        if options.selectedFilePaths.count == referencedFiles.count {
+                            options.selectedFilePaths.removeAll()
+                        } else {
+                            options.selectedFilePaths = Set(referencedFiles)
+                        }
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-launch-options-files-toggle-all")
+                }
+
+                ForEach(referencedFiles, id: \.self) { filePath in
+                    Toggle(filePath, isOn: fileBinding(filePath))
+                        .toggleStyle(.checkbox)
+                        .font(.caption.monospaced())
+                        .accessibilityIdentifier("mac-launch-options-file-\(filePath)")
+                }
+            }
+        }
+    }
+
+    private var preambleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Preamble")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            TextEditor(text: $options.preamble)
+                .frame(minHeight: 90)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.25))
+                )
+                .accessibilityIdentifier("mac-launch-options-preamble-field")
+        }
+    }
+
+    private var footer: some View {
+        HStack {
+            Spacer()
+            Button("Cancel") {
+                dismiss()
+            }
+            .accessibilityIdentifier("mac-launch-options-cancel-button")
+
+            Button {
+                Task { await submitOptions() }
+            } label: {
+                if isSubmitting {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Label("Launch", systemImage: "play.fill")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isSubmitting || options.branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityIdentifier("mac-launch-options-submit-button")
+        }
+        .padding(16)
+    }
+
+    private func commentBinding(_ index: Int) -> Binding<Bool> {
+        Binding(
+            get: { options.selectedCommentIndices.contains(index) },
+            set: { isSelected in
+                if isSelected {
+                    options.selectedCommentIndices.insert(index)
+                } else {
+                    options.selectedCommentIndices.remove(index)
+                }
+            }
+        )
+    }
+
+    private func fileBinding(_ filePath: String) -> Binding<Bool> {
+        Binding(
+            get: { options.selectedFilePaths.contains(filePath) },
+            set: { isSelected in
+                if isSelected {
+                    options.selectedFilePaths.insert(filePath)
+                } else {
+                    options.selectedFilePaths.remove(filePath)
+                }
+            }
+        )
+    }
+
+    private func loadSavedAgent() async {
+        guard options.agent == .claude else { return }
+        if let settings = try? await api.getSettings() {
+            options.agent = LaunchAgent.settingValue(settings["launch_agent"])
+        }
+    }
+
+    private func submitOptions() async {
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        await submit(options)
+        isSubmitting = false
     }
 }
 
