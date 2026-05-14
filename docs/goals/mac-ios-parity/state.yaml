@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T018
+active_task: T019
 
 tasks:
   - id: T001
@@ -676,7 +676,7 @@ tasks:
   - id: T018
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #425 Phase 3 for acceptance coverage, CI/check status, merge readiness, and next-slice sizing."
     inputs:
@@ -693,6 +693,68 @@ tasks:
       - "Acceptance criteria evidence map."
       - "CI or replacement validation status."
       - "Merge recommendation and next active task."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T018-pr425-merged.md"
+      pr:
+        number: 425
+        url: "https://github.com/mean-weasel/issuectl/pull/425"
+        branch: "mac-parity-phase-3-worktrees"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "11c30bddd2a8ca1cd685bdb7bec85f8561c71e13"
+        merge_commit: "bc6ebbffe17dac7e674c2af9bacbe7bdd23bc5ae"
+        merged_at: "2026-05-14T15:44:32Z"
+        checks: "No checks reported."
+      summary: "Reviewed Phase 3 acceptance coverage, marked PR #425 ready, and squash-merged it into the integration branch using the recorded local-validation replacement gate."
+      next_task: T019
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 4 Issue List Parity as the next PR-sized slice from mac-sidebar-spaces-option-a."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-4-issue-list-parity"
+      - "T018 receipt"
+      - "apple/IssueCTLMac/Views/MacSidebarView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+      - "Relevant iOS issue list views and shared API models"
+    constraints:
+      - "Create a child branch from mac-sidebar-spaces-option-a and open a draft PR early."
+      - "Keep the Mac sidebar dense and efficient rather than copying iOS layout literally."
+      - "Preserve per-Desktop persistence behavior established by the Mac sidebar work."
+      - "Do not regress repository settings, advanced settings, or worktree management."
+      - "Document and test whether pagination count persists per Desktop or resets on section/filter changes."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSidebarView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLShared/Models/**"
+      - "apple/IssueCTLShared/Services/**"
+      - "apple/IssueCTLTests/APIClientTests.swift"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Need backend route or schema changes beyond shared client/model wiring."
+      - "iOS section semantics are ambiguous or conflict with backend data."
+      - "Two-Desktop dogfood evidence is required but unavailable."
+      - "Mac UI test harness regresses to hanging."
     receipt: null
 
   - id: T999
