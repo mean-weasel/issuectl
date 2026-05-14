@@ -87,43 +87,49 @@ struct MacIssuesView: View {
                 }
                 .listStyle(.plain)
             } else {
-                List {
-                    ForEach(pagedIssues) { item in
-                        Button {
-                            selectedIssue = item
-                        } label: {
-                            MacIssueRow(
-                                item: item,
-                                isRunning: MacIssueListModel.isRunning(item, sessions: store.sessions),
-                                priority: store.priorities[MacIssueListModel.priorityKey(for: item)]
-                            )
-                        }
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(pagedIssues) { item in
+                            Button {
+                                selectedIssue = item
+                            } label: {
+                                MacIssueRow(
+                                    item: item,
+                                    isRunning: MacIssueListModel.isRunning(item, sessions: store.sessions),
+                                    priority: store.priorities[MacIssueListModel.priorityKey(for: item)]
+                                )
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                            }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("mac-issue-row-\(item.repoFullName)-\(item.issue.number)")
-                    }
 
-                    if hasMoreIssues {
-                        HStack {
-                            Spacer()
-                            Button {
-                                filterState.visiblePageCount += 1
-                            } label: {
-                                Label("Show 50 More", systemImage: "chevron.down")
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            Spacer()
+                            Divider()
                         }
-                        .padding(.vertical, 10)
-                    } else if visibleIssues.count > pageSize {
-                        Text("Showing all \(visibleIssues.count) matching issues")
-                            .font(.macSidebar(size: 11, scale: textScale))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
+
+                        if hasMoreIssues {
+                            HStack {
+                                Spacer()
+                                Button {
+                                    filterState.visiblePageCount += 1
+                                } label: {
+                                    Label("Show 50 More", systemImage: "chevron.down")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                Spacer()
+                            }
                             .padding(.vertical, 10)
+                        } else if visibleIssues.count > pageSize {
+                            Text("Showing all \(visibleIssues.count) matching issues")
+                                .font(.macSidebar(size: 11, scale: textScale))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
                     }
+                    .padding(.horizontal, 8)
                 }
-                .listStyle(.plain)
             }
         }
         .onChange(of: store.issues.count) { _, _ in
@@ -225,6 +231,7 @@ struct MacIssuesView: View {
                     .font(.macSidebar(size: 11, scale: textScale))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .accessibilityIdentifier("mac-issues-pagination-summary")
 
                 Spacer(minLength: 4)
 

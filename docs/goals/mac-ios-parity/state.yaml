@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T022
+active_task: T023
 
 tasks:
   - id: T001
@@ -867,6 +867,7 @@ tasks:
         worker_pr_base: "mac-sidebar-spaces-option-a"
       allowed_files_for_t022:
         - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
         - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
         - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
         - "apple/IssueCTLMacTests/**"
@@ -886,13 +887,14 @@ tasks:
   - id: T022
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 5A Mac issue-detail core actions and context display as a PR-sized slice."
     inputs:
       - "T021 receipt"
       - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
       - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
       - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
       - "Relevant iOS detail action views"
     constraints:
@@ -903,6 +905,7 @@ tasks:
       - "Do not merge without green CI or a documented accepted replacement validation."
     allowed_files:
       - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
       - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
       - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
       - "apple/IssueCTLMacTests/**"
@@ -922,6 +925,59 @@ tasks:
       - "UI tests cannot deterministically reach detail action controls after one stabilization attempt."
       - "Implementing labels, assignees, reassign, or image lightbox becomes necessary to keep this PR coherent."
       - "Any required files fall outside the allowed scope."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      note: "notes/T022-phase-5a-detail-core-actions.md"
+      summary: "Implemented Phase 5A Mac issue-detail core actions and context display: Markdown body/comment rendering, linked PR and deployment/session context, current-user-gated own-comment edit/delete, edit issue, close with comment, and fixture-backed Mac UI smoke coverage."
+      branch: "mac-parity-phase-5a-detail-core-actions"
+      base: "mac-sidebar-spaces-option-a"
+      pr: "https://github.com/mean-weasel/issuectl/pull/427"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+        - "docs/goals/mac-ios-parity/state.yaml"
+      validation:
+        - "PASS: git diff --check"
+        - "PASS: IssueCTLMac Debug build on macOS arm64"
+        - "PASS: IssueCTLMacTests"
+        - "PASS: IssueCTLTests/APIClientExtensionTests on iOS simulator"
+        - "PASS: pnpm typecheck"
+        - "PASS: pnpm lint, with existing unrelated warnings"
+        - "PASS: MacSidebarSmokeTests/testIssueDetailCoreActionsAndContext"
+        - "PASS: MacSidebarSmokeTests/testIssueListFiltersSortsResetsAndLoadsMore"
+        - "PASS: full MacSidebarSmokeTests suite, 9 tests"
+      deferred:
+        - "labels"
+        - "assignees"
+        - "reassign"
+        - "image lightbox"
+      next_task: T023
+
+  - id: T023
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review Phase 5A PR #427 for CI/merge readiness and size the next Phase 5B issue-detail parity PR."
+    inputs:
+      - "T022 receipt"
+      - "PR #427"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
+      - "Remaining deferred Phase 5 items"
+    constraints:
+      - "Do not implement product changes."
+      - "Prefer one small follow-up PR for labels/assignees/reassign unless the acceptance map shows that should split further."
+      - "Keep image lightbox separate if it introduces a distinct media-viewing interaction path."
+      - "Record merge status for PR #427 before assigning a Worker to the next slice."
+    expected_output:
+      - "PR #427 CI and merge recommendation."
+      - "Next Worker objective and branch/base strategy."
+      - "Allowed files and validation commands for the next slice."
+      - "Acceptance criteria for each remaining Phase 5 gap."
     receipt: null
 
   - id: T999

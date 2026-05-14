@@ -171,15 +171,51 @@ final class MacSidebarStore {
         }
     }
 
-    func updateIssueState(api: APIClient, item: MacIssueListItem, state: String) async throws {
+    func updateIssue(api: APIClient, item: MacIssueListItem, title: String?, body: String?) async throws {
+        let response = try await api.updateIssue(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: UpdateIssueRequestBody(title: title, body: body)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update issue")
+        }
+    }
+
+    func updateIssueState(api: APIClient, item: MacIssueListItem, state: String, comment: String? = nil) async throws {
         let response = try await api.updateIssueState(
             owner: item.repo.owner,
             repo: item.repo.name,
             number: item.issue.number,
-            body: IssueStateRequestBody(state: state, comment: nil)
+            body: IssueStateRequestBody(state: state, comment: comment)
         )
         guard response.success else {
             throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update issue")
+        }
+    }
+
+    func editComment(api: APIClient, item: MacIssueListItem, commentId: Int, body: String) async throws {
+        let response = try await api.editComment(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: EditCommentRequestBody(commentId: commentId, body: body)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to edit comment")
+        }
+    }
+
+    func deleteComment(api: APIClient, item: MacIssueListItem, commentId: Int) async throws {
+        let response = try await api.deleteComment(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: DeleteCommentRequestBody(commentId: commentId)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to delete comment")
         }
     }
 
