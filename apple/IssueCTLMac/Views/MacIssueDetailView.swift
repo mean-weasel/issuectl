@@ -797,13 +797,11 @@ struct MacIssueDetailView: View {
         )
     }
 
+    @MainActor
     private func openTerminalAsync(_ session: ActiveDeployment) async {
         errorMessage = nil
-        do {
-            let url = try await store.terminalURL(api: api, session: session)
-            openURL(url)
-        } catch {
-            errorMessage = error.localizedDescription
+        MacTerminalWindowController.open(session: session, store: store, api: api) {
+            activeSession = nil
         }
     }
 }

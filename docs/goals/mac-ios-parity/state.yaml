@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T056
+active_task: T057
 
 tasks:
   - id: T001
@@ -2827,7 +2827,7 @@ tasks:
   - id: T056
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 8D embedded terminal parity for the Mac app: a native embedded terminal surface from issue detail and Active Sessions backed by ensure-ttyd, with loading/error states, text-size control, reconnect/respawn, visible duration, and end-session control."
     inputs:
@@ -2865,6 +2865,58 @@ tasks:
       - "A backend API contract change is required beyond existing ensure-ttyd/end-session semantics."
       - "Terminal UI automation cannot deterministically observe the embedded surface or controls after two focused attempts."
       - "Local validation fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      note: "notes/T056-phase-8d-terminal-window.md"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      pr:
+        number: 440
+        url: "https://github.com/mean-weasel/issuectl/pull/440"
+        branch: "mac-parity-phase-8d-terminal-window"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+          note: "Passed with pre-existing warnings."
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8d-terminal -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+          status: pass
+          note: "22 tests, 0 failures."
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8d-terminal -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+          note: "35 tests, 0 failures."
+      summary: "Implemented a native Mac terminal window opened from issue detail and Active Sessions, backed by ensure-ttyd with persisted text size, reconnect/respawn handling, loading/error/retry UI, duration, and end-session controls."
+
+  - id: T057
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Gate PR #440 for Phase 8D: inspect the pushed diff, confirm CI or accepted replacement validation, complete a focused dogfood pass if possible, decide merge readiness, and select the next PR-sized parity slice."
+    inputs:
+      - "T056 receipt"
+      - "PR #440"
+      - "Local validation receipts"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not merge PR #440 until the branch is pushed and CI is green or no checks are configured with replacement validation documented."
+      - "Prefer dogfooding the terminal from Active Sessions on this Mac before merge; if skipped, record the reason and residual risk."
+      - "Do not implement unrelated phases inside the merge gate."
+      - "If merge ready, mark the PR ready before merge unless policy allows merging drafts directly."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "CI or replacement validation status."
+      - "Dogfood result or explicit skipped reason."
+      - "Merge action and next task recommendation."
     receipt: null
 
   - id: T999

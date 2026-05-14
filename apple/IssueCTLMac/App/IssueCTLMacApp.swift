@@ -323,6 +323,9 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 return !endedDeploymentIds.contains(id)
             }]
         case ("POST", "/api/v1/deployments/2/ensure-ttyd"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_TTYD_FAILURE"] == "1" {
+                return ["alive": false, "error": "Fixture terminal unavailable"]
+            }
             return ["port": 7700, "terminalToken": "fixture-terminal-token", "respawned": ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_RESPAWN_TTYD"] == "1"]
         case ("POST", "/api/v1/deployments/8/ensure-ttyd"):
             return ["port": 7701, "terminalToken": "fixture-terminal-token-beta", "respawned": false]
