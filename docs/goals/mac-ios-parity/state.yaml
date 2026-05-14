@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T900
+active_task: T004
 
 tasks:
   - id: T001
@@ -228,7 +228,7 @@ tasks:
   - id: T004
     type: pm
     assignee: PM
-    status: queued
+    status: active
     reasoning_hint: default
     objective: "Merge or block the first parity PR according to T003, record the result, and activate the next PR-sized parity slice."
     inputs:
@@ -288,7 +288,7 @@ tasks:
   - id: T900
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Periodic phase-boundary audit of completed PRs against the parity plan and remaining discrepancy matrix."
     inputs:
@@ -304,7 +304,48 @@ tasks:
       - "Remaining discrepancies."
       - "Risk or test debt."
       - "Next slice recommendation."
-    receipt: null
+    receipt:
+      result: done
+      decision: changes_required
+      full_outcome_complete: false
+      note: "notes/T900-pr423-phase-review.md"
+      summary: "HTTP assertions are now covered; PR #423 still needs deterministic Mac UI evidence because the status-menu UI suite hangs before test output."
+      next_task: T011
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Add deterministic Mac UI coverage for the native repository settings section without relying on the flaky status-menu path."
+    inputs:
+      - "T900 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/423"
+    constraints:
+      - "Keep the launch hook scoped to ISSUECTL_UI_TESTING."
+      - "Do not change normal app launch behavior."
+      - "Prefer a focused settings test over broad menu-bar automation."
+      - "Do not merge PR #423."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsNativeRepositoryManagement"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+    stop_if:
+      - "The UI test still hangs after bypassing the status menu."
+      - "Need files outside allowed_files."
+      - "The test hook would affect non-UI-testing app behavior."
+    receipt:
+      result: blocked
+      note: "notes/T011-mac-ui-settings-test.md"
+      summary: "Tried a UI-testing-only direct Settings launch hook, but the focused Mac UI test still hung; removed the failed hook/test and left PR #423 draft pending dogfood or a dedicated UI automation fix."
+      warnings:
+        - "xcodebuild UI test attempt was interrupted after hanging with no test output after launch."
+      blocker: "Mac accessory app UI automation still hangs even when bypassing the status menu."
 
   - id: T999
     type: judge
