@@ -670,7 +670,7 @@ private struct DraftRow: View {
     }
 }
 
-private struct DirectIssueCreateSheet: View {
+struct DirectIssueCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let repos: [Repo]

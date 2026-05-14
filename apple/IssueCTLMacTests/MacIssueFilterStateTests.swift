@@ -444,6 +444,56 @@ final class MacIssueFilterStateTests: XCTestCase {
         ])
     }
 
+    func testMacTodayProjectionBuildsMetricsAttentionAndSearch() {
+        let blockingIssue = item(
+            number: 9,
+            repo: repos[0],
+            title: "Blocked login",
+            state: "open",
+            assignees: [user("alice")],
+            author: user("bob"),
+            updatedAt: "2026-05-14T10:00:00.000Z",
+            labels: [GitHubLabel(name: "blocked", color: "ff9900", description: nil)]
+        )
+        let otherIssue = item(
+            number: 10,
+            repo: repos[1],
+            title: "Other assigned",
+            state: "open",
+            assignees: [user("carol")],
+            author: user("bob"),
+            updatedAt: "2026-05-14T10:00:00.000Z"
+        )
+        let pulls = [
+            pullItem(number: 4, repo: repos[0], title: "Failing review", state: "open", merged: false, author: "alice", checksStatus: "failure", createdAt: "2026-05-14T09:00:00.000Z", updatedAt: "2026-05-14T09:00:00.000Z"),
+            pullItem(number: 5, repo: repos[0], title: "Passing cleanup", state: "open", merged: false, author: "alice", checksStatus: "success", createdAt: "2026-05-14T09:00:00.000Z", updatedAt: "2026-05-14T09:00:00.000Z"),
+        ]
+
+        let projection = MacTodayModel.project(
+            issues: [blockingIssue, otherIssue],
+            pulls: pulls,
+            sessions: [session(owner: "mean-weasel", repo: "issuectl", issueNumber: 2)],
+            searchText: "",
+            currentUserLogin: "alice"
+        )
+
+        XCTAssertEqual(projection.activeSessionCount, 1)
+        XCTAssertEqual(projection.reviewPullCount, 1)
+        XCTAssertEqual(projection.issueCount, 1)
+        XCTAssertEqual(projection.items.map(\.kind), [.pull, .issue, .session])
+        XCTAssertTrue(projection.items[1].isAttention)
+
+        let searchProjection = MacTodayModel.project(
+            issues: [blockingIssue, otherIssue],
+            pulls: pulls,
+            sessions: [session(owner: "mean-weasel", repo: "issuectl", issueNumber: 2)],
+            searchText: "failing",
+            currentUserLogin: "alice"
+        )
+
+        XCTAssertEqual(searchProjection.items.map(\.title), ["Failing review"])
+    }
+
     func testMacLaunchOptionsDefaultsUseSettingsLocalPathAndGeneratedBranch() {
         let repo = Repo(
             id: 1,
@@ -568,14 +618,15 @@ final class MacIssueFilterStateTests: XCTestCase {
         state: String,
         assignees: [GitHubUser],
         author: GitHubUser,
-        updatedAt: String
+        updatedAt: String,
+        labels: [GitHubLabel] = []
     ) -> MacIssueListItem {
         let issue = GitHubIssue(
             number: number,
             title: title,
             body: "Issue body",
             state: state,
-            labels: [],
+            labels: labels,
             assignees: assignees,
             user: author,
             commentCount: 0,
