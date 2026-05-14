@@ -3,7 +3,7 @@ import SwiftUI
 struct MacSettingsView: View {
     @Environment(APIClient.self) private var api
     @Environment(MacSidebarPreferences.self) private var preferences
-    @Environment(DisplaySidebarCoordinator.self) private var sidebarCoordinator
+    @Environment(SpaceSidebarCoordinator.self) private var sidebarCoordinator
     @Environment(\.resetSidebarLayout) private var resetSidebarLayout
     @State private var isUpdatingLaunchAtLogin = false
 
@@ -55,17 +55,17 @@ struct MacSettingsView: View {
                 }
             }
 
-            Section("Displays") {
-                if sidebarCoordinator.displayStates.isEmpty {
-                    Text("No connected displays detected")
+            Section("Learned Desktops") {
+                if sidebarCoordinator.spaceStates.isEmpty {
+                    Text("No desktops learned yet")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(sidebarCoordinator.displayStates, id: \.id) { displayState in
-                        displaySettingsRow(displayState)
+                    ForEach(sidebarCoordinator.spaceStates, id: \.id) { spaceState in
+                        spaceSettingsRow(spaceState)
                     }
                 }
 
-                Button("Reset All Sidebar Layouts") {
+                Button("Reset All Desktop Sidebar Layouts") {
                     resetSidebarLayout()
                 }
             }
@@ -99,27 +99,27 @@ struct MacSettingsView: View {
         )
     }
 
-    private func displaySettingsRow(_ displayState: MacSidebarDisplayState) -> some View {
+    private func spaceSettingsRow(_ spaceState: MacSidebarSpaceState) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(displayState.descriptor.name)
+                    Text(spaceState.title)
                         .font(.headline)
-                    Text(displayState.descriptor.isMain ? "Main display" : "Secondary display")
+                    Text(spaceState.id == sidebarCoordinator.currentSpaceState?.id ? "Current desktop" : "Learned desktop")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(displayState.chrome.isVisible ? "Visible" : "Hidden")
+                Text(spaceState.chrome.isVisible ? "Visible" : "Hidden")
                     .foregroundStyle(.secondary)
             }
 
             Toggle("Open Collapsed", isOn: Binding(
-                get: { displayState.preferences.isCollapsed },
+                get: { spaceState.preferences.isCollapsed },
                 set: { newValue in
-                    displayState.preferences.isCollapsed = newValue
-                    if displayState.chrome.isCollapsed != newValue {
-                        sidebarCoordinator.toggleCollapsed(displayKey: displayState.id)
+                    spaceState.preferences.isCollapsed = newValue
+                    if spaceState.chrome.isCollapsed != newValue {
+                        sidebarCoordinator.toggleCollapsed(spaceKey: spaceState.id)
                     }
                 }
             ))
@@ -127,19 +127,19 @@ struct MacSettingsView: View {
             HStack {
                 Text("Saved Width")
                 Spacer()
-                Text("\(Int(displayState.preferences.expandedWidth)) px")
+                Text("\(Int(spaceState.preferences.expandedWidth)) px")
                     .foregroundStyle(.secondary)
             }
 
             HStack {
-                Button(displayState.chrome.isVisible ? "Hide" : "Show") {
-                    sidebarCoordinator.toggleVisibility(displayKey: displayState.id)
+                Button(spaceState.chrome.isVisible ? "Hide" : "Show") {
+                    sidebarCoordinator.toggleVisibility(spaceKey: spaceState.id)
                 }
-                Button(displayState.chrome.isCollapsed ? "Expand" : "Collapse") {
-                    sidebarCoordinator.toggleCollapsed(displayKey: displayState.id)
+                Button(spaceState.chrome.isCollapsed ? "Expand" : "Collapse") {
+                    sidebarCoordinator.toggleCollapsed(spaceKey: spaceState.id)
                 }
                 Button("Reset") {
-                    sidebarCoordinator.resetLayout(displayKey: displayState.id)
+                    sidebarCoordinator.resetLayout(spaceKey: spaceState.id)
                 }
             }
         }

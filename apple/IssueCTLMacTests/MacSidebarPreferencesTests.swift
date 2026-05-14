@@ -135,6 +135,38 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertEqual(reloadedB.selectedRepoKeys, ["mean-weasel/other"])
     }
 
+    func testSpacePreferencesDoNotCollideWithDisplayPreferences() {
+        let preferences = MacSidebarPreferences(defaults: defaults)
+        let display = preferences.displayPreferences(for: "slot-a")
+        let space = preferences.spacePreferences(for: "slot-a")
+
+        display.isCollapsed = true
+        display.selectedRepoKeys = ["mean-weasel/display"]
+        space.isCollapsed = false
+        space.selectedRepoKeys = ["mean-weasel/space"]
+
+        let reloaded = MacSidebarPreferences(defaults: defaults)
+        let reloadedDisplay = reloaded.displayPreferences(for: "slot-a")
+        let reloadedSpace = reloaded.spacePreferences(for: "slot-a")
+
+        XCTAssertTrue(reloadedDisplay.isCollapsed)
+        XCTAssertFalse(reloadedSpace.isCollapsed)
+        XCTAssertEqual(reloadedDisplay.selectedRepoKeys, ["mean-weasel/display"])
+        XCTAssertEqual(reloadedSpace.selectedRepoKeys, ["mean-weasel/space"])
+    }
+
+    func testSpacePreferencesUseLegacyLayoutDefaultsForFirstRun() {
+        defaults.set(true, forKey: "mac.sidebar.isCollapsed")
+        defaults.set("active", forKey: "mac.sidebar.selectedSection")
+        defaults.set(430, forKey: "mac.sidebar.expandedWidth")
+
+        let space = MacSidebarPreferences(defaults: defaults).spacePreferences(for: "space-slot-1")
+
+        XCTAssertTrue(space.isCollapsed)
+        XCTAssertEqual(space.selectedSectionRawValue, "active")
+        XCTAssertEqual(space.expandedWidth, 430)
+    }
+
     func testDisplayPreferencesMigrateLegacyLayoutDefaults() {
         defaults.set(true, forKey: "mac.sidebar.isCollapsed")
         defaults.set("drafts", forKey: "mac.sidebar.selectedSection")

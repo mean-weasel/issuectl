@@ -22,7 +22,7 @@ struct IssueCTLMacApp: App {
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     let apiClient = APIClient()
     let sidebarPreferences = MacSidebarPreferences()
-    lazy var sidebarCoordinator = DisplaySidebarCoordinator(
+    lazy var sidebarCoordinator = SpaceSidebarCoordinator(
         apiClient: apiClient,
         preferences: sidebarPreferences,
         networkMonitor: networkMonitor
@@ -46,8 +46,8 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.delegate = self
-        menu.addItem(NSMenuItem(title: "Show All Sidebars", action: #selector(showAllSidebars), keyEquivalent: "s"))
-        menu.addItem(NSMenuItem(title: "Hide All Sidebars", action: #selector(hideAllSidebars), keyEquivalent: "w"))
+        menu.addItem(NSMenuItem(title: "Show Current Desktop Sidebar", action: #selector(showCurrentSpaceSidebar), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Hide Current Desktop Sidebar", action: #selector(hideCurrentSpaceSidebar), keyEquivalent: "w"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
@@ -60,30 +60,31 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        menu.addItem(NSMenuItem(title: "Show All Sidebars", action: #selector(showAllSidebars), keyEquivalent: "s"))
-        menu.addItem(NSMenuItem(title: "Hide All Sidebars", action: #selector(hideAllSidebars), keyEquivalent: "w"))
+        let currentTitle = sidebarCoordinator.currentSpaceState?.title ?? "Current Desktop"
+        menu.addItem(NSMenuItem(title: "Show \(currentTitle) Sidebar", action: #selector(showCurrentSpaceSidebar), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Hide \(currentTitle) Sidebar", action: #selector(hideCurrentSpaceSidebar), keyEquivalent: "w"))
         menu.addItem(.separator())
 
-        for state in sidebarCoordinator.displayStates {
-            let displayMenu = NSMenu()
-            displayMenu.addItem(NSMenuItem(
+        for state in sidebarCoordinator.spaceStates {
+            let spaceMenu = NSMenu()
+            spaceMenu.addItem(NSMenuItem(
                 title: state.chrome.isVisible ? "Hide Sidebar" : "Show Sidebar",
-                action: #selector(toggleDisplayVisibility(_:)),
+                action: #selector(toggleSpaceVisibility(_:)),
                 keyEquivalent: ""
             ))
-            displayMenu.addItem(NSMenuItem(
+            spaceMenu.addItem(NSMenuItem(
                 title: state.chrome.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
-                action: #selector(toggleDisplayCollapsed(_:)),
+                action: #selector(toggleSpaceCollapsed(_:)),
                 keyEquivalent: ""
             ))
-            displayMenu.addItem(NSMenuItem(title: "Reset Layout", action: #selector(resetDisplayLayout(_:)), keyEquivalent: ""))
-            displayMenu.items.forEach {
+            spaceMenu.addItem(NSMenuItem(title: "Reset Layout", action: #selector(resetSpaceLayout(_:)), keyEquivalent: ""))
+            spaceMenu.items.forEach {
                 $0.target = self
                 $0.representedObject = state.id
             }
 
-            let item = NSMenuItem(title: state.descriptor.name, action: nil, keyEquivalent: "")
-            item.submenu = displayMenu
+            let item = NSMenuItem(title: state.title, action: nil, keyEquivalent: "")
+            item.submenu = spaceMenu
             menu.addItem(item)
         }
 
@@ -95,27 +96,27 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         menu.items.forEach { $0.target = self }
     }
 
-    @objc private func showAllSidebars() {
-        sidebarCoordinator.showAll()
+    @objc private func showCurrentSpaceSidebar() {
+        sidebarCoordinator.showCurrentSpace()
     }
 
-    @objc private func hideAllSidebars() {
-        sidebarCoordinator.hideAll()
+    @objc private func hideCurrentSpaceSidebar() {
+        sidebarCoordinator.hideCurrentSpace()
     }
 
-    @objc private func toggleDisplayVisibility(_ sender: NSMenuItem) {
-        guard let displayKey = sender.representedObject as? String else { return }
-        sidebarCoordinator.toggleVisibility(displayKey: displayKey)
+    @objc private func toggleSpaceVisibility(_ sender: NSMenuItem) {
+        guard let spaceKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.toggleVisibility(spaceKey: spaceKey)
     }
 
-    @objc private func toggleDisplayCollapsed(_ sender: NSMenuItem) {
-        guard let displayKey = sender.representedObject as? String else { return }
-        sidebarCoordinator.toggleCollapsed(displayKey: displayKey)
+    @objc private func toggleSpaceCollapsed(_ sender: NSMenuItem) {
+        guard let spaceKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.toggleCollapsed(spaceKey: spaceKey)
     }
 
-    @objc private func resetDisplayLayout(_ sender: NSMenuItem) {
-        guard let displayKey = sender.representedObject as? String else { return }
-        sidebarCoordinator.resetLayout(displayKey: displayKey)
+    @objc private func resetSpaceLayout(_ sender: NSMenuItem) {
+        guard let spaceKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.resetLayout(spaceKey: spaceKey)
     }
 
     @objc private func openSettings() {

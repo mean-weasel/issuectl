@@ -49,7 +49,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     }
 
     private var panel: NSPanel!
-    let displayKey: String
+    let stateKey: String
     private var screen: NSScreen
     private let chrome: SidebarChromeState
     private let preferences: MacSidebarDisplayPreferences
@@ -57,12 +57,13 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
 
     init<Content: View>(
         rootView: Content,
-        displayKey: String,
+        stateKey: String,
         screen: NSScreen,
         chrome: SidebarChromeState,
-        preferences: MacSidebarDisplayPreferences
+        preferences: MacSidebarDisplayPreferences,
+        followsActiveSpace: Bool = true
     ) {
-        self.displayKey = displayKey
+        self.stateKey = stateKey
         self.screen = screen
         self.chrome = chrome
         self.preferences = preferences
@@ -94,7 +95,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
         panel.level = .floating
-        panel.collectionBehavior = [.moveToActiveSpace]
+        panel.collectionBehavior = followsActiveSpace ? [.moveToActiveSpace] : []
         panel.delegate = self
         updateSizeConstraints()
     }
@@ -162,6 +163,10 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         hide()
         return false
+    }
+
+    var isOnActiveSpace: Bool {
+        panel.isOnActiveSpace
     }
 
     func updateScreen(_ screen: NSScreen) {
