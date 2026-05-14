@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T023
+active_task: T024
 
 tasks:
   - id: T001
@@ -960,7 +960,7 @@ tasks:
   - id: T023
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review Phase 5A PR #427 for CI/merge readiness and size the next Phase 5B issue-detail parity PR."
     inputs:
@@ -978,6 +978,76 @@ tasks:
       - "Next Worker objective and branch/base strategy."
       - "Allowed files and validation commands for the next slice."
       - "Acceptance criteria for each remaining Phase 5 gap."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T023-pr427-merged-and-phase-5b.md"
+      pr:
+        number: 427
+        url: "https://github.com/mean-weasel/issuectl/pull/427"
+        branch: "mac-parity-phase-5a-detail-core-actions"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "579f393aa0cb7ac44ec3d6b4134e42aaa473b63c"
+        merge_commit: "979b82f45a117dadef72cc00e813ebb05edfcc11"
+        merged_at: "2026-05-14T16:53:13Z"
+        checks: "No checks reported."
+      accepted_replacement_validation: "Local validation from T022 covered the Phase 5A acceptance map; GitHub reported no configured checks."
+      summary: "Reviewed Phase 5A acceptance coverage, marked PR #427 ready, and squash-merged it into the integration branch using the recorded local-validation replacement gate. Sized Phase 5B as labels, assignees, and reassign; image lightbox remains a separate follow-up."
+      next_task: T024
+
+  - id: T024
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 5B Mac issue-detail label, assignee, and reassign action parity as a PR-sized slice."
+    inputs:
+      - "T023 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
+      - "apple/IssueCTL/Views/Issues/IssueDetailView.swift"
+      - "apple/IssueCTL/Views/Issues/LabelManagementSheet.swift"
+      - "apple/IssueCTL/Views/Issues/AssigneeSheet.swift"
+      - "apple/IssueCTL/Views/Issues/ReassignSheet.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "Shared API clients for labels, assignees, and reassign"
+    constraints:
+      - "Open or update a draft PR early."
+      - "Keep image lightbox out of this slice."
+      - "Preserve Phase 5A core action behavior and existing Mac sidebar/list behavior."
+      - "Record branch, PR URL, local validation, CI/check status, and merge readiness in the receipt."
+      - "Do not merge without green CI or a documented accepted replacement validation."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "apple/IssueCTLShared/Services/APIClient+DetailActions.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Assignment.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Manage labels: Mac detail exposes a label-management action, loads available repo labels, toggles selected labels through the shared label API, refreshes detail chips and issue-list label count after success, and shows recoverable errors without losing sheet state."
+      - "Manage assignees: Mac detail exposes an assignee-management action, loads collaborators, updates the full desired assignee list through the shared assignment API, refreshes detail/list assignee chips plus Mine/Unassigned filtering after success, and rolls back or preserves recoverable state on failure."
+      - "Reassign: Mac detail exposes a tracked-repo picker excluding the current repo, sends the shared reassign request, refreshes source and target repo issue lists, and navigates or clearly reports the new issue identity after success."
+      - "Existing Phase 5A actions remain available: edit issue, close/reopen, close with comment, add comment, edit/delete own comments, priority, GitHub link, linked PRs, and session actions."
+      - "Image lightbox is explicitly deferred with no media-viewing UI added in this slice."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "The shared label, assignee, or reassign APIs do not provide enough response data to refresh Mac state without a backend/API change outside this scope."
+      - "Reassign requires navigation architecture changes outside Mac issue detail/list/store surfaces."
+      - "Image lightbox or media rendering changes become necessary for this PR to compile or pass tests."
+      - "Any required files fall outside the allowed scope."
     receipt: null
 
   - id: T999
