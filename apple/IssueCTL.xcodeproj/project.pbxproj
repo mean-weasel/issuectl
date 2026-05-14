@@ -92,6 +92,7 @@
 		5C8B076C5D41EB2832394E74 /* Issue.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9961C2183D56ACC7E5650E0 /* Issue.swift */; };
 		5E6741980731284F38AF3827 /* MacDraftsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9BFED5728AF737B76F2F26 /* MacDraftsView.swift */; };
 		9D4E0A6C52F14F3A9B8C7D22 /* MacPullRequestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1A0E9C4D2B4F68852C3D11 /* MacPullRequestsView.swift */; };
+		9E8D7C6B5A4938271605F4E3 /* MacTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E8D7C6B5A4938271605F4E2 /* MacTodayView.swift */; };
 		5F5DEDA652F31AC394A5A596 /* DraftWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1FAC416FAB2ACA469E0EC6F /* DraftWorkflowTests.swift */; };
 		62580655D91E8E7A9A7950B1 /* NetworkErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3F3CE4A721136E587B4C67 /* NetworkErrorBanner.swift */; };
 		62A88EE9440FC6032A029F78 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB04FB5543994CCE2DE041E /* KeychainService.swift */; };
@@ -287,6 +288,7 @@
 		0FA58C21063864ADB4BAC822 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		134385CA01429770C742CD89 /* MacSidebarRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSidebarRootView.swift; sourceTree = "<group>"; };
 		7F1A0E9C4D2B4F68852C3D11 /* MacPullRequestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPullRequestsView.swift; sourceTree = "<group>"; };
+		9E8D7C6B5A4938271605F4E2 /* MacTodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTodayView.swift; sourceTree = "<group>"; };
 		13760098C8ED1658B27AD54B /* CommentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentSheet.swift; sourceTree = "<group>"; };
 		13EBC2D036E0950B774A3A43 /* LaunchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchView.swift; sourceTree = "<group>"; };
 		15319A8AF148A10DF82FE6DD /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
@@ -710,6 +712,7 @@
 				134385CA01429770C742CD89 /* MacSidebarRootView.swift */,
 				E04E7DE3BF0A6826FE986B1D /* MacSidebarStore.swift */,
 				49CDE37EDB8F4EA3712FE68E /* MacSidebarTextScale.swift */,
+				9E8D7C6B5A4938271605F4E2 /* MacTodayView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1305,6 +1308,7 @@
 				BFC0A82D9CCFD653415A4A82 /* MacSidebarRootView.swift in Sources */,
 				22B99716E42E20F0DA147C5B /* MacSidebarStore.swift in Sources */,
 				ABD4FEB7F53690ECF6E60CDC /* MacSidebarTextScale.swift in Sources */,
+				9E8D7C6B5A4938271605F4E3 /* MacTodayView.swift in Sources */,
 				B4AF2A85F0768942BCD81D8C /* NetworkMonitor.swift in Sources */,
 				D9E454235B1E43451B1B9597 /* NotificationPreferences.swift in Sources */,
 				3F98C9896C5653D619ABA40F /* OfflineCacheStore.swift in Sources */,

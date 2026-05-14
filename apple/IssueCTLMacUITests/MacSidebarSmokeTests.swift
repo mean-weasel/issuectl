@@ -171,6 +171,39 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
     }
 
+    func testTodayAttentionSectionShowsMetricsSearchAndNavigation() {
+        selectRootSection("Today")
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-metric-sessions"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-metric-prs"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-metric-issues"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-row-pr-org/alpha-10"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-row-issue-org/alpha-2"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-row-session-org/alpha-2"].waitForExistence(timeout: 5), app.debugDescription)
+
+        let search = app.textFields["mac-today-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
+        search.click()
+        search.typeText("migration")
+        XCTAssertTrue(app.descendants(matching: .any)["mac-today-row-pr-org/alpha-11"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-today-row-issue-org/alpha-2"].exists, app.debugDescription)
+
+        let pullRow = app.descendants(matching: .any)["mac-today-row-pr-org/alpha-11"]
+        openPullRequest(pullRow)
+        XCTAssertTrue(app.buttons["mac-pr-detail-done-button"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testTodayQuickCreateOpensDirectIssueFlow() {
+        selectRootSection("Today")
+
+        let newIssueButton = app.buttons["mac-today-new-issue-button"]
+        XCTAssertTrue(newIssueButton.waitForExistence(timeout: 8), app.debugDescription)
+        newIssueButton.click()
+
+        let titleField = app.textFields["mac-quick-create-title-field"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testPullRequestDetailActionsSucceedAndRefresh() {
         selectRootSection("PRs")
         openPullRequest(prRow("org/alpha", 10))

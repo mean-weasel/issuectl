@@ -222,6 +222,8 @@ struct MacSidebarRootView: View {
 
             Group {
                 switch selectedSection {
+                case .today:
+                    MacTodayView(store: store)
                 case .issues:
                     MacIssuesView(store: store, filterState: issueFilterState)
                 case .pullRequests:
@@ -377,6 +379,7 @@ struct MacSidebarRootView: View {
 }
 
 private enum MacSidebarSection: String, CaseIterable, Identifiable {
+    case today
     case issues
     case pullRequests
     case drafts
@@ -386,6 +389,7 @@ private enum MacSidebarSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .today: "Today"
         case .issues: "Issues"
         case .pullRequests: "PRs"
         case .drafts: "Drafts"
@@ -395,6 +399,7 @@ private enum MacSidebarSection: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .today: "smallcircle.filled.circle"
         case .issues: "list.bullet"
         case .pullRequests: "arrow.triangle.merge"
         case .drafts: "doc.text"

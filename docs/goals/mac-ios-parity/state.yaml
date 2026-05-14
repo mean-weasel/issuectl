@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T069
+active_task: T070
 
 tasks:
   - id: T001
@@ -3585,7 +3585,7 @@ tasks:
   - id: T069
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 11A compact Mac Today / Attention sidebar section with metrics, attention rows, search, quick navigation, quick create, and cached/offline indicators."
     inputs:
@@ -3629,6 +3629,61 @@ tasks:
       - "Reusing the direct issue creation sheet requires a broad extraction beyond a small access-level change."
       - "Stable UI navigation cannot be tested without brittle menu-bar automation."
       - "The fixture server lacks enough issue/PR/session data and cannot be extended inside the allowed file set."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      note: "notes/T069-phase-11a-today-attention.md"
+      pr:
+        number: 446
+        url: "https://github.com/mean-weasel/issuectl/pull/446"
+        branch: "mac-parity-phase-11a-today-attention"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending after push."
+      changed_files:
+        - "apple/IssueCTL.xcodeproj/project.pbxproj"
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMac/Views/MacTodayView.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      acceptance_evidence:
+        - "Mac sidebar includes Today in expanded and collapsed controls."
+        - "Today metrics cover active sessions, review-needed PRs, and assigned/open issues."
+        - "Fixture-backed attention rows cover PRs, issues, and active sessions."
+        - "Rows reuse existing Mac PR detail, issue detail, and terminal open behavior."
+        - "Search filters Today issues and PRs while preserving PR navigation."
+        - "Quick create opens the existing direct issue creation sheet."
+        - "Cache/offline indicator is wired from issue, PR, and session metadata."
+      validation:
+        - "git diff --check: pass"
+        - "pnpm typecheck: pass"
+        - "pnpm lint: pass with existing warnings only"
+        - "IssueCTLMac build: pass"
+        - "IssueCTLMacTests/MacIssueFilterStateTests: 29 tests passed"
+        - "Focused Today UI tests: 2 tests passed"
+      summary: "Added a compact Mac Today sidebar section with metrics, attention rows, search, quick create, existing detail/session navigation, cache/offline state, and deterministic unit/UI coverage."
+
+  - id: T070
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #446 Phase 11A Today attention section for acceptance coverage, GitHub check state, merge readiness, and whether Phase 11 needs a follow-up slice before final audit."
+    inputs:
+      - "T069 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/446"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 11"
+    constraints:
+      - "Do not implement product code unless the review finds a small board/receipt-only correction is required."
+      - "Merge only if PR checks are green, or if no checks are configured and local validation from T069 is accepted as replacement evidence."
+      - "If merge-ready, mark the PR ready, merge into mac-sidebar-spaces-option-a, record the merge commit, and choose final audit or a Phase 11 follow-up."
+      - "Do not mark the overall goal complete unless the final audit task has actually completed."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "PR check state and local replacement validation."
+      - "Merge result or required fixes."
+      - "Next task recommendation: final audit or Phase 11 follow-up."
     receipt: null
 
   - id: T999
@@ -3658,10 +3713,11 @@ checks:
   dirty_fingerprint: unknown
   last_verification:
     result: pass
-    task: T066
+    task: T069
     commands:
       - "git diff --check"
       - "pnpm typecheck"
       - "pnpm lint"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase10a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase10a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacNotificationUnavailableProjectionDocumentsDeferredPath -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsNotificationUnavailableState"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase11a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase11a-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testTodayAttentionSectionShowsMetricsSearchAndNavigation -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testTodayQuickCreateOpensDirectIssueFlow"
