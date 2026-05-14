@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T070
+active_task: T999
 
 tasks:
   - id: T001
@@ -3638,8 +3638,11 @@ tasks:
         url: "https://github.com/mean-weasel/issuectl/pull/446"
         branch: "mac-parity-phase-11a-today-attention"
         base: "mac-sidebar-spaces-option-a"
-        draft: true
-        checks: "Pending after push."
+        head_sha: "588612877282e50f82472ed8b56a643b5fd83507"
+        draft: false
+        checks: "No checks reported."
+        merge_commit_sha: "34db9e9289bc6404dc6f6493aed4846aa93f9f4d"
+        merged_at: "2026-05-14T23:04:35Z"
       changed_files:
         - "apple/IssueCTL.xcodeproj/project.pbxproj"
         - "apple/IssueCTLMac/Views/MacDraftsView.swift"
@@ -3667,7 +3670,7 @@ tasks:
   - id: T070
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #446 Phase 11A Today attention section for acceptance coverage, GitHub check state, merge readiness, and whether Phase 11 needs a follow-up slice before final audit."
     inputs:
@@ -3684,12 +3687,36 @@ tasks:
       - "PR check state and local replacement validation."
       - "Merge result or required fixes."
       - "Next task recommendation: final audit or Phase 11 follow-up."
-    receipt: null
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T070-pr446-merge-and-final-audit.md"
+      pr:
+        number: 446
+        url: "https://github.com/mean-weasel/issuectl/pull/446"
+        branch: "mac-parity-phase-11a-today-attention"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "588612877282e50f82472ed8b56a643b5fd83507"
+        merge_commit_sha: "34db9e9289bc6404dc6f6493aed4846aa93f9f4d"
+        merged_at: "2026-05-14T23:04:35Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-11a-today-attention branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "IssueCTLMac build"
+          - "IssueCTLMacTests/MacIssueFilterStateTests: 29 tests passed"
+          - "Focused Today UI tests: 2 tests passed"
+      selected_worker: "T999"
+      selected_slice: "Final parity audit"
+      summary: "Marked PR #446 ready, accepted local replacement validation because no GitHub checks were configured, merged Phase 11A into mac-sidebar-spaces-option-a, and selected the final audit task."
 
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Final audit that the Mac app satisfies the parity plan and every required feature discrepancy has implementation, tests, CI, and dogfood evidence."
     inputs:
