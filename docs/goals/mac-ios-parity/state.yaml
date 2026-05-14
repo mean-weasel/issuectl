@@ -1780,7 +1780,7 @@ tasks:
   - id: T036
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #433 for merge readiness, check CI/status, merge when acceptable, then record the merge receipt and select the next parity slice."
     inputs:
@@ -2206,7 +2206,7 @@ tasks:
   - id: T044
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 7C linked navigation between Mac PR detail linked issues and Mac issue detail linked PRs."
     inputs:
@@ -2432,6 +2432,39 @@ tasks:
         - "Active sessions search/repo filters and polling."
         - "Dirty worktree readiness checks."
       summary: "Implemented Phase 8A launch options: Mac issue detail now preserves one-click launch while adding a configurable options sheet wired into LaunchRequestBody with unit and fixture-backed UI coverage."
+
+  - id: T048
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: low
+    objective: "Record the Phase 8A PR #437 merge into the integration branch."
+    inputs:
+      - "PR #437"
+      - "T047 receipt"
+    constraints:
+      - "Do not implement product changes."
+      - "Record CI or replacement validation used for the merge gate."
+    receipt:
+      result: done
+      note: "notes/T048-pr437-merge.md"
+      pr:
+        number: 437
+        url: "https://github.com/mean-weasel/issuectl/pull/437"
+        branch: "mac-parity-phase-8a-launch-options"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "b5a9500d922818b2c961d830305203311b86f28a"
+        merge_commit_sha: "7acc3228b24c646d6b52f4b67ef615be3d835d3b"
+        merged_at: "2026-05-14T20:07:41Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-8a-launch-options branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "MacIssueFilterStateTests full suite: 21 tests passed"
+          - "MacSidebarSmokeTests full suite: 27 tests passed"
+      summary: "Marked PR #437 ready, confirmed no GitHub checks were configured, and merged Phase 8A Mac launch options into mac-sidebar-spaces-option-a."
 
   - id: T999
     type: judge
