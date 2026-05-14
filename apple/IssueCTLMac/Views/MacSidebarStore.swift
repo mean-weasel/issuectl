@@ -6,6 +6,10 @@ final class MacSidebarStore {
     private(set) var issues: [MacIssueListItem] = []
     private(set) var drafts: [Draft] = []
     private(set) var sessions: [ActiveDeployment] = []
+    private(set) var sessionPreviewsByPort: [Int: SessionPreview] = [:]
+    private(set) var sessionsFromCache = false
+    private(set) var sessionsCachedAt: String?
+    private(set) var sessionPreviewError: String?
     private(set) var currentUserLogin: String?
     private(set) var userFetchFailed = false
     private(set) var priorities: [String: Priority] = [:]
@@ -23,6 +27,10 @@ final class MacSidebarStore {
         issues = []
         drafts = []
         sessions = []
+        sessionPreviewsByPort = [:]
+        sessionsFromCache = false
+        sessionsCachedAt = nil
+        sessionPreviewError = nil
         currentUserLogin = nil
         userFetchFailed = false
         priorities = [:]
@@ -66,7 +74,11 @@ final class MacSidebarStore {
                 (lhs.issue.updatedDate ?? .distantPast) > (rhs.issue.updatedDate ?? .distantPast)
             }
             drafts = try await draftsResult.drafts
-            sessions = try await sessionsResult.deployments
+            let loadedSessions = try await sessionsResult
+            sessions = loadedSessions.deployments
+            sessionsFromCache = loadedSessions.fromCache
+            sessionsCachedAt = loadedSessions.cachedAt
+            await refreshSessionPreviews(api: api)
             switch await userResult {
             case .success(let user):
                 currentUserLogin = user.login
@@ -314,9 +326,22 @@ final class MacSidebarStore {
     func refreshSessions(api: APIClient) async {
         errorMessage = nil
         do {
-            sessions = try await api.activeDeployments(refresh: true).deployments
+            let response = try await api.activeDeployments(refresh: true)
+            sessions = response.deployments
+            sessionsFromCache = response.fromCache
+            sessionsCachedAt = response.cachedAt
+            await refreshSessionPreviews(api: api)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshSessionPreviews(api: APIClient) async {
+        sessionPreviewError = nil
+        do {
+            sessionPreviewsByPort = try await api.sessionPreviews().previewsByPort
+        } catch {
+            sessionPreviewError = error.localizedDescription
         }
     }
 
@@ -378,10 +403,10 @@ final class MacSidebarStore {
         )
     }
 
-    func terminalURL(api: APIClient, session: ActiveDeployment) async throws -> URL {
+    func terminalAccess(api: APIClient, session: ActiveDeployment) async throws -> MacTerminalAccess {
         let result = try await api.ensureTtyd(deploymentId: session.id)
         switch result {
-        case .available(let port, let token, _):
+        case .available(let port, let token, let respawned):
             var components = URLComponents(string: "\(api.serverURL)/api/terminal/\(port)/")
             components?.queryItems = [
                 URLQueryItem(name: "terminalToken", value: token),
@@ -392,10 +417,14 @@ final class MacSidebarStore {
             guard let url = components?.url else {
                 throw MacSidebarStoreError.operationFailed("Invalid terminal URL")
             }
-            return url
+            return MacTerminalAccess(url: url, port: port, respawned: respawned)
         case .unavailable(let error):
             throw MacSidebarStoreError.operationFailed(error ?? "Terminal is not ready")
         }
+    }
+
+    func terminalURL(api: APIClient, session: ActiveDeployment) async throws -> URL {
+        try await terminalAccess(api: api, session: session).url
     }
 
     func endSession(api: APIClient, session: ActiveDeployment) async throws {
@@ -492,6 +521,74 @@ struct MacIssueLaunchOptions: Equatable {
             forceResume: resumeBehavior.forceResume,
             idempotencyKey: idempotencyKey
         )
+    }
+}
+
+struct MacTerminalAccess: Equatable {
+    let url: URL
+    let port: Int
+    let respawned: Bool
+}
+
+struct MacSessionListProjection {
+    let sessions: [ActiveDeployment]
+    let totalCount: Int
+    let repoFilteredCount: Int
+
+    static func project(
+        sessions: [ActiveDeployment],
+        previewsByPort: [Int: SessionPreview],
+        selectedRepoKeys: Set<String>,
+        searchText: String
+    ) -> MacSessionListProjection {
+        let repoFiltered = sessions.filter { session in
+            selectedRepoKeys.contains(session.repoFullName)
+        }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let searched: [ActiveDeployment]
+        if query.isEmpty {
+            searched = repoFiltered
+        } else {
+            searched = repoFiltered.filter { session in
+                searchableText(for: session, preview: preview(for: session, previewsByPort: previewsByPort))
+                    .contains(query)
+            }
+        }
+        return MacSessionListProjection(
+            sessions: searched.sorted(by: sessionSort),
+            totalCount: sessions.count,
+            repoFilteredCount: repoFiltered.count
+        )
+    }
+
+    static func repoKeys(for sessions: [ActiveDeployment]) -> [String] {
+        Array(Set(sessions.map(\.repoFullName))).sorted()
+    }
+
+    private static func preview(for session: ActiveDeployment, previewsByPort: [Int: SessionPreview]) -> SessionPreview? {
+        guard let port = session.ttydPort else { return nil }
+        return previewsByPort[port]
+    }
+
+    private static func searchableText(for session: ActiveDeployment, preview: SessionPreview?) -> String {
+        [
+            session.repoFullName,
+            "#\(session.issueNumber)",
+            String(session.issueNumber),
+            session.branchName,
+            session.workspacePath,
+            session.workspaceMode.rawValue,
+            preview?.status.displayName,
+            preview?.latestLine,
+            preview?.lines.joined(separator: " "),
+        ]
+        .compactMap { $0 }
+        .joined(separator: " ")
+        .lowercased()
+    }
+
+    private static func sessionSort(_ lhs: ActiveDeployment, _ rhs: ActiveDeployment) -> Bool {
+        (lhs.launchedDate ?? .distantPast) > (rhs.launchedDate ?? .distantPast)
     }
 }
 

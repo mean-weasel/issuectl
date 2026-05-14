@@ -268,7 +268,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 ["owner": "org", "name": "gamma", "private": true, "pushed_at": isoDate],
             ], "synced_at": 1_775_000_000, "is_stale": false]
         case ("GET", "/api/v1/deployments"):
-            return ["deployments": launchedDeployments + [
+            let deployments = launchedDeployments + [
                 [
                     "id": 2,
                     "repo_id": 1,
@@ -280,12 +280,45 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                     "state": "active",
                     "launched_at": isoDate,
                     "ended_at": NSNull(),
-                    "ttyd_port": NSNull(),
-                    "ttyd_pid": NSNull(),
+                    "ttyd_port": 7700,
+                    "ttyd_pid": 2200,
                     "owner": "org",
                     "repo_name": "alpha",
                 ],
-            ]]
+                [
+                    "id": 8,
+                    "repo_id": 2,
+                    "issue_number": 21,
+                    "branch_name": "beta-session-filter",
+                    "workspace_mode": "clone",
+                    "workspace_path": "/tmp/issuectl-beta-21",
+                    "linked_pr_number": NSNull(),
+                    "state": "active",
+                    "launched_at": "2026-05-14T10:00:00.000Z",
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7701,
+                    "ttyd_pid": 2201,
+                    "owner": "org",
+                    "repo_name": "beta",
+                ],
+            ]
+            return ["deployments": deployments.filter { deployment in
+                guard let id = deployment["id"] as? Int else { return true }
+                return !endedDeploymentIds.contains(id)
+            }]
+        case ("POST", "/api/v1/deployments/2/ensure-ttyd"):
+            return ["port": 7700, "terminalToken": "fixture-terminal-token", "respawned": ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_RESPAWN_TTYD"] == "1"]
+        case ("POST", "/api/v1/deployments/8/ensure-ttyd"):
+            return ["port": 7701, "terminalToken": "fixture-terminal-token-beta", "respawned": false]
+        case ("POST", "/api/v1/deployments/2/end"), ("POST", "/api/v1/deployments/8/end"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_END_SESSION_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture end session failed"]
+            }
+            if let idSegment = path.split(separator: "/").dropFirst(3).first,
+               let id = Int(idSegment) {
+                endedDeploymentIds.insert(id)
+            }
+            return ["success": true, "error": NSNull()]
         case ("POST", "/api/v1/launch/org/alpha/1"):
             let payload = jsonBody(from: request)
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CUSTOM_LAUNCH"] == "1" {
@@ -305,7 +338,20 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             launchedDeployments.append(launchedDeployment(id: deploymentId, payload: payload))
             return ["success": true, "deployment_id": deploymentId, "ttyd_port": NSNull(), "error": NSNull(), "label_warning": NSNull()]
         case ("GET", "/api/v1/sessions/previews"):
-            return ["previews": []]
+            return ["previews": [
+                "7700": [
+                    "lines": ["agent booted", "alpha worker ready"],
+                    "lastUpdatedMs": 1_775_000_000_000,
+                    "lastChangedMs": 1_775_000_000_000,
+                    "status": "active",
+                ],
+                "7701": [
+                    "lines": ["beta idle waiting"],
+                    "lastUpdatedMs": 1_775_000_000_000,
+                    "lastChangedMs": 1_774_999_900_000,
+                    "status": "idle",
+                ],
+            ]]
         case ("POST", "/api/v1/parse"):
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PARSE_FAILURE"] == "1" {
                 return ["error": "Fixture parse failed"]
@@ -469,6 +515,8 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["success": true, "sha": "fixture-\(pullMergeMethod ?? "merge")-sha", "error": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/1"):
             return issueDetail()
+        case ("GET", "/api/v1/issues/org/alpha/2"):
+            return runningIssueDetail()
         case ("GET", "/api/v1/issues/org/alpha/89"):
             return quickCreatedIssueDetail()
         case ("GET", "/api/v1/repos/org/alpha/labels"):
@@ -620,6 +668,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var pullMerged = false
     nonisolated(unsafe) private static var pullMergeMethod: String?
     nonisolated(unsafe) private static var launchedDeployments: [[String: Any]] = []
+    nonisolated(unsafe) private static var endedDeploymentIds: Set<Int> = []
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
@@ -930,6 +979,33 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 ],
             ],
             "referencedFiles": ["Sources/Alpha.swift"],
+            "fromCache": false,
+            "cachedAt": NSNull(),
+        ]
+    }
+
+    private static func runningIssueDetail() -> [String: Any] {
+        [
+            "issue": issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: isoDate),
+            "comments": [],
+            "deployments": [
+                [
+                    "id": 2,
+                    "repo_id": 1,
+                    "issue_number": 2,
+                    "branch_name": "issue-2-running",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/issue-2",
+                    "linked_pr_number": NSNull(),
+                    "state": "active",
+                    "launched_at": isoDate,
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7700,
+                    "ttyd_pid": 2200,
+                ],
+            ],
+            "linkedPRs": [],
+            "referencedFiles": [],
             "fromCache": false,
             "cachedAt": NSNull(),
         ]
