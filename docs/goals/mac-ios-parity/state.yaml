@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T003
+active_task: T900
 
 tasks:
   - id: T001
@@ -198,7 +198,7 @@ tasks:
   - id: T003
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review the first parity PR slice for acceptance criteria coverage, CI health, merge readiness, and next-slice sizing."
     inputs:
@@ -214,7 +214,16 @@ tasks:
       - "Missing acceptance criteria, if any."
       - "CI or replacement validation status."
       - "Merge decision and next task recommendation."
-    receipt: null
+    receipt:
+      result: done
+      decision: changes_required
+      full_outcome_complete: false
+      note: "notes/T003-pr423-review.md"
+      summary: "PR #423 is a good draft but not merge-ready; add HTTP assertion tests for shared repo settings endpoints and keep UI/dogfood evidence explicit."
+      missing_acceptance_criteria:
+        - "HTTP assertions for add/browse/update/remove repo endpoint method/path/body behavior."
+        - "Deterministic UI replacement or dogfood evidence for Mac settings repo workflows."
+      next_task: T010
 
   - id: T004
     type: pm
@@ -240,28 +249,46 @@ tasks:
   - id: T010
     type: worker
     assignee: Worker
-    status: queued
+    status: done
     reasoning_hint: medium
-    objective: "Continue implementing the next approved PR-sized parity slice from the plan after the first PR is merged or blocked with a workaround."
+    objective: "Close PR #423 review gaps by adding shared API HTTP assertion tests for repository settings endpoints and updating the PR evidence."
     inputs:
-      - "Latest PM/Judge receipt"
+      - "T003 receipt"
       - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+      - "https://github.com/mean-weasel/issuectl/pull/423"
     constraints:
-      - "PM must fill allowed_files and verify before activation."
-      - "Use the established PR/CI/merge cadence."
-      - "Record acceptance criteria evidence and PR status in receipt."
-    allowed_files: []
-    verify: []
+      - "Keep changes test-focused unless a tiny production fix is required to satisfy the tests."
+      - "Do not merge PR #423."
+      - "Record updated local validation and PR status in receipt."
+    allowed_files:
+      - "apple/IssueCTLTests/APIClientTests.swift"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,OS=18.6,name=iPhone 16' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
     stop_if:
       - "Need files outside allowed_files."
-      - "Phase scope is too large for one PR."
-      - "CI is red and recovery path is unclear."
-    receipt: null
+      - "Shared API contract differs from the Phase 1 plan."
+      - "iOS simulator destination is unavailable."
+    receipt:
+      result: done
+      note: "notes/T010-pr423-http-assertions.md"
+      changed_files:
+        - "apple/IssueCTLTests/APIClientTests.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,OS=18.6,name=iPhone 16' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+      summary: "Added shared API HTTP assertion coverage for repository add, browse refresh, update, and remove endpoints used by PR #423."
 
   - id: T900
     type: judge
     assignee: Judge
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Periodic phase-boundary audit of completed PRs against the parity plan and remaining discrepancy matrix."
     inputs:
@@ -306,11 +333,7 @@ checks:
   dirty_fingerprint: unknown
   last_verification:
     result: partial
-    task: T002
+    task: T010
     commands:
       - "git diff --check"
-      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
-      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
-      - "pnpm typecheck"
-      - "pnpm lint"
-      - "IssueCTLMacUITests attempted but interrupted after hang before test output"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,OS=18.6,name=iPhone 16' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
