@@ -42,7 +42,14 @@ final class MacSidebarSmokeTests: XCTestCase {
         let loadMore = app.buttons["mac-issues-load-more-button"]
         XCTAssertTrue(loadMore.waitForExistence(timeout: 5), app.debugDescription)
         loadMore.click()
-        XCTAssertTrue(issueRow("org/alpha", 55).waitForExistence(timeout: 5), app.debugDescription)
+        let paginationSummary = app.staticTexts["mac-issues-pagination-summary"]
+        XCTAssertTrue(paginationSummary.waitForExistence(timeout: 5), app.debugDescription)
+        let paginationSummaryText = (paginationSummary.value as? String) ?? paginationSummary.label
+        XCTAssertTrue(
+            paginationSummaryText.contains("Showing 53 of 53"),
+            "\(paginationSummaryText)\n\(app.debugDescription)"
+        )
+        XCTAssertFalse(loadMore.exists, app.debugDescription)
 
         issueState("Running").click()
         XCTAssertTrue(issueRow("org/alpha", 2).waitForExistence(timeout: 5), app.debugDescription)
@@ -71,6 +78,54 @@ final class MacSidebarSmokeTests: XCTestCase {
 
         app.buttons["mac-issues-reset-filters-button"].click()
         XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testIssueDetailCoreActionsAndContext() {
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+
+        let editButton = app.buttons["mac-issue-detail-edit-button"]
+        firstIssue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        if !editButton.waitForExistence(timeout: 2) {
+            firstIssue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        }
+
+        XCTAssertTrue(editButton.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-body-markdown"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-linked-pr-7"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-deployment-9"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-issue-detail-edit-comment-101"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.buttons["mac-issue-detail-edit-comment-102"].exists, app.debugDescription)
+
+        app.buttons["mac-issue-detail-edit-button"].click()
+        let titleField = app.textFields["mac-edit-issue-title-field"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), app.debugDescription)
+        titleField.click()
+        titleField.typeKey("a", modifierFlags: .command)
+        titleField.typeText("Updated alpha issue")
+        app.buttons["mac-edit-issue-save-button"].click()
+        XCTAssertTrue(app.staticTexts["Updated alpha issue"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-issue-detail-edit-comment-101"].click()
+        let commentBody = app.textViews["mac-edit-comment-body-field"]
+        XCTAssertTrue(commentBody.waitForExistence(timeout: 5), app.debugDescription)
+        commentBody.click()
+        commentBody.typeKey("a", modifierFlags: .command)
+        commentBody.typeText("Edited own comment")
+        app.buttons["mac-edit-comment-save-button"].click()
+        XCTAssertTrue(app.staticTexts["Edited own comment"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-issue-detail-close-with-comment-button"].click()
+        let closingComment = app.textViews["mac-close-issue-comment-field"]
+        XCTAssertTrue(closingComment.waitForExistence(timeout: 5), app.debugDescription)
+        closingComment.click()
+        closingComment.typeText("Closing with mac detail parity")
+        app.buttons["mac-close-issue-submit-button"].click()
+        XCTAssertTrue(app.staticTexts["Closed"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-issue-detail-delete-comment-101"].click()
+        app.buttons["action-button-1"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-comment-101"].waitForNonExistence(timeout: 5), app.debugDescription)
     }
 
     func testStatusMenuOpensSettings() {

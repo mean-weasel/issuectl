@@ -19,7 +19,11 @@ struct MacIssueDetailView: View {
     @State private var isUpdatingPriority = false
     @State private var isLaunching = false
     @State private var activeSession: ActiveDeployment?
+    @State private var currentUserLogin: String?
     @State private var errorMessage: String?
+    @State private var activeSheet: MacIssueDetailSheet?
+    @State private var isShowingCloseWithComment = false
+    @State private var commentPendingDeletion: GitHubComment?
 
     private var issue: GitHubIssue {
         detail?.issue ?? item.issue
@@ -53,22 +57,74 @@ struct MacIssueDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        issueSummary
-                        launchSection
-                        actionBar
-                        issueBody
-                        commentComposer
-                        comments
+                VStack(spacing: 0) {
+                    actionBar
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                    Divider()
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            issueSummary
+                            launchSection
+                            issueBody
+                            linkedPullRequests
+                            deploymentsSection
+                            commentComposer
+                            comments
+                        }
+                        .padding(16)
                     }
-                    .padding(16)
                 }
             }
         }
         .frame(minWidth: 520, idealWidth: 620, minHeight: 560, idealHeight: 720)
         .task {
             await load(refresh: false)
+        }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .editIssue:
+                MacEditIssueSheet(issue: issue) { title, body in
+                    try await store.updateIssue(api: api, item: item, title: title, body: body)
+                    await load(refresh: true)
+                    activeSheet = nil
+                }
+            case .closeWithComment:
+                EmptyView()
+            case .editComment(let comment):
+                MacEditCommentSheet(comment: comment) { body in
+                    try await store.editComment(api: api, item: item, commentId: comment.id, body: body)
+                    await load(refresh: true)
+                    activeSheet = nil
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingCloseWithComment) {
+            MacCloseIssueSheet(issueNumber: issue.number) { comment in
+                try await store.updateIssueState(api: api, item: item, state: "closed", comment: comment)
+                await load(refresh: true)
+                isShowingCloseWithComment = false
+            }
+        }
+        .confirmationDialog(
+            "Delete Comment",
+            isPresented: .init(
+                get: { commentPendingDeletion != nil },
+                set: { if !$0 { commentPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let comment = commentPendingDeletion {
+                    Task { await deleteComment(comment) }
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                commentPendingDeletion = nil
+            }
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 
@@ -215,6 +271,14 @@ struct MacIssueDetailView: View {
     private var actionBar: some View {
         HStack(spacing: 8) {
             Button {
+                activeSheet = .editIssue
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("mac-issue-detail-edit-button")
+
+            Button {
                 Task { await updateState(issue.isOpen ? "closed" : "open") }
             } label: {
                 if isUpdatingState {
@@ -227,6 +291,19 @@ struct MacIssueDetailView: View {
             .buttonStyle(.borderedProminent)
             .tint(issue.isOpen ? .red : .green)
             .disabled(isUpdatingState)
+            .accessibilityIdentifier("mac-issue-detail-toggle-state-button")
+
+            if issue.isOpen {
+                Button {
+                    activeSheet = nil
+                    isShowingCloseWithComment = true
+                } label: {
+                    Label("Close With Comment", systemImage: "text.bubble")
+                }
+                .buttonStyle(.bordered)
+                .disabled(isUpdatingState)
+                .accessibilityIdentifier("mac-issue-detail-close-with-comment-button")
+            }
 
             Picker("Priority", selection: $priority) {
                 ForEach(Priority.allCases, id: \.self) { priority in
@@ -249,6 +326,7 @@ struct MacIssueDetailView: View {
                 Label("GitHub", systemImage: "safari")
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier("mac-issue-detail-github-button")
 
             Spacer()
         }
@@ -290,10 +368,8 @@ struct MacIssueDetailView: View {
                 Divider()
                 Text("Description")
                     .font(.headline)
-                Text(body)
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+                MacMarkdownView(content: body)
+                    .accessibilityIdentifier("mac-issue-detail-body-markdown")
             }
         }
     }
@@ -350,13 +426,99 @@ struct MacIssueDetailView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        Text(comment.body)
-                            .font(.body)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
+                        MacMarkdownView(content: comment.body)
+
+                        if isOwnComment(comment) {
+                            HStack(spacing: 8) {
+                                Spacer()
+                                Button {
+                                    activeSheet = .editComment(comment)
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("mac-issue-detail-edit-comment-\(comment.id)")
+
+                                Button(role: .destructive) {
+                                    commentPendingDeletion = comment
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("mac-issue-detail-delete-comment-\(comment.id)")
+                            }
+                            .font(.caption)
+                        }
                     }
                     .padding(10)
                     .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("mac-issue-detail-comment-\(comment.id)")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var linkedPullRequests: some View {
+        if let linkedPRs = detail?.linkedPRs, !linkedPRs.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Divider()
+                Text("Linked Pull Requests")
+                    .font(.headline)
+
+                ForEach(linkedPRs) { pr in
+                    HStack(spacing: 8) {
+                        Image(systemName: pr.isOpen ? "arrow.triangle.merge" : (pr.merged ? "checkmark.circle.fill" : "xmark.circle"))
+                            .foregroundStyle(pr.isOpen ? .green : (pr.merged ? .purple : .red))
+                        Text("#\(pr.number)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(pr.title)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(pr.diffSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityIdentifier("mac-issue-detail-linked-pr-\(pr.number)")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deploymentsSection: some View {
+        if let deployments = detail?.deployments, !deployments.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Divider()
+                Text("Sessions")
+                    .font(.headline)
+
+                ForEach(deployments) { deployment in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(deployment.isActive ? .green : .secondary)
+                            .frame(width: 8, height: 8)
+                        Text(deployment.branchName)
+                            .font(.subheadline)
+                        Spacer()
+                        if deployment.isActive, deployment.ttydPort != nil {
+                            Button {
+                                openTerminal(activeDeployment(from: deployment))
+                            } label: {
+                                Label("Open", systemImage: "terminal")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("mac-issue-detail-open-session-\(deployment.id)")
+                        } else {
+                            Text(deployment.isActive ? deployment.state.rawValue : "ended")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("mac-issue-detail-deployment-\(deployment.id)")
                 }
             }
         }
@@ -376,6 +538,10 @@ struct MacIssueDetailView: View {
 
         do {
             async let detailResult = store.issueDetail(api: api, item: item, refresh: refresh)
+            async let userResult: Result<UserResponse, Error> = {
+                do { return .success(try await api.currentUser(refresh: refresh)) }
+                catch { return .failure(error) }
+            }()
             async let priorityResult: Result<Priority, Error> = {
                 do { return .success(try await api.getPriority(owner: item.repo.owner, repo: item.repo.name, number: item.issue.number)) }
                 catch { return .failure(error) }
@@ -384,6 +550,12 @@ struct MacIssueDetailView: View {
             detail = try await detailResult
             await store.refreshSessions(api: api)
             activeSession = store.activeSession(for: item)
+            switch await userResult {
+            case .success(let user):
+                currentUserLogin = user.login
+            case .failure:
+                currentUserLogin = nil
+            }
             switch await priorityResult {
             case .success(let loadedPriority):
                 priority = loadedPriority
@@ -395,6 +567,11 @@ struct MacIssueDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func isOwnComment(_ comment: GitHubComment) -> Bool {
+        guard let currentUserLogin else { return false }
+        return comment.user?.login == currentUserLogin
     }
 
     private func submitComment() async {
@@ -421,6 +598,18 @@ struct MacIssueDetailView: View {
 
         do {
             try await store.updateIssueState(api: api, item: item, state: state)
+            await load(refresh: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func deleteComment(_ comment: GitHubComment) async {
+        commentPendingDeletion = nil
+        errorMessage = nil
+
+        do {
+            try await store.deleteComment(api: api, item: item, commentId: comment.id)
             await load(refresh: true)
         } catch {
             errorMessage = error.localizedDescription
@@ -461,6 +650,25 @@ struct MacIssueDetailView: View {
         Task { await openTerminalAsync(session) }
     }
 
+    private func activeDeployment(from deployment: Deployment) -> ActiveDeployment {
+        ActiveDeployment(
+            id: deployment.id,
+            repoId: deployment.repoId,
+            issueNumber: deployment.issueNumber,
+            branchName: deployment.branchName,
+            workspaceMode: deployment.workspaceMode,
+            workspacePath: deployment.workspacePath,
+            linkedPrNumber: deployment.linkedPrNumber,
+            state: deployment.state,
+            launchedAt: deployment.launchedAt,
+            endedAt: deployment.endedAt,
+            ttydPort: deployment.ttydPort,
+            ttydPid: deployment.ttydPid,
+            owner: item.repo.owner,
+            repoName: item.repo.name
+        )
+    }
+
     private func openTerminalAsync(_ session: ActiveDeployment) async {
         errorMessage = nil
         do {
@@ -469,6 +677,357 @@ struct MacIssueDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private enum MacIssueDetailSheet: Identifiable {
+    case editIssue
+    case closeWithComment
+    case editComment(GitHubComment)
+
+    var id: String {
+        switch self {
+        case .editIssue:
+            "edit-issue"
+        case .closeWithComment:
+            "close-with-comment"
+        case .editComment(let comment):
+            "edit-comment-\(comment.id)"
+        }
+    }
+}
+
+private struct MacEditIssueSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let issue: GitHubIssue
+    let onSave: (String?, String?) async throws -> Void
+
+    @State private var title: String
+    @State private var bodyText: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(issue: GitHubIssue, onSave: @escaping (String?, String?) async throws -> Void) {
+        self.issue = issue
+        self.onSave = onSave
+        _title = State(initialValue: issue.title)
+        _bodyText = State(initialValue: issue.body ?? "")
+    }
+
+    private var trimmedTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmedBody: String { bodyText.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var hasChanges: Bool {
+        trimmedTitle != issue.title || trimmedBody != (issue.body ?? "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Edit Issue")
+                    .font(.headline)
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .disabled(isSaving)
+            }
+
+            TextField("Title", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("mac-edit-issue-title-field")
+
+            TextEditor(text: $bodyText)
+                .font(.body)
+                .frame(minHeight: 220)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                }
+                .accessibilityIdentifier("mac-edit-issue-body-field")
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-edit-issue-error")
+            }
+
+            HStack {
+                Spacer()
+                Button {
+                    Task { await save() }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Save", systemImage: "checkmark.circle")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(trimmedTitle.isEmpty || !hasChanges || isSaving)
+                .accessibilityIdentifier("mac-edit-issue-save-button")
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 460, minHeight: 420)
+    }
+
+    private func save() async {
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            try await onSave(
+                trimmedTitle != issue.title ? trimmedTitle : nil,
+                trimmedBody != (issue.body ?? "") ? trimmedBody : nil
+            )
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct MacCloseIssueSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let issueNumber: Int
+    let onClose: (String?) async throws -> Void
+
+    @State private var comment = ""
+    @State private var isClosing = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Close Issue #\(issueNumber)")
+                    .font(.headline)
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .disabled(isClosing)
+            }
+
+            TextEditor(text: $comment)
+                .font(.body)
+                .frame(minHeight: 160)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                }
+                .accessibilityIdentifier("mac-close-issue-comment-field")
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-close-issue-error")
+            }
+
+            HStack {
+                Spacer()
+                Button(role: .destructive) {
+                    Task { await close() }
+                } label: {
+                    if isClosing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Close Issue", systemImage: "xmark.circle")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isClosing)
+                .accessibilityIdentifier("mac-close-issue-submit-button")
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 440, minHeight: 320)
+    }
+
+    private func close() async {
+        isClosing = true
+        errorMessage = nil
+        defer { isClosing = false }
+
+        do {
+            let trimmed = comment.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await onClose(trimmed.isEmpty ? nil : trimmed)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct MacEditCommentSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let comment: GitHubComment
+    let onSave: (String) async throws -> Void
+
+    @State private var bodyText: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(comment: GitHubComment, onSave: @escaping (String) async throws -> Void) {
+        self.comment = comment
+        self.onSave = onSave
+        _bodyText = State(initialValue: comment.body)
+    }
+
+    private var trimmedBody: String { bodyText.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Edit Comment")
+                    .font(.headline)
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .disabled(isSaving)
+            }
+
+            TextEditor(text: $bodyText)
+                .font(.body)
+                .frame(minHeight: 180)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                }
+                .accessibilityIdentifier("mac-edit-comment-body-field")
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-edit-comment-error")
+            }
+
+            HStack {
+                Spacer()
+                Button {
+                    Task { await save() }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Save", systemImage: "checkmark.circle")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(trimmedBody.isEmpty || trimmedBody == comment.body || isSaving)
+                .accessibilityIdentifier("mac-edit-comment-save-button")
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 440, minHeight: 340)
+    }
+
+    private func save() async {
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            try await onSave(trimmedBody)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct MacMarkdownView: View {
+    let content: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(MacMarkdownParser.blocks(from: content).enumerated()), id: \.offset) { _, block in
+                if block.isCode {
+                    Text(block.text)
+                        .font(.body.monospaced())
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
+                        .textSelection(.enabled)
+                } else if let attributed = block.attributedText {
+                    Text(attributed)
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(block.text)
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}
+
+private enum MacMarkdownParser {
+    static func blocks(from source: String) -> [MacMarkdownBlock] {
+        splitCodeBlocks(source).map { block in
+            guard !block.isCode else { return block }
+            return MacMarkdownBlock(
+                text: block.text,
+                isCode: false,
+                attributedText: try? AttributedString(
+                    markdown: block.text,
+                    options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                )
+            )
+        }
+    }
+
+    private static func splitCodeBlocks(_ source: String) -> [MacMarkdownBlock] {
+        var blocks: [MacMarkdownBlock] = []
+        var current = ""
+        var insideCode = false
+
+        for line in source.components(separatedBy: "\n") {
+            if line.hasPrefix("```") {
+                if insideCode {
+                    blocks.append(MacMarkdownBlock(text: current, isCode: true))
+                    current = ""
+                    insideCode = false
+                } else {
+                    let prose = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !prose.isEmpty {
+                        blocks.append(MacMarkdownBlock(text: prose, isCode: false))
+                    }
+                    current = ""
+                    insideCode = true
+                }
+            } else {
+                current += current.isEmpty ? line : "\n" + line
+            }
+        }
+
+        let remaining = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !remaining.isEmpty {
+            blocks.append(MacMarkdownBlock(text: remaining, isCode: insideCode))
+        }
+        return blocks
+    }
+}
+
+private struct MacMarkdownBlock {
+    let text: String
+    let isCode: Bool
+    let attributedText: AttributedString?
+
+    init(text: String, isCode: Bool, attributedText: AttributedString? = nil) {
+        self.text = text
+        self.isCode = isCode
+        self.attributedText = attributedText
     }
 }
 

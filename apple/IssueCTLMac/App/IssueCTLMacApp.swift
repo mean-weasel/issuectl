@@ -287,6 +287,45 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             ]]
         case ("GET", "/api/v1/issues/org/alpha"):
             return ["issues": issues, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/issues/org/alpha/1"):
+            return issueDetail()
+        case ("PATCH", "/api/v1/issues/org/alpha/1"):
+            let payload = jsonBody(from: request)
+            if let title = payload["title"] as? String {
+                detailIssueTitle = title
+            }
+            if let body = payload["body"] as? String {
+                detailIssueBody = body
+            }
+            return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/issues/org/alpha/1/state"):
+            let payload = jsonBody(from: request)
+            detailIssueState = payload["state"] as? String ?? detailIssueState
+            if let comment = payload["comment"] as? String, !comment.isEmpty {
+                detailComments.append(commentFixture(id: 500, body: comment, author: "alice"))
+            }
+            return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/issues/org/alpha/1/comments"):
+            let payload = jsonBody(from: request)
+            if let body = payload["body"] as? String {
+                detailComments.append(commentFixture(id: 501, body: body, author: "alice"))
+            }
+            return ["success": true, "comment_id": 501, "error": NSNull()]
+        case ("PATCH", "/api/v1/issues/org/alpha/1/comments"):
+            let payload = jsonBody(from: request)
+            let commentId = payload["comment_id"] as? Int ?? payload["commentId"] as? Int
+            if let commentId, let body = payload["body"] as? String,
+               let index = detailComments.firstIndex(where: { $0["id"] as? Int == commentId }) {
+                detailComments[index] = commentFixture(id: commentId, body: body, author: "alice")
+            }
+            return ["success": true, "error": NSNull()]
+        case ("DELETE", "/api/v1/issues/org/alpha/1/comments"):
+            let payload = jsonBody(from: request)
+            let commentId = payload["comment_id"] as? Int ?? payload["commentId"] as? Int
+            if let commentId {
+                detailComments.removeAll { $0["id"] as? Int == commentId }
+            }
+            return ["success": true, "error": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/priorities"):
             return ["priorities": [
                 ["repo_id": 1, "issue_number": 1, "priority": "low", "updated_at": 1_775_000_000],
@@ -329,9 +368,17 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         ],
     ]
 
+    nonisolated(unsafe) private static var detailIssueTitle = "Open alpha issue"
+    nonisolated(unsafe) private static var detailIssueBody = "Searchable **alpha** body\n\n```swift\nlet value = 1\n```"
+    nonisolated(unsafe) private static var detailIssueState = "open"
+    nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
+        commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
+        commentFixture(id: 102, body: "Bob comment", author: "bob"),
+    ]
+
     private static var issues: [[String: Any]] {
         [
-            issue(number: 1, title: "Open alpha issue", body: "Searchable alpha body", state: "open", assignees: ["bob"], author: "alice", updatedAt: "2026-05-14T10:00:00.000Z"),
+            issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, assignees: ["bob"], author: "alice", updatedAt: "2026-05-14T10:00:00.000Z"),
             issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
             issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
             issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
@@ -373,6 +420,65 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         ]
     }
 
+    private static func issueDetail() -> [String: Any] {
+        [
+            "issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, assignees: ["bob"], author: "alice", updatedAt: isoDate),
+            "comments": detailComments,
+            "deployments": [
+                [
+                    "id": 9,
+                    "repo_id": 1,
+                    "issue_number": 1,
+                    "branch_name": "issue-1-active",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/issue-1",
+                    "linked_pr_number": 7,
+                    "state": "active",
+                    "launched_at": isoDate,
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7681,
+                    "ttyd_pid": 1234,
+                ],
+            ],
+            "linkedPRs": [
+                [
+                    "number": 7,
+                    "title": "Fix alpha detail",
+                    "body": "Linked PR",
+                    "state": "open",
+                    "draft": false,
+                    "merged": false,
+                    "user": ["login": "alice", "avatar_url": "https://example.com/alice.png"],
+                    "head_ref": "fix-alpha-detail",
+                    "base_ref": "main",
+                    "additions": 12,
+                    "deletions": 3,
+                    "changed_files": 2,
+                    "created_at": isoDate,
+                    "updated_at": isoDate,
+                    "merged_at": NSNull(),
+                    "closed_at": NSNull(),
+                    "html_url": "https://github.com/org/alpha/pull/7",
+                    "checks_status": "success",
+                ],
+            ],
+            "referencedFiles": [],
+            "fromCache": false,
+            "cachedAt": NSNull(),
+        ]
+    }
+
+    private static func commentFixture(id: Int, body: String, author: String) -> [String: Any] {
+        [
+            "id": id,
+            "body": body,
+            "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
+            "created_at": isoDate,
+            "updated_at": isoDate,
+            "html_url": "https://github.com/org/alpha/issues/1#issuecomment-\(id)",
+        ]
+    }
+
     private static var isoDate: String {
         "2026-05-14T00:00:00Z"
     }
@@ -382,7 +488,32 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     }
 
     private static func jsonBody(from request: URLRequest) -> [String: Any] {
-        guard let data = request.httpBody,
+        let data: Data?
+        if let body = request.httpBody {
+            data = body
+        } else if let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+
+            var body = Data()
+            let bufferSize = 1_024
+            let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+            defer { buffer.deallocate() }
+
+            while stream.hasBytesAvailable {
+                let bytesRead = stream.read(buffer, maxLength: bufferSize)
+                if bytesRead > 0 {
+                    body.append(buffer, count: bytesRead)
+                } else {
+                    break
+                }
+            }
+            data = body
+        } else {
+            data = nil
+        }
+
+        guard let data,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return [:]
         }
