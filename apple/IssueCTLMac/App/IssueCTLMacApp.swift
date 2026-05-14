@@ -250,6 +250,22 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["repos": [repo, betaRepo]]
         case ("GET", "/api/v1/worktrees"):
             return ["worktrees": worktrees]
+        case ("GET", "/api/v1/worktrees/status"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_STATUS_FAILURE"] == "1" {
+                return ["error": "Fixture worktree status failed"]
+            }
+            let dirty = ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_DIRTY_WORKTREE"] == "1"
+            return [
+                "exists": true,
+                "dirty": dirty,
+                "path": "/tmp/issuectl-worktrees/org-alpha-1",
+            ]
+        case ("POST", "/api/v1/worktrees/reset"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_RESET_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture reset failed"]
+            }
+            resetWorktreeCalled = true
+            return ["success": true, "error": NSNull()]
         case ("POST", "/api/v1/worktrees/cleanup"):
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_CLEANUP_FAILURE"] == "1" {
                 return ["success": false, "error": "Fixture cleanup failed"]
@@ -321,6 +337,9 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["success": true, "error": NSNull()]
         case ("POST", "/api/v1/launch/org/alpha/1"):
             let payload = jsonBody(from: request)
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_LAUNCH_FAILURE"] == "1" {
+                return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture launch failed", "label_warning": NSNull()]
+            }
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CUSTOM_LAUNCH"] == "1" {
                 let selectedComments = payload["selectedCommentIndices"] as? [Int] ?? []
                 let selectedFiles = payload["selectedFilePaths"] as? [String] ?? []
@@ -333,6 +352,20 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                       payload["forceResume"] as? Bool == true else {
                     return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture custom launch assertion failed", "label_warning": NSNull()]
                 }
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_DIRTY_RESUME_LAUNCH"] == "1",
+               payload["forceResume"] as? Bool != true {
+                return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture dirty resume assertion failed", "label_warning": NSNull()]
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_RESET_THEN_LAUNCH"] == "1" {
+                guard resetWorktreeCalled,
+                      payload["forceResume"] as? Bool == false else {
+                    return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture reset launch assertion failed", "label_warning": NSNull()]
+                }
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CLONE_LAUNCH"] == "1",
+               payload["workspaceMode"] as? String != "clone" {
+                return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture clone launch assertion failed", "label_warning": NSNull()]
             }
             let deploymentId = 700 + launchedDeployments.count
             launchedDeployments.append(launchedDeployment(id: deploymentId, payload: payload))
@@ -612,7 +645,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             "id": 1,
             "owner": "org",
             "name": "alpha",
-            "local_path": "/tmp/issuectl-alpha",
+            "local_path": ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_NO_LOCAL_PATH"] == "1" ? NSNull() : "/tmp/issuectl-alpha",
             "branch_pattern": "jeremy/{slug}",
             "created_at": isoDate,
         ]
@@ -669,6 +702,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var pullMergeMethod: String?
     nonisolated(unsafe) private static var launchedDeployments: [[String: Any]] = []
     nonisolated(unsafe) private static var endedDeploymentIds: Set<Int> = []
+    nonisolated(unsafe) private static var resetWorktreeCalled = false
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
