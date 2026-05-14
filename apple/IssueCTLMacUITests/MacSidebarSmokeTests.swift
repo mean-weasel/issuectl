@@ -257,17 +257,123 @@ final class MacSidebarSmokeTests: XCTestCase {
         branchField.typeKey("a", modifierFlags: .command)
         branchField.typeText("custom-mac-launch")
 
-        app.checkBoxes["mac-launch-options-comment-0"].click()
-        app.checkBoxes["mac-launch-options-file-Sources/Alpha.swift"].click()
-
         let preamble = app.textViews["mac-launch-options-preamble-field"]
         XCTAssertTrue(preamble.waitForExistence(timeout: 5), app.debugDescription)
         preamble.click()
         preamble.typeText("Custom Mac preamble")
 
+        app.checkBoxes["mac-launch-options-comment-0"].click()
+        app.checkBoxes["mac-launch-options-file-Sources/Alpha.swift"].click()
+
         app.buttons["mac-launch-options-submit-button"].click()
         XCTAssertTrue(app.staticTexts["custom-mac-launch - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
+    }
+
+    func testLaunchOptionsDirtyWorktreeCanResumeWithChanges() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_DIRTY_WORKTREE"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_DIRTY_RESUME_LAUNCH"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        app.buttons["mac-issue-detail-launch-options-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-dirty-worktree-warning"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.buttons["mac-launch-options-submit-button"].isEnabled, app.debugDescription)
+
+        app.buttons["mac-launch-options-resume-dirty-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-reset-message"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-launch-options-submit-button"].click()
+
+        XCTAssertTrue(app.staticTexts["issue-1-open-alpha-issue - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
+    }
+
+    func testLaunchOptionsDirtyWorktreeCanResetBeforeLaunch() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_DIRTY_WORKTREE"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_RESET_THEN_LAUNCH"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        app.buttons["mac-issue-detail-launch-options-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-dirty-worktree-warning"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-launch-options-reset-worktree-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-reset-message"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-readiness-summary"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-launch-options-submit-button"].click()
+        XCTAssertTrue(app.staticTexts["issue-1-open-alpha-issue - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
+    }
+
+    func testLaunchOptionsWorktreeStatusFailureCanFallbackToClone() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_STATUS_FAILURE"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CLONE_LAUNCH"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        app.buttons["mac-issue-detail-launch-options-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-worktree-status-error"].waitForExistence(timeout: 5), app.debugDescription)
+        app.descendants(matching: .any)["mac-launch-options-workspace-picker"].radioButtons["Clone"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-readiness-summary"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-launch-options-submit-button"].click()
+
+        XCTAssertTrue(app.staticTexts["issue-1-open-alpha-issue - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
+    }
+
+    func testLaunchOptionsNoLocalPathFallsBackToClone() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_NO_LOCAL_PATH"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CLONE_LAUNCH"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        app.buttons["mac-issue-detail-launch-options-button"].click()
+        let workspacePicker = app.descendants(matching: .any)["mac-launch-options-workspace-picker"]
+        XCTAssertTrue(workspacePicker.waitForExistence(timeout: 5), app.debugDescription)
+        workspacePicker.radioButtons["Worktree"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-fallback-explanation"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-launch-options-submit-button"].click()
+
+        XCTAssertTrue(app.staticTexts["issue-1-open-alpha-issue - terminal preparing"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
+    }
+
+    func testLaunchOptionsFailuresRemainRecoverable() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_LAUNCH_FAILURE"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_RESET_FAILURE"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_DIRTY_WORKTREE"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        app.buttons["mac-issue-detail-launch-options-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-dirty-worktree-warning"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-launch-options-reset-worktree-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-reset-error"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-launch-options-resume-dirty-button"].click()
+        app.buttons["mac-launch-options-submit-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-launch-options-submit-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-launch-options-submit-button"].exists, app.debugDescription)
     }
 
     func testActiveSessionsFiltersPreviewNavigationOpenAndEnd() {

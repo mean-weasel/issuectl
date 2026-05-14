@@ -754,7 +754,8 @@ struct MacIssueDetailView: View {
         }
     }
 
-    private func launchIssue(options: MacIssueLaunchOptions?, openTerminalWhenReady: Bool) async {
+    @discardableResult
+    private func launchIssue(options: MacIssueLaunchOptions?, openTerminalWhenReady: Bool) async -> Bool {
         isLaunching = true
         errorMessage = nil
         defer { isLaunching = false }
@@ -766,8 +767,10 @@ struct MacIssueDetailView: View {
             if openTerminalWhenReady, session.ttydPort != nil {
                 await openTerminalAsync(session)
             }
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -837,16 +840,23 @@ private struct MacLaunchOptionsSheet: View {
 
     let item: MacIssueListItem
     let detail: IssueDetailResponse?
-    let submit: (MacIssueLaunchOptions) async -> Void
+    let submit: (MacIssueLaunchOptions) async -> Bool
 
     @State private var options: MacIssueLaunchOptions
     @State private var isSubmitting = false
+    @State private var isCheckingWorktree = false
+    @State private var isResettingWorktree = false
+    @State private var worktreeStatus: WorktreeStatusResponse?
+    @State private var worktreeStatusError: String?
+    @State private var resetMessage: String?
+    @State private var resetErrorMessage: String?
+    @State private var launchErrorMessage: String?
 
     init(
         item: MacIssueListItem,
         detail: IssueDetailResponse?,
         initialOptions: MacIssueLaunchOptions,
-        submit: @escaping (MacIssueLaunchOptions) async -> Void
+        submit: @escaping (MacIssueLaunchOptions) async -> Bool
     ) {
         self.item = item
         self.detail = detail
@@ -871,11 +881,12 @@ private struct MacLaunchOptionsSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     agentSection
                     workspaceSection
+                    readinessSection
                     branchSection
                     resumeSection
+                    preambleSection
                     commentsSection
                     filesSection
-                    preambleSection
                 }
                 .padding(16)
             }
@@ -884,7 +895,16 @@ private struct MacLaunchOptionsSheet: View {
             footer
         }
         .frame(width: 520, height: 620)
-        .task { await loadSavedAgent() }
+        .task {
+            await loadSavedAgent()
+            await refreshWorktreeStatusIfNeeded()
+        }
+        .onChange(of: options.workspaceMode) {
+            Task { await refreshWorktreeStatusIfNeeded() }
+        }
+        .onChange(of: options.resumeBehavior) {
+            launchErrorMessage = nil
+        }
     }
 
     private var header: some View {
@@ -927,12 +947,129 @@ private struct MacLaunchOptionsSheet: View {
             .accessibilityIdentifier("mac-launch-options-workspace-picker")
 
             if item.repo.localPath?.isEmpty != false, options.workspaceMode == .worktree {
-                Label("This repo has no local path; clone mode is usually safer.", systemImage: "exclamationmark.triangle")
+                Label("This repo has no local path, so launch will use clone mode unless a path is configured.", systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("mac-launch-options-workspace-warning")
             }
+        }
+    }
+
+    @ViewBuilder
+    private var readinessSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Readiness")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if options.workspaceMode == .worktree, item.repo.localPath?.isEmpty != false {
+                readinessLabel(
+                    "Worktree mode needs a local repo path. Clone mode is available for this launch.",
+                    systemImage: "arrow.down.doc",
+                    color: .orange,
+                    identifier: "mac-launch-options-fallback-explanation"
+                )
+            } else if options.workspaceMode == .worktree {
+                if isCheckingWorktree {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Checking worktree status...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityIdentifier("mac-launch-options-readiness-checking")
+                } else if let worktreeStatusError {
+                    readinessLabel(
+                        "Could not check worktree status: \(worktreeStatusError). Clone mode remains available.",
+                        systemImage: "wifi.exclamationmark",
+                        color: .orange,
+                        identifier: "mac-launch-options-worktree-status-error"
+                    )
+                } else if let worktreeStatus, worktreeStatus.isDirty {
+                    dirtyWorktreeCard(path: worktreeStatus.path)
+                } else if let worktreeStatus, worktreeStatus.exists {
+                    readinessLabel(
+                        "Worktree is clean at \(worktreeStatus.path).",
+                        systemImage: "checkmark.circle",
+                        color: .green,
+                        identifier: "mac-launch-options-readiness-summary"
+                    )
+                } else {
+                    readinessLabel(
+                        "No existing issue worktree was found. Launch can create one from the local repo.",
+                        systemImage: "plus.circle",
+                        color: .secondary,
+                        identifier: "mac-launch-options-readiness-summary"
+                    )
+                }
+            } else {
+                readinessLabel(
+                    options.workspaceMode == .clone ? "Clone mode will create a fresh checkout for this issue." : "Existing mode will use the configured local checkout.",
+                    systemImage: options.workspaceMode == .clone ? "arrow.down.doc" : "folder",
+                    color: .secondary,
+                    identifier: "mac-launch-options-readiness-summary"
+                )
+            }
+
+            if let resetMessage {
+                readinessLabel(resetMessage, systemImage: "checkmark.circle", color: .green, identifier: "mac-launch-options-reset-message")
+            }
+
+            if let resetErrorMessage {
+                readinessLabel(resetErrorMessage, systemImage: "exclamationmark.triangle", color: .red, identifier: "mac-launch-options-reset-error")
+            }
+
+            if let launchErrorMessage {
+                readinessLabel(launchErrorMessage, systemImage: "exclamationmark.triangle", color: .red, identifier: "mac-launch-options-submit-error")
+            }
+        }
+    }
+
+    private func readinessLabel(_ text: String, systemImage: String, color: Color, identifier: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.caption)
+            .foregroundStyle(color)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier(identifier)
+    }
+
+    private func dirtyWorktreeCard(path: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            readinessLabel(
+                "Existing changes were found in \(path). Choose whether to discard them or resume with them.",
+                systemImage: "exclamationmark.triangle",
+                color: .orange,
+                identifier: "mac-launch-options-dirty-worktree-warning"
+            )
+
+            HStack {
+                Button {
+                    Task { await resetWorktree() }
+                } label: {
+                    if isResettingWorktree {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Discard & Start Fresh", systemImage: "arrow.counterclockwise")
+                    }
+                }
+                .disabled(isResettingWorktree || isSubmitting)
+                .accessibilityIdentifier("mac-launch-options-reset-worktree-button")
+
+                Button {
+                    options.resumeBehavior = .resume
+                    resetMessage = "Launch will resume with the existing worktree changes."
+                    resetErrorMessage = nil
+                    launchErrorMessage = nil
+                } label: {
+                    Label("Resume with Changes", systemImage: "arrow.forward.circle")
+                }
+                .disabled(isResettingWorktree || isSubmitting)
+                .accessibilityIdentifier("mac-launch-options-resume-dirty-button")
+            }
+            .controlSize(.small)
         }
     }
 
@@ -1065,10 +1202,23 @@ private struct MacLaunchOptionsSheet: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(isSubmitting || options.branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!canSubmit)
             .accessibilityIdentifier("mac-launch-options-submit-button")
         }
         .padding(16)
+    }
+
+    private var canSubmit: Bool {
+        guard !isSubmitting,
+              !isCheckingWorktree,
+              !isResettingWorktree,
+              !options.branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        if options.workspaceMode == .worktree, worktreeStatus?.isDirty == true, options.resumeBehavior != .resume {
+            return false
+        }
+        return true
     }
 
     private func commentBinding(_ index: Int) -> Binding<Bool> {
@@ -1107,8 +1257,71 @@ private struct MacLaunchOptionsSheet: View {
     private func submitOptions() async {
         guard !isSubmitting else { return }
         isSubmitting = true
-        await submit(options)
+        launchErrorMessage = nil
+        var launchOptions = options
+        if launchOptions.workspaceMode == .worktree, item.repo.localPath?.isEmpty != false {
+            launchOptions.workspaceMode = .clone
+        }
+        let didLaunch = await submit(launchOptions)
+        if !didLaunch {
+            launchErrorMessage = "Launch failed. Adjust the options and try again."
+        }
         isSubmitting = false
+    }
+
+    private func refreshWorktreeStatusIfNeeded() async {
+        resetMessage = nil
+        resetErrorMessage = nil
+        launchErrorMessage = nil
+        worktreeStatus = nil
+        worktreeStatusError = nil
+
+        guard options.workspaceMode == .worktree,
+              item.repo.localPath?.isEmpty == false else {
+            return
+        }
+
+        isCheckingWorktree = true
+        defer { isCheckingWorktree = false }
+        do {
+            worktreeStatus = try await api.checkWorktreeStatus(
+                owner: item.repo.owner,
+                repo: item.repo.name,
+                issueNumber: item.issue.number
+            )
+        } catch {
+            worktreeStatusError = error.localizedDescription
+        }
+    }
+
+    private func resetWorktree() async {
+        guard !isResettingWorktree else { return }
+        isResettingWorktree = true
+        resetMessage = nil
+        resetErrorMessage = nil
+        launchErrorMessage = nil
+        defer { isResettingWorktree = false }
+
+        do {
+            let response = try await api.resetWorktree(
+                owner: item.repo.owner,
+                repo: item.repo.name,
+                issueNumber: item.issue.number
+            )
+            guard response.success else {
+                resetErrorMessage = response.error ?? "Could not reset worktree."
+                return
+            }
+            options.resumeBehavior = .reset
+            worktreeStatus = WorktreeStatusResponse(
+                exists: true,
+                dirty: false,
+                path: worktreeStatus?.path ?? item.repo.localPath ?? ""
+            )
+            resetMessage = "Worktree reset. Launch will start from a clean checkout."
+        } catch {
+            resetErrorMessage = error.localizedDescription
+        }
     }
 }
 
