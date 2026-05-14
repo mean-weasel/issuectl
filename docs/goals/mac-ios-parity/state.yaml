@@ -2270,6 +2270,39 @@ tasks:
           warnings: "Existing warnings only."
       summary: "Implemented Mac linked navigation from issue detail linked PRs into PR detail and from PR detail linked issues into issue detail, using current repo context and fixture-backed UI coverage for both directions."
 
+  - id: T045
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: low
+    objective: "Record the Phase 7C PR #436 merge into the integration branch."
+    inputs:
+      - "PR #436"
+      - "T044 receipt"
+    constraints:
+      - "Do not implement product changes."
+      - "Record CI or replacement validation used for the merge gate."
+    receipt:
+      result: done
+      note: "notes/T045-pr436-merge.md"
+      pr:
+        number: 436
+        url: "https://github.com/mean-weasel/issuectl/pull/436"
+        branch: "mac-parity-phase-7c-linked-navigation"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "0a5cb5711542bb95114d319d760c7f9ac8fc5964"
+        merge_commit_sha: "617abb150de1620ff7c3fd1e621584a8065b20a7"
+        merged_at: "2026-05-14T19:47:43Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-7c-linked-navigation branch."
+        replacement_validation:
+          - "MacSidebarSmokeTests focused linked navigation: 1 test passed"
+          - "MacSidebarSmokeTests full suite: 25 tests passed"
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+      summary: "Marked PR #436 ready, confirmed no GitHub checks were configured, and merged Phase 7C linked PR/issue detail navigation into mac-sidebar-spaces-option-a."
+
   - id: T999
     type: judge
     assignee: Judge
