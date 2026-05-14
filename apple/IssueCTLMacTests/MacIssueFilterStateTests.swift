@@ -66,10 +66,143 @@ final class MacIssueFilterStateTests: XCTestCase {
         let state = MacIssueFilterState(preferences: preferences)
         state.visiblePageCount = 3
 
-        state.selectedFilter = .unassigned
+        state.selectedFilter = .running
 
         XCTAssertEqual(state.visiblePageCount, 1)
-        XCTAssertEqual(preferences.issueFilterRawValue, "unassigned")
+        XCTAssertEqual(preferences.issueFilterRawValue, "running")
+    }
+
+    func testSearchMineAndSortPersistAndResetPaging() {
+        let preferences = MacSidebarDisplayPreferences(displayKey: "display-a", defaults: defaults)
+        let state = MacIssueFilterState(preferences: preferences)
+        state.visiblePageCount = 3
+
+        state.searchText = "crash"
+        state.mineOnly = true
+        state.sortOrder = .priority
+
+        XCTAssertEqual(state.visiblePageCount, 1)
+        XCTAssertEqual(preferences.issueSearchText, "crash")
+        XCTAssertTrue(preferences.issueMineOnly)
+        XCTAssertEqual(preferences.issueSortRawValue, "priority")
+    }
+
+    func testResetFiltersRestoresDefaultsAndAllRepos() {
+        let preferences = MacSidebarDisplayPreferences(displayKey: "display-a", defaults: defaults)
+        let state = MacIssueFilterState(preferences: preferences)
+        state.syncRepoSelection(repos: repos)
+        state.selectedFilter = .closed
+        state.sortOrder = .priority
+        state.mineOnly = true
+        state.searchText = "query"
+        state.selectedRepoKeys = ["mean-weasel/issuectl"]
+        state.visiblePageCount = 4
+
+        state.resetFilters(repos: repos)
+
+        XCTAssertEqual(state.selectedFilter, .open)
+        XCTAssertEqual(state.sortOrder, .updated)
+        XCTAssertFalse(state.mineOnly)
+        XCTAssertEqual(state.searchText, "")
+        XCTAssertEqual(state.selectedRepoKeys, ["mean-weasel/issuectl", "mean-weasel/other"])
+        XCTAssertEqual(state.visiblePageCount, 1)
+    }
+
+    func testPerDesktopIssueStateDoesNotCollide() {
+        let displayA = MacSidebarDisplayPreferences(displayKey: "desktop-a", defaults: defaults, namespace: "spaces")
+        let displayB = MacSidebarDisplayPreferences(displayKey: "desktop-b", defaults: defaults, namespace: "spaces")
+        let stateA = MacIssueFilterState(preferences: displayA)
+        let stateB = MacIssueFilterState(preferences: displayB)
+
+        stateA.selectedFilter = .running
+        stateA.sortOrder = .priority
+        stateA.mineOnly = true
+        stateA.searchText = "alpha"
+        stateA.selectedRepoKeys = ["mean-weasel/issuectl"]
+
+        stateB.selectedFilter = .closed
+        stateB.sortOrder = .created
+        stateB.mineOnly = false
+        stateB.searchText = "beta"
+        stateB.selectedRepoKeys = ["mean-weasel/other"]
+
+        let reloadedA = MacIssueFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "desktop-a", defaults: defaults, namespace: "spaces"))
+        let reloadedB = MacIssueFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "desktop-b", defaults: defaults, namespace: "spaces"))
+
+        XCTAssertEqual(reloadedA.selectedFilter, .running)
+        XCTAssertEqual(reloadedA.sortOrder, .priority)
+        XCTAssertTrue(reloadedA.mineOnly)
+        XCTAssertEqual(reloadedA.searchText, "alpha")
+        XCTAssertEqual(reloadedA.selectedRepoKeys, ["mean-weasel/issuectl"])
+
+        XCTAssertEqual(reloadedB.selectedFilter, .closed)
+        XCTAssertEqual(reloadedB.sortOrder, .created)
+        XCTAssertFalse(reloadedB.mineOnly)
+        XCTAssertEqual(reloadedB.searchText, "beta")
+        XCTAssertEqual(reloadedB.selectedRepoKeys, ["mean-weasel/other"])
+    }
+
+    func testProjectionMatchesIOSSectionSemantics() {
+        let projection = MacIssueListModel.project(
+            issues: issueItems,
+            drafts: drafts,
+            sessions: [session(owner: "mean-weasel", repo: "issuectl", issueNumber: 2)],
+            selectedRepoKeys: ["mean-weasel/issuectl", "mean-weasel/other"],
+            section: .open,
+            searchText: "",
+            mineOnly: false,
+            currentUserLogin: "alice",
+            priorities: [:],
+            sortOrder: .updated
+        )
+
+        XCTAssertEqual(projection.counts[.open], 2)
+        XCTAssertEqual(projection.counts[.running], 1)
+        XCTAssertEqual(projection.counts[.unassigned], 1)
+        XCTAssertEqual(projection.counts[.closed], 1)
+        XCTAssertEqual(projection.counts[.drafts], 1)
+        XCTAssertEqual(projection.issues.map(\.issue.number), [1, 4])
+    }
+
+    func testMineSearchAndPrioritySortAreDeterministic() {
+        let projection = MacIssueListModel.project(
+            issues: issueItems,
+            drafts: drafts,
+            sessions: [],
+            selectedRepoKeys: ["mean-weasel/issuectl", "mean-weasel/other"],
+            section: .open,
+            searchText: "mean-weasel",
+            mineOnly: true,
+            currentUserLogin: "alice",
+            priorities: [
+                "mean-weasel/issuectl#1": .low,
+                "mean-weasel/other#4": .high,
+            ],
+            sortOrder: .priority
+        )
+
+        XCTAssertEqual(projection.issues.map { $0.repoFullName + "#\($0.issue.number)" }, [
+            "mean-weasel/other#4",
+            "mean-weasel/issuectl#1",
+        ])
+    }
+
+    func testDraftSearchUsesTitleAndBody() {
+        let projection = MacIssueListModel.project(
+            issues: issueItems,
+            drafts: drafts + [draft(id: "draft-2", title: "Other", body: "contains needle")],
+            sessions: [],
+            selectedRepoKeys: ["mean-weasel/issuectl", "mean-weasel/other"],
+            section: .drafts,
+            searchText: "needle",
+            mineOnly: false,
+            currentUserLogin: nil,
+            priorities: [:],
+            sortOrder: .updated
+        )
+
+        XCTAssertEqual(projection.issues.count, 0)
+        XCTAssertEqual(projection.drafts.map(\.id), ["draft-2"])
     }
 
     func testRepoNameInputParsesOwnerAndName() throws {
@@ -95,7 +228,73 @@ final class MacIssueFilterStateTests: XCTestCase {
         ]
     }
 
+    private var issueItems: [MacIssueListItem] {
+        [
+            item(number: 1, repo: repos[0], title: "Open mine", state: "open", assignees: [user("bob")], author: user("alice"), updatedAt: "2026-05-14T10:00:00.000Z"),
+            item(number: 2, repo: repos[0], title: "Running issue", state: "open", assignees: [], author: user("bob"), updatedAt: "2026-05-14T11:00:00.000Z"),
+            item(number: 3, repo: repos[0], title: "Closed issue", state: "closed", assignees: [], author: user("alice"), updatedAt: "2026-05-14T12:00:00.000Z"),
+            item(number: 4, repo: repos[1], title: "Other mine", state: "open", assignees: [user("alice")], author: user("alice"), updatedAt: "2026-05-14T09:00:00.000Z"),
+        ]
+    }
+
+    private var drafts: [Draft] {
+        [draft(id: "draft-1", title: "Draft alpha", body: "body")]
+    }
+
     private func repo(id: Int, owner: String, name: String) -> Repo {
         Repo(id: id, owner: owner, name: name, localPath: nil, branchPattern: nil, createdAt: "2026-01-01T00:00:00Z")
+    }
+
+    private func item(
+        number: Int,
+        repo: Repo,
+        title: String,
+        state: String,
+        assignees: [GitHubUser],
+        author: GitHubUser,
+        updatedAt: String
+    ) -> MacIssueListItem {
+        let issue = GitHubIssue(
+            number: number,
+            title: title,
+            body: "Issue body",
+            state: state,
+            labels: [],
+            assignees: assignees,
+            user: author,
+            commentCount: 0,
+            createdAt: "2026-05-13T10:00:00.000Z",
+            updatedAt: updatedAt,
+            closedAt: state == "closed" ? "2026-05-14T13:00:00.000Z" : nil,
+            htmlUrl: "https://github.com/\(repo.owner)/\(repo.name)/issues/\(number)"
+        )
+        return MacIssueListItem(issue: issue, repo: repo, repoIndex: repo.id - 1)
+    }
+
+    private func user(_ login: String) -> GitHubUser {
+        GitHubUser(login: login, avatarUrl: "https://example.com/\(login).png")
+    }
+
+    private func draft(id: String, title: String, body: String?) -> Draft {
+        Draft(id: id, title: title, body: body, priority: .normal, createdAt: 1_775_000_000)
+    }
+
+    private func session(owner: String, repo: String, issueNumber: Int) -> ActiveDeployment {
+        ActiveDeployment(
+            id: issueNumber,
+            repoId: 1,
+            issueNumber: issueNumber,
+            branchName: "issue-\(issueNumber)",
+            workspaceMode: .worktree,
+            workspacePath: "/tmp/issue-\(issueNumber)",
+            linkedPrNumber: nil,
+            state: .active,
+            launchedAt: "2026-05-14T10:00:00.000Z",
+            endedAt: nil,
+            ttydPort: nil,
+            ttydPid: nil,
+            owner: owner,
+            repoName: repo
+        )
     }
 }

@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T019
+active_task: T020
 
 tasks:
   - id: T001
@@ -713,7 +713,7 @@ tasks:
   - id: T019
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 4 Issue List Parity as the next PR-sized slice from mac-sidebar-spaces-option-a."
     inputs:
@@ -733,6 +733,7 @@ tasks:
       - "apple/IssueCTLMac/Views/MacSidebarView.swift"
       - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
       - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
       - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
       - "apple/IssueCTLMacTests/**"
       - "apple/IssueCTLMacUITests/**"
@@ -755,6 +756,66 @@ tasks:
       - "iOS section semantics are ambiguous or conflict with backend data."
       - "Two-Desktop dogfood evidence is required but unavailable."
       - "Mac UI test harness regresses to hanging."
+    receipt:
+      result: done
+      note: "notes/T019-phase-4-issue-list-parity.md"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+        - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+        - "docs/goals/mac-ios-parity/notes/T019-phase-4-issue-list-parity.md"
+        - "docs/goals/mac-ios-parity/state.yaml"
+      pr:
+        number: 426
+        url: "https://github.com/mean-weasel/issuectl/pull/426"
+        branch: "mac-parity-phase-4-issue-list"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Not checked yet after final push."
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass_with_existing_warnings
+      warnings:
+        - "A combined Mac test invocation with UI tests and CODE_SIGNING_ALLOWED=NO stalled after unit tests completed; split unit/UI gates passed and are recorded as the accepted validation."
+        - "pnpm lint passed with existing warnings."
+      summary: "Implemented Phase 4 issue-list parity in the Mac sidebar, including section filters, search, Mine, priority sort, visible pagination, per-Desktop persistence, fixture data, and Mac unit/UI coverage."
+
+  - id: T020
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #426 Phase 4 Issue List Parity for acceptance coverage, CI/check status, merge readiness, and next-slice sizing."
+    inputs:
+      - "T019 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/426"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-4-issue-list-parity"
+    constraints:
+      - "Do not implement product changes unless review finds a small blocking fix."
+      - "Do not mark ready or merge if required acceptance criteria are missing."
+      - "If GitHub reports no checks, document the accepted local replacement gate before merge."
+      - "Choose the next PR-sized parity task after the PR is ready or merged."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance criteria evidence map."
+      - "CI or replacement validation status."
+      - "Merge recommendation and next active task."
     receipt: null
 
   - id: T999
