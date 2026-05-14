@@ -32,7 +32,9 @@ struct MacDraftsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(store.drafts) { draft in
-                    DraftRow(draft: draft)
+                    DraftRow(draft: draft) {
+                        activeSheet = .assign(draft)
+                    }
                         .contentShape(Rectangle())
                         .onTapGesture {
                             activeSheet = .edit(draft)
@@ -40,6 +42,9 @@ struct MacDraftsView: View {
                         .contextMenu {
                             Button("Edit") {
                                 activeSheet = .edit(draft)
+                            }
+                            Button("Assign to Repo") {
+                                activeSheet = .assign(draft)
                             }
                             Button("Delete", role: .destructive) {
                                 deleteTarget = draft
@@ -58,6 +63,12 @@ struct MacDraftsView: View {
             case .edit(let draft):
                 DraftEditorSheet(mode: .edit(draft)) { title, body, priority in
                     try await store.updateDraft(api: api, id: draft.id, title: title, body: body, priority: priority)
+                }
+            case .assign(let draft):
+                DraftAssignSheet(draft: draft, repos: store.repos) { repo, labels in
+                    _ = try await store.assignDraftWithLabels(api: api, id: draft.id, repo: repo, labels: labels)
+                } loadLabels: { repo in
+                    try await api.repoLabels(owner: repo.owner, repo: repo.name)
                 }
             }
         }
@@ -132,40 +143,54 @@ struct MacDraftsView: View {
 private enum DraftSheet: Identifiable {
     case new
     case edit(Draft)
+    case assign(Draft)
 
     var id: String {
         switch self {
         case .new: "new"
         case .edit(let draft): "edit-\(draft.id)"
+        case .assign(let draft): "assign-\(draft.id)"
         }
     }
 }
 
 private struct DraftRow: View {
     let draft: Draft
+    let onAssign: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(draft.title)
-                    .font(.subheadline.weight(.medium))
-                    .lineLimit(2)
-                Spacer(minLength: 8)
-                if let priority = draft.priority, priority != .normal {
-                    PriorityPill(priority: priority)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(draft.title)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    if let priority = draft.priority, priority != .normal {
+                        PriorityPill(priority: priority)
+                    }
                 }
+
+                if let body = draft.body, !body.isEmpty {
+                    Text(body)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Text(createdDateText)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
 
-            if let body = draft.body, !body.isEmpty {
-                Text(body)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            Button {
+                onAssign()
+            } label: {
+                Label("Assign", systemImage: "arrow.up.doc")
             }
-
-            Text(createdDateText)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityIdentifier("mac-draft-assign-\(draft.id)")
         }
         .padding(.vertical, 5)
     }
@@ -173,6 +198,186 @@ private struct DraftRow: View {
     private var createdDateText: String {
         let date = Date(timeIntervalSince1970: draft.createdAt)
         return date.formatted(date: .abbreviated, time: .shortened)
+    }
+}
+
+private struct DraftAssignSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let draft: Draft
+    let repos: [Repo]
+    let onAssign: (Repo, [String]) async throws -> Void
+    let loadLabels: (Repo) async throws -> [GitHubLabel]
+
+    @State private var selectedRepoId: Int?
+    @State private var availableLabels: [GitHubLabel] = []
+    @State private var selectedLabels: Set<String> = []
+    @State private var isLoadingLabels = false
+    @State private var isAssigning = false
+    @State private var errorMessage: String?
+
+    init(
+        draft: Draft,
+        repos: [Repo],
+        onAssign: @escaping (Repo, [String]) async throws -> Void,
+        loadLabels: @escaping (Repo) async throws -> [GitHubLabel]
+    ) {
+        self.draft = draft
+        self.repos = repos
+        self.onAssign = onAssign
+        self.loadLabels = loadLabels
+        _selectedRepoId = State(initialValue: repos.first?.id)
+    }
+
+    private var selectedRepo: Repo? {
+        guard let selectedRepoId else { return nil }
+        return repos.first { $0.id == selectedRepoId }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Assign Draft")
+                        .font(.headline)
+                    Text(draft.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+            }
+
+            if repos.isEmpty {
+                ContentUnavailableView(
+                    "No Repositories",
+                    systemImage: "tray",
+                    description: Text("Add a tracked repository before assigning drafts.")
+                )
+                .frame(minHeight: 220)
+            } else {
+                Picker("Repository", selection: $selectedRepoId) {
+                    ForEach(repos) { repo in
+                        Text(repo.fullName).tag(Optional(repo.id))
+                    }
+                }
+                .accessibilityIdentifier("mac-assign-draft-repo-picker")
+                .onChange(of: selectedRepoId) { _, _ in
+                    selectedLabels = []
+                    Task { await loadRepoLabels() }
+                }
+
+                if isLoadingLabels {
+                    ProgressView("Loading labels...")
+                        .frame(maxWidth: .infinity, minHeight: 160)
+                } else if availableLabels.isEmpty {
+                    ContentUnavailableView("No Labels", systemImage: "tag")
+                        .frame(minHeight: 160)
+                } else {
+                    List(availableLabels) { label in
+                        labelRow(label)
+                    }
+                    .frame(minHeight: 220)
+                }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-assign-draft-error")
+            }
+
+            HStack {
+                Button("Cancel", role: .cancel) {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    Task { await assign() }
+                } label: {
+                    if isAssigning {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Assign")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(isAssigning || selectedRepo == nil)
+                .accessibilityIdentifier("mac-assign-draft-submit-button")
+            }
+        }
+        .padding(20)
+        .frame(width: 480)
+        .task { await loadRepoLabels() }
+    }
+
+    private func labelRow(_ label: GitHubLabel) -> some View {
+        let isSelected = selectedLabels.contains(label.name)
+
+        return Button {
+            if isSelected {
+                selectedLabels.remove(label.name)
+            } else {
+                selectedLabels.insert(label.name)
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(Color(macDraftHex: label.color) ?? .secondary)
+                    .frame(width: 12, height: 12)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label.name)
+                    if let description = label.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.blue)
+                }
+            }
+        }
+        .accessibilityIdentifier("mac-assign-draft-label-\(label.name)")
+    }
+
+    private func loadRepoLabels() async {
+        guard let selectedRepo else { return }
+        isLoadingLabels = true
+        errorMessage = nil
+        defer { isLoadingLabels = false }
+
+        do {
+            availableLabels = try await loadLabels(selectedRepo)
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } catch {
+            availableLabels = []
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func assign() async {
+        guard let selectedRepo else { return }
+        isAssigning = true
+        errorMessage = nil
+        defer { isAssigning = false }
+
+        do {
+            try await onAssign(selectedRepo, Array(selectedLabels).sorted())
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -346,5 +551,20 @@ private extension Priority {
         case .normal: .blue
         case .high: .red
         }
+    }
+}
+
+private extension Color {
+    init?(macDraftHex: String) {
+        var value = macDraftHex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("#") {
+            value.removeFirst()
+        }
+        guard value.count == 6, let integer = Int(value, radix: 16) else { return nil }
+        self.init(
+            red: Double((integer >> 16) & 0xFF) / 255.0,
+            green: Double((integer >> 8) & 0xFF) / 255.0,
+            blue: Double(integer & 0xFF) / 255.0
+        )
     }
 }

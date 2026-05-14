@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T028
+active_task: T029
 
 tasks:
   - id: T001
@@ -1250,7 +1250,7 @@ tasks:
   - id: T028
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 6A Mac draft assignment: assign an existing local draft to a tracked repo with label selection, preserve input on failure, and refresh issues/drafts after success."
     inputs:
@@ -1274,6 +1274,7 @@ tasks:
       - "apple/IssueCTLMac/Views/MacDraftsView.swift"
       - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
       - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
       - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
       - "apple/IssueCTLMacTests/**"
       - "apple/IssueCTLMacUITests/**"
@@ -1300,6 +1301,68 @@ tasks:
       - "Draft assignment requires backend endpoints not present in shared API/client fixtures."
       - "Direct quick-create or image upload scope becomes necessary to complete assignment safely."
       - "Required files fall outside the allowed scope."
+    receipt:
+      result: done
+      note: "notes/T028-phase-6a-draft-assignment.md"
+      pr:
+        number: 430
+        url: "https://github.com/mean-weasel/issuectl/pull/430"
+        branch: "mac-parity-phase-6a-draft-assignment"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending post-push review in T029."
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase6a-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-tests-derived -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testDraftAssignsToRepoWithLabelsAndRefreshesIssues -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testDraftAssignmentFailurePreservesChoices"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-api-derived -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass_with_existing_warnings
+      acceptance:
+        - "A Mac user can assign an existing local draft to one tracked repo."
+        - "Repo label options load for the selected repo and selected labels are sent with the assignment request."
+        - "Successful assignment refreshes drafts and issues so the draft disappears and the created issue is visible."
+        - "Assignment failure shows a recoverable error and preserves the selected draft, repo, and label choices."
+        - "Existing Mac draft and sidebar workflows remain covered by the full MacSidebarSmokeTests suite."
+      summary: "Implemented Mac existing-draft assignment with repo/label selection, refresh behavior, and success/failure UI automation coverage."
+
+  - id: T029
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #430 for Phase 6A acceptance coverage, GitHub/check status, merge readiness, and next-slice sizing."
+    inputs:
+      - "T028 receipt"
+      - "PR #430 diff and metadata"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not implement product changes unless a merge-blocking defect is found and can be fixed inside the current slice."
+      - "Reject merge if draft assignment success/failure acceptance criteria are not covered."
+      - "If GitHub reports no configured checks, document the accepted local validation replacement gate before merge."
+      - "Preserve the PR-sized slice cadence and activate the next safe Worker only after merge or an explicit blocker."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance coverage map."
+      - "CI or accepted replacement validation status."
+      - "Merge decision."
+      - "Next task recommendation."
     receipt: null
 
   - id: T999

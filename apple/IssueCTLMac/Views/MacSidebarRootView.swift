@@ -210,6 +210,7 @@ struct MacSidebarRootView: View {
             .labelsHidden()
             .padding(.horizontal, 14)
             .padding(.bottom, 10)
+            .accessibilityIdentifier("mac-sidebar-section-picker")
 
             Divider()
 

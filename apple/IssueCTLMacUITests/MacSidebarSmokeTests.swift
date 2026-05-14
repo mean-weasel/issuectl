@@ -190,6 +190,44 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["mac-image-lightbox-error"].waitForNonExistence(timeout: 5), app.debugDescription)
     }
 
+    func testDraftAssignsToRepoWithLabelsAndRefreshesIssues() {
+        selectRootSection("Drafts")
+
+        let assignButton = app.buttons["mac-draft-assign-draft-1"]
+        XCTAssertTrue(assignButton.waitForExistence(timeout: 5), app.debugDescription)
+        assignButton.click()
+        let bugLabel = app.descendants(matching: .any)["mac-assign-draft-label-bug"]
+        XCTAssertTrue(bugLabel.waitForExistence(timeout: 5), app.debugDescription)
+        bugLabel.click()
+
+        app.buttons["mac-assign-draft-submit-button"].click()
+        XCTAssertTrue(assignButton.waitForNonExistence(timeout: 5), app.debugDescription)
+
+        selectRootSection("Issues")
+        XCTAssertTrue(app.textFields["mac-issues-search-field"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(issueRow("org/alpha", 88).waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testDraftAssignmentFailurePreservesChoices() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_DRAFT_ASSIGN_FAILURE"] = "1"
+        app.launch()
+
+        selectRootSection("Drafts")
+
+        let assignButton = app.buttons["mac-draft-assign-draft-1"]
+        XCTAssertTrue(assignButton.waitForExistence(timeout: 5), app.debugDescription)
+        assignButton.click()
+        let bugLabel = app.descendants(matching: .any)["mac-assign-draft-label-bug"]
+        XCTAssertTrue(bugLabel.waitForExistence(timeout: 5), app.debugDescription)
+        bugLabel.click()
+
+        app.buttons["mac-assign-draft-submit-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-assign-draft-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-assign-draft-submit-button"].exists, app.debugDescription)
+        XCTAssertTrue(bugLabel.exists, app.debugDescription)
+    }
+
     func testStatusMenuOpensSettings() {
         openSettingsFromStatusMenu()
 
@@ -315,5 +353,15 @@ final class MacSidebarSmokeTests: XCTestCase {
 
     private func issueSort(_ title: String) -> XCUIElement {
         app.descendants(matching: .any)["mac-issues-sort-picker"].radioButtons[title]
+    }
+
+    private func rootSection(_ title: String) -> XCUIElement {
+        app.descendants(matching: .any)["mac-sidebar-section-picker"].radioButtons[title].firstMatch
+    }
+
+    private func selectRootSection(_ title: String) {
+        let section = rootSection(title)
+        XCTAssertTrue(section.waitForExistence(timeout: 5), app.debugDescription)
+        section.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
     }
 }
