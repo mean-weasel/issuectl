@@ -2466,6 +2466,101 @@ tasks:
           - "MacSidebarSmokeTests full suite: 27 tests passed"
       summary: "Marked PR #437 ready, confirmed no GitHub checks were configured, and merged Phase 8A Mac launch options into mac-sidebar-spaces-option-a."
 
+  - id: T049
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the next safe Phase 8 slice after launch options merged."
+    inputs:
+      - "T048 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 8"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+    constraints:
+      - "Do not implement inside the judge task."
+      - "Prefer a vertical slice that advances Phase 8 without taking on embedded WKWebView terminal complexity in the same PR."
+      - "Define branch/base, allowed files, verification commands, and excluded follow-up scope."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T049-next-phase-8b-slice.md"
+      next_worker: T050
+      worker_objective: "Implement Phase 8B Active Sessions parity for Mac: search/repo filters, terminal status previews, polling, view-issue navigation, open terminal, and end-session recovery."
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-8b-sessions"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      excluded_from_next_slice:
+        - "Embedded terminal window/WKWebView and terminal text-size controls."
+        - "Dirty worktree readiness matrix."
+        - "ttyd respawn controls beyond using the existing ensure-ttyd path for Open Terminal."
+      allowed_files_for_t050:
+        - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/**"
+        - "apple/IssueCTLMacUITests/**"
+        - "docs/goals/mac-ios-parity/**"
+      verify_for_t050:
+        - "git diff --check"
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8b-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8b-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+        - "pnpm typecheck"
+        - "pnpm lint"
+      summary: "Selected an active-sessions slice before embedded terminal work because it exercises existing API contracts, is independently useful, and covers several Phase 8 acceptance criteria with focused unit/UI tests."
+
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 8B Active Sessions parity for Mac: search/repo filters, terminal status previews, polling, view-issue navigation, open terminal, and end-session recovery."
+    inputs:
+      - "T049 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 8"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR early."
+      - "Keep browser terminal open behavior working through existing ensure-ttyd."
+      - "Do not implement embedded terminal WKWebView or terminal text-size controls in this slice."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Active Sessions has search across repo, issue number, branch, workspace path, and terminal preview text."
+      - "Active Sessions has a repo filter that produces deterministic results matching iOS semantics for the same data."
+      - "Active Sessions shows terminal status previews from /api/v1/sessions/previews, including unavailable/error states."
+      - "Active Sessions refreshes/polls so started, ended, and terminal readiness changes are reflected."
+      - "Each session can navigate to the issue detail, open terminal through ensure-ttyd, and end the session with recoverable errors."
+      - "Fixture-backed UI coverage confirms session filtering, preview display, navigation, open terminal, end session, and failure recovery."
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8b-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8b-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Session preview or filtering requires backend/API changes outside allowed files."
+      - "Navigation requires a broader Mac navigation redesign."
+      - "Local validation fails twice for the same unexplained reason."
+    receipt: null
+
   - id: T999
     type: judge
     assignee: Judge
