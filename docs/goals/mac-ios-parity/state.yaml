@@ -1,0 +1,279 @@
+version: 2
+
+goal:
+  title: "Mac iOS Parity"
+  slug: "mac-ios-parity"
+  kind: existing_plan
+  tranche: "Validate and execute docs/specs/2026-05-14-mac-ios-parity-plan.md through successive PR-sized verified slices, starting with Phase 1 unless validation identifies a safer prerequisite."
+  status: active
+  intake:
+    original_request: "$goalbuddy plan in docs/specs/2026-05-14-mac-ios-parity-plan.md - will want to discuss how we create prs / monitor their ci / merge them along the way to keep code changes managable"
+    interpreted_outcome: "Create a GoalBuddy board that drives Mac app iOS parity implementation through manageable PRs with CI monitoring and merge gates."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and Mac app users"
+    authority: requested
+    proof_type: test
+    completion_proof: "All required parity phases from the plan are implemented, covered by their acceptance criteria, merged through green or explicitly accepted PR validation, and final audit confirms no required discrepancy remains."
+    likely_misfire: "Treating the markdown plan as the deliverable, or landing one oversized parity PR without controlled CI and merge checkpoints."
+    blind_spots_considered:
+      - "Branch topology and PR base selection for the existing Mac sidebar work."
+      - "CI monitoring and failure recovery after each PR."
+      - "macOS UI test flakiness around menu-bar/accessory app behavior."
+      - "Dogfood-only verification needs for Spaces, status items, local token auto-connect, and terminal windows."
+      - "Keeping Mac workflow parity without forcing literal iOS UI structure."
+      - "Avoiding stale per-Desktop filters and preserving Mac-specific state."
+    existing_plan_facts:
+      - "Source plan: docs/specs/2026-05-14-mac-ios-parity-plan.md."
+      - "Plan phases 1-11 cover repository management, settings, worktrees, issue list/detail, draft/create/parse, PRs, launch/terminal/sessions, offline/cache, notifications, and Today."
+      - "Each phase includes deliverables, acceptance criteria, required validation, and dogfood notes."
+      - "The branch currently used for Mac sidebar work may be an integration target; validate target branch before opening implementation PRs."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: bundled_not_installed
+  worker: bundled_not_installed
+  judge: bundled_not_installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/mac-ios-parity/"
+    command: "npx goalbuddy board /Users/jeremywatt/Desktop/issuectl/docs/goals/mac-ios-parity"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T002
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the parity plan and choose the first PR-sized implementation slice plus branch, PR, CI, and merge cadence."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+      - "docs/goals/mac-ios-parity/goal.md"
+      - "Current git branch and PR state"
+      - "Existing Mac sidebar PR context if available"
+    constraints:
+      - "Read-only except for board receipts if acting as PM fallback."
+      - "Do not implement product code."
+      - "Preserve the existing parity plan unless evidence shows a safer split or prerequisite."
+      - "Explicitly decide PR base/head strategy before any Worker starts."
+      - "Define green-CI and merge rules for each implementation PR."
+    expected_output:
+      - "Decision: approved | revise_plan | blocked."
+      - "First Worker objective."
+      - "PR branch/base strategy."
+      - "CI monitoring commands or GitHub workflow approach."
+      - "Merge gate rules."
+      - "allowed_files for first Worker."
+      - "verify commands for first Worker."
+      - "stop_if conditions for first Worker."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T001-first-slice-pr-cadence.md"
+      summary: "Approved Phase 1 Native Mac Repository Management as the first child PR into mac-sidebar-spaces-option-a, with PR/CI/merge gates recorded."
+      first_worker_objective: "Implement native Mac repository management in the Mac settings surface, backed by shared repo APIs, focused tests, and a draft child PR into mac-sidebar-spaces-option-a."
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        integration_pr: "https://github.com/mean-weasel/issuectl/pull/422"
+        worker_branch: "mac-parity-phase-1-repos"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      ci_strategy:
+        monitor: "gh pr checks <number> --watch when checks exist"
+        no_checks: "Record no configured checks and rely on local validation plus dogfood evidence."
+        merge_gate: "Merge only with green CI or explicitly documented accepted replacement validation."
+      allowed_files_for_t002:
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+        - "apple/IssueCTLMacTests/**"
+        - "apple/IssueCTLMacUITests/**"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+        - "apple/IssueCTL.xcodeproj/project.pbxproj"
+        - "docs/goals/mac-ios-parity/**"
+      verify_for_t002:
+        - "git diff --check"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+        - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacUITests"
+        - "pnpm typecheck"
+        - "pnpm lint"
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "Implement the first PR-sized Mac parity slice selected by T001, expected to be Phase 1 Native Mac Repository Management unless T001 selects a safer prerequisite."
+    inputs:
+      - "T001 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Open or update a draft PR early if T001 requires it."
+      - "Keep changes within allowed_files selected by T001."
+      - "Include tests and acceptance criteria evidence in the PR."
+      - "Record branch, PR URL, local validation, CI status, and merge readiness in the receipt."
+      - "Do not merge without green CI or a documented accepted replacement validation."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacUITests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Backend/API behavior conflicts with the parity plan."
+      - "PR base branch is ambiguous."
+      - "Local validation fails twice for the same unexplained reason."
+      - "GitHub CI is unavailable or red and no safe local substitute is accepted."
+    receipt: null
+
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Review the first parity PR slice for acceptance criteria coverage, CI health, merge readiness, and next-slice sizing."
+    inputs:
+      - "T002 receipt"
+      - "PR diff and CI results"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not implement."
+      - "Reject merge if required acceptance criteria are missing."
+      - "If UI automation is flaky, require deterministic replacement evidence and a dogfood note."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Missing acceptance criteria, if any."
+      - "CI or replacement validation status."
+      - "Merge decision and next task recommendation."
+    receipt: null
+
+  - id: T004
+    type: pm
+    assignee: PM
+    status: queued
+    reasoning_hint: default
+    objective: "Merge or block the first parity PR according to T003, record the result, and activate the next PR-sized parity slice."
+    inputs:
+      - "T003 receipt"
+      - "GitHub PR state"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not merge red CI without an explicit recorded exception."
+      - "Record merge SHA or blocker."
+      - "Retarget or rebase the next branch onto the updated integration target."
+      - "Create or update the next Worker task with allowed_files, verify commands, and stop_if."
+    expected_output:
+      - "Merged PR URL and SHA, or blocked reason."
+      - "Updated board with next active task."
+      - "Next PR-sized slice."
+    receipt: null
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Continue implementing the next approved PR-sized parity slice from the plan after the first PR is merged or blocked with a workaround."
+    inputs:
+      - "Latest PM/Judge receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "PM must fill allowed_files and verify before activation."
+      - "Use the established PR/CI/merge cadence."
+      - "Record acceptance criteria evidence and PR status in receipt."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Phase scope is too large for one PR."
+      - "CI is red and recovery path is unclear."
+    receipt: null
+
+  - id: T900
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Periodic phase-boundary audit of completed PRs against the parity plan and remaining discrepancy matrix."
+    inputs:
+      - "All done task receipts since the last audit"
+      - "Merged PRs"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not implement."
+      - "Run at phase boundaries or after risky slices, not after every tiny change."
+      - "Reject progress claims that lack tests, CI, or dogfood evidence."
+    expected_output:
+      - "Plan coverage map."
+      - "Remaining discrepancies."
+      - "Risk or test debt."
+      - "Next slice recommendation."
+    receipt: null
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit that the Mac app satisfies the parity plan and every required feature discrepancy has implementation, tests, CI, and dogfood evidence."
+    inputs:
+      - "All done task receipts"
+      - "Merged PR list"
+      - "Final validation commands"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker remains queued or active."
+      - "Reject completion if any required parity phase lacks acceptance criteria evidence."
+      - "Reject completion if PR/CI/merge state is unknown for any implemented slice."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence map by parity phase."
+      - "Missing work or residual risk."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
