@@ -5,6 +5,8 @@ Result: done.
 Branch: `mac-parity-phase-8a-launch-options`
 Base: `mac-sidebar-spaces-option-a`
 PR: https://github.com/mean-weasel/issuectl/pull/437
+Head: `3459f29fc4966adc31047e161b07629fa275a2ea`
+PR state: ready for review, mergeable, no GitHub status checks reported.
 
 Implemented the first Phase 8 launch parity slice for the Mac app. The issue detail view keeps the existing one-click Launch button and adds a launch options sheet for open issues without active sessions. The sheet lets the user choose agent, workspace mode, branch name, selected comments, referenced files, preamble text, and automatic/resume/reset behavior.
 
@@ -33,6 +35,7 @@ Validation:
 - `pnpm lint`: pass with pre-existing warnings.
 - `xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8a-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests`: pass, 21 tests.
 - `xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8a-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests`: pass, 27 tests.
+- GitHub checks: none reported; local validation is the accepted replacement gate for this PR.
 
 Excluded follow-up scope:
 

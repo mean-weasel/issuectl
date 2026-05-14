@@ -2404,8 +2404,9 @@ tasks:
         url: "https://github.com/mean-weasel/issuectl/pull/437"
         branch: "mac-parity-phase-8a-launch-options"
         base: "mac-sidebar-spaces-option-a"
-        draft: true
-        merge_state: "pending push and CI check after receipt commit"
+        draft: false
+        merge_state: "CLEAN"
+        checks: "No GitHub status checks reported on head 3459f29fc4966adc31047e161b07629fa275a2ea."
       commands:
         - cmd: "git diff --check"
           status: pass
