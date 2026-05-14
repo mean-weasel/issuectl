@@ -261,6 +261,38 @@ final class MockIssueCTLServer: @unchecked Sendable {
             }
             body = ["repos": repos]
 
+        case ("GET", "/api/v1/repos/github"):
+            body = [
+                "repos": [
+                    ["owner": "org", "name": "alpha", "private": false, "pushed_at": isoDate],
+                    ["owner": "org", "name": "gamma", "private": true, "pushed_at": isoDate],
+                ],
+                "synced_at": 1_775_000_000,
+                "is_stale": false,
+            ]
+
+        case ("POST", "/api/v1/repos"):
+            let payload = jsonBody(from: request)
+            guard
+                let owner = payload["owner"] as? String,
+                let name = payload["name"] as? String,
+                !owner.isEmpty,
+                !name.isEmpty
+            else {
+                return http(status: 400, json: ["success": false, "error": "invalid repo"])
+            }
+            let nextId = ((repos.compactMap { $0["id"] as? Int }.max() ?? 0) + 1)
+            let repo: [String: Any] = [
+                "id": nextId,
+                "owner": owner,
+                "name": name,
+                "local_path": NSNull(),
+                "branch_pattern": NSNull(),
+                "created_at": isoDate,
+            ]
+            repos.insert(repo, at: 0)
+            body = ["success": true, "repo": repo]
+
         case ("DELETE", "/api/v1/repos/org/alpha"):
             repos.removeAll { $0["name"] as? String == "alpha" }
             body = ["success": true]

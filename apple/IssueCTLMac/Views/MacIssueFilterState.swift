@@ -16,6 +16,40 @@ enum MacIssueFilter: String, CaseIterable, Identifiable {
     }
 }
 
+struct MacRepoNameInput: Equatable {
+    let owner: String
+    let name: String
+
+    var fullName: String { "\(owner)/\(name)" }
+
+    static func parse(_ input: String) throws -> MacRepoNameInput {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 2 else {
+            throw MacRepoNameInputError.invalidFormat
+        }
+
+        let owner = String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !owner.isEmpty, !name.isEmpty else {
+            throw MacRepoNameInputError.invalidFormat
+        }
+
+        return MacRepoNameInput(owner: owner, name: name)
+    }
+}
+
+enum MacRepoNameInputError: LocalizedError {
+    case invalidFormat
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidFormat:
+            "Enter a repository as owner/name."
+        }
+    }
+}
+
 @Observable @MainActor
 final class MacIssueFilterState {
     private let preferences: MacSidebarDisplayPreferences
