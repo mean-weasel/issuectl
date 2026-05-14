@@ -3,6 +3,7 @@ import SwiftUI
 struct MacSettingsView: View {
     @Environment(APIClient.self) private var api
     @Environment(MacSidebarPreferences.self) private var preferences
+    @Environment(DisplaySidebarCoordinator.self) private var sidebarCoordinator
     @Environment(\.resetSidebarLayout) private var resetSidebarLayout
     @State private var isUpdatingLaunchAtLogin = false
 
@@ -30,8 +31,6 @@ struct MacSettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Toggle("Open Collapsed on Next Launch", isOn: collapsedOnLaunchBinding)
-
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Text Size")
@@ -54,15 +53,19 @@ struct MacSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
+            }
 
-                HStack {
-                    Text("Saved Width")
-                    Spacer()
-                    Text("\(Int(preferences.expandedWidth)) px")
+            Section("Displays") {
+                if sidebarCoordinator.displayStates.isEmpty {
+                    Text("No connected displays detected")
                         .foregroundStyle(.secondary)
+                } else {
+                    ForEach(sidebarCoordinator.displayStates, id: \.id) { displayState in
+                        displaySettingsRow(displayState)
+                    }
                 }
 
-                Button("Reset Sidebar Layout") {
+                Button("Reset All Sidebar Layouts") {
                     resetSidebarLayout()
                 }
             }
@@ -89,17 +92,57 @@ struct MacSettingsView: View {
         )
     }
 
-    private var collapsedOnLaunchBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.isCollapsed },
-            set: { preferences.isCollapsed = $0 }
-        )
-    }
-
     private var textScaleBinding: Binding<Double> {
         Binding(
             get: { preferences.textScale },
             set: { preferences.textScale = MacSidebarPreferences.clampedTextScale($0) }
         )
+    }
+
+    private func displaySettingsRow(_ displayState: MacSidebarDisplayState) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(displayState.descriptor.name)
+                        .font(.headline)
+                    Text(displayState.descriptor.isMain ? "Main display" : "Secondary display")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(displayState.chrome.isVisible ? "Visible" : "Hidden")
+                    .foregroundStyle(.secondary)
+            }
+
+            Toggle("Open Collapsed", isOn: Binding(
+                get: { displayState.preferences.isCollapsed },
+                set: { newValue in
+                    displayState.preferences.isCollapsed = newValue
+                    if displayState.chrome.isCollapsed != newValue {
+                        sidebarCoordinator.toggleCollapsed(displayKey: displayState.id)
+                    }
+                }
+            ))
+
+            HStack {
+                Text("Saved Width")
+                Spacer()
+                Text("\(Int(displayState.preferences.expandedWidth)) px")
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Button(displayState.chrome.isVisible ? "Hide" : "Show") {
+                    sidebarCoordinator.toggleVisibility(displayKey: displayState.id)
+                }
+                Button(displayState.chrome.isCollapsed ? "Expand" : "Collapse") {
+                    sidebarCoordinator.toggleCollapsed(displayKey: displayState.id)
+                }
+                Button("Reset") {
+                    sidebarCoordinator.resetLayout(displayKey: displayState.id)
+                }
+            }
+        }
+        .padding(.vertical, 6)
     }
 }

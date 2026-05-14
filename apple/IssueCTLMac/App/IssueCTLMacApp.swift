@@ -10,7 +10,7 @@ struct IssueCTLMacApp: App {
             MacSettingsView()
                 .environment(appDelegate.apiClient)
                 .environment(appDelegate.sidebarPreferences)
-                .environment(appDelegate.sidebarChrome)
+                .environment(appDelegate.sidebarCoordinator)
                 .environment(\.resetSidebarLayout) {
                     appDelegate.resetSidebarLayout()
                 }
@@ -22,43 +22,19 @@ struct IssueCTLMacApp: App {
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     let apiClient = APIClient()
     let sidebarPreferences = MacSidebarPreferences()
-    let sidebarChrome = SidebarChromeState()
+    lazy var sidebarCoordinator = DisplaySidebarCoordinator(
+        apiClient: apiClient,
+        preferences: sidebarPreferences,
+        networkMonitor: networkMonitor
+    )
     private let networkMonitor = NetworkMonitor()
-    private var panelController: SidebarPanelController?
     private var statusItem: NSStatusItem?
-    private var collapseMenuItem: NSMenuItem?
     private var settingsWindowController: NSWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         PerformanceTrace.markAppLaunchStarted()
         NSApp.setActivationPolicy(.accessory)
-        sidebarChrome.isCollapsed = sidebarPreferences.isCollapsed
-
-        let rootView = MacSidebarRootView()
-            .environment(apiClient)
-            .environment(networkMonitor)
-            .environment(sidebarChrome)
-            .environment(sidebarPreferences)
-            .environment(\.hideSidebar) { [weak self] in
-                self?.panelController?.hide()
-                self?.updateStatusMenuTitles()
-            }
-            .environment(\.toggleSidebarCollapsed) { [weak self] in
-                self?.panelController?.toggleCollapsed()
-                self?.updateStatusMenuTitles()
-            }
-            .environment(\.resetSidebarLayout) { [weak self] in
-                self?.resetSidebarLayout()
-            }
-
-        let panelController = SidebarPanelController(
-            rootView: rootView,
-            chrome: sidebarChrome,
-            preferences: sidebarPreferences
-        )
-        self.panelController = panelController
-        panelController.show()
-
+        sidebarCoordinator.start()
         configureStatusItem()
     }
 
@@ -69,11 +45,10 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         item.button?.toolTip = "IssueCTL"
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Toggle Sidebar", action: #selector(toggleSidebar), keyEquivalent: "s"))
-        let collapseItem = NSMenuItem(title: collapsedMenuTitle, action: #selector(toggleCollapsed), keyEquivalent: "m")
-        collapseMenuItem = collapseItem
-        menu.addItem(collapseItem)
-        menu.addItem(NSMenuItem(title: "Hide Sidebar", action: #selector(hideSidebar), keyEquivalent: "w"))
+        menu.delegate = self
+        menu.addItem(NSMenuItem(title: "Show All Sidebars", action: #selector(showAllSidebars), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Hide All Sidebars", action: #selector(hideAllSidebars), keyEquivalent: "w"))
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit IssueCTL", action: #selector(quit), keyEquivalent: "q"))
@@ -83,19 +58,64 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
     }
 
-    @objc private func toggleSidebar() {
-        panelController?.toggleVisibility()
-        updateStatusMenuTitles()
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        menu.addItem(NSMenuItem(title: "Show All Sidebars", action: #selector(showAllSidebars), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Hide All Sidebars", action: #selector(hideAllSidebars), keyEquivalent: "w"))
+        menu.addItem(.separator())
+
+        for state in sidebarCoordinator.displayStates {
+            let displayMenu = NSMenu()
+            displayMenu.addItem(NSMenuItem(
+                title: state.chrome.isVisible ? "Hide Sidebar" : "Show Sidebar",
+                action: #selector(toggleDisplayVisibility(_:)),
+                keyEquivalent: ""
+            ))
+            displayMenu.addItem(NSMenuItem(
+                title: state.chrome.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
+                action: #selector(toggleDisplayCollapsed(_:)),
+                keyEquivalent: ""
+            ))
+            displayMenu.addItem(NSMenuItem(title: "Reset Layout", action: #selector(resetDisplayLayout(_:)), keyEquivalent: ""))
+            displayMenu.items.forEach {
+                $0.target = self
+                $0.representedObject = state.id
+            }
+
+            let item = NSMenuItem(title: state.descriptor.name, action: nil, keyEquivalent: "")
+            item.submenu = displayMenu
+            menu.addItem(item)
+        }
+
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Reset All Sidebar Layouts", action: #selector(resetAllSidebarLayouts), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Quit IssueCTL", action: #selector(quit), keyEquivalent: "q"))
+        menu.items.forEach { $0.target = self }
     }
 
-    @objc private func toggleCollapsed() {
-        panelController?.toggleCollapsed()
-        updateStatusMenuTitles()
+    @objc private func showAllSidebars() {
+        sidebarCoordinator.showAll()
     }
 
-    @objc private func hideSidebar() {
-        panelController?.hide()
-        updateStatusMenuTitles()
+    @objc private func hideAllSidebars() {
+        sidebarCoordinator.hideAll()
+    }
+
+    @objc private func toggleDisplayVisibility(_ sender: NSMenuItem) {
+        guard let displayKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.toggleVisibility(displayKey: displayKey)
+    }
+
+    @objc private func toggleDisplayCollapsed(_ sender: NSMenuItem) {
+        guard let displayKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.toggleCollapsed(displayKey: displayKey)
+    }
+
+    @objc private func resetDisplayLayout(_ sender: NSMenuItem) {
+        guard let displayKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.resetLayout(displayKey: displayKey)
     }
 
     @objc private func openSettings() {
@@ -110,24 +130,18 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func resetSidebarLayout() {
-        sidebarPreferences.resetLayout()
-        panelController?.applyPreferencesLayout()
-        updateStatusMenuTitles()
+        sidebarCoordinator.resetAllLayouts()
     }
 
-    private var collapsedMenuTitle: String {
-        sidebarChrome.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"
-    }
-
-    private func updateStatusMenuTitles() {
-        collapseMenuItem?.title = collapsedMenuTitle
+    @objc private func resetAllSidebarLayouts() {
+        resetSidebarLayout()
     }
 
     private func makeSettingsWindowController() -> NSWindowController {
         let settingsView = MacSettingsView()
             .environment(apiClient)
             .environment(sidebarPreferences)
-            .environment(sidebarChrome)
+            .environment(sidebarCoordinator)
             .environment(\.resetSidebarLayout) { [weak self] in
                 self?.resetSidebarLayout()
             }
@@ -140,3 +154,5 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         return NSWindowController(window: window)
     }
 }
+
+extension MacAppDelegate: NSMenuDelegate {}

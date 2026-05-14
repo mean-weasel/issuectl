@@ -4,8 +4,12 @@ struct MacSidebarRootView: View {
     @Environment(APIClient.self) private var api
     @Environment(SidebarChromeState.self) private var chrome
     @Environment(MacSidebarPreferences.self) private var preferences
+    @Environment(MacSidebarDisplayPreferences.self) private var displayPreferences
     @Environment(\.hideSidebar) private var hideSidebar
     @Environment(\.toggleSidebarCollapsed) private var toggleSidebarCollapsed
+
+    let store: MacSidebarStore
+    @Bindable var issueFilterState: MacIssueFilterState
 
     @State private var selectedSection: MacSidebarSection = .issues
     @State private var serverURL = "http://localhost:3847"
@@ -14,7 +18,6 @@ struct MacSidebarRootView: View {
     @State private var isAutoConnecting = false
     @State private var hasAttemptedAutoConnect = false
     @State private var connectionError: String?
-    @State private var store = MacSidebarStore()
 
     var body: some View {
         Group {
@@ -30,15 +33,15 @@ struct MacSidebarRootView: View {
         }
         .environment(\.macSidebarTextScale, preferences.textScale)
         .onAppear {
-            selectedSection = MacSidebarSection(rawValue: preferences.selectedSectionRawValue) ?? .issues
+            selectedSection = MacSidebarSection(rawValue: displayPreferences.selectedSectionRawValue) ?? .issues
         }
         .task {
             await autoConnectIfAvailable()
         }
         .onChange(of: selectedSection) { _, newValue in
-            preferences.selectedSectionRawValue = newValue.rawValue
+            displayPreferences.selectedSectionRawValue = newValue.rawValue
         }
-        .onChange(of: preferences.selectedSectionRawValue) { _, newValue in
+        .onChange(of: displayPreferences.selectedSectionRawValue) { _, newValue in
             selectedSection = MacSidebarSection(rawValue: newValue) ?? .issues
         }
     }
@@ -213,7 +216,7 @@ struct MacSidebarRootView: View {
             Group {
                 switch selectedSection {
                 case .issues:
-                    MacIssuesView(store: store)
+                    MacIssuesView(store: store, filterState: issueFilterState)
                 case .drafts:
                     MacDraftsView(store: store)
                 case .active:

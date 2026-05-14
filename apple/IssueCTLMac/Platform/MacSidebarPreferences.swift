@@ -13,18 +13,6 @@ final class MacSidebarPreferences {
 
     private let defaults: UserDefaults
 
-    var isCollapsed: Bool {
-        didSet { defaults.set(isCollapsed, forKey: Keys.isCollapsed) }
-    }
-
-    var selectedSectionRawValue: String {
-        didSet { defaults.set(selectedSectionRawValue, forKey: Keys.selectedSection) }
-    }
-
-    var expandedWidth: CGFloat {
-        didSet { defaults.set(Double(expandedWidth), forKey: Keys.expandedWidth) }
-    }
-
     var textScale: Double {
         didSet { defaults.set(textScale, forKey: Keys.textScale) }
     }
@@ -34,9 +22,6 @@ final class MacSidebarPreferences {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        isCollapsed = defaults.object(forKey: Keys.isCollapsed) as? Bool ?? false
-        selectedSectionRawValue = defaults.string(forKey: Keys.selectedSection) ?? "issues"
-        expandedWidth = Self.clampedWidth(defaults.object(forKey: Keys.expandedWidth) as? Double ?? 380)
         textScale = Self.clampedTextScale(defaults.object(forKey: Keys.textScale) as? Double ?? Self.defaultTextScale)
         refreshLaunchAtLoginStatus()
     }
@@ -64,10 +49,17 @@ final class MacSidebarPreferences {
     }
 
     func resetLayout() {
-        isCollapsed = false
-        selectedSectionRawValue = "issues"
-        expandedWidth = Self.defaultExpandedWidth
         textScale = Self.defaultTextScale
+    }
+
+    func displayPreferences(for displayKey: String) -> MacSidebarDisplayPreferences {
+        MacSidebarDisplayPreferences(displayKey: displayKey, defaults: defaults)
+    }
+
+    func resetAllDisplayLayouts(displayKeys: [String]) {
+        for displayKey in displayKeys {
+            displayPreferences(for: displayKey).resetLayout()
+        }
     }
 
     nonisolated static let defaultExpandedWidth: CGFloat = 380
@@ -87,5 +79,87 @@ final class MacSidebarPreferences {
 
     nonisolated static func clampedTextScale(_ scale: Double) -> Double {
         min(max(scale, minimumTextScale), maximumTextScale)
+    }
+}
+
+@Observable @MainActor
+final class MacSidebarDisplayPreferences {
+    private enum LegacyKeys {
+        static let isCollapsed = "mac.sidebar.isCollapsed"
+        static let selectedSection = "mac.sidebar.selectedSection"
+        static let expandedWidth = "mac.sidebar.expandedWidth"
+    }
+
+    private let defaults: UserDefaults
+    let displayKey: String
+
+    var isCollapsed: Bool {
+        didSet { defaults.set(isCollapsed, forKey: key("isCollapsed")) }
+    }
+
+    var selectedSectionRawValue: String {
+        didSet { defaults.set(selectedSectionRawValue, forKey: key("selectedSection")) }
+    }
+
+    var expandedWidth: CGFloat {
+        didSet { defaults.set(Double(expandedWidth), forKey: key("expandedWidth")) }
+    }
+
+    var issueFilterRawValue: String {
+        didSet { defaults.set(issueFilterRawValue, forKey: key("issueFilter")) }
+    }
+
+    var selectedRepoKeys: Set<String> {
+        didSet { defaults.set(Array(selectedRepoKeys).sorted(), forKey: key("selectedRepoKeys")) }
+    }
+
+    var isRepoFilterExpanded: Bool {
+        didSet { defaults.set(isRepoFilterExpanded, forKey: key("isRepoFilterExpanded")) }
+    }
+
+    var isEnabled: Bool {
+        didSet { defaults.set(isEnabled, forKey: key("isEnabled")) }
+    }
+
+    var hasSavedRepoSelection: Bool {
+        defaults.object(forKey: key("selectedRepoKeys")) != nil
+    }
+
+    init(displayKey: String, defaults: UserDefaults = .standard) {
+        self.displayKey = displayKey
+        self.defaults = defaults
+        isCollapsed = defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "isCollapsed")) as? Bool
+            ?? defaults.object(forKey: LegacyKeys.isCollapsed) as? Bool
+            ?? false
+        selectedSectionRawValue = defaults.string(forKey: Self.storageKey(displayKey: displayKey, name: "selectedSection"))
+            ?? defaults.string(forKey: LegacyKeys.selectedSection)
+            ?? "issues"
+        expandedWidth = MacSidebarPreferences.clampedWidth(
+            defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "expandedWidth")) as? Double
+                ?? defaults.object(forKey: LegacyKeys.expandedWidth) as? Double
+                ?? MacSidebarPreferences.defaultExpandedWidth
+        )
+        issueFilterRawValue = defaults.string(forKey: Self.storageKey(displayKey: displayKey, name: "issueFilter")) ?? "open"
+        selectedRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(displayKey: displayKey, name: "selectedRepoKeys")) ?? [])
+        isRepoFilterExpanded = defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "isRepoFilterExpanded")) as? Bool ?? true
+        isEnabled = defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "isEnabled")) as? Bool ?? true
+    }
+
+    func resetLayout() {
+        isCollapsed = false
+        selectedSectionRawValue = "issues"
+        expandedWidth = MacSidebarPreferences.defaultExpandedWidth
+        issueFilterRawValue = "open"
+        selectedRepoKeys.removeAll()
+        isRepoFilterExpanded = true
+        isEnabled = true
+    }
+
+    private func key(_ name: String) -> String {
+        Self.storageKey(displayKey: displayKey, name: name)
+    }
+
+    private static func storageKey(displayKey: String, name: String) -> String {
+        "mac.sidebar.displays.\(displayKey).\(name)"
     }
 }

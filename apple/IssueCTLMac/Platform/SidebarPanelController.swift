@@ -49,15 +49,21 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     }
 
     private var panel: NSPanel!
+    let displayKey: String
+    private var screen: NSScreen
     private let chrome: SidebarChromeState
-    private let preferences: MacSidebarPreferences
+    private let preferences: MacSidebarDisplayPreferences
     private var expandedWidth: CGFloat
 
     init<Content: View>(
         rootView: Content,
+        displayKey: String,
+        screen: NSScreen,
         chrome: SidebarChromeState,
-        preferences: MacSidebarPreferences
+        preferences: MacSidebarDisplayPreferences
     ) {
+        self.displayKey = displayKey
+        self.screen = screen
         self.chrome = chrome
         self.preferences = preferences
         expandedWidth = MacSidebarPreferences.clampedWidth(preferences.expandedWidth)
@@ -66,7 +72,10 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
 
         let hostingController = NSHostingController(rootView: rootView)
         chrome.isCollapsed = preferences.isCollapsed
-        let frame = Self.defaultFrame(width: preferences.isCollapsed ? Metrics.collapsedWidth : expandedWidth)
+        let frame = Self.defaultFrame(
+            visibleFrame: screen.visibleFrame,
+            width: preferences.isCollapsed ? Metrics.collapsedWidth : expandedWidth
+        )
 
         panel = NSPanel(
             contentRect: frame,
@@ -91,7 +100,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        panel.setFrame(Self.defaultFrame(width: currentWidth), display: true)
+        panel.setFrame(Self.defaultFrame(visibleFrame: screen.visibleFrame, width: currentWidth), display: true)
         alignToSidebarPosition()
         panel.level = .statusBar
         panel.makeKeyAndOrderFront(nil)
@@ -127,7 +136,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         chrome.isCollapsed = isCollapsed
         preferences.isCollapsed = isCollapsed
         updateSizeConstraints()
-        panel.setFrame(Self.defaultFrame(width: currentWidth), display: true, animate: true)
+        panel.setFrame(Self.defaultFrame(visibleFrame: screen.visibleFrame, width: currentWidth), display: true, animate: true)
         alignToSidebarPosition()
         if !panel.isVisible {
             show()
@@ -138,7 +147,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         expandedWidth = MacSidebarPreferences.clampedWidth(preferences.expandedWidth)
         chrome.isCollapsed = preferences.isCollapsed
         updateSizeConstraints()
-        panel.setFrame(Self.defaultFrame(width: currentWidth), display: true, animate: true)
+        panel.setFrame(Self.defaultFrame(visibleFrame: screen.visibleFrame, width: currentWidth), display: true, animate: true)
         alignToSidebarPosition()
         if !panel.isVisible {
             show()
@@ -153,6 +162,12 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         hide()
         return false
+    }
+
+    func updateScreen(_ screen: NSScreen) {
+        self.screen = screen
+        panel.setFrame(Self.defaultFrame(visibleFrame: screen.visibleFrame, width: currentWidth), display: true)
+        alignToSidebarPosition()
     }
 
     private var currentWidth: CGFloat {
@@ -178,7 +193,7 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
     }
 
     private func alignToSidebarPosition() {
-        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let visibleFrame = screen.visibleFrame
 
         panel.center()
 
@@ -191,8 +206,10 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         panel.setFrame(frame, display: true)
     }
 
-    private static func defaultFrame(width requestedWidth: CGFloat = Metrics.defaultExpandedWidth) -> NSRect {
-        let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+    private static func defaultFrame(
+        visibleFrame screenFrame: NSRect,
+        width requestedWidth: CGFloat = Metrics.defaultExpandedWidth
+    ) -> NSRect {
         let width = requestedWidth == Metrics.collapsedWidth
             ? Metrics.collapsedWidth
             : min(max(requestedWidth, Metrics.expandedMinWidth), Metrics.expandedMaxWidth)
