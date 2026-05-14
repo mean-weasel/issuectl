@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T065
+active_task: T066
 
 tasks:
   - id: T001
@@ -3400,7 +3400,7 @@ tasks:
   - id: T065
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Decide the Phase 10 Mac notifications path before implementation: implement macOS notifications, keep notifications iOS-only with clear Mac settings copy, or defer with a linked backend/platform issue."
     inputs:
@@ -3420,6 +3420,59 @@ tasks:
       - "Allowed files for the next Worker."
       - "Acceptance criteria and validation commands."
       - "Stop conditions for the next Worker."
+    receipt:
+      result: done
+      decision: defer_with_issue
+      full_outcome_complete: false
+      note: "notes/T065-phase-10-notifications-decision.md"
+      linked_issue:
+        number: 444
+        url: "https://github.com/mean-weasel/issuectl/issues/444"
+        title: "Add macOS push notification registration support"
+      rationale: "Real macOS push requires backend platform/schema/API changes, APNs topic configuration, Mac entitlement/delegate work, UI, and manual signed-build delivery validation; expose clear Mac copy now instead of broken toggles."
+      selected_worker: "T066"
+      selected_slice: "Phase 10A Mac notification unavailable settings copy"
+      summary: "Selected deferral with linked backend/platform issue #444 and queued a small Mac settings slice proving notifications are not exposed as broken toggles."
+
+  - id: T066
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "Implement Phase 10A Mac notification unavailable settings copy: add a Mac settings Notifications section that clearly states push notifications are iOS-only/deferred on Mac and exposes no broken notification toggles."
+    inputs:
+      - "T065 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 10"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    constraints:
+      - "Do not implement real macOS notification registration in this slice."
+      - "Do not change backend notification schema/API behavior in this slice."
+      - "Expose no toggles or controls that imply Mac push registration works."
+      - "Keep copy concise and Mac-native."
+      - "Record PR, validation, and merge readiness in receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Mac settings includes a Notifications section with copy that says push notifications are currently iOS-only or deferred on Mac."
+      - "Mac settings references backend/platform issue #444 in implementation notes or receipt evidence."
+      - "Mac settings exposes no notification preference toggles."
+      - "Unit or projection coverage proves unavailable-state title/body/icon are stable."
+      - "Mac UI coverage proves the settings surface is visible and no notification toggles are exposed."
+    verify:
+      - "git diff --check"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase10a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase10a-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsNotificationUnavailableState"
+    stop_if:
+      - "Adding the copy requires a broad settings architecture rewrite."
+      - "The UI cannot expose stable assertions without brittle accessibility behavior."
+      - "Product direction changes to require real macOS push implementation immediately."
     receipt: null
 
   - id: T999
