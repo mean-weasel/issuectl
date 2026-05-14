@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T067
+active_task: T068
 
 tasks:
   - id: T001
@@ -3482,8 +3482,11 @@ tasks:
         url: "https://github.com/mean-weasel/issuectl/pull/445"
         branch: "mac-parity-phase-10a-notification-copy"
         base: "mac-sidebar-spaces-option-a"
-        draft: true
-        checks: "Pending after push."
+        head_sha: "22343f1fd74956dd89b358e57619607e6eaf7a75"
+        draft: false
+        checks: "No checks reported."
+        merge_commit_sha: "8cb5bda00aa8020bfceeb488b050433056e3669e"
+        merged_at: "2026-05-14T22:53:40Z"
       changed_files:
         - "apple/IssueCTLMac/Views/MacSettingsView.swift"
         - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
@@ -3505,7 +3508,7 @@ tasks:
   - id: T067
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #445 Phase 10A notification copy for acceptance coverage, GitHub check state, merge readiness, and the next safe parity slice."
     inputs:
@@ -3522,6 +3525,54 @@ tasks:
       - "PR check state and local replacement validation."
       - "Merge result or required fixes."
       - "Next PR-sized parity task."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T067-pr445-merge-and-phase-11.md"
+      pr:
+        number: 445
+        url: "https://github.com/mean-weasel/issuectl/pull/445"
+        branch: "mac-parity-phase-10a-notification-copy"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "22343f1fd74956dd89b358e57619607e6eaf7a75"
+        merge_commit_sha: "8cb5bda00aa8020bfceeb488b050433056e3669e"
+        merged_at: "2026-05-14T22:53:40Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-10a-notification-copy branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "IssueCTLMacTests/MacIssueFilterStateTests: 28 tests passed"
+          - "Focused notification unit/UI tests: 2 tests passed"
+      selected_worker: "T068"
+      selected_slice: "Phase 11 Today Dashboard / Attention Surface decision gate"
+      summary: "Marked PR #445 ready, accepted local replacement validation because no GitHub checks were configured, merged Phase 10A into mac-sidebar-spaces-option-a, and selected a Phase 11 Today decision gate."
+
+  - id: T068
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Decide the Phase 11 Mac Today/Attention surface shape before implementation: full Today window, compact sidebar Attention section, or staged compact-first implementation."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 11"
+      - "iOS Today implementation"
+      - "Mac sidebar sections and navigation architecture"
+      - "Existing Mac issue, PR, session, draft, and create flows"
+    constraints:
+      - "Do not implement product code in this decision task."
+      - "Keep the selected Worker PR-sized and vertically useful."
+      - "Preserve the Mac menu-bar/sidebar shape unless evidence strongly supports a separate window first."
+      - "Explicitly handle assigned/blocking issues, review-needed PRs, active sessions, metrics, search, quick navigation, quick create, and cached/offline state."
+      - "Do not mark the overall goal complete."
+    expected_output:
+      - "Decision: full_today_window | compact_attention_section | staged_compact_first | blocked."
+      - "Rationale and first implementation scope."
+      - "Allowed files for the next Worker."
+      - "Acceptance criteria and validation commands."
+      - "Stop conditions for the next Worker."
     receipt: null
 
   - id: T999
