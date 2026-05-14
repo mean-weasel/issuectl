@@ -393,6 +393,22 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["issues": issues, "from_cache": false, "cached_at": NSNull()]
         case ("GET", "/api/v1/issues/org/beta"):
             return ["issues": betaIssues, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/pulls/org/alpha"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULLS_FAILURE"] == "1" {
+                return ["error": "Fixture pulls failed"]
+            }
+            return ["pulls": alphaPulls, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/pulls/org/beta"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULLS_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_BETA_PULLS_FAILURE"] == "1" {
+                return ["error": "Fixture pulls failed"]
+            }
+            return ["pulls": betaPulls, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/pulls/org/alpha/10"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_DETAIL_FAILURE"] == "1" {
+                return ["error": "Fixture pull detail failed"]
+            }
+            return pullDetail()
         case ("GET", "/api/v1/issues/org/alpha/1"):
             return issueDetail()
         case ("GET", "/api/v1/issues/org/alpha/89"):
@@ -639,6 +655,104 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 author: "alice",
                 updatedAt: isoDate
             ),
+        ]
+    }
+
+    private static var alphaPulls: [[String: Any]] {
+        [
+            pull(number: 10, title: "Fix failing alpha workflow", body: "PR body with alpha details", state: "open", merged: false, author: "alice", head: "fix-alpha", base: "main", additions: 24, deletions: 6, changedFiles: 3, checks: "failure", updatedAt: "2026-05-14T18:00:00.000Z"),
+            pull(number: 11, title: "Pending alpha migration", body: "Migration work", state: "open", merged: false, author: "bob", head: "pending-alpha", base: "main", additions: 10, deletions: 2, changedFiles: 2, checks: "pending", updatedAt: "2026-05-14T17:00:00.000Z"),
+            pull(number: 12, title: "Passing alpha cleanup", body: "Cleanup work", state: "open", merged: false, author: "alice", head: "cleanup-alpha", base: "main", additions: 5, deletions: 1, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T16:00:00.000Z"),
+            pull(number: 13, title: "Merged alpha docs", body: "Docs update", state: "closed", merged: true, author: "carol", head: "docs-alpha", base: "main", additions: 8, deletions: 0, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T15:00:00.000Z", mergedAt: "2026-05-14T15:30:00.000Z", closedAt: "2026-05-14T15:30:00.000Z"),
+            pull(number: 14, title: "Closed alpha experiment", body: "Abandoned experiment", state: "closed", merged: false, author: "bob", head: "experiment-alpha", base: "main", additions: 2, deletions: 2, changedFiles: 1, checks: "failure", updatedAt: "2026-05-14T14:00:00.000Z", closedAt: "2026-05-14T14:30:00.000Z"),
+            pull(number: 15, title: "Searchable alpha design", body: "Find this design PR", state: "open", merged: false, author: "alice", head: "design-alpha", base: "main", additions: 12, deletions: 4, changedFiles: 2, checks: "success", updatedAt: "2026-05-14T13:00:00.000Z"),
+        ]
+    }
+
+    private static var betaPulls: [[String: Any]] {
+        [
+            pull(number: 21, title: "Pending beta review", body: "Beta review work", state: "open", merged: false, author: "carol", head: "pending-beta", base: "main", additions: 7, deletions: 3, changedFiles: 2, checks: "pending", updatedAt: "2026-05-14T12:00:00.000Z", repo: "beta"),
+            pull(number: 22, title: "Merged beta fix", body: "Beta fix", state: "closed", merged: true, author: "alice", head: "fix-beta", base: "main", additions: 3, deletions: 1, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T11:00:00.000Z", mergedAt: "2026-05-14T11:30:00.000Z", closedAt: "2026-05-14T11:30:00.000Z", repo: "beta"),
+        ]
+    }
+
+    private static func pullDetail() -> [String: Any] {
+        [
+            "pull": alphaPulls[0],
+            "checks": [
+                [
+                    "name": "build",
+                    "status": "completed",
+                    "conclusion": "failure",
+                    "started_at": "2026-05-14T17:45:00.000Z",
+                    "completed_at": "2026-05-14T17:50:00.000Z",
+                    "html_url": "https://github.com/org/alpha/actions/runs/1",
+                ],
+                [
+                    "name": "lint",
+                    "status": "completed",
+                    "conclusion": "success",
+                    "started_at": "2026-05-14T17:45:00.000Z",
+                    "completed_at": "2026-05-14T17:49:00.000Z",
+                    "html_url": "https://github.com/org/alpha/actions/runs/2",
+                ],
+            ],
+            "files": [
+                ["filename": "Sources/Alpha.swift", "status": "modified", "additions": 18, "deletions": 4],
+                ["filename": "Tests/AlphaTests.swift", "status": "added", "additions": 6, "deletions": 2],
+            ],
+            "linked_issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: isoDate),
+            "reviews": [
+                [
+                    "id": 301,
+                    "user": ["login": "bob", "avatar_url": "https://example.com/bob.png"],
+                    "state": "changes_requested",
+                    "body": "Please fix the build.",
+                    "submitted_at": "2026-05-14T18:05:00.000Z",
+                ],
+            ],
+            "from_cache": false,
+            "cached_at": NSNull(),
+        ]
+    }
+
+    private static func pull(
+        number: Int,
+        title: String,
+        body: String,
+        state: String,
+        merged: Bool,
+        author: String,
+        head: String,
+        base: String,
+        additions: Int,
+        deletions: Int,
+        changedFiles: Int,
+        checks: String,
+        updatedAt: String,
+        mergedAt: String? = nil,
+        closedAt: String? = nil,
+        repo: String = "alpha"
+    ) -> [String: Any] {
+        [
+            "number": number,
+            "title": title,
+            "body": body,
+            "state": state,
+            "draft": false,
+            "merged": merged,
+            "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
+            "head_ref": head,
+            "base_ref": base,
+            "additions": additions,
+            "deletions": deletions,
+            "changed_files": changedFiles,
+            "created_at": "2026-05-12T10:00:00.000Z",
+            "updated_at": updatedAt,
+            "merged_at": mergedAt ?? NSNull(),
+            "closed_at": closedAt ?? NSNull(),
+            "html_url": "https://github.com/org/\(repo)/pull/\(number)",
+            "checks_status": checks,
         ]
     }
 

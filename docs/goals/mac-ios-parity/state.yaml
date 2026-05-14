@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T038
+active_task: T039
 
 tasks:
   - id: T001
@@ -1869,7 +1869,7 @@ tasks:
   - id: T038
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 7A Mac pull-request browse plus read-only detail, matching iOS PR list/detail semantics where practical while keeping Mac sidebar UI native."
     inputs:
@@ -1919,6 +1919,65 @@ tasks:
       - "Required files fall outside allowed scope."
       - "Deterministic PR fixture data cannot represent review/open/merged/closed sections."
       - "Local validation fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      decision: local_validation_passed
+      full_outcome_complete: false
+      note: "notes/T038-phase-7a-pr-browse-implementation.md"
+      pr:
+        number: 434
+        url: "https://github.com/mean-weasel/issuectl/pull/434"
+        branch: "mac-parity-phase-7a-pr-browse"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending push/CI refresh after implementation commit."
+        merge_state: "Not evaluated after implementation commit yet."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+        - "apple/IssueCTL.xcodeproj/project.pbxproj"
+        - "docs/goals/mac-ios-parity/notes/T038-phase-7a-pr-browse-implementation.md"
+        - "docs/goals/mac-ios-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase7a-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testPullRequestListFiltersPaginatesAndOpensDetail -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testPullRequestFailuresAreRecoverableAndPreserveFilters"
+          status: pass
+      acceptance_evidence:
+        - "Expanded PRs section is selectable through mac-sidebar-section-picker; collapsed rail exposes mac-sidebar-section-pullRequests."
+        - "Deterministic fixtures cover alpha and beta PRs across review/open/merged/closed states."
+        - "MacPullRequestListModel tests assert review/open/merged/closed counts and review-attention semantics."
+        - "UI smoke covers search, repo filter, mine filter, sort, reset, and load-more pagination."
+        - "UI smoke opens read-only PR detail and asserts body, checks, files, review, and linked issue content with no merge/approve controls."
+        - "UI smoke covers beta list failure plus detail failure while preserving search/filter state."
+      warnings:
+        - "Default DerivedData test attempt failed at UI test runner link output; isolated DerivedData validation passed."
+        - "Full scheme/UI suite not run; validation focused on T038 model and PR UI acceptance paths."
+      summary: "Implemented Mac read-only PR browse/detail parity slice with deterministic fixtures, unit coverage for list semantics, and UI coverage for expanded/collapsed navigation, filters, pagination, detail, and recoverable failures."
+
+  - id: T039
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Commit and push T038, monitor PR #434 CI/checks, and merge into mac-sidebar-spaces-option-a only when green or when an accepted replacement validation is recorded."
+    inputs:
+      - "T038 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/434"
+      - "Current local branch mac-parity-phase-7a-pr-browse"
+    constraints:
+      - "Do not merge red CI without a documented accepted replacement validation."
+      - "Record implementation commit SHA, CI/check status, merge readiness, and merge SHA if merged."
+      - "If checks fail, create a follow-up fix task on the same PR branch."
+      - "If checks are absent, record that explicitly and use the local validation receipt as replacement evidence."
+    expected_output:
+      - "Commit SHA and pushed branch."
+      - "PR check status."
+      - "Merge decision."
+      - "Updated board receipt."
     receipt: null
 
   - id: T999

@@ -270,6 +270,43 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertEqual(reviewed.first?.labels, ["bug"])
     }
 
+    func testPullRequestProjectionMatchesIOSSectionSemantics() {
+        let projection = MacPullRequestListModel.project(
+            pulls: pullItems,
+            selectedRepoKeys: ["mean-weasel/issuectl", "mean-weasel/other"],
+            section: .review,
+            searchText: "",
+            mineOnly: false,
+            currentUserLogin: "alice",
+            sortOrder: .updated
+        )
+
+        XCTAssertEqual(projection.counts[.review], 2)
+        XCTAssertEqual(projection.counts[.open], 3)
+        XCTAssertEqual(projection.counts[.merged], 1)
+        XCTAssertEqual(projection.counts[.closed], 1)
+        XCTAssertEqual(projection.pulls.map(\.pull.number), [10, 11])
+    }
+
+    func testPullRequestSearchMineSortAndRepoFilterAreDeterministic() {
+        let projection = MacPullRequestListModel.project(
+            pulls: pullItems,
+            selectedRepoKeys: ["mean-weasel/issuectl"],
+            section: .open,
+            searchText: "alpha",
+            mineOnly: true,
+            currentUserLogin: "alice",
+            sortOrder: .created
+        )
+
+        XCTAssertEqual(projection.counts[.review], 1)
+        XCTAssertEqual(projection.counts[.open], 2)
+        XCTAssertEqual(projection.pulls.map { $0.repoFullName + "#\($0.pull.number)" }, [
+            "mean-weasel/issuectl#12",
+            "mean-weasel/issuectl#10",
+        ])
+    }
+
     private var repos: [Repo] {
         [
             repo(id: 1, owner: "mean-weasel", name: "issuectl"),
@@ -288,6 +325,16 @@ final class MacIssueFilterStateTests: XCTestCase {
 
     private var drafts: [Draft] {
         [draft(id: "draft-1", title: "Draft alpha", body: "body")]
+    }
+
+    private var pullItems: [MacPullRequestListItem] {
+        [
+            pullItem(number: 10, repo: repos[0], title: "Fix alpha workflow", state: "open", merged: false, author: "alice", checksStatus: "failure", createdAt: "2026-05-12T10:00:00.000Z", updatedAt: "2026-05-14T18:00:00.000Z"),
+            pullItem(number: 11, repo: repos[0], title: "Pending alpha migration", state: "open", merged: false, author: "bob", checksStatus: "pending", createdAt: "2026-05-12T11:00:00.000Z", updatedAt: "2026-05-14T17:00:00.000Z"),
+            pullItem(number: 12, repo: repos[0], title: "Alpha cleanup", state: "open", merged: false, author: "alice", checksStatus: "success", createdAt: "2026-05-12T12:00:00.000Z", updatedAt: "2026-05-14T16:00:00.000Z"),
+            pullItem(number: 13, repo: repos[0], title: "Merged docs", state: "closed", merged: true, author: "carol", checksStatus: "success", createdAt: "2026-05-12T13:00:00.000Z", updatedAt: "2026-05-14T15:00:00.000Z", mergedAt: "2026-05-14T15:30:00.000Z", closedAt: "2026-05-14T15:30:00.000Z"),
+            pullItem(number: 21, repo: repos[1], title: "Other pending review", state: "closed", merged: false, author: "alice", checksStatus: "failure", createdAt: "2026-05-12T14:00:00.000Z", updatedAt: "2026-05-14T14:00:00.000Z", closedAt: "2026-05-14T14:30:00.000Z"),
+        ]
     }
 
     private func repo(id: Int, owner: String, name: String) -> Repo {
@@ -322,6 +369,45 @@ final class MacIssueFilterStateTests: XCTestCase {
 
     private func user(_ login: String) -> GitHubUser {
         GitHubUser(login: login, avatarUrl: "https://example.com/\(login).png")
+    }
+
+    private func pullItem(
+        number: Int,
+        repo: Repo,
+        title: String,
+        state: String,
+        merged: Bool,
+        author: String,
+        checksStatus: String?,
+        createdAt: String,
+        updatedAt: String,
+        mergedAt: String? = nil,
+        closedAt: String? = nil
+    ) -> MacPullRequestListItem {
+        MacPullRequestListItem(
+            pull: GitHubPull(
+                number: number,
+                title: title,
+                body: "Pull body",
+                state: state,
+                draft: false,
+                merged: merged,
+                user: user(author),
+                headRef: "head-\(number)",
+                baseRef: "main",
+                additions: 10,
+                deletions: 2,
+                changedFiles: 3,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                mergedAt: mergedAt,
+                closedAt: closedAt,
+                htmlUrl: "https://github.com/\(repo.owner)/\(repo.name)/pull/\(number)",
+                checksStatus: checksStatus
+            ),
+            repo: repo,
+            repoIndex: repo.id - 1
+        )
     }
 
     private func draft(id: String, title: String, body: String?) -> Draft {
