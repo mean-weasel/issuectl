@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T054
+active_task: T055
 
 tasks:
   - id: T001
@@ -2762,7 +2762,7 @@ tasks:
   - id: T054
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: low
     objective: "Push Phase 8C PR #439, mark it ready, inspect GitHub checks, and merge into mac-sidebar-spaces-option-a if green or if no-check replacement validation is accepted."
     inputs:
@@ -2773,6 +2773,44 @@ tasks:
       - "Do not merge red CI without an explicit recorded exception."
       - "Record CI or replacement validation used for the merge gate."
       - "Record head SHA and merge commit SHA if merged."
+    receipt:
+      result: done
+      note: "notes/T054-pr439-merge.md"
+      pr:
+        number: 439
+        url: "https://github.com/mean-weasel/issuectl/pull/439"
+        branch: "mac-parity-phase-8c-readiness"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "7c409340b80dbba0aad32756efd4ed3329bc0ce7"
+        merge_commit_sha: "cd3100c747646d9a42d2a717e6d4d56329b1c0ed"
+        merged_at: "2026-05-14T20:55:38Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-8c-readiness branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "MacIssueFilterStateTests full suite: 22 tests passed"
+          - "MacSidebarSmokeTests full suite: 34 tests passed"
+      summary: "Marked PR #439 ready, confirmed no GitHub checks were configured, and merged Phase 8C Mac launch readiness parity into mac-sidebar-spaces-option-a."
+
+  - id: T055
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Choose the next safe Phase 8 slice after launch readiness merged, likely embedded Mac terminal window parity unless a smaller prerequisite is safer."
+    inputs:
+      - "T054 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 8"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "Current terminal open behavior"
+    constraints:
+      - "Do not implement inside the judge task."
+      - "Prefer a PR-sized slice that closes embedded terminal-window parity without mixing unrelated later phases."
+      - "Define branch/base, allowed files, verification commands, dogfood evidence, and excluded follow-up scope."
     receipt: null
 
   - id: T999
