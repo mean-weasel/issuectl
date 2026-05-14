@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T036
+active_task: T037
 
 tasks:
   - id: T001
@@ -1798,6 +1798,47 @@ tasks:
       - "PR check state."
       - "Merge result or required fixes."
       - "Next PR-sized parity task."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T036-pr433-merged-and-phase-7.md"
+      pr:
+        number: 433
+        url: "https://github.com/mean-weasel/issuectl/pull/433"
+        state: merged
+        merged_at: "2026-05-14T18:47:15Z"
+        merge_commit: "b55930eb2e4ef8bd83a14af83719e4eeb1fd3042"
+        branch: "mac-parity-phase-6d-parse"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "94c24f065310d3bf64ae422df9544c372bd48920"
+      checks: "No GitHub status checks configured for the PR branch; T035 local validation accepted as replacement evidence."
+      summary: "Marked PR #433 ready, squash-merged Phase 6D parse creation into mac-sidebar-spaces-option-a, and selected Phase 7 PR browse/detail/actions sizing as the next task."
+
+  - id: T037
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Decide the first PR-sized Phase 7 Mac pull-request parity slice: inspect current iOS PR workflows, shared PR APIs, Mac app surfaces, and deterministic test fixture needs."
+    inputs:
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-7-pull-request-browse-detail-and-actions"
+      - "Current integration branch mac-sidebar-spaces-option-a"
+      - "Existing iOS PR list/detail/action views and shared API clients"
+      - "Existing Mac sidebar, issue detail, settings, and fixture-server patterns"
+    constraints:
+      - "Read and size first; do not implement Phase 7 product code in this Judge task."
+      - "Prefer the largest safe vertical slice, but avoid one oversized PR for all Phase 7 deliverables."
+      - "Define branch/base, allowed files, fixture endpoints, acceptance criteria, validation commands, and stop conditions for the Worker."
+      - "Preserve PR/CI/merge cadence: child PR into mac-sidebar-spaces-option-a, open draft early, merge only when green or locally accepted replacement validation is recorded."
+      - "Do not mark the overall goal complete."
+    expected_output:
+      - "Decision: approved | split_required | blocked."
+      - "First Phase 7 Worker objective."
+      - "Scope excluded from the first Phase 7 slice."
+      - "Allowed files and fixture endpoints."
+      - "Required Mac unit/UI/iOS regression validation."
+      - "PR branch/base/check/merge plan."
     receipt: null
 
   - id: T999
