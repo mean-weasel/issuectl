@@ -76,6 +76,54 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["mac-settings-advanced-save-error"].waitForExistence(timeout: 1), app.debugDescription)
     }
 
+    func testSettingsShowsWorktreesAndCleansStaleRows() {
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktrees-summary"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-101"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-stale"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.buttons["mac-settings-cleanup-worktree-alpha-worktree-101"].exists, app.debugDescription)
+
+        let cleanupStale = app.buttons["mac-settings-cleanup-stale-worktrees-button"]
+        XCTAssertTrue(cleanupStale.waitForExistence(timeout: 5), app.debugDescription)
+        cleanupStale.click()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-stale"].waitForNonExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-101"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-settings-worktrees-action-error"].exists, app.debugDescription)
+    }
+
+    func testSettingsCleansIndividualStaleWorktree() {
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-stale"].waitForExistence(timeout: 5), app.debugDescription)
+
+        let cleanup = app.buttons["mac-settings-cleanup-worktree-alpha-worktree-stale"]
+        XCTAssertTrue(cleanup.waitForExistence(timeout: 5), app.debugDescription)
+        cleanup.click()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-stale"].waitForNonExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-101"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-settings-worktrees-action-error"].exists, app.debugDescription)
+    }
+
+    func testSettingsWorktreeCleanupFailureKeepsRowsAndShowsError() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_CLEANUP_FAILURE"] = "1"
+        app.launch()
+
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-stale"].waitForExistence(timeout: 5), app.debugDescription)
+
+        let cleanupStale = app.buttons["mac-settings-cleanup-stale-worktrees-button"]
+        XCTAssertTrue(cleanupStale.waitForExistence(timeout: 5), app.debugDescription)
+        cleanupStale.click()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktrees-action-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-worktree-row-alpha-worktree-stale"].waitForExistence(timeout: 3), app.debugDescription)
+    }
+
     private func openSettings() {
         let statusItem = app.statusItems["IssueCTL"].firstMatch
         XCTAssertTrue(statusItem.waitForExistence(timeout: 8), app.debugDescription)

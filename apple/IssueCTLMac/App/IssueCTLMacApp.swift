@@ -193,7 +193,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return
         }
 
-        let payload = Self.payload(for: request.httpMethod ?? "GET", path: url.path)
+        let payload = Self.payload(for: request)
         let status = payload == nil ? 404 : 200
         let data = Self.jsonData(payload ?? ["error": "Unhandled \(url.path)"])
 
@@ -210,7 +210,10 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
 
     override func stopLoading() {}
 
-    private static func payload(for method: String, path: String) -> [String: Any]? {
+    private static func payload(for request: URLRequest) -> [String: Any]? {
+        let method = request.httpMethod ?? "GET"
+        let path = request.url?.path ?? "/"
+
         switch (method, path) {
         case ("GET", "/api/v1/health"):
             return ["ok": true, "version": "ui-test", "timestamp": isoDate]
@@ -232,6 +235,20 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["success": true, "error": NSNull()]
         case ("GET", "/api/v1/repos"):
             return ["repos": [repo]]
+        case ("GET", "/api/v1/worktrees"):
+            return ["worktrees": worktrees]
+        case ("POST", "/api/v1/worktrees/cleanup"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_CLEANUP_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture cleanup failed"]
+            }
+            let payload = jsonBody(from: request)
+            if let path = payload["path"] as? String {
+                worktrees.removeAll { $0["path"] as? String == path }
+                return ["success": true, "error": NSNull()]
+            }
+            let staleCount = worktrees.filter { ($0["stale"] as? Bool) == true }.count
+            worktrees.removeAll { ($0["stale"] as? Bool) == true }
+            return ["success": true, "removed": staleCount, "error": NSNull()]
         case ("GET", "/api/v1/repos/github"):
             return ["repos": [
                 ["owner": "org", "name": "alpha", "private": false, "pushed_at": isoDate],
@@ -261,11 +278,40 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         ]
     }
 
+    nonisolated(unsafe) private static var worktrees: [[String: Any]] = [
+        [
+            "path": "/tmp/alpha-worktree-101",
+            "name": "alpha-worktree-101",
+            "repo": "alpha",
+            "owner": "org",
+            "local_path": "/tmp/issuectl-alpha",
+            "issue_number": 101,
+            "stale": false,
+        ],
+        [
+            "path": "/tmp/alpha-worktree-stale",
+            "name": "alpha-worktree-stale",
+            "repo": "alpha",
+            "owner": "org",
+            "local_path": "/tmp/issuectl-alpha",
+            "issue_number": 102,
+            "stale": true,
+        ],
+    ]
+
     private static var isoDate: String {
         "2026-05-14T00:00:00Z"
     }
 
     private static func jsonData(_ object: Any) -> Data {
         (try? JSONSerialization.data(withJSONObject: object)) ?? Data("{}".utf8)
+    }
+
+    private static func jsonBody(from request: URLRequest) -> [String: Any] {
+        guard let data = request.httpBody,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return json
     }
 }

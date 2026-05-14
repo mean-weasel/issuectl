@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T017
+active_task: T018
 
 tasks:
   - id: T001
@@ -599,7 +599,7 @@ tasks:
   - id: T017
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 3 Worktree Management as the next PR-sized slice from mac-sidebar-spaces-option-a."
     inputs:
@@ -637,6 +637,62 @@ tasks:
       - "Cleanup semantics are ambiguous for active worktrees."
       - "Need backend route or schema changes."
       - "Mac UI test harness regresses to hanging."
+    receipt:
+      result: done
+      note: "notes/T017-phase-3-worktrees.md"
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "apple/IssueCTLTests/APIClientTests.swift"
+      pr:
+        number: 425
+        url: "https://github.com/mean-weasel/issuectl/pull/425"
+        branch: "mac-parity-phase-3-worktrees"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Not checked yet after final push."
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+      warnings:
+        - "pnpm lint passed with pre-existing warnings."
+      summary: "Implemented native Mac worktree management in Settings with active/stale listing, refresh, individual stale cleanup, bulk stale cleanup, failure recovery, fixture API support, and focused API/UI validation."
+      next_task: T018
+
+  - id: T018
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #425 Phase 3 for acceptance coverage, CI/check status, merge readiness, and next-slice sizing."
+    inputs:
+      - "T017 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/425"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-3-worktree-management"
+    constraints:
+      - "Do not implement product changes unless review finds a small blocking fix."
+      - "Do not mark ready or merge if required acceptance criteria are missing."
+      - "If GitHub reports no checks, document the accepted local replacement gate before merge."
+      - "Choose the next PR-sized parity task after the PR is ready or merged."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance criteria evidence map."
+      - "CI or replacement validation status."
+      - "Merge recommendation and next active task."
     receipt: null
 
   - id: T999

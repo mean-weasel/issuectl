@@ -144,6 +144,25 @@ final class TestableAPIClient {
         return try decoder.decode(SuccessResponse.self, from: data)
     }
 
+    func listWorktrees() async throws -> [WorktreeInfo] {
+        let (data, _) = try await request(path: "/api/v1/worktrees")
+        return try decoder.decode(WorktreesResponse.self, from: data).worktrees
+    }
+
+    func cleanupWorktree(path: String) async throws -> SuccessResponse {
+        let body = WorktreeCleanupRequest(path: path)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/worktrees/cleanup", method: "POST", body: bodyData)
+        return try decoder.decode(SuccessResponse.self, from: data)
+    }
+
+    func cleanupStaleWorktrees() async throws -> WorktreeCleanupResponse {
+        let body: [String: String?] = [:]
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/worktrees/cleanup", method: "POST", body: bodyData)
+        return try decoder.decode(WorktreeCleanupResponse.self, from: data)
+    }
+
     func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
         var path = "/api/v1/issues/\(owner)/\(repo)"
         if refresh { path += "?refresh=true" }

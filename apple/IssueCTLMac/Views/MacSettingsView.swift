@@ -35,6 +35,12 @@ struct MacSettingsView: View {
     @State private var branchPattern = ""
     @State private var worktreeDir = ""
     @State private var defaultRepoId = ""
+    @State private var worktrees: [WorktreeInfo] = []
+    @State private var isLoadingWorktrees = false
+    @State private var worktreeError: String?
+    @State private var worktreeActionError: String?
+    @State private var isCleaningStaleWorktrees = false
+    @State private var cleaningWorktreePath: String?
     @State private var showAddRepo = false
     @State private var editingRepo: Repo?
     @State private var repoPendingRemoval: Repo?
@@ -45,6 +51,8 @@ struct MacSettingsView: View {
             connectionSection
 
             advancedSettingsSection
+
+            worktreesSection
 
             Section("Mac Sidebar") {
                 Toggle("Launch at Login", isOn: launchAtLoginBinding)
@@ -385,6 +393,111 @@ struct MacSettingsView: View {
         }
     }
 
+    private var worktreesSection: some View {
+        Section("Worktrees") {
+            HStack {
+                Button {
+                    Task { await loadWorktrees() }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .disabled(isLoadingWorktrees)
+                .accessibilityIdentifier("mac-settings-refresh-worktrees-button")
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    Task { await cleanupStaleWorktrees() }
+                } label: {
+                    if isCleaningStaleWorktrees {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Clean Up Stale", systemImage: "trash")
+                    }
+                }
+                .disabled(staleWorktrees.isEmpty || isLoadingWorktrees || isCleaningStaleWorktrees || cleaningWorktreePath != nil)
+                .accessibilityIdentifier("mac-settings-cleanup-stale-worktrees-button")
+            }
+
+            if isLoadingWorktrees && worktrees.isEmpty {
+                ProgressView("Checking worktrees...")
+                    .accessibilityIdentifier("mac-settings-worktrees-loading")
+            } else if let worktreeError, worktrees.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(worktreeError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("mac-settings-worktrees-error")
+                    Button("Retry") {
+                        Task { await loadWorktrees() }
+                    }
+                }
+            } else if worktrees.isEmpty {
+                ContentUnavailableView(
+                    "No Worktrees",
+                    systemImage: "folder",
+                    description: Text("No active or stale git worktrees were found.")
+                )
+                .accessibilityIdentifier("mac-settings-worktrees-empty")
+            } else {
+                MacWorktreeSummaryCard(
+                    totalCount: worktrees.count,
+                    activeCount: activeWorktrees.count,
+                    staleCount: staleWorktrees.count
+                )
+                .accessibilityIdentifier("mac-settings-worktrees-summary")
+
+                if let worktreeActionError {
+                    Label(worktreeActionError, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("mac-settings-worktrees-action-error")
+                }
+
+                if !staleWorktrees.isEmpty {
+                    Text("Needs Cleanup")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    ForEach(staleWorktrees) { worktree in
+                        MacSettingsWorktreeRow(
+                            worktree: worktree,
+                            isCleaning: cleaningWorktreePath == worktree.path,
+                            canClean: true
+                        ) {
+                            Task { await cleanupWorktree(path: worktree.path) }
+                        }
+                    }
+                }
+
+                if !activeWorktrees.isEmpty {
+                    Text("Active")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    ForEach(activeWorktrees) { worktree in
+                        MacSettingsWorktreeRow(
+                            worktree: worktree,
+                            isCleaning: false,
+                            canClean: false,
+                            onCleanup: {}
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var staleWorktrees: [WorktreeInfo] {
+        worktrees.filter(\.stale)
+    }
+
+    private var activeWorktrees: [WorktreeInfo] {
+        worktrees.filter { !$0.stale }
+    }
+
     private var launchAtLoginBinding: Binding<Bool> {
         Binding(
             get: { preferences.launchAtLogin },
@@ -441,7 +554,8 @@ struct MacSettingsView: View {
         async let connectionTask: () = loadConnectionStatus()
         async let reposTask: () = loadRepos(refresh: false)
         async let advancedTask: () = loadAdvancedSettings()
-        _ = await (connectionTask, reposTask, advancedTask)
+        async let worktreesTask: () = loadWorktrees()
+        _ = await (connectionTask, reposTask, advancedTask, worktreesTask)
     }
 
     private func loadConnectionStatus() async {
@@ -514,6 +628,9 @@ struct MacSettingsView: View {
         connectionError = "Disconnected"
         settings = [:]
         settingsError = nil
+        worktrees = []
+        worktreeError = nil
+        worktreeActionError = nil
         syncManualConnectionFields()
     }
 
@@ -577,6 +694,59 @@ struct MacSettingsView: View {
             showSettingsSaved = false
         } catch {
             settingsSaveError = error.localizedDescription
+        }
+    }
+
+    private func loadWorktrees() async {
+        guard api.isConfigured else {
+            worktrees = []
+            worktreeError = "Connect to issuectl web before checking worktrees."
+            return
+        }
+
+        isLoadingWorktrees = true
+        worktreeError = nil
+        worktreeActionError = nil
+        defer { isLoadingWorktrees = false }
+
+        do {
+            worktrees = try await api.listWorktrees()
+        } catch {
+            worktreeError = error.localizedDescription
+        }
+    }
+
+    private func cleanupWorktree(path: String) async {
+        cleaningWorktreePath = path
+        worktreeActionError = nil
+        defer { cleaningWorktreePath = nil }
+
+        do {
+            let response = try await api.cleanupWorktree(path: path)
+            guard response.success else {
+                worktreeActionError = response.error ?? "Failed to clean up worktree"
+                return
+            }
+            worktrees.removeAll { $0.path == path }
+        } catch {
+            worktreeActionError = error.localizedDescription
+        }
+    }
+
+    private func cleanupStaleWorktrees() async {
+        isCleaningStaleWorktrees = true
+        worktreeActionError = nil
+        defer { isCleaningStaleWorktrees = false }
+
+        do {
+            let response = try await api.cleanupStaleWorktrees()
+            guard response.success else {
+                worktreeActionError = response.error ?? "Failed to clean up stale worktrees"
+                return
+            }
+            await loadWorktrees()
+        } catch {
+            worktreeActionError = error.localizedDescription
         }
     }
 
@@ -795,6 +965,115 @@ private enum MacSettingsAppVersion {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
         return "\(version) (\(build))"
+    }
+}
+
+private struct MacWorktreeSummaryCard: View {
+    let totalCount: Int
+    let activeCount: Int
+    let staleCount: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: staleCount > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(staleCount > 0 ? .orange : .green)
+                    .frame(width: 32, height: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(staleCount > 0 ? "Cleanup Available" : "Worktrees Clear")
+                        .font(.headline)
+                    Text(staleCount > 0 ? "\(staleCount) stale worktree\(staleCount == 1 ? "" : "s") can be cleaned up." : "No stale worktrees were found.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: 8) {
+                metric("Total", totalCount, "folder")
+                metric("Active", activeCount, "checkmark.circle")
+                metric("Stale", staleCount, "exclamationmark.circle")
+            }
+        }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func metric(_ title: String, _ value: Int, _ systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("\(value)")
+                .font(.caption.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+private struct MacSettingsWorktreeRow: View {
+    let worktree: WorktreeInfo
+    let isCleaning: Bool
+    let canClean: Bool
+    let onCleanup: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: worktree.stale ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(worktree.stale ? .orange : .green)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(worktree.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Text(worktree.stale ? "Stale" : "Active")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(worktree.stale ? .orange : .green)
+                }
+
+                if let repoFullName = worktree.repoFullName {
+                    Label(repoFullName, systemImage: "arrow.triangle.branch")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let issueNumber = worktree.issueNumber {
+                    Label("Issue #\(issueNumber)", systemImage: "number")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Label(worktree.path, systemImage: "externaldrive")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer(minLength: 8)
+
+            if isCleaning {
+                ProgressView()
+                    .controlSize(.small)
+            } else if canClean {
+                Button(role: .destructive) {
+                    onCleanup()
+                } label: {
+                    Label("Clean Up", systemImage: "trash")
+                }
+                .accessibilityIdentifier("mac-settings-cleanup-worktree-\(worktree.name)")
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mac-settings-worktree-row-\(worktree.name)")
     }
 }
 

@@ -90,6 +90,70 @@ final class APIClientExtensionTests: XCTestCase {
         XCTAssertNil(response.error)
     }
 
+    // MARK: - Worktrees
+
+    @MainActor
+    func testListWorktreesUsesEndpointAndDecodesRows() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/worktrees")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"worktrees":[{"path":"/tmp/alpha","name":"alpha","repo":"issuectl","owner":"mean-weasel","local_path":"/tmp/repo","issue_number":42,"stale":true}]}
+            """.data(using: .utf8)!)
+        }
+
+        let worktrees = try await client.listWorktrees()
+
+        XCTAssertEqual(worktrees.count, 1)
+        XCTAssertEqual(worktrees[0].repoFullName, "mean-weasel/issuectl")
+        XCTAssertEqual(worktrees[0].issueNumber, 42)
+        XCTAssertTrue(worktrees[0].stale)
+    }
+
+    @MainActor
+    func testCleanupWorktreeSendsPathBody() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/worktrees/cleanup")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["path"] as? String, "/tmp/alpha")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.cleanupWorktree(path: "/tmp/alpha")
+
+        XCTAssertTrue(response.success)
+        XCTAssertNil(response.error)
+    }
+
+    @MainActor
+    func testCleanupStaleWorktreesSendsEmptyBodyAndDecodesRemovedCount() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/worktrees/cleanup")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertTrue(json.isEmpty)
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"removed":2,"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.cleanupStaleWorktrees()
+
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.removed, 2)
+        XCTAssertNil(response.error)
+    }
+
     // MARK: - Repository Settings
 
     @MainActor
