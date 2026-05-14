@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T027
+active_task: T028
 
 tasks:
   - id: T001
@@ -1211,7 +1211,7 @@ tasks:
   - id: T027
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #429 for Phase 5C acceptance coverage, GitHub/check status, merge readiness, and next-slice sizing."
     inputs:
@@ -1229,6 +1229,77 @@ tasks:
       - "CI or accepted replacement validation status."
       - "Merge decision."
       - "Next task recommendation."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T027-pr429-merged-and-phase-6a.md"
+      pr:
+        number: 429
+        url: "https://github.com/mean-weasel/issuectl/pull/429"
+        branch: "mac-parity-phase-5c-markdown-lightbox"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "25ebe446adaed58e65b6c7aa0bd2160492ed964e"
+        merge_commit: "dacf3fdd1a08b9337bf1b7e9224ba0d555aa64fa"
+        merged_at: "2026-05-14T17:33:15Z"
+        checks: "No checks reported."
+      accepted_replacement_validation: "Local validation from T026 covered the Phase 5C acceptance map; GitHub reported no configured checks."
+      summary: "Marked PR #429 ready, accepted the documented local validation gate, squash-merged it into the integration branch, and sized Phase 6A as existing-draft assignment with labels and refresh behavior."
+      next_task: T028
+
+  - id: T028
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 6A Mac draft assignment: assign an existing local draft to a tracked repo with label selection, preserve input on failure, and refresh issues/drafts after success."
+    inputs:
+      - "T027 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-6-draft-quick-create-image-attachment-and-parse-workflows"
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTL/Views/Issues/QuickCreateSheet.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Drafts.swift"
+      - "apple/IssueCTLShared/Models/Issue.swift"
+      - "Mac UI fixture API"
+    constraints:
+      - "Open a draft PR early against mac-sidebar-spaces-option-a."
+      - "Keep this slice focused on assigning existing drafts; do not add AI parse/batch-create or full direct quick-create unless needed for the assignment component."
+      - "Use shared API request/response types already available where possible."
+      - "Load labels for the selected repo and allow multi-select before assignment."
+      - "Refresh both drafts and issues after assignment; make the created issue visible or selected where feasible."
+      - "Preserve draft title/body/label/repo selection on assignment failure."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLShared/Services/APIClient+Drafts.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLShared/Models/Issue.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "A Mac user can assign an existing local draft to one tracked repo."
+      - "Repo label options load for the selected repo and selected labels are sent with the assignment request."
+      - "Successful assignment removes or refreshes the local draft and refreshes issues so the created issue is visible in Mac issue surfaces."
+      - "Assignment failure shows a recoverable error and preserves selected draft, repo, and label choices."
+      - "Existing local draft create/edit/delete behavior remains covered."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Draft assignment requires backend endpoints not present in shared API/client fixtures."
+      - "Direct quick-create or image upload scope becomes necessary to complete assignment safely."
+      - "Required files fall outside the allowed scope."
     receipt: null
 
   - id: T999
