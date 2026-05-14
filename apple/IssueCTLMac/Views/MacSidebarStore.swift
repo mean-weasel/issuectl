@@ -219,6 +219,49 @@ final class MacSidebarStore {
         }
     }
 
+    func repoLabels(api: APIClient, item: MacIssueListItem) async throws -> [GitHubLabel] {
+        try await api.listRepoLabels(owner: item.repo.owner, repo: item.repo.name).labels
+    }
+
+    func toggleLabel(api: APIClient, item: MacIssueListItem, label: String, action: String) async throws {
+        let response = try await api.toggleLabel(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: ToggleLabelRequestBody(label: label, action: action)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update label")
+        }
+    }
+
+    func collaborators(api: APIClient, item: MacIssueListItem) async throws -> [CollaboratorInfo] {
+        try await api.collaborators(owner: item.repo.owner, repo: item.repo.name)
+    }
+
+    func updateAssignees(api: APIClient, item: MacIssueListItem, assignees: [String]) async throws -> [String] {
+        try await api.updateAssignees(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            assignees: assignees
+        )
+    }
+
+    func reassignIssue(api: APIClient, item: MacIssueListItem, target: Repo) async throws -> ReassignResponse {
+        let response = try await api.reassignIssue(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            targetOwner: target.owner,
+            targetRepo: target.name
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to reassign issue")
+        }
+        return response
+    }
+
     func setPriority(api: APIClient, item: MacIssueListItem, priority: Priority) async throws {
         let response = try await api.setPriority(
             owner: item.repo.owner,

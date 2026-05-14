@@ -128,6 +128,42 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-comment-101"].waitForNonExistence(timeout: 5), app.debugDescription)
     }
 
+    func testIssueDetailManagementActions() {
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+
+        let labelsButton = app.buttons["mac-issue-detail-labels-button"]
+        firstIssue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        if !labelsButton.waitForExistence(timeout: 2) {
+            firstIssue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        }
+
+        XCTAssertTrue(labelsButton.waitForExistence(timeout: 5), app.debugDescription)
+        labelsButton.click()
+        let enhancementLabel = app.descendants(matching: .any)["mac-label-management-row-enhancement"]
+        XCTAssertTrue(enhancementLabel.waitForExistence(timeout: 5), app.debugDescription)
+        enhancementLabel.click()
+        app.buttons["Done"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["enhancement"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-issue-detail-assignees-button"].click()
+        let carolAssignee = app.descendants(matching: .any)["mac-assignee-management-row-carol"]
+        XCTAssertTrue(carolAssignee.waitForExistence(timeout: 5), app.debugDescription)
+        carolAssignee.click()
+        app.buttons["Done"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["Assigned to bob, carol"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-issue-detail-reassign-button"].click()
+        let betaTarget = app.descendants(matching: .any)["mac-reassign-target-org/beta"]
+        XCTAssertTrue(betaTarget.waitForExistence(timeout: 5), app.debugDescription)
+        betaTarget.click()
+        app.buttons["mac-reassign-submit-button"].click()
+        let successMessage = app.descendants(matching: .any)["mac-issue-detail-success-message"]
+        XCTAssertTrue(successMessage.waitForExistence(timeout: 5), app.debugDescription)
+        let successText = (successMessage.value as? String) ?? successMessage.label
+        XCTAssertTrue(successText.contains("org/beta#77"), "\(successText)\n\(app.debugDescription)")
+    }
+
     func testStatusMenuOpensSettings() {
         openSettingsFromStatusMenu()
 

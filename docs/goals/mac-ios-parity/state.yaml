@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T024
+active_task: T025
 
 tasks:
   - id: T001
@@ -999,7 +999,7 @@ tasks:
   - id: T024
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 5B Mac issue-detail label, assignee, and reassign action parity as a PR-sized slice."
     inputs:
@@ -1048,6 +1048,63 @@ tasks:
       - "Reassign requires navigation architecture changes outside Mac issue detail/list/store surfaces."
       - "Image lightbox or media rendering changes become necessary for this PR to compile or pass tests."
       - "Any required files fall outside the allowed scope."
+    receipt:
+      result: done
+      note: "notes/T024-phase-5b-detail-management.md"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      pr:
+        number: 428
+        url: "https://github.com/mean-weasel/issuectl/pull/428"
+        branch: "mac-parity-phase-5b-detail-management"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending review after push."
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase5b-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-unit-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-api-all -destination 'platform=iOS Simulator,id=002673DD-F669-4F62-A9BB-B5009A96E818' test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+      warnings:
+        - "pnpm lint passed with pre-existing warnings."
+        - "GitHub checks were not reviewed until after the branch push."
+      summary: "Added Mac label, assignee, and reassign management from issue detail, expanded the Mac dogfood fixture, covered the flow with Mac UI and shared API tests, and kept image lightbox deferred."
+
+  - id: T025
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review Phase 5B PR #428 for CI/merge readiness, merge it if green or accepted replacement validation applies, and size the next parity slice."
+    inputs:
+      - "T024 receipt"
+      - "PR #428"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-5-issue-detail-action-parity"
+      - "Remaining deferred Phase 5 image lightbox item"
+    constraints:
+      - "Do not implement product changes."
+      - "Reject merge if labels, assignees, reassign, or Phase 5A preservation evidence is missing."
+      - "Merge only with green CI or explicitly accepted replacement validation."
+      - "Record PR status, checks, merge result, and next Worker recommendation."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "CI or accepted replacement validation status."
+      - "Merge result when ready."
+      - "Next task recommendation and allowed scope."
     receipt: null
 
   - id: T999
