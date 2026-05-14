@@ -2632,6 +2632,98 @@ tasks:
           - "MacSidebarSmokeTests full suite: 29 tests passed"
       summary: "Marked PR #438 ready, confirmed no GitHub checks were configured, and merged Phase 8B Mac Active Sessions parity into mac-sidebar-spaces-option-a."
 
+  - id: T052
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the next safe Phase 8 slice after Active Sessions merged."
+    inputs:
+      - "T051 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 8"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTL/Views/Launch/LaunchView.swift"
+    constraints:
+      - "Do not implement inside the judge task."
+      - "Prefer completing readiness and dirty-worktree acceptance before embedded terminal UI."
+      - "Define branch/base, allowed files, verification commands, and excluded follow-up scope."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T052-next-phase-8c-slice.md"
+      next_worker: T053
+      worker_objective: "Implement Phase 8C Mac launch readiness parity: local path checks, clone/worktree fallback explanation, dirty-worktree detection, discard/reset and resume choices, progress state, and recoverable launch/reset failures."
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-8c-readiness"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      excluded_from_next_slice:
+        - "Embedded terminal window/WKWebView."
+        - "Terminal text-size, reconnect, and respawn controls."
+        - "Dogfood terminal-window pass."
+      allowed_files_for_t053:
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/**"
+        - "apple/IssueCTLMacUITests/**"
+        - "docs/goals/mac-ios-parity/**"
+      verify_for_t053:
+        - "git diff --check"
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8c-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8c-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+        - "pnpm typecheck"
+        - "pnpm lint"
+      summary: "Selected a readiness/dirty-worktree slice because it closes the remaining launch acceptance criteria without mixing in embedded terminal UI complexity."
+
+  - id: T053
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 8C Mac launch readiness parity: local path checks, clone/worktree fallback explanation, dirty-worktree detection, discard/reset and resume choices, progress state, and recoverable launch/reset failures."
+    inputs:
+      - "T052 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 8"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTL/Views/Launch/LaunchView.swift"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR early."
+      - "Preserve existing one-click launch and options launch behavior."
+      - "Do not implement embedded terminal WKWebView or terminal controls in this slice."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "One-click launch still works with defaults."
+      - "Existing session opens instead of launching duplicate work unless a reset/new flow is explicitly chosen."
+      - "Mac launch options show local path/clone fallback readiness with visible explanation when worktree mode is unavailable or unknown."
+      - "Dirty worktree state is detected before launch."
+      - "Dirty worktree choices support discard/start fresh and resume with changes, and the selected behavior is reflected in launch/reset API calls."
+      - "Launch and reset progress/failure states are visible and recoverable."
+      - "Fixture-backed UI coverage confirms dirty detection, reset, resume, fallback explanation, and failure recovery."
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8c-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8c-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Readiness requires backend/API changes outside allowed files."
+      - "Existing-session reset/new flow requires broader navigation or terminal redesign."
+      - "Local validation fails twice for the same unexplained reason."
+    receipt: null
+
   - id: T999
     type: judge
     assignee: Judge
