@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T012
+active_task: T014
 
 tasks:
   - id: T001
@@ -366,7 +366,7 @@ tasks:
   - id: T012
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: default
     objective: "Dogfood the native Mac Settings repository management workflow for PR #423, or choose a dedicated UI automation fix before merge."
     inputs:
@@ -383,6 +383,79 @@ tasks:
       - "Accepted dogfood evidence and merge approval for PR #423, or a queued Worker task for UI automation repair."
       - "Updated PR comment and board receipt."
       - "Clear next task after PR #423 is either merged or still blocked."
+    receipt:
+      result: done
+      decision: choose_ui_automation_repair
+      full_outcome_complete: false
+      note: "notes/T012-ui-automation-path.md"
+      summary: "Owner dogfood would require explicit approval to mutate real repository settings, so the next safe local path is a focused Mac UI automation repair before PR #423 can merge."
+      next_task: T013
+
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Investigate and repair the Mac UI test harness enough to verify the native Settings repository management section for PR #423, or record a concrete blocker."
+    inputs:
+      - "T011 receipt"
+      - "T012 receipt"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+    constraints:
+      - "Do not change normal app launch behavior."
+      - "Keep any launch hook scoped to UI testing."
+      - "Prefer deterministic app-window automation over status-menu interaction."
+      - "Do not merge PR #423."
+      - "Do not mutate real local repository settings."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+    stop_if:
+      - "The UI test still hangs after a UI-testing-only lifecycle fix."
+      - "The harness fix would affect normal app launch behavior."
+      - "Need to mutate real repo settings to pass the test."
+    receipt:
+      result: done
+      note: "notes/T013-mac-settings-ui-evidence.md"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+      summary: "Added a UI-testing-only fixture API and Mac smoke coverage that verifies native repository Settings controls through the real status-menu Settings path."
+
+  - id: T014
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: default
+    objective: "Update PR #423 with the resolved Mac Settings UI evidence, mark it ready if no new blocker is present, and merge it into the integration branch under the documented no-CI replacement validation."
+    inputs:
+      - "T013 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/423"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not merge if GitHub reports conflicts or red checks."
+      - "Record final PR state, merge SHA, or blocker."
+      - "Use the local validation from T013 plus prior Phase 1 validation as the no-checks replacement gate."
+    expected_output:
+      - "PR #423 marked ready and merged, or blocked with a concrete reason."
+      - "Updated board receipt."
+      - "Next active PR-sized parity slice."
     receipt: null
 
   - id: T999

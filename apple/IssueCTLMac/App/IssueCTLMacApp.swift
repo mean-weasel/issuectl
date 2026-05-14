@@ -34,8 +34,18 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         PerformanceTrace.markAppLaunchStarted()
         NSApp.setActivationPolicy(.accessory)
+        configureUITestFixtureAPIIfNeeded()
         sidebarCoordinator.start()
         configureStatusItem()
+    }
+
+    private func configureUITestFixtureAPIIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["ISSUECTL_UI_TESTING"] == "1",
+              env["ISSUECTL_MAC_UI_FIXTURE_API"] == "1" else {
+            return
+        }
+        URLProtocol.registerClass(MacUITestFixtureURLProtocol.self)
     }
 
     private func configureStatusItem() {
@@ -164,3 +174,87 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 extension MacAppDelegate: NSMenuDelegate {}
+
+private final class MacUITestFixtureURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "issuectl-ui-test.local"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: APIError.invalidResponse)
+            return
+        }
+
+        let payload = Self.payload(for: request.httpMethod ?? "GET", path: url.path)
+        let status = payload == nil ? 404 : 200
+        let data = Self.jsonData(payload ?? ["error": "Unhandled \(url.path)"])
+
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: status,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private static func payload(for method: String, path: String) -> [String: Any]? {
+        switch (method, path) {
+        case ("GET", "/api/v1/health"):
+            return ["ok": true, "version": "ui-test", "timestamp": isoDate]
+        case ("GET", "/api/v1/user"):
+            return ["login": "alice"]
+        case ("GET", "/api/v1/settings"):
+            return ["settings": [
+                "launch_agent": "codex",
+                "claude_extra_args": "",
+                "codex_extra_args": "",
+            ]]
+        case ("GET", "/api/v1/repos"):
+            return ["repos": [repo]]
+        case ("GET", "/api/v1/repos/github"):
+            return ["repos": [
+                ["owner": "org", "name": "alpha", "private": false, "pushed_at": isoDate],
+                ["owner": "org", "name": "gamma", "private": true, "pushed_at": isoDate],
+            ], "synced_at": 1_775_000_000, "is_stale": false]
+        case ("GET", "/api/v1/deployments"):
+            return ["deployments": []]
+        case ("GET", "/api/v1/sessions/previews"):
+            return ["previews": []]
+        case ("GET", "/api/v1/drafts"):
+            return ["drafts": []]
+        case ("GET", "/api/v1/issues/org/alpha"):
+            return ["issues": [], "from_cache": false, "cached_at": NSNull()]
+        default:
+            return nil
+        }
+    }
+
+    private static var repo: [String: Any] {
+        [
+            "id": 1,
+            "owner": "org",
+            "name": "alpha",
+            "local_path": "/tmp/issuectl-alpha",
+            "branch_pattern": "jeremy/{slug}",
+            "created_at": isoDate,
+        ]
+    }
+
+    private static var isoDate: String {
+        "2026-05-14T00:00:00Z"
+    }
+
+    private static func jsonData(_ object: Any) -> Data {
+        (try? JSONSerialization.data(withJSONObject: object)) ?? Data("{}".utf8)
+    }
+}
