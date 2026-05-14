@@ -403,14 +403,19 @@ final class MacSidebarStore {
         )
     }
 
-    func terminalAccess(api: APIClient, session: ActiveDeployment) async throws -> MacTerminalAccess {
+    func terminalAccess(
+        api: APIClient,
+        session: ActiveDeployment,
+        preferences: MacTerminalPreferences = .default
+    ) async throws -> MacTerminalAccess {
         let result = try await api.ensureTtyd(deploymentId: session.id)
         switch result {
         case .available(let port, let token, let respawned):
             var components = URLComponents(string: "\(api.serverURL)/api/terminal/\(port)/")
             components?.queryItems = [
                 URLQueryItem(name: "terminalToken", value: token),
-                URLQueryItem(name: "lineHeight", value: "1.25"),
+                URLQueryItem(name: "fontSize", value: "\(preferences.fontSize)"),
+                URLQueryItem(name: "lineHeight", value: preferences.lineHeight),
                 URLQueryItem(name: "disableResizeOverlay", value: "true"),
                 URLQueryItem(name: "rendererType", value: "canvas"),
             ]
@@ -522,6 +527,13 @@ struct MacIssueLaunchOptions: Equatable {
             idempotencyKey: idempotencyKey
         )
     }
+}
+
+struct MacTerminalPreferences: Equatable {
+    var fontSize: Int
+    var lineHeight: String
+
+    static let `default` = MacTerminalPreferences(fontSize: 14, lineHeight: "1.25")
 }
 
 struct MacTerminalAccess: Equatable {

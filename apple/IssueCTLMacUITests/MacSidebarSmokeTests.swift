@@ -405,10 +405,40 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Running alpha issue"].waitForNonExistence(timeout: 5), app.debugDescription)
 
         app.buttons["Open terminal for session 2"].click()
-        XCTAssertTrue(app.staticTexts["Terminal opened on port 7700"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.windows["org/alpha #2 Terminal"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-terminal-status"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Terminal connected on port 7700"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-terminal-duration"].exists, app.debugDescription)
+        XCTAssertTrue(app.steppers["mac-terminal-text-size-stepper"].exists, app.debugDescription)
 
-        app.buttons["End session 2"].click()
+        app.buttons["mac-terminal-reconnect-button"].click()
+        XCTAssertTrue(app.staticTexts["Terminal connected on port 7700"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["mac-terminal-end-button"].click()
         XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForNonExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testEmbeddedTerminalRespawnAndFailureRecovery() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_RESPAWN_TTYD"] = "1"
+        app.launch()
+
+        selectRootSection("Active")
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForExistence(timeout: 8), app.debugDescription)
+        app.buttons["Open terminal for session 2"].click()
+        XCTAssertTrue(app.staticTexts["Terminal respawned on port 7700"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-terminal-close-button"].click()
+
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "ISSUECTL_MAC_UI_FIXTURE_RESPAWN_TTYD")
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_TTYD_FAILURE"] = "1"
+        app.launch()
+
+        selectRootSection("Active")
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForExistence(timeout: 8), app.debugDescription)
+        app.buttons["Open terminal for session 2"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-terminal-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-terminal-retry-button"].exists, app.debugDescription)
     }
 
     func testActiveSessionEndFailureKeepsRowAndShowsError() {
