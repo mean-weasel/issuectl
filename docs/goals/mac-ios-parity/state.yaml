@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T060
+active_task: T061
 
 tasks:
   - id: T001
@@ -3065,7 +3065,7 @@ tasks:
   - id: T060
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #441 Phase 9A cache/offline visibility for acceptance criteria coverage, GitHub check state, merge readiness, and the next Phase 9 slice."
     inputs:
@@ -3082,6 +3082,89 @@ tasks:
       - "GitHub check state and local replacement validation."
       - "Merge commit SHA if merged."
       - "Next PR-sized Phase 9 worker task if safe local work remains."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T060-pr441-merge.md"
+      pr:
+        number: 441
+        url: "https://github.com/mean-weasel/issuectl/pull/441"
+        branch: "mac-parity-phase-9a-cache-visibility"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "4b7ec01e431216627afacaac9778a2ed6d497b89"
+        merge_commit_sha: "a34ee66a3681c6c68e22a60a6e4a156eef6fab0f"
+        merged_at: "2026-05-14T21:46:15Z"
+      merge_gate:
+        github_checks: "No checks reported on the mac-parity-phase-9a-cache-visibility branch."
+        replacement_validation:
+          - "git diff --check"
+          - "pnpm typecheck"
+          - "pnpm lint with existing warnings only"
+          - "MacIssueFilterStateTests: 24 tests passed"
+          - "MacSidebarSmokeTests/testIssueCacheAndOfflineIndicators: 1 test passed"
+          - "MacSidebarSmokeTests full suite: 36 tests passed"
+      selected_worker: "T061"
+      selected_slice: "Phase 9B Mac Offline Queue Foundation"
+      summary: "Marked PR #441 ready, confirmed no GitHub checks were configured, and merged Phase 9A cache/offline visibility into mac-sidebar-spaces-option-a."
+
+  - id: T061
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 9B Mac offline queue foundation: wire the existing offline sync service into the Mac app, queue add-comment and close/reopen issue actions on queueable network failures, expose pending/failed queue status and basic sync/retry/clear/remove controls in Mac settings or issue surfaces, and add deterministic unit/UI tests for queue visibility and replay behavior."
+    inputs:
+      - "T060 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 9"
+      - "apple/IssueCTL/Services/OfflineSyncService.swift"
+      - "apple/IssueCTL/Views/Settings/OfflineQueueView.swift"
+      - "apple/IssueCTL/Views/Issues/IssueDetailView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLShared/Services/OfflineCacheStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+DetailActions.swift"
+      - "apple/IssueCTLShared/Services/NetworkMonitor.swift"
+    constraints:
+      - "Create a fresh branch from mac-sidebar-spaces-option-a and open a draft PR before broad implementation."
+      - "Reuse existing OfflineSyncService and OfflineActionQueueStore semantics; do not invent a second queue format."
+      - "Keep queueable operations explicit: issue comments and issue close/reopen only."
+      - "Non-queueable actions such as edit/delete comments, image upload, launch, assignment, priority, drafts, PR actions, and terminal operations must continue to fail clearly and must not enter the queue."
+      - "If moving OfflineSyncService into IssueCTLShared is required, keep the move mechanical and preserve existing iOS tests."
+      - "Do not implement notifications or Today in this slice."
+      - "Record branch, PR URL, local validation, CI state, and dogfood status before merge."
+    allowed_files:
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "apple/IssueCTL/Services/OfflineSyncService.swift"
+      - "apple/IssueCTL/Views/Settings/OfflineQueueView.swift"
+      - "apple/IssueCTL/Views/Issues/IssueDetailView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLTests/OfflineSyncServiceTests.swift"
+      - "apple/IssueCTLUITests/IssueDetailActionTests.swift"
+      - "apple/IssueCTLShared/Services/OfflineCacheStore.swift"
+      - "apple/IssueCTLShared/Services/APIClient+DetailActions.swift"
+      - "apple/IssueCTLShared/Services/NetworkMonitor.swift"
+      - "apple/IssueCTLShared/Models/**"
+      - "docs/goals/mac-ios-parity/**"
+    verify:
+      - "git diff --check"
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9b-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9b-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+    stop_if:
+      - "Existing OfflineSyncService cannot be used by the Mac target without a broad project restructuring."
+      - "Mock outage/replay tests require backend behavior not available in local fixture routes."
+      - "Queue state management requires a larger settings architecture rewrite."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
