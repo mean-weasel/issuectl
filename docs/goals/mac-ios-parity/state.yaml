@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T039
+active_task: T040
 
 tasks:
   - id: T001
@@ -1961,7 +1961,7 @@ tasks:
   - id: T039
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Commit and push T038, monitor PR #434 CI/checks, and merge into mac-sidebar-spaces-option-a only when green or when an accepted replacement validation is recorded."
     inputs:
@@ -1978,6 +1978,52 @@ tasks:
       - "PR check status."
       - "Merge decision."
       - "Updated board receipt."
+    receipt:
+      result: done
+      decision: merged
+      full_outcome_complete: false
+      note: "notes/T039-pr434-merge.md"
+      pr:
+        number: 434
+        url: "https://github.com/mean-weasel/issuectl/pull/434"
+        branch: "mac-parity-phase-7a-pr-browse"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "b4be6dd042edb987e747758116aed7695e1ff8d4"
+        merge_commit: "60ee4e477855a1ad802b742c5597ed9230d5df61"
+        merged_at: "2026-05-14T19:10:06Z"
+        checks: "No checks reported on the branch."
+      replacement_validation:
+        accepted: true
+        source_task: T038
+        commands:
+          - "git diff --check"
+          - "xcodebuild focused Mac PR unit/UI tests with isolated DerivedData"
+          - "pre-commit pnpm typecheck"
+          - "pre-commit pnpm lint with existing warnings only"
+      summary: "Marked PR #434 ready, confirmed no GitHub checks were configured, and merged the Phase 7A Mac PR browse/detail slice into mac-sidebar-spaces-option-a."
+
+  - id: T040
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Choose the next safe Mac iOS parity slice after Phase 7A PR browse/detail has merged."
+    inputs:
+      - "T038 receipt"
+      - "T039 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+      - "Current integration branch mac-sidebar-spaces-option-a"
+    constraints:
+      - "Do not implement."
+      - "Prefer the largest safe useful slice that keeps the next PR reviewable."
+      - "Preserve Phase 7 mutating PR actions unless a safer prerequisite is found."
+      - "Define branch/base, allowed files, verification commands, and stop_if conditions for the next Worker."
+    expected_output:
+      - "Decision: approved | blocked | revise_plan."
+      - "Next Worker objective."
+      - "PR branch/base strategy."
+      - "Allowed files and verification commands."
+      - "Risks or excluded follow-up scope."
     receipt: null
 
   - id: T999
