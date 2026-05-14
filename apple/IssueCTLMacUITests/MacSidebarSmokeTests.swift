@@ -228,6 +228,65 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(bugLabel.exists, app.debugDescription)
     }
 
+    func testQuickCreateIssueWithLabelsRefreshesIssues() {
+        selectRootSection("Drafts")
+
+        let newIssueButton = app.buttons["mac-drafts-new-issue-button"]
+        XCTAssertTrue(newIssueButton.waitForExistence(timeout: 5), app.debugDescription)
+        newIssueButton.click()
+
+        let titleField = app.textFields["mac-quick-create-title-field"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), app.debugDescription)
+        titleField.click()
+        titleField.typeText("Quick mac issue")
+
+        let bodyField = app.textViews["mac-quick-create-body-field"]
+        XCTAssertTrue(bodyField.waitForExistence(timeout: 5), app.debugDescription)
+        bodyField.click()
+        bodyField.typeText("Created directly from Mac")
+
+        let highPriority = app.descendants(matching: .any)["mac-quick-create-priority-picker"].radioButtons["High"]
+        XCTAssertTrue(highPriority.waitForExistence(timeout: 5), app.debugDescription)
+        highPriority.click()
+
+        let bugLabel = app.descendants(matching: .any)["mac-quick-create-label-bug"]
+        XCTAssertTrue(bugLabel.waitForExistence(timeout: 5), app.debugDescription)
+        bugLabel.click()
+
+        app.buttons["mac-quick-create-submit-button"].click()
+        XCTAssertTrue(titleField.waitForNonExistence(timeout: 5), app.debugDescription)
+
+        selectRootSection("Issues")
+        XCTAssertTrue(issueRow("org/alpha", 89).waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testQuickCreateFailurePreservesInput() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_QUICK_CREATE_FAILURE"] = "1"
+        app.launch()
+
+        selectRootSection("Drafts")
+
+        let newIssueButton = app.buttons["mac-drafts-new-issue-button"]
+        XCTAssertTrue(newIssueButton.waitForExistence(timeout: 5), app.debugDescription)
+        newIssueButton.click()
+
+        let titleField = app.textFields["mac-quick-create-title-field"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), app.debugDescription)
+        titleField.click()
+        titleField.typeText("Preserved quick issue")
+
+        let bugLabel = app.descendants(matching: .any)["mac-quick-create-label-bug"]
+        XCTAssertTrue(bugLabel.waitForExistence(timeout: 5), app.debugDescription)
+        bugLabel.click()
+
+        app.buttons["mac-quick-create-submit-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-quick-create-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-quick-create-submit-button"].exists, app.debugDescription)
+        XCTAssertTrue(titleField.exists, app.debugDescription)
+        XCTAssertTrue(bugLabel.exists, app.debugDescription)
+    }
+
     func testStatusMenuOpensSettings() {
         openSettingsFromStatusMenu()
 

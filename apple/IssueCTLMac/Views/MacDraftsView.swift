@@ -22,12 +22,22 @@ struct MacDraftsView: View {
                 } description: {
                     Text("Create a local draft, then assign it to a repo when it is ready.")
                 } actions: {
-                    Button {
-                        activeSheet = .new
-                    } label: {
-                        Label("New Draft", systemImage: "plus")
+                    HStack {
+                        Button {
+                            activeSheet = .quickCreate
+                        } label: {
+                            Label("New Issue", systemImage: "square.and.pencil")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("mac-drafts-new-issue-button")
+
+                        Button {
+                            activeSheet = .new
+                        } label: {
+                            Label("New Draft", systemImage: "plus")
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.borderedProminent)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -56,6 +66,19 @@ struct MacDraftsView: View {
         }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
+            case .quickCreate:
+                DirectIssueCreateSheet(repos: store.repos) { repo, title, body, priority, labels in
+                    _ = try await store.createIssue(
+                        api: api,
+                        title: title,
+                        body: body,
+                        priority: priority,
+                        repo: repo,
+                        labels: labels
+                    )
+                } loadLabels: { repo in
+                    try await api.repoLabels(owner: repo.owner, repo: repo.name)
+                }
             case .new:
                 DraftEditorSheet(mode: .new) { title, body, priority in
                     try await store.createDraft(api: api, title: title, body: body, priority: priority)
@@ -120,6 +143,15 @@ struct MacDraftsView: View {
             Spacer()
 
             Button {
+                activeSheet = .quickCreate
+            } label: {
+                Label("New Issue", systemImage: "square.and.pencil")
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(store.repos.isEmpty)
+            .accessibilityIdentifier("mac-drafts-new-issue-button")
+
+            Button {
                 activeSheet = .new
             } label: {
                 Label("New Draft", systemImage: "plus")
@@ -141,12 +173,14 @@ struct MacDraftsView: View {
 }
 
 private enum DraftSheet: Identifiable {
+    case quickCreate
     case new
     case edit(Draft)
     case assign(Draft)
 
     var id: String {
         switch self {
+        case .quickCreate: "quick-create"
         case .new: "new"
         case .edit(let draft): "edit-\(draft.id)"
         case .assign(let draft): "assign-\(draft.id)"
@@ -198,6 +232,206 @@ private struct DraftRow: View {
     private var createdDateText: String {
         let date = Date(timeIntervalSince1970: draft.createdAt)
         return date.formatted(date: .abbreviated, time: .shortened)
+    }
+}
+
+private struct DirectIssueCreateSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let repos: [Repo]
+    let onCreate: (Repo, String, String?, Priority, [String]) async throws -> Void
+    let loadLabels: (Repo) async throws -> [GitHubLabel]
+
+    @State private var title = ""
+    @State private var bodyText = ""
+    @State private var selectedRepoId: Int?
+    @State private var priority: Priority = .normal
+    @State private var availableLabels: [GitHubLabel] = []
+    @State private var selectedLabels: Set<String> = []
+    @State private var isLoadingLabels = false
+    @State private var isCreating = false
+    @State private var errorMessage: String?
+
+    init(
+        repos: [Repo],
+        onCreate: @escaping (Repo, String, String?, Priority, [String]) async throws -> Void,
+        loadLabels: @escaping (Repo) async throws -> [GitHubLabel]
+    ) {
+        self.repos = repos
+        self.onCreate = onCreate
+        self.loadLabels = loadLabels
+        _selectedRepoId = State(initialValue: repos.first?.id)
+    }
+
+    private var selectedRepo: Repo? {
+        guard let selectedRepoId else { return nil }
+        return repos.first { $0.id == selectedRepoId }
+    }
+
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedBody: String? {
+        let value = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("New Issue")
+                    .font(.headline)
+                Text("Create directly in a tracked repository.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if repos.isEmpty {
+                ContentUnavailableView(
+                    "No Repositories",
+                    systemImage: "tray",
+                    description: Text("Add a tracked repository before creating issues.")
+                )
+                .frame(minHeight: 240)
+            } else {
+                Picker("Repository", selection: $selectedRepoId) {
+                    ForEach(repos) { repo in
+                        Text(repo.fullName).tag(Optional(repo.id))
+                    }
+                }
+                .accessibilityIdentifier("mac-quick-create-repo-picker")
+                .onChange(of: selectedRepoId) { _, _ in
+                    selectedLabels = []
+                    Task { await loadRepoLabels() }
+                }
+
+                TextField("Issue title", text: $title)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("mac-quick-create-title-field")
+
+                TextEditor(text: $bodyText)
+                    .font(.body)
+                    .frame(minHeight: 110)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.25))
+                    }
+                    .accessibilityIdentifier("mac-quick-create-body-field")
+
+                Picker("Priority", selection: $priority) {
+                    Text("Low").tag(Priority.low)
+                    Text("Normal").tag(Priority.normal)
+                    Text("High").tag(Priority.high)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("mac-quick-create-priority-picker")
+
+                GroupBox("Labels") {
+                    if isLoadingLabels {
+                        ProgressView("Loading labels...")
+                            .frame(maxWidth: .infinity, minHeight: 120)
+                    } else if availableLabels.isEmpty {
+                        ContentUnavailableView("No Labels", systemImage: "tag")
+                            .frame(minHeight: 120)
+                    } else {
+                        List(availableLabels) { label in
+                            labelRow(label)
+                        }
+                        .frame(minHeight: 160)
+                    }
+                }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-quick-create-error")
+            }
+
+            HStack {
+                Button("Cancel", role: .cancel) {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    Task { await create() }
+                } label: {
+                    if isCreating {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Create Issue")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(isCreating || selectedRepo == nil || trimmedTitle.isEmpty)
+                .accessibilityIdentifier("mac-quick-create-submit-button")
+            }
+        }
+        .padding(20)
+        .frame(width: 520)
+        .task { await loadRepoLabels() }
+    }
+
+    private func labelRow(_ label: GitHubLabel) -> some View {
+        let isSelected = selectedLabels.contains(label.name)
+
+        return Button {
+            if isSelected {
+                selectedLabels.remove(label.name)
+            } else {
+                selectedLabels.insert(label.name)
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(Color(macDraftHex: label.color) ?? .secondary)
+                    .frame(width: 12, height: 12)
+                Text(label.name)
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.blue)
+                }
+            }
+        }
+        .accessibilityIdentifier("mac-quick-create-label-\(label.name)")
+    }
+
+    private func loadRepoLabels() async {
+        guard let selectedRepo else { return }
+        isLoadingLabels = true
+        errorMessage = nil
+        defer { isLoadingLabels = false }
+
+        do {
+            availableLabels = try await loadLabels(selectedRepo)
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } catch {
+            availableLabels = []
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func create() async {
+        guard let selectedRepo else { return }
+        isCreating = true
+        errorMessage = nil
+        defer { isCreating = false }
+
+        do {
+            try await onCreate(selectedRepo, trimmedTitle, trimmedBody, priority, Array(selectedLabels).sorted())
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
