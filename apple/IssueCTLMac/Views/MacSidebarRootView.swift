@@ -145,6 +145,8 @@ struct MacSidebarRootView: View {
                         .fill(selectedSection == section ? Color.accentColor.opacity(0.16) : Color.clear)
                 )
                 .help(section.title)
+                .accessibilityLabel(section.title)
+                .accessibilityIdentifier("mac-sidebar-section-\(section.rawValue)")
             }
 
             Divider()
@@ -218,6 +220,8 @@ struct MacSidebarRootView: View {
                 switch selectedSection {
                 case .issues:
                     MacIssuesView(store: store, filterState: issueFilterState)
+                case .pullRequests:
+                    MacPullRequestsView(store: store)
                 case .drafts:
                     MacDraftsView(store: store)
                 case .active:
@@ -354,6 +358,7 @@ struct MacSidebarRootView: View {
 
 private enum MacSidebarSection: String, CaseIterable, Identifiable {
     case issues
+    case pullRequests
     case drafts
     case active
 
@@ -362,6 +367,7 @@ private enum MacSidebarSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .issues: "Issues"
+        case .pullRequests: "PRs"
         case .drafts: "Drafts"
         case .active: "Active"
         }
@@ -370,6 +376,7 @@ private enum MacSidebarSection: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .issues: "list.bullet"
+        case .pullRequests: "arrow.triangle.merge"
         case .drafts: "doc.text"
         case .active: "terminal"
         }
