@@ -270,6 +270,54 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["mac-issue-detail-error-message"].exists, app.debugDescription)
     }
 
+    func testActiveSessionsFiltersPreviewNavigationOpenAndEnd() {
+        selectRootSection("Active")
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["alpha worker ready"].waitForExistence(timeout: 5), app.debugDescription)
+
+        let search = app.textFields["mac-sessions-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
+        search.click()
+        search.typeText("beta idle")
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-8"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-session-row-2"].exists, app.debugDescription)
+
+        search.typeKey("a", modifierFlags: .command)
+        search.typeKey(.delete, modifierFlags: [])
+        XCTAssertTrue(app.checkBoxes["org/alpha"].waitForExistence(timeout: 5), app.debugDescription)
+        app.checkBoxes["org/alpha"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-8"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(app.descendants(matching: .any)["mac-session-row-2"].exists, app.debugDescription)
+
+        app.buttons["All"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["View issue for session 2"].click()
+        XCTAssertTrue(app.staticTexts["Running alpha issue"].waitForExistence(timeout: 5), app.debugDescription)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["Running alpha issue"].waitForNonExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["Open terminal for session 2"].click()
+        XCTAssertTrue(app.staticTexts["Terminal opened on port 7700"].waitForExistence(timeout: 5), app.debugDescription)
+
+        app.buttons["End session 2"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForNonExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testActiveSessionEndFailureKeepsRowAndShowsError() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_END_SESSION_FAILURE"] = "1"
+        app.launch()
+
+        selectRootSection("Active")
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForExistence(timeout: 8), app.debugDescription)
+
+        app.buttons["End session 2"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-sessions-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].exists, app.debugDescription)
+    }
+
     func testPullRequestFailuresAreRecoverableAndPreserveFilters() {
         app.terminate()
         app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_BETA_PULLS_FAILURE"] = "1"

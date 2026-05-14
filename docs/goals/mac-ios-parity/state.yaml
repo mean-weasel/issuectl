@@ -2518,7 +2518,7 @@ tasks:
   - id: T050
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 8B Active Sessions parity for Mac: search/repo filters, terminal status previews, polling, view-issue navigation, open terminal, and end-session recovery."
     inputs:
@@ -2559,7 +2559,44 @@ tasks:
       - "Session preview or filtering requires backend/API changes outside allowed files."
       - "Navigation requires a broader Mac navigation redesign."
       - "Local validation fails twice for the same unexplained reason."
-    receipt: null
+    receipt:
+      result: done
+      note: "notes/T050-phase-8b-sessions.md"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      pr:
+        number: 438
+        url: "https://github.com/mean-weasel/issuectl/pull/438"
+        branch: "mac-parity-phase-8b-sessions"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        merge_state: "pending push/check review"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8b-dd -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+          status: pass
+          summary: "22 tests passed"
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase8b-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+          summary: "29 tests passed"
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+          warnings: "Existing lint warnings only; no errors."
+      acceptance_evidence:
+        - "Active Sessions now exposes visible search and expanded repository filters, with deterministic projection tests."
+        - "Session search covers repo, issue number, branch, workspace path/mode, preview status, latest line, and preview lines."
+        - "Mac store fetches /api/v1/sessions/previews after load/refresh and records preview error state."
+        - "Active Sessions polls refreshSessions every 15 seconds while mounted."
+        - "Rows support View Issue, Open Terminal through ensure-ttyd, and End Session with recoverable error display."
+        - "Fixture-backed UI tests cover filtering, preview text, issue navigation, terminal open, successful end, and end failure recovery."
+      summary: "Implemented Phase 8B Active Sessions parity: visible repo/search filters, preview-backed search, session preview loading, polling, issue navigation, ensure-ttyd terminal open, end-session recovery, fixture API routes, unit coverage, and full Mac smoke coverage."
 
   - id: T999
     type: judge

@@ -359,6 +359,37 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertEqual(body.idempotencyKey, "launch-id")
     }
 
+    func testMacSessionProjectionFiltersByRepoSearchAndPreviewText() {
+        let sessions = [
+            session(owner: "org", repo: "alpha", issueNumber: 2, branchName: "alpha-ready", workspacePath: "/tmp/alpha", ttydPort: 7700),
+            session(owner: "org", repo: "beta", issueNumber: 21, branchName: "beta-idle", workspacePath: "/tmp/beta", ttydPort: 7701),
+        ]
+        let previews = [
+            7700: SessionPreview(lines: ["agent booted", "alpha worker ready"], lastUpdatedMs: 1_775_000_000_000, lastChangedMs: 1_775_000_000_000, status: .active),
+            7701: SessionPreview(lines: ["beta idle waiting"], lastUpdatedMs: 1_775_000_000_000, lastChangedMs: 1_775_000_000_000, status: .idle),
+        ]
+
+        let betaOnly = MacSessionListProjection.project(
+            sessions: sessions,
+            previewsByPort: previews,
+            selectedRepoKeys: ["org/beta"],
+            searchText: "idle"
+        )
+
+        XCTAssertEqual(betaOnly.sessions.map(\.id), [21])
+        XCTAssertEqual(betaOnly.totalCount, 2)
+        XCTAssertEqual(betaOnly.repoFilteredCount, 1)
+
+        let previewSearch = MacSessionListProjection.project(
+            sessions: sessions,
+            previewsByPort: previews,
+            selectedRepoKeys: ["org/alpha", "org/beta"],
+            searchText: "worker ready"
+        )
+
+        XCTAssertEqual(previewSearch.sessions.map(\.id), [2])
+    }
+
     private var repos: [Repo] {
         [
             repo(id: 1, owner: "mean-weasel", name: "issuectl"),
@@ -487,19 +518,26 @@ final class MacIssueFilterStateTests: XCTestCase {
         )
     }
 
-    private func session(owner: String, repo: String, issueNumber: Int) -> ActiveDeployment {
+    private func session(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        branchName: String? = nil,
+        workspacePath: String? = nil,
+        ttydPort: Int? = nil
+    ) -> ActiveDeployment {
         ActiveDeployment(
             id: issueNumber,
             repoId: 1,
             issueNumber: issueNumber,
-            branchName: "issue-\(issueNumber)",
+            branchName: branchName ?? "issue-\(issueNumber)",
             workspaceMode: .worktree,
-            workspacePath: "/tmp/issue-\(issueNumber)",
+            workspacePath: workspacePath ?? "/tmp/issue-\(issueNumber)",
             linkedPrNumber: nil,
             state: .active,
             launchedAt: "2026-05-14T10:00:00.000Z",
             endedAt: nil,
-            ttydPort: nil,
+            ttydPort: ttydPort,
             ttydPid: nil,
             owner: owner,
             repoName: repo
