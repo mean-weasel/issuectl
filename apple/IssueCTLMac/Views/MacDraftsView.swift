@@ -27,6 +27,15 @@ struct MacDraftsView: View {
                 } actions: {
                     HStack {
                         Button {
+                            activeSheet = .parse
+                        } label: {
+                            Label("Parse with AI", systemImage: "text.viewfinder")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(store.repos.isEmpty)
+                        .accessibilityIdentifier("mac-drafts-parse-ai-button")
+
+                        Button {
                             activeSheet = .quickCreate
                         } label: {
                             Label("New Issue", systemImage: "square.and.pencil")
@@ -69,6 +78,10 @@ struct MacDraftsView: View {
         }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
+            case .parse:
+                MacParseIssueSheet(repos: store.repos) {
+                    await store.load(api: api, refresh: true)
+                }
             case .quickCreate:
                 DirectIssueCreateSheet(repos: store.repos) { repo, title, body, priority, labels in
                     _ = try await store.createIssue(
@@ -146,6 +159,15 @@ struct MacDraftsView: View {
             Spacer()
 
             Button {
+                activeSheet = .parse
+            } label: {
+                Label("Parse with AI", systemImage: "text.viewfinder")
+            }
+            .buttonStyle(.bordered)
+            .disabled(store.repos.isEmpty)
+            .accessibilityIdentifier("mac-drafts-parse-ai-button")
+
+            Button {
                 activeSheet = .quickCreate
             } label: {
                 Label("New Issue", systemImage: "square.and.pencil")
@@ -176,6 +198,7 @@ struct MacDraftsView: View {
 }
 
 private enum DraftSheet: Identifiable {
+    case parse
     case quickCreate
     case new
     case edit(Draft)
@@ -183,11 +206,420 @@ private enum DraftSheet: Identifiable {
 
     var id: String {
         switch self {
+        case .parse: "parse"
         case .quickCreate: "quick-create"
         case .new: "new"
         case .edit(let draft): "edit-\(draft.id)"
         case .assign(let draft): "assign-\(draft.id)"
         }
+    }
+}
+
+private struct MacParseIssueSheet: View {
+    @Environment(APIClient.self) private var api
+    @Environment(\.dismiss) private var dismiss
+
+    let repos: [Repo]
+    let onComplete: () async -> Void
+
+    @State private var input = ""
+    @State private var isParsing = false
+    @State private var isCreating = false
+    @State private var reviewState: MacParseReviewState?
+    @State private var creationResult: BatchCreateResult?
+    @State private var errorMessage: String?
+
+    private var trimmedInput: String {
+        input.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            header
+
+            if let creationResult {
+                resultView(creationResult)
+            } else if let reviewState {
+                reviewView(reviewState)
+            } else {
+                inputView
+            }
+        }
+        .padding(20)
+        .frame(width: 520, height: 580)
+    }
+
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Parse Issues")
+                    .font(.headline)
+                Text("Turn free-form notes into reviewed issues.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Cancel", role: .cancel) {
+                dismiss()
+            }
+            .keyboardShortcut(.cancelAction)
+        }
+    }
+
+    private var inputView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TextEditor(text: $input)
+                .font(.body)
+                .frame(minHeight: 280)
+                .scrollContentBackground(.hidden)
+                .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                }
+                .accessibilityIdentifier("mac-parse-input-field")
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("\(input.count) / 8192")
+                    .font(.caption)
+                    .foregroundStyle(input.count > 8192 ? .red : .secondary)
+                    .accessibilityIdentifier("mac-parse-character-count")
+
+                Button {
+                    Task { await parse() }
+                } label: {
+                    if isParsing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Parse with AI")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(trimmedInput.isEmpty || input.count > 8192 || isParsing || repos.isEmpty)
+                .accessibilityIdentifier("mac-parse-submit-button")
+            }
+
+            if repos.isEmpty {
+                Label("Add a tracked repository before creating parsed issues.", systemImage: "tray")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            errorLabel
+            Spacer()
+        }
+    }
+
+    private func reviewView(_ reviewState: MacParseReviewState) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("\(reviewState.parsedIssues.count) issues found")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("\(reviewState.acceptedCount) accepted")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("mac-parse-accepted-count")
+            }
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    ForEach(reviewState.parsedIssues) { issue in
+                        parseIssueRow(issue)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(maxHeight: .infinity)
+
+            errorLabel
+
+            HStack {
+                Button("Start Over") {
+                    self.reviewState = nil
+                    errorMessage = nil
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-parse-start-over-button")
+
+                Button {
+                    Task { await createIssues() }
+                } label: {
+                    if isCreating {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Create \(reviewState.acceptedCount) Issue\(reviewState.acceptedCount == 1 ? "" : "s")")
+                    }
+                }
+                .frame(minWidth: 150, alignment: .leading)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(!reviewState.canCreate || isCreating)
+                .accessibilityIdentifier("mac-parse-create-button")
+            }
+        }
+    }
+
+    private func parseIssueRow(_ issue: ParsedIssue) -> some View {
+        let isAccepted = reviewState?.isAccepted(issue.id) ?? false
+        let selectedRepo = reviewState?.selectedRepo(for: issue.id)
+
+        return VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(issue.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isAccepted ? .primary : .secondary)
+                        .strikethrough(!isAccepted)
+                        .accessibilityIdentifier("mac-parse-issue-\(issue.id)-title")
+                    if !issue.body.isEmpty {
+                        Text(issue.body)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                Spacer()
+                Button {
+                    toggleAccepted(issue.id)
+                } label: {
+                    Label(isAccepted ? "Accepted" : "Rejected", systemImage: isAccepted ? "checkmark.circle.fill" : "circle")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("mac-parse-issue-\(issue.id)-accept-toggle")
+            }
+
+            HStack(spacing: 8) {
+                Text(issue.type.capitalized)
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.12), in: Capsule())
+
+                if issue.clarity != "clear" {
+                    Label(issue.clarity == "ambiguous" ? "Ambiguous" : "Unknown repo", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+
+                ForEach(issue.suggestedLabels.prefix(3), id: \.self) { label in
+                    Text(label)
+                        .font(.caption2)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.secondary.opacity(0.1), in: Capsule())
+                }
+            }
+
+            if isAccepted {
+                HStack(spacing: 8) {
+                    Text("Repository")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(repos) { repo in
+                        Button(repo.fullName) {
+                            selectRepo(repo, for: issue.id)
+                        }
+                        .buttonStyle(.bordered)
+                        .fontWeight(selectedRepo?.fullName == repo.fullName ? .semibold : .regular)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("mac-parse-issue-\(issue.id)-repo-\(repo.fullName)")
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            toggleAccepted(issue.id)
+        }
+        .opacity(isAccepted ? 1 : 0.65)
+    }
+
+    private func resultView(_ result: BatchCreateResult) -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: result.failed == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(result.failed == 0 ? .green : .orange)
+            Text(resultSummary(result))
+                .font(.headline)
+                .multilineTextAlignment(.center)
+                .accessibilityIdentifier("mac-parse-result-summary")
+
+            if result.failed > 0 {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(result.results.filter { !$0.success }) { item in
+                        Label(item.error ?? "Unknown error", systemImage: "xmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+
+            Spacer()
+            Button("Done") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
+            .accessibilityIdentifier("mac-parse-done-button")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var errorLabel: some View {
+        if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("mac-parse-error")
+        }
+    }
+
+    private func parse() async {
+        isParsing = true
+        errorMessage = nil
+        defer { isParsing = false }
+
+        do {
+            let parsed = try await api.parseNaturalLanguage(input: input)
+            reviewState = MacParseReviewState(parsedIssues: parsed.issues, repos: repos)
+            if parsed.issues.isEmpty {
+                errorMessage = "No issues were parsed from the input."
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func toggleAccepted(_ id: String) {
+        guard var state = reviewState else { return }
+        state.toggleAccepted(id)
+        reviewState = state
+    }
+
+    private func selectRepo(_ repo: Repo, for id: String) {
+        guard var state = reviewState else { return }
+        state.selectRepo(repo, for: id)
+        reviewState = state
+    }
+
+    private func createIssues() async {
+        guard let reviewState else { return }
+        isCreating = true
+        errorMessage = nil
+        defer { isCreating = false }
+
+        do {
+            let result = try await api.batchCreateIssues(issues: reviewState.reviewedIssues())
+            creationResult = result
+            await onComplete()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func resultSummary(_ result: BatchCreateResult) -> String {
+        var parts: [String] = []
+        if result.created > 0 {
+            parts.append("\(result.created) issue\(result.created == 1 ? "" : "s") created")
+        }
+        if result.drafted > 0 {
+            parts.append("\(result.drafted) draft\(result.drafted == 1 ? "" : "s") saved")
+        }
+        if result.failed > 0 {
+            parts.append("\(result.failed) failed")
+        }
+        return parts.isEmpty ? "No issues created" : parts.joined(separator: ", ")
+    }
+}
+
+struct MacParseRepoSelection: Equatable {
+    let owner: String
+    let name: String
+
+    var fullName: String {
+        "\(owner)/\(name)"
+    }
+}
+
+struct MacParseReviewState {
+    private(set) var parsedIssues: [ParsedIssue]
+    private(set) var acceptedIds: Set<String>
+    private(set) var repoSelections: [String: MacParseRepoSelection]
+
+    init(parsedIssues: [ParsedIssue], repos: [Repo]) {
+        self.parsedIssues = parsedIssues
+        self.acceptedIds = Set(parsedIssues.map(\.id))
+        self.repoSelections = [:]
+
+        for issue in parsedIssues {
+            if let owner = issue.repoOwner,
+               let name = issue.repoName,
+               issue.repoConfidence >= 0.7,
+               repos.contains(where: { $0.owner == owner && $0.name == name }) {
+                repoSelections[issue.id] = MacParseRepoSelection(owner: owner, name: name)
+            } else if repos.count == 1, let repo = repos.first {
+                repoSelections[issue.id] = MacParseRepoSelection(owner: repo.owner, name: repo.name)
+            }
+        }
+    }
+
+    var acceptedCount: Int {
+        acceptedIds.count
+    }
+
+    var canCreate: Bool {
+        acceptedCount > 0 && acceptedIds.allSatisfy { repoSelections[$0] != nil }
+    }
+
+    func isAccepted(_ id: String) -> Bool {
+        acceptedIds.contains(id)
+    }
+
+    func selectedRepo(for id: String) -> MacParseRepoSelection? {
+        repoSelections[id]
+    }
+
+    mutating func toggleAccepted(_ id: String) {
+        if acceptedIds.contains(id) {
+            acceptedIds.remove(id)
+        } else {
+            acceptedIds.insert(id)
+        }
+    }
+
+    mutating func selectRepo(_ repo: Repo, for id: String) {
+        repoSelections[id] = MacParseRepoSelection(owner: repo.owner, name: repo.name)
+    }
+
+    func reviewedIssues() -> [ReviewedIssue] {
+        parsedIssues
+            .filter { acceptedIds.contains($0.id) }
+            .compactMap { issue in
+                guard let repo = repoSelections[issue.id] else { return nil }
+                return ReviewedIssue(
+                    id: issue.id,
+                    title: issue.title,
+                    body: issue.body,
+                    owner: repo.owner,
+                    repo: repo.name,
+                    labels: issue.suggestedLabels,
+                    accepted: true
+                )
+            }
     }
 }
 

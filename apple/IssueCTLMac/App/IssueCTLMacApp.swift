@@ -288,6 +288,67 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             ]]
         case ("GET", "/api/v1/sessions/previews"):
             return ["previews": []]
+        case ("POST", "/api/v1/parse"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PARSE_FAILURE"] == "1" {
+                return ["error": "Fixture parse failed"]
+            }
+            return [
+                "parsed": [
+                    "issues": [
+                        [
+                            "id": "parsed-1",
+                            "originalText": "Fix parsed alpha bug",
+                            "title": "Parsed alpha bug",
+                            "body": "Created from Mac parse flow",
+                            "type": "bug",
+                            "repoOwner": "org",
+                            "repoName": "alpha",
+                            "repoConfidence": 0.95,
+                            "suggestedLabels": ["bug"],
+                            "clarity": "clear",
+                        ],
+                        [
+                            "id": "parsed-2",
+                            "originalText": "Document parsed beta workflow",
+                            "title": "Parsed beta docs",
+                            "body": "Second parsed issue",
+                            "type": "docs",
+                            "repoOwner": NSNull(),
+                            "repoName": NSNull(),
+                            "repoConfidence": 0.2,
+                            "suggestedLabels": ["docs"],
+                            "clarity": "unknown_repo",
+                        ],
+                    ],
+                    "suggestedOrder": ["parsed-1", "parsed-2"],
+                ],
+            ]
+        case ("POST", "/api/v1/parse/create"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PARSE_CREATE_FAILURE"] == "1" {
+                return ["error": "Fixture parse create failed"]
+            }
+            let payload = jsonBody(from: request)
+            let reviewedIssues = payload["issues"] as? [[String: Any]] ?? []
+            if reviewedIssues.contains(where: { $0["id"] as? String == "parsed-2" }) {
+                return ["error": "Rejected fixture issue should not be submitted"]
+            }
+            parsedCreatedIssueNumber = 90
+            return [
+                "created": 1,
+                "drafted": 0,
+                "failed": 0,
+                "results": [
+                    [
+                        "id": "parsed-1",
+                        "success": true,
+                        "issueNumber": 90,
+                        "draftId": NSNull(),
+                        "error": NSNull(),
+                        "owner": "org",
+                        "repo": "alpha",
+                    ],
+                ],
+            ]
         case ("POST", "/api/v1/images/upload"):
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_IMAGE_UPLOAD_FAILURE"] == "1" {
                 return ["error": "Fixture image upload failed"]
@@ -479,6 +540,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var quickCreatedIssueTitle = "Quick created issue"
     nonisolated(unsafe) private static var quickCreatedIssueBody: String?
     nonisolated(unsafe) private static var quickCreatedIssueLabels: [String] = []
+    nonisolated(unsafe) private static var parsedCreatedIssueNumber: Int?
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
@@ -503,7 +565,7 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
             issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
             issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
-        ] + assignedDraftIssues + quickCreatedIssues + (5...55).map { number in
+        ] + assignedDraftIssues + quickCreatedIssues + parsedCreatedIssues + (5...55).map { number in
             issue(
                 number: number,
                 title: "Paged issue \(number)",
@@ -528,6 +590,22 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 assignees: ["alice"],
                 author: "alice",
                 updatedAt: "2026-05-14T16:00:00.000Z"
+            ),
+        ]
+    }
+
+    private static var parsedCreatedIssues: [[String: Any]] {
+        guard let parsedCreatedIssueNumber else { return [] }
+        return [
+            issue(
+                number: parsedCreatedIssueNumber,
+                title: "Parsed alpha bug",
+                body: "Created from Mac parse flow",
+                state: "open",
+                labels: ["bug"],
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: "2026-05-14T17:00:00.000Z"
             ),
         ]
     }

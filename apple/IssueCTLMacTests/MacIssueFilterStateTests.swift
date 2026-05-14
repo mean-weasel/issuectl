@@ -239,6 +239,37 @@ final class MacIssueFilterStateTests: XCTestCase {
         }
     }
 
+    func testMacParseReviewStateAutoSelectsConfidentRepoAndAcceptedIssues() {
+        let state = MacParseReviewState(parsedIssues: [
+            parsedIssue(id: "parsed-1", owner: "mean-weasel", repo: "issuectl", confidence: 0.9),
+            parsedIssue(id: "parsed-2", owner: "missing", repo: "repo", confidence: 0.9),
+        ], repos: repos)
+
+        XCTAssertEqual(state.acceptedCount, 2)
+        XCTAssertTrue(state.isAccepted("parsed-1"))
+        XCTAssertEqual(state.selectedRepo(for: "parsed-1"), MacParseRepoSelection(owner: "mean-weasel", name: "issuectl"))
+        XCTAssertNil(state.selectedRepo(for: "parsed-2"))
+        XCTAssertFalse(state.canCreate)
+    }
+
+    func testMacParseReviewStateTogglesAndBuildsReviewedIssues() {
+        var state = MacParseReviewState(parsedIssues: [
+            parsedIssue(id: "parsed-1", owner: "mean-weasel", repo: "issuectl", confidence: 0.9, labels: ["bug"]),
+            parsedIssue(id: "parsed-2", owner: nil, repo: nil, confidence: 0.0, labels: ["docs"]),
+        ], repos: repos)
+
+        state.toggleAccepted("parsed-2")
+
+        XCTAssertEqual(state.acceptedCount, 1)
+        XCTAssertTrue(state.canCreate)
+        let reviewed = state.reviewedIssues()
+        XCTAssertEqual(reviewed.count, 1)
+        XCTAssertEqual(reviewed.first?.id, "parsed-1")
+        XCTAssertEqual(reviewed.first?.owner, "mean-weasel")
+        XCTAssertEqual(reviewed.first?.repo, "issuectl")
+        XCTAssertEqual(reviewed.first?.labels, ["bug"])
+    }
+
     private var repos: [Repo] {
         [
             repo(id: 1, owner: "mean-weasel", name: "issuectl"),
@@ -295,6 +326,27 @@ final class MacIssueFilterStateTests: XCTestCase {
 
     private func draft(id: String, title: String, body: String?) -> Draft {
         Draft(id: id, title: title, body: body, priority: .normal, createdAt: 1_775_000_000)
+    }
+
+    private func parsedIssue(
+        id: String,
+        owner: String?,
+        repo: String?,
+        confidence: Double,
+        labels: [String] = []
+    ) -> ParsedIssue {
+        ParsedIssue(
+            id: id,
+            originalText: "Original \(id)",
+            title: "Parsed \(id)",
+            body: "Parsed body",
+            type: "bug",
+            repoOwner: owner,
+            repoName: repo,
+            repoConfidence: confidence,
+            suggestedLabels: labels,
+            clarity: owner == nil ? "unknown_repo" : "clear"
+        )
     }
 
     private func session(owner: String, repo: String, issueNumber: Int) -> ActiveDeployment {
