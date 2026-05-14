@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T037
+active_task: T038
 
 tasks:
   - id: T001
@@ -1818,7 +1818,7 @@ tasks:
   - id: T037
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Decide the first PR-sized Phase 7 Mac pull-request parity slice: inspect current iOS PR workflows, shared PR APIs, Mac app surfaces, and deterministic test fixture needs."
     inputs:
@@ -1839,6 +1839,86 @@ tasks:
       - "Allowed files and fixture endpoints."
       - "Required Mac unit/UI/iOS regression validation."
       - "PR branch/base/check/merge plan."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T037-phase-7-first-slice.md"
+      first_worker_objective: "Implement Phase 7A Mac pull-request browse plus read-only detail in a child PR into mac-sidebar-spaces-option-a."
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-7a-pr-browse"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      excluded_from_first_slice:
+        - "Merge strategies."
+        - "Approve."
+        - "Request changes."
+        - "Comment on PR."
+        - "Linked issue deep navigation from PR detail back to Mac issue detail."
+      allowed_files_for_t038:
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacTests/**"
+        - "apple/IssueCTLMacUITests/**"
+        - "apple/IssueCTL.xcodeproj/project.pbxproj"
+        - "docs/goals/mac-ios-parity/**"
+      summary: "Selected a first Phase 7A read-only PR browse/detail slice, deferring mutating PR actions to the next Phase 7 slice."
+
+  - id: T038
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 7A Mac pull-request browse plus read-only detail, matching iOS PR list/detail semantics where practical while keeping Mac sidebar UI native."
+    inputs:
+      - "T037 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-7-pull-request-browse-detail-and-actions"
+      - "apple/IssueCTL/Views/PullRequests/PRListView.swift"
+      - "apple/IssueCTL/Views/PullRequests/PRDetailView.swift"
+      - "apple/IssueCTL/Views/PullRequests/PRRowView.swift"
+      - "apple/IssueCTLShared/Models/PullRequest.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR before implementation."
+      - "Keep this slice focused on PR browse plus read-only detail; do not implement merge, approve, request changes, or PR comments."
+      - "Use shared PR list/detail APIs and existing GitHubPull/PullDetailResponse types."
+      - "Create deterministic Mac UI fixture endpoints for PR list and PR detail."
+      - "Preserve selected filters/search/section state across recoverable list/detail failures where practical."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Mac sidebar exposes a PRs section in expanded and collapsed sidebar modes."
+      - "User can browse PRs from tracked repos and section counts match deterministic fixture data."
+      - "Review section contains open PRs with failing or pending checks, matching iOS needsReviewAttention."
+      - "Search, repo filter, mine filter, sort, reset, and pagination behave deterministically."
+      - "User can open PR detail and inspect checks, changed files, linked issue, reviews, and body content."
+      - "Failed PR list/detail loads show recoverable errors and preserve selected PR filters."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Shared PR list/detail API contract cannot support the Mac read-only surface without backend changes."
+      - "Required files fall outside allowed scope."
+      - "Deterministic PR fixture data cannot represent review/open/merged/closed sections."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
