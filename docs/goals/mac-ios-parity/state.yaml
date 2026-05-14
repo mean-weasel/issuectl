@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: null
+active_task: T044
 
 tasks:
   - id: T001
@@ -2162,6 +2162,85 @@ tasks:
           - "pnpm typecheck"
           - "pnpm lint with existing warnings only"
       summary: "Marked PR #435 ready, confirmed no GitHub checks were configured, and merged Phase 7B Mac PR detail actions into mac-sidebar-spaces-option-a."
+
+  - id: T043
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the next safe Mac iOS parity slice after Phase 7B PR detail actions have merged."
+    inputs:
+      - "T041 receipt"
+      - "T042 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+      - "Current integration branch mac-sidebar-spaces-option-a"
+    constraints:
+      - "Do not implement."
+      - "Prefer finishing the remaining Phase 7 acceptance gap before moving to Phase 8."
+      - "Define branch/base, allowed files, verification commands, and stop_if conditions for the next Worker."
+    expected_output:
+      - "Decision: approved | blocked | revise_plan."
+      - "Next Worker objective."
+      - "PR branch/base strategy."
+      - "Allowed files and verification commands."
+      - "Risks or excluded follow-up scope."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T043-next-phase-7c-slice.md"
+      next_worker: T044
+      worker_objective: "Implement Phase 7C linked navigation between Mac PR detail linked issues and Mac issue detail linked PRs."
+      branch_strategy:
+        integration_branch: "mac-sidebar-spaces-option-a"
+        worker_branch: "mac-parity-phase-7c-linked-navigation"
+        worker_pr_base: "mac-sidebar-spaces-option-a"
+      allowed_files_for_t044:
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacUITests/**"
+        - "docs/goals/mac-ios-parity/**"
+      summary: "Selected the remaining Phase 7 linked navigation gap as a bounded PR before advancing to Phase 8."
+
+  - id: T044
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 7C linked navigation between Mac PR detail linked issues and Mac issue detail linked PRs."
+    inputs:
+      - "T043 receipt"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR before implementation."
+      - "Keep navigation Mac-native and sheet-based unless existing code already provides a better local pattern."
+      - "Do not add new backend endpoints."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacUITests/**"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Clicking a PR detail linked issue opens the Mac issue detail for that linked issue."
+      - "Clicking an issue detail linked PR opens the Mac PR detail for that linked PR."
+      - "Linked navigation uses the same repo context as the current detail view."
+      - "Fixture-backed UI coverage confirms both navigation directions."
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase7c-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Linked navigation requires backend or model changes outside allowed files."
+      - "Nested sheet behavior is unreliable and needs a broader Mac navigation redesign."
+      - "Local validation fails twice for the same unexplained reason."
+    receipt: null
 
   - id: T999
     type: judge
