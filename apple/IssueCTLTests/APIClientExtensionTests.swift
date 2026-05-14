@@ -45,6 +45,51 @@ final class APIClientExtensionTests: XCTestCase {
         return data
     }
 
+    // MARK: - Advanced Settings
+
+    @MainActor
+    func testGetSettingsUsesSettingsEndpointAndDecodesDictionary() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/settings")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"settings":{"launch_agent":"codex","cache_ttl":"300","worktree_dir":"/tmp/issuectl"}}
+            """.data(using: .utf8)!)
+        }
+
+        let settings = try await client.getSettings()
+
+        XCTAssertEqual(settings["launch_agent"], "codex")
+        XCTAssertEqual(settings["cache_ttl"], "300")
+        XCTAssertEqual(settings["worktree_dir"], "/tmp/issuectl")
+    }
+
+    @MainActor
+    func testUpdateSettingsSendsPatchBodyAndDecodesSuccess() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/settings")
+            XCTAssertEqual(request.httpMethod, "PATCH")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["launch_agent"] as? String, "claude")
+            XCTAssertEqual(json["cache_ttl"] as? String, "600")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.updateSettings([
+            "launch_agent": "claude",
+            "cache_ttl": "600",
+        ])
+
+        XCTAssertTrue(response.success)
+        XCTAssertNil(response.error)
+    }
+
     // MARK: - Repository Settings
 
     @MainActor

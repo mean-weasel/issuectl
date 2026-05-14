@@ -8,8 +8,33 @@ struct MacSettingsView: View {
     @Environment(\.resetSidebarLayout) private var resetSidebarLayout
     @State private var isUpdatingLaunchAtLogin = false
     @State private var repos: [Repo] = []
+    @State private var serverHealth: ServerHealth?
+    @State private var currentUsername: String?
+    @State private var isLoadingConnection = false
+    @State private var connectionError: String?
+    @State private var showConnectionEditor = false
+    @State private var manualServerURL = ""
+    @State private var manualAPIToken = ""
+    @State private var isSavingConnection = false
+    @State private var connectionSaveError: String?
+    @State private var isReconnectingLocal = false
     @State private var isLoadingRepos = false
     @State private var repoError: String?
+    @State private var settings: [String: String] = [:]
+    @State private var isLoadingSettings = false
+    @State private var settingsError: String?
+    @State private var isSavingSettings = false
+    @State private var settingsSaveError: String?
+    @State private var showSettingsSaved = false
+    @State private var cacheTTL = ""
+    @State private var launchAgent: LaunchAgent = .claude
+    @State private var claudeExtraArgs = ""
+    @State private var codexExtraArgs = ""
+    @State private var idleGracePeriod = ""
+    @State private var idleThreshold = ""
+    @State private var branchPattern = ""
+    @State private var worktreeDir = ""
+    @State private var defaultRepoId = ""
     @State private var showAddRepo = false
     @State private var editingRepo: Repo?
     @State private var repoPendingRemoval: Repo?
@@ -17,11 +42,9 @@ struct MacSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Connection") {
-                Text(api.serverURL.isEmpty ? "Not configured" : api.serverURL)
-                Text(api.apiToken.isEmpty ? "No API token saved" : "API token saved")
-                    .foregroundStyle(.secondary)
-            }
+            connectionSection
+
+            advancedSettingsSection
 
             Section("Mac Sidebar") {
                 Toggle("Launch at Login", isOn: launchAtLoginBinding)
@@ -144,8 +167,8 @@ struct MacSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
-        .frame(minHeight: 560)
+        .frame(width: 500)
+        .frame(minHeight: 640)
         .padding()
         .accessibilityIdentifier("mac-settings-view")
         .sheet(isPresented: $showAddRepo) {
@@ -185,7 +208,180 @@ struct MacSettingsView: View {
         }
         .task {
             preferences.refreshLaunchAtLoginStatus()
-            await loadRepos(refresh: false)
+            syncManualConnectionFields()
+            await loadSettingsData()
+        }
+    }
+
+    private var connectionSection: some View {
+        Section("Connection") {
+            MacConnectionStatusCard(
+                serverURL: api.serverURL,
+                username: currentUsername,
+                repoCount: repos.count,
+                serverVersion: serverHealth?.version,
+                appVersion: MacSettingsAppVersion.display,
+                tokenSaved: !api.apiToken.isEmpty,
+                error: connectionError,
+                isLoading: isLoadingConnection
+            ) {
+                Task { await loadConnectionStatus() }
+            }
+
+            HStack {
+                Button {
+                    showConnectionEditor.toggle()
+                } label: {
+                    Label(showConnectionEditor ? "Hide Connection Editor" : "Edit Connection", systemImage: "pencil")
+                }
+                .accessibilityIdentifier("mac-settings-edit-connection-button")
+
+                Button {
+                    Task { await reconnectFromLocalServer() }
+                } label: {
+                    if isReconnectingLocal {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Reconnect Local", systemImage: "bolt.horizontal")
+                    }
+                }
+                .disabled(isReconnectingLocal)
+                .accessibilityIdentifier("mac-settings-reconnect-local-button")
+
+                Spacer()
+
+                Button("Disconnect", role: .destructive) {
+                    disconnect()
+                }
+                .disabled(!api.isConfigured)
+                .accessibilityIdentifier("mac-settings-disconnect-button")
+            }
+
+            if showConnectionEditor {
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField("Server URL", text: $manualServerURL)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("mac-settings-server-url-field")
+
+                    SecureField("API Token", text: $manualAPIToken)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("mac-settings-api-token-field")
+
+                    HStack {
+                        Button {
+                            Task { await saveManualConnection() }
+                        } label: {
+                            if isSavingConnection {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Label("Save Connection", systemImage: "checkmark.circle")
+                            }
+                        }
+                        .disabled(isSavingConnection || manualServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || manualAPIToken.isEmpty)
+                        .accessibilityIdentifier("mac-settings-save-connection-button")
+
+                        Button("Use Local Default") {
+                            manualServerURL = LocalIssueCTLConnection.defaultServerURL
+                        }
+                    }
+
+                    if let connectionSaveError {
+                        Label(connectionSaveError, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("mac-settings-connection-save-error")
+                    }
+                }
+            }
+        }
+    }
+
+    private var advancedSettingsSection: some View {
+        Section("Agent Harness & Defaults") {
+            if isLoadingSettings {
+                ProgressView("Loading settings...")
+                    .accessibilityIdentifier("mac-settings-advanced-loading")
+            } else if let settingsError {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(settingsError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("mac-settings-advanced-error")
+                    Button("Retry") {
+                        Task { await loadAdvancedSettings() }
+                    }
+                }
+            } else {
+                Picker("Default Agent", selection: $launchAgent) {
+                    ForEach(LaunchAgent.allCases) { agent in
+                        Text(agent.displayName).tag(agent)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("mac-settings-launch-agent-picker")
+
+                TextField("Cache TTL (seconds)", text: $cacheTTL)
+                    .accessibilityIdentifier("mac-settings-cache-ttl-field")
+                TextField("Worktree directory", text: $worktreeDir)
+                    .accessibilityIdentifier("mac-settings-worktree-dir-field")
+                TextField("Default branch pattern", text: $branchPattern)
+                    .accessibilityIdentifier("mac-settings-branch-pattern-field")
+
+                Picker("Default Repository", selection: $defaultRepoId) {
+                    Text("None").tag("")
+                    ForEach(repos) { repo in
+                        Text(repo.fullName).tag(String(repo.id))
+                    }
+                }
+                .accessibilityIdentifier("mac-settings-default-repo-picker")
+
+                TextField("Claude Code extra args", text: $claudeExtraArgs)
+                    .accessibilityIdentifier("mac-settings-claude-extra-args-field")
+                TextField("Codex extra args", text: $codexExtraArgs)
+                    .accessibilityIdentifier("mac-settings-codex-extra-args-field")
+
+                HStack {
+                    TextField("Idle grace seconds", text: $idleGracePeriod)
+                        .accessibilityIdentifier("mac-settings-idle-grace-field")
+                    TextField("Idle threshold seconds", text: $idleThreshold)
+                        .accessibilityIdentifier("mac-settings-idle-threshold-field")
+                }
+
+                HStack {
+                    Button {
+                        Task { await saveAdvancedSettings() }
+                    } label: {
+                        if isSavingSettings {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if showSettingsSaved {
+                            Label("Saved", systemImage: "checkmark.circle.fill")
+                        } else {
+                            Label("Save Settings", systemImage: "square.and.arrow.down")
+                        }
+                    }
+                    .disabled(isSavingSettings || !hasAdvancedSettingsChanges)
+                    .accessibilityIdentifier("mac-settings-save-advanced-button")
+
+                    Button {
+                        applyAdvancedSettings()
+                    } label: {
+                        Label("Revert", systemImage: "arrow.uturn.backward")
+                    }
+                    .disabled(!hasAdvancedSettingsChanges)
+                }
+
+                if let settingsSaveError {
+                    Label(settingsSaveError, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("mac-settings-advanced-save-error")
+                }
+            }
         }
     }
 
@@ -202,6 +398,31 @@ struct MacSettingsView: View {
         )
     }
 
+    private var advancedEditableFields: [(key: String, value: String)] {
+        [
+            ("cache_ttl", cacheTTL),
+            ("launch_agent", launchAgent.rawValue),
+            ("claude_extra_args", claudeExtraArgs),
+            ("codex_extra_args", codexExtraArgs),
+            ("idle_grace_period", idleGracePeriod),
+            ("idle_threshold", idleThreshold),
+            ("branch_pattern", branchPattern),
+            ("worktree_dir", worktreeDir),
+            ("default_repo_id", defaultRepoId),
+        ]
+    }
+
+    private var hasAdvancedSettingsChanges: Bool {
+        advancedEditableFields.contains { $0.value != baselineAdvancedValue(for: $0.key) }
+    }
+
+    private func baselineAdvancedValue(for key: String) -> String {
+        if key == "launch_agent" {
+            return settings[key] ?? LaunchAgent.claude.rawValue
+        }
+        return settings[key] ?? ""
+    }
+
     private var textScaleBinding: Binding<Double> {
         Binding(
             get: { preferences.textScale },
@@ -214,6 +435,149 @@ struct MacSettingsView: View {
         let trimmedBaseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: "\(trimmedBaseURL)/settings") else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    private func loadSettingsData() async {
+        async let connectionTask: () = loadConnectionStatus()
+        async let reposTask: () = loadRepos(refresh: false)
+        async let advancedTask: () = loadAdvancedSettings()
+        _ = await (connectionTask, reposTask, advancedTask)
+    }
+
+    private func loadConnectionStatus() async {
+        guard api.isConfigured else {
+            serverHealth = nil
+            currentUsername = nil
+            connectionError = "Not configured"
+            return
+        }
+
+        isLoadingConnection = true
+        defer { isLoadingConnection = false }
+
+        do {
+            async let healthFetch = api.health()
+            async let userFetch = api.currentUser()
+            serverHealth = try await healthFetch
+            let user = try? await userFetch
+            currentUsername = user?.login
+            connectionError = nil
+        } catch {
+            serverHealth = nil
+            connectionError = error.localizedDescription
+        }
+    }
+
+    private func saveManualConnection() async {
+        let serverURL = manualServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = manualAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        isSavingConnection = true
+        connectionSaveError = nil
+        defer { isSavingConnection = false }
+
+        do {
+            _ = try await api.checkHealth(url: serverURL, token: token)
+            try api.configure(url: serverURL, token: token)
+            showConnectionEditor = false
+            await loadSettingsData()
+        } catch {
+            connectionSaveError = error.localizedDescription
+        }
+    }
+
+    private func reconnectFromLocalServer() async {
+        isReconnectingLocal = true
+        connectionSaveError = nil
+        defer { isReconnectingLocal = false }
+
+        do {
+            guard let token = try LocalIssueCTLConnection().apiToken() else {
+                connectionSaveError = "No local issuectl API token found in ~/.issuectl/issuectl.db."
+                return
+            }
+            let serverURL = LocalIssueCTLConnection.defaultServerURL
+            _ = try await api.checkHealth(url: serverURL, token: token)
+            try api.configure(url: serverURL, token: token)
+            syncManualConnectionFields()
+            await loadSettingsData()
+        } catch {
+            connectionSaveError = error.localizedDescription
+        }
+    }
+
+    private func disconnect() {
+        api.disconnect()
+        sidebarCoordinator.store.reset()
+        repos = []
+        serverHealth = nil
+        currentUsername = nil
+        connectionError = "Disconnected"
+        settings = [:]
+        settingsError = nil
+        syncManualConnectionFields()
+    }
+
+    private func syncManualConnectionFields() {
+        manualServerURL = api.serverURL.isEmpty ? LocalIssueCTLConnection.defaultServerURL : api.serverURL
+        manualAPIToken = api.apiToken
+    }
+
+    private func loadAdvancedSettings() async {
+        guard api.isConfigured else {
+            settings = [:]
+            applyAdvancedSettings()
+            settingsError = "Connect to issuectl web before editing advanced settings."
+            return
+        }
+
+        isLoadingSettings = true
+        settingsError = nil
+        defer { isLoadingSettings = false }
+
+        do {
+            settings = try await api.getSettings()
+            applyAdvancedSettings()
+        } catch {
+            settingsError = error.localizedDescription
+        }
+    }
+
+    private func applyAdvancedSettings() {
+        cacheTTL = settings["cache_ttl"] ?? ""
+        launchAgent = LaunchAgent.settingValue(settings["launch_agent"])
+        claudeExtraArgs = settings["claude_extra_args"] ?? ""
+        codexExtraArgs = settings["codex_extra_args"] ?? ""
+        idleGracePeriod = settings["idle_grace_period"] ?? ""
+        idleThreshold = settings["idle_threshold"] ?? ""
+        branchPattern = settings["branch_pattern"] ?? ""
+        worktreeDir = settings["worktree_dir"] ?? ""
+        defaultRepoId = settings["default_repo_id"] ?? ""
+    }
+
+    private func saveAdvancedSettings() async {
+        let updates = Dictionary(uniqueKeysWithValues: advancedEditableFields
+            .filter { $0.value != baselineAdvancedValue(for: $0.key) }
+            .map { ($0.key, $0.value) })
+        guard !updates.isEmpty else { return }
+
+        isSavingSettings = true
+        settingsSaveError = nil
+        showSettingsSaved = false
+        defer { isSavingSettings = false }
+
+        do {
+            let response = try await api.updateSettings(updates)
+            guard response.success else {
+                settingsSaveError = response.error ?? "Failed to save settings"
+                return
+            }
+            settings.merge(updates) { _, new in new }
+            showSettingsSaved = true
+            try? await Task.sleep(for: .seconds(2))
+            showSettingsSaved = false
+        } catch {
+            settingsSaveError = error.localizedDescription
+        }
     }
 
     private func loadRepos(refresh: Bool) async {
@@ -311,6 +675,126 @@ struct MacSettingsView: View {
             }
         }
         .padding(.vertical, 6)
+    }
+}
+
+private struct MacConnectionStatusCard: View {
+    let serverURL: String
+    let username: String?
+    let repoCount: Int
+    let serverVersion: String?
+    let appVersion: String
+    let tokenSaved: Bool
+    let error: String?
+    let isLoading: Bool
+    let retry: () -> Void
+
+    private var statusTitle: String {
+        if isLoading { return "Checking" }
+        if serverURL.isEmpty { return "Not Configured" }
+        return error == nil ? "Connected" : "Needs Attention"
+    }
+
+    private var statusIcon: String {
+        if isLoading { return "arrow.clockwise" }
+        if serverURL.isEmpty { return "link.badge.plus" }
+        return error == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var statusColor: Color {
+        if isLoading || serverURL.isEmpty { return .secondary }
+        return error == nil ? .green : .orange
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: statusIcon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(statusColor)
+                    .frame(width: 34, height: 34)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(statusTitle)
+                        .font(.headline)
+                    Text(serverURL.isEmpty ? LocalIssueCTLConnection.defaultServerURL : serverURL)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
+                Spacer()
+
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Button {
+                        retry()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Retry connection")
+                    .accessibilityLabel("Retry connection")
+                    .accessibilityIdentifier("mac-settings-connection-retry-button")
+                }
+            }
+
+            HStack(spacing: 8) {
+                summaryMetric("Repos", "\(repoCount)", "folder")
+                summaryMetric("Token", tokenSaved ? "Saved" : "Missing", "key.fill")
+                summaryMetric("App", appVersion, "desktopcomputer")
+            }
+
+            if let username {
+                Label(username, systemImage: "person.crop.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let serverVersion {
+                Label("Server \(serverVersion)", systemImage: "server.rack")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("mac-settings-connection-error")
+            }
+        }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mac-settings-connection-status")
+    }
+
+    private func summaryMetric(_ title: String, _ value: String, _ systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+private enum MacSettingsAppVersion {
+    static var display: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+        return "\(version) (\(build))"
     }
 }
 

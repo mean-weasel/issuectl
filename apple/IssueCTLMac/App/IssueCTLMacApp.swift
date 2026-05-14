@@ -45,6 +45,9 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
               env["ISSUECTL_MAC_UI_FIXTURE_API"] == "1" else {
             return
         }
+        if let bundleIdentifier = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
+        }
         URLProtocol.registerClass(MacUITestFixtureURLProtocol.self)
     }
 
@@ -215,10 +218,18 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             return ["login": "alice"]
         case ("GET", "/api/v1/settings"):
             return ["settings": [
+                "cache_ttl": "300",
                 "launch_agent": "codex",
                 "claude_extra_args": "",
                 "codex_extra_args": "",
+                "idle_grace_period": "30",
+                "idle_threshold": "120",
+                "branch_pattern": "jeremy/{slug}",
+                "worktree_dir": "/tmp/issuectl-worktrees",
+                "default_repo_id": "1",
             ]]
+        case ("PATCH", "/api/v1/settings"):
+            return ["success": true, "error": NSNull()]
         case ("GET", "/api/v1/repos"):
             return ["repos": [repo]]
         case ("GET", "/api/v1/repos/github"):
