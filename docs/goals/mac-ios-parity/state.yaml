@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T034
+active_task: T035
 
 tasks:
   - id: T001
@@ -1648,7 +1648,7 @@ tasks:
   - id: T034
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Decide and size Phase 6D AI parse/batch creation for Mac: implement a Mac workflow or document an intentional deferral with issue link and rationale."
     inputs:
@@ -1669,6 +1669,72 @@ tasks:
       - "Branch/base strategy."
       - "Acceptance criteria and validation commands."
       - "allowed_files and stop_if conditions."
+    receipt:
+      result: done
+      decision: implement_slice
+      full_outcome_complete: false
+      note: "notes/T034-phase-6d-parse-decision.md"
+      evidence:
+        - "iOS ParseView already implements input, review, repo selection, and result steps."
+        - "Shared APIClient parseNaturalLanguage and batchCreateIssues are available to Mac."
+        - "No backend/API blocker requires deferral."
+      summary: "Approved a Mac Phase 6D parse/batch creation implementation slice instead of deferring, because the shared API and iOS reference workflow already exist."
+      next_task: T035
+
+  - id: T035
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement Phase 6D Mac AI parse/batch creation workflow, matching iOS parse behavior where practical while keeping Mac UI native."
+    inputs:
+      - "T034 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-6-draft-quick-create-image-attachment-and-parse-workflows"
+      - "apple/IssueCTL/Views/Issues/ParseView.swift"
+      - "apple/IssueCTL/Views/Issues/ParseResultRow.swift"
+      - "apple/IssueCTLShared/Services/APIClient+ListEnhancements.swift"
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+    constraints:
+      - "Start from a new branch off mac-sidebar-spaces-option-a and open a draft PR before implementation."
+      - "Keep this slice focused on AI parse/batch creation only; do not start Phase 7 pull request parity."
+      - "Use shared parse/batch APIs and existing ParsedIssue/ReviewedIssue/BatchCreateResult types."
+      - "Preserve input and review state on parse/create failures."
+      - "Create deterministic Mac UI fixture endpoints for parse and batch create instead of requiring real Claude/GitHub calls in UI tests."
+      - "Record branch, PR URL, validation, CI/check status, and merge readiness in the receipt."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMacTests/**"
+      - "apple/IssueCTLMacUITests/**"
+      - "apple/IssueCTLShared/Services/APIClient+ListEnhancements.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Drafts.swift"
+      - "apple/IssueCTLShared/Models/Issue.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/mac-ios-parity/**"
+    acceptance:
+      - "Mac users can open a parse flow from the Mac issue/draft creation surface."
+      - "Free-form input can be parsed into multiple issues through the shared parse API with progress and error states."
+      - "Parsed issues can be accepted/rejected individually and assigned to tracked repos before creation."
+      - "Batch creation posts only accepted reviewed issues with selected repos and labels."
+      - "Creation results summarize created, drafted, and failed items, and failure preserves review state."
+      - "Successful batch creation refreshes issue/draft data so created issues are visible where possible."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "pnpm typecheck"
+      - "pnpm lint"
+    stop_if:
+      - "Shared parse/batch API contract is incompatible with Mac app state."
+      - "The flow requires real Claude/GitHub calls for deterministic UI validation."
+      - "Required files fall outside the allowed scope."
+      - "Local validation fails twice for the same unexplained reason."
     receipt: null
 
   - id: T999
