@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T033
+active_task: T034
 
 tasks:
   - id: T001
@@ -1609,7 +1609,7 @@ tasks:
   - id: T033
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Review PR #432 for Phase 6C image-upload acceptance coverage, GitHub/check status, merge readiness, and the next Phase 6 slice."
     inputs:
@@ -1627,6 +1627,48 @@ tasks:
       - "CI or accepted replacement validation status."
       - "Merge decision."
       - "Next task recommendation."
+    receipt:
+      result: done
+      decision: merge_ready
+      full_outcome_complete: false
+      note: "notes/T033-pr432-merged-and-phase-6d.md"
+      pr:
+        number: 432
+        url: "https://github.com/mean-weasel/issuectl/pull/432"
+        branch: "mac-parity-phase-6c-image-upload"
+        base: "mac-sidebar-spaces-option-a"
+        head_sha: "45ebedc3445da295b0ac863c9f56f859ed5704f8"
+        merge_commit: "67aa5076fb6039364f33f1915be83fe3b44fade0"
+        merged_at: "2026-05-14T18:28:09Z"
+        checks: "No checks reported."
+      accepted_replacement_validation: "Local validation from T032 covered the Phase 6C acceptance map; GitHub reported no configured checks or workflow runs."
+      summary: "Marked PR #432 ready, accepted the documented local validation gate, and squash-merged it into the integration branch."
+      next_task: T034
+
+  - id: T034
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Decide and size Phase 6D AI parse/batch creation for Mac: implement a Mac workflow or document an intentional deferral with issue link and rationale."
+    inputs:
+      - "T033 receipt"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md#phase-6-draft-quick-create-image-attachment-and-parse-workflows"
+      - "apple/IssueCTL/Views/Issues/ParseView.swift"
+      - "Shared parse/batch API client code"
+      - "Current Mac draft and direct issue creation flows"
+    constraints:
+      - "Do not implement before choosing implement vs defer."
+      - "If implementing, keep the next PR focused on AI parse/batch creation only."
+      - "If deferring, create or reference a GitHub issue and record backend/API plus UX rationale."
+      - "Preserve the PR-sized child-branch workflow into mac-sidebar-spaces-option-a."
+    expected_output:
+      - "Decision: implement_slice | defer_with_issue | blocked."
+      - "Rationale tied to iOS parity and Mac workflow fit."
+      - "Next Worker objective or deferral task."
+      - "Branch/base strategy."
+      - "Acceptance criteria and validation commands."
+      - "allowed_files and stop_if conditions."
     receipt: null
 
   - id: T999
