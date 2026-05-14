@@ -15,6 +15,7 @@ struct MacIssueDetailView: View {
     @State private var isLoading = true
     @State private var isRefreshing = false
     @State private var isSubmittingComment = false
+    @State private var isUploadingCommentImage = false
     @State private var isUpdatingState = false
     @State private var isUpdatingPriority = false
     @State private var isLaunching = false
@@ -68,11 +69,11 @@ struct MacIssueDetailView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
                             issueSummary
-                            launchSection
                             issueBody
+                            commentComposer
+                            launchSection
                             linkedPullRequests
                             deploymentsSection
-                            commentComposer
                             comments
                         }
                         .padding(16)
@@ -87,7 +88,7 @@ struct MacIssueDetailView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .editIssue:
-                MacEditIssueSheet(issue: issue) { title, body in
+                MacEditIssueSheet(issue: issue, owner: item.repo.owner, repo: item.repo.name) { title, body in
                     try await store.updateIssue(api: api, item: item, title: title, body: body)
                     await load(refresh: true)
                     activeSheet = nil
@@ -95,7 +96,7 @@ struct MacIssueDetailView: View {
             case .closeWithComment:
                 EmptyView()
             case .editComment(let comment):
-                MacEditCommentSheet(comment: comment) { body in
+                MacEditCommentSheet(comment: comment, owner: item.repo.owner, repo: item.repo.name) { body in
                     try await store.editComment(api: api, item: item, commentId: comment.id, body: body)
                     await load(refresh: true)
                     activeSheet = nil
@@ -136,7 +137,7 @@ struct MacIssueDetailView: View {
             }
         }
         .sheet(isPresented: $isShowingCloseWithComment) {
-            MacCloseIssueSheet(issueNumber: issue.number) { comment in
+            MacCloseIssueSheet(issueNumber: issue.number, owner: item.repo.owner, repo: item.repo.name) { comment in
                 try await store.updateIssueState(api: api, item: item, state: "closed", comment: comment)
                 await load(refresh: true)
                 isShowingCloseWithComment = false
@@ -456,6 +457,16 @@ struct MacIssueDetailView: View {
                     RoundedRectangle(cornerRadius: 7)
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 }
+                .accessibilityIdentifier("mac-comment-composer-body-field")
+
+            MacImageAttachmentButton(
+                owner: item.repo.owner,
+                repo: item.repo.name,
+                accessibilityPrefix: "mac-comment-composer",
+                isUploading: $isUploadingCommentImage
+            ) { markdown in
+                appendMarkdown(markdown, to: &commentBody)
+            }
 
             HStack {
                 Spacer()
@@ -470,7 +481,8 @@ struct MacIssueDetailView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(commentBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmittingComment)
+                .disabled(commentBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmittingComment || isUploadingCommentImage)
+                .accessibilityIdentifier("mac-comment-composer-submit-button")
             }
         }
     }
@@ -787,15 +799,20 @@ private struct MacEditIssueSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let issue: GitHubIssue
+    let owner: String
+    let repo: String
     let onSave: (String?, String?) async throws -> Void
 
     @State private var title: String
     @State private var bodyText: String
     @State private var isSaving = false
+    @State private var isUploadingImage = false
     @State private var errorMessage: String?
 
-    init(issue: GitHubIssue, onSave: @escaping (String?, String?) async throws -> Void) {
+    init(issue: GitHubIssue, owner: String, repo: String, onSave: @escaping (String?, String?) async throws -> Void) {
         self.issue = issue
+        self.owner = owner
+        self.repo = repo
         self.onSave = onSave
         _title = State(initialValue: issue.title)
         _bodyText = State(initialValue: issue.body ?? "")
@@ -830,6 +847,15 @@ private struct MacEditIssueSheet: View {
                 }
                 .accessibilityIdentifier("mac-edit-issue-body-field")
 
+            MacImageAttachmentButton(
+                owner: owner,
+                repo: repo,
+                accessibilityPrefix: "mac-edit-issue",
+                isUploading: $isUploadingImage
+            ) { markdown in
+                appendMarkdown(markdown, to: &bodyText)
+            }
+
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -851,7 +877,7 @@ private struct MacEditIssueSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(trimmedTitle.isEmpty || !hasChanges || isSaving)
+                .disabled(trimmedTitle.isEmpty || !hasChanges || isSaving || isUploadingImage)
                 .accessibilityIdentifier("mac-edit-issue-save-button")
             }
         }
@@ -880,10 +906,13 @@ private struct MacCloseIssueSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let issueNumber: Int
+    let owner: String
+    let repo: String
     let onClose: (String?) async throws -> Void
 
     @State private var comment = ""
     @State private var isClosing = false
+    @State private var isUploadingImage = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -904,6 +933,15 @@ private struct MacCloseIssueSheet: View {
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 }
                 .accessibilityIdentifier("mac-close-issue-comment-field")
+
+            MacImageAttachmentButton(
+                owner: owner,
+                repo: repo,
+                accessibilityPrefix: "mac-close-issue",
+                isUploading: $isUploadingImage
+            ) { markdown in
+                appendMarkdown(markdown, to: &comment)
+            }
 
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle")
@@ -926,7 +964,7 @@ private struct MacCloseIssueSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isClosing)
+                .disabled(isClosing || isUploadingImage)
                 .accessibilityIdentifier("mac-close-issue-submit-button")
             }
         }
@@ -953,14 +991,19 @@ private struct MacEditCommentSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let comment: GitHubComment
+    let owner: String
+    let repo: String
     let onSave: (String) async throws -> Void
 
     @State private var bodyText: String
     @State private var isSaving = false
+    @State private var isUploadingImage = false
     @State private var errorMessage: String?
 
-    init(comment: GitHubComment, onSave: @escaping (String) async throws -> Void) {
+    init(comment: GitHubComment, owner: String, repo: String, onSave: @escaping (String) async throws -> Void) {
         self.comment = comment
+        self.owner = owner
+        self.repo = repo
         self.onSave = onSave
         _bodyText = State(initialValue: comment.body)
     }
@@ -986,6 +1029,15 @@ private struct MacEditCommentSheet: View {
                 }
                 .accessibilityIdentifier("mac-edit-comment-body-field")
 
+            MacImageAttachmentButton(
+                owner: owner,
+                repo: repo,
+                accessibilityPrefix: "mac-edit-comment",
+                isUploading: $isUploadingImage
+            ) { markdown in
+                appendMarkdown(markdown, to: &bodyText)
+            }
+
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -1007,7 +1059,7 @@ private struct MacEditCommentSheet: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(trimmedBody.isEmpty || trimmedBody == comment.body || isSaving)
+                .disabled(trimmedBody.isEmpty || trimmedBody == comment.body || isSaving || isUploadingImage)
                 .accessibilityIdentifier("mac-edit-comment-save-button")
             }
         }
@@ -1579,8 +1631,8 @@ private struct MacImageLightbox: View {
 private enum MacFixtureImageStore {
     static func image(for url: URL) -> NSImage? {
         guard url.host == "issuectl-ui-test.local",
-              url.path == "/fixtures/alpha.png",
-              let data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=") else {
+              ["/fixtures/alpha.png", "/fixtures/uploaded.png"].contains(url.path),
+              let data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAAqADAAQAAAABAAAAAgAAAADtGLyqAAAAEklEQVQIHWP8DwQMQMAEIkAAAD34BACALvQ5AAAAAElFTkSuQmCC") else {
             return nil
         }
         return NSImage(data: data)

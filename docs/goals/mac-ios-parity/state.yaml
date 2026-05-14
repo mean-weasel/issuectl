@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T032
+active_task: T033
 
 tasks:
   - id: T001
@@ -1516,7 +1516,7 @@ tasks:
   - id: T032
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Implement Phase 6C Mac image attachment upload for creation and comment/editing workflows, matching the iOS shared image upload behavior where practical."
     inputs:
@@ -1565,6 +1565,68 @@ tasks:
       - "The backend image upload API is missing or incompatible with Mac sandboxed file access."
       - "Required file-picker automation cannot be tested deterministically; record a replacement fixture strategy before continuing."
       - "Required files fall outside the allowed scope."
+    receipt:
+      result: done
+      note: "notes/T032-phase-6c-image-upload.md"
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      pr:
+        number: 432
+        url: "https://github.com/mean-weasel/issuectl/pull/432"
+        branch: "mac-parity-phase-6c-image-upload"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending T033 GitHub inspection."
+      acceptance_coverage:
+        direct_issue_creation: "testQuickCreateImageAttachmentRendersInCreatedIssue"
+        draft_editor: "Implemented through shared MacImageAttachmentButton with repo picker; no separate UI test in this slice."
+        comment_composer: "testCommentImageAttachmentUploadsAndRenders"
+        edit_and_close_sheets: "Implemented and covered by existing full smoke sheet workflows for regression."
+        progress_and_duplicate_protection: "Implemented via isUploading state, ProgressView, and disabled upload/submit controls."
+        failure_preservation: "testImageAttachmentFailurePreservesCommentText plus invalid image processor unit test."
+        markdown_lightbox: "testQuickCreateImageAttachmentRendersInCreatedIssue and testIssueDetailMarkdownImagesOpenLightbox."
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-phase6c-build -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-tests-derived -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLMacTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -derivedDataPath /tmp/issuectl-mac-ui-derived -destination 'platform=macOS,arch=arm64' test -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTL -configuration Debug -derivedDataPath /tmp/issuectl-ios-api-derived -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO test -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass_with_existing_warnings
+      summary: "Implemented Mac image attachment upload and markdown insertion across creation/comment/editing workflows, added deterministic Mac UI fixture upload support, and covered direct creation, comments, failure preservation, invalid data, and lightbox rendering."
+
+  - id: T033
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #432 for Phase 6C image-upload acceptance coverage, GitHub/check status, merge readiness, and the next Phase 6 slice."
+    inputs:
+      - "T032 receipt"
+      - "PR #432 diff and metadata"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md"
+    constraints:
+      - "Do not merge red CI without an explicit recorded exception."
+      - "If GitHub reports no configured checks, document the accepted local validation replacement gate before merge."
+      - "Reject merge if direct creation upload, comment upload, failure preservation, invalid image handling, or lightbox acceptance evidence is missing."
+      - "Size AI parse/batch creation separately from this image-upload PR."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "Acceptance coverage map."
+      - "CI or accepted replacement validation status."
+      - "Merge decision."
+      - "Next task recommendation."
     receipt: null
 
   - id: T999

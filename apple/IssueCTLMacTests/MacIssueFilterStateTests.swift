@@ -221,6 +221,24 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertThrowsError(try MacRepoNameInput.parse("mean-weasel/issuectl/extra"))
     }
 
+    func testMacImageAttachmentProcessorPreparesFixtureJPEGData() async throws {
+        let data = try await MacImageAttachmentProcessor.preparedJPEGData(from: MacImageAttachmentProcessor.fixturePNGData)
+
+        XCTAssertGreaterThan(data.count, 2)
+        XCTAssertEqual(data.prefix(2), Data([0xFF, 0xD8]))
+    }
+
+    func testMacImageAttachmentProcessorRejectsInvalidImageData() async {
+        do {
+            _ = try await MacImageAttachmentProcessor.preparedJPEGData(from: Data("not an image".utf8))
+            XCTFail("Expected invalid image data to throw")
+        } catch MacImageAttachmentProcessor.ProcessingError.invalidImage {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     private var repos: [Repo] {
         [
             repo(id: 1, owner: "mean-weasel", name: "issuectl"),

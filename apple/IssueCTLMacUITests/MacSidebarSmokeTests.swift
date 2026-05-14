@@ -260,6 +260,40 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(issueRow("org/alpha", 89).waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testQuickCreateImageAttachmentRendersInCreatedIssue() {
+        selectRootSection("Drafts")
+
+        let newIssueButton = app.buttons["mac-drafts-new-issue-button"]
+        XCTAssertTrue(newIssueButton.waitForExistence(timeout: 5), app.debugDescription)
+        newIssueButton.click()
+
+        let titleField = app.textFields["mac-quick-create-title-field"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), app.debugDescription)
+        titleField.click()
+        titleField.typeText("Quick image issue")
+
+        let bodyField = app.textViews["mac-quick-create-body-field"]
+        XCTAssertTrue(bodyField.waitForExistence(timeout: 5), app.debugDescription)
+        bodyField.click()
+        bodyField.typeText("Before upload")
+
+        app.buttons["mac-quick-create-image-attachment-button"].click()
+        XCTAssertTrue(waitForValue(of: bodyField, containing: "![image](https://issuectl-ui-test.local/fixtures/uploaded.png)", timeout: 5), app.debugDescription)
+
+        app.buttons["mac-quick-create-submit-button"].click()
+        XCTAssertTrue(titleField.waitForNonExistence(timeout: 5), app.debugDescription)
+
+        selectRootSection("Issues")
+        let createdIssue = issueRow("org/alpha", 89)
+        XCTAssertTrue(createdIssue.waitForExistence(timeout: 5), app.debugDescription)
+        openIssue(createdIssue)
+
+        let uploadedImage = app.descendants(matching: .any)["mac-issue-body-image-1"]
+        XCTAssertTrue(uploadedImage.waitForExistence(timeout: 5), app.debugDescription)
+        uploadedImage.click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-image-lightbox-loaded-image"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testQuickCreateFailurePreservesInput() {
         app.terminate()
         app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_QUICK_CREATE_FAILURE"] = "1"
@@ -285,6 +319,43 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["mac-quick-create-submit-button"].exists, app.debugDescription)
         XCTAssertTrue(titleField.exists, app.debugDescription)
         XCTAssertTrue(bugLabel.exists, app.debugDescription)
+    }
+
+    func testCommentImageAttachmentUploadsAndRenders() {
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        let commentBody = app.textViews["mac-comment-composer-body-field"]
+        XCTAssertTrue(commentBody.waitForExistence(timeout: 5), app.debugDescription)
+        commentBody.click()
+        commentBody.typeText("Comment before upload")
+
+        app.buttons["mac-comment-composer-image-attachment-button"].click()
+        XCTAssertTrue(waitForValue(of: commentBody, containing: "![image](https://issuectl-ui-test.local/fixtures/uploaded.png)", timeout: 5), app.debugDescription)
+
+        app.buttons["mac-comment-composer-submit-button"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-comment-501-image-1"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testImageAttachmentFailurePreservesCommentText() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_IMAGE_UPLOAD_FAILURE"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        let commentBody = app.textViews["mac-comment-composer-body-field"]
+        XCTAssertTrue(commentBody.waitForExistence(timeout: 5), app.debugDescription)
+        commentBody.click()
+        commentBody.typeText("Keep this comment")
+
+        app.buttons["mac-comment-composer-image-attachment-button"].click()
+        XCTAssertTrue(app.staticTexts["mac-comment-composer-image-attachment-error"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(waitForValue(of: commentBody, containing: "Keep this comment", timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-comment-composer-submit-button"].exists, app.debugDescription)
     }
 
     func testStatusMenuOpensSettings() {
@@ -414,6 +485,14 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.descendants(matching: .any)["mac-issues-sort-picker"].radioButtons[title]
     }
 
+    private func openIssue(_ issue: XCUIElement) {
+        issue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        let editButton = app.buttons["mac-issue-detail-edit-button"]
+        if !editButton.waitForExistence(timeout: 2) {
+            issue.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        }
+    }
+
     private func rootSection(_ title: String) -> XCUIElement {
         app.descendants(matching: .any)["mac-sidebar-section-picker"].radioButtons[title].firstMatch
     }
@@ -422,5 +501,15 @@ final class MacSidebarSmokeTests: XCTestCase {
         let section = rootSection(title)
         XCTAssertTrue(section.waitForExistence(timeout: 5), app.debugDescription)
         section.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+    }
+
+    private func waitForValue(of element: XCUIElement, containing text: String, timeout: TimeInterval) -> Bool {
+        let predicate = NSPredicate { candidate, _ in
+            guard let element = candidate as? XCUIElement else { return false }
+            let value = (element.value as? String) ?? element.label
+            return value.contains(text)
+        }
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 }
