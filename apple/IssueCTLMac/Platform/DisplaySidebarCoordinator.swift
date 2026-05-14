@@ -77,6 +77,7 @@ final class MacSidebarSpaceAnchorWindow {
 @Observable @MainActor
 final class SpaceSidebarCoordinator {
     let apiClient: APIClient
+    let offlineSync: OfflineSyncService
     let preferences: MacSidebarPreferences
     let networkMonitor: NetworkMonitor
     let store: MacSidebarStore
@@ -90,11 +91,13 @@ final class SpaceSidebarCoordinator {
 
     init(
         apiClient: APIClient,
+        offlineSync: OfflineSyncService,
         preferences: MacSidebarPreferences,
         networkMonitor: NetworkMonitor,
         store: MacSidebarStore = MacSidebarStore()
     ) {
         self.apiClient = apiClient
+        self.offlineSync = offlineSync
         self.preferences = preferences
         self.networkMonitor = networkMonitor
         self.store = store
@@ -276,6 +279,7 @@ final class SpaceSidebarCoordinator {
         let spaceKey = state.id
         let rootView = MacSidebarRootView(store: store, issueFilterState: state.issueFilterState)
             .environment(apiClient)
+            .environment(offlineSync)
             .environment(networkMonitor)
             .environment(state.chrome)
             .environment(preferences)

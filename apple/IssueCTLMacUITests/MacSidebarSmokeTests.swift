@@ -95,6 +95,25 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["mac-issue-detail-cached-banner"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
+    func testOfflineIssueCommentQueuesFromIssueDetail() {
+        app.terminate()
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE"] = "1"
+        app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE_ACTION_FAILURE"] = "1"
+        app.launch()
+
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        let commentBody = app.textViews["mac-comment-composer-body-field"]
+        XCTAssertTrue(commentBody.waitForExistence(timeout: 5), app.debugDescription)
+        commentBody.click()
+        commentBody.typeText("Queued offline comment from Mac")
+        app.buttons["mac-comment-composer-submit-button"].click()
+        let queuedMessage = app.staticTexts.containing(NSPredicate(format: "value CONTAINS[c] %@", "Comment queued")).firstMatch
+        XCTAssertTrue(queuedMessage.waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testPullRequestListFiltersPaginatesAndOpensDetail() {
         selectRootSection("PRs")
 

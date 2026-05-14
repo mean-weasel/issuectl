@@ -9,6 +9,7 @@ struct IssueCTLMacApp: App {
         Settings {
             MacSettingsView()
                 .environment(appDelegate.apiClient)
+                .environment(appDelegate.offlineSync)
                 .environment(appDelegate.sidebarPreferences)
                 .environment(appDelegate.sidebarCoordinator)
                 .environment(\.resetSidebarLayout) {
@@ -21,9 +22,11 @@ struct IssueCTLMacApp: App {
 @MainActor
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     let apiClient = APIClient()
+    lazy var offlineSync = OfflineSyncService(client: apiClient)
     let sidebarPreferences = MacSidebarPreferences()
     lazy var sidebarCoordinator = SpaceSidebarCoordinator(
         apiClient: apiClient,
+        offlineSync: offlineSync,
         preferences: sidebarPreferences,
         networkMonitor: networkMonitor
     )
@@ -35,6 +38,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         PerformanceTrace.markAppLaunchStarted()
         NSApp.setActivationPolicy(.accessory)
         configureUITestFixtureAPIIfNeeded()
+        configureUITestOfflineQueueIfNeeded()
         sidebarCoordinator.start()
         configureStatusItem()
     }
@@ -49,6 +53,21 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
         }
         URLProtocol.registerClass(MacUITestFixtureURLProtocol.self)
+    }
+
+    private func configureUITestOfflineQueueIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["ISSUECTL_UI_TESTING"] == "1",
+              env["ISSUECTL_MAC_UI_FIXTURE_OFFLINE_QUEUE"] == "1" else {
+            return
+        }
+
+        offlineSync.enqueueIssueComment(
+            owner: "org",
+            repo: "alpha",
+            issueNumber: 1,
+            body: "Queued fixture comment"
+        )
     }
 
     private func configureStatusItem() {
@@ -137,6 +156,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
         let windowController = settingsWindowController ?? makeSettingsWindowController()
         settingsWindowController = windowController
         windowController.showWindow(nil)
+        windowController.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -155,6 +175,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private func makeSettingsWindowController() -> NSWindowController {
         let settingsView = MacSettingsView()
             .environment(apiClient)
+            .environment(offlineSync)
             .environment(sidebarPreferences)
             .environment(sidebarCoordinator)
             .environment(\.resetSidebarLayout) { [weak self] in
@@ -203,6 +224,11 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: imageData)
             client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+
+        if Self.shouldFailOfflineAction(request) {
+            client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
             return
         }
 
@@ -1138,6 +1164,18 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
             "from_cache": isCached,
             "cached_at": isCached ? isoDate : NSNull(),
         ]
+    }
+
+    private static func shouldFailOfflineAction(_ request: URLRequest) -> Bool {
+        guard ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE_ACTION_FAILURE"] == "1",
+              let method = request.httpMethod,
+              let path = request.url?.path else {
+            return false
+        }
+
+        return method == "POST"
+            && (path == "/api/v1/issues/org/alpha/1/comments"
+                || path == "/api/v1/issues/org/alpha/1/state")
     }
 
     private static func issuesResponse(_ issues: [[String: Any]]) -> [String: Any] {
