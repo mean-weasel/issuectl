@@ -409,6 +409,41 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 return ["error": "Fixture pull detail failed"]
             }
             return pullDetail()
+        case ("POST", "/api/v1/pulls/org/alpha/10/comments"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_COMMENT_FAILURE"] == "1" {
+                return ["success": false, "comment_id": NSNull(), "error": "Fixture PR comment failed"]
+            }
+            let payload = jsonBody(from: request)
+            let commentBody = payload["body"] as? String ?? ""
+            pullCommentBodies.append(commentBody)
+            return ["success": true, "comment_id": 901 + pullCommentBodies.count, "error": NSNull()]
+        case ("POST", "/api/v1/pulls/org/alpha/10/review"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_REVIEW_FAILURE"] == "1" {
+                return ["success": false, "review_id": NSNull(), "error": "Fixture PR review failed"]
+            }
+            let payload = jsonBody(from: request)
+            let event = payload["event"] as? String ?? "COMMENT"
+            let reviewBody = payload["body"] as? String ?? ""
+            let id = 401 + pullActionReviews.count
+            pullActionReviews.append([
+                "id": id,
+                "user": ["login": "alice", "avatar_url": "https://example.com/alice.png"],
+                "state": event == "APPROVE" ? "approved" : "changes_requested",
+                "body": reviewBody,
+                "submitted_at": isoDate,
+            ])
+            return ["success": true, "review_id": id, "error": NSNull()]
+        case ("POST", "/api/v1/pulls/org/alpha/10/merge"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_MERGE_FAILURE"] == "1" {
+                return ["success": false, "sha": NSNull(), "error": "Fixture PR merge failed"]
+            }
+            let payload = jsonBody(from: request)
+            pullMerged = true
+            pullMergeMethod = (payload["mergeMethod"] as? String) ?? (payload["merge_method"] as? String)
+            return ["success": true, "sha": "fixture-\(pullMergeMethod ?? "merge")-sha", "error": NSNull()]
         case ("GET", "/api/v1/issues/org/alpha/1"):
             return issueDetail()
         case ("GET", "/api/v1/issues/org/alpha/89"):
@@ -557,6 +592,10 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
     nonisolated(unsafe) private static var quickCreatedIssueBody: String?
     nonisolated(unsafe) private static var quickCreatedIssueLabels: [String] = []
     nonisolated(unsafe) private static var parsedCreatedIssueNumber: Int?
+    nonisolated(unsafe) private static var pullActionReviews: [[String: Any]] = []
+    nonisolated(unsafe) private static var pullCommentBodies: [String] = []
+    nonisolated(unsafe) private static var pullMerged = false
+    nonisolated(unsafe) private static var pullMergeMethod: String?
     nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
         commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
         commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
@@ -660,13 +699,33 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
 
     private static var alphaPulls: [[String: Any]] {
         [
-            pull(number: 10, title: "Fix failing alpha workflow", body: "PR body with alpha details", state: "open", merged: false, author: "alice", head: "fix-alpha", base: "main", additions: 24, deletions: 6, changedFiles: 3, checks: "failure", updatedAt: "2026-05-14T18:00:00.000Z"),
+            alphaPrimaryPull,
             pull(number: 11, title: "Pending alpha migration", body: "Migration work", state: "open", merged: false, author: "bob", head: "pending-alpha", base: "main", additions: 10, deletions: 2, changedFiles: 2, checks: "pending", updatedAt: "2026-05-14T17:00:00.000Z"),
             pull(number: 12, title: "Passing alpha cleanup", body: "Cleanup work", state: "open", merged: false, author: "alice", head: "cleanup-alpha", base: "main", additions: 5, deletions: 1, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T16:00:00.000Z"),
             pull(number: 13, title: "Merged alpha docs", body: "Docs update", state: "closed", merged: true, author: "carol", head: "docs-alpha", base: "main", additions: 8, deletions: 0, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T15:00:00.000Z", mergedAt: "2026-05-14T15:30:00.000Z", closedAt: "2026-05-14T15:30:00.000Z"),
             pull(number: 14, title: "Closed alpha experiment", body: "Abandoned experiment", state: "closed", merged: false, author: "bob", head: "experiment-alpha", base: "main", additions: 2, deletions: 2, changedFiles: 1, checks: "failure", updatedAt: "2026-05-14T14:00:00.000Z", closedAt: "2026-05-14T14:30:00.000Z"),
             pull(number: 15, title: "Searchable alpha design", body: "Find this design PR", state: "open", merged: false, author: "alice", head: "design-alpha", base: "main", additions: 12, deletions: 4, changedFiles: 2, checks: "success", updatedAt: "2026-05-14T13:00:00.000Z"),
         ]
+    }
+
+    private static var alphaPrimaryPull: [String: Any] {
+        pull(
+            number: 10,
+            title: "Fix failing alpha workflow",
+            body: pullCommentBodies.isEmpty ? "PR body with alpha details" : "PR body with alpha details\n\nLatest comment: \(pullCommentBodies.last ?? "")",
+            state: pullMerged ? "closed" : "open",
+            merged: pullMerged,
+            author: "alice",
+            head: "fix-alpha",
+            base: "main",
+            additions: 24,
+            deletions: 6,
+            changedFiles: 3,
+            checks: pullMerged ? "success" : "failure",
+            updatedAt: "2026-05-14T18:00:00.000Z",
+            mergedAt: pullMerged ? isoDate : nil,
+            closedAt: pullMerged ? isoDate : nil
+        )
     }
 
     private static var betaPulls: [[String: Any]] {
@@ -702,7 +761,14 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 ["filename": "Tests/AlphaTests.swift", "status": "added", "additions": 6, "deletions": 2],
             ],
             "linked_issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: isoDate),
-            "reviews": [
+            "reviews": basePullReviews + pullActionReviews,
+            "from_cache": false,
+            "cached_at": NSNull(),
+        ]
+    }
+
+    private static var basePullReviews: [[String: Any]] {
+        [
                 [
                     "id": 301,
                     "user": ["login": "bob", "avatar_url": "https://example.com/bob.png"],
@@ -710,9 +776,6 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                     "body": "Please fix the build.",
                     "submitted_at": "2026-05-14T18:05:00.000Z",
                 ],
-            ],
-            "from_cache": false,
-            "cached_at": NSNull(),
         ]
     }
 
