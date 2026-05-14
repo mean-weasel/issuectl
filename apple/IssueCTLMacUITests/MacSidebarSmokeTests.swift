@@ -891,6 +891,17 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["mac-settings-offline-queue-empty"].exists, app.debugDescription)
     }
 
+    func testSettingsShowsNotificationUnavailableState() {
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-notifications-unavailable"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-notifications-title"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-settings-notifications-message"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertFalse(app.switches["notifications-idle-terminals-toggle"].exists, app.debugDescription)
+        XCTAssertFalse(app.switches["notifications-new-issues-toggle"].exists, app.debugDescription)
+        XCTAssertFalse(app.switches["notifications-merged-prs-toggle"].exists, app.debugDescription)
+    }
+
     func testSettingsShowsConnectionAndSavesAdvancedSettings() {
         openSettings()
 

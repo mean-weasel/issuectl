@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T066
+active_task: T067
 
 tasks:
   - id: T001
@@ -3437,7 +3437,7 @@ tasks:
   - id: T066
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Implement Phase 10A Mac notification unavailable settings copy: add a Mac settings Notifications section that clearly states push notifications are iOS-only/deferred on Mac and exposes no broken notification toggles."
     inputs:
@@ -3473,6 +3473,55 @@ tasks:
       - "Adding the copy requires a broad settings architecture rewrite."
       - "The UI cannot expose stable assertions without brittle accessibility behavior."
       - "Product direction changes to require real macOS push implementation immediately."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      note: "notes/T066-phase-10a-notification-copy.md"
+      pr:
+        number: 445
+        url: "https://github.com/mean-weasel/issuectl/pull/445"
+        branch: "mac-parity-phase-10a-notification-copy"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+        checks: "Pending after push."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      acceptance_evidence:
+        - "Mac settings includes a Notifications section with iOS-only/deferred copy."
+        - "Unavailable-state copy and receipt link backend/platform issue #444."
+        - "Mac settings exposes no notification preference toggles."
+        - "MacIssueFilterStateTests/testMacNotificationUnavailableProjectionDocumentsDeferredPath proves unavailable-state title/body/icon are stable."
+        - "MacSidebarSmokeTests/testSettingsShowsNotificationUnavailableState proves the settings surface is visible and notification toggles are absent."
+      validation:
+        - "git diff --check: pass"
+        - "pnpm typecheck: pass"
+        - "pnpm lint: pass with existing warnings only"
+        - "IssueCTLMacTests/MacIssueFilterStateTests: 28 tests passed"
+        - "Focused notification unit/UI tests: 2 tests passed"
+      summary: "Added explicit Mac notification unavailable copy in Settings, with projection and UI coverage proving no broken notification toggles are exposed."
+
+  - id: T067
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Review PR #445 Phase 10A notification copy for acceptance coverage, GitHub check state, merge readiness, and the next safe parity slice."
+    inputs:
+      - "T066 receipt"
+      - "https://github.com/mean-weasel/issuectl/pull/445"
+      - "docs/specs/2026-05-14-mac-ios-parity-plan.md Phase 10 and Phase 11"
+    constraints:
+      - "Do not implement product code unless the review finds a small board/receipt-only correction is required."
+      - "Merge only if PR checks are green, or if no checks are configured and local validation from T066 is accepted as replacement evidence."
+      - "If merge-ready, mark the PR ready, merge into mac-sidebar-spaces-option-a, record the merge commit, and choose the next safe PR-sized slice."
+      - "Do not mark the overall goal complete."
+    expected_output:
+      - "Decision: merge_ready | changes_required | blocked."
+      - "PR check state and local replacement validation."
+      - "Merge result or required fixes."
+      - "Next PR-sized parity task."
     receipt: null
 
   - id: T999
@@ -3502,12 +3551,10 @@ checks:
   dirty_fingerprint: unknown
   last_verification:
     result: pass
-    task: T063
+    task: T066
     commands:
       - "git diff --check"
       - "pnpm typecheck"
       - "pnpm lint"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacOfflineQueueSummaryAndRowsExposeActionDetails -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacOfflineSyncServiceReplaysAndControlsQueue -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacOfflineSyncRetryClearAndRemoveControlsMutateQueue -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsSeededOfflineQueue"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /tmp/issuectl-phase9c-ios -only-testing:IssueCTLTests/OfflineSyncServiceTests"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
-      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase9c-mac -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase10a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase10a-mac -only-testing:IssueCTLMacTests/MacIssueFilterStateTests/testMacNotificationUnavailableProjectionDocumentsDeferredPath -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsNotificationUnavailableState"
