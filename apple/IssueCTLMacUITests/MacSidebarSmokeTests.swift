@@ -198,6 +198,31 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["mac-pr-request-changes-submit-button"].exists, app.debugDescription)
     }
 
+    func testLinkedIssueAndPullRequestDetailNavigation() {
+        let firstIssue = issueRow("org/alpha", 1)
+        XCTAssertTrue(firstIssue.waitForExistence(timeout: 8), app.debugDescription)
+        openIssue(firstIssue)
+
+        let linkedPullRequest = app.descendants(matching: .any)["mac-issue-detail-linked-pr-7"]
+        XCTAssertTrue(linkedPullRequest.waitForExistence(timeout: 5), app.debugDescription)
+        linkedPullRequest.click()
+        XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-title"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Fix alpha detail"].waitForExistence(timeout: 5), app.debugDescription)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.descendants(matching: .any)["mac-pr-detail-title"].waitForNonExistence(timeout: 5), app.debugDescription)
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.buttons["mac-issue-detail-edit-button"].waitForNonExistence(timeout: 5), app.debugDescription)
+        selectRootSection("PRs")
+        openPullRequest(prRow("org/alpha", 10))
+
+        let linkedIssue = app.descendants(matching: .any)["mac-pr-detail-linked-issue-1"]
+        XCTAssertTrue(linkedIssue.waitForExistence(timeout: 5), app.debugDescription)
+        linkedIssue.click()
+        XCTAssertTrue(app.buttons["mac-issue-detail-edit-button"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Open alpha issue"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testPullRequestFailuresAreRecoverableAndPreserveFilters() {
         app.terminate()
         app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_BETA_PULLS_FAILURE"] = "1"

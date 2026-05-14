@@ -27,6 +27,7 @@ struct MacIssueDetailView: View {
     @State private var lightboxImage: MacLightboxImage?
     @State private var isShowingCloseWithComment = false
     @State private var commentPendingDeletion: GitHubComment?
+    @State private var selectedLinkedPullRequest: MacPullRequestListItem?
 
     private var issue: GitHubIssue {
         detail?.issue ?? item.issue
@@ -131,6 +132,9 @@ struct MacIssueDetailView: View {
                 }
             }
         }
+        .sheet(item: $selectedLinkedPullRequest) { pullRequest in
+            MacPullRequestDetailView(item: pullRequest, store: store)
+        }
         .sheet(item: $lightboxImage) { image in
             MacImageLightbox(url: image.url, altText: image.altText) {
                 lightboxImage = nil
@@ -196,6 +200,7 @@ struct MacIssueDetailView: View {
                 Image(systemName: "xmark")
             }
             .buttonStyle(.borderless)
+            .accessibilityIdentifier("mac-issue-detail-close-button")
             .help("Close")
         }
         .padding(.horizontal, 16)
@@ -551,20 +556,26 @@ struct MacIssueDetailView: View {
                     .font(.headline)
 
                 ForEach(linkedPRs) { pr in
-                    HStack(spacing: 8) {
-                        Image(systemName: pr.isOpen ? "arrow.triangle.merge" : (pr.merged ? "checkmark.circle.fill" : "xmark.circle"))
-                            .foregroundStyle(pr.isOpen ? .green : (pr.merged ? .purple : .red))
-                        Text("#\(pr.number)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(pr.title)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(pr.diffSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Button {
+                        selectedLinkedPullRequest = MacPullRequestListItem(pull: pr, repo: item.repo, repoIndex: item.repoIndex)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: pr.isOpen ? "arrow.triangle.merge" : (pr.merged ? "checkmark.circle.fill" : "xmark.circle"))
+                                .foregroundStyle(pr.isOpen ? .green : (pr.merged ? .purple : .red))
+                            Text("#\(pr.number)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(pr.title)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(pr.diffSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .accessibilityIdentifier("mac-issue-detail-linked-pr-\(pr.number)")
                 }
             }

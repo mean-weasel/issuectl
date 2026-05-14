@@ -409,6 +409,11 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
                 return ["error": "Fixture pull detail failed"]
             }
             return pullDetail()
+        case ("GET", "/api/v1/pulls/org/alpha/7"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_DETAIL_FAILURE"] == "1" {
+                return ["error": "Fixture pull detail failed"]
+            }
+            return pullDetail(pull: linkedAlphaPull)
         case ("POST", "/api/v1/pulls/org/alpha/10/comments"):
             if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
                 || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_COMMENT_FAILURE"] == "1" {
@@ -728,6 +733,24 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         )
     }
 
+    private static var linkedAlphaPull: [String: Any] {
+        pull(
+            number: 7,
+            title: "Fix alpha detail",
+            body: "Linked PR",
+            state: "open",
+            merged: false,
+            author: "alice",
+            head: "fix-alpha-detail",
+            base: "main",
+            additions: 12,
+            deletions: 3,
+            changedFiles: 2,
+            checks: "success",
+            updatedAt: isoDate
+        )
+    }
+
     private static var betaPulls: [[String: Any]] {
         [
             pull(number: 21, title: "Pending beta review", body: "Beta review work", state: "open", merged: false, author: "carol", head: "pending-beta", base: "main", additions: 7, deletions: 3, changedFiles: 2, checks: "pending", updatedAt: "2026-05-14T12:00:00.000Z", repo: "beta"),
@@ -735,9 +758,9 @@ private final class MacUITestFixtureURLProtocol: URLProtocol {
         ]
     }
 
-    private static func pullDetail() -> [String: Any] {
+    private static func pullDetail(pull: [String: Any] = alphaPulls[0]) -> [String: Any] {
         [
-            "pull": alphaPulls[0],
+            "pull": pull,
             "checks": [
                 [
                     "name": "build",
