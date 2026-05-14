@@ -281,7 +281,7 @@ struct MacPullRequestsView: View {
         .onChange(of: mineOnly) { _, _ in resetPaging() }
         .onChange(of: sortOrder) { _, _ in resetPaging() }
         .sheet(item: $selectedPull) { item in
-            MacPullRequestDetailView(item: item)
+            MacPullRequestDetailView(item: item, store: store)
         }
     }
 
@@ -605,13 +605,14 @@ private struct MacChecksStatusBadge: View {
     }
 }
 
-private struct MacPullRequestDetailView: View {
+struct MacPullRequestDetailView: View {
     @Environment(APIClient.self) private var api
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     @Environment(\.macSidebarTextScale) private var textScale
 
     let item: MacPullRequestListItem
+    let store: MacSidebarStore
 
     @State private var detail: PullDetailResponse?
     @State private var isLoading = false
@@ -620,6 +621,7 @@ private struct MacPullRequestDetailView: View {
     @State private var successMessage: String?
     @State private var isSubmittingAction = false
     @State private var textAction: MacPullRequestTextAction?
+    @State private var selectedLinkedIssue: MacIssueListItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -683,8 +685,14 @@ private struct MacPullRequestDetailView: View {
                         }
                         if let issue = detail.linkedIssue {
                             MacDetailSection(title: "Linked Issue", systemImage: "link") {
-                                detailRow(title: "#\(issue.number)", value: issue.title)
-                                    .accessibilityIdentifier("mac-pr-detail-linked-issue-\(issue.number)")
+                                Button {
+                                    selectedLinkedIssue = MacIssueListItem(issue: issue, repo: item.repo, repoIndex: item.repoIndex)
+                                } label: {
+                                    detailRow(title: "#\(issue.number)", value: issue.title)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("mac-pr-detail-linked-issue-\(issue.number)")
                             }
                         }
                     }
@@ -704,6 +712,9 @@ private struct MacPullRequestDetailView: View {
                     return await submitReview(event: "REQUEST_CHANGES", body: body, successMessage: "Changes requested")
                 }
             }
+        }
+        .sheet(item: $selectedLinkedIssue) { issue in
+            MacIssueDetailView(item: issue, store: store)
         }
     }
 

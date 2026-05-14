@@ -63,7 +63,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T044
+active_task: null
 
 tasks:
   - id: T001
@@ -2240,7 +2240,35 @@ tasks:
       - "Linked navigation requires backend or model changes outside allowed files."
       - "Nested sheet behavior is unreliable and needs a broader Mac navigation redesign."
       - "Local validation fails twice for the same unexplained reason."
-    receipt: null
+    receipt:
+      result: done
+      note: "notes/T044-phase-7c-linked-navigation.md"
+      pr:
+        number: 436
+        url: "https://github.com/mean-weasel/issuectl/pull/436"
+        branch: "mac-parity-phase-7c-linked-navigation"
+        base: "mac-sidebar-spaces-option-a"
+        draft: true
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase7c-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testLinkedIssueAndPullRequestDetailNavigation"
+          status: pass
+          tests: 1
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS' -derivedDataPath /tmp/issuectl-phase7c-dd -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests"
+          status: pass
+          tests: 25
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm typecheck"
+          status: pass
+        - cmd: "pnpm lint"
+          status: pass
+          warnings: "Existing warnings only."
+      summary: "Implemented Mac linked navigation from issue detail linked PRs into PR detail and from PR detail linked issues into issue detail, using current repo context and fixture-backed UI coverage for both directions."
 
   - id: T999
     type: judge
