@@ -45,6 +45,100 @@ final class APIClientExtensionTests: XCTestCase {
         return data
     }
 
+    // MARK: - Repository Settings
+
+    @MainActor
+    func testAddRepoSendsPostBodyAndDecodesRepo() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["owner"] as? String, "mean-weasel")
+            XCTAssertEqual(json["name"] as? String, "issuectl")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":{"id":7,"owner":"mean-weasel","name":"issuectl","local_path":null,"branch_pattern":null,"created_at":"2026-05-14T00:00:00Z"}}
+            """.data(using: .utf8)!)
+        }
+
+        let repo = try await client.addRepo(owner: "mean-weasel", name: "issuectl")
+
+        XCTAssertEqual(repo.id, 7)
+        XCTAssertEqual(repo.fullName, "mean-weasel/issuectl")
+    }
+
+    @MainActor
+    func testGitHubReposUsesRefreshQueryWhenRequested() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/github")
+            XCTAssertEqual(request.url?.query, "refresh=true")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"repos":[{"owner":"mean-weasel","name":"issuectl","private":true,"pushed_at":"2026-05-14T00:00:00Z"}],"synced_at":1778760000,"is_stale":false}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.githubRepos(refresh: true)
+
+        XCTAssertEqual(response.repos.map(\.fullName), ["mean-weasel/issuectl"])
+        XCTAssertEqual(response.syncedAt, 1_778_760_000)
+        XCTAssertFalse(response.isStale)
+    }
+
+    @MainActor
+    func testUpdateRepoSendsPatchBodyAndDecodesRepo() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl")
+            XCTAssertEqual(request.httpMethod, "PATCH")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["localPath"] as? String, "/Users/me/issuectl")
+            XCTAssertEqual(json["branchPattern"] as? String, "feature/{{number}}")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":{"id":7,"owner":"mean-weasel","name":"issuectl","local_path":"/Users/me/issuectl","branch_pattern":"feature/{{number}}","created_at":"2026-05-14T00:00:00Z"}}
+            """.data(using: .utf8)!)
+        }
+
+        let repo = try await client.updateRepo(
+            owner: "mean-weasel",
+            name: "issuectl",
+            localPath: "/Users/me/issuectl",
+            branchPattern: "feature/{{number}}"
+        )
+
+        XCTAssertEqual(repo.localPath, "/Users/me/issuectl")
+        XCTAssertEqual(repo.branchPattern, "feature/{{number}}")
+    }
+
+    @MainActor
+    func testRemoveRepoSendsDeleteAndSurfacesFailure() async throws {
+        var calls = 0
+        MockURLProtocol.requestHandler = { request in
+            calls += 1
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl")
+            XCTAssertEqual(request.httpMethod, "DELETE")
+
+            if calls == 1 {
+                return (self.makeResponse(url: request.url!), #"{"success":true}"#.data(using: .utf8)!)
+            }
+            return (self.makeResponse(url: request.url!), #"{"success":false,"error":"repo is required"}"#.data(using: .utf8)!)
+        }
+
+        try await client.removeRepo(owner: "mean-weasel", name: "issuectl")
+
+        do {
+            try await client.removeRepo(owner: "mean-weasel", name: "issuectl")
+            XCTFail("Expected removeRepo to surface backend failure")
+        } catch APIError.serverError(_, let message) {
+            XCTAssertEqual(message, "repo is required")
+        }
+    }
+
     // MARK: - Parse
 
     @MainActor
