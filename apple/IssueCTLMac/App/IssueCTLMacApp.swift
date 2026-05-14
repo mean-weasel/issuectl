@@ -59,6 +59,7 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        sidebarCoordinator.refreshCurrentSpace()
         menu.removeAllItems()
         let currentTitle = sidebarCoordinator.currentSpaceState?.title ?? "Current Desktop"
         menu.addItem(NSMenuItem(title: "Show \(currentTitle) Sidebar", action: #selector(showCurrentSpaceSidebar), keyEquivalent: "s"))

@@ -21,7 +21,7 @@ final class MacSidebarSpaceState {
         chrome = SidebarChromeState()
         chrome.isCollapsed = preferences.isCollapsed
         issueFilterState = MacIssueFilterState(preferences: preferences)
-        anchorWindow = MacSidebarSpaceAnchorWindow(identifier: key)
+        anchorWindow = MacSidebarSpaceAnchorWindow(identifier: key, slot: slot)
     }
 
     static func key(forSlot slot: Int) -> String {
@@ -32,9 +32,11 @@ final class MacSidebarSpaceState {
 @MainActor
 final class MacSidebarSpaceAnchorWindow {
     private let window: NSPanel
+    private let slot: Int
 
-    init(identifier: String) {
-        let frame = NSRect(x: 1, y: 1, width: 1, height: 1)
+    init(identifier: String, slot: Int) {
+        self.slot = slot
+        let frame = NSRect(x: CGFloat(slot), y: 1, width: 1, height: 1)
         window = NSPanel(
             contentRect: frame,
             styleMask: [.borderless],
@@ -54,8 +56,17 @@ final class MacSidebarSpaceAnchorWindow {
         window.orderFrontRegardless()
     }
 
-    var isOnActiveSpace: Bool {
-        window.isOnActiveSpace
+    var isVisibleOnActiveSpace: Bool {
+        let windowNumber = window.windowNumber
+        let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
+        return windows.contains { candidate in
+            guard (candidate[kCGWindowNumber as String] as? Int) == windowNumber else { return false }
+            guard (candidate[kCGWindowIsOnscreen as String] as? Int) == 1 else { return false }
+            guard let bounds = candidate[kCGWindowBounds as String] as? [String: Any] else { return false }
+            return (bounds["Width"] as? Int) == 1
+                && (bounds["Height"] as? Int) == 1
+                && (bounds["X"] as? Int) == slot
+        }
     }
 
     func close() {
@@ -145,7 +156,12 @@ final class SpaceSidebarCoordinator {
         }
     }
 
+    func refreshCurrentSpace() {
+        activateCurrentSpace(showNewPanel: false)
+    }
+
     func toggleCurrentSpaceVisibility() {
+        refreshCurrentSpace()
         guard let state = currentSpaceState else { return }
         toggleVisibility(spaceKey: state.id)
     }
@@ -167,6 +183,7 @@ final class SpaceSidebarCoordinator {
     }
 
     func toggleCurrentSpaceCollapsed() {
+        refreshCurrentSpace()
         guard let state = currentSpaceState else { return }
         toggleCollapsed(spaceKey: state.id)
     }
@@ -176,6 +193,7 @@ final class SpaceSidebarCoordinator {
     }
 
     func resetCurrentSpaceLayout() {
+        refreshCurrentSpace()
         guard let state = currentSpaceState else { return }
         resetLayout(spaceKey: state.id)
     }
@@ -195,12 +213,14 @@ final class SpaceSidebarCoordinator {
     }
 
     func showCurrentSpace() {
+        refreshCurrentSpace()
         guard let state = currentSpaceState else { return }
         state.preferences.isEnabled = true
         controllers[state.id]?.show()
     }
 
     func hideCurrentSpace() {
+        refreshCurrentSpace()
         guard let state = currentSpaceState else { return }
         state.preferences.isEnabled = false
         controllers[state.id]?.hide()
@@ -213,7 +233,9 @@ final class SpaceSidebarCoordinator {
 
     private func stateForActiveSpace() -> MacSidebarSpaceState? {
         spaceStates.first { state in
-            state.anchorWindow.isOnActiveSpace || controllers[state.id]?.isOnActiveSpace == true
+            state.anchorWindow.isVisibleOnActiveSpace
+        } ?? spaceStates.first { state in
+            controllers[state.id]?.isOnActiveSpace == true
         }
     }
 
