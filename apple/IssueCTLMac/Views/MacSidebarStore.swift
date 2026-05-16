@@ -495,9 +495,9 @@ enum MacLaunchResumeBehavior: String, CaseIterable, Identifiable {
 
     static func behavior(forceResume: Bool?) -> MacLaunchResumeBehavior {
         switch forceResume {
-        case true: .resume
-        case false: .reset
-        case nil: .automatic
+        case .some(true): .resume
+        case .some(false): .reset
+        case .none: .automatic
         }
     }
 }
