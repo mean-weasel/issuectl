@@ -11,6 +11,8 @@ struct MacSidebarRootView: View {
 
     let store: MacSidebarStore
     @Bindable var issueFilterState: MacIssueFilterState
+    @Bindable var pullRequestFilterState: MacPullRequestFilterState
+    @Bindable var sessionFilterState: MacSessionFilterState
 
     @State private var selectedSection: MacSidebarSection = .issues
     @State private var serverURL = "http://localhost:3847"
@@ -19,6 +21,7 @@ struct MacSidebarRootView: View {
     @State private var isAutoConnecting = false
     @State private var hasAttemptedAutoConnect = false
     @State private var connectionError: String?
+    @State private var isShowingDisconnectConfirmation = false
 
     var body: some View {
         Group {
@@ -27,6 +30,14 @@ struct MacSidebarRootView: View {
             } else {
                 expandedSidebar
             }
+        }
+        .confirmationDialog("Disconnect IssueCTL?", isPresented: $isShowingDisconnectConfirmation, titleVisibility: .visible) {
+            Button("Disconnect", role: .destructive) {
+                disconnect()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the saved connection from the Mac app. Local drafts remain on this Mac.")
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onExitCommand {
@@ -65,9 +76,36 @@ struct MacSidebarRootView: View {
         HStack(spacing: 10) {
             Image(systemName: "list.bullet.rectangle")
                 .font(.title3.weight(.semibold))
-            Text("IssueCTL")
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("IssueCTL")
+                    .font(.headline)
+                if api.isConfigured {
+                    Text(store.summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityIdentifier("mac-sidebar-global-summary")
+                }
+            }
             Spacer()
+            if api.isConfigured {
+                Button {
+                    Task { await store.load(api: api, refresh: true) }
+                } label: {
+                    if store.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .disabled(store.isLoading)
+                .accessibilityLabel("Refresh Sidebar")
+                .help("Refresh Sidebar")
+                .accessibilityIdentifier("mac-sidebar-refresh-button")
+            }
+
             Button {
                 toggleSidebarCollapsed()
             } label: {
@@ -89,21 +127,30 @@ struct MacSidebarRootView: View {
             .accessibilityIdentifier("mac-sidebar-hide-button")
 
             if api.isConfigured {
-                Button {
-                    api.disconnect()
-                    store.reset()
-                    hasAttemptedAutoConnect = true
+                Menu {
+                    Button {
+                        isShowingDisconnectConfirmation = true
+                    } label: {
+                        Label("Disconnect...", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    .accessibilityIdentifier("mac-sidebar-disconnect-menu-item")
                 } label: {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Disconnect")
-                .help("Disconnect")
-                .accessibilityIdentifier("mac-sidebar-disconnect-button")
+                .menuStyle(.borderlessButton)
+                .accessibilityLabel("More Sidebar Actions")
+                .help("More Sidebar Actions")
+                .accessibilityIdentifier("mac-sidebar-more-actions-menu")
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private func disconnect() {
+        api.disconnect()
+        store.reset()
+        hasAttemptedAutoConnect = true
     }
 
     private var collapsedRail: some View {
@@ -136,9 +183,22 @@ struct MacSidebarRootView: View {
                 Button {
                     selectedSection = section
                 } label: {
-                    Image(systemName: section.systemImage)
-                        .frame(width: 36, height: 32)
-                        .contentShape(Rectangle())
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: section.systemImage)
+                            .frame(width: 36, height: 32)
+                            .contentShape(Rectangle())
+
+                        if let count = collapsedRailCount(for: section), count > 0 {
+                            Text(collapsedRailBadgeText(count))
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .frame(minWidth: 14, minHeight: 14)
+                                .background(Color.accentColor, in: Capsule())
+                                .offset(x: 5, y: -3)
+                                .accessibilityHidden(true)
+                        }
+                    }
                 }
                 .buttonStyle(.borderless)
                 .background(
@@ -147,10 +207,20 @@ struct MacSidebarRootView: View {
                 )
                 .help(section.title)
                 .accessibilityLabel(section.title)
+                .accessibilityValue(collapsedRailAccessibilityValue(for: section))
                 .accessibilityIdentifier("mac-sidebar-section-\(section.rawValue)")
             }
 
             Divider()
+
+            if !network.isConnected {
+                Image(systemName: "wifi.slash")
+                    .foregroundStyle(.orange)
+                    .frame(width: 36, height: 24)
+                    .help("Offline")
+                    .accessibilityLabel("Offline")
+                    .accessibilityIdentifier("mac-sidebar-collapsed-offline-indicator")
+            }
 
             Button {
                 Task { await store.load(api: api, refresh: true) }
@@ -191,9 +261,42 @@ struct MacSidebarRootView: View {
         }
     }
 
+    private func collapsedRailCount(for section: MacSidebarSection) -> Int? {
+        switch section {
+        case .today:
+            let attentionCount = store.sessions.count + store.drafts.count
+            return attentionCount > 0 ? attentionCount : nil
+        case .issues:
+            return store.issues.count
+        case .pullRequests:
+            return nil
+        case .drafts:
+            return store.drafts.count
+        case .active:
+            return store.sessions.count
+        }
+    }
+
+    private func collapsedRailBadgeText(_ count: Int) -> String {
+        count > 99 ? "99+" : "\(count)"
+    }
+
+    private func collapsedRailAccessibilityValue(for section: MacSidebarSection) -> String {
+        var parts: [String] = []
+        if selectedSection == section {
+            parts.append("Selected")
+        }
+        if let count = collapsedRailCount(for: section) {
+            parts.append("\(count) item\(count == 1 ? "" : "s")")
+        }
+        if !network.isConnected {
+            parts.append("Offline")
+        }
+        return parts.joined(separator: ", ")
+    }
+
     private var dashboard: some View {
         VStack(spacing: 0) {
-            dashboardToolbar
             if !network.isConnected {
                 offlineBanner
             }
@@ -227,11 +330,11 @@ struct MacSidebarRootView: View {
                 case .issues:
                     MacIssuesView(store: store, filterState: issueFilterState)
                 case .pullRequests:
-                    MacPullRequestsView(store: store)
+                    MacPullRequestsView(store: store, filterState: pullRequestFilterState)
                 case .drafts:
                     MacDraftsView(store: store)
                 case .active:
-                    MacSessionsView(store: store)
+                    MacSessionsView(store: store, filterState: sessionFilterState)
                 }
             }
         }
@@ -254,33 +357,6 @@ struct MacSidebarRootView: View {
         .padding(.horizontal, 14)
         .padding(.bottom, 10)
         .accessibilityIdentifier("mac-sidebar-offline-banner")
-    }
-
-    private var dashboardToolbar: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(selectedSection.title)
-                    .font(.headline)
-                Text(store.summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button {
-                Task { await store.load(api: api, refresh: true) }
-            } label: {
-                if store.isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.clockwise")
-                }
-            }
-            .buttonStyle(.borderless)
-            .disabled(store.isLoading)
-            .help("Refresh")
-        }
-        .padding(14)
     }
 
     private var connectionView: some View {

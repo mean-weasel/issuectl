@@ -23,6 +23,11 @@ final class MacSidebarSmokeTests: XCTestCase {
     func testSidebarLaunchesCollapsesExpandsAndHides() {
         let title = app.staticTexts["IssueCTL"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["mac-sidebar-global-summary"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["mac-sidebar-refresh-button"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-sidebar-more-actions-menu"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-sidebar-refresh-button"].click()
+        XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 8), app.debugDescription)
 
         app.buttons["mac-sidebar-collapse-button"].click()
         XCTAssertTrue(app.buttons["mac-sidebar-expand-button"].waitForExistence(timeout: 3), app.debugDescription)
@@ -39,29 +44,26 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["mac-issues-section-counts"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.descendants(matching: .any)["mac-issues-filter-summary"].waitForExistence(timeout: 5), app.debugDescription)
 
-        let loadMore = app.buttons["mac-issues-load-more-button"]
-        XCTAssertTrue(loadMore.waitForExistence(timeout: 5), app.debugDescription)
+        let loadMore = revealIssueLoadMoreButton()
         loadMore.click()
         let paginationSummary = app.staticTexts["mac-issues-pagination-summary"]
         XCTAssertTrue(paginationSummary.waitForExistence(timeout: 5), app.debugDescription)
         let paginationSummaryText = (paginationSummary.value as? String) ?? paginationSummary.label
         XCTAssertTrue(
-            paginationSummaryText.contains("Showing 53 of 53"),
+            paginationSummaryText.contains("Showing all 53"),
             "\(paginationSummaryText)\n\(app.debugDescription)"
         )
         XCTAssertFalse(loadMore.exists, app.debugDescription)
 
-        issueState("Running").click()
+        selectIssueSectionCount("running")
         XCTAssertTrue(issueRow("org/alpha", 2).waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(issueRow("org/alpha", 1).exists, app.debugDescription)
 
-        issueState("Closed").click()
+        selectIssueSectionCount("closed")
         XCTAssertTrue(issueRow("org/alpha", 4).waitForExistence(timeout: 5), app.debugDescription)
 
-        issueState("Drafts").click()
-        XCTAssertTrue(draftRow("draft-1").waitForExistence(timeout: 5), app.debugDescription)
-
-        issueState("Open").click()
+        selectIssueSectionCount("open")
+        expandIssueFilters()
         issueSort("Priority").click()
         XCTAssertTrue(issueRow("org/alpha", 3).waitForExistence(timeout: 5), app.debugDescription)
 
@@ -78,6 +80,23 @@ final class MacSidebarSmokeTests: XCTestCase {
 
         app.buttons["mac-issues-reset-filters-button"].click()
         XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    func testSidebarFiltersCanBeCollapsedAndAdjusted() {
+        XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issues-filters-disclosure"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(issueState("Running").exists, app.debugDescription)
+
+        selectIssueSectionCount("running")
+        XCTAssertTrue(issueRow("org/alpha", 2).waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["mac-issues-filter-summary"].waitForExistence(timeout: 5), app.debugDescription)
+
+        XCTAssertFalse(app.checkBoxes["mac-issues-repo-filter-org/alpha"].exists, app.debugDescription)
+        expandIssueRepositories()
+        let alphaRepo = app.checkBoxes["mac-issues-repo-filter-org/alpha"]
+        XCTAssertTrue(alphaRepo.waitForExistence(timeout: 5), app.debugDescription)
+        alphaRepo.click()
+        XCTAssertFalse(issueRow("org/alpha", 2).exists, app.debugDescription)
     }
 
     func testIssueCacheAndOfflineIndicators() {
@@ -126,12 +145,17 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.buttons["mac-sidebar-expand-button"].click()
         XCTAssertTrue(app.descendants(matching: .any)["mac-prs-search-field"].waitForExistence(timeout: 5), app.debugDescription)
 
-        prSection("Open").click()
+        selectPRSectionCount("open")
         XCTAssertTrue(prRow("org/alpha", 12).waitForExistence(timeout: 5), app.debugDescription)
         let loadMore = app.buttons["mac-prs-load-more-button"]
-        XCTAssertTrue(loadMore.waitForExistence(timeout: 5), app.debugDescription)
-        loadMore.click()
-        XCTAssertTrue(prRow("org/beta", 21).waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(loadMore.exists, app.debugDescription)
+        let paginationSummary = app.staticTexts["mac-prs-pagination-summary"]
+        XCTAssertTrue(paginationSummary.waitForExistence(timeout: 5), app.debugDescription)
+        let paginationSummaryText = (paginationSummary.value as? String) ?? paginationSummary.label
+        XCTAssertTrue(
+            paginationSummaryText.contains("Showing all"),
+            "\(paginationSummaryText)\n\(app.debugDescription)"
+        )
 
         let search = app.textFields["mac-prs-search-field"]
         XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
@@ -141,18 +165,20 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertFalse(prRow("org/alpha", 10).exists, app.debugDescription)
 
         app.buttons["mac-prs-reset-filters-button"].click()
-        prSection("Open").click()
+        selectPRSectionCount("open")
+        expandPRFilters()
         prSort("Created").click()
         XCTAssertTrue(prRow("org/alpha", 12).waitForExistence(timeout: 5), app.debugDescription)
 
-        let alphaRepo = app.checkBoxes["org/alpha"]
+        expandPRRepositories()
+        let alphaRepo = app.checkBoxes["mac-prs-repo-filter-org/alpha"]
         XCTAssertTrue(alphaRepo.waitForExistence(timeout: 5), app.debugDescription)
         alphaRepo.click()
         XCTAssertTrue(prRow("org/beta", 21).waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(prRow("org/alpha", 10).exists, app.debugDescription)
 
         app.buttons["mac-prs-reset-filters-button"].click()
-        prSection("Open").click()
+        selectPRSectionCount("open")
 
         let mine = app.checkBoxes["mac-prs-mine-filter"]
         XCTAssertTrue(mine.waitForExistence(timeout: 5), app.debugDescription)
@@ -485,6 +511,34 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["mac-session-row-2"].waitForNonExistence(timeout: 5), app.debugDescription)
     }
 
+    func testLocalOnlySidebarFiltersPersistAcrossSpaces() throws {
+        let markerURL = URL(fileURLWithPath: "/tmp/issuectl-mac-ui-spaces-test")
+        guard ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_SPACES_TEST"] == "1"
+            || FileManager.default.fileExists(atPath: markerURL.path) else {
+            throw XCTSkip("Opt-in local-only test because it depends on macOS Spaces and Mission Control keyboard shortcuts.")
+        }
+
+        XCTAssertTrue(issueRow("org/alpha", 1).waitForExistence(timeout: 8), app.debugDescription)
+        setIssueSearch("desktop one issue")
+        setPullRequestSearch("desktop one pr")
+        setSessionSearch("desktop one session")
+
+        try switchToNextSpace()
+        setIssueSearch("desktop two issue")
+        setPullRequestSearch("desktop two pr")
+        setSessionSearch("desktop two session")
+
+        try switchToPreviousSpace()
+        assertIssueSearch("desktop one issue")
+        assertPullRequestSearch("desktop one pr")
+        assertSessionSearch("desktop one session")
+
+        try switchToNextSpace()
+        assertIssueSearch("desktop two issue")
+        assertPullRequestSearch("desktop two pr")
+        assertSessionSearch("desktop two session")
+    }
+
     func testEmbeddedTerminalRespawnAndFailureRecovery() {
         app.terminate()
         app.launchEnvironment["ISSUECTL_MAC_UI_FIXTURE_RESPAWN_TTYD"] = "1"
@@ -532,7 +586,7 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(prRow("org/alpha", 10).waitForExistence(timeout: 8), app.debugDescription)
         XCTAssertTrue(app.descendants(matching: .any)["mac-prs-inline-error"].waitForExistence(timeout: 5), app.debugDescription)
 
-        prSection("Open").click()
+        selectPRSectionCount("open")
         let search = app.textFields["mac-prs-search-field"]
         XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
         search.click()
@@ -900,9 +954,13 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["mac-settings-add-repository-button"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.buttons["mac-settings-refresh-repositories-button"].waitForExistence(timeout: 3), app.debugDescription)
         XCTAssertTrue(app.descendants(matching: .any)["mac-settings-repository-row-org/alpha"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Desktop Layouts"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Current"].waitForExistence(timeout: 3), app.debugDescription)
 
         app.buttons["mac-settings-add-repository-button"].click()
         XCTAssertTrue(app.textFields["mac-add-repo-full-name-field"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["mac-add-repo-browse-empty"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["mac-add-repo-browse-refresh-button"].click()
         XCTAssertTrue(app.buttons["mac-add-repo-browse-row-org/gamma"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.buttons["mac-add-repo-submit-button"].waitForExistence(timeout: 3), app.debugDescription)
         app.buttons["Cancel"].click()
@@ -1020,6 +1078,16 @@ final class MacSidebarSmokeTests: XCTestCase {
         XCTAssertTrue(statusItem.waitForExistence(timeout: 8), app.debugDescription)
 
         statusItem.click()
+        let currentDesktopItem = app.menuItems.matching(NSPredicate(format: "title BEGINSWITH %@", "Current Desktop:")).firstMatch
+        XCTAssertTrue(currentDesktopItem.waitForExistence(timeout: 3), app.debugDescription)
+        let sidebarStatusItem = app.menuItems.matching(NSPredicate(format: "title BEGINSWITH %@", "Sidebar:")).firstMatch
+        XCTAssertTrue(sidebarStatusItem.waitForExistence(timeout: 3), app.debugDescription)
+        let currentVisibilityItem = app.menuItems.matching(NSPredicate(format: "title MATCHES %@", "^(Hide|Show) .* Sidebar$")).firstMatch
+        XCTAssertTrue(currentVisibilityItem.waitForExistence(timeout: 3), app.debugDescription)
+        let currentCollapseItem = app.menuItems.matching(NSPredicate(format: "title MATCHES %@", "^(Collapse|Expand) .* Sidebar$")).firstMatch
+        XCTAssertTrue(currentCollapseItem.waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.menuItems["Refresh Sidebar"].firstMatch.waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertTrue(app.menuItems["Desktop Layouts"].firstMatch.waitForExistence(timeout: 3), app.debugDescription)
         let settingsItem = app.menuItems["Settings..."].firstMatch
         XCTAssertTrue(settingsItem.waitForExistence(timeout: 3), app.debugDescription)
         settingsItem.click()
@@ -1041,6 +1109,12 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.descendants(matching: .any)["mac-issues-section-picker"].radioButtons[title]
     }
 
+    private func selectIssueSectionCount(_ rawValue: String, file: StaticString = #filePath, line: UInt = #line) {
+        let row = app.descendants(matching: .any)["mac-issues-section-counts"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        row.coordinate(withNormalizedOffset: CGVector(dx: issueSectionOffset(rawValue), dy: 0.5)).click()
+    }
+
     private func issueSort(_ title: String) -> XCUIElement {
         app.descendants(matching: .any)["mac-issues-sort-picker"].radioButtons[title]
     }
@@ -1049,8 +1123,172 @@ final class MacSidebarSmokeTests: XCTestCase {
         app.descendants(matching: .any)["mac-prs-section-picker"].radioButtons[title]
     }
 
+    private func selectPRSectionCount(_ rawValue: String, file: StaticString = #filePath, line: UInt = #line) {
+        let row = app.descendants(matching: .any)["mac-prs-section-counts"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        row.coordinate(withNormalizedOffset: CGVector(dx: prSectionOffset(rawValue), dy: 0.5)).click()
+    }
+
+    private func issueSectionOffset(_ rawValue: String) -> CGFloat {
+        switch rawValue {
+        case "open":
+            return 0.125
+        case "running":
+            return 0.375
+        case "unassigned":
+            return 0.625
+        case "closed":
+            return 0.875
+        default:
+            return 0.125
+        }
+    }
+
+    private func prSectionOffset(_ rawValue: String) -> CGFloat {
+        switch rawValue {
+        case "review":
+            return 0.125
+        case "open":
+            return 0.375
+        case "merged":
+            return 0.625
+        case "closed":
+            return 0.875
+        default:
+            return 0.125
+        }
+    }
+
     private func prSort(_ title: String) -> XCUIElement {
         app.descendants(matching: .any)["mac-prs-sort-picker"].radioButtons[title]
+    }
+
+    private func revealIssueLoadMoreButton(file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        let button = app.buttons["mac-issues-load-more-button"]
+        let scrollView = app.scrollViews.firstMatch
+        for _ in 0..<8 where !button.exists {
+            scrollView.swipeUp()
+        }
+        XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        return button
+    }
+
+    private func expandIssueFilters(file: StaticString = #filePath, line: UInt = #line) {
+        let picker = app.descendants(matching: .any)["mac-issues-section-picker"]
+        if !picker.exists {
+            let disclosure = app.descendants(matching: .any)["mac-issues-filters-disclosure"]
+            XCTAssertTrue(disclosure.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            disclosure.coordinate(withNormalizedOffset: CGVector(dx: 0.015, dy: 0.5)).click()
+        }
+        XCTAssertTrue(picker.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
+    private func expandIssueRepositories(file: StaticString = #filePath, line: UInt = #line) {
+        let repo = app.checkBoxes["mac-issues-repo-filter-org/alpha"]
+        if !repo.exists {
+            let disclosure = app.descendants(matching: .any)["mac-issues-repo-filter"]
+            XCTAssertTrue(disclosure.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            disclosure.coordinate(withNormalizedOffset: CGVector(dx: 0.015, dy: 0.5)).click()
+        }
+        XCTAssertTrue(repo.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
+    private func expandPRFilters(file: StaticString = #filePath, line: UInt = #line) {
+        let picker = app.descendants(matching: .any)["mac-prs-section-picker"]
+        if !picker.exists {
+            let disclosure = app.descendants(matching: .any)["mac-prs-filters-disclosure"]
+            XCTAssertTrue(disclosure.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            disclosure.coordinate(withNormalizedOffset: CGVector(dx: 0.015, dy: 0.5)).click()
+        }
+        XCTAssertTrue(picker.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
+    private func expandPRRepositories(file: StaticString = #filePath, line: UInt = #line) {
+        let repo = app.checkBoxes["mac-prs-repo-filter-org/alpha"]
+        if !repo.exists {
+            let disclosure = app.descendants(matching: .any)["mac-prs-repo-filter"]
+            XCTAssertTrue(disclosure.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+            disclosure.coordinate(withNormalizedOffset: CGVector(dx: 0.015, dy: 0.5)).click()
+        }
+        XCTAssertTrue(repo.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
+    private func setIssueSearch(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        selectRootSection("Issues")
+        let search = app.textFields["mac-issues-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        replaceText(in: search, with: text)
+    }
+
+    private func assertIssueSearch(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        selectRootSection("Issues")
+        let search = app.textFields["mac-issues-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        XCTAssertTrue(waitForValue(of: search, containing: text, timeout: 3), app.debugDescription, file: file, line: line)
+    }
+
+    private func setPullRequestSearch(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        selectRootSection("PRs")
+        let search = app.textFields["mac-prs-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        replaceText(in: search, with: text)
+    }
+
+    private func assertPullRequestSearch(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        selectRootSection("PRs")
+        let search = app.textFields["mac-prs-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        XCTAssertTrue(waitForValue(of: search, containing: text, timeout: 3), app.debugDescription, file: file, line: line)
+    }
+
+    private func setSessionSearch(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        selectRootSection("Active")
+        let search = app.textFields["mac-sessions-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        replaceText(in: search, with: text)
+    }
+
+    private func assertSessionSearch(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        selectRootSection("Active")
+        let search = app.textFields["mac-sessions-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+        XCTAssertTrue(waitForValue(of: search, containing: text, timeout: 3), app.debugDescription, file: file, line: line)
+    }
+
+    private func replaceText(in element: XCUIElement, with text: String) {
+        element.click()
+        element.typeKey("a", modifierFlags: .command)
+        element.typeKey(.delete, modifierFlags: [])
+        element.typeText(text)
+    }
+
+    private func switchToNextSpace(file: StaticString = #filePath, line: UInt = #line) throws {
+        try runSpaceSwitchAppleScript(keyCode: 124, file: file, line: line)
+        XCTAssertTrue(app.staticTexts["IssueCTL"].firstMatch.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
+    private func switchToPreviousSpace(file: StaticString = #filePath, line: UInt = #line) throws {
+        try runSpaceSwitchAppleScript(keyCode: 123, file: file, line: line)
+        XCTAssertTrue(app.staticTexts["IssueCTL"].firstMatch.waitForExistence(timeout: 5), app.debugDescription, file: file, line: line)
+    }
+
+    private func runSpaceSwitchAppleScript(keyCode: Int, file: StaticString = #filePath, line: UInt = #line) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = [
+            "-e",
+            "tell application \"System Events\" to key code \(keyCode) using control down",
+        ]
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else {
+                throw XCTSkip("Local Spaces verifier could not drive System Events from the UI test runner.")
+            }
+            Thread.sleep(forTimeInterval: 1)
+        } catch {
+            throw XCTSkip("Local Spaces verifier could not run osascript: \(error)")
+        }
     }
 
     private func openIssue(_ issue: XCUIElement) {

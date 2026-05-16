@@ -24,32 +24,6 @@ struct MacDraftsView: View {
                     Label("No Drafts", systemImage: "doc.text")
                 } description: {
                     Text("Create a local draft, then assign it to a repo when it is ready.")
-                } actions: {
-                    HStack {
-                        Button {
-                            activeSheet = .parse
-                        } label: {
-                            Label("Parse with AI", systemImage: "text.viewfinder")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(store.repos.isEmpty)
-                        .accessibilityIdentifier("mac-drafts-parse-ai-button")
-
-                        Button {
-                            activeSheet = .quickCreate
-                        } label: {
-                            Label("New Issue", systemImage: "square.and.pencil")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityIdentifier("mac-drafts-new-issue-button")
-
-                        Button {
-                            activeSheet = .new
-                        } label: {
-                            Label("New Draft", systemImage: "plus")
-                        }
-                        .buttonStyle(.bordered)
-                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -624,6 +598,8 @@ struct MacParseReviewState {
 }
 
 private struct DraftRow: View {
+    @Environment(\.macSidebarTextScale) private var textScale
+
     let draft: Draft
     let onAssign: () -> Void
 
@@ -632,7 +608,7 @@ private struct DraftRow: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(draft.title)
-                        .font(.subheadline.weight(.medium))
+                        .font(.macSidebar(size: 14, weight: .medium, scale: textScale))
                         .lineLimit(2)
                     Spacer(minLength: 8)
                     if let priority = draft.priority, priority != .normal {
@@ -642,13 +618,13 @@ private struct DraftRow: View {
 
                 if let body = draft.body, !body.isEmpty {
                     Text(body)
-                        .font(.caption)
+                        .font(.macSidebar(size: 12, scale: textScale))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
 
                 Text(createdDateText)
-                    .font(.caption2)
+                    .font(.macSidebar(size: 10, scale: textScale))
                     .foregroundStyle(.tertiary)
             }
 
@@ -661,7 +637,7 @@ private struct DraftRow: View {
             .controlSize(.small)
             .accessibilityIdentifier("mac-draft-assign-\(draft.id)")
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 6)
     }
 
     private var createdDateText: String {

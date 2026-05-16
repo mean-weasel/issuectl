@@ -86,8 +86,9 @@ final class SidebarPanelController: NSObject, NSWindowDelegate {
         )
         panel.contentViewController = hostingController
         panel.title = "IssueCTL"
-        panel.titleVisibility = .visible
-        panel.titlebarAppearsTransparent = false
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
+        panel.isMovableByWindowBackground = true
         panel.backgroundColor = .windowBackgroundColor
         panel.isOpaque = true
         panel.hasShadow = true

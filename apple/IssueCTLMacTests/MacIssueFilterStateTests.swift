@@ -40,6 +40,18 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertEqual(state.selectedRepoKeys, ["mean-weasel/issuectl"])
     }
 
+    func testRepoFilterDisclosureDefaultsCollapsedAndPersists() {
+        let preferences = MacSidebarDisplayPreferences(displayKey: "display-a", defaults: defaults)
+        let state = MacIssueFilterState(preferences: preferences)
+
+        XCTAssertFalse(state.isRepoFilterExpanded)
+
+        state.isRepoFilterExpanded = true
+
+        let reloaded = MacIssueFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "display-a", defaults: defaults))
+        XCTAssertTrue(reloaded.isRepoFilterExpanded)
+    }
+
     func testAllReposSelectionTracksNewRepos() {
         let preferences = MacSidebarDisplayPreferences(displayKey: "display-a", defaults: defaults)
         let state = MacIssueFilterState(preferences: preferences)
@@ -142,6 +154,70 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertEqual(reloadedB.selectedRepoKeys, ["mean-weasel/other"])
     }
 
+    func testPerDesktopPullRequestStateDoesNotCollide() {
+        let displayA = MacSidebarDisplayPreferences(displayKey: "desktop-a", defaults: defaults, namespace: "spaces")
+        let displayB = MacSidebarDisplayPreferences(displayKey: "desktop-b", defaults: defaults, namespace: "spaces")
+        let stateA = MacPullRequestFilterState(preferences: displayA)
+        let stateB = MacPullRequestFilterState(preferences: displayB)
+
+        stateA.selectedSection = .open
+        stateA.sortOrder = .created
+        stateA.mineOnly = true
+        stateA.searchText = "alpha"
+        stateA.selectedRepoKeys = ["mean-weasel/issuectl"]
+        stateA.isRepoFilterExpanded = true
+
+        stateB.selectedSection = .merged
+        stateB.sortOrder = .updated
+        stateB.mineOnly = false
+        stateB.searchText = "beta"
+        stateB.selectedRepoKeys = ["mean-weasel/other"]
+        stateB.isRepoFilterExpanded = false
+
+        let reloadedA = MacPullRequestFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "desktop-a", defaults: defaults, namespace: "spaces"))
+        let reloadedB = MacPullRequestFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "desktop-b", defaults: defaults, namespace: "spaces"))
+
+        XCTAssertEqual(reloadedA.selectedSection, .open)
+        XCTAssertEqual(reloadedA.sortOrder, .created)
+        XCTAssertTrue(reloadedA.mineOnly)
+        XCTAssertEqual(reloadedA.searchText, "alpha")
+        XCTAssertEqual(reloadedA.selectedRepoKeys, ["mean-weasel/issuectl"])
+        XCTAssertTrue(reloadedA.isRepoFilterExpanded)
+
+        XCTAssertEqual(reloadedB.selectedSection, .merged)
+        XCTAssertEqual(reloadedB.sortOrder, .updated)
+        XCTAssertFalse(reloadedB.mineOnly)
+        XCTAssertEqual(reloadedB.searchText, "beta")
+        XCTAssertEqual(reloadedB.selectedRepoKeys, ["mean-weasel/other"])
+        XCTAssertFalse(reloadedB.isRepoFilterExpanded)
+    }
+
+    func testPerDesktopSessionStateDoesNotCollide() {
+        let displayA = MacSidebarDisplayPreferences(displayKey: "desktop-a", defaults: defaults, namespace: "spaces")
+        let displayB = MacSidebarDisplayPreferences(displayKey: "desktop-b", defaults: defaults, namespace: "spaces")
+        let stateA = MacSessionFilterState(preferences: displayA)
+        let stateB = MacSessionFilterState(preferences: displayB)
+
+        stateA.searchText = "alpha"
+        stateA.selectedRepoKeys = ["mean-weasel/issuectl"]
+        stateA.isRepoFilterExpanded = true
+
+        stateB.searchText = "beta"
+        stateB.selectedRepoKeys = ["mean-weasel/other"]
+        stateB.isRepoFilterExpanded = false
+
+        let reloadedA = MacSessionFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "desktop-a", defaults: defaults, namespace: "spaces"))
+        let reloadedB = MacSessionFilterState(preferences: MacSidebarDisplayPreferences(displayKey: "desktop-b", defaults: defaults, namespace: "spaces"))
+
+        XCTAssertEqual(reloadedA.searchText, "alpha")
+        XCTAssertEqual(reloadedA.selectedRepoKeys, ["mean-weasel/issuectl"])
+        XCTAssertTrue(reloadedA.isRepoFilterExpanded)
+
+        XCTAssertEqual(reloadedB.searchText, "beta")
+        XCTAssertEqual(reloadedB.selectedRepoKeys, ["mean-weasel/other"])
+        XCTAssertFalse(reloadedB.isRepoFilterExpanded)
+    }
+
     func testProjectionMatchesIOSSectionSemantics() {
         let projection = MacIssueListModel.project(
             issues: issueItems,
@@ -160,7 +236,6 @@ final class MacIssueFilterStateTests: XCTestCase {
         XCTAssertEqual(projection.counts[.running], 1)
         XCTAssertEqual(projection.counts[.unassigned], 1)
         XCTAssertEqual(projection.counts[.closed], 1)
-        XCTAssertEqual(projection.counts[.drafts], 1)
         XCTAssertEqual(projection.issues.map(\.issue.number), [1, 4])
     }
 
@@ -185,24 +260,6 @@ final class MacIssueFilterStateTests: XCTestCase {
             "mean-weasel/other#4",
             "mean-weasel/issuectl#1",
         ])
-    }
-
-    func testDraftSearchUsesTitleAndBody() {
-        let projection = MacIssueListModel.project(
-            issues: issueItems,
-            drafts: drafts + [draft(id: "draft-2", title: "Other", body: "contains needle")],
-            sessions: [],
-            selectedRepoKeys: ["mean-weasel/issuectl", "mean-weasel/other"],
-            section: .drafts,
-            searchText: "needle",
-            mineOnly: false,
-            currentUserLogin: nil,
-            priorities: [:],
-            sortOrder: .updated
-        )
-
-        XCTAssertEqual(projection.issues.count, 0)
-        XCTAssertEqual(projection.drafts.map(\.id), ["draft-2"])
     }
 
     func testRepoNameInputParsesOwnerAndName() throws {

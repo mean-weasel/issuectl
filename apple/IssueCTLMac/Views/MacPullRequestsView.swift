@@ -46,6 +46,101 @@ struct MacPullRequestListProjection {
     let counts: [MacPullRequestSection: Int]
 }
 
+@Observable @MainActor
+final class MacPullRequestFilterState {
+    private let preferences: MacSidebarDisplayPreferences
+    private var knownRepoKeys = Set<String>()
+    private var hasInitializedRepoSelection = false
+
+    var searchText: String {
+        didSet {
+            preferences.pullRequestSearchText = searchText
+            visiblePageCount = 1
+        }
+    }
+
+    var selectedSection: MacPullRequestSection {
+        didSet {
+            preferences.pullRequestSectionRawValue = selectedSection.rawValue
+            visiblePageCount = 1
+        }
+    }
+
+    var selectedRepoKeys: Set<String> {
+        didSet {
+            preferences.selectedPullRequestRepoKeys = selectedRepoKeys
+            visiblePageCount = 1
+        }
+    }
+
+    var isRepoFilterExpanded: Bool {
+        didSet { preferences.isPullRequestRepoFilterExpanded = isRepoFilterExpanded }
+    }
+
+    var sortOrder: MacPullRequestSort {
+        didSet {
+            preferences.pullRequestSortRawValue = sortOrder.rawValue
+            visiblePageCount = 1
+        }
+    }
+
+    var mineOnly: Bool {
+        didSet {
+            preferences.pullRequestMineOnly = mineOnly
+            visiblePageCount = 1
+        }
+    }
+
+    var visiblePageCount = 1
+
+    init(preferences: MacSidebarDisplayPreferences) {
+        self.preferences = preferences
+        selectedSection = MacPullRequestSection(rawValue: preferences.pullRequestSectionRawValue) ?? .review
+        selectedRepoKeys = preferences.selectedPullRequestRepoKeys
+        isRepoFilterExpanded = preferences.isPullRequestRepoFilterExpanded
+        sortOrder = MacPullRequestSort(rawValue: preferences.pullRequestSortRawValue) ?? .updated
+        mineOnly = preferences.pullRequestMineOnly
+        searchText = preferences.pullRequestSearchText
+    }
+
+    func syncRepoSelection(repos: [Repo]) {
+        let repoKeys = Set(repos.map(\.fullName))
+        guard !repoKeys.isEmpty else {
+            selectedRepoKeys.removeAll()
+            knownRepoKeys.removeAll()
+            hasInitializedRepoSelection = false
+            return
+        }
+
+        if !hasInitializedRepoSelection {
+            if selectedRepoKeys.isEmpty {
+                selectedRepoKeys = repoKeys
+            } else {
+                selectedRepoKeys = selectedRepoKeys.intersection(repoKeys)
+            }
+            knownRepoKeys = repoKeys
+            hasInitializedRepoSelection = true
+            return
+        }
+
+        if selectedRepoKeys == knownRepoKeys {
+            selectedRepoKeys = repoKeys
+        } else {
+            selectedRepoKeys = selectedRepoKeys.intersection(repoKeys)
+        }
+        knownRepoKeys = repoKeys
+    }
+
+    func resetFilters(repos: [Repo]) {
+        selectedSection = .review
+        sortOrder = .updated
+        mineOnly = false
+        searchText = ""
+        selectedRepoKeys = Set(repos.map(\.fullName))
+        visiblePageCount = 1
+    }
+}
+
 enum MacPullRequestListModel {
     static func project(
         pulls: [MacPullRequestListItem],
@@ -156,33 +251,27 @@ struct MacPullRequestsView: View {
     @Environment(\.macSidebarTextScale) private var textScale
 
     let store: MacSidebarStore
+    @Bindable var filterState: MacPullRequestFilterState
 
     @State private var pulls: [MacPullRequestListItem] = []
-    @State private var selectedSection: MacPullRequestSection = .review
-    @State private var selectedRepoKeys = Set<String>()
-    @State private var knownRepoKeys = Set<String>()
-    @State private var searchText = ""
-    @State private var mineOnly = false
-    @State private var sortOrder: MacPullRequestSort = .updated
-    @State private var isRepoFilterExpanded = true
-    @State private var visiblePageCount = 1
+    @State private var isFilterControlsExpanded = false
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var isShowingCachedData = false
     @State private var oldestCachedAt: Date?
     @State private var selectedPull: MacPullRequestListItem?
 
-    private let pageSize = 3
+    private let pageSize = 25
 
     private var projection: MacPullRequestListProjection {
         MacPullRequestListModel.project(
             pulls: pulls,
-            selectedRepoKeys: selectedRepoKeys,
-            section: selectedSection,
-            searchText: searchText,
-            mineOnly: mineOnly,
+            selectedRepoKeys: filterState.selectedRepoKeys,
+            section: filterState.selectedSection,
+            searchText: filterState.searchText,
+            mineOnly: filterState.mineOnly,
             currentUserLogin: store.currentUserLogin,
-            sortOrder: sortOrder
+            sortOrder: filterState.sortOrder
         )
     }
 
@@ -195,7 +284,7 @@ struct MacPullRequestsView: View {
     }
 
     private var visibleLimit: Int {
-        max(pageSize, visiblePageCount * pageSize)
+        max(pageSize, filterState.visiblePageCount * pageSize)
     }
 
     private var hasMorePulls: Bool {
@@ -206,13 +295,13 @@ struct MacPullRequestsView: View {
         if store.repos.isEmpty {
             return "No repos"
         }
-        if selectedRepoKeys.isEmpty {
+        if filterState.selectedRepoKeys.isEmpty {
             return "No repos selected"
         }
-        if selectedRepoKeys.count == store.repos.count {
+        if filterState.selectedRepoKeys.count == store.repos.count {
             return "All repos"
         }
-        return "\(selectedRepoKeys.count) of \(store.repos.count) repos"
+        return "\(filterState.selectedRepoKeys.count) of \(store.repos.count) repos"
     }
 
     var body: some View {
@@ -227,8 +316,7 @@ struct MacPullRequestsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityIdentifier("mac-prs-load-error")
             } else if visiblePulls.isEmpty {
-                ContentUnavailableView(emptyTitle, systemImage: "arrow.triangle.merge", description: Text(emptyDescription))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                emptyState
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -250,7 +338,7 @@ struct MacPullRequestsView: View {
                             HStack {
                                 Spacer()
                                 Button {
-                                    visiblePageCount += 1
+                                    filterState.visiblePageCount += 1
                                 } label: {
                                     Label("Show \(pageSize) More", systemImage: "chevron.down")
                                 }
@@ -266,7 +354,6 @@ struct MacPullRequestsView: View {
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
-                                .accessibilityIdentifier("mac-prs-pagination-summary")
                         }
                     }
                     .padding(.horizontal, 8)
@@ -274,77 +361,114 @@ struct MacPullRequestsView: View {
             }
         }
         .task { await loadPulls(refresh: false) }
-        .onChange(of: store.repos.count) { _, _ in syncRepoSelection() }
-        .onChange(of: selectedSection) { _, _ in resetPaging() }
-        .onChange(of: selectedRepoKeys) { _, _ in resetPaging() }
-        .onChange(of: searchText) { _, _ in resetPaging() }
-        .onChange(of: mineOnly) { _, _ in resetPaging() }
-        .onChange(of: sortOrder) { _, _ in resetPaging() }
+        .onChange(of: store.repos.count) { _, _ in filterState.syncRepoSelection(repos: store.repos) }
         .sheet(item: $selectedPull) { item in
             MacPullRequestDetailView(item: item, store: store)
         }
     }
 
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            ContentUnavailableView(emptyTitle, systemImage: "arrow.triangle.merge", description: Text(emptyDescription))
+
+            HStack(spacing: 8) {
+                if !filterState.searchText.isEmpty {
+                    Button("Clear Search") {
+                        filterState.searchText = ""
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-prs-empty-clear-search")
+                }
+
+                if shouldShowResetFiltersAction {
+                    Button("Reset Filters") {
+                        filterState.resetFilters(repos: store.repos)
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-prs-empty-reset-filters")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("mac-prs-empty-state")
+    }
+
     private var controls: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField("Search pull requests", text: $searchText)
+            TextField("Search pull requests", text: $filterState.searchText)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("mac-prs-search-field")
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Sections")
-                    .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
-                    .foregroundStyle(.secondary)
+            MacPRSidebarDisclosureSection(isExpanded: $isFilterControlsExpanded, accessibilityIdentifier: "mac-prs-filters-disclosure") {
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Section")
+                            .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                            .foregroundStyle(.secondary)
 
-                Picker("Pull request section", selection: $selectedSection) {
-                    ForEach(MacPullRequestSection.allCases) { section in
-                        Text(section.title).tag(section)
+                        Picker("Pull request section", selection: $filterState.selectedSection) {
+                            ForEach(MacPullRequestSection.allCases) { section in
+                                Text(section.title).tag(section)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .accessibilityIdentifier("mac-prs-section-picker")
                     }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityIdentifier("mac-prs-section-picker")
-            }
 
-            HStack(spacing: 8) {
-                Picker("Sort", selection: $sortOrder) {
-                    ForEach(MacPullRequestSort.allCases) { sort in
-                        Text(sort.title).tag(sort)
+                    HStack(spacing: 8) {
+                        Picker("Sort", selection: $filterState.sortOrder) {
+                            ForEach(MacPullRequestSort.allCases) { sort in
+                                Text(sort.title).tag(sort)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .accessibilityIdentifier("mac-prs-sort-picker")
+
+                        Toggle("Mine", isOn: $filterState.mineOnly)
+                            .toggleStyle(.checkbox)
+                            .disabled(store.currentUserLogin == nil)
+                            .help(store.currentUserLogin == nil ? "Sign in is required for this filter." : "Show pull requests opened by you.")
+                            .accessibilityIdentifier("mac-prs-mine-filter")
+
+                        Button("Reset") {
+                            filterState.resetFilters(repos: store.repos)
+                        }
+                        .controlSize(.small)
+                        .accessibilityIdentifier("mac-prs-reset-filters-button")
                     }
+                    .font(.macSidebar(size: 12, scale: textScale))
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .accessibilityIdentifier("mac-prs-sort-picker")
-
-                Toggle("Mine", isOn: $mineOnly)
-                    .toggleStyle(.checkbox)
-                    .disabled(store.currentUserLogin == nil)
-                    .help(store.currentUserLogin == nil ? "Sign in is required for this filter." : "Show pull requests opened by you.")
-                    .accessibilityIdentifier("mac-prs-mine-filter")
-
-                Button("Reset") {
-                    resetFilters()
+                .padding(.top, 4)
+            } label: {
+                HStack {
+                    Text("Filters")
+                        .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                    Spacer()
+                    Text(prFilterControlSummary)
+                        .font(.macSidebar(size: 11, scale: textScale))
+                        .foregroundStyle(.secondary)
                 }
-                .controlSize(.small)
-                .accessibilityIdentifier("mac-prs-reset-filters-button")
             }
-            .font(.macSidebar(size: 12, scale: textScale))
 
             sectionCounts
             filterSummary
 
-            DisclosureGroup(isExpanded: $isRepoFilterExpanded) {
+            MacPRSidebarDisclosureSection(isExpanded: $filterState.isRepoFilterExpanded, accessibilityIdentifier: "mac-prs-repo-filter") {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Button("All") {
-                            selectedRepoKeys = Set(store.repos.map(\.fullName))
+                            filterState.selectedRepoKeys = Set(store.repos.map(\.fullName))
                         }
                         .controlSize(.small)
+                        .accessibilityIdentifier("mac-prs-repo-filter-all")
 
                         Button("None") {
-                            selectedRepoKeys.removeAll()
+                            filterState.selectedRepoKeys.removeAll()
                         }
                         .controlSize(.small)
+                        .accessibilityIdentifier("mac-prs-repo-filter-none")
 
                         Spacer()
                     }
@@ -366,7 +490,16 @@ struct MacPullRequestsView: View {
                 }
                 .font(.macSidebar(size: 12, weight: .semibold, scale: textScale))
             }
-            .accessibilityIdentifier("mac-prs-repo-filter")
+
+            HStack(spacing: 8) {
+                Text(resultSummary)
+                    .font(.macSidebar(size: 11, scale: textScale))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("mac-prs-pagination-summary")
+
+                Spacer(minLength: 4)
+            }
 
             if isShowingCachedData {
                 Label("Showing cached pull requests", systemImage: "externaldrive.badge.clock")
@@ -394,34 +527,64 @@ struct MacPullRequestsView: View {
         HStack(spacing: 6) {
             ForEach(MacPullRequestSection.allCases) { section in
                 let count = projection.counts[section] ?? 0
-                Text("\(section.title) \(count)")
-                    .font(.macSidebar(size: 11, weight: selectedSection == section ? .semibold : .regular, scale: textScale))
-                    .foregroundStyle(selectedSection == section ? .primary : .secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(selectedSection == section ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.08), in: Capsule())
+                Button {
+                    filterState.selectedSection = section
+                } label: {
+                    Text("\(section.title) \(count)")
+                        .font(.macSidebar(size: 11, weight: filterState.selectedSection == section ? .semibold : .regular, scale: textScale))
+                        .foregroundStyle(filterState.selectedSection == section ? .primary : .secondary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(filterState.selectedSection == section ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.08), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(section.title) pull requests, \(count)")
+                .accessibilityValue(filterState.selectedSection == section ? "Selected" : "")
+                .accessibilityIdentifier("mac-prs-section-count-\(section.rawValue)")
             }
         }
         .accessibilityIdentifier("mac-prs-section-counts")
     }
 
     private var filterSummary: some View {
-        Text("Showing \(selectedSection.title.lowercased()) PRs • \(repoFilterSummary) • \(sortOrder.title)")
+        Text("Showing \(filterState.selectedSection.title.lowercased()) PRs • \(repoFilterSummary) • \(filterState.sortOrder.title)")
             .font(.macSidebar(size: 11, scale: textScale))
             .foregroundStyle(.secondary)
             .lineLimit(2)
             .accessibilityIdentifier("mac-prs-filter-summary")
     }
 
+    private var resultSummary: String {
+        if !hasMorePulls {
+            return "Showing all \(visiblePulls.count) matching pull requests"
+        }
+        return "Showing \(pagedPulls.count) of \(visiblePulls.count) matching pull requests"
+    }
+
+    private var prFilterControlSummary: String {
+        var parts = [filterState.selectedSection.title, filterState.sortOrder.title]
+        if filterState.mineOnly {
+            parts.append("Mine")
+        }
+        return parts.joined(separator: " • ")
+    }
+
     private var emptyTitle: String {
-        searchText.isEmpty ? "No Pull Requests" : "No Matching Pull Requests"
+        filterState.searchText.isEmpty ? "No Pull Requests" : "No Matching Pull Requests"
     }
 
     private var emptyDescription: String {
-        if !searchText.isEmpty {
-            return "No \(selectedSection.title.lowercased()) pull requests match \"\(searchText)\"."
+        if !filterState.searchText.isEmpty {
+            return "No \(filterState.selectedSection.title.lowercased()) pull requests match \"\(filterState.searchText)\"."
         }
-        return "No \(selectedSection.title.lowercased()) pull requests match the current filters."
+        return "No \(filterState.selectedSection.title.lowercased()) pull requests match the current filters."
+    }
+
+    private var shouldShowResetFiltersAction: Bool {
+        filterState.mineOnly
+            || filterState.selectedSection != .review
+            || filterState.sortOrder != .updated
+            || filterState.selectedRepoKeys.count != store.repos.count
     }
 
     private func loadPulls(refresh: Bool) async {
@@ -433,7 +596,7 @@ struct MacPullRequestsView: View {
         if store.repos.isEmpty {
             await store.load(api: api, refresh: refresh)
         }
-        syncRepoSelection()
+        filterState.syncRepoSelection(repos: store.repos)
 
         var loadedPulls: [MacPullRequestListItem] = []
         var failures: [String] = []
@@ -463,45 +626,14 @@ struct MacPullRequestsView: View {
         }
     }
 
-    private func syncRepoSelection() {
-        let repoKeys = Set(store.repos.map(\.fullName))
-        guard !repoKeys.isEmpty else {
-            selectedRepoKeys.removeAll()
-            knownRepoKeys.removeAll()
-            return
-        }
-
-        if knownRepoKeys.isEmpty {
-            selectedRepoKeys = repoKeys
-        } else if selectedRepoKeys == knownRepoKeys {
-            selectedRepoKeys = repoKeys
-        } else {
-            selectedRepoKeys = selectedRepoKeys.intersection(repoKeys)
-        }
-        knownRepoKeys = repoKeys
-    }
-
-    private func resetFilters() {
-        selectedSection = .review
-        selectedRepoKeys = Set(store.repos.map(\.fullName))
-        searchText = ""
-        mineOnly = false
-        sortOrder = .updated
-        resetPaging()
-    }
-
-    private func resetPaging() {
-        visiblePageCount = 1
-    }
-
     private func repoBinding(_ repo: Repo) -> Binding<Bool> {
         Binding(
-            get: { selectedRepoKeys.contains(repo.fullName) },
+            get: { filterState.selectedRepoKeys.contains(repo.fullName) },
             set: { isSelected in
                 if isSelected {
-                    selectedRepoKeys.insert(repo.fullName)
+                    filterState.selectedRepoKeys.insert(repo.fullName)
                 } else {
-                    selectedRepoKeys.remove(repo.fullName)
+                    filterState.selectedRepoKeys.remove(repo.fullName)
                 }
             }
         )
@@ -1087,6 +1219,38 @@ private struct MacDetailSection<Content: View>: View {
 private extension GitHubPull {
     var macNeedsReviewAttention: Bool {
         isOpen && (checksStatus == "failure" || checksStatus == "pending")
+    }
+}
+
+private struct MacPRSidebarDisclosureSection<Label: View, Content: View>: View {
+    @Binding var isExpanded: Bool
+
+    let accessibilityIdentifier: String
+    @ViewBuilder var content: Content
+    @ViewBuilder var label: Label
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 10)
+                        .foregroundStyle(.secondary)
+                    label
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(accessibilityIdentifier)
+
+            if isExpanded {
+                content
+                    .padding(.leading, 16)
+            }
+        }
     }
 }
 

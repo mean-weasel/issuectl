@@ -134,6 +134,42 @@ final class MacSidebarDisplayPreferences {
         didSet { defaults.set(isRepoFilterExpanded, forKey: key("isRepoFilterExpanded")) }
     }
 
+    var pullRequestSectionRawValue: String {
+        didSet { defaults.set(pullRequestSectionRawValue, forKey: key("pullRequestSection")) }
+    }
+
+    var pullRequestSortRawValue: String {
+        didSet { defaults.set(pullRequestSortRawValue, forKey: key("pullRequestSort")) }
+    }
+
+    var pullRequestMineOnly: Bool {
+        didSet { defaults.set(pullRequestMineOnly, forKey: key("pullRequestMineOnly")) }
+    }
+
+    var pullRequestSearchText: String {
+        didSet { defaults.set(pullRequestSearchText, forKey: key("pullRequestSearchText")) }
+    }
+
+    var selectedPullRequestRepoKeys: Set<String> {
+        didSet { defaults.set(Array(selectedPullRequestRepoKeys).sorted(), forKey: key("selectedPullRequestRepoKeys")) }
+    }
+
+    var isPullRequestRepoFilterExpanded: Bool {
+        didSet { defaults.set(isPullRequestRepoFilterExpanded, forKey: key("isPullRequestRepoFilterExpanded")) }
+    }
+
+    var sessionSearchText: String {
+        didSet { defaults.set(sessionSearchText, forKey: key("sessionSearchText")) }
+    }
+
+    var selectedSessionRepoKeys: Set<String> {
+        didSet { defaults.set(Array(selectedSessionRepoKeys).sorted(), forKey: key("selectedSessionRepoKeys")) }
+    }
+
+    var isSessionRepoFilterExpanded: Bool {
+        didSet { defaults.set(isSessionRepoFilterExpanded, forKey: key("isSessionRepoFilterExpanded")) }
+    }
+
     var isEnabled: Bool {
         didSet { defaults.set(isEnabled, forKey: key("isEnabled")) }
     }
@@ -162,7 +198,16 @@ final class MacSidebarDisplayPreferences {
         issueMineOnly = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueMineOnly")) as? Bool ?? false
         issueSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueSearchText")) ?? ""
         selectedRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedRepoKeys")) ?? [])
-        isRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isRepoFilterExpanded")) as? Bool ?? true
+        isRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isRepoFilterExpanded")) as? Bool ?? false
+        pullRequestSectionRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestSection")) ?? "review"
+        pullRequestSortRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestSort")) ?? "updated"
+        pullRequestMineOnly = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestMineOnly")) as? Bool ?? false
+        pullRequestSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestSearchText")) ?? ""
+        selectedPullRequestRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedPullRequestRepoKeys")) ?? [])
+        isPullRequestRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isPullRequestRepoFilterExpanded")) as? Bool ?? false
+        sessionSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "sessionSearchText")) ?? ""
+        selectedSessionRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedSessionRepoKeys")) ?? [])
+        isSessionRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isSessionRepoFilterExpanded")) as? Bool ?? false
         isEnabled = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isEnabled")) as? Bool ?? true
     }
 
@@ -175,7 +220,16 @@ final class MacSidebarDisplayPreferences {
         issueMineOnly = false
         issueSearchText = ""
         selectedRepoKeys.removeAll()
-        isRepoFilterExpanded = true
+        isRepoFilterExpanded = false
+        pullRequestSectionRawValue = "review"
+        pullRequestSortRawValue = "updated"
+        pullRequestMineOnly = false
+        pullRequestSearchText = ""
+        selectedPullRequestRepoKeys.removeAll()
+        isPullRequestRepoFilterExpanded = false
+        sessionSearchText = ""
+        selectedSessionRepoKeys.removeAll()
+        isSessionRepoFilterExpanded = false
         isEnabled = true
     }
 

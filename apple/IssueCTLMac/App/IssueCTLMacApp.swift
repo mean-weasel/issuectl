@@ -78,8 +78,9 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.delegate = self
-        menu.addItem(NSMenuItem(title: "Show Current Desktop Sidebar", action: #selector(showCurrentSpaceSidebar), keyEquivalent: "s"))
-        menu.addItem(NSMenuItem(title: "Hide Current Desktop Sidebar", action: #selector(hideCurrentSpaceSidebar), keyEquivalent: "w"))
+        menu.addItem(NSMenuItem(title: "Show Current Desktop Sidebar", action: #selector(toggleCurrentSpaceSidebarVisibility), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Collapse Current Desktop Sidebar", action: #selector(toggleCurrentSpaceSidebarCollapsed), keyEquivalent: "e"))
+        menu.addItem(NSMenuItem(title: "Refresh Sidebar", action: #selector(refreshCurrentSpaceSidebar), keyEquivalent: "r"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
@@ -93,11 +94,28 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         sidebarCoordinator.refreshCurrentSpace()
         menu.removeAllItems()
-        let currentTitle = sidebarCoordinator.currentSpaceState?.title ?? "Current Desktop"
-        menu.addItem(NSMenuItem(title: "Show \(currentTitle) Sidebar", action: #selector(showCurrentSpaceSidebar), keyEquivalent: "s"))
-        menu.addItem(NSMenuItem(title: "Hide \(currentTitle) Sidebar", action: #selector(hideCurrentSpaceSidebar), keyEquivalent: "w"))
+        let currentState = sidebarCoordinator.currentSpaceState
+        let currentTitle = currentState?.title ?? "Current Desktop"
+        let currentVisibility = currentState?.chrome.isVisible == true ? "Visible" : "Hidden"
+        let currentLayout = currentState?.chrome.isCollapsed == true ? "Collapsed" : "Expanded"
+        let currentDesktopItem = NSMenuItem(title: "Current Desktop: \(currentTitle)", action: nil, keyEquivalent: "")
+        currentDesktopItem.isEnabled = false
+        menu.addItem(currentDesktopItem)
+        let currentSidebarItem = NSMenuItem(title: "Sidebar: \(currentVisibility), \(currentLayout)", action: nil, keyEquivalent: "")
+        currentSidebarItem.isEnabled = false
+        menu.addItem(currentSidebarItem)
         menu.addItem(.separator())
 
+        let visibilityTitle = currentState?.chrome.isVisible == true ? "Hide \(currentTitle) Sidebar" : "Show \(currentTitle) Sidebar"
+        let collapseTitle = currentState?.chrome.isCollapsed == true ? "Expand \(currentTitle) Sidebar" : "Collapse \(currentTitle) Sidebar"
+        menu.addItem(NSMenuItem(title: visibilityTitle, action: #selector(toggleCurrentSpaceSidebarVisibility), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: collapseTitle, action: #selector(toggleCurrentSpaceSidebarCollapsed), keyEquivalent: "e"))
+        let refreshItem = NSMenuItem(title: "Refresh Sidebar", action: #selector(refreshCurrentSpaceSidebar), keyEquivalent: "r")
+        refreshItem.isEnabled = apiClient.isConfigured
+        menu.addItem(refreshItem)
+        menu.addItem(.separator())
+
+        let desktopLayoutsMenu = NSMenu()
         for state in sidebarCoordinator.spaceStates {
             let spaceMenu = NSMenu()
             spaceMenu.addItem(NSMenuItem(
@@ -118,23 +136,37 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
             let item = NSMenuItem(title: state.title, action: nil, keyEquivalent: "")
             item.submenu = spaceMenu
-            menu.addItem(item)
+            desktopLayoutsMenu.addItem(item)
+        }
+        desktopLayoutsMenu.addItem(.separator())
+        desktopLayoutsMenu.addItem(NSMenuItem(title: "Reset All Desktop Layouts", action: #selector(resetAllSidebarLayouts), keyEquivalent: ""))
+        desktopLayoutsMenu.items.forEach { item in
+            item.target = self
+            item.submenu?.items.forEach { nestedItem in
+                nestedItem.target = self
+            }
         }
 
+        let desktopLayoutsItem = NSMenuItem(title: "Desktop Layouts", action: nil, keyEquivalent: "")
+        desktopLayoutsItem.submenu = desktopLayoutsMenu
+        menu.addItem(desktopLayoutsItem)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Reset All Sidebar Layouts", action: #selector(resetAllSidebarLayouts), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit IssueCTL", action: #selector(quit), keyEquivalent: "q"))
         menu.items.forEach { $0.target = self }
     }
 
-    @objc private func showCurrentSpaceSidebar() {
-        sidebarCoordinator.showCurrentSpace()
+    @objc private func toggleCurrentSpaceSidebarVisibility() {
+        sidebarCoordinator.toggleCurrentSpaceVisibility()
     }
 
-    @objc private func hideCurrentSpaceSidebar() {
-        sidebarCoordinator.hideCurrentSpace()
+    @objc private func toggleCurrentSpaceSidebarCollapsed() {
+        sidebarCoordinator.toggleCurrentSpaceCollapsed()
+    }
+
+    @objc private func refreshCurrentSpaceSidebar() {
+        Task { await sidebarCoordinator.store.load(api: apiClient, refresh: true) }
     }
 
     @objc private func toggleSpaceVisibility(_ sender: NSMenuItem) {

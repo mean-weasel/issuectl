@@ -2,19 +2,70 @@ import SwiftUI
 import AppKit
 import WebKit
 
+@Observable @MainActor
+final class MacSessionFilterState {
+    private let preferences: MacSidebarDisplayPreferences
+    private var knownRepoKeys = Set<String>()
+    private var hasInitializedRepoSelection = false
+
+    var searchText: String {
+        didSet { preferences.sessionSearchText = searchText }
+    }
+
+    var selectedRepoKeys: Set<String> {
+        didSet { preferences.selectedSessionRepoKeys = selectedRepoKeys }
+    }
+
+    var isRepoFilterExpanded: Bool {
+        didSet { preferences.isSessionRepoFilterExpanded = isRepoFilterExpanded }
+    }
+
+    init(preferences: MacSidebarDisplayPreferences) {
+        self.preferences = preferences
+        searchText = preferences.sessionSearchText
+        selectedRepoKeys = preferences.selectedSessionRepoKeys
+        isRepoFilterExpanded = preferences.isSessionRepoFilterExpanded
+    }
+
+    func syncRepoSelection(repoKeys: [String]) {
+        let repoKeySet = Set(repoKeys)
+        guard !repoKeySet.isEmpty else {
+            selectedRepoKeys.removeAll()
+            knownRepoKeys.removeAll()
+            hasInitializedRepoSelection = false
+            return
+        }
+
+        if !hasInitializedRepoSelection {
+            if selectedRepoKeys.isEmpty {
+                selectedRepoKeys = repoKeySet
+            } else {
+                selectedRepoKeys = selectedRepoKeys.intersection(repoKeySet)
+            }
+            knownRepoKeys = repoKeySet
+            hasInitializedRepoSelection = true
+            return
+        }
+
+        if selectedRepoKeys == knownRepoKeys {
+            selectedRepoKeys = repoKeySet
+        } else {
+            selectedRepoKeys = selectedRepoKeys.intersection(repoKeySet)
+        }
+        knownRepoKeys = repoKeySet
+    }
+}
+
 struct MacSessionsView: View {
     @Environment(APIClient.self) private var api
     @Environment(\.macSidebarTextScale) private var textScale
 
     let store: MacSidebarStore
+    @Bindable var filterState: MacSessionFilterState
 
     @State private var endingSessionId: Int?
     @State private var errorMessage: String?
     @State private var terminalNotice: String?
-    @State private var searchText = ""
-    @State private var selectedRepoKeys: Set<String> = []
-    @State private var isRepoFilterExpanded = true
-    @State private var hasSyncedRepoSelection = false
     @State private var selectedIssue: MacIssueListItem?
 
     private var availableRepoKeys: [String] {
@@ -25,8 +76,8 @@ struct MacSessionsView: View {
         MacSessionListProjection.project(
             sessions: store.sessions,
             previewsByPort: store.sessionPreviewsByPort,
-            selectedRepoKeys: selectedRepoKeys,
-            searchText: searchText
+            selectedRepoKeys: filterState.selectedRepoKeys,
+            searchText: filterState.searchText
         )
     }
 
@@ -41,8 +92,7 @@ struct MacSessionsView: View {
                 ContentUnavailableView("No Active Sessions", systemImage: "terminal", description: Text("Launch an issue to start an agent session."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if projection.sessions.isEmpty {
-                ContentUnavailableView("No Matching Sessions", systemImage: "line.3.horizontal.decrease.circle", description: Text("Adjust search or repository filters."))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                emptyState
             } else {
                 List(projection.sessions) { session in
                     sessionRow(session)
@@ -61,9 +111,35 @@ struct MacSessionsView: View {
         }
     }
 
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            ContentUnavailableView("No Matching Sessions", systemImage: "line.3.horizontal.decrease.circle", description: Text("Adjust search or repository filters."))
+
+            HStack(spacing: 8) {
+                if !filterState.searchText.isEmpty {
+                    Button("Clear Search") {
+                        filterState.searchText = ""
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-sessions-empty-clear-search")
+                }
+
+                if filterState.selectedRepoKeys.count != availableRepoKeys.count {
+                    Button("Show All Repos") {
+                        filterState.selectedRepoKeys = Set(availableRepoKeys)
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-sessions-empty-show-all-repos")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("mac-sessions-empty-state")
+    }
+
     private var controls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Search sessions", text: $searchText)
+            TextField("Search sessions", text: $filterState.searchText)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("mac-sessions-search-field")
 
@@ -83,17 +159,17 @@ struct MacSessionsView: View {
                 .accessibilityIdentifier("mac-sessions-refresh-button")
             }
 
-            DisclosureGroup(isExpanded: $isRepoFilterExpanded) {
+            MacSessionSidebarDisclosureSection(isExpanded: $filterState.isRepoFilterExpanded, accessibilityIdentifier: "mac-sessions-repo-disclosure") {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Button("All") {
-                            selectedRepoKeys = Set(availableRepoKeys)
+                            filterState.selectedRepoKeys = Set(availableRepoKeys)
                         }
                         .controlSize(.small)
                         .accessibilityIdentifier("mac-sessions-repo-filter-all")
 
                         Button("None") {
-                            selectedRepoKeys = []
+                            filterState.selectedRepoKeys = []
                         }
                         .controlSize(.small)
                         .accessibilityIdentifier("mac-sessions-repo-filter-none")
@@ -119,11 +195,10 @@ struct MacSessionsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .accessibilityIdentifier("mac-sessions-repo-disclosure")
 
             HStack(spacing: 6) {
                 Label(repoFilterSummary, systemImage: "folder")
-                if !searchText.isEmpty {
+                if !filterState.searchText.isEmpty {
                     Label("Search", systemImage: "magnifyingglass")
                 }
             }
@@ -179,9 +254,9 @@ struct MacSessionsView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(session.repoFullName) #\(session.issueNumber)")
-                        .font(.subheadline.weight(.medium))
+                        .font(.macSidebar(size: 14, weight: .medium, scale: textScale))
                     Text(session.branchName)
-                        .font(.caption)
+                        .font(.macSidebar(size: 12, scale: textScale))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -189,20 +264,20 @@ struct MacSessionsView: View {
                 Spacer()
 
                 Text(session.runningDuration)
-                    .font(.caption)
+                    .font(.macSidebar(size: 11, scale: textScale))
                     .foregroundStyle(.secondary)
             }
 
             if !session.workspacePath.isEmpty {
                 Text(session.workspacePath)
-                    .font(.caption2)
+                    .font(.macSidebar(size: 10, scale: textScale))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
             }
 
             HStack(spacing: 8) {
                 Label(session.ttydPort == nil ? "Starting" : "Ready", systemImage: session.ttydPort == nil ? "hourglass" : "terminal")
-                    .font(.caption)
+                    .font(.macSidebar(size: 11, scale: textScale))
                     .foregroundStyle(session.ttydPort == nil ? .orange : .green)
 
                 Spacer()
@@ -254,17 +329,17 @@ struct MacSessionsView: View {
             if let preview {
                 HStack(spacing: 6) {
                     Text(preview.status.displayName)
-                        .font(.caption2.weight(.semibold))
+                        .font(.macSidebar(size: 10, weight: .semibold, scale: textScale))
                     if let latestLine = preview.latestLine {
                         Text(latestLine)
-                            .font(.caption2.monospaced())
+                            .font(.macSidebar(size: 10, scale: textScale).monospaced())
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
             } else {
                 Text(session.ttydPort == nil ? "Terminal preparing" : "Preview unavailable")
-                    .font(.caption2)
+                    .font(.macSidebar(size: 10, scale: textScale))
                     .foregroundStyle(.secondary)
             }
         }
@@ -275,7 +350,7 @@ struct MacSessionsView: View {
         errorMessage = nil
         terminalNotice = nil
         MacTerminalWindowController.open(session: session, store: store, api: api) {
-            syncRepoSelection()
+            filterState.syncRepoSelection(repoKeys: availableRepoKeys)
         }
     }
 
@@ -309,23 +384,17 @@ struct MacSessionsView: View {
     }
 
     private func syncRepoSelection() {
-        let repoKeys = availableRepoKeys
-        if !hasSyncedRepoSelection {
-            selectedRepoKeys = Set(repoKeys)
-            hasSyncedRepoSelection = true
-        } else {
-            selectedRepoKeys.formIntersection(Set(repoKeys))
-        }
+        filterState.syncRepoSelection(repoKeys: availableRepoKeys)
     }
 
     private func repoBinding(_ repoKey: String) -> Binding<Bool> {
         Binding(
-            get: { selectedRepoKeys.contains(repoKey) },
+            get: { filterState.selectedRepoKeys.contains(repoKey) },
             set: { isSelected in
                 if isSelected {
-                    selectedRepoKeys.insert(repoKey)
+                    filterState.selectedRepoKeys.insert(repoKey)
                 } else {
-                    selectedRepoKeys.remove(repoKey)
+                    filterState.selectedRepoKeys.remove(repoKey)
                 }
             }
         )
@@ -352,13 +421,45 @@ struct MacSessionsView: View {
         if availableRepoKeys.isEmpty {
             return "No repos"
         }
-        if selectedRepoKeys.isEmpty {
+        if filterState.selectedRepoKeys.isEmpty {
             return "No repos selected"
         }
-        if selectedRepoKeys.count == availableRepoKeys.count {
+        if filterState.selectedRepoKeys.count == availableRepoKeys.count {
             return "All repos"
         }
-        return "\(selectedRepoKeys.count) of \(availableRepoKeys.count) repos"
+        return "\(filterState.selectedRepoKeys.count) of \(availableRepoKeys.count) repos"
+    }
+}
+
+private struct MacSessionSidebarDisclosureSection<Label: View, Content: View>: View {
+    @Binding var isExpanded: Bool
+
+    let accessibilityIdentifier: String
+    @ViewBuilder var content: Content
+    @ViewBuilder var label: Label
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 10)
+                        .foregroundStyle(.secondary)
+                    label
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(accessibilityIdentifier)
+
+            if isExpanded {
+                content
+                    .padding(.leading, 16)
+            }
+        }
     }
 }
 

@@ -9,6 +9,8 @@ final class MacSidebarSpaceState {
     let preferences: MacSidebarDisplayPreferences
     let chrome: SidebarChromeState
     let issueFilterState: MacIssueFilterState
+    let pullRequestFilterState: MacPullRequestFilterState
+    let sessionFilterState: MacSessionFilterState
     let anchorWindow: MacSidebarSpaceAnchorWindow
 
     var id: String { key }
@@ -21,6 +23,8 @@ final class MacSidebarSpaceState {
         chrome = SidebarChromeState()
         chrome.isCollapsed = preferences.isCollapsed
         issueFilterState = MacIssueFilterState(preferences: preferences)
+        pullRequestFilterState = MacPullRequestFilterState(preferences: preferences)
+        sessionFilterState = MacSessionFilterState(preferences: preferences)
         anchorWindow = MacSidebarSpaceAnchorWindow(identifier: key, slot: slot)
     }
 
@@ -205,6 +209,8 @@ final class SpaceSidebarCoordinator {
         guard let state = statesByKey[spaceKey] else { return }
         state.preferences.resetLayout()
         state.issueFilterState.syncRepoSelection(repos: store.repos)
+        state.pullRequestFilterState.syncRepoSelection(repos: store.repos)
+        state.sessionFilterState.syncRepoSelection(repoKeys: MacSessionListProjection.repoKeys(for: store.sessions))
         controllers[spaceKey]?.applyPreferencesLayout()
     }
 
@@ -277,7 +283,12 @@ final class SpaceSidebarCoordinator {
 
     private func makePanelController(for state: MacSidebarSpaceState) -> SidebarPanelController {
         let spaceKey = state.id
-        let rootView = MacSidebarRootView(store: store, issueFilterState: state.issueFilterState)
+        let rootView = MacSidebarRootView(
+            store: store,
+            issueFilterState: state.issueFilterState,
+            pullRequestFilterState: state.pullRequestFilterState,
+            sessionFilterState: state.sessionFilterState
+        )
             .environment(apiClient)
             .environment(offlineSync)
             .environment(networkMonitor)

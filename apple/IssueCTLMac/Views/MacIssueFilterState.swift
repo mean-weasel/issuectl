@@ -1,7 +1,6 @@
 import Foundation
 
 enum MacIssueFilter: String, CaseIterable, Identifiable {
-    case drafts
     case open
     case running
     case unassigned
@@ -11,7 +10,6 @@ enum MacIssueFilter: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .drafts: "Drafts"
         case .open: "Open"
         case .running: "Running"
         case .unassigned: "Unassigned"
@@ -179,7 +177,6 @@ final class MacIssueFilterState {
 
 struct MacIssueListProjection {
     let issues: [MacIssueListItem]
-    let drafts: [Draft]
     let counts: [MacIssueFilter: Int]
 }
 
@@ -208,9 +205,8 @@ enum MacIssueListModel {
             priorities: priorities,
             sortOrder: sortOrder
         )
-        let visibleDrafts = filteredDrafts(drafts, searchText: searchText)
 
-        return MacIssueListProjection(issues: visibleIssues, drafts: visibleDrafts, counts: counts)
+        return MacIssueListProjection(issues: visibleIssues, counts: counts)
     }
 
     static func sectionCounts(
@@ -219,7 +215,6 @@ enum MacIssueListModel {
         sessions: [ActiveDeployment]
     ) -> [MacIssueFilter: Int] {
         [
-            .drafts: drafts.count,
             .open: issues.filter { $0.issue.isOpen && !isRunning($0, sessions: sessions) }.count,
             .running: issues.filter { $0.issue.isOpen && isRunning($0, sessions: sessions) }.count,
             .unassigned: issues.filter { $0.issue.isOpen && ($0.issue.assignees ?? []).isEmpty }.count,
@@ -235,12 +230,8 @@ enum MacIssueListModel {
         priorities: [String: Priority],
         sortOrder: MacIssueSort
     ) -> [MacIssueListItem] {
-        guard section != .drafts else { return [] }
-
         var items = issues.filter { item in
             switch section {
-            case .drafts:
-                return false
             case .open:
                 return item.issue.isOpen && !isRunning(item, sessions: sessions)
             case .running:
@@ -258,14 +249,6 @@ enum MacIssueListModel {
         }
 
         return sorted(items, priorities: priorities, sortOrder: sortOrder)
-    }
-
-    static func filteredDrafts(_ drafts: [Draft], searchText: String) -> [Draft] {
-        let query = normalizedSearchText(searchText)
-        guard !query.isEmpty else { return drafts }
-        return drafts.filter { draft in
-            draft.title.lowercased().contains(query) || (draft.body ?? "").lowercased().contains(query)
-        }
     }
 
     static func isRunning(_ item: MacIssueListItem, sessions: [ActiveDeployment]) -> Bool {

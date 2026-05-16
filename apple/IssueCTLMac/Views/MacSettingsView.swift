@@ -55,12 +55,6 @@ struct MacSettingsView: View {
             Form {
                 connectionSection
 
-                advancedSettingsSection
-
-                worktreesSection
-
-                notificationsSection
-
                 Section("Mac Sidebar") {
                     Toggle("Launch at Login", isOn: launchAtLoginBinding)
                         .disabled(isUpdatingLaunchAtLogin)
@@ -166,9 +160,9 @@ struct MacSettingsView: View {
                     .accessibilityIdentifier("mac-settings-open-web-settings-button")
                 }
 
-                Section("Learned Desktops") {
+                Section("Desktop Layouts") {
                     if sidebarCoordinator.spaceStates.isEmpty {
-                        Text("No desktops learned yet")
+                        Text("No desktop layouts yet")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(sidebarCoordinator.spaceStates, id: \.id) { spaceState in
@@ -176,10 +170,16 @@ struct MacSettingsView: View {
                         }
                     }
 
-                    Button("Reset All Desktop Sidebar Layouts") {
+                    Button("Reset All Desktop Layouts") {
                         resetSidebarLayout()
                     }
                 }
+
+                advancedSettingsSection
+
+                worktreesSection
+
+                notificationsSection
             }
             .formStyle(.grouped)
         }
@@ -316,7 +316,7 @@ struct MacSettingsView: View {
     }
 
     private var advancedSettingsSection: some View {
-        Section("Agent Harness & Defaults") {
+        Section("Agent Defaults") {
             if isLoadingSettings {
                 ProgressView("Loading settings...")
                     .accessibilityIdentifier("mac-settings-advanced-loading")
@@ -897,6 +897,8 @@ struct MacSettingsView: View {
     private func syncSidebarRepoFilters() {
         for state in sidebarCoordinator.spaceStates {
             state.issueFilterState.syncRepoSelection(repos: repos)
+            state.pullRequestFilterState.syncRepoSelection(repos: repos)
+            state.sessionFilterState.syncRepoSelection(repoKeys: MacSessionListProjection.repoKeys(for: sidebarCoordinator.store.sessions))
         }
     }
 
@@ -906,7 +908,7 @@ struct MacSettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(spaceState.title)
                         .font(.headline)
-                    Text(spaceState.id == sidebarCoordinator.currentSpaceState?.id ? "Current desktop" : "Learned desktop")
+                    Text(spaceState.id == sidebarCoordinator.currentSpaceState?.id ? "Current" : "Saved desktop")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -915,7 +917,7 @@ struct MacSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Toggle("Open Collapsed", isOn: Binding(
+            Toggle("Opens Collapsed", isOn: Binding(
                 get: { spaceState.preferences.isCollapsed },
                 set: { newValue in
                     spaceState.preferences.isCollapsed = newValue
@@ -926,17 +928,17 @@ struct MacSettingsView: View {
             ))
 
             HStack {
-                Text("Saved Width")
+                Text("Width")
                 Spacer()
                 Text("\(Int(spaceState.preferences.expandedWidth)) px")
                     .foregroundStyle(.secondary)
             }
 
             HStack {
-                Button(spaceState.chrome.isVisible ? "Hide" : "Show") {
+                Button(spaceState.chrome.isVisible ? "Hide Sidebar" : "Show Sidebar") {
                     sidebarCoordinator.toggleVisibility(spaceKey: spaceState.id)
                 }
-                Button(spaceState.chrome.isCollapsed ? "Expand" : "Collapse") {
+                Button(spaceState.chrome.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar") {
                     sidebarCoordinator.toggleCollapsed(spaceKey: spaceState.id)
                 }
                 Button("Reset") {
@@ -1335,7 +1337,8 @@ private struct MacSettingsRepoRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 } else {
-                    Text("Add a local clone path before launching work sessions.")
+                    Label("Choose a local clone folder before launching work sessions.", systemImage: "folder.badge.plus")
+                        .lineLimit(2)
                 }
 
                 Label(repo.branchPattern?.isEmpty == false ? repo.branchPattern! : "Default branch pattern", systemImage: "arrow.triangle.branch")
@@ -1352,7 +1355,7 @@ private struct MacSettingsRepoRow: View {
                     .controlSize(.small)
             } else {
                 Menu {
-                    Button("Edit") {
+                    Button(hasLocalPath ? "Edit" : "Add Local Folder...") {
                         onEdit()
                     }
                     .accessibilityIdentifier("mac-settings-edit-repository-\(repo.fullName)")
@@ -1375,6 +1378,8 @@ private struct MacSettingsRepoRow: View {
 }
 
 private struct MacAddRepoSheet: View {
+    private static let maxVisibleBrowseRepos = 40
+
     @Environment(APIClient.self) private var api
     @Environment(\.dismiss) private var dismiss
     let trackedRepos: [Repo]
@@ -1402,6 +1407,14 @@ private struct MacAddRepoSheet: View {
         return browseRepos.filter { $0.fullName.lowercased().contains(query) }
     }
 
+    private var visibleBrowseRepos: [GitHubAccessibleRepo] {
+        Array(filteredBrowseRepos.prefix(Self.maxVisibleBrowseRepos))
+    }
+
+    private var hiddenBrowseRepoCount: Int {
+        max(0, filteredBrowseRepos.count - visibleBrowseRepos.count)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -1427,9 +1440,9 @@ private struct MacAddRepoSheet: View {
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("mac-add-repo-browse-search-field")
                         Button {
-                            Task { await loadBrowseRepos(refresh: true) }
+                            Task { await loadBrowseRepos(refresh: !browseRepos.isEmpty) }
                         } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
+                            Label(browseRepos.isEmpty ? "Load" : "Refresh", systemImage: "arrow.clockwise")
                         }
                         .disabled(isBrowseLoading)
                         .accessibilityIdentifier("mac-add-repo-browse-refresh-button")
@@ -1442,11 +1455,15 @@ private struct MacAddRepoSheet: View {
                             .foregroundStyle(.red)
                             .accessibilityIdentifier("mac-add-repo-browse-error")
                     } else if browseRepos.isEmpty {
-                        Text("Refresh to load accessible GitHub repositories.")
+                        Text("Load accessible GitHub repositories, or enter owner/name manually.")
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("mac-add-repo-browse-empty")
+                    } else if filteredBrowseRepos.isEmpty {
+                        Text("No repositories match this search.")
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("mac-add-repo-browse-no-results")
                     } else {
-                        ForEach(filteredBrowseRepos) { repo in
+                        ForEach(visibleBrowseRepos) { repo in
                             Button {
                                 fullName = repo.fullName
                             } label: {
@@ -1473,6 +1490,14 @@ private struct MacAddRepoSheet: View {
                             }
                             .disabled(trackedFullNames.contains(repo.fullName))
                             .accessibilityIdentifier("mac-add-repo-browse-row-\(repo.fullName)")
+                        }
+
+                        if hiddenBrowseRepoCount > 0 {
+                            Text("Showing \(Self.maxVisibleBrowseRepos) of \(filteredBrowseRepos.count) repositories. Search to narrow the list, or enter owner/name manually.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("mac-add-repo-browse-result-limit")
                         }
                     }
                 }
@@ -1504,9 +1529,6 @@ private struct MacAddRepoSheet: View {
                 }
             }
             .frame(width: 460, height: 520)
-            .task {
-                await loadBrowseRepos(refresh: false)
-            }
         }
     }
 
@@ -1575,6 +1597,17 @@ private struct MacEditRepoSheet: View {
                     TextField("Local path", text: $localPath)
                         .textFieldStyle(.roundedBorder)
                         .accessibilityIdentifier("mac-edit-repo-local-path-field")
+
+                    Button {
+                        chooseLocalCloneFolder()
+                    } label: {
+                        Label("Choose Folder", systemImage: "folder")
+                    }
+                    .accessibilityIdentifier("mac-edit-repo-choose-folder-button")
+
+                    Text("Pick the repository's local clone folder so launches can reuse the right working copy.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Branch Pattern") {
@@ -1632,6 +1665,20 @@ private struct MacEditRepoSheet: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func chooseLocalCloneFolder() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = false
+        panel.prompt = "Choose"
+        panel.message = "Choose the local clone folder for \(repo.fullName)."
+
+        if panel.runModal() == .OK, let url = panel.url {
+            localPath = url.path
         }
     }
 }
