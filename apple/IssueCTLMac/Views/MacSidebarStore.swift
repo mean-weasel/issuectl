@@ -6,6 +6,16 @@ final class MacSidebarStore {
     private(set) var issues: [MacIssueListItem] = []
     private(set) var drafts: [Draft] = []
     private(set) var sessions: [ActiveDeployment] = []
+    private(set) var sessionPreviewsByPort: [Int: SessionPreview] = [:]
+    private(set) var issuesFromCache = false
+    private(set) var issuesCachedAt: String?
+    private(set) var sessionsFromCache = false
+    private(set) var sessionsCachedAt: String?
+    private(set) var sessionPreviewError: String?
+    private(set) var currentUserLogin: String?
+    private(set) var userFetchFailed = false
+    private(set) var priorities: [String: Priority] = [:]
+    private(set) var isLoadingPriorities = false
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var lastLoadedAt: Date?
@@ -19,6 +29,16 @@ final class MacSidebarStore {
         issues = []
         drafts = []
         sessions = []
+        sessionPreviewsByPort = [:]
+        issuesFromCache = false
+        issuesCachedAt = nil
+        sessionsFromCache = false
+        sessionsCachedAt = nil
+        sessionPreviewError = nil
+        currentUserLogin = nil
+        userFetchFailed = false
+        priorities = [:]
+        isLoadingPriorities = false
         errorMessage = nil
         lastLoadedAt = nil
     }
@@ -34,9 +54,15 @@ final class MacSidebarStore {
             let loadedRepos = try await api.repos(refresh: refresh)
             async let draftsResult = api.listDrafts()
             async let sessionsResult = api.activeDeployments(refresh: refresh)
+            async let userResult: Result<UserResponse, Error> = {
+                do { return .success(try await api.currentUser(refresh: refresh)) }
+                catch { return .failure(error) }
+            }()
 
             var loadedIssues: [MacIssueListItem] = []
             var issueFailures: [String] = []
+            var cachedIssueDates: [Date] = []
+            var didUseCachedIssues = false
 
             for (index, repo) in loadedRepos.enumerated() {
                 do {
@@ -44,6 +70,10 @@ final class MacSidebarStore {
                     loadedIssues.append(contentsOf: response.issues.map { issue in
                         MacIssueListItem(issue: issue, repo: repo, repoIndex: index)
                     })
+                    didUseCachedIssues = didUseCachedIssues || response.fromCache
+                    if let cachedAt = response.cachedAt, let date = parseIssueCTLDate(cachedAt) {
+                        cachedIssueDates.append(date)
+                    }
                 } catch {
                     issueFailures.append("\(repo.fullName): \(error.localizedDescription)")
                 }
@@ -53,15 +83,54 @@ final class MacSidebarStore {
             issues = loadedIssues.sorted { lhs, rhs in
                 (lhs.issue.updatedDate ?? .distantPast) > (rhs.issue.updatedDate ?? .distantPast)
             }
+            issuesFromCache = didUseCachedIssues
+            issuesCachedAt = cachedIssueDates.min().map { sharedISO8601Formatter.string(from: $0) }
             drafts = try await draftsResult.drafts
-            sessions = try await sessionsResult.deployments
+            let loadedSessions = try await sessionsResult
+            sessions = loadedSessions.deployments
+            sessionsFromCache = loadedSessions.fromCache
+            sessionsCachedAt = loadedSessions.cachedAt
+            await refreshSessionPreviews(api: api)
+            switch await userResult {
+            case .success(let user):
+                currentUserLogin = user.login
+                userFetchFailed = false
+            case .failure:
+                currentUserLogin = nil
+                userFetchFailed = true
+            }
             lastLoadedAt = Date()
+            await loadPriorities(api: api, repos: loadedRepos)
 
             if !issueFailures.isEmpty {
                 errorMessage = "Some repos failed to load: \(issueFailures.joined(separator: "; "))"
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadPriorities(api: APIClient, repos: [Repo]? = nil) async {
+        let reposToLoad = repos ?? self.repos
+        isLoadingPriorities = true
+        defer { isLoadingPriorities = false }
+
+        var loadedPriorities: [String: Priority] = [:]
+        var failures: [String] = []
+        for repo in reposToLoad {
+            do {
+                let items = try await api.listPriorities(owner: repo.owner, repo: repo.name)
+                for item in items {
+                    loadedPriorities["\(repo.owner)/\(repo.name)#\(item.issueNumber)"] = item.priority
+                }
+            } catch {
+                failures.append("\(repo.name) priorities (\(error.localizedDescription))")
+            }
+        }
+
+        priorities = loadedPriorities
+        if !failures.isEmpty {
+            errorMessage = "Some priorities failed to load: \(failures.joined(separator: "; "))"
         }
     }
 
@@ -84,6 +153,31 @@ final class MacSidebarStore {
         await refreshDrafts(api: api)
     }
 
+    func createIssue(
+        api: APIClient,
+        title: String,
+        body: String?,
+        priority: Priority,
+        repo: Repo,
+        labels: [String]
+    ) async throws -> AssignDraftResponse {
+        let createResponse = try await api.createDraft(
+            body: CreateDraftRequestBody(title: title, body: body, priority: priority)
+        )
+        guard createResponse.success, let draftId = createResponse.id else {
+            throw MacSidebarStoreError.operationFailed(createResponse.error ?? "Failed to create issue")
+        }
+        let assignResponse = try await api.assignDraftWithLabels(
+            id: draftId,
+            body: AssignDraftWithLabelsRequestBody(repoId: repo.id, labels: labels.isEmpty ? nil : labels)
+        )
+        guard assignResponse.success else {
+            throw MacSidebarStoreError.operationFailed(assignResponse.error ?? "Failed to create issue")
+        }
+        await load(api: api, refresh: true)
+        return assignResponse
+    }
+
     func updateDraft(api: APIClient, id: String, title: String, body: String?, priority: Priority) async throws {
         let response = try await api.updateDraft(
             id: id,
@@ -101,6 +195,18 @@ final class MacSidebarStore {
             throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to delete draft")
         }
         drafts.removeAll { $0.id == id }
+    }
+
+    func assignDraftWithLabels(api: APIClient, id: String, repo: Repo, labels: [String]) async throws -> AssignDraftResponse {
+        let response = try await api.assignDraftWithLabels(
+            id: id,
+            body: AssignDraftWithLabelsRequestBody(repoId: repo.id, labels: labels.isEmpty ? nil : labels)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to assign draft")
+        }
+        await load(api: api, refresh: true)
+        return response
     }
 
     func issueDetail(api: APIClient, item: MacIssueListItem, refresh: Bool) async throws -> IssueDetailResponse {
@@ -126,16 +232,95 @@ final class MacSidebarStore {
         }
     }
 
-    func updateIssueState(api: APIClient, item: MacIssueListItem, state: String) async throws {
-        let response = try await api.updateIssueState(
+    func updateIssue(api: APIClient, item: MacIssueListItem, title: String?, body: String?) async throws {
+        let response = try await api.updateIssue(
             owner: item.repo.owner,
             repo: item.repo.name,
             number: item.issue.number,
-            body: IssueStateRequestBody(state: state, comment: nil)
+            body: UpdateIssueRequestBody(title: title, body: body)
         )
         guard response.success else {
             throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update issue")
         }
+    }
+
+    func updateIssueState(api: APIClient, item: MacIssueListItem, state: String, comment: String? = nil) async throws {
+        let response = try await api.updateIssueState(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: IssueStateRequestBody(state: state, comment: comment)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update issue")
+        }
+    }
+
+    func editComment(api: APIClient, item: MacIssueListItem, commentId: Int, body: String) async throws {
+        let response = try await api.editComment(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: EditCommentRequestBody(commentId: commentId, body: body)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to edit comment")
+        }
+    }
+
+    func deleteComment(api: APIClient, item: MacIssueListItem, commentId: Int) async throws {
+        let response = try await api.deleteComment(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: DeleteCommentRequestBody(commentId: commentId)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to delete comment")
+        }
+    }
+
+    func repoLabels(api: APIClient, item: MacIssueListItem) async throws -> [GitHubLabel] {
+        try await api.listRepoLabels(owner: item.repo.owner, repo: item.repo.name).labels
+    }
+
+    func toggleLabel(api: APIClient, item: MacIssueListItem, label: String, action: String) async throws {
+        let response = try await api.toggleLabel(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            body: ToggleLabelRequestBody(label: label, action: action)
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to update label")
+        }
+    }
+
+    func collaborators(api: APIClient, item: MacIssueListItem) async throws -> [CollaboratorInfo] {
+        try await api.collaborators(owner: item.repo.owner, repo: item.repo.name)
+    }
+
+    func updateAssignees(api: APIClient, item: MacIssueListItem, assignees: [String]) async throws -> [String] {
+        try await api.updateAssignees(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            assignees: assignees
+        )
+    }
+
+    func reassignIssue(api: APIClient, item: MacIssueListItem, target: Repo) async throws -> ReassignResponse {
+        let response = try await api.reassignIssue(
+            owner: item.repo.owner,
+            repo: item.repo.name,
+            number: item.issue.number,
+            targetOwner: target.owner,
+            targetRepo: target.name
+        )
+        guard response.success else {
+            throw MacSidebarStoreError.operationFailed(response.error ?? "Failed to reassign issue")
+        }
+        return response
     }
 
     func setPriority(api: APIClient, item: MacIssueListItem, priority: Priority) async throws {
@@ -153,9 +338,22 @@ final class MacSidebarStore {
     func refreshSessions(api: APIClient) async {
         errorMessage = nil
         do {
-            sessions = try await api.activeDeployments(refresh: true).deployments
+            let response = try await api.activeDeployments(refresh: true)
+            sessions = response.deployments
+            sessionsFromCache = response.fromCache
+            sessionsCachedAt = response.cachedAt
+            await refreshSessionPreviews(api: api)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshSessionPreviews(api: APIClient) async {
+        sessionPreviewError = nil
+        do {
+            sessionPreviewsByPort = try await api.sessionPreviews().previewsByPort
+        } catch {
+            sessionPreviewError = error.localizedDescription
         }
     }
 
@@ -168,26 +366,25 @@ final class MacSidebarStore {
         }
     }
 
-    func launchIssue(api: APIClient, item: MacIssueListItem, detail: IssueDetailResponse?) async throws -> ActiveDeployment {
+    func launchIssue(
+        api: APIClient,
+        item: MacIssueListItem,
+        detail: IssueDetailResponse?,
+        options providedOptions: MacIssueLaunchOptions? = nil
+    ) async throws -> ActiveDeployment {
         await refreshSessions(api: api)
         if let existing = activeSession(for: item) {
             return existing
         }
 
-        let settings = try? await api.getSettings()
-        let agent = LaunchAgent.settingValue(settings?["launch_agent"])
-        let branchName = generateBranchName(issueNumber: item.issue.number, issueTitle: item.issue.title)
-        let workspaceMode: WorkspaceMode = item.repo.localPath?.isEmpty == false ? .worktree : .clone
-        let body = LaunchRequestBody(
-            agent: agent,
-            branchName: branchName,
-            workspaceMode: workspaceMode,
-            selectedCommentIndices: [],
-            selectedFilePaths: [],
-            preamble: nil,
-            forceResume: nil,
-            idempotencyKey: UUID().uuidString
-        )
+        let options: MacIssueLaunchOptions
+        if let providedOptions {
+            options = providedOptions
+        } else {
+            let settings = try? await api.getSettings()
+            options = MacIssueLaunchOptions.defaults(for: item, detail: detail, settings: settings)
+        }
+        let body = options.requestBody(idempotencyKey: UUID().uuidString)
 
         let response = try await api.launch(
             owner: item.repo.owner,
@@ -204,8 +401,8 @@ final class MacSidebarStore {
             id: deploymentId,
             repoId: item.repo.id,
             issueNumber: item.issue.number,
-            branchName: branchName,
-            workspaceMode: workspaceMode,
+            branchName: options.branchName,
+            workspaceMode: options.workspaceMode,
             workspacePath: "",
             linkedPrNumber: nil,
             state: .active,
@@ -218,24 +415,33 @@ final class MacSidebarStore {
         )
     }
 
-    func terminalURL(api: APIClient, session: ActiveDeployment) async throws -> URL {
+    func terminalAccess(
+        api: APIClient,
+        session: ActiveDeployment,
+        preferences: MacTerminalPreferences = .default
+    ) async throws -> MacTerminalAccess {
         let result = try await api.ensureTtyd(deploymentId: session.id)
         switch result {
-        case .available(let port, let token, _):
+        case .available(let port, let token, let respawned):
             var components = URLComponents(string: "\(api.serverURL)/api/terminal/\(port)/")
             components?.queryItems = [
                 URLQueryItem(name: "terminalToken", value: token),
-                URLQueryItem(name: "lineHeight", value: "1.25"),
+                URLQueryItem(name: "fontSize", value: "\(preferences.fontSize)"),
+                URLQueryItem(name: "lineHeight", value: preferences.lineHeight),
                 URLQueryItem(name: "disableResizeOverlay", value: "true"),
                 URLQueryItem(name: "rendererType", value: "canvas"),
             ]
             guard let url = components?.url else {
                 throw MacSidebarStoreError.operationFailed("Invalid terminal URL")
             }
-            return url
+            return MacTerminalAccess(url: url, port: port, respawned: respawned)
         case .unavailable(let error):
             throw MacSidebarStoreError.operationFailed(error ?? "Terminal is not ready")
         }
+    }
+
+    func terminalURL(api: APIClient, session: ActiveDeployment) async throws -> URL {
+        try await terminalAccess(api: api, session: session).url
     }
 
     func endSession(api: APIClient, session: ActiveDeployment) async throws {
@@ -261,6 +467,191 @@ final class MacSidebarStore {
         issues.sort { lhs, rhs in
             (lhs.issue.updatedDate ?? .distantPast) > (rhs.issue.updatedDate ?? .distantPast)
         }
+    }
+}
+
+enum MacLaunchResumeBehavior: String, CaseIterable, Identifiable {
+    case automatic
+    case resume
+    case reset
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .automatic: "Auto"
+        case .resume: "Resume"
+        case .reset: "Reset"
+        }
+    }
+
+    var forceResume: Bool? {
+        switch self {
+        case .automatic: nil
+        case .resume: true
+        case .reset: false
+        }
+    }
+
+    static func behavior(forceResume: Bool?) -> MacLaunchResumeBehavior {
+        switch forceResume {
+        case .some(true): .resume
+        case .some(false): .reset
+        case .none: .automatic
+        }
+    }
+}
+
+struct MacIssueLaunchOptions: Equatable {
+    var agent: LaunchAgent
+    var branchName: String
+    var workspaceMode: WorkspaceMode
+    var selectedCommentIndices: Set<Int>
+    var selectedFilePaths: Set<String>
+    var preamble: String
+    var resumeBehavior: MacLaunchResumeBehavior
+
+    static func defaults(
+        for item: MacIssueListItem,
+        detail: IssueDetailResponse?,
+        settings: [String: String]?
+    ) -> MacIssueLaunchOptions {
+        MacIssueLaunchOptions(
+            agent: LaunchAgent.settingValue(settings?["launch_agent"]),
+            branchName: generateBranchName(issueNumber: item.issue.number, issueTitle: item.issue.title),
+            workspaceMode: item.repo.localPath?.isEmpty == false ? .worktree : .clone,
+            selectedCommentIndices: [],
+            selectedFilePaths: [],
+            preamble: "",
+            resumeBehavior: .automatic
+        )
+    }
+
+    func requestBody(idempotencyKey: String?) -> LaunchRequestBody {
+        LaunchRequestBody(
+            agent: agent,
+            branchName: branchName,
+            workspaceMode: workspaceMode,
+            selectedCommentIndices: selectedCommentIndices.sorted(),
+            selectedFilePaths: selectedFilePaths.sorted(),
+            preamble: preamble.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : preamble,
+            forceResume: resumeBehavior.forceResume,
+            idempotencyKey: idempotencyKey
+        )
+    }
+}
+
+struct MacTerminalPreferences: Equatable {
+    var fontSize: Int
+    var lineHeight: String
+
+    static let `default` = MacTerminalPreferences(fontSize: 14, lineHeight: "1.25")
+}
+
+enum MacCacheIndicatorModel {
+    static func cacheAgeText(cachedAt: String?, now: Date = Date()) -> String? {
+        guard let cachedAt, let date = parseIssueCTLDate(cachedAt) else { return nil }
+        return cacheAgeText(cachedAt: date, now: now)
+    }
+
+    static func cacheAgeText(cachedAt date: Date, now: Date = Date()) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
+        if seconds < 60 {
+            return "just now"
+        }
+
+        let minutes = seconds / 60
+        if minutes < 60 {
+            return "\(minutes)m ago"
+        }
+
+        let hours = minutes / 60
+        if hours < 24 {
+            return "\(hours)h ago"
+        }
+
+        let days = hours / 24
+        return "\(days)d ago"
+    }
+
+    static func cachedBannerText(kind: String, cachedAt: String?, now: Date = Date()) -> String {
+        if let age = cacheAgeText(cachedAt: cachedAt, now: now) {
+            return "Showing cached \(kind) from \(age)"
+        }
+        return "Showing cached \(kind)"
+    }
+
+    static func updatedText(cachedAt: String?, now: Date = Date()) -> String? {
+        guard let age = cacheAgeText(cachedAt: cachedAt, now: now) else { return nil }
+        return "Updated \(age)"
+    }
+}
+
+struct MacTerminalAccess: Equatable {
+    let url: URL
+    let port: Int
+    let respawned: Bool
+}
+
+struct MacSessionListProjection {
+    let sessions: [ActiveDeployment]
+    let totalCount: Int
+    let repoFilteredCount: Int
+
+    static func project(
+        sessions: [ActiveDeployment],
+        previewsByPort: [Int: SessionPreview],
+        selectedRepoKeys: Set<String>,
+        searchText: String
+    ) -> MacSessionListProjection {
+        let repoFiltered = sessions.filter { session in
+            selectedRepoKeys.contains(session.repoFullName)
+        }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let searched: [ActiveDeployment]
+        if query.isEmpty {
+            searched = repoFiltered
+        } else {
+            searched = repoFiltered.filter { session in
+                searchableText(for: session, preview: preview(for: session, previewsByPort: previewsByPort))
+                    .contains(query)
+            }
+        }
+        return MacSessionListProjection(
+            sessions: searched.sorted(by: sessionSort),
+            totalCount: sessions.count,
+            repoFilteredCount: repoFiltered.count
+        )
+    }
+
+    static func repoKeys(for sessions: [ActiveDeployment]) -> [String] {
+        Array(Set(sessions.map(\.repoFullName))).sorted()
+    }
+
+    private static func preview(for session: ActiveDeployment, previewsByPort: [Int: SessionPreview]) -> SessionPreview? {
+        guard let port = session.ttydPort else { return nil }
+        return previewsByPort[port]
+    }
+
+    private static func searchableText(for session: ActiveDeployment, preview: SessionPreview?) -> String {
+        [
+            session.repoFullName,
+            "#\(session.issueNumber)",
+            String(session.issueNumber),
+            session.branchName,
+            session.workspacePath,
+            session.workspaceMode.rawValue,
+            preview?.status.displayName,
+            preview?.latestLine,
+            preview?.lines.joined(separator: " "),
+        ]
+        .compactMap { $0 }
+        .joined(separator: " ")
+        .lowercased()
+    }
+
+    private static func sessionSort(_ lhs: ActiveDeployment, _ rhs: ActiveDeployment) -> Bool {
+        (lhs.launchedDate ?? .distantPast) > (rhs.launchedDate ?? .distantPast)
     }
 }
 

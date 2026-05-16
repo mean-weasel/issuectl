@@ -45,6 +45,209 @@ final class APIClientExtensionTests: XCTestCase {
         return data
     }
 
+    // MARK: - Advanced Settings
+
+    @MainActor
+    func testGetSettingsUsesSettingsEndpointAndDecodesDictionary() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/settings")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"settings":{"launch_agent":"codex","cache_ttl":"300","worktree_dir":"/tmp/issuectl"}}
+            """.data(using: .utf8)!)
+        }
+
+        let settings = try await client.getSettings()
+
+        XCTAssertEqual(settings["launch_agent"], "codex")
+        XCTAssertEqual(settings["cache_ttl"], "300")
+        XCTAssertEqual(settings["worktree_dir"], "/tmp/issuectl")
+    }
+
+    @MainActor
+    func testUpdateSettingsSendsPatchBodyAndDecodesSuccess() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/settings")
+            XCTAssertEqual(request.httpMethod, "PATCH")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["launch_agent"] as? String, "claude")
+            XCTAssertEqual(json["cache_ttl"] as? String, "600")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.updateSettings([
+            "launch_agent": "claude",
+            "cache_ttl": "600",
+        ])
+
+        XCTAssertTrue(response.success)
+        XCTAssertNil(response.error)
+    }
+
+    // MARK: - Worktrees
+
+    @MainActor
+    func testListWorktreesUsesEndpointAndDecodesRows() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/worktrees")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"worktrees":[{"path":"/tmp/alpha","name":"alpha","repo":"issuectl","owner":"mean-weasel","local_path":"/tmp/repo","issue_number":42,"stale":true}]}
+            """.data(using: .utf8)!)
+        }
+
+        let worktrees = try await client.listWorktrees()
+
+        XCTAssertEqual(worktrees.count, 1)
+        XCTAssertEqual(worktrees[0].repoFullName, "mean-weasel/issuectl")
+        XCTAssertEqual(worktrees[0].issueNumber, 42)
+        XCTAssertTrue(worktrees[0].stale)
+    }
+
+    @MainActor
+    func testCleanupWorktreeSendsPathBody() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/worktrees/cleanup")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["path"] as? String, "/tmp/alpha")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.cleanupWorktree(path: "/tmp/alpha")
+
+        XCTAssertTrue(response.success)
+        XCTAssertNil(response.error)
+    }
+
+    @MainActor
+    func testCleanupStaleWorktreesSendsEmptyBodyAndDecodesRemovedCount() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/worktrees/cleanup")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertTrue(json.isEmpty)
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"removed":2,"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.cleanupStaleWorktrees()
+
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.removed, 2)
+        XCTAssertNil(response.error)
+    }
+
+    // MARK: - Repository Settings
+
+    @MainActor
+    func testAddRepoSendsPostBodyAndDecodesRepo() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["owner"] as? String, "mean-weasel")
+            XCTAssertEqual(json["name"] as? String, "issuectl")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":{"id":7,"owner":"mean-weasel","name":"issuectl","local_path":null,"branch_pattern":null,"created_at":"2026-05-14T00:00:00Z"}}
+            """.data(using: .utf8)!)
+        }
+
+        let repo = try await client.addRepo(owner: "mean-weasel", name: "issuectl")
+
+        XCTAssertEqual(repo.id, 7)
+        XCTAssertEqual(repo.fullName, "mean-weasel/issuectl")
+    }
+
+    @MainActor
+    func testGitHubReposUsesRefreshQueryWhenRequested() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/github")
+            XCTAssertEqual(request.url?.query, "refresh=true")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"repos":[{"owner":"mean-weasel","name":"issuectl","private":true,"pushed_at":"2026-05-14T00:00:00Z"}],"synced_at":1778760000,"is_stale":false}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.githubRepos(refresh: true)
+
+        XCTAssertEqual(response.repos.map(\.fullName), ["mean-weasel/issuectl"])
+        XCTAssertEqual(response.syncedAt, 1_778_760_000)
+        XCTAssertFalse(response.isStale)
+    }
+
+    @MainActor
+    func testUpdateRepoSendsPatchBodyAndDecodesRepo() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl")
+            XCTAssertEqual(request.httpMethod, "PATCH")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["localPath"] as? String, "/Users/me/issuectl")
+            XCTAssertEqual(json["branchPattern"] as? String, "feature/{{number}}")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":{"id":7,"owner":"mean-weasel","name":"issuectl","local_path":"/Users/me/issuectl","branch_pattern":"feature/{{number}}","created_at":"2026-05-14T00:00:00Z"}}
+            """.data(using: .utf8)!)
+        }
+
+        let repo = try await client.updateRepo(
+            owner: "mean-weasel",
+            name: "issuectl",
+            localPath: "/Users/me/issuectl",
+            branchPattern: "feature/{{number}}"
+        )
+
+        XCTAssertEqual(repo.localPath, "/Users/me/issuectl")
+        XCTAssertEqual(repo.branchPattern, "feature/{{number}}")
+    }
+
+    @MainActor
+    func testRemoveRepoSendsDeleteAndSurfacesFailure() async throws {
+        var calls = 0
+        MockURLProtocol.requestHandler = { request in
+            calls += 1
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl")
+            XCTAssertEqual(request.httpMethod, "DELETE")
+
+            if calls == 1 {
+                return (self.makeResponse(url: request.url!), #"{"success":true}"#.data(using: .utf8)!)
+            }
+            return (self.makeResponse(url: request.url!), #"{"success":false,"error":"repo is required"}"#.data(using: .utf8)!)
+        }
+
+        try await client.removeRepo(owner: "mean-weasel", name: "issuectl")
+
+        do {
+            try await client.removeRepo(owner: "mean-weasel", name: "issuectl")
+            XCTFail("Expected removeRepo to surface backend failure")
+        } catch APIError.serverError(_, let message) {
+            XCTAssertEqual(message, "repo is required")
+        }
+    }
+
     // MARK: - Parse
 
     @MainActor
@@ -205,6 +408,40 @@ final class APIClientExtensionTests: XCTestCase {
 
         let body = try JSONEncoder().encode(["assignees": ["userA", "userB"]])
         _ = try await client.request(path: "/api/v1/issues/o/r/1/assignees", method: "PUT", body: body)
+    }
+
+    @MainActor
+    func testReassignIssueURLAndBodyEncoding() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/issues/org/source/42/reassign"))
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = self.readBody(from: request)
+            if let bodyData {
+                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+                XCTAssertEqual(json?["targetOwner"] as? String, "org")
+                XCTAssertEqual(json?["targetRepo"] as? String, "target")
+            }
+
+            return (self.makeResponse(url: request.url!), """
+            {"success": true, "new_issue_number": 77, "new_owner": "org", "new_repo": "target", "cleanup_warning": null, "error": null}
+            """.data(using: .utf8)!)
+        }
+
+        let body = try JSONEncoder().encode(
+            ReassignRequest(targetOwner: "org", targetRepo: "target")
+        )
+        let (data, _) = try await client.request(
+            path: "/api/v1/issues/org/source/42/reassign",
+            method: "POST",
+            body: body
+        )
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let response = try decoder.decode(ReassignResponse.self, from: data)
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.newIssueNumber, 77)
+        XCTAssertEqual(response.newRepo, "target")
     }
 
     // MARK: - DetailActions (APIClient+DetailActions)

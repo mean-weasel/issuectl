@@ -1,0 +1,612 @@
+version: 2
+
+goal:
+  title: "Mac UX Cleanup"
+  slug: "mac-ux-cleanup"
+  kind: audit
+  tranche: "Execute a whole-Mac UX cleanup pass across sidebar, menu bar popup, and panel behavior using the three-agent audit and preserved prior receipts."
+  status: done
+  intake:
+    original_request: "Clean up the mac UX, including collapsible sidebar filters and other opportunities found by three independent UX audits; prepare this with GoalBuddy."
+    interpreted_outcome: "Create and execute a GoalBuddy board that improves IssueCTL Mac sidebar, menu bar popup, and panel/window UX while preserving existing workflows."
+    input_shape: audit
+    audience: "IssueCTL maintainers and Mac app dogfood users"
+    authority: requested
+    proof_type: test
+    completion_proof: "Required UX cleanup slices are implemented, focused Mac build/tests pass or have recorded replacement evidence, and final audit maps completed receipts to the latest UX findings with full_outcome_complete: true."
+    likely_misfire: "Doing visual churn or isolated polish while leaving heavy filter chrome, duplicate Drafts IA, passive count chips, menu-bar window-management bias, risky header controls, or inconsistent panel behavior unresolved."
+    blind_spots_considered:
+      - "Existing board receipts and local work must be preserved."
+      - "T006 has implementation evidence but still lacks a complete two-desktop manual dogfood receipt."
+      - "Panel/window changes can destabilize macOS Spaces behavior."
+      - "Menu-bar app expectations differ from full-window app expectations."
+      - "UI automation may be unreliable for status menu and Mission Control behaviors."
+      - "High text scale and minimum sidebar width can expose crowding."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  preserve_user_changes: true
+  prefer_largest_safe_useful_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/mac-ux-cleanup/"
+    command: "npx goalbuddy board /Users/jeremywatt/Desktop/issuectl/docs/goals/mac-ux-cleanup"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    objective: "Validate the original UX cleanup board and select the first implementation slice."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T001-board-validation.md"
+      summary: "Approved the board and selected sidebar filter simplification as the first implementation slice."
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Simplify sidebar filters across Issues and Pull Requests as the first high-impact UX cleanup slice."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+      - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+      - "apple/IssueCTLMacTests/MacSidebarPreferencesTests.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T002-sidebar-filter-simplification.md"
+      summary: "Moved Issues and PR secondary filters into collapsed button-backed filter sections, kept search and summaries visible, defaulted repository disclosures to collapsed, and preserved/persisted issue repo disclosure preferences."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacTests/MacSidebarPreferencesTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64,id=00008132-001105AE2E99801C' -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSidebarFiltersCanBeCollapsedAndAdjusted test"
+          status: pass
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Standardize result counts and load-more behavior across Issues and Pull Requests."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T003-pagination-consistency.md"
+      summary: "Standardized issue and pull request pagination summaries, removed the duplicate issue load-more control, moved the remaining issue load-more action to the bottom of the list, and raised the pull request page size to 25."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64,id=00008132-001105AE2E99801C' -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testIssueListFiltersSortsResetsAndLoadsMore -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testPullRequestListFiltersPaginatesAndOpensDetail test"
+          status: pass
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Simplify sidebar global chrome and section-specific actions."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T004-sidebar-chrome-actions.md"
+      summary: "Moved global sidebar status and refresh into the root header, removed the redundant dashboard toolbar row, preserved collapse/hide/disconnect actions, and removed duplicate Drafts empty-state creation controls while keeping toolbar creation actions available."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64,id=00008132-001105AE2E99801C' -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSidebarLaunchesCollapsesExpandsAndHides -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testQuickCreateIssueWithLabelsRefreshesIssues test"
+          status: pass
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Clean up menu bar commands and desktop wording."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T005-menu-desktop-wording.md"
+      summary: "Made current-desktop status menu visibility and collapse actions stateful, renamed desktop layout settings away from learned-desktop wording, and added UI coverage for status menu access and settings wording."
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64,id=00008132-001105AE2E99801C' -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testStatusMenuOpensSettings -only-testing:IssueCTLMacUITests/MacSidebarSmokeTests/testSettingsShowsNativeRepositoryManagement test"
+          status: pass
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: blocked
+    objective: "Make PR and Sessions filter state follow the same per-desktop persistence model as Issues."
+    receipt:
+      result: blocked
+      decision: implemented_pending_manual_dogfood
+      full_outcome_complete: false
+      note: "notes/T006-implementation-verification.md"
+      summary: "Implemented per-desktop PR and Sessions filter persistence, added unit coverage and an opt-in local Spaces UI verifier, and verified automated gates; blocked until a complete two-desktop filter-restore dogfood receipt is recorded or Judge decides the blocker can be routed around."
+      completed_evidence:
+        - "git diff --check"
+        - "IssueCTLMac Debug build"
+        - "IssueCTLMacTests"
+        - "IssueCTLMac build-for-testing"
+      blocker:
+        - "Manual dogfood receipt still required: switch between two macOS digital desktops and confirm distinct Issues, PR, and Sessions filters restore on each desktop."
+        - "Local UI-test attempts could not reliably drive Mission Control Space switching."
+
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Reconcile the preserved board, current worktree, T006 blocker, and latest three-agent UX audit into the next safe execution package."
+    inputs:
+      - "docs/goals/mac-ux-cleanup/goal.md"
+      - "docs/goals/mac-ux-cleanup/state.yaml"
+      - "Existing notes for T001 through T006"
+      - "Current git status and dirty diff"
+      - "Latest UX audit findings summarized in the charter"
+    constraints:
+      - "Read-only except for board receipts."
+      - "Do not implement product code."
+      - "Preserve user and prior Worker changes."
+      - "Choose the largest safe useful Worker package that can proceed even if T006 remains blocked."
+      - "If T006 blocks later UX proof, record the exact manual evidence needed and continue with adjacent safe local work."
+    expected_output:
+      - "Decision: proceed | block | split"
+      - "Whether T006 must be resolved before new implementation"
+      - "Exact next Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Any board task edits needed before Worker starts"
+    verify:
+      - "git status --short --branch"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      evidence:
+        - "git status --short --branch shows existing mac UX product changes plus the repaired docs/goals/mac-ux-cleanup board."
+        - "T006 has automated implementation evidence but remains blocked only on manual two-desktop dogfood proof."
+        - "Latest UX audit findings converge on unresolved sidebar IA/filter work before riskier panel behavior."
+      blocked_tasks:
+        - "T006"
+      required_board_updates:
+        - "Activate T014 next."
+        - "Keep T006 blocked until manual Spaces dogfood evidence is available or final Judge accepts an alternate proof."
+      summary: "Proceed with T014. T006 does not block adjacent sidebar IA/filter cleanup; defer panel/window behavior until after lower-risk sidebar/menu packages."
+      next_worker:
+        objective: "Unify sidebar information architecture and filter interactions."
+        allowed_files:
+          - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+          - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+          - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+          - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+          - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+          - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+          - "apple/IssueCTLMacTests/"
+          - "apple/IssueCTLMacUITests/"
+        verify:
+          - "git diff --check"
+          - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+        stop_if:
+          - "Need files outside allowed_files."
+          - "Drafts IA requires an owner product decision not inferable from the audit."
+          - "Existing per-desktop persistence behavior becomes unclear or red."
+
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Unify sidebar information architecture and filter interactions selected by T013."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+      - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+      - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+      - "apple/IssueCTLMacTests/MacSidebarPreferencesTests.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    acceptance_criteria:
+      - "Issue and PR count chips are clearly actionable state selectors or visually demoted according to the T013 decision."
+      - "Drafts is no longer confusingly represented as both a top-level destination and an Issues state, unless T013 explicitly preserves it with new wording."
+      - "Issues, PRs, and Sessions share one disclosure rhythm and collapsed-default behavior."
+      - "Search remains visible and active filter scope remains visible when detailed controls are collapsed."
+      - "Focused unit/UI tests or dogfood evidence cover changed filter behavior."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Drafts IA requires an owner product decision not inferable from the audit."
+      - "Existing per-desktop persistence behavior becomes unclear or red."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T014-sidebar-ia-filter-interactions.md"
+      summary: "Made Issues and PR count chips actionable state selectors, removed Drafts from the Issues state model, aligned Sessions with the same collapsible filter disclosure rhythm, and defaulted Sessions repository filtering to collapsed."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacIssueFilterState.swift"
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+        - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+        - "apple/IssueCTLMacTests/MacIssueFilterStateTests.swift"
+        - "apple/IssueCTLMacTests/MacSidebarPreferencesTests.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests/MacIssueFilterStateTests -only-testing:IssueCTLMacTests/MacSidebarPreferencesTests test"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' build-for-testing"
+          status: pass
+      caveats:
+        - "Focused live UI smoke execution was attempted, but prior attempts exhausted result-bundle disk space; with only about 533 MB free, verification stopped at UI test bundle build."
+
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Rework menu bar popup and sidebar header chrome around useful mac app actions and safer controls."
+    allowed_files:
+      - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    acceptance_criteria:
+      - "Menu bar menu starts with current status and useful current-desktop/app actions before layout management."
+      - "Per-desktop layout controls are grouped behind clearer user-facing wording."
+      - "Disconnect is removed from the high-frequency sidebar header path or protected by a safer menu/confirmation path."
+      - "Show/hide, collapse/expand, settings, refresh, and quit remain available."
+      - "Focused tests or dogfood evidence cover the status menu and header action changes."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+      - "Focused Mac status-menu UI smoke test or recorded manual replacement evidence"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Menu actions require new backend/API behavior."
+      - "Status menu automation is unreliable and no manual replacement evidence can be recorded."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T015-menu-header-chrome.md"
+      summary: "Reordered the status menu around current desktop status and current actions, grouped per-desktop layout controls under Desktop Layouts, added status-menu refresh, and moved sidebar disconnect into a confirmed overflow action."
+      changed_files:
+        - "apple/IssueCTLMac/App/IssueCTLMacApp.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' build-for-testing"
+          status: pass
+      caveats:
+        - "Live status-menu UI execution was not rerun because the machine had about 533 MB free and earlier UI attempts failed while writing .xcresult bundles."
+
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Adjust panel/window behavior only where it improves the menu-bar utility feel without destabilizing Spaces support."
+    allowed_files:
+      - "apple/IssueCTLMac/Platform/SidebarPanelController.swift"
+      - "apple/IssueCTLMac/Platform/DisplaySidebarCoordinator.swift"
+      - "apple/IssueCTLMac/Platform/MacSidebarPreferences.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      - "apple/IssueCTLMacTests/"
+      - "apple/IssueCTLMacUITests/"
+    acceptance_criteria:
+      - "Panel/titlebar/activation changes, if any, are explicitly tied to the utility-app UX findings."
+      - "Current Spaces visibility, collapse, resize, and per-desktop persistence behavior is preserved."
+      - "The sidebar remains usable at min width and after hide/show/collapse cycles."
+      - "Verification includes focused build/tests and manual dogfood evidence if UI automation cannot drive Spaces."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+    stop_if:
+      - "Change risks losing per-desktop behavior."
+      - "Need private macOS APIs or destructive window-management assumptions."
+      - "Cannot verify hide/show/collapse after the change."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T016-panel-utility-chrome.md"
+      summary: "Reduced redundant panel titlebar chrome with hidden title text, transparent titlebar, and background dragging while preserving existing Spaces, resize, close, and right-edge alignment behavior."
+      changed_files:
+        - "apple/IssueCTLMac/Platform/SidebarPanelController.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+      caveats:
+        - "Live hide/show/collapse and Spaces dogfood was not rerun because the machine had about 532 MB free and earlier UI attempts failed while writing .xcresult bundles."
+
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Improve sidebar recovery states, collapsed rail glanceability, and row density consistency."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+      - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+      - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+      - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+      - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+    acceptance_criteria:
+      - "Filtered empty states offer direct recovery actions where appropriate."
+      - "Collapsed rail exposes useful attention/session/offline state without changing rail width."
+      - "Today, Issues, PRs, Drafts, and Sessions rows use more consistent hierarchy and spacing."
+      - "Accessibility labels/tooltips expose full state for collapsed and compact controls."
+      - "Focused tests or dogfood evidence cover representative empty, collapsed, and high-text-scale states."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "High-text-scale or collapsed rail requirements conflict with fixed sidebar width."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T017-recovery-collapsed-density.md"
+      summary: "Added direct recovery actions for filtered empty Issues, PRs, and Sessions; added collapsed-rail count/offline state; and aligned Drafts and Sessions row typography with the shared sidebar text scale."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacDraftsView.swift"
+        - "apple/IssueCTLMac/Views/MacIssuesView.swift"
+        - "apple/IssueCTLMac/Views/MacPullRequestsView.swift"
+        - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarRootView.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' -only-testing:IssueCTLMacTests test"
+          status: pass
+      caveats:
+        - "Live collapsed/empty-state UI smoke execution was not rerun because the machine has roughly 532 MB free and earlier UI attempts failed while writing .xcresult bundles."
+
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Clean up settings and repository setup only after higher-impact sidebar/menu/panel slices are complete or Judge selects it as the next best package."
+    allowed_files:
+      - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+      - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+    acceptance_criteria:
+      - "Settings language matches the chosen sidebar/menu mental model."
+      - "Low-frequency diagnostics and maintenance do not crowd the default settings path."
+      - "Repository setup exposes clearer Mac-native local folder affordances if not already present."
+      - "Existing settings save/load and repository management behavior still work."
+    verify:
+      - "git diff --check"
+      - "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+      - "Focused Mac settings UI smoke test or recorded manual replacement evidence"
+    stop_if:
+      - "Settings restructure becomes a broad redesign."
+      - "Repository folder picker requires entitlements or APIs outside this tranche."
+    receipt:
+      result: done
+      decision: implemented
+      full_outcome_complete: false
+      note: "notes/T018-settings-repository-setup.md"
+      summary: "Moved high-frequency Mac app settings above lower-frequency maintenance sections, aligned desktop layout wording, and added a native folder chooser for repository local clone paths."
+      changed_files:
+        - "apple/IssueCTLMac/Views/MacSettingsView.swift"
+        - "apple/IssueCTLMacUITests/MacSidebarSmokeTests.swift"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS,arch=arm64' build"
+          status: pass
+        - cmd: "xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -destination 'platform=macOS,arch=arm64' build-for-testing"
+          status: pass
+      caveats:
+        - "Live settings UI smoke execution was not rerun because the machine has roughly 532 MB free and earlier UI attempts failed while writing .xcresult bundles."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the whole-Mac UX cleanup tranche is complete."
+    inputs:
+      - "All done task receipts"
+      - "Latest validation commands"
+      - "Current dirty diff"
+      - "Manual dogfood receipts for Spaces/status-menu behaviors where automation was unreliable"
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Mapping from completed receipts to latest UX findings"
+      - "Missing evidence or next task if not complete"
+    verify:
+      - "git status --short --branch"
+      - "Latest accepted build/test commands from task receipts"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      note: "notes/T999-final-audit.md"
+      summary: "Implementation slices are complete, but the goal cannot be marked complete because T006 still lacks two-desktop dogfood evidence and later UI-sensitive changes have build/UI-bundle evidence rather than focused live UI or manual replacement receipts."
+      missing_evidence:
+        - "T006 complete two-desktop filter-restore dogfood receipt."
+        - "Focused live UI or manual replacement evidence for updated sidebar filter/count interactions."
+        - "Focused live UI or manual replacement evidence for status menu and header changes."
+        - "Focused live UI or manual replacement evidence for panel hide/show/collapse after titlebar changes."
+        - "Focused live UI or manual replacement evidence for collapsed rail badges, empty-state recovery actions, and settings repository folder chooser."
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Collect final manual dogfood or focused UI evidence needed to complete the Mac UX cleanup tranche."
+    allowed_files:
+      - "docs/goals/mac-ux-cleanup/notes/"
+      - "docs/goals/mac-ux-cleanup/notes/*"
+      - "docs/goals/mac-ux-cleanup/state.yaml"
+    acceptance_criteria:
+      - "Record complete two-desktop dogfood proof that distinct Issues, Pull Requests, and Sessions filters restore across macOS desktops."
+      - "Record focused live UI or manual replacement evidence for sidebar filter/count interactions, status menu/header changes, panel hide/show/collapse, collapsed rail badges, filtered empty recovery actions, and settings repository folder chooser."
+      - "Confirm enough local disk is available before running UI tests that write .xcresult bundles, or record manual evidence instead."
+      - "After evidence is recorded, rerun the final audit and only mark full_outcome_complete true if every checklist item is covered."
+    verify:
+      - "df -h ."
+      - "Focused UI smoke commands or dated manual dogfood receipt"
+      - "node /Users/jeremywatt/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.6/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/mac-ux-cleanup/state.yaml"
+    stop_if:
+      - "Local disk remains too low for UI tests and no manual dogfood can be performed."
+      - "Spaces switching cannot be verified manually."
+    receipt:
+      result: done
+      decision: manual_evidence_collected
+      full_outcome_complete: false
+      note: "notes/T019-evidence-collection-blocked.md"
+      summary: "Collected direct-app manual evidence for sidebar filters/counts, PR filters, status menu commands, clean panel show/collapse/expand/hide, collapsed rail badges/offline state, filtered empty recovery actions, settings opening, the edit-repository folder chooser, and a clean two-desktop Spaces dogfood receipt."
+      changed_files:
+        - "docs/goals/mac-ux-cleanup/notes/T019-evidence-collection-blocked.md"
+        - "docs/goals/mac-ux-cleanup/notes/T020-final-completion-audit.md"
+        - "docs/goals/mac-ux-cleanup/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "node /Users/jeremywatt/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.6/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/mac-ux-cleanup/state.yaml"
+          status: pass
+      completed_evidence:
+        - "df -h . showed about 490 MB free."
+        - "IssueCTL Logs/Test is about 1.5 MB, so deleting current .xcresult bundles would not provide useful headroom."
+        - "IssueCTL DerivedData is about 319 MB total; clearing only this project would not reliably create enough headroom after rebuild."
+        - "Direct-launched the Debug IssueCTLMac app with UI fixture environment, avoiding XCTest .xcresult writes."
+        - "Manual screenshots under /tmp/issuectl-mac-evidence-*.png showed Issues filters/count chip interaction, expanded repositories, PR filter disclosure, collapsed rail badges, status menu stateful commands, and settings opening from the status menu."
+        - "Manual screenshots showed clean panel show/collapse/expand/hide after the titlebar changes."
+        - "Manual screenshots showed impossible-search empty states with recovery actions for Issues, PRs, and Active/Sessions."
+        - "Manual screenshots showed the offline fixture state in the collapsed rail with the offline indicator and badges."
+        - "Manual screenshots showed the edit repository sheet and the native local-folder chooser opened from Choose Folder."
+        - "Attempted the two-desktop Spaces dogfood using the two existing main-display Spaces; status menu screenshots confirmed Desktop 1 and Desktop 2 detection, and Desktop 2 Issues restored the Running filter after a round trip."
+        - "Clean two-desktop Spaces dogfood used the existing Desktop 1 and Desktop 2 with the direct-launched fixture app."
+        - "Desktop 1 was configured with Issues Running, PR search d1-pr, and Active/Sessions search d1-session."
+        - "Desktop 2 was configured with Issues Unassigned, PR search d2-pr, and Active/Sessions search d2-session."
+        - "Restore screenshots showed Desktop 1 restoring Running, d1-pr, and d1-session after returning from Desktop 2."
+        - "Restore screenshots showed Desktop 2 restoring Unassigned, d2-pr, and d2-session after returning from Desktop 1."
+      caveats:
+        - "Keyboard Space switching was inconsistent in this session, so Mission Control thumbnails were used for the reliable restore transitions."
+        - "Low disk still made full UI XCTest reruns unsafe; T019 records manual replacement evidence instead."
+
+  - id: T020
+    type: pm
+    assignee: PM
+    status: done
+    objective: "Audit whether the Mac UX cleanup tranche is complete after T019 evidence collection."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      note: "notes/T020-final-completion-audit.md"
+      summary: "Final PM audit maps the completed implementation receipts and T019 manual evidence to every goal checklist item, including the previously missing two-desktop Spaces dogfood receipt."
+      evidence:
+        - "T019 sidebar, status-menu, panel, collapsed-rail, empty-state, settings, and folder-chooser screenshots cover UI-sensitive replacement evidence."
+        - "T019 clean two-desktop dogfood screenshots cover distinct Issues, PR, and Sessions filter restore for Desktop 1 and Desktop 2."
+        - "Prior worker receipts cover implementation commands: git diff checks, Debug builds, focused unit tests, and focused UI/build-for-testing evidence where practical."
