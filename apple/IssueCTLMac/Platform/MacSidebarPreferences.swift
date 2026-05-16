@@ -56,6 +56,10 @@ final class MacSidebarPreferences {
         MacSidebarDisplayPreferences(displayKey: displayKey, defaults: defaults)
     }
 
+    func spacePreferences(for spaceKey: String) -> MacSidebarDisplayPreferences {
+        MacSidebarDisplayPreferences(displayKey: spaceKey, defaults: defaults, namespace: "spaces")
+    }
+
     func resetAllDisplayLayouts(displayKeys: [String]) {
         for displayKey in displayKeys {
             displayPreferences(for: displayKey).resetLayout()
@@ -91,6 +95,7 @@ final class MacSidebarDisplayPreferences {
     }
 
     private let defaults: UserDefaults
+    private let namespace: String
     let displayKey: String
 
     var isCollapsed: Bool {
@@ -109,12 +114,60 @@ final class MacSidebarDisplayPreferences {
         didSet { defaults.set(issueFilterRawValue, forKey: key("issueFilter")) }
     }
 
+    var issueSortRawValue: String {
+        didSet { defaults.set(issueSortRawValue, forKey: key("issueSort")) }
+    }
+
+    var issueMineOnly: Bool {
+        didSet { defaults.set(issueMineOnly, forKey: key("issueMineOnly")) }
+    }
+
+    var issueSearchText: String {
+        didSet { defaults.set(issueSearchText, forKey: key("issueSearchText")) }
+    }
+
     var selectedRepoKeys: Set<String> {
         didSet { defaults.set(Array(selectedRepoKeys).sorted(), forKey: key("selectedRepoKeys")) }
     }
 
     var isRepoFilterExpanded: Bool {
         didSet { defaults.set(isRepoFilterExpanded, forKey: key("isRepoFilterExpanded")) }
+    }
+
+    var pullRequestSectionRawValue: String {
+        didSet { defaults.set(pullRequestSectionRawValue, forKey: key("pullRequestSection")) }
+    }
+
+    var pullRequestSortRawValue: String {
+        didSet { defaults.set(pullRequestSortRawValue, forKey: key("pullRequestSort")) }
+    }
+
+    var pullRequestMineOnly: Bool {
+        didSet { defaults.set(pullRequestMineOnly, forKey: key("pullRequestMineOnly")) }
+    }
+
+    var pullRequestSearchText: String {
+        didSet { defaults.set(pullRequestSearchText, forKey: key("pullRequestSearchText")) }
+    }
+
+    var selectedPullRequestRepoKeys: Set<String> {
+        didSet { defaults.set(Array(selectedPullRequestRepoKeys).sorted(), forKey: key("selectedPullRequestRepoKeys")) }
+    }
+
+    var isPullRequestRepoFilterExpanded: Bool {
+        didSet { defaults.set(isPullRequestRepoFilterExpanded, forKey: key("isPullRequestRepoFilterExpanded")) }
+    }
+
+    var sessionSearchText: String {
+        didSet { defaults.set(sessionSearchText, forKey: key("sessionSearchText")) }
+    }
+
+    var selectedSessionRepoKeys: Set<String> {
+        didSet { defaults.set(Array(selectedSessionRepoKeys).sorted(), forKey: key("selectedSessionRepoKeys")) }
+    }
+
+    var isSessionRepoFilterExpanded: Bool {
+        didSet { defaults.set(isSessionRepoFilterExpanded, forKey: key("isSessionRepoFilterExpanded")) }
     }
 
     var isEnabled: Bool {
@@ -125,24 +178,37 @@ final class MacSidebarDisplayPreferences {
         defaults.object(forKey: key("selectedRepoKeys")) != nil
     }
 
-    init(displayKey: String, defaults: UserDefaults = .standard) {
+    init(displayKey: String, defaults: UserDefaults = .standard, namespace: String = "displays") {
         self.displayKey = displayKey
         self.defaults = defaults
-        isCollapsed = defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "isCollapsed")) as? Bool
+        self.namespace = namespace
+        isCollapsed = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isCollapsed")) as? Bool
             ?? defaults.object(forKey: LegacyKeys.isCollapsed) as? Bool
             ?? false
-        selectedSectionRawValue = defaults.string(forKey: Self.storageKey(displayKey: displayKey, name: "selectedSection"))
+        selectedSectionRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedSection"))
             ?? defaults.string(forKey: LegacyKeys.selectedSection)
             ?? "issues"
         expandedWidth = MacSidebarPreferences.clampedWidth(
-            defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "expandedWidth")) as? Double
+            defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "expandedWidth")) as? Double
                 ?? defaults.object(forKey: LegacyKeys.expandedWidth) as? Double
                 ?? MacSidebarPreferences.defaultExpandedWidth
         )
-        issueFilterRawValue = defaults.string(forKey: Self.storageKey(displayKey: displayKey, name: "issueFilter")) ?? "open"
-        selectedRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(displayKey: displayKey, name: "selectedRepoKeys")) ?? [])
-        isRepoFilterExpanded = defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "isRepoFilterExpanded")) as? Bool ?? true
-        isEnabled = defaults.object(forKey: Self.storageKey(displayKey: displayKey, name: "isEnabled")) as? Bool ?? true
+        issueFilterRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueFilter")) ?? "open"
+        issueSortRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueSort")) ?? "updated"
+        issueMineOnly = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueMineOnly")) as? Bool ?? false
+        issueSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "issueSearchText")) ?? ""
+        selectedRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedRepoKeys")) ?? [])
+        isRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isRepoFilterExpanded")) as? Bool ?? false
+        pullRequestSectionRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestSection")) ?? "review"
+        pullRequestSortRawValue = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestSort")) ?? "updated"
+        pullRequestMineOnly = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestMineOnly")) as? Bool ?? false
+        pullRequestSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "pullRequestSearchText")) ?? ""
+        selectedPullRequestRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedPullRequestRepoKeys")) ?? [])
+        isPullRequestRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isPullRequestRepoFilterExpanded")) as? Bool ?? false
+        sessionSearchText = defaults.string(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "sessionSearchText")) ?? ""
+        selectedSessionRepoKeys = Set(defaults.stringArray(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "selectedSessionRepoKeys")) ?? [])
+        isSessionRepoFilterExpanded = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isSessionRepoFilterExpanded")) as? Bool ?? false
+        isEnabled = defaults.object(forKey: Self.storageKey(namespace: namespace, displayKey: displayKey, name: "isEnabled")) as? Bool ?? true
     }
 
     func resetLayout() {
@@ -150,16 +216,28 @@ final class MacSidebarDisplayPreferences {
         selectedSectionRawValue = "issues"
         expandedWidth = MacSidebarPreferences.defaultExpandedWidth
         issueFilterRawValue = "open"
+        issueSortRawValue = "updated"
+        issueMineOnly = false
+        issueSearchText = ""
         selectedRepoKeys.removeAll()
-        isRepoFilterExpanded = true
+        isRepoFilterExpanded = false
+        pullRequestSectionRawValue = "review"
+        pullRequestSortRawValue = "updated"
+        pullRequestMineOnly = false
+        pullRequestSearchText = ""
+        selectedPullRequestRepoKeys.removeAll()
+        isPullRequestRepoFilterExpanded = false
+        sessionSearchText = ""
+        selectedSessionRepoKeys.removeAll()
+        isSessionRepoFilterExpanded = false
         isEnabled = true
     }
 
     private func key(_ name: String) -> String {
-        Self.storageKey(displayKey: displayKey, name: name)
+        Self.storageKey(namespace: namespace, displayKey: displayKey, name: name)
     }
 
-    private static func storageKey(displayKey: String, name: String) -> String {
-        "mac.sidebar.displays.\(displayKey).\(name)"
+    private static func storageKey(namespace: String, displayKey: String, name: String) -> String {
+        "mac.sidebar.\(namespace).\(displayKey).\(name)"
     }
 }

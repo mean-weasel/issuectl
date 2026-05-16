@@ -27,6 +27,7 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertFalse(display.isCollapsed)
         XCTAssertEqual(display.selectedSectionRawValue, "issues")
         XCTAssertEqual(display.expandedWidth, MacSidebarPreferences.defaultExpandedWidth)
+        XCTAssertFalse(display.isRepoFilterExpanded)
         XCTAssertEqual(preferences.textScale, MacSidebarPreferences.defaultTextScale)
     }
 
@@ -40,6 +41,15 @@ final class MacSidebarPreferencesTests: XCTestCase {
         display.issueFilterRawValue = "unassigned"
         display.selectedRepoKeys = ["mean-weasel/issuectl"]
         display.isRepoFilterExpanded = false
+        display.pullRequestSectionRawValue = "open"
+        display.pullRequestSortRawValue = "created"
+        display.pullRequestMineOnly = true
+        display.pullRequestSearchText = "pr"
+        display.selectedPullRequestRepoKeys = ["mean-weasel/pr"]
+        display.isPullRequestRepoFilterExpanded = true
+        display.sessionSearchText = "session"
+        display.selectedSessionRepoKeys = ["mean-weasel/session"]
+        display.isSessionRepoFilterExpanded = true
         preferences.textScale = 1.25
 
         let reloaded = MacSidebarPreferences(defaults: defaults)
@@ -50,6 +60,15 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertEqual(reloadedDisplay.issueFilterRawValue, "unassigned")
         XCTAssertEqual(reloadedDisplay.selectedRepoKeys, ["mean-weasel/issuectl"])
         XCTAssertFalse(reloadedDisplay.isRepoFilterExpanded)
+        XCTAssertEqual(reloadedDisplay.pullRequestSectionRawValue, "open")
+        XCTAssertEqual(reloadedDisplay.pullRequestSortRawValue, "created")
+        XCTAssertTrue(reloadedDisplay.pullRequestMineOnly)
+        XCTAssertEqual(reloadedDisplay.pullRequestSearchText, "pr")
+        XCTAssertEqual(reloadedDisplay.selectedPullRequestRepoKeys, ["mean-weasel/pr"])
+        XCTAssertTrue(reloadedDisplay.isPullRequestRepoFilterExpanded)
+        XCTAssertEqual(reloadedDisplay.sessionSearchText, "session")
+        XCTAssertEqual(reloadedDisplay.selectedSessionRepoKeys, ["mean-weasel/session"])
+        XCTAssertTrue(reloadedDisplay.isSessionRepoFilterExpanded)
         XCTAssertEqual(reloaded.textScale, 1.25)
     }
 
@@ -90,6 +109,15 @@ final class MacSidebarPreferencesTests: XCTestCase {
         display.issueFilterRawValue = "all"
         display.selectedRepoKeys = ["mean-weasel/issuectl"]
         display.isRepoFilterExpanded = false
+        display.pullRequestSectionRawValue = "open"
+        display.pullRequestSortRawValue = "created"
+        display.pullRequestMineOnly = true
+        display.pullRequestSearchText = "pr"
+        display.selectedPullRequestRepoKeys = ["mean-weasel/pr"]
+        display.isPullRequestRepoFilterExpanded = true
+        display.sessionSearchText = "session"
+        display.selectedSessionRepoKeys = ["mean-weasel/session"]
+        display.isSessionRepoFilterExpanded = true
         preferences.textScale = 1.3
 
         display.resetLayout()
@@ -100,7 +128,16 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertEqual(display.expandedWidth, MacSidebarPreferences.defaultExpandedWidth)
         XCTAssertEqual(display.issueFilterRawValue, "open")
         XCTAssertTrue(display.selectedRepoKeys.isEmpty)
-        XCTAssertTrue(display.isRepoFilterExpanded)
+        XCTAssertFalse(display.isRepoFilterExpanded)
+        XCTAssertEqual(display.pullRequestSectionRawValue, "review")
+        XCTAssertEqual(display.pullRequestSortRawValue, "updated")
+        XCTAssertFalse(display.pullRequestMineOnly)
+        XCTAssertEqual(display.pullRequestSearchText, "")
+        XCTAssertTrue(display.selectedPullRequestRepoKeys.isEmpty)
+        XCTAssertFalse(display.isPullRequestRepoFilterExpanded)
+        XCTAssertEqual(display.sessionSearchText, "")
+        XCTAssertTrue(display.selectedSessionRepoKeys.isEmpty)
+        XCTAssertFalse(display.isSessionRepoFilterExpanded)
         XCTAssertEqual(preferences.textScale, MacSidebarPreferences.defaultTextScale)
 
         let reloaded = MacSidebarPreferences(defaults: defaults)
@@ -108,6 +145,16 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertFalse(reloadedDisplay.isCollapsed)
         XCTAssertEqual(reloadedDisplay.selectedSectionRawValue, "issues")
         XCTAssertEqual(reloadedDisplay.expandedWidth, MacSidebarPreferences.defaultExpandedWidth)
+        XCTAssertFalse(reloadedDisplay.isRepoFilterExpanded)
+        XCTAssertEqual(reloadedDisplay.pullRequestSectionRawValue, "review")
+        XCTAssertEqual(reloadedDisplay.pullRequestSortRawValue, "updated")
+        XCTAssertFalse(reloadedDisplay.pullRequestMineOnly)
+        XCTAssertEqual(reloadedDisplay.pullRequestSearchText, "")
+        XCTAssertTrue(reloadedDisplay.selectedPullRequestRepoKeys.isEmpty)
+        XCTAssertFalse(reloadedDisplay.isPullRequestRepoFilterExpanded)
+        XCTAssertEqual(reloadedDisplay.sessionSearchText, "")
+        XCTAssertTrue(reloadedDisplay.selectedSessionRepoKeys.isEmpty)
+        XCTAssertFalse(reloadedDisplay.isSessionRepoFilterExpanded)
         XCTAssertEqual(reloaded.textScale, MacSidebarPreferences.defaultTextScale)
     }
 
@@ -119,9 +166,13 @@ final class MacSidebarPreferencesTests: XCTestCase {
         displayA.isCollapsed = true
         displayA.expandedWidth = 420
         displayA.selectedRepoKeys = ["mean-weasel/issuectl"]
+        displayA.selectedPullRequestRepoKeys = ["mean-weasel/pr-a"]
+        displayA.selectedSessionRepoKeys = ["mean-weasel/session-a"]
         displayB.isCollapsed = false
         displayB.expandedWidth = 500
         displayB.selectedRepoKeys = ["mean-weasel/other"]
+        displayB.selectedPullRequestRepoKeys = ["mean-weasel/pr-b"]
+        displayB.selectedSessionRepoKeys = ["mean-weasel/session-b"]
 
         let reloaded = MacSidebarPreferences(defaults: defaults)
         let reloadedA = reloaded.displayPreferences(for: "display-a")
@@ -133,6 +184,103 @@ final class MacSidebarPreferencesTests: XCTestCase {
         XCTAssertEqual(reloadedB.expandedWidth, 500)
         XCTAssertEqual(reloadedA.selectedRepoKeys, ["mean-weasel/issuectl"])
         XCTAssertEqual(reloadedB.selectedRepoKeys, ["mean-weasel/other"])
+        XCTAssertEqual(reloadedA.selectedPullRequestRepoKeys, ["mean-weasel/pr-a"])
+        XCTAssertEqual(reloadedB.selectedPullRequestRepoKeys, ["mean-weasel/pr-b"])
+        XCTAssertEqual(reloadedA.selectedSessionRepoKeys, ["mean-weasel/session-a"])
+        XCTAssertEqual(reloadedB.selectedSessionRepoKeys, ["mean-weasel/session-b"])
+    }
+
+    func testSpacePreferencesDoNotCollideWithDisplayPreferences() {
+        let preferences = MacSidebarPreferences(defaults: defaults)
+        let display = preferences.displayPreferences(for: "slot-a")
+        let space = preferences.spacePreferences(for: "slot-a")
+
+        display.isCollapsed = true
+        display.selectedRepoKeys = ["mean-weasel/display"]
+        display.selectedPullRequestRepoKeys = ["mean-weasel/display-pr"]
+        display.selectedSessionRepoKeys = ["mean-weasel/display-session"]
+        space.isCollapsed = false
+        space.selectedRepoKeys = ["mean-weasel/space"]
+        space.selectedPullRequestRepoKeys = ["mean-weasel/space-pr"]
+        space.selectedSessionRepoKeys = ["mean-weasel/space-session"]
+
+        let reloaded = MacSidebarPreferences(defaults: defaults)
+        let reloadedDisplay = reloaded.displayPreferences(for: "slot-a")
+        let reloadedSpace = reloaded.spacePreferences(for: "slot-a")
+
+        XCTAssertTrue(reloadedDisplay.isCollapsed)
+        XCTAssertFalse(reloadedSpace.isCollapsed)
+        XCTAssertEqual(reloadedDisplay.selectedRepoKeys, ["mean-weasel/display"])
+        XCTAssertEqual(reloadedSpace.selectedRepoKeys, ["mean-weasel/space"])
+        XCTAssertEqual(reloadedDisplay.selectedPullRequestRepoKeys, ["mean-weasel/display-pr"])
+        XCTAssertEqual(reloadedSpace.selectedPullRequestRepoKeys, ["mean-weasel/space-pr"])
+        XCTAssertEqual(reloadedDisplay.selectedSessionRepoKeys, ["mean-weasel/display-session"])
+        XCTAssertEqual(reloadedSpace.selectedSessionRepoKeys, ["mean-weasel/space-session"])
+    }
+
+    func testSpaceStatesPersistIndependentIssuePullRequestAndSessionFilters() {
+        let preferences = MacSidebarPreferences(defaults: defaults)
+        let spaceOne = MacSidebarSpaceState(slot: 1, preferences: preferences.spacePreferences(for: MacSidebarSpaceState.key(forSlot: 1)))
+        let spaceTwo = MacSidebarSpaceState(slot: 2, preferences: preferences.spacePreferences(for: MacSidebarSpaceState.key(forSlot: 2)))
+        defer {
+            spaceOne.anchorWindow.close()
+            spaceTwo.anchorWindow.close()
+        }
+
+        spaceOne.issueFilterState.selectedFilter = .running
+        spaceOne.issueFilterState.searchText = "issue-one"
+        spaceOne.issueFilterState.selectedRepoKeys = ["org/one"]
+        spaceOne.pullRequestFilterState.selectedSection = .open
+        spaceOne.pullRequestFilterState.searchText = "pr-one"
+        spaceOne.pullRequestFilterState.selectedRepoKeys = ["org/one"]
+        spaceOne.sessionFilterState.searchText = "session-one"
+        spaceOne.sessionFilterState.selectedRepoKeys = ["org/one"]
+
+        spaceTwo.issueFilterState.selectedFilter = .closed
+        spaceTwo.issueFilterState.searchText = "issue-two"
+        spaceTwo.issueFilterState.selectedRepoKeys = ["org/two"]
+        spaceTwo.pullRequestFilterState.selectedSection = .merged
+        spaceTwo.pullRequestFilterState.searchText = "pr-two"
+        spaceTwo.pullRequestFilterState.selectedRepoKeys = ["org/two"]
+        spaceTwo.sessionFilterState.searchText = "session-two"
+        spaceTwo.sessionFilterState.selectedRepoKeys = ["org/two"]
+
+        let reloadedOne = MacSidebarSpaceState(slot: 1, preferences: preferences.spacePreferences(for: MacSidebarSpaceState.key(forSlot: 1)))
+        let reloadedTwo = MacSidebarSpaceState(slot: 2, preferences: preferences.spacePreferences(for: MacSidebarSpaceState.key(forSlot: 2)))
+        defer {
+            reloadedOne.anchorWindow.close()
+            reloadedTwo.anchorWindow.close()
+        }
+
+        XCTAssertEqual(reloadedOne.issueFilterState.selectedFilter, .running)
+        XCTAssertEqual(reloadedOne.issueFilterState.searchText, "issue-one")
+        XCTAssertEqual(reloadedOne.issueFilterState.selectedRepoKeys, ["org/one"])
+        XCTAssertEqual(reloadedOne.pullRequestFilterState.selectedSection, .open)
+        XCTAssertEqual(reloadedOne.pullRequestFilterState.searchText, "pr-one")
+        XCTAssertEqual(reloadedOne.pullRequestFilterState.selectedRepoKeys, ["org/one"])
+        XCTAssertEqual(reloadedOne.sessionFilterState.searchText, "session-one")
+        XCTAssertEqual(reloadedOne.sessionFilterState.selectedRepoKeys, ["org/one"])
+
+        XCTAssertEqual(reloadedTwo.issueFilterState.selectedFilter, .closed)
+        XCTAssertEqual(reloadedTwo.issueFilterState.searchText, "issue-two")
+        XCTAssertEqual(reloadedTwo.issueFilterState.selectedRepoKeys, ["org/two"])
+        XCTAssertEqual(reloadedTwo.pullRequestFilterState.selectedSection, .merged)
+        XCTAssertEqual(reloadedTwo.pullRequestFilterState.searchText, "pr-two")
+        XCTAssertEqual(reloadedTwo.pullRequestFilterState.selectedRepoKeys, ["org/two"])
+        XCTAssertEqual(reloadedTwo.sessionFilterState.searchText, "session-two")
+        XCTAssertEqual(reloadedTwo.sessionFilterState.selectedRepoKeys, ["org/two"])
+    }
+
+    func testSpacePreferencesUseLegacyLayoutDefaultsForFirstRun() {
+        defaults.set(true, forKey: "mac.sidebar.isCollapsed")
+        defaults.set("active", forKey: "mac.sidebar.selectedSection")
+        defaults.set(430, forKey: "mac.sidebar.expandedWidth")
+
+        let space = MacSidebarPreferences(defaults: defaults).spacePreferences(for: "space-slot-1")
+
+        XCTAssertTrue(space.isCollapsed)
+        XCTAssertEqual(space.selectedSectionRawValue, "active")
+        XCTAssertEqual(space.expandedWidth, 430)
     }
 
     func testDisplayPreferencesMigrateLegacyLayoutDefaults() {

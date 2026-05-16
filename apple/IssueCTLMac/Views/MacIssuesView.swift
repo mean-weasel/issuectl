@@ -6,31 +6,28 @@ struct MacIssuesView: View {
     let store: MacSidebarStore
     @Bindable var filterState: MacIssueFilterState
 
+    @State private var isFilterControlsExpanded = false
     @State private var selectedIssue: MacIssueListItem?
 
     private let pageSize = 50
 
-    private var visibleIssues: [MacIssueListItem] {
-        let filtered = store.issues.filter { item in
-            let matchesRepo = filterState.selectedRepoKeys.contains(item.repo.fullName)
-            let matchesState = switch filterState.selectedFilter {
-            case .open:
-                item.issue.isOpen
-            case .all:
-                true
-            case .unassigned:
-                item.issue.isOpen && (item.issue.assignees ?? []).isEmpty
-            }
-            return matchesRepo && matchesState
-        }
+    private var projection: MacIssueListProjection {
+        MacIssueListModel.project(
+            issues: store.issues,
+            drafts: store.drafts,
+            sessions: store.sessions,
+            selectedRepoKeys: filterState.selectedRepoKeys,
+            section: filterState.selectedFilter,
+            searchText: filterState.searchText,
+            mineOnly: filterState.mineOnly,
+            currentUserLogin: store.currentUserLogin,
+            priorities: store.priorities,
+            sortOrder: filterState.sortOrder
+        )
+    }
 
-        guard !filterState.searchText.isEmpty else { return filtered }
-        let query = filterState.searchText.lowercased()
-        return filtered.filter { item in
-            item.issue.title.lowercased().contains(query)
-                || (item.issue.body ?? "").lowercased().contains(query)
-                || item.repoFullName.lowercased().contains(query)
-        }
+    private var visibleIssues: [MacIssueListItem] {
+        projection.issues
     }
 
     private var pagedIssues: [MacIssueListItem] {
@@ -69,41 +66,52 @@ struct MacIssuesView: View {
                 ContentUnavailableView("Could not load issues", systemImage: "wifi.exclamationmark", description: Text(errorMessage))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if visibleIssues.isEmpty {
-                ContentUnavailableView(emptyTitle, systemImage: "tray", description: Text(emptyDescription))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                emptyState
             } else {
-                List {
-                    ForEach(pagedIssues) { item in
-                        Button {
-                            selectedIssue = item
-                        } label: {
-                            MacIssueRow(item: item, isRunning: isRunning(item))
-                        }
-                            .buttonStyle(.plain)
-                    }
-
-                    if hasMoreIssues {
-                        HStack {
-                            Spacer()
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(pagedIssues) { item in
                             Button {
-                                filterState.visiblePageCount += 1
+                                selectedIssue = item
                             } label: {
-                                Label("Show 50 More", systemImage: "chevron.down")
+                                MacIssueRow(
+                                    item: item,
+                                    isRunning: MacIssueListModel.isRunning(item, sessions: store.sessions),
+                                    priority: store.priorities[MacIssueListModel.priorityKey(for: item)]
+                                )
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            Spacer()
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("mac-issue-row-\(item.repoFullName)-\(item.issue.number)")
+
+                            Divider()
                         }
-                        .padding(.vertical, 10)
-                    } else if visibleIssues.count > pageSize {
-                        Text("Showing all \(visibleIssues.count) matching issues")
-                            .font(.macSidebar(size: 11, scale: textScale))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
+
+                        if hasMoreIssues {
+                            HStack {
+                                Spacer()
+                                Button {
+                                    filterState.visiblePageCount += 1
+                                } label: {
+                                    Label("Show 50 More", systemImage: "chevron.down")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .accessibilityIdentifier("mac-issues-load-more-button")
+                                Spacer()
+                            }
                             .padding(.vertical, 10)
+                        } else if visibleIssues.count > pageSize {
+                            Text("Showing all \(visibleIssues.count) matching issues")
+                                .font(.macSidebar(size: 11, scale: textScale))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
                     }
+                    .padding(.horizontal, 8)
                 }
-                .listStyle(.plain)
             }
         }
         .onChange(of: store.issues.count) { _, _ in
@@ -117,37 +125,108 @@ struct MacIssuesView: View {
         }
     }
 
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            ContentUnavailableView(emptyTitle, systemImage: "tray", description: Text(emptyDescription))
+
+            HStack(spacing: 8) {
+                if !filterState.searchText.isEmpty {
+                    Button("Clear Search") {
+                        filterState.searchText = ""
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-issues-empty-clear-search")
+                }
+
+                if shouldShowResetFiltersAction {
+                    Button("Reset Filters") {
+                        filterState.resetFilters(repos: store.repos)
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("mac-issues-empty-reset-filters")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("mac-issues-empty-state")
+    }
+
     private var controls: some View {
         VStack(alignment: .leading, spacing: 10) {
             TextField("Search issues", text: $filterState.searchText)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("mac-issues-search-field")
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Filters")
-                    .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
-                    .foregroundStyle(.secondary)
+            MacIssueSidebarDisclosureSection(isExpanded: $isFilterControlsExpanded, accessibilityIdentifier: "mac-issues-filters-disclosure") {
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("State")
+                            .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                            .foregroundStyle(.secondary)
 
-                Picker("Issue state", selection: $filterState.selectedFilter) {
-                    ForEach(MacIssueFilter.allCases) { filter in
-                        Text(filter.title).tag(filter)
+                        Picker("Issue state", selection: $filterState.selectedFilter) {
+                            ForEach(MacIssueFilter.allCases) { filter in
+                                Text(filter.title).tag(filter)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .accessibilityIdentifier("mac-issues-section-picker")
                     }
+
+                    HStack(spacing: 8) {
+                        Picker("Sort", selection: $filterState.sortOrder) {
+                            ForEach(MacIssueSort.allCases) { sort in
+                                Text(sort.title).tag(sort)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .accessibilityIdentifier("mac-issues-sort-picker")
+
+                        Toggle("Mine", isOn: $filterState.mineOnly)
+                            .toggleStyle(.checkbox)
+                            .disabled(store.currentUserLogin == nil)
+                            .help(mineHelpText)
+                            .accessibilityIdentifier("mac-issues-mine-filter")
+
+                        Button("Reset") {
+                            filterState.resetFilters(repos: store.repos)
+                        }
+                        .controlSize(.small)
+                        .accessibilityIdentifier("mac-issues-reset-filters-button")
+                    }
+                    .font(.macSidebar(size: 12, scale: textScale))
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                .padding(.top, 4)
+            } label: {
+                HStack {
+                    Text("Filters")
+                        .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                    Spacer()
+                    Text(issueFilterControlSummary)
+                        .font(.macSidebar(size: 11, scale: textScale))
+                        .foregroundStyle(.secondary)
+                }
             }
 
-            DisclosureGroup(isExpanded: $filterState.isRepoFilterExpanded) {
+            sectionCounts
+            filterSummary
+
+            MacIssueSidebarDisclosureSection(isExpanded: $filterState.isRepoFilterExpanded, accessibilityIdentifier: "mac-issues-repo-filter") {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Button("All") {
                             filterState.selectAll(repos: store.repos)
                         }
                         .controlSize(.small)
+                        .accessibilityIdentifier("mac-issues-repo-filter-all")
 
                         Button("None") {
                             filterState.selectNone()
                         }
                         .controlSize(.small)
+                        .accessibilityIdentifier("mac-issues-repo-filter-none")
 
                         Spacer()
                     }
@@ -156,6 +235,7 @@ struct MacIssuesView: View {
                         Toggle(repo.fullName, isOn: repoBinding(repo))
                             .toggleStyle(.checkbox)
                             .font(.macSidebar(size: 12, scale: textScale))
+                            .accessibilityIdentifier("mac-issues-repo-filter-\(repo.fullName)")
                     }
                 }
                 .padding(.top, 4)
@@ -170,11 +250,88 @@ struct MacIssuesView: View {
                 }
             }
 
-            Text("Showing \(pagedIssues.count) of \(visibleIssues.count) matching issues")
-                .font(.macSidebar(size: 11, scale: textScale))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text(resultSummary)
+                    .font(.macSidebar(size: 11, scale: textScale))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("mac-issues-pagination-summary")
+
+                Spacer(minLength: 4)
+            }
+
+            if store.issuesFromCache {
+                Label(MacCacheIndicatorModel.cachedBannerText(kind: "issues", cachedAt: store.issuesCachedAt), systemImage: "externaldrive.badge.clock")
+                    .font(.macSidebar(size: 11, scale: textScale))
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("mac-issues-cached-banner")
+            } else if let updatedText = MacCacheIndicatorModel.updatedText(cachedAt: store.issuesCachedAt) {
+                Text(updatedText)
+                    .font(.macSidebar(size: 11, scale: textScale))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("mac-issues-cache-age")
+            }
         }
         .padding(12)
+    }
+
+    private var sectionCounts: some View {
+        HStack(spacing: 6) {
+            ForEach(MacIssueFilter.allCases) { filter in
+                Button {
+                    filterState.selectedFilter = filter
+                } label: {
+                    VStack(spacing: 2) {
+                        Text("\(projection.counts[filter] ?? 0)")
+                            .font(.macSidebar(size: 11, weight: .semibold, scale: textScale))
+                        Text(filter.title)
+                            .font(.macSidebar(size: 10, scale: textScale))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(filterState.selectedFilter == filter ? Color.accentColor.opacity(0.14) : Color(nsColor: .controlBackgroundColor))
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("\(filter.title) issues, \(projection.counts[filter] ?? 0)")
+                .accessibilityValue(filterState.selectedFilter == filter ? "Selected" : "")
+                .accessibilityIdentifier("mac-issues-section-count-\(filter.rawValue)")
+            }
+        }
+        .accessibilityIdentifier("mac-issues-section-counts")
+    }
+
+    private var filterSummary: some View {
+        HStack(spacing: 6) {
+            Label(repoFilterSummary, systemImage: "folder")
+            if filterState.mineOnly {
+                Label("Mine", systemImage: "person.crop.circle")
+            }
+            if !filterState.searchText.isEmpty {
+                Label("Search", systemImage: "magnifyingglass")
+            }
+            if filterState.sortOrder != .updated {
+                Label(filterState.sortOrder.title, systemImage: "arrow.up.arrow.down")
+            }
+        }
+        .font(.macSidebar(size: 11, scale: textScale))
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .accessibilityIdentifier("mac-issues-filter-summary")
+    }
+
+    private var issueFilterControlSummary: String {
+        var parts = [filterState.selectedFilter.title, filterState.sortOrder.title]
+        if filterState.mineOnly {
+            parts.append("Mine")
+        }
+        return parts.joined(separator: " • ")
     }
 
     private func repoBinding(_ repo: Repo) -> Binding<Bool> {
@@ -188,15 +345,6 @@ struct MacIssuesView: View {
                 }
             }
         )
-    }
-
-    private func isRunning(_ item: MacIssueListItem) -> Bool {
-        store.sessions.contains { session in
-            session.owner == item.repo.owner
-                && session.repoName == item.repo.name
-                && session.issueNumber == item.issue.number
-                && session.isActive
-        }
     }
 
     private var emptyTitle: String {
@@ -215,12 +363,38 @@ struct MacIssuesView: View {
         }
         switch filterState.selectedFilter {
         case .open:
-            return "No open issues are visible in tracked repos."
+            return "No open issues without running sessions are visible in tracked repos."
+        case .running:
+            return "No issues have active sessions."
         case .unassigned:
             return "Every visible open issue has an assignee."
-        case .all:
-            return "No issues are visible in tracked repos."
+        case .closed:
+            return "No closed issues are visible in tracked repos."
         }
+    }
+
+    private var shouldShowResetFiltersAction: Bool {
+        filterState.mineOnly
+            || filterState.selectedFilter != .open
+            || filterState.sortOrder != .updated
+            || filterState.selectedRepoKeys.count != store.repos.count
+    }
+
+    private var resultSummary: String {
+        if !hasMoreIssues {
+            return "Showing all \(visibleIssues.count) matching issues"
+        }
+        return "Showing \(pagedIssues.count) of \(visibleIssues.count) matching issues"
+    }
+
+    private var mineHelpText: String {
+        if store.currentUserLogin != nil {
+            return "Show issues opened by you"
+        }
+        if store.userFetchFailed {
+            return "Current user could not be loaded"
+        }
+        return "Current user is unavailable"
     }
 }
 
@@ -229,6 +403,7 @@ private struct MacIssueRow: View {
 
     let item: MacIssueListItem
     let isRunning: Bool
+    let priority: Priority?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -255,6 +430,11 @@ private struct MacIssueRow: View {
                         .labelStyle(.titleAndIcon)
                         .foregroundStyle(.secondary)
                 }
+                if let priority, priority != .normal {
+                    Label(priority.title, systemImage: "flag")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(priority == .high ? .red : .secondary)
+                }
                 if let assignees = item.issue.assignees, !assignees.isEmpty {
                     Label("\(assignees.count)", systemImage: "person")
                         .labelStyle(.titleAndIcon)
@@ -268,5 +448,43 @@ private struct MacIssueRow: View {
             .font(.macSidebar(size: 12, scale: textScale))
         }
         .padding(.vertical, 6)
+    }
+}
+
+private extension Priority {
+    var title: String {
+        rawValue.capitalized
+    }
+}
+
+private struct MacIssueSidebarDisclosureSection<Label: View, Content: View>: View {
+    @Binding var isExpanded: Bool
+
+    let accessibilityIdentifier: String
+    @ViewBuilder var content: Content
+    @ViewBuilder var label: Label
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 10)
+                        .foregroundStyle(.secondary)
+                    label
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(accessibilityIdentifier)
+
+            if isExpanded {
+                content
+                    .padding(.leading, 16)
+            }
+        }
     }
 }

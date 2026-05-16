@@ -9,6 +9,7 @@ struct IssueCTLMacApp: App {
         Settings {
             MacSettingsView()
                 .environment(appDelegate.apiClient)
+                .environment(appDelegate.offlineSync)
                 .environment(appDelegate.sidebarPreferences)
                 .environment(appDelegate.sidebarCoordinator)
                 .environment(\.resetSidebarLayout) {
@@ -21,9 +22,11 @@ struct IssueCTLMacApp: App {
 @MainActor
 final class MacAppDelegate: NSObject, NSApplicationDelegate {
     let apiClient = APIClient()
+    lazy var offlineSync = OfflineSyncService(client: apiClient)
     let sidebarPreferences = MacSidebarPreferences()
-    lazy var sidebarCoordinator = DisplaySidebarCoordinator(
+    lazy var sidebarCoordinator = SpaceSidebarCoordinator(
         apiClient: apiClient,
+        offlineSync: offlineSync,
         preferences: sidebarPreferences,
         networkMonitor: networkMonitor
     )
@@ -34,8 +37,37 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         PerformanceTrace.markAppLaunchStarted()
         NSApp.setActivationPolicy(.accessory)
+        configureUITestFixtureAPIIfNeeded()
+        configureUITestOfflineQueueIfNeeded()
         sidebarCoordinator.start()
         configureStatusItem()
+    }
+
+    private func configureUITestFixtureAPIIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["ISSUECTL_UI_TESTING"] == "1",
+              env["ISSUECTL_MAC_UI_FIXTURE_API"] == "1" else {
+            return
+        }
+        if let bundleIdentifier = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleIdentifier)
+        }
+        URLProtocol.registerClass(MacUITestFixtureURLProtocol.self)
+    }
+
+    private func configureUITestOfflineQueueIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["ISSUECTL_UI_TESTING"] == "1",
+              env["ISSUECTL_MAC_UI_FIXTURE_OFFLINE_QUEUE"] == "1" else {
+            return
+        }
+
+        offlineSync.enqueueIssueComment(
+            owner: "org",
+            repo: "alpha",
+            issueNumber: 1,
+            body: "Queued fixture comment"
+        )
     }
 
     private func configureStatusItem() {
@@ -46,8 +78,9 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.delegate = self
-        menu.addItem(NSMenuItem(title: "Show All Sidebars", action: #selector(showAllSidebars), keyEquivalent: "s"))
-        menu.addItem(NSMenuItem(title: "Hide All Sidebars", action: #selector(hideAllSidebars), keyEquivalent: "w"))
+        menu.addItem(NSMenuItem(title: "Show Current Desktop Sidebar", action: #selector(toggleCurrentSpaceSidebarVisibility), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: "Collapse Current Desktop Sidebar", action: #selector(toggleCurrentSpaceSidebarCollapsed), keyEquivalent: "e"))
+        menu.addItem(NSMenuItem(title: "Refresh Sidebar", action: #selector(refreshCurrentSpaceSidebar), keyEquivalent: "r"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
@@ -59,69 +92,103 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        sidebarCoordinator.refreshCurrentSpace()
         menu.removeAllItems()
-        menu.addItem(NSMenuItem(title: "Show All Sidebars", action: #selector(showAllSidebars), keyEquivalent: "s"))
-        menu.addItem(NSMenuItem(title: "Hide All Sidebars", action: #selector(hideAllSidebars), keyEquivalent: "w"))
+        let currentState = sidebarCoordinator.currentSpaceState
+        let currentTitle = currentState?.title ?? "Current Desktop"
+        let currentVisibility = currentState?.chrome.isVisible == true ? "Visible" : "Hidden"
+        let currentLayout = currentState?.chrome.isCollapsed == true ? "Collapsed" : "Expanded"
+        let currentDesktopItem = NSMenuItem(title: "Current Desktop: \(currentTitle)", action: nil, keyEquivalent: "")
+        currentDesktopItem.isEnabled = false
+        menu.addItem(currentDesktopItem)
+        let currentSidebarItem = NSMenuItem(title: "Sidebar: \(currentVisibility), \(currentLayout)", action: nil, keyEquivalent: "")
+        currentSidebarItem.isEnabled = false
+        menu.addItem(currentSidebarItem)
         menu.addItem(.separator())
 
-        for state in sidebarCoordinator.displayStates {
-            let displayMenu = NSMenu()
-            displayMenu.addItem(NSMenuItem(
+        let visibilityTitle = currentState?.chrome.isVisible == true ? "Hide \(currentTitle) Sidebar" : "Show \(currentTitle) Sidebar"
+        let collapseTitle = currentState?.chrome.isCollapsed == true ? "Expand \(currentTitle) Sidebar" : "Collapse \(currentTitle) Sidebar"
+        menu.addItem(NSMenuItem(title: visibilityTitle, action: #selector(toggleCurrentSpaceSidebarVisibility), keyEquivalent: "s"))
+        menu.addItem(NSMenuItem(title: collapseTitle, action: #selector(toggleCurrentSpaceSidebarCollapsed), keyEquivalent: "e"))
+        let refreshItem = NSMenuItem(title: "Refresh Sidebar", action: #selector(refreshCurrentSpaceSidebar), keyEquivalent: "r")
+        refreshItem.isEnabled = apiClient.isConfigured
+        menu.addItem(refreshItem)
+        menu.addItem(.separator())
+
+        let desktopLayoutsMenu = NSMenu()
+        for state in sidebarCoordinator.spaceStates {
+            let spaceMenu = NSMenu()
+            spaceMenu.addItem(NSMenuItem(
                 title: state.chrome.isVisible ? "Hide Sidebar" : "Show Sidebar",
-                action: #selector(toggleDisplayVisibility(_:)),
+                action: #selector(toggleSpaceVisibility(_:)),
                 keyEquivalent: ""
             ))
-            displayMenu.addItem(NSMenuItem(
+            spaceMenu.addItem(NSMenuItem(
                 title: state.chrome.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar",
-                action: #selector(toggleDisplayCollapsed(_:)),
+                action: #selector(toggleSpaceCollapsed(_:)),
                 keyEquivalent: ""
             ))
-            displayMenu.addItem(NSMenuItem(title: "Reset Layout", action: #selector(resetDisplayLayout(_:)), keyEquivalent: ""))
-            displayMenu.items.forEach {
+            spaceMenu.addItem(NSMenuItem(title: "Reset Layout", action: #selector(resetSpaceLayout(_:)), keyEquivalent: ""))
+            spaceMenu.items.forEach {
                 $0.target = self
                 $0.representedObject = state.id
             }
 
-            let item = NSMenuItem(title: state.descriptor.name, action: nil, keyEquivalent: "")
-            item.submenu = displayMenu
-            menu.addItem(item)
+            let item = NSMenuItem(title: state.title, action: nil, keyEquivalent: "")
+            item.submenu = spaceMenu
+            desktopLayoutsMenu.addItem(item)
+        }
+        desktopLayoutsMenu.addItem(.separator())
+        desktopLayoutsMenu.addItem(NSMenuItem(title: "Reset All Desktop Layouts", action: #selector(resetAllSidebarLayouts), keyEquivalent: ""))
+        desktopLayoutsMenu.items.forEach { item in
+            item.target = self
+            item.submenu?.items.forEach { nestedItem in
+                nestedItem.target = self
+            }
         }
 
+        let desktopLayoutsItem = NSMenuItem(title: "Desktop Layouts", action: nil, keyEquivalent: "")
+        desktopLayoutsItem.submenu = desktopLayoutsMenu
+        menu.addItem(desktopLayoutsItem)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Reset All Sidebar Layouts", action: #selector(resetAllSidebarLayouts), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit IssueCTL", action: #selector(quit), keyEquivalent: "q"))
         menu.items.forEach { $0.target = self }
     }
 
-    @objc private func showAllSidebars() {
-        sidebarCoordinator.showAll()
+    @objc private func toggleCurrentSpaceSidebarVisibility() {
+        sidebarCoordinator.toggleCurrentSpaceVisibility()
     }
 
-    @objc private func hideAllSidebars() {
-        sidebarCoordinator.hideAll()
+    @objc private func toggleCurrentSpaceSidebarCollapsed() {
+        sidebarCoordinator.toggleCurrentSpaceCollapsed()
     }
 
-    @objc private func toggleDisplayVisibility(_ sender: NSMenuItem) {
-        guard let displayKey = sender.representedObject as? String else { return }
-        sidebarCoordinator.toggleVisibility(displayKey: displayKey)
+    @objc private func refreshCurrentSpaceSidebar() {
+        Task { await sidebarCoordinator.store.load(api: apiClient, refresh: true) }
     }
 
-    @objc private func toggleDisplayCollapsed(_ sender: NSMenuItem) {
-        guard let displayKey = sender.representedObject as? String else { return }
-        sidebarCoordinator.toggleCollapsed(displayKey: displayKey)
+    @objc private func toggleSpaceVisibility(_ sender: NSMenuItem) {
+        guard let spaceKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.toggleVisibility(spaceKey: spaceKey)
     }
 
-    @objc private func resetDisplayLayout(_ sender: NSMenuItem) {
-        guard let displayKey = sender.representedObject as? String else { return }
-        sidebarCoordinator.resetLayout(displayKey: displayKey)
+    @objc private func toggleSpaceCollapsed(_ sender: NSMenuItem) {
+        guard let spaceKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.toggleCollapsed(spaceKey: spaceKey)
+    }
+
+    @objc private func resetSpaceLayout(_ sender: NSMenuItem) {
+        guard let spaceKey = sender.representedObject as? String else { return }
+        sidebarCoordinator.resetLayout(spaceKey: spaceKey)
     }
 
     @objc private func openSettings() {
         let windowController = settingsWindowController ?? makeSettingsWindowController()
         settingsWindowController = windowController
         windowController.showWindow(nil)
+        windowController.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -140,15 +207,22 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     private func makeSettingsWindowController() -> NSWindowController {
         let settingsView = MacSettingsView()
             .environment(apiClient)
+            .environment(offlineSync)
             .environment(sidebarPreferences)
             .environment(sidebarCoordinator)
             .environment(\.resetSidebarLayout) { [weak self] in
                 self?.resetSidebarLayout()
             }
         let hostingController = NSHostingController(rootView: settingsView)
-        let window = NSWindow(contentViewController: hostingController)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 640),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = hostingController
         window.title = "IssueCTL Settings"
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.minSize = NSSize(width: 480, height: 520)
         window.isReleasedWhenClosed = false
         window.center()
         return NSWindowController(window: window)
@@ -156,3 +230,1024 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 extension MacAppDelegate: NSMenuDelegate {}
+
+private final class MacUITestFixtureURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "issuectl-ui-test.local"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: APIError.invalidResponse)
+            return
+        }
+
+        if let imageData = Self.fixtureImageData(for: url.path) {
+            let response = HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/png"]
+            )!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: imageData)
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+
+        if Self.shouldFailOfflineAction(request) {
+            client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+            return
+        }
+
+        let payload = Self.payload(for: request)
+        let status = payload == nil ? 404 : 200
+        let data = Self.jsonData(payload ?? ["error": "Unhandled \(url.path)"])
+
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: status,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private static func payload(for request: URLRequest) -> [String: Any]? {
+        let method = request.httpMethod ?? "GET"
+        let path = request.url?.path ?? "/"
+
+        switch (method, path) {
+        case ("GET", "/api/v1/health"):
+            return ["ok": true, "version": "ui-test", "timestamp": isoDate]
+        case ("GET", "/api/v1/user"):
+            return ["login": "alice"]
+        case ("GET", "/api/v1/settings"):
+            return ["settings": [
+                "cache_ttl": "300",
+                "launch_agent": "codex",
+                "claude_extra_args": "",
+                "codex_extra_args": "",
+                "idle_grace_period": "30",
+                "idle_threshold": "120",
+                "branch_pattern": "jeremy/{slug}",
+                "worktree_dir": "/tmp/issuectl-worktrees",
+                "default_repo_id": "1",
+            ]]
+        case ("PATCH", "/api/v1/settings"):
+            return ["success": true, "error": NSNull()]
+        case ("GET", "/api/v1/repos"):
+            return ["repos": [repo, betaRepo]]
+        case ("GET", "/api/v1/worktrees"):
+            return ["worktrees": worktrees]
+        case ("GET", "/api/v1/worktrees/status"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_STATUS_FAILURE"] == "1" {
+                return ["error": "Fixture worktree status failed"]
+            }
+            let dirty = ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_DIRTY_WORKTREE"] == "1"
+            return [
+                "exists": true,
+                "dirty": dirty,
+                "path": "/tmp/issuectl-worktrees/org-alpha-1",
+            ]
+        case ("POST", "/api/v1/worktrees/reset"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_RESET_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture reset failed"]
+            }
+            resetWorktreeCalled = true
+            return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/worktrees/cleanup"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_WORKTREE_CLEANUP_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture cleanup failed"]
+            }
+            let payload = jsonBody(from: request)
+            if let path = payload["path"] as? String {
+                worktrees.removeAll { $0["path"] as? String == path }
+                return ["success": true, "error": NSNull()]
+            }
+            let staleCount = worktrees.filter { ($0["stale"] as? Bool) == true }.count
+            worktrees.removeAll { ($0["stale"] as? Bool) == true }
+            return ["success": true, "removed": staleCount, "error": NSNull()]
+        case ("GET", "/api/v1/repos/github"):
+            return ["repos": [
+                ["owner": "org", "name": "alpha", "private": false, "pushed_at": isoDate],
+                ["owner": "org", "name": "gamma", "private": true, "pushed_at": isoDate],
+            ], "synced_at": 1_775_000_000, "is_stale": false]
+        case ("GET", "/api/v1/deployments"):
+            let deployments = launchedDeployments + [
+                [
+                    "id": 2,
+                    "repo_id": 1,
+                    "issue_number": 2,
+                    "branch_name": "issue-2-running",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/issue-2",
+                    "linked_pr_number": NSNull(),
+                    "state": "active",
+                    "launched_at": isoDate,
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7700,
+                    "ttyd_pid": 2200,
+                    "owner": "org",
+                    "repo_name": "alpha",
+                ],
+                [
+                    "id": 8,
+                    "repo_id": 2,
+                    "issue_number": 21,
+                    "branch_name": "beta-session-filter",
+                    "workspace_mode": "clone",
+                    "workspace_path": "/tmp/issuectl-beta-21",
+                    "linked_pr_number": NSNull(),
+                    "state": "active",
+                    "launched_at": "2026-05-14T10:00:00.000Z",
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7701,
+                    "ttyd_pid": 2201,
+                    "owner": "org",
+                    "repo_name": "beta",
+                ],
+            ]
+            return ["deployments": deployments.filter { deployment in
+                guard let id = deployment["id"] as? Int else { return true }
+                return !endedDeploymentIds.contains(id)
+            }]
+        case ("POST", "/api/v1/deployments/2/ensure-ttyd"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_TTYD_FAILURE"] == "1" {
+                return ["alive": false, "error": "Fixture terminal unavailable"]
+            }
+            return ["port": 7700, "terminalToken": "fixture-terminal-token", "respawned": ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_RESPAWN_TTYD"] == "1"]
+        case ("POST", "/api/v1/deployments/8/ensure-ttyd"):
+            return ["port": 7701, "terminalToken": "fixture-terminal-token-beta", "respawned": false]
+        case ("POST", "/api/v1/deployments/2/end"), ("POST", "/api/v1/deployments/8/end"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_END_SESSION_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture end session failed"]
+            }
+            if let idSegment = path.split(separator: "/").dropFirst(3).first,
+               let id = Int(idSegment) {
+                endedDeploymentIds.insert(id)
+            }
+            return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/launch/org/alpha/1"):
+            let payload = jsonBody(from: request)
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_LAUNCH_FAILURE"] == "1" {
+                return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture launch failed", "label_warning": NSNull()]
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CUSTOM_LAUNCH"] == "1" {
+                let selectedComments = payload["selectedCommentIndices"] as? [Int] ?? []
+                let selectedFiles = payload["selectedFilePaths"] as? [String] ?? []
+                guard payload["agent"] as? String == "claude",
+                      payload["workspaceMode"] as? String == "clone",
+                      payload["branchName"] as? String == "custom-mac-launch",
+                      selectedComments == [0],
+                      selectedFiles == ["Sources/Alpha.swift"],
+                      payload["preamble"] as? String == "Custom Mac preamble",
+                      payload["forceResume"] as? Bool == true else {
+                    return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture custom launch assertion failed", "label_warning": NSNull()]
+                }
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_DIRTY_RESUME_LAUNCH"] == "1",
+               payload["forceResume"] as? Bool != true {
+                return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture dirty resume assertion failed", "label_warning": NSNull()]
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_RESET_THEN_LAUNCH"] == "1" {
+                guard resetWorktreeCalled,
+                      payload["forceResume"] as? Bool == false else {
+                    return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture reset launch assertion failed", "label_warning": NSNull()]
+                }
+            }
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_ASSERT_CLONE_LAUNCH"] == "1",
+               payload["workspaceMode"] as? String != "clone" {
+                return ["success": false, "deployment_id": NSNull(), "ttyd_port": NSNull(), "error": "Fixture clone launch assertion failed", "label_warning": NSNull()]
+            }
+            let deploymentId = 700 + launchedDeployments.count
+            launchedDeployments.append(launchedDeployment(id: deploymentId, payload: payload))
+            return ["success": true, "deployment_id": deploymentId, "ttyd_port": NSNull(), "error": NSNull(), "label_warning": NSNull()]
+        case ("GET", "/api/v1/sessions/previews"):
+            return ["previews": [
+                "7700": [
+                    "lines": ["agent booted", "alpha worker ready"],
+                    "lastUpdatedMs": 1_775_000_000_000,
+                    "lastChangedMs": 1_775_000_000_000,
+                    "status": "active",
+                ],
+                "7701": [
+                    "lines": ["beta idle waiting"],
+                    "lastUpdatedMs": 1_775_000_000_000,
+                    "lastChangedMs": 1_774_999_900_000,
+                    "status": "idle",
+                ],
+            ]]
+        case ("POST", "/api/v1/parse"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PARSE_FAILURE"] == "1" {
+                return ["error": "Fixture parse failed"]
+            }
+            return [
+                "parsed": [
+                    "issues": [
+                        [
+                            "id": "parsed-1",
+                            "originalText": "Fix parsed alpha bug",
+                            "title": "Parsed alpha bug",
+                            "body": "Created from Mac parse flow",
+                            "type": "bug",
+                            "repoOwner": "org",
+                            "repoName": "alpha",
+                            "repoConfidence": 0.95,
+                            "suggestedLabels": ["bug"],
+                            "clarity": "clear",
+                        ],
+                        [
+                            "id": "parsed-2",
+                            "originalText": "Document parsed beta workflow",
+                            "title": "Parsed beta docs",
+                            "body": "Second parsed issue",
+                            "type": "docs",
+                            "repoOwner": NSNull(),
+                            "repoName": NSNull(),
+                            "repoConfidence": 0.2,
+                            "suggestedLabels": ["docs"],
+                            "clarity": "unknown_repo",
+                        ],
+                    ],
+                    "suggestedOrder": ["parsed-1", "parsed-2"],
+                ],
+            ]
+        case ("POST", "/api/v1/parse/create"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PARSE_CREATE_FAILURE"] == "1" {
+                return ["error": "Fixture parse create failed"]
+            }
+            let payload = jsonBody(from: request)
+            let reviewedIssues = payload["issues"] as? [[String: Any]] ?? []
+            if reviewedIssues.contains(where: { $0["id"] as? String == "parsed-2" }) {
+                return ["error": "Rejected fixture issue should not be submitted"]
+            }
+            parsedCreatedIssueNumber = 90
+            return [
+                "created": 1,
+                "drafted": 0,
+                "failed": 0,
+                "results": [
+                    [
+                        "id": "parsed-1",
+                        "success": true,
+                        "issueNumber": 90,
+                        "draftId": NSNull(),
+                        "error": NSNull(),
+                        "owner": "org",
+                        "repo": "alpha",
+                    ],
+                ],
+            ]
+        case ("POST", "/api/v1/images/upload"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_IMAGE_UPLOAD_FAILURE"] == "1" {
+                return ["error": "Fixture image upload failed"]
+            }
+            return ["url": "https://issuectl-ui-test.local/fixtures/uploaded.png"]
+        case ("GET", "/api/v1/drafts"):
+            return ["drafts": drafts]
+        case ("POST", "/api/v1/drafts"):
+            let payload = jsonBody(from: request)
+            quickCreatedIssueTitle = payload["title"] as? String ?? "Untitled quick issue"
+            quickCreatedIssueBody = payload["body"] as? String
+            return ["success": true, "id": "quick-draft-1", "error": NSNull()]
+        case ("POST", "/api/v1/drafts/draft-1/assign"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_DRAFT_ASSIGN_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture draft assignment failed"]
+            }
+            draftAssignmentLabels = jsonBody(from: request)["labels"] as? [String] ?? []
+            draftAssignedIssueNumber = 88
+            return [
+                "success": true,
+                "issue_number": 88,
+                "issue_url": "https://github.com/org/alpha/issues/88",
+                "cleanup_warning": NSNull(),
+                "labels_warning": NSNull(),
+                "error": NSNull(),
+            ]
+        case ("POST", "/api/v1/drafts/quick-draft-1/assign"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_QUICK_CREATE_FAILURE"] == "1" {
+                return ["success": false, "error": "Fixture quick create failed"]
+            }
+            quickCreatedIssueLabels = jsonBody(from: request)["labels"] as? [String] ?? []
+            quickCreatedIssueNumber = 89
+            return [
+                "success": true,
+                "issue_number": 89,
+                "issue_url": "https://github.com/org/alpha/issues/89",
+                "cleanup_warning": NSNull(),
+                "labels_warning": NSNull(),
+                "error": NSNull(),
+            ]
+        case ("GET", "/api/v1/issues/org/alpha"):
+            return issuesResponse(issues)
+        case ("GET", "/api/v1/issues/org/beta"):
+            return issuesResponse(betaIssues)
+        case ("GET", "/api/v1/pulls/org/alpha"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULLS_FAILURE"] == "1" {
+                return ["error": "Fixture pulls failed"]
+            }
+            return ["pulls": alphaPulls, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/pulls/org/beta"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULLS_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_BETA_PULLS_FAILURE"] == "1" {
+                return ["error": "Fixture pulls failed"]
+            }
+            return ["pulls": betaPulls, "from_cache": false, "cached_at": NSNull()]
+        case ("GET", "/api/v1/pulls/org/alpha/10"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_DETAIL_FAILURE"] == "1" {
+                return ["error": "Fixture pull detail failed"]
+            }
+            return pullDetail()
+        case ("GET", "/api/v1/pulls/org/alpha/7"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_DETAIL_FAILURE"] == "1" {
+                return ["error": "Fixture pull detail failed"]
+            }
+            return pullDetail(pull: linkedAlphaPull)
+        case ("POST", "/api/v1/pulls/org/alpha/10/comments"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_COMMENT_FAILURE"] == "1" {
+                return ["success": false, "comment_id": NSNull(), "error": "Fixture PR comment failed"]
+            }
+            let payload = jsonBody(from: request)
+            let commentBody = payload["body"] as? String ?? ""
+            pullCommentBodies.append(commentBody)
+            return ["success": true, "comment_id": 901 + pullCommentBodies.count, "error": NSNull()]
+        case ("POST", "/api/v1/pulls/org/alpha/10/review"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_REVIEW_FAILURE"] == "1" {
+                return ["success": false, "review_id": NSNull(), "error": "Fixture PR review failed"]
+            }
+            let payload = jsonBody(from: request)
+            let event = payload["event"] as? String ?? "COMMENT"
+            let reviewBody = payload["body"] as? String ?? ""
+            let id = 401 + pullActionReviews.count
+            pullActionReviews.append([
+                "id": id,
+                "user": ["login": "alice", "avatar_url": "https://example.com/alice.png"],
+                "state": event == "APPROVE" ? "approved" : "changes_requested",
+                "body": reviewBody,
+                "submitted_at": isoDate,
+            ])
+            return ["success": true, "review_id": id, "error": NSNull()]
+        case ("POST", "/api/v1/pulls/org/alpha/10/merge"):
+            if ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_ACTION_FAILURE"] == "1"
+                || ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_PULL_MERGE_FAILURE"] == "1" {
+                return ["success": false, "sha": NSNull(), "error": "Fixture PR merge failed"]
+            }
+            let payload = jsonBody(from: request)
+            pullMerged = true
+            pullMergeMethod = (payload["mergeMethod"] as? String) ?? (payload["merge_method"] as? String)
+            return ["success": true, "sha": "fixture-\(pullMergeMethod ?? "merge")-sha", "error": NSNull()]
+        case ("GET", "/api/v1/issues/org/alpha/1"):
+            return issueDetail()
+        case ("GET", "/api/v1/issues/org/alpha/2"):
+            return runningIssueDetail()
+        case ("GET", "/api/v1/issues/org/alpha/89"):
+            return quickCreatedIssueDetail()
+        case ("GET", "/api/v1/repos/org/alpha/labels"):
+            return ["labels": availableLabels]
+        case ("GET", "/api/v1/repos/org/alpha/collaborators"):
+            return ["collaborators": [
+                ["login": "alice", "avatar_url": "https://example.com/alice.png"],
+                ["login": "bob", "avatar_url": "https://example.com/bob.png"],
+                ["login": "carol", "avatar_url": "https://example.com/carol.png"],
+            ]]
+        case ("PATCH", "/api/v1/issues/org/alpha/1"):
+            let payload = jsonBody(from: request)
+            if let title = payload["title"] as? String {
+                detailIssueTitle = title
+            }
+            if let body = payload["body"] as? String {
+                detailIssueBody = body
+            }
+            return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/issues/org/alpha/1/labels"):
+            let payload = jsonBody(from: request)
+            if let label = payload["label"] as? String {
+                switch payload["action"] as? String {
+                case "remove":
+                    detailIssueLabels.removeAll { $0 == label }
+                default:
+                    if !detailIssueLabels.contains(label) {
+                        detailIssueLabels.append(label)
+                    }
+                }
+            }
+            return ["success": true, "error": NSNull()]
+        case ("PUT", "/api/v1/issues/org/alpha/1/assignees"):
+            let payload = jsonBody(from: request)
+            if let assignees = payload["assignees"] as? [String] {
+                detailIssueAssignees = assignees
+            }
+            return ["assignees": detailIssueAssignees]
+        case ("POST", "/api/v1/issues/org/alpha/1/reassign"):
+            let payload = jsonBody(from: request)
+            let targetOwner = payload["targetOwner"] as? String ?? "org"
+            let targetRepo = payload["targetRepo"] as? String ?? "beta"
+            reassignedIssueNumber = 77
+            detailIssueState = "closed"
+            return [
+                "success": true,
+                "new_issue_number": 77,
+                "new_owner": targetOwner,
+                "new_repo": targetRepo,
+                "cleanup_warning": NSNull(),
+                "error": NSNull(),
+            ]
+        case ("POST", "/api/v1/issues/org/alpha/1/state"):
+            let payload = jsonBody(from: request)
+            detailIssueState = payload["state"] as? String ?? detailIssueState
+            if let comment = payload["comment"] as? String, !comment.isEmpty {
+                detailComments.append(commentFixture(id: 500, body: comment, author: "alice"))
+            }
+            return ["success": true, "error": NSNull()]
+        case ("POST", "/api/v1/issues/org/alpha/1/comments"):
+            let payload = jsonBody(from: request)
+            if let body = payload["body"] as? String {
+                detailComments.append(commentFixture(id: 501, body: body, author: "alice"))
+            }
+            return ["success": true, "comment_id": 501, "error": NSNull()]
+        case ("PATCH", "/api/v1/issues/org/alpha/1/comments"):
+            let payload = jsonBody(from: request)
+            let commentId = payload["comment_id"] as? Int ?? payload["commentId"] as? Int
+            if let commentId, let body = payload["body"] as? String,
+               let index = detailComments.firstIndex(where: { $0["id"] as? Int == commentId }) {
+                detailComments[index] = commentFixture(id: commentId, body: body, author: "alice")
+            }
+            return ["success": true, "error": NSNull()]
+        case ("DELETE", "/api/v1/issues/org/alpha/1/comments"):
+            let payload = jsonBody(from: request)
+            let commentId = payload["comment_id"] as? Int ?? payload["commentId"] as? Int
+            if let commentId {
+                detailComments.removeAll { $0["id"] as? Int == commentId }
+            }
+            return ["success": true, "error": NSNull()]
+        case ("GET", "/api/v1/issues/org/alpha/priorities"):
+            return ["priorities": [
+                ["repo_id": 1, "issue_number": 1, "priority": "low", "updated_at": 1_775_000_000],
+                ["repo_id": 1, "issue_number": 3, "priority": "high", "updated_at": 1_775_000_000],
+            ]]
+        default:
+            return nil
+        }
+    }
+
+    private static var repo: [String: Any] {
+        [
+            "id": 1,
+            "owner": "org",
+            "name": "alpha",
+            "local_path": ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_NO_LOCAL_PATH"] == "1" ? NSNull() : "/tmp/issuectl-alpha",
+            "branch_pattern": "jeremy/{slug}",
+            "created_at": isoDate,
+        ]
+    }
+
+    private static var betaRepo: [String: Any] {
+        [
+            "id": 2,
+            "owner": "org",
+            "name": "beta",
+            "local_path": "/tmp/issuectl-beta",
+            "branch_pattern": "jeremy/{slug}",
+            "created_at": isoDate,
+        ]
+    }
+
+    nonisolated(unsafe) private static var worktrees: [[String: Any]] = [
+        [
+            "path": "/tmp/alpha-worktree-101",
+            "name": "alpha-worktree-101",
+            "repo": "alpha",
+            "owner": "org",
+            "local_path": "/tmp/issuectl-alpha",
+            "issue_number": 101,
+            "stale": false,
+        ],
+        [
+            "path": "/tmp/alpha-worktree-stale",
+            "name": "alpha-worktree-stale",
+            "repo": "alpha",
+            "owner": "org",
+            "local_path": "/tmp/issuectl-alpha",
+            "issue_number": 102,
+            "stale": true,
+        ],
+    ]
+
+    nonisolated(unsafe) private static var detailIssueTitle = "Open alpha issue"
+    nonisolated(unsafe) private static var detailIssueBody = "Searchable **alpha** body\n\n![Alpha diagram](https://issuectl-ui-test.local/fixtures/alpha.png)\n\n```swift\nlet value = 1\n```"
+    nonisolated(unsafe) private static var detailIssueState = "open"
+    nonisolated(unsafe) private static var detailIssueLabels = ["bug"]
+    nonisolated(unsafe) private static var detailIssueAssignees = ["bob"]
+    nonisolated(unsafe) private static var reassignedIssueNumber: Int?
+    nonisolated(unsafe) private static var draftAssignedIssueNumber: Int?
+    nonisolated(unsafe) private static var draftAssignmentLabels: [String] = []
+    nonisolated(unsafe) private static var quickCreatedIssueNumber: Int?
+    nonisolated(unsafe) private static var quickCreatedIssueTitle = "Quick created issue"
+    nonisolated(unsafe) private static var quickCreatedIssueBody: String?
+    nonisolated(unsafe) private static var quickCreatedIssueLabels: [String] = []
+    nonisolated(unsafe) private static var parsedCreatedIssueNumber: Int?
+    nonisolated(unsafe) private static var pullActionReviews: [[String: Any]] = []
+    nonisolated(unsafe) private static var pullCommentBodies: [String] = []
+    nonisolated(unsafe) private static var pullMerged = false
+    nonisolated(unsafe) private static var pullMergeMethod: String?
+    nonisolated(unsafe) private static var launchedDeployments: [[String: Any]] = []
+    nonisolated(unsafe) private static var endedDeploymentIds: Set<Int> = []
+    nonisolated(unsafe) private static var resetWorktreeCalled = false
+    nonisolated(unsafe) private static var detailComments: [[String: Any]] = [
+        commentFixture(id: 101, body: "Alice **own** comment", author: "alice"),
+        commentFixture(id: 102, body: "Bob comment with missing image ![Missing image](https://issuectl-ui-test.local/fixtures/missing.png)", author: "bob"),
+    ]
+
+    private static var drafts: [[String: Any]] {
+        guard draftAssignedIssueNumber == nil else { return [] }
+        return [
+            [
+                "id": "draft-1",
+                "title": "Draft offline idea",
+                "body": "draft body",
+                "priority": "normal",
+                "created_at": 1_775_000_000,
+            ],
+        ]
+    }
+
+    private static var issues: [[String: Any]] {
+        [
+            issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: "2026-05-14T10:00:00.000Z"),
+            issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: "2026-05-14T11:00:00.000Z"),
+            issue(number: 3, title: "Unassigned high priority", body: "Needs owner", state: "open", assignees: [], author: "alice", updatedAt: "2026-05-14T12:00:00.000Z"),
+            issue(number: 4, title: "Closed alpha issue", body: "Done", state: "closed", assignees: [], author: "bob", updatedAt: "2026-05-14T13:00:00.000Z"),
+        ] + assignedDraftIssues + quickCreatedIssues + parsedCreatedIssues + (5...55).map { number in
+            issue(
+                number: number,
+                title: "Paged issue \(number)",
+                body: "Pagination fixture",
+                state: "open",
+                assignees: ["alice"],
+                author: number.isMultiple(of: 2) ? "alice" : "bob",
+                updatedAt: String(format: "2026-05-13T%02d:00:00.000Z", number % 24)
+            )
+        }
+    }
+
+    private static var quickCreatedIssues: [[String: Any]] {
+        guard let quickCreatedIssueNumber else { return [] }
+        return [
+            issue(
+                number: quickCreatedIssueNumber,
+                title: quickCreatedIssueTitle,
+                body: quickCreatedIssueBody ?? "",
+                state: "open",
+                labels: quickCreatedIssueLabels,
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: "2026-05-14T16:00:00.000Z"
+            ),
+        ]
+    }
+
+    private static var parsedCreatedIssues: [[String: Any]] {
+        guard let parsedCreatedIssueNumber else { return [] }
+        return [
+            issue(
+                number: parsedCreatedIssueNumber,
+                title: "Parsed alpha bug",
+                body: "Created from Mac parse flow",
+                state: "open",
+                labels: ["bug"],
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: "2026-05-14T17:00:00.000Z"
+            ),
+        ]
+    }
+
+    private static var assignedDraftIssues: [[String: Any]] {
+        guard let draftAssignedIssueNumber else { return [] }
+        return [
+            issue(
+                number: draftAssignedIssueNumber,
+                title: "Draft offline idea",
+                body: "draft body",
+                state: "open",
+                labels: draftAssignmentLabels,
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: "2026-05-14T15:00:00.000Z"
+            ),
+        ]
+    }
+
+    private static var betaIssues: [[String: Any]] {
+        guard let reassignedIssueNumber else { return [] }
+        return [
+            issue(
+                number: reassignedIssueNumber,
+                title: detailIssueTitle,
+                body: detailIssueBody,
+                state: "open",
+                labels: detailIssueLabels,
+                assignees: detailIssueAssignees,
+                author: "alice",
+                updatedAt: isoDate
+            ),
+        ]
+    }
+
+    private static var alphaPulls: [[String: Any]] {
+        [
+            alphaPrimaryPull,
+            pull(number: 11, title: "Pending alpha migration", body: "Migration work", state: "open", merged: false, author: "bob", head: "pending-alpha", base: "main", additions: 10, deletions: 2, changedFiles: 2, checks: "pending", updatedAt: "2026-05-14T17:00:00.000Z"),
+            pull(number: 12, title: "Passing alpha cleanup", body: "Cleanup work", state: "open", merged: false, author: "alice", head: "cleanup-alpha", base: "main", additions: 5, deletions: 1, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T16:00:00.000Z"),
+            pull(number: 13, title: "Merged alpha docs", body: "Docs update", state: "closed", merged: true, author: "carol", head: "docs-alpha", base: "main", additions: 8, deletions: 0, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T15:00:00.000Z", mergedAt: "2026-05-14T15:30:00.000Z", closedAt: "2026-05-14T15:30:00.000Z"),
+            pull(number: 14, title: "Closed alpha experiment", body: "Abandoned experiment", state: "closed", merged: false, author: "bob", head: "experiment-alpha", base: "main", additions: 2, deletions: 2, changedFiles: 1, checks: "failure", updatedAt: "2026-05-14T14:00:00.000Z", closedAt: "2026-05-14T14:30:00.000Z"),
+            pull(number: 15, title: "Searchable alpha design", body: "Find this design PR", state: "open", merged: false, author: "alice", head: "design-alpha", base: "main", additions: 12, deletions: 4, changedFiles: 2, checks: "success", updatedAt: "2026-05-14T13:00:00.000Z"),
+        ]
+    }
+
+    private static var alphaPrimaryPull: [String: Any] {
+        pull(
+            number: 10,
+            title: "Fix failing alpha workflow",
+            body: pullCommentBodies.isEmpty ? "PR body with alpha details" : "PR body with alpha details\n\nLatest comment: \(pullCommentBodies.last ?? "")",
+            state: pullMerged ? "closed" : "open",
+            merged: pullMerged,
+            author: "alice",
+            head: "fix-alpha",
+            base: "main",
+            additions: 24,
+            deletions: 6,
+            changedFiles: 3,
+            checks: pullMerged ? "success" : "failure",
+            updatedAt: "2026-05-14T18:00:00.000Z",
+            mergedAt: pullMerged ? isoDate : nil,
+            closedAt: pullMerged ? isoDate : nil
+        )
+    }
+
+    private static var linkedAlphaPull: [String: Any] {
+        pull(
+            number: 7,
+            title: "Fix alpha detail",
+            body: "Linked PR",
+            state: "open",
+            merged: false,
+            author: "alice",
+            head: "fix-alpha-detail",
+            base: "main",
+            additions: 12,
+            deletions: 3,
+            changedFiles: 2,
+            checks: "success",
+            updatedAt: isoDate
+        )
+    }
+
+    private static var betaPulls: [[String: Any]] {
+        [
+            pull(number: 21, title: "Pending beta review", body: "Beta review work", state: "open", merged: false, author: "carol", head: "pending-beta", base: "main", additions: 7, deletions: 3, changedFiles: 2, checks: "pending", updatedAt: "2026-05-14T12:00:00.000Z", repo: "beta"),
+            pull(number: 22, title: "Merged beta fix", body: "Beta fix", state: "closed", merged: true, author: "alice", head: "fix-beta", base: "main", additions: 3, deletions: 1, changedFiles: 1, checks: "success", updatedAt: "2026-05-14T11:00:00.000Z", mergedAt: "2026-05-14T11:30:00.000Z", closedAt: "2026-05-14T11:30:00.000Z", repo: "beta"),
+        ]
+    }
+
+    private static func pullDetail(pull: [String: Any] = alphaPulls[0]) -> [String: Any] {
+        [
+            "pull": pull,
+            "checks": [
+                [
+                    "name": "build",
+                    "status": "completed",
+                    "conclusion": "failure",
+                    "started_at": "2026-05-14T17:45:00.000Z",
+                    "completed_at": "2026-05-14T17:50:00.000Z",
+                    "html_url": "https://github.com/org/alpha/actions/runs/1",
+                ],
+                [
+                    "name": "lint",
+                    "status": "completed",
+                    "conclusion": "success",
+                    "started_at": "2026-05-14T17:45:00.000Z",
+                    "completed_at": "2026-05-14T17:49:00.000Z",
+                    "html_url": "https://github.com/org/alpha/actions/runs/2",
+                ],
+            ],
+            "files": [
+                ["filename": "Sources/Alpha.swift", "status": "modified", "additions": 18, "deletions": 4],
+                ["filename": "Tests/AlphaTests.swift", "status": "added", "additions": 6, "deletions": 2],
+            ],
+            "linked_issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: isoDate),
+            "reviews": basePullReviews + pullActionReviews,
+            "from_cache": false,
+            "cached_at": NSNull(),
+        ]
+    }
+
+    private static var basePullReviews: [[String: Any]] {
+        [
+                [
+                    "id": 301,
+                    "user": ["login": "bob", "avatar_url": "https://example.com/bob.png"],
+                    "state": "changes_requested",
+                    "body": "Please fix the build.",
+                    "submitted_at": "2026-05-14T18:05:00.000Z",
+                ],
+        ]
+    }
+
+    private static func pull(
+        number: Int,
+        title: String,
+        body: String,
+        state: String,
+        merged: Bool,
+        author: String,
+        head: String,
+        base: String,
+        additions: Int,
+        deletions: Int,
+        changedFiles: Int,
+        checks: String,
+        updatedAt: String,
+        mergedAt: String? = nil,
+        closedAt: String? = nil,
+        repo: String = "alpha"
+    ) -> [String: Any] {
+        [
+            "number": number,
+            "title": title,
+            "body": body,
+            "state": state,
+            "draft": false,
+            "merged": merged,
+            "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
+            "head_ref": head,
+            "base_ref": base,
+            "additions": additions,
+            "deletions": deletions,
+            "changed_files": changedFiles,
+            "created_at": "2026-05-12T10:00:00.000Z",
+            "updated_at": updatedAt,
+            "merged_at": mergedAt ?? NSNull(),
+            "closed_at": closedAt ?? NSNull(),
+            "html_url": "https://github.com/org/\(repo)/pull/\(number)",
+            "checks_status": checks,
+        ]
+    }
+
+    private static func issue(
+        number: Int,
+        title: String,
+        body: String,
+        state: String,
+        labels: [String] = [],
+        assignees: [String],
+        author: String,
+        updatedAt: String
+    ) -> [String: Any] {
+        [
+            "number": number,
+            "title": title,
+            "body": body,
+            "state": state,
+            "labels": labels.map(labelFixture),
+            "assignees": assignees.map { ["login": $0, "avatar_url": "https://example.com/\($0).png"] },
+            "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
+            "comment_count": 0,
+            "created_at": "2026-05-12T10:00:00.000Z",
+            "updated_at": updatedAt,
+            "closed_at": state == "closed" ? "2026-05-14T14:00:00.000Z" : NSNull(),
+            "html_url": "https://github.com/org/alpha/issues/\(number)",
+        ]
+    }
+
+    private static func issueDetail() -> [String: Any] {
+        [
+            "issue": issue(number: 1, title: detailIssueTitle, body: detailIssueBody, state: detailIssueState, labels: detailIssueLabels, assignees: detailIssueAssignees, author: "alice", updatedAt: isoDate),
+            "comments": detailComments,
+            "deployments": [
+                [
+                    "id": 9,
+                    "repo_id": 1,
+                    "issue_number": 1,
+                    "branch_name": "issue-1-active",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/issue-1",
+                    "linked_pr_number": 7,
+                    "state": "active",
+                    "launched_at": isoDate,
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7681,
+                    "ttyd_pid": 1234,
+                ],
+            ],
+            "linkedPRs": [
+                [
+                    "number": 7,
+                    "title": "Fix alpha detail",
+                    "body": "Linked PR",
+                    "state": "open",
+                    "draft": false,
+                    "merged": false,
+                    "user": ["login": "alice", "avatar_url": "https://example.com/alice.png"],
+                    "head_ref": "fix-alpha-detail",
+                    "base_ref": "main",
+                    "additions": 12,
+                    "deletions": 3,
+                    "changed_files": 2,
+                    "created_at": isoDate,
+                    "updated_at": isoDate,
+                    "merged_at": NSNull(),
+                    "closed_at": NSNull(),
+                    "html_url": "https://github.com/org/alpha/pull/7",
+                    "checks_status": "success",
+                ],
+            ],
+            "referencedFiles": ["Sources/Alpha.swift"],
+        ].merging(cacheMetadata()) { _, new in new }
+    }
+
+    private static func runningIssueDetail() -> [String: Any] {
+        [
+            "issue": issue(number: 2, title: "Running alpha issue", body: "Has an active session", state: "open", assignees: ["alice"], author: "bob", updatedAt: isoDate),
+            "comments": [],
+            "deployments": [
+                [
+                    "id": 2,
+                    "repo_id": 1,
+                    "issue_number": 2,
+                    "branch_name": "issue-2-running",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/issue-2",
+                    "linked_pr_number": NSNull(),
+                    "state": "active",
+                    "launched_at": isoDate,
+                    "ended_at": NSNull(),
+                    "ttyd_port": 7700,
+                    "ttyd_pid": 2200,
+                ],
+            ],
+            "linkedPRs": [],
+            "referencedFiles": [],
+            "fromCache": false,
+            "cachedAt": NSNull(),
+        ]
+    }
+
+    private static func launchedDeployment(id: Int, payload: [String: Any]) -> [String: Any] {
+        [
+            "id": id,
+            "repo_id": 1,
+            "issue_number": 1,
+            "branch_name": payload["branchName"] as? String ?? "issue-1-open-alpha-issue",
+            "workspace_mode": payload["workspaceMode"] as? String ?? "worktree",
+            "workspace_path": "/tmp/issuectl-launch-\(id)",
+            "linked_pr_number": NSNull(),
+            "state": "active",
+            "launched_at": isoDate,
+            "ended_at": NSNull(),
+            "ttyd_port": NSNull(),
+            "ttyd_pid": 3210 + id,
+            "owner": "org",
+            "repo_name": "alpha",
+        ]
+    }
+
+    private static func quickCreatedIssueDetail() -> [String: Any] {
+        [
+            "issue": issue(
+                number: 89,
+                title: quickCreatedIssueTitle,
+                body: quickCreatedIssueBody ?? "",
+                state: "open",
+                labels: quickCreatedIssueLabels,
+                assignees: ["alice"],
+                author: "alice",
+                updatedAt: isoDate
+            ),
+            "comments": [],
+            "deployments": [],
+            "linkedPRs": [],
+            "referencedFiles": [],
+            "fromCache": false,
+            "cachedAt": NSNull(),
+        ]
+    }
+
+    private static func commentFixture(id: Int, body: String, author: String) -> [String: Any] {
+        [
+            "id": id,
+            "body": body,
+            "user": ["login": author, "avatar_url": "https://example.com/\(author).png"],
+            "created_at": isoDate,
+            "updated_at": isoDate,
+            "html_url": "https://github.com/org/alpha/issues/1#issuecomment-\(id)",
+        ]
+    }
+
+    private static func fixtureImageData(for path: String) -> Data? {
+        guard path == "/fixtures/alpha.png" || path == "/fixtures/uploaded.png" else { return nil }
+        return Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAAqADAAQAAAABAAAAAgAAAADtGLyqAAAAEklEQVQIHWP8DwQMQMAEIkAAAD34BACALvQ5AAAAAElFTkSuQmCC")
+    }
+
+    private static var availableLabels: [[String: Any]] {
+        [
+            labelFixture("bug"),
+            labelFixture("enhancement"),
+            labelFixture("docs"),
+        ]
+    }
+
+    private static func labelFixture(_ name: String) -> [String: Any] {
+        let colors = [
+            "bug": "d73a4a",
+            "enhancement": "a2eeef",
+            "docs": "0075ca",
+        ]
+        let descriptions = [
+            "bug": "Something is not working",
+            "enhancement": "New feature or request",
+            "docs": "Documentation",
+        ]
+        return [
+            "name": name,
+            "color": colors[name] ?? "6a737d",
+            "description": descriptions[name] ?? NSNull(),
+        ]
+    }
+
+    private static var isoDate: String {
+        "2026-05-14T00:00:00Z"
+    }
+
+    private static func cacheMetadata() -> [String: Any] {
+        let isCached = ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_CACHED_DATA"] == "1"
+        return [
+            "from_cache": isCached,
+            "cached_at": isCached ? isoDate : NSNull(),
+        ]
+    }
+
+    private static func shouldFailOfflineAction(_ request: URLRequest) -> Bool {
+        guard ProcessInfo.processInfo.environment["ISSUECTL_MAC_UI_FIXTURE_OFFLINE_ACTION_FAILURE"] == "1",
+              let method = request.httpMethod,
+              let path = request.url?.path else {
+            return false
+        }
+
+        return method == "POST"
+            && (path == "/api/v1/issues/org/alpha/1/comments"
+                || path == "/api/v1/issues/org/alpha/1/state")
+    }
+
+    private static func issuesResponse(_ issues: [[String: Any]]) -> [String: Any] {
+        ["issues": issues].merging(cacheMetadata()) { _, new in new }
+    }
+
+    private static func jsonData(_ object: Any) -> Data {
+        (try? JSONSerialization.data(withJSONObject: object)) ?? Data("{}".utf8)
+    }
+
+    private static func jsonBody(from request: URLRequest) -> [String: Any] {
+        let data: Data?
+        if let body = request.httpBody {
+            data = body
+        } else if let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+
+            var body = Data()
+            let bufferSize = 1_024
+            let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+            defer { buffer.deallocate() }
+
+            while stream.hasBytesAvailable {
+                let bytesRead = stream.read(buffer, maxLength: bufferSize)
+                if bytesRead > 0 {
+                    body.append(buffer, count: bytesRead)
+                } else {
+                    break
+                }
+            }
+            data = body
+        } else {
+            data = nil
+        }
+
+        guard let data,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        return json
+    }
+}

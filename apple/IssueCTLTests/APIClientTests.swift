@@ -58,7 +58,11 @@ final class TestableAPIClient {
             throw APIError.notConfigured
         }
 
-        var urlRequest = URLRequest(url: base.appendingPathComponent(path))
+        guard let url = URL(string: path, relativeTo: base)?.absoluteURL else {
+            throw APIError.invalidPath(path)
+        }
+
+        var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
         urlRequest.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -90,6 +94,73 @@ final class TestableAPIClient {
     func repos() async throws -> [Repo] {
         let (data, _) = try await request(path: "/api/v1/repos")
         return try decoder.decode(ReposResponse.self, from: data).repos
+    }
+
+    func addRepo(owner: String, name: String) async throws -> Repo {
+        let body = AddRepoRequest(owner: owner, name: name)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/repos", method: "POST", body: bodyData)
+        let response = try decoder.decode(AddRepoResponse.self, from: data)
+        guard response.success, let repo = response.repo else {
+            throw APIError.serverError(400, response.error ?? "Failed to add repository")
+        }
+        return repo
+    }
+
+    func removeRepo(owner: String, name: String) async throws {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(name)", method: "DELETE", body: nil)
+        let response = try decoder.decode(RemoveRepoResponse.self, from: data)
+        guard response.success else {
+            throw APIError.serverError(400, response.error ?? "Failed to remove repository")
+        }
+    }
+
+    func githubRepos(refresh: Bool = false) async throws -> GitHubAccessibleReposResponse {
+        var path = "/api/v1/repos/github"
+        if refresh { path += "?refresh=true" }
+        let (data, _) = try await request(path: path)
+        return try decoder.decode(GitHubAccessibleReposResponse.self, from: data)
+    }
+
+    func updateRepo(owner: String, name: String, localPath: String, branchPattern: String) async throws -> Repo {
+        let body = UpdateRepoRequest(localPath: localPath, branchPattern: branchPattern)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(name)", method: "PATCH", body: bodyData)
+        let response = try decoder.decode(UpdateRepoResponse.self, from: data)
+        guard response.success, let repo = response.repo else {
+            throw APIError.serverError(400, response.error ?? "Failed to update repository")
+        }
+        return repo
+    }
+
+    func getSettings() async throws -> [String: String] {
+        let (data, _) = try await request(path: "/api/v1/settings")
+        return try decoder.decode(SettingsResponse.self, from: data).settings
+    }
+
+    func updateSettings(_ updates: [String: String]) async throws -> SuccessResponse {
+        let bodyData = try JSONEncoder().encode(updates)
+        let (data, _) = try await request(path: "/api/v1/settings", method: "PATCH", body: bodyData)
+        return try decoder.decode(SuccessResponse.self, from: data)
+    }
+
+    func listWorktrees() async throws -> [WorktreeInfo] {
+        let (data, _) = try await request(path: "/api/v1/worktrees")
+        return try decoder.decode(WorktreesResponse.self, from: data).worktrees
+    }
+
+    func cleanupWorktree(path: String) async throws -> SuccessResponse {
+        let body = WorktreeCleanupRequest(path: path)
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/worktrees/cleanup", method: "POST", body: bodyData)
+        return try decoder.decode(SuccessResponse.self, from: data)
+    }
+
+    func cleanupStaleWorktrees() async throws -> WorktreeCleanupResponse {
+        let body: [String: String?] = [:]
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/worktrees/cleanup", method: "POST", body: bodyData)
+        return try decoder.decode(WorktreeCleanupResponse.self, from: data)
     }
 
     func issues(owner: String, repo: String, refresh: Bool = false) async throws -> IssuesResponse {
