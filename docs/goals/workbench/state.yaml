@@ -1,0 +1,1194 @@
+version: 2
+
+goal:
+  title: "Workbench Implementation"
+  slug: "workbench"
+  kind: existing_plan
+  tranche: "Implement /workbench from docs/superpowers/plans/2026-05-16-workbench.md through safe verified PR batches."
+  status: active
+  intake:
+    original_request: "Use docs/superpowers/plans/2026-05-16-workbench.md to prepare a GoalBuddy board for implementing /workbench."
+    interpreted_outcome: "/workbench is implemented as the repo-scoped issue/session manager described by the mockup and plan, with automated tests, Playwright artifact proof, PR review, green CI, and final audit."
+    input_shape: existing_plan
+    audience: "Jeremy as issuectl operator and future GoalBuddy/Codex workers."
+    authority: requested
+    proof_type: test
+    completion_proof: "Final Judge/PM audit maps completed PR batches, passing verification commands, Playwright coverage matrix, CLI screenshots, QA report, and green CI back to the original /workbench outcome."
+    likely_misfire: "Shipping cosmetic dashboard changes or another issue list page while missing repo-scoped instance management, side-pane collapse semantics, or real API-backed launch/session behavior."
+    blind_spots_considered:
+      - "Named plain shells are not supported by current APIs and need a Judge decision before implementation."
+      - "Playwright CLI screenshots must be acceptance evidence, not optional notes."
+      - "PR review, CI monitoring, and merge criteria must be part of execution."
+      - "Existing dashboard routes must remain intact."
+    existing_plan_facts:
+      - "Source plan: docs/superpowers/plans/2026-05-16-workbench.md"
+      - "Mockup source: docs/mockups/workbench.html"
+      - "Plan includes fixture contract, traceability matrix, objective UI standards, Playwright E2E/CLI coverage, 16 tasks, named-shell split, and PR/CI workflow."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/workbench/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/workbench"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T030
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Validate the current route/component/API boundaries and identify any drift from the workbench implementation plan."
+    inputs:
+      - "docs/superpowers/plans/2026-05-16-workbench.md"
+      - "docs/mockups/workbench.html"
+      - "packages/web/app"
+      - "packages/web/components"
+      - "packages/web/app/api/v1"
+      - "packages/core/src/db"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Preserve the existing plan as the controlling artifact; report drift instead of rewriting scope."
+    expected_output:
+      - "Current route/component/API boundary receipt."
+      - "Reusable component list."
+      - "Any drift from the plan."
+      - "Any route signatures that changed."
+    receipt:
+      result: done
+      note: "notes/T001-boundary-receipt.md"
+      summary: "Plan/API/component boundaries validated. Main drift: Playwright specs live under packages/web/e2e and project is desktop-chromium, while plan/board reference packages/web/tests and --project=desktop-chromium. Workbench UI/API and shell APIs are absent as expected; existing supporting APIs/components are present."
+      evidence:
+        - "docs/goals/workbench/notes/T001-boundary-receipt.md"
+        - "docs/superpowers/plans/2026-05-16-workbench.md"
+        - "docs/mockups/workbench.html"
+        - "packages/web/playwright.config.ts"
+        - "packages/web/app/api/v1"
+        - "packages/web/components"
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Approve or revise the WorkbenchPayload contract, fixture contract, and repo rail badge semantics before implementation."
+    inputs:
+      - "T001 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md"
+    constraints:
+      - "Do not implement."
+      - "Preserve the user-approved mockup semantics unless current code makes them infeasible."
+    expected_output:
+      - "Decision: approved | revise_before_worker"
+      - "Approved aggregate contract or exact revisions."
+      - "Named risks before Task 1."
+    receipt:
+      result: done
+      note: "notes/T002-contract-decision.md"
+      decision: "approved"
+      summary: "Approved WorkbenchPayload contract, fixture contract, and live-instance-only repo rail badge semantics for Task 1. Applied mechanical plan/board revisions so Playwright references packages/web/e2e/workbench.spec.ts and --project=desktop-chromium."
+      full_outcome_complete: false
+      next_task: T003
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 1 from the plan: Workbench Aggregate API."
+    inputs:
+      - "T002 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-1-workbench-aggregate-api"
+    allowed_files:
+      - "packages/web/app/api/v1/workbench/route.ts"
+      - "packages/web/app/api/v1/workbench/route.test.ts"
+      - "packages/web/components/workbench/workbench-types.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- app/api/v1/workbench/route.test.ts"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Aggregate contract differs materially from T002 approval."
+      - "Need files outside allowed_files."
+      - "Existing unrelated tests fail before edits."
+    expected_output:
+      - "Route response JSON sample using the shared fixture."
+      - "Changed files."
+      - "Verification command results."
+    receipt:
+      result: done
+      note: "notes/T003-workbench-aggregate-api.md"
+      summary: "Implemented /api/v1/workbench aggregate route and exported workbench payload types. Tests cover auth, fixture counts, active-only deployments, preview error state, settings/user/health, per-repo issue fetch failure, and no PR detail calls."
+      evidence:
+        - "packages/web/app/api/v1/workbench/route.ts"
+        - "packages/web/app/api/v1/workbench/route.test.ts"
+        - "packages/web/components/workbench/workbench-types.ts"
+        - "docs/goals/workbench/notes/T003-workbench-aggregate-api.md"
+      verification:
+        - "pnpm --filter @issuectl/core build"
+        - "pnpm --filter @issuectl/web test -- app/api/v1/workbench/route.test.ts"
+        - "pnpm --filter @issuectl/web typecheck"
+      full_outcome_complete: false
+      next_task: T004
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 2 from the plan: /workbench route shell and production navigation."
+    inputs:
+      - "T003 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-2-route-shell-and-production-navigation"
+    allowed_files:
+      - "packages/web/app/workbench/page.tsx"
+      - "packages/web/app/workbench/loading.tsx"
+      - "packages/web/app/workbench/error.tsx"
+      - "packages/web/app/workbench/WorkbenchPage.module.css"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web lint"
+    stop_if:
+      - "Need to alter existing root dashboard routes."
+      - "Need files outside allowed_files."
+      - "Prototype state controls appear necessary."
+    expected_output:
+      - "Playwright proof that no prototype controls render."
+      - "Changed files."
+      - "Verification command results."
+    receipt:
+      result: done
+      note: "notes/T004-route-shell-navigation.md"
+      summary: "Implemented the first production /workbench shell with aggregate API helper, durable top nav, stable repo rail/loading/error states, empty repo setup actions, and Playwright coverage for prototype-control absence and side-pane collapse semantics."
+      evidence:
+        - "packages/web/app/workbench/page.tsx"
+        - "packages/web/app/workbench/loading.tsx"
+        - "packages/web/app/workbench/error.tsx"
+        - "packages/web/app/workbench/WorkbenchPage.module.css"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/components/workbench/workbench-api.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/goals/workbench/notes/T004-route-shell-navigation.md"
+      verification:
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T005
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 3 from the plan: repo rail and repo selection."
+    inputs:
+      - "T004 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-3-repo-rail-and-repo-selection"
+    allowed_files:
+      - "packages/web/components/workbench/RepoRail.tsx"
+      - "packages/web/components/workbench/RepoOverviewFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-state.ts"
+      - "packages/web/components/workbench/workbench.test.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/vitest.config.ts"
+      - "packages/web/app/workbench/page.tsx"
+      - "packages/web/app/workbench/[mode]/page.tsx"
+      - "packages/web/lib/workbench-data.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Repo rail badge semantics conflict with T002 decision."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Fixture badge values IC 3, BD 1, API none, WEB none."
+      - "Changed files."
+      - "Verification command results."
+    receipt:
+      result: done
+      note: "notes/T005-repo-rail-selection.md"
+      summary: "Implemented repo rail selection, live deployment badges, reducer tests, selected repo persistence, and repo overview focus with missing local path and issue fetch failure states. PM-amended Vitest config now includes component tests so the required verifier passes."
+      evidence:
+        - "packages/web/components/workbench/RepoRail.tsx"
+        - "packages/web/components/workbench/RepoOverviewFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/components/workbench/workbench-state.ts"
+        - "packages/web/components/workbench/workbench.test.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "packages/web/vitest.config.ts"
+        - "docs/goals/workbench/notes/T005-repo-rail-selection.md"
+      verification:
+        - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T006
+  - id: T006
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Prepare PR batch workbench-aggregate-and-shell for Tasks 1-3."
+    inputs:
+      - "T003 receipt"
+      - "T004 receipt"
+      - "T005 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#pr-ci-and-merge-workflow"
+    constraints:
+      - "Use superpowers:requesting-code-review before opening or updating the PR."
+      - "Do not merge unless local verification and CI are green."
+    expected_output:
+      - "Branch or PR status."
+      - "Review status."
+      - "CI status."
+      - "Merge or follow-up decision."
+    receipt:
+      result: done
+      note: "notes/T006-pr-batch-workbench-aggregate-and-shell.md"
+      summary: "Created local branch workbench-aggregate-and-shell, ran required Codex review, fixed accepted findings, preserved /api/v1/workbench bearer auth while server-loading the web workbench, and verified focused Vitest, Playwright workbench E2E, typecheck, lint, and full web Vitest."
+      branch: "workbench-aggregate-and-shell"
+      pr_status: "not_opened"
+      ci_status: "not_run"
+      merge_status: "not_attempted"
+      review_status: "clean_no_actionable_findings"
+      full_outcome_complete: false
+      next_task: T007
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 4 from the plan: instance pane for issue sessions."
+    inputs:
+      - "T006 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-4-instance-pane-for-issue-sessions"
+    allowed_files:
+      - "packages/web/components/workbench/InstancePane.tsx"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-state.ts"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/components/workbench/workbench.test.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/vitest.config.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Session preview API does not expose required status data."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Preview error state proof for #486."
+      - "Reconnect/end endpoint assertions."
+      - "Verification command results."
+    pm_amendments:
+      - at: "2026-05-17T03:17:34Z"
+        reason: "T007 cannot satisfy production wiring or Playwright acceptance by creating standalone pane files only; WorkbenchShell and module CSS are required to replace the placeholder instance pane and focus content."
+      - at: "2026-05-17T03:22:35Z"
+        reason: "T007 component coverage imports new TSX files; Vitest must transform JSX instead of preserving it for Node tests."
+      - at: "2026-05-17T03:24:50Z"
+        reason: "T006 review surfaced workbench-first-render and server deployment ordering P2s that affect T007 session behavior and should be fixed before continuing."
+    receipt:
+      result: done
+      note: "notes/T007-instance-pane-issue-sessions.md"
+      summary: "Implemented repo-scoped issue session pane with running-first/recent/kind sorting, preview status cards, error/unavailable states, reconnect, end confirmation/removal, and terminal focus selection. Also fixed review P2s for first-render subpath mode and server-side deployment ordering."
+      evidence:
+        - "packages/web/components/workbench/InstancePane.tsx"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/components/workbench/workbench-state.ts"
+        - "packages/web/components/workbench/workbench-api.ts"
+        - "packages/web/components/workbench/workbench.test.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "packages/web/app/workbench/page.tsx"
+        - "packages/web/app/workbench/[mode]/page.tsx"
+        - "packages/web/lib/workbench-data.ts"
+        - "docs/goals/workbench/notes/T007-instance-pane-issue-sessions.md"
+      verification:
+        - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test -- app/api/v1/workbench/route.test.ts"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T008
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 5 from the plan: terminal focus."
+    inputs:
+      - "T007 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-5-terminal-focus"
+    allowed_files:
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Existing TerminalPanel cannot be reused without broader changes."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Terminal frame /api/terminal/7701 assertion."
+      - "Changed files."
+      - "Verification command results."
+    receipt:
+      result: done
+      note: "notes/T008-terminal-focus.md"
+      summary: "Terminal focus was completed with the T007 session slice: selecting a session shows metadata and an iframe for /api/terminal/[port], and reconnect success updates focus to the returned terminal port."
+      evidence:
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/goals/workbench/notes/T008-terminal-focus.md"
+      verification:
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+      full_outcome_complete: false
+      next_task: T009
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 6 from the plan: repo issue queue pane."
+    inputs:
+      - "T008 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-6-repo-issue-queue-pane"
+    allowed_files:
+      - "packages/web/components/workbench/IssueQueuePane.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-state.ts"
+      - "packages/web/components/workbench/workbench.test.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Issue grouping semantics conflict with the fixture contract."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Open/running/closed counts for fixture repo A."
+      - "Details and Jump to session assertions."
+      - "Verification command results."
+    pm_amendments:
+      - at: "2026-05-17T03:27:57Z"
+        reason: "T009 cannot replace the right-pane placeholder or wire Details/Jump-to-session into focus without WorkbenchShell and CSS."
+    receipt:
+      result: done
+      note: "notes/T009-repo-issue-queue-pane.md"
+      summary: "Implemented the repo issue queue with open-work/running/closed filters, counts, row status/priority/updated metadata, Launch/Details/Jump-to-session actions, and center focus wiring for Details and active session jumps."
+      evidence:
+        - "packages/web/components/workbench/IssueQueuePane.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/components/workbench/workbench-state.ts"
+        - "packages/web/components/workbench/workbench.test.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/goals/workbench/notes/T009-repo-issue-queue-pane.md"
+      verification:
+        - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T010
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 7 from the plan: issue detail focus and mutations."
+    inputs:
+      - "T009 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-7-issue-detail-focus-and-mutations"
+    allowed_files:
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web lint"
+    stop_if:
+      - "Need to alter existing detail APIs."
+      - "Need files outside allowed_files."
+      - "Mutation behavior is ambiguous compared with plan API table."
+    expected_output:
+      - "Endpoint assertion list for every Task 7 API call."
+      - "Mutation sync proof."
+      - "Verification command results."
+    pm_amendments:
+      - at: "2026-05-17T03:33:14Z"
+        reason: "T010 cannot replace the placeholder issue focus or synchronize queue state after mutations without WorkbenchShell and CSS."
+    receipt:
+      result: done
+      note: "notes/T010-issue-detail-focus-mutations.md"
+      summary: "Implemented issue detail focus loading, markdown rendering, cached/detail metadata, linked PR/deployment/comment display, and controls for title edit, comment, close/reopen, priority, labels, assignees, reassign, and image upload with Playwright endpoint assertions."
+      evidence:
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/components/workbench/workbench-api.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/goals/workbench/notes/T010-issue-detail-focus-mutations.md"
+      verification:
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T011
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 8 from the plan: launch options and worktree status."
+    inputs:
+      - "T010 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-8-launch-options-and-worktree-status"
+    allowed_files:
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Existing launch components cannot be reused without broad refactor."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Exact launch request JSON assertion."
+      - "Duplicate-session behavior proof."
+      - "Worktree status/reset endpoint assertions."
+    pm_amendments:
+      - at: "2026-05-17T03:42:27Z"
+        reason: "T011 success acceptance requires adding a new session to the left pane and selecting terminal focus, which must update WorkbenchShell state."
+    receipt:
+      result: done
+      note: "notes/T011-launch-options-worktree-status.md"
+      summary: "Added launch/worktree controls to issue focus, reusing existing launch form pieces, checking status, reset/cleanup actions, duplicate launch handling, exact launch request assertions, and success behavior that adds/selects the new terminal session."
+      evidence:
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/workbench-api.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/goals/workbench/notes/T011-launch-options-worktree-status.md"
+      verification:
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T012
+  - id: T012
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Prepare PR batch workbench-sessions-issues-launch for Tasks 4-8."
+    inputs:
+      - "T007 receipt"
+      - "T008 receipt"
+      - "T009 receipt"
+      - "T010 receipt"
+      - "T011 receipt"
+    constraints:
+      - "Use superpowers:requesting-code-review before opening or updating the PR."
+      - "Record Playwright coverage rows covered by the PR."
+      - "Do not merge unless local verification and CI are green."
+    expected_output:
+      - "Branch or PR status."
+      - "Review status."
+      - "CI status."
+      - "Merge or follow-up decision."
+    receipt:
+      result: done
+      note: "notes/T012-pr-batch-workbench-sessions-issues-launch.md"
+      summary: "Prepared the local workbench-sessions-issues-launch PR batch for Tasks 4-8, ran final Codex review, fixed accepted findings, and verified focused unit, Playwright, typecheck, and lint coverage. No GitHub PR was opened, CI was not run, and no merge was attempted because this remains local GoalBuddy board work."
+      branch: "workbench-aggregate-and-shell"
+      pr_status: "not_opened"
+      ci_status: "not_run"
+      merge_status: "not_attempted"
+      review_status: "clean_no_actionable_findings"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test -- app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web lint"
+      full_outcome_complete: false
+      next_task: T013
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 9 from the plan: global Issues mode with collapsed side panes."
+    inputs:
+      - "T012 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-9-global-issues-mode"
+    allowed_files:
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Collapsed-pane behavior conflicts with current layout implementation."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Side pane hidden assertions."
+      - "Global issue navigation proof."
+      - "Verification command results."
+    receipt:
+      result: done
+      note: "notes/T013-global-issues-mode.md"
+      summary: "Implemented global Issues mode with side panes collapsed, grouped all repo issues from the aggregate payload, rendered running issue status, and wired global issue selection back to /workbench issue focus with repo selection and side panes restored."
+      changed_files:
+        - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      full_outcome_complete: false
+      next_task: T014
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 10 from the plan: cross-repo board mode."
+    inputs:
+      - "T013 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-10-cross-repo-board-mode"
+    allowed_files:
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Board fixture data cannot be represented by the aggregate payload."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Four-column board proof."
+      - "Running-only reversible filter proof."
+      - "Verification command results."
+    receipt:
+      result: done
+      note: "notes/T014-cross-repo-board-mode.md"
+      summary: "Implemented cross-repo Board mode with one column per repo, collapsed side panes, payload and priority sorting, reversible running-only filtering, empty-column states, and card selection back to /workbench issue focus."
+      changed_files:
+        - "packages/web/components/workbench/BoardFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      verification:
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+      full_outcome_complete: false
+      next_task: T015
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 11 from the plan: repo setup and settings mode."
+    inputs:
+      - "T014 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-11-repo-setup-and-settings-mode"
+    allowed_files:
+      - "packages/web/components/workbench/RepoSetupFocus.tsx"
+      - "packages/web/components/workbench/SettingsFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Existing settings components cannot be reused without broad refactor."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Add, patch, delete, settings save, health, and user endpoint assertions."
+      - "Settings side panes collapsed proof."
+      - "Verification command results."
+    pm_amendments:
+      - at: "2026-05-17T00:00:00Z"
+        reason: "T015 cannot render repo setup or settings surfaces from /workbench/settings without WorkbenchShell wiring; adding WorkbenchShell keeps the slice vertical while preserving the existing CSS-free file scope."
+    receipt:
+      result: done
+      note: "notes/T015-repo-setup-settings-mode.md"
+      summary: "Implemented workbench settings and repo setup surfaces with collapsed side panes, settings/health/user loading, settings save, repo patch/add/delete, GitHub repo refresh, and empty repo setup navigation preserved."
+      changed_files:
+        - "packages/web/components/workbench/RepoSetupFocus.tsx"
+        - "packages/web/components/workbench/SettingsFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      verification:
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web typecheck"
+      full_outcome_complete: false
+      next_task: T016
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 12 from the plan: Quick Create mode."
+    inputs:
+      - "T015 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-12-quick-create-mode"
+    allowed_files:
+      - "packages/web/components/workbench/QuickCreateFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Existing parse components cannot be reused without broad refactor."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Parse/create and draft endpoint assertions."
+      - "Verification command results."
+    pm_amendments:
+      - at: "2026-05-17T00:00:00Z"
+        reason: "T016 cannot render Quick Create from the top nav without WorkbenchShell wiring; adding WorkbenchShell keeps the slice vertical."
+    receipt:
+      result: done
+      note: "notes/T016-quick-create-mode.md"
+      summary: "Implemented Quick Create mode with parse textarea, candidate issue cards, accept/reject state, accepted issue creation, draft save/update/assign fallback, and Playwright assertions for parse/create/draft endpoints."
+      changed_files:
+        - "packages/web/components/workbench/QuickCreateFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      full_outcome_complete: false
+      next_task: T017
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 13 from the plan: Pull Requests mode."
+    inputs:
+      - "T016 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-13-pull-requests-mode"
+    allowed_files:
+      - "packages/web/components/workbench/PullRequestsFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Existing PR components cannot be reused without broad refactor."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "List/detail/review/merge/comment endpoint assertions."
+      - "Verification command results."
+    pm_amendments:
+      - at: "2026-05-17T00:00:00Z"
+        reason: "T017 cannot render Pull Requests mode from the top nav without WorkbenchShell wiring; adding WorkbenchShell keeps the slice vertical."
+    receipt:
+      result: done
+      note: "notes/T017-pull-requests-mode.md"
+      summary: "Implemented repo-scoped Pull Requests mode with list/detail loading, checks and linked issue display, review/merge/comment actions, merged state update, repo-specific empty state, and Playwright endpoint assertions."
+      changed_files:
+        - "packages/web/components/workbench/PullRequestsFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      full_outcome_complete: false
+      next_task: T018
+  - id: T018
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Prepare PR batch workbench-global-modes for Tasks 9-13."
+    inputs:
+      - "T013 receipt"
+      - "T014 receipt"
+      - "T015 receipt"
+      - "T016 receipt"
+      - "T017 receipt"
+    constraints:
+      - "Use superpowers:requesting-code-review before opening or updating the PR."
+      - "Record Playwright coverage rows covered by the PR."
+      - "Do not merge unless local verification and CI are green."
+    expected_output:
+      - "Branch or PR status."
+      - "Review status."
+      - "CI status."
+      - "Merge or follow-up decision."
+    receipt:
+      result: done
+      note: "notes/T018-pr-batch-workbench-global-modes.md"
+      summary: "Prepared local PR batch for Tasks 9-13. Final codex-review was clean after fixes for stale repo selection, session URL normalization, stale PR requests, and invalid lint-disable comments. No GitHub PR, CI, or merge was performed because the board remains local and unpushed."
+      review:
+        command: "~/.codex/skills/codex-review/scripts/codex-review --full-access"
+        result: "clean: no accepted/actionable findings reported"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test"
+        - "pnpm --filter @issuectl/web lint"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      caveats:
+        - "Build remains blocked by local DNS/network resolution for fonts.googleapis.com in next/font."
+        - "Review runner's unscoped e2e command hit server timeout; PM-thread scoped desktop-chromium command passed 21 tests."
+      full_outcome_complete: false
+      next_task: T019
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 14 from the plan: width adjustability and collapsible sections."
+    inputs:
+      - "T018 receipt"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-14-width-adjustability-and-collapsible-sections"
+    allowed_files:
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/InstancePane.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/SettingsFocus.tsx"
+      - "packages/web/components/workbench/workbench-state.ts"
+      - "packages/web/components/workbench/workbench.test.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Width behavior requires global layout changes outside allowed_files."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "localStorage key and width clamp proof."
+      - "Layout overlap proof at 1440x1000 and 1100x850."
+      - "Verification command results."
+    receipt:
+      note: "notes/T019-width-adjustability-collapsible-sections.md"
+      summary: "Implemented width-adjustable Workbench side columns, persisted/reset column widths, collapsible session/issue/settings sections, and e2e layout/collapse proof. Review-triggered PR endpoint fixes were included because PR mode buttons depended on those endpoints."
+      review:
+        command: "~/.codex/skills/codex-review/scripts/codex-review --full-access"
+        result: "clean: no accepted/actionable findings reported"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web test -- components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test -- app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web test"
+        - "pnpm --filter @issuectl/web lint"
+      caveats:
+        - "Build remains blocked by local DNS/network resolution for fonts.googleapis.com in next/font."
+        - "Existing next.config.ts serverActions warning remains outside this task."
+      full_outcome_complete: false
+      next_task: T020
+  - id: T020
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide whether named plain shells stay in this goal, are deferred to a separate goal, or ship disabled in v1."
+    inputs:
+      - "Receipts through T019"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-15-named-plain-shells-backend-extension"
+    constraints:
+      - "Do not implement."
+      - "Account for current API/schema support and PR batch risk."
+    expected_output:
+      - "Decision: include | defer | disabled_v1"
+      - "Updated acceptance criteria if included."
+      - "Follow-up task or goal recommendation if deferred."
+    receipt:
+      result: disabled_v1
+      note: "notes/T020-named-shells-decision.md"
+      decision: "disabled_v1"
+      summary: "Named plain shells are intentionally unavailable in v1 because current APIs/schema do not support issue-independent shell lifecycle, ttyd preview, or shell listing. Task 15 should become a separate workbench-named-shells goal."
+      v1_acceptance:
+        - "Show collapsible Named shells 0."
+        - "Show body text Named shells are not available yet."
+        - "Do not enable New named shell launch behavior."
+        - "Do not fake named shells as issue deployments."
+        - "Call out the disabled-v1 status in responsive QA and final PR notes."
+      follow_up_goal: "Create a separate workbench-named-shells goal from plan Task 15, split into 15A schema/core, 15B APIs, 15C ttyd/preview integration, 15D UI wiring, and 15E e2e/QA."
+      full_outcome_complete: false
+      next_task: T026
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "If T020 approves inclusion, implement Worker 15A: named shell schema/core."
+    inputs:
+      - "T020 receipt"
+    allowed_files:
+      - "packages/core/src/db/schema.ts"
+      - "packages/core/src/db/migrations.ts"
+      - "packages/core/src/db/shells.ts"
+      - "packages/core/src/db/shells.test.ts"
+      - "packages/core/src/index.ts"
+    verify:
+      - "pnpm --filter @issuectl/core test -- db/shells.test.ts"
+      - "pnpm --filter @issuectl/core test"
+    stop_if:
+      - "T020 does not approve inclusion."
+      - "Migration risk requires a separate goal."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Schema/core shell tests."
+      - "Migration/cascade proof."
+      - "Verification command results."
+    receipt:
+      result: skipped
+      note: "notes/T021-T025-named-shells-skipped.md"
+      summary: "Skipped because T020 decided disabled_v1; named shell schema/core belongs in a separate follow-up goal."
+      full_outcome_complete: false
+      next_task: T026
+  - id: T022
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "If T020 approves inclusion, implement Worker 15B: named shell APIs."
+    inputs:
+      - "T021 receipt"
+    allowed_files:
+      - "packages/web/app/api/v1/shells/route.ts"
+      - "packages/web/app/api/v1/shells/route.test.ts"
+      - "packages/web/app/api/v1/shells/[id]/end/route.ts"
+      - "packages/web/app/api/v1/shells/[id]/end/route.test.ts"
+      - "packages/web/app/api/v1/shells/[id]/ensure-ttyd/route.ts"
+      - "packages/web/app/api/v1/shells/[id]/ensure-ttyd/route.test.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- app/api/v1/shells/route.test.ts"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "T020 does not approve inclusion."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Shell API route tests."
+      - "Endpoint response shape proof."
+      - "Verification command results."
+    receipt:
+      result: skipped
+      note: "notes/T021-T025-named-shells-skipped.md"
+      summary: "Skipped because T020 decided disabled_v1; named shell APIs belong in a separate follow-up goal."
+      full_outcome_complete: false
+      next_task: T026
+  - id: T023
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "If T020 approves inclusion, implement Worker 15C: named shell ttyd and preview integration."
+    inputs:
+      - "T022 receipt"
+    allowed_files:
+      - "packages/web/app/api/v1/shells/[id]/ensure-ttyd/route.ts"
+      - "packages/web/lib/session-previews.ts"
+      - "packages/web/lib/session-previews.test.ts"
+      - "packages/web/app/api/v1/sessions/previews/route.ts"
+      - "packages/web/app/api/v1/sessions/previews/route.test.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test -- lib/session-previews.test.ts"
+      - "pnpm --filter @issuectl/web test -- app/api/v1/sessions/previews/route.test.ts"
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "T020 does not approve inclusion."
+      - "Preview contract cannot support shells without a broader aggregate redesign."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Shell preview/ensure-ttyd proof."
+      - "Verification command results."
+    receipt:
+      result: skipped
+      note: "notes/T021-T025-named-shells-skipped.md"
+      summary: "Skipped because T020 decided disabled_v1; shell ttyd and preview integration belongs in a separate follow-up goal."
+      full_outcome_complete: false
+      next_task: T026
+  - id: T024
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "If T020 approves inclusion, implement Worker 15D: named shell UI wiring."
+    inputs:
+      - "T023 receipt"
+    allowed_files:
+      - "packages/web/components/workbench/InstancePane.tsx"
+      - "packages/web/components/workbench/RepoOverviewFocus.tsx"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --grep \"named shell\""
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "T020 does not approve inclusion."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Named shell UI e2e proof."
+      - "Verification command results."
+    receipt:
+      result: skipped
+      note: "notes/T021-T025-named-shells-skipped.md"
+      summary: "Skipped because T020 decided disabled_v1; named shell UI wiring belongs in a separate follow-up goal."
+      full_outcome_complete: false
+      next_task: T026
+  - id: T025
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "If T020 approves inclusion, implement Worker 15E: named shell e2e and QA proof."
+    inputs:
+      - "T024 receipt"
+    allowed_files:
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/qa/workbench-validation.md"
+    verify:
+      - "pnpm --filter @issuectl/core test -- db/shells.test.ts"
+      - "pnpm --filter @issuectl/web test -- app/api/v1/shells/route.test.ts"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --grep \"named shell\""
+    stop_if:
+      - "T020 does not approve inclusion."
+      - "Need files outside allowed_files."
+    expected_output:
+      - "Named shell QA evidence."
+      - "Verification command results."
+    receipt:
+      result: skipped
+      note: "notes/T021-T025-named-shells-skipped.md"
+      summary: "Skipped because T020 decided disabled_v1; named shell e2e and QA proof belongs in a separate follow-up goal."
+      full_outcome_complete: false
+      next_task: T026
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement Task 16 from the plan: responsive desktop QA, Playwright coverage matrix, CLI screenshots, and QA report."
+    inputs:
+      - "T019 receipt"
+      - "T020 receipt"
+      - "T025 receipt if named shells are included"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#task-16-responsive-desktop-qa-and-visual-acceptance"
+      - "docs/superpowers/plans/2026-05-16-workbench.md#playwright-e2e-and-cli-coverage"
+    allowed_files:
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/qa/workbench-validation.md"
+      - "docs/qa/workbench-artifacts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web lint"
+      - "pnpm --filter @issuectl/web test"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium --trace=on"
+      - "Playwright CLI screenshot pass from docs/superpowers/plans/2026-05-16-workbench.md"
+    stop_if:
+      - "The app cannot be run locally for screenshot capture."
+      - "Need product files outside allowed_files for non-QA fixes."
+    expected_output:
+      - "Screenshot paths."
+      - "Trace paths when applicable."
+      - "Completed Playwright coverage matrix."
+      - "docs/qa/workbench-validation.md."
+    receipt:
+      result: done
+      note: "notes/T026-responsive-desktop-qa.md"
+      summary: "Implemented responsive desktop QA for /workbench with viewport matrix Playwright coverage, high-DPI screenshot artifacts, CLI screenshots, QA report, side-pane collapse checks, board column checks, and an 1100px top-nav overflow fix."
+      evidence:
+        - "packages/web/e2e/workbench.spec.ts"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "docs/qa/workbench-validation.md"
+        - "docs/qa/workbench-artifacts"
+        - "docs/goals/workbench/notes/T026-responsive-desktop-qa.md"
+      verification:
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+        - "pnpm --filter @issuectl/web test"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium --trace=on"
+        - "Playwright CLI screenshot pass for /workbench, /workbench/settings, /workbench/board, and 1100px /workbench"
+        - "~/.codex/skills/codex-review/scripts/codex-review --full-access"
+      full_outcome_complete: false
+      next_task: T027
+  - id: T027
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Prepare PR batch workbench-layout-qa for Tasks 14 and 16, and include named-shell status."
+    inputs:
+      - "T019 receipt"
+      - "T020 receipt"
+      - "T026 receipt"
+    constraints:
+      - "Use superpowers:requesting-code-review before opening or updating the PR."
+      - "Record Playwright coverage rows covered by the PR."
+      - "Do not merge unless local verification and CI are green."
+    expected_output:
+      - "Branch or PR status."
+      - "Review status."
+      - "CI status."
+      - "Merge or follow-up decision."
+    receipt:
+      result: done
+      note: "notes/T027-pr-batch-workbench-layout-qa.md"
+      summary: "Prepared local PR batch workbench-layout-qa for Tasks 14 and 16 on branch workbench-aggregate-and-shell. Required review was clean; local verification and Playwright QA passed; no GitHub PR, CI, or merge was attempted because the board remains accumulated local uncommitted work."
+      evidence:
+        - "docs/goals/workbench/notes/T019-width-adjustability-collapsible-sections.md"
+        - "docs/goals/workbench/notes/T020-named-shells-decision.md"
+        - "docs/goals/workbench/notes/T026-responsive-desktop-qa.md"
+        - "docs/goals/workbench/notes/T027-pr-batch-workbench-layout-qa.md"
+        - "docs/qa/workbench-validation.md"
+        - "docs/qa/workbench-artifacts"
+      verification:
+        - "~/.codex/skills/codex-review/scripts/codex-review --full-access"
+        - "pnpm --filter @issuectl/web typecheck"
+        - "pnpm --filter @issuectl/web lint"
+        - "pnpm --filter @issuectl/web test"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium --trace=on"
+      full_outcome_complete: false
+      next_task: T029
+  - id: T028
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "If named shells were implemented, prepare PR batch workbench-named-shells."
+    inputs:
+      - "T020 receipt"
+      - "T021 receipt"
+      - "T022 receipt"
+      - "T023 receipt"
+      - "T024 receipt"
+      - "T025 receipt"
+    constraints:
+      - "Skip with a receipt if T020 deferred or disabled named shells."
+      - "Use superpowers:requesting-code-review before opening or updating the PR."
+      - "Do not merge unless local verification and CI are green."
+    expected_output:
+      - "Branch or PR status, or skipped-with-reason receipt."
+      - "Review status."
+      - "CI status."
+      - "Merge or follow-up decision."
+    receipt:
+      result: skipped
+      note: "notes/T028-workbench-named-shells-pr-skipped.md"
+      summary: "Skipped because T020 decided disabled_v1; no named-shell implementation PR batch exists in this goal."
+      full_outcome_complete: false
+      next_task: T029
+  - id: T029
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit final /workbench implementation against the mockup, traceability matrix, objective UI standards, Playwright evidence, PR review, and CI."
+    inputs:
+      - "All done task receipts"
+      - "docs/superpowers/plans/2026-05-16-workbench.md"
+      - "docs/qa/workbench-validation.md"
+      - "Current dirty diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued, active, or missing receipts."
+      - "Reject completion if Playwright coverage matrix or CLI screenshot artifacts are missing without approved deferral."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapped to original request."
+      - "Missing evidence or next task if not complete."
+    receipt:
+      result: not_complete
+      note: "notes/T029-final-audit.md"
+      summary: "Local /workbench implementation and QA evidence are complete, but the full GoalBuddy outcome is not complete because no GitHub PR was opened, CI was not run, and no merge/final branch decision has been made."
+      evidence:
+        - "docs/goals/workbench/notes/T029-final-audit.md"
+        - "docs/qa/workbench-validation.md"
+        - "docs/qa/workbench-artifacts"
+        - "docs/mockups/workbench.html"
+        - "packages/web/e2e/workbench.spec.ts"
+      full_outcome_complete: false
+      next_task: T030
+  - id: T030
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: default
+    objective: "Finish the development branch after final audit using superpowers:finishing-a-development-branch."
+    inputs:
+      - "T029 receipt"
+    constraints:
+      - "Only proceed if T029 says full_outcome_complete: true."
+      - "Confirm clean state, final verification, merged PRs, and remaining follow-up tasks."
+    expected_output:
+      - "Final branch status."
+      - "Merged PR summary."
+      - "Remaining follow-up tasks, if any."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

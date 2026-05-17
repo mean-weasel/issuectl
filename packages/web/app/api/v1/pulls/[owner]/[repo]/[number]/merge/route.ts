@@ -3,21 +3,21 @@ import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
 import { notifyMergedPullRequest } from "@/lib/push/notifications";
 import {
+  clearCacheKey,
+  formatErrorForUser,
   getDb,
   getRepo,
-  clearCacheKey,
-  withAuthRetry,
   mergePull,
-  formatErrorForUser,
+  withAuthRetry,
   type MergeMethod,
 } from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
 
-const VALID_MERGE_METHODS: MergeMethod[] = ["merge", "squash", "rebase"];
+const VALID_MERGE_METHODS: readonly MergeMethod[] = ["merge", "squash", "rebase"];
 
 type MergeBody = {
-  mergeMethod: MergeMethod;
+  mergeMethod?: MergeMethod;
 };
 
 export async function POST(
@@ -28,7 +28,7 @@ export async function POST(
   if (denied) return denied;
 
   const { owner, repo, number: numStr } = await params;
-  const pullNumber = parseInt(numStr, 10);
+  const pullNumber = Number.parseInt(numStr, 10);
   if (Number.isNaN(pullNumber) || pullNumber <= 0) {
     return NextResponse.json({ error: "Invalid pull request number" }, { status: 400 });
   }
@@ -36,11 +36,13 @@ export async function POST(
   let body: MergeBody;
   try {
     body = await request.json();
-  } catch {
+  } catch (parseErr) {
+    log.warn({ err: parseErr, msg: "api_request_body_parse_failed", url: request.nextUrl.pathname });
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!VALID_MERGE_METHODS.includes(body.mergeMethod)) {
+  const mergeMethod = body.mergeMethod ?? "merge";
+  if (!VALID_MERGE_METHODS.includes(mergeMethod)) {
     return NextResponse.json({ error: "Invalid merge method" }, { status: 400 });
   }
 
@@ -51,31 +53,26 @@ export async function POST(
     }
 
     const result = await withAuthRetry((octokit) =>
-      mergePull(octokit, owner, repo, pullNumber, body.mergeMethod),
+      mergePull(octokit, owner, repo, pullNumber, mergeMethod),
     );
-
     if (!result.merged) {
       return NextResponse.json(
-        { success: false, error: result.message || "Merge did not complete" },
+        { success: false, error: result.message || "Pull request was not merged" },
         { status: 409 },
       );
     }
-
-    clearCacheKey(db, `pull-detail:${owner}/${repo}#${pullNumber}`);
-    clearCacheKey(db, `pulls-open:${owner}/${repo}`);
-    notifyMergedPullRequest({
-      owner,
-      repo,
-      pullNumber,
-      sha: result.sha,
-    });
-
-    return NextResponse.json({ success: true, sha: result.sha });
+    clearPullCaches(db, owner, repo, pullNumber);
+    notifyMergedPullRequest({ owner, repo, pullNumber, sha: result.sha });
+    return NextResponse.json({ success: result.merged, sha: result.sha, message: result.message });
   } catch (err) {
-    log.error({ err, msg: "api_merge_pull_failed", owner, repo, pullNumber });
-    return NextResponse.json(
-      { success: false, error: formatErrorForUser(err) },
-      { status: 500 },
-    );
+    log.error({ err, msg: "api_pull_merge_failed", owner, repo, pullNumber });
+    return NextResponse.json({ success: false, error: formatErrorForUser(err) }, { status: 500 });
   }
+}
+
+function clearPullCaches(db: Parameters<typeof clearCacheKey>[0], owner: string, repo: string, pullNumber: number): void {
+  clearCacheKey(db, `pull-detail:${owner}/${repo}#${pullNumber}`);
+  clearCacheKey(db, `pulls:${owner}/${repo}`);
+  clearCacheKey(db, `pulls-open:${owner}/${repo}`);
+  clearCacheKey(db, `pulls-with-checks:${owner}/${repo}`);
 }
