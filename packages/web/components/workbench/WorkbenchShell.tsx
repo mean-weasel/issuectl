@@ -86,6 +86,7 @@ export function WorkbenchShell({
   const [repoSetupRequested, setRepoSetupRequested] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<WorkbenchColumnKey | null>(null);
+  const skipNextColumnWidthPersistRef = useRef(false);
   const dragRef = useRef<{
     column: WorkbenchColumnKey;
     startX: number;
@@ -157,6 +158,10 @@ export function WorkbenchShell({
 
   useEffect(() => {
     if (!storageReady) return;
+    if (skipNextColumnWidthPersistRef.current) {
+      skipNextColumnWidthPersistRef.current = false;
+      return;
+    }
     window.localStorage.setItem(
       WORKBENCH_COLUMN_WIDTH_STORAGE_KEY,
       JSON.stringify(selection.columnWidths),
@@ -573,7 +578,14 @@ export function WorkbenchShell({
         <button
           type="button"
           className={styles.resetColumnsButton}
-          onClick={() => dispatch({ type: "resetColumnWidths" })}
+          onClick={() => {
+            const storedColumnWidths = window.localStorage.getItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
+            skipNextColumnWidthPersistRef.current =
+              !columnsAreDefault(selection.columnWidths)
+              || (storedColumnWidths !== null && selection.columnWidths !== DEFAULT_WORKBENCH_COLUMN_WIDTHS);
+            window.localStorage.removeItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
+            dispatch({ type: "resetColumnWidths" });
+          }}
         >
           Reset column widths
         </button>
@@ -979,6 +991,11 @@ function withoutKey(record: Record<number, string>, key: number): Record<number,
   const next = { ...record };
   delete next[key];
   return next;
+}
+
+function columnsAreDefault(widths: Record<WorkbenchColumnKey, number>): boolean {
+  return widths.instances === DEFAULT_WORKBENCH_COLUMN_WIDTHS.instances
+    && widths.issues === DEFAULT_WORKBENCH_COLUMN_WIDTHS.issues;
 }
 
 function modeFromPath(pathname: string): WorkbenchMode {
