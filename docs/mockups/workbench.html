@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>issuectl - Workbench Mockup</title>
+<style>
+  :root {
+    --paper-bg: #f3ecd9;
+    --paper-bg-warm: #ede5cf;
+    --paper-bg-warmer: #e6dec4;
+    --paper-ink: #1a1712;
+    --paper-ink-soft: #3a342a;
+    --paper-ink-muted: #746a50;
+    --paper-line: #e0d6bc;
+    --paper-line-strong: #d2c5a6;
+    --paper-accent: #2d5f3f;
+    --paper-accent-dim: #4a7a5c;
+    --paper-accent-soft: #dce8de;
+    --paper-brick: #a8432a;
+    --paper-brick-soft: #efd9d1;
+    --paper-butter: #d9a54d;
+    --terminal-bg: #171916;
+    --terminal-chrome: #292821;
+    --terminal-text: #dbe7d7;
+    --terminal-muted: #82907e;
+    --radius-sm: 3px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--paper-bg);
+    color: var(--paper-ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.16;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.26'/></svg>");
+    background-size: 200px;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+    opacity: 0.62;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  .topbar {
+    height: 54px;
+    border-bottom: 1px solid var(--paper-line);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 18px;
+    background: rgba(243, 236, 217, 0.92);
+    backdrop-filter: blur(14px);
+  }
+
+  .brand {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 28px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .brand-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--paper-accent);
+    margin-left: 2px;
+    vertical-align: 5px;
+  }
+
+  .route {
+    font: 12px var(--mono);
+    color: var(--paper-ink-muted);
+    padding: 5px 8px;
+    border: 1px solid var(--paper-line);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .topnav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--paper-ink-muted);
+  }
+
+  .topnav a,
+  .topnav span,
+  .topnav button {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .topnav button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-style: inherit;
+  }
+
+  .topnav .active {
+    color: var(--paper-accent);
+  }
+
+  .workbench {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 76px var(--instances-width, 284px) 6px minmax(440px, 1fr) 6px var(--issues-width, 348px);
+    position: relative;
+  }
+
+  body[data-mode="issueBoard"] .workbench {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  body[data-mode="globalIssues"] .workbench,
+  body[data-mode="settings"] .workbench {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  body[data-mode="issueBoard"] .instance-pane,
+  body[data-mode="issueBoard"] .issue-pane,
+  body[data-mode="issueBoard"] .resize-handle,
+  body[data-mode="globalIssues"] .instance-pane,
+  body[data-mode="globalIssues"] .issue-pane,
+  body[data-mode="globalIssues"] .resize-handle,
+  body[data-mode="settings"] .instance-pane,
+  body[data-mode="settings"] .issue-pane,
+  body[data-mode="settings"] .resize-handle {
+    display: none;
+  }
+
+  .resize-handle {
+    min-width: 6px;
+    background: linear-gradient(to right, transparent, rgba(45, 95, 63, 0.18), transparent);
+    cursor: col-resize;
+  }
+
+  .resize-handle:hover,
+  .resize-handle.dragging {
+    background: var(--paper-accent-soft);
+  }
+
+  .pane {
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid var(--paper-line);
+    overflow: hidden;
+  }
+
+  .pane:last-child { border-right: 0; }
+
+  .repo-rail {
+    background: var(--paper-bg-warm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 8px;
+  }
+
+  .repo-button,
+  .rail-button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.25);
+    display: grid;
+    place-items: center;
+    color: var(--paper-ink-muted);
+    font: 700 11px var(--mono);
+    position: relative;
+  }
+
+  .repo-button.active {
+    background: var(--paper-ink);
+    color: var(--paper-bg);
+    border-color: var(--paper-ink);
+  }
+
+  .repo-button .badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--paper-accent);
+    color: #fff;
+    font-size: 9px;
+  }
+
+  .rail-spacer { flex: 1; }
+
+  .instance-pane,
+  .issue-pane {
+    display: flex;
+    flex-direction: column;
+    background: #f6efd9;
+  }
+
+  .pane-head {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--paper-line);
+  }
+
+  .kicker {
+    margin-bottom: 5px;
+    color: var(--paper-ink-muted);
+    font: 700 10px var(--mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .pane-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.1;
+  }
+
+  .count {
+    color: var(--paper-ink-muted);
+    font: 600 11px var(--mono);
+    white-space: nowrap;
+  }
+
+  .search {
+    height: 34px;
+    margin-top: 12px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    color: var(--paper-ink-muted);
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.24);
+  }
+
+  .sort-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .sort-button {
+    height: 26px;
+    padding: 0 9px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--paper-ink-muted);
+    font-size: 11px;
+  }
+
+  .sort-button.active {
+    background: var(--paper-accent-soft);
+    color: var(--paper-accent);
+    border-color: #bfd1c2;
+  }
+
+  .scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px;
+  }
+
+  .section-label {
+    padding: 8px 6px 6px;
+    color: var(--paper-ink-muted);
+    font: 700 10px var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .disclosure {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 0;
+    background: transparent;
+    padding: 9px 6px 6px;
+    color: var(--paper-ink-muted);
+    font: 700 10px var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .disclosure span:last-child {
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .instance,
+  .issue-card {
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    padding: 10px;
+    margin-bottom: 7px;
+    width: 100%;
+    display: block;
+    text-align: left;
+  }
+
+  .instance {
+    background: transparent;
+  }
+
+  .instance.active {
+    border-color: #bfd1c2;
+    background: var(--paper-accent-soft);
+    box-shadow: inset 3px 0 0 var(--paper-accent);
+  }
+
+  .instance.manual {
+    background: rgba(255, 255, 255, 0.24);
+    border-color: var(--paper-line);
+  }
+
+  .item-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .status {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--paper-accent);
+    flex: 0 0 auto;
+  }
+
+  .status.idle { background: var(--paper-butter); }
+  .status.shell { background: var(--paper-ink-muted); }
+  .status.error { background: var(--paper-brick); }
+  .status.unavailable { background: transparent; border: 1px solid var(--paper-ink-muted); }
+
+  .item-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .meta {
+    color: var(--paper-ink-muted);
+    font: 11px var(--mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-preview {
+    margin-top: 8px;
+    padding: 7px;
+    border-radius: var(--radius-md);
+    background: rgba(26, 23, 18, 0.06);
+    color: var(--paper-ink-muted);
+    font: 10px/1.35 var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .session-preview.error {
+    color: var(--paper-brick);
+    background: var(--paper-brick-soft);
+  }
+
+  .session-preview.unavailable {
+    background: rgba(26, 23, 18, 0.03);
+  }
+
+  .instance-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .tiny-action {
+    height: 22px;
+    padding: 0 7px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--paper-ink-muted);
+    font-size: 10px;
+  }
+
+  .new-shell {
+    margin: 10px;
+    height: 36px;
+    border: 1px solid var(--paper-accent);
+    border-radius: var(--radius-md);
+    background: var(--paper-accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .focus-pane {
+    display: flex;
+    flex-direction: column;
+    background: var(--paper-bg);
+  }
+
+  .focus-head {
+    min-height: 76px;
+    border-bottom: 1px solid var(--paper-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 18px;
+  }
+
+  .focus-title {
+    min-width: 0;
+  }
+
+  .focus-title h1 {
+    margin: 0 0 5px;
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .focus-title p {
+    margin: 0;
+    color: var(--paper-ink-muted);
+    font: 12px var(--mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .action {
+    height: 32px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--paper-ink-soft);
+    padding: 0 11px;
+    font-size: 12px;
+  }
+
+  .action.primary {
+    background: var(--paper-accent);
+    color: #fff;
+    border-color: var(--paper-accent);
+  }
+
+  .action.danger {
+    color: var(--paper-brick);
+    border-color: #d8b9ad;
+  }
+
+  .toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 10;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-lg);
+    background: rgba(26, 23, 18, 0.9);
+    color: var(--paper-bg);
+    padding: 10px 12px;
+    font-size: 12px;
+    box-shadow: 0 10px 30px rgba(26, 23, 18, 0.28);
+  }
+
+  .focus-body {
+    flex: 1;
+    min-height: 0;
+    padding: 14px 18px 18px;
+    overflow: auto;
+  }
+
+  .terminal-frame {
+    height: 100%;
+    min-height: 440px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .terminal-tabs {
+    height: 36px;
+    border: 1px solid #1f211f;
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: var(--terminal-chrome);
+    color: #e9dfc6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .term-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--paper-ink-muted);
+  }
+
+  .terminal {
+    flex: 1;
+    min-height: 0;
+    border: 1px solid #1f211f;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    background: var(--terminal-bg);
+    color: var(--terminal-text);
+    padding: 16px;
+    overflow: hidden;
+    font: 12px/1.55 var(--mono);
+  }
+
+  .terminal .muted { color: var(--terminal-muted); }
+  .terminal .prompt { color: #8fca95; }
+  .terminal .warn { color: var(--paper-butter); }
+  .cursor {
+    display: inline-block;
+    width: 7px;
+    height: 14px;
+    background: var(--terminal-text);
+    vertical-align: -2px;
+  }
+
+  .issue-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 14px;
+  }
+
+  .detail-card {
+    border: 1px solid var(--paper-line);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.22);
+    padding: 14px;
+  }
+
+  .detail-card.collapsible {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .detail-card.collapsible .card-body {
+    padding: 0 14px 14px;
+  }
+
+  .detail-card.collapsible .disclosure {
+    padding: 12px 14px;
+    color: var(--paper-ink);
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .detail-card h2 {
+    margin: 0 0 10px;
+    font-size: 14px;
+  }
+
+  .detail-card h3 {
+    margin: 14px 0 8px;
+    font-size: 12px;
+  }
+
+  .body-copy {
+    color: var(--paper-ink-soft);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .body-copy p { margin: 0 0 10px; }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .detail-chip {
+    border: 1px solid var(--paper-line-strong);
+    border-radius: 999px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--paper-ink-muted);
+    font: 11px var(--mono);
+  }
+
+  .detail-chip.green {
+    background: var(--paper-accent-soft);
+    border-color: #bfd1c2;
+    color: var(--paper-accent);
+  }
+
+  .comment-box {
+    min-height: 74px;
+    margin-top: 8px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-md);
+    padding: 9px;
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--paper-ink-muted);
+    font-size: 12px;
+  }
+
+  .side-actions {
+    display: grid;
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .side-actions .action,
+  .side-actions .new-shell {
+    width: 100%;
+    margin: 0;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .launch-box {
+    position: sticky;
+    top: 0;
+  }
+
+  .field {
+    margin-bottom: 12px;
+  }
+
+  .field label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--paper-ink-muted);
+    font: 700 10px var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .input-like {
+    min-height: 32px;
+    border: 1px solid var(--paper-line-strong);
+    border-radius: var(--radius-md);
+    padding: 8px;
+    color: var(--paper-ink-soft);
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .input-like.warn {
+    border-color: #ddbd75;
+    background: rgba(217, 165, 77, 0.14);
+  }
+
+  .input-like.error {
+    border-color: #d8a393;
+    background: var(--paper-brick-soft);
+    color: var(--paper-brick);
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .filter {
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid var(--paper-line-strong);
+    color: var(--paper-ink-muted);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+  }
+
+  .filter.active {
+    background: var(--paper-accent-soft);
+    color: var(--paper-accent);
+    border-color: #bfd1c2;
+  }
+
+  .issue-card {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: var(--paper-line);
+  }
+
+  button.issue-card {
+    font: inherit;
+    color: inherit;
+  }
+
+  .issue-card.running {
+    border-color: #bfd1c2;
+    background: #edf5ec;
+  }
+
+  .issue-card.selected {
+    border-color: #d5a284;
+    background: #f5e5dc;
+    box-shadow: inset 3px 0 0 var(--paper-brick);
+  }
+
+  .issue-title {
+    margin-bottom: 7px;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.28;
+  }
+
+  .issue-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    color: var(--paper-ink-muted);
+    font: 11px var(--mono);
+  }
+
+  .pill {
+    border-radius: 999px;
+    background: var(--paper-bg-warm);
+    padding: 2px 7px;
+  }
+
+  .pill.green {
+    background: var(--paper-accent-soft);
+    color: var(--paper-accent);
+  }
+
+  .pill.brick {
+    background: var(--paper-brick-soft);
+    color: var(--paper-brick);
+  }
+
+  .issue-actions {
+    margin-top: 9px;
+    display: flex;
+    gap: 6px;
+  }
+
+  .mini-action {
+    height: 25px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--paper-line-strong);
+    background: transparent;
+    padding: 0 8px;
+    color: var(--paper-ink-soft);
+    font-size: 11px;
+  }
+
+  .mini-action.primary {
+    background: var(--paper-accent);
+    border-color: var(--paper-accent);
+    color: #fff;
+  }
+
+  .mode { display: none; }
+  body[data-mode="terminal"] .mode-terminal { display: block; }
+  body[data-mode="issue"] .mode-issue { display: block; }
+  body[data-mode="repo"] .mode-repo { display: block; }
+  body[data-mode="shell"] .mode-shell { display: block; }
+  body[data-mode="repoSetup"] .mode-repo-setup { display: block; }
+  body[data-mode="quickCreate"] .mode-quick-create { display: block; }
+  body[data-mode="settings"] .mode-settings { display: block; }
+  body[data-mode="globalIssues"] .mode-global-issues { display: block; }
+  body[data-mode="issueBoard"] .mode-issue-board { display: block; }
+  body[data-mode="pullRequests"] .mode-pull-requests { display: block; }
+  body[data-mode="terminal"] .issue-selectable { }
+  body[data-mode="issue"] .terminal-selected { }
+
+  body[data-mode="terminal"] .issue-selected-only { display: none; }
+  body[data-mode="issue"] .terminal-selected-only { display: none; }
+  body[data-mode="issue"] .issue-selected-only { display: block; }
+  body[data-mode="issue"] .issue-card.issue-selectable:not(.issue-selected-only) {
+    display: none;
+  }
+  body[data-mode="repo"] .instance.active,
+  body[data-mode="repoSetup"] .instance.active,
+  body[data-mode="quickCreate"] .instance.active,
+  body[data-mode="settings"] .instance.active,
+  body[data-mode="globalIssues"] .instance.active,
+  body[data-mode="issueBoard"] .instance.active,
+  body[data-mode="pullRequests"] .instance.active,
+  body[data-mode="shell"] .instance.active {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body[data-mode="issue"] .instance.active {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body[data-mode="issue"] .instance.active:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .shell-form-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 14px;
+  }
+
+  .repo-board {
+    min-height: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(240px, 1fr);
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .repo-board-column {
+    border: 1px solid var(--paper-line);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.18);
+    min-width: 240px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .repo-board-head {
+    padding: 12px;
+    border-bottom: 1px solid var(--paper-line);
+    background: rgba(237, 229, 207, 0.55);
+  }
+
+  .repo-board-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .repo-board-subtitle {
+    margin-top: 4px;
+    color: var(--paper-ink-muted);
+    font: 11px var(--mono);
+  }
+
+  .repo-board-list {
+    padding: 8px;
+    overflow: auto;
+  }
+
+  .shell-form {
+    min-height: 420px;
+  }
+
+  .empty-focus {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--paper-ink-muted);
+  }
+
+  .empty-mark {
+    width: 58px;
+    height: 58px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+    background: var(--paper-bg-warm);
+    color: var(--paper-ink);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 26px;
+  }
+
+  .empty-focus h2 {
+    margin: 0 0 8px;
+    color: var(--paper-ink);
+    font-size: 16px;
+  }
+
+  .empty-focus p {
+    max-width: 360px;
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .input-like.strong {
+    color: var(--paper-ink);
+    font-weight: 650;
+    background: rgba(255, 255, 255, 0.32);
+  }
+
+  input.input-like,
+  select.input-like {
+    width: 100%;
+    font: inherit;
+    outline: none;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  @media (max-width: 1100px) {
+    .workbench {
+      grid-template-columns: 68px 250px minmax(420px, 1fr);
+    }
+    .issue-pane {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body data-mode="terminal">
+<div class="page">
+  <header class="topbar">
+    <div class="brand">issuectl<span class="brand-dot"></span></div>
+    <div class="route" id="routeLabel">/workbench</div>
+    <nav class="topnav" aria-label="Primary">
+      <button id="navIssues" onclick="openGlobalIssues()">Issues</button>
+      <button id="navBoard" onclick="openIssueBoard()">Board</button>
+      <button id="navPrs" onclick="openPullRequests()">PRs</button>
+      <button id="navWorkbench" class="active" onclick="goWorkbenchHome()">Workbench</button>
+      <button id="navQuickCreate" onclick="openQuickCreate()">Quick Create</button>
+      <button id="navSettings" onclick="openSettings()">Settings</button>
+    </nav>
+  </header>
+
+  <section class="workbench">
+    <aside class="pane repo-rail" id="repoRail" aria-label="Admitted repositories">
+      <div class="rail-spacer"></div>
+    </aside>
+
+    <aside class="pane instance-pane" aria-label="Repo instances">
+      <div class="pane-head">
+        <div class="kicker">instances</div>
+        <div class="title-row">
+          <div class="pane-title" id="instanceRepoTitle">issuectl</div>
+          <div class="count" id="instanceCount">3 live</div>
+        </div>
+        <div class="sort-row" aria-label="Sort instances">
+          <button id="sortStatus" class="sort-button" onclick="setInstanceSort('status')">running first</button>
+          <button id="sortRecent" class="sort-button" onclick="setInstanceSort('recent')">recent</button>
+          <button id="sortKind" class="sort-button" onclick="setInstanceSort('kind')">kind</button>
+        </div>
+      </div>
+
+      <div class="scroll" id="instanceList"></div>
+
+      <button class="new-shell" onclick="startShellFlow()">+ New named shell</button>
+    </aside>
+
+    <div class="resize-handle" data-resize="instances" title="Drag to resize instances"></div>
+
+    <main class="pane focus-pane" aria-label="Selected workbench object">
+      <div id="focusHead"></div>
+      <div class="focus-body" id="focusBody"></div>
+    </main>
+
+    <div class="resize-handle" data-resize="issues" title="Drag to resize issues"></div>
+
+    <aside class="pane issue-pane" aria-label="Issue queue">
+      <div class="pane-head">
+        <div class="kicker">issue queue</div>
+        <div class="title-row">
+          <div class="pane-title">open work</div>
+          <div class="count" id="issueCount">12</div>
+        </div>
+        <div class="filter-row">
+          <div class="filter active">open</div>
+          <div class="filter">running</div>
+          <div class="filter">closed</div>
+        </div>
+      </div>
+
+      <div class="scroll" id="issueList"></div>
+    </aside>
+  </section>
+</div>
+
+<script>
+  const repos = [
+    {
+      id: "issuectl",
+      initials: "IC",
+      owner: "mean-weasel",
+      name: "issuectl",
+      path: "~/Desktop/issuectl",
+      branchPattern: "issue-{number}-{slug}",
+      defaultAgent: "codex",
+      cacheAge: "8m",
+      instances: [
+        {
+          id: "ic-447",
+          type: "issue",
+          status: "active",
+          name: "#447 Mac sidebar state",
+          issueNumber: 447,
+          agent: "Codex",
+          branch: "issuectl-mac-sidebar",
+          duration: "38m",
+          port: 7682,
+          preview: "tsc --noEmit completed in 7.4s",
+          previewStatus: "active",
+          lines: [
+            '<span class="prompt">issuectl git:(issuectl-mac-sidebar)</span> pnpm turbo typecheck',
+            '<span class="muted">- Packages in scope: @issuectl/core, @issuectl/web, @issuectl/cli</span>',
+            '<span class="muted">- Running typecheck in 3 packages</span>',
+            "",
+            "@issuectl/core:typecheck: cache hit",
+            "@issuectl/cli:typecheck: cache hit",
+            "@issuectl/web:typecheck: running tsc --noEmit",
+            "",
+            '<span class="warn">components/workbench/InstanceList.tsx: draft changes detected</span>',
+            "@issuectl/web:typecheck: completed in 7.4s",
+            "",
+            '<span class="prompt">issuectl git:(issuectl-mac-sidebar)</span> <span class="cursor"></span>',
+          ],
+        },
+        {
+          id: "ic-498",
+          type: "issue",
+          status: "idle",
+          name: "#498 Terminal resize behavior",
+          issueNumber: 498,
+          agent: "Claude",
+          branch: "terminal-resize",
+          duration: "idle 12m",
+          port: 7691,
+          preview: "resize event replayed after reconnect",
+          previewStatus: "idle",
+          lines: [
+            '<span class="prompt">issuectl git:(terminal-resize)</span> pnpm web:e2e terminal-respawn',
+            "Running 1 test using 1 worker",
+            '<span class="warn">resize event replayed after reconnect</span>',
+            '<span class="prompt">issuectl git:(terminal-resize)</span> <span class="cursor"></span>',
+          ],
+        },
+        {
+          id: "ic-486",
+          type: "issue",
+          status: "error",
+          name: "#486 Mobile filters",
+          issueNumber: 486,
+          agent: "Codex",
+          branch: "mobile-filter-polish",
+          duration: "error",
+          port: 7712,
+          preview: "ttyd process exited; tmux session unavailable",
+          previewStatus: "error",
+          lines: [
+            '<span class="warn">ttyd process exited unexpectedly</span>',
+            '<span class="muted">Use Reconnect to ensure ttyd for this deployment.</span>',
+          ],
+        },
+        {
+          id: "ic-shell-design",
+          type: "shell",
+          status: "shell",
+          name: "design-sketch",
+          branch: "main",
+          duration: "~/Desktop/issuectl",
+          port: 7704,
+          preview: "index.html  web.html  workbench.html",
+          previewStatus: "active",
+          lines: [
+            '<span class="prompt">issuectl git:(main)</span> ls docs/mockups',
+            "index.html  web.html  workbench.html",
+            '<span class="prompt">issuectl git:(main)</span> <span class="cursor"></span>',
+          ],
+        },
+      ],
+      issues: [
+        {
+          number: 447,
+          title: "Add display-scoped Mac sidebar state",
+          priority: "normal",
+          labels: ["macos", "state"],
+          assignees: ["Jeremy"],
+          comments: ["Display identity now persists separately from section selection."],
+          updated: "8m",
+          body: [
+            "Persist Mac sidebar display state independently for each connected monitor.",
+            "Keep collapse, selected section, and sizing behavior stable across display changes.",
+          ],
+          files: ["apple/IssueCTLMac/Platform/MacSidebarDisplay.swift", "apple/IssueCTLMac/Views/MacSidebarRootView.swift"],
+          worktree: { exists: true, dirty: false, path: "~/.issuectl/worktrees/issuectl-447" },
+          linkedPRs: ["#449 mac-sidebar-display-state"],
+        },
+        {
+          number: 512,
+          title: "Desktop instance manager workbench",
+          priority: "high",
+          labels: ["desktop", "ux", "terminal"],
+          assignees: ["Jeremy"],
+          comments: [
+            "Separate route to start.",
+            "Plain shells for now.",
+            "Focus area depends on selected object.",
+          ],
+          updated: "22m",
+          body: [
+            "Create a separate desktop workbench route that organizes terminal instances around admitted repositories.",
+            "The selected repo should expose named plain shells, issue-launched agent sessions, and the current issue queue in one place.",
+            "Clicking an issue opens issue detail and launch-prep state. Clicking an instance opens terminal-only state.",
+          ],
+          files: ["packages/web/app/workbench/page.tsx", "packages/web/components/workbench/WorkbenchShell.tsx", "packages/core/src/db/deployments.ts"],
+          worktree: { exists: false, dirty: false, path: "~/.issuectl/worktrees/issuectl-512" },
+          linkedPRs: [],
+        },
+        {
+          number: 498,
+          title: "Terminal resize behavior drops rows after reconnect",
+          priority: "normal",
+          labels: ["terminal", "bug"],
+          assignees: ["Jeremy"],
+          comments: ["Likely related to reconnect preserving pane dimensions."],
+          updated: "1h",
+          body: ["Reconnect should preserve a sensible viewport and avoid clipped rows in active ttyd sessions."],
+          files: ["packages/web/components/terminal/TerminalPanel.tsx", "packages/web/lib/terminal-proxy.ts"],
+          worktree: { exists: true, dirty: true, path: "~/.issuectl/worktrees/issuectl-498" },
+          linkedPRs: ["#501 terminal-reconnect-fix"],
+        },
+        {
+          number: 486,
+          title: "Polish mobile filters and bottom sheet ergonomics",
+          priority: "normal",
+          labels: ["mobile", "polish"],
+          assignees: [],
+          comments: ["Keep this out of the workbench route for now."],
+          updated: "2h",
+          body: ["Tighten mobile filtering controls without changing the desktop dashboard behavior."],
+          files: ["packages/web/components/list/FiltersSheet.tsx"],
+          worktree: { exists: true, dirty: false, path: "~/.issuectl/worktrees/issuectl-486" },
+          linkedPRs: [],
+        },
+      ],
+    },
+    {
+      id: "bugdrop",
+      initials: "BD",
+      owner: "mean-weasel",
+      name: "bugdrop",
+      path: "~/Desktop/bugdrop",
+      branchPattern: "issue-{number}-{slug}",
+      defaultAgent: "claude",
+      cacheAge: "14m",
+      instances: [
+        {
+          id: "bd-shell-prod",
+          type: "shell",
+          status: "shell",
+          name: "prod-log-tail",
+          branch: "main",
+          duration: "~/Desktop/bugdrop",
+          port: 7710,
+          preview: "api 200 POST /events 42ms",
+          previewStatus: "active",
+          lines: [
+            '<span class="prompt">bugdrop git:(main)</span> pnpm logs --service api',
+            '<span class="muted">stream connected</span>',
+            "api 200 POST /events 42ms",
+            '<span class="prompt">bugdrop git:(main)</span> <span class="cursor"></span>',
+          ],
+        },
+        {
+          id: "bd-73",
+          type: "issue",
+          status: "unavailable",
+          name: "#73 Stale replay links",
+          issueNumber: 73,
+          agent: "Codex",
+          branch: "replay-link-refresh",
+          duration: "preview unavailable",
+          port: null,
+          preview: "no ttyd port reserved yet",
+          previewStatus: "unavailable",
+          lines: [
+            '<span class="muted">Terminal preview unavailable.</span>',
+          ],
+        },
+      ],
+      issues: [
+        {
+          number: 88,
+          title: "Group inbox signals by customer workspace",
+          priority: "high",
+          labels: ["inbox", "signals"],
+          assignees: ["Jeremy"],
+          comments: ["Use workspace clustering before individual events."],
+          updated: "18m",
+          body: ["Inbox should cluster related reports by customer workspace before showing individual events."],
+          files: ["app/inbox/page.tsx", "lib/signals.ts"],
+          worktree: { exists: false, dirty: false, path: "~/.issuectl/worktrees/bugdrop-88" },
+          linkedPRs: [],
+        },
+        {
+          number: 73,
+          title: "Fix stale replay links in signal detail",
+          priority: "normal",
+          labels: ["replay"],
+          assignees: [],
+          comments: ["Needs graceful expired-link handling."],
+          updated: "3h",
+          body: ["Replay links should expire gracefully and show a refresh affordance."],
+          files: ["components/ReplayLink.tsx"],
+          worktree: { exists: true, dirty: false, path: "~/.issuectl/worktrees/bugdrop-73" },
+          linkedPRs: [],
+        },
+      ],
+    },
+    {
+      id: "api",
+      initials: "API",
+      owner: "mean-weasel",
+      name: "api",
+      path: "~/Desktop/api",
+      branchPattern: "issue-{number}-{slug}",
+      defaultAgent: "codex",
+      cacheAge: "31m",
+      instances: [],
+      issues: [
+        {
+          number: 21,
+          title: "Add request correlation IDs to worker logs",
+          priority: "normal",
+          labels: ["logs", "observability"],
+          assignees: [],
+          comments: ["Use existing request metadata where possible."],
+          updated: "1d",
+          body: ["Worker logs need a shared correlation ID for incident investigation."],
+          files: ["src/logging.ts", "src/worker.ts"],
+          worktree: { exists: false, dirty: false, path: "~/.issuectl/worktrees/api-21" },
+          linkedPRs: [],
+        },
+      ],
+    },
+    {
+      id: "web",
+      initials: "WEB",
+      owner: "mean-weasel",
+      name: "web",
+      path: "~/Desktop/web",
+      branchPattern: "issue-{number}-{slug}",
+      defaultAgent: "codex",
+      cacheAge: "fresh",
+      instances: [],
+      issues: [],
+    },
+  ];
+
+  const state = {
+    repoId: "issuectl",
+    mode: "terminal",
+    selectedInstanceId: "ic-447",
+    selectedIssueNumber: null,
+    shellDraftCounter: 1,
+    instanceSort: "status",
+    boardSort: "repo",
+    boardRunningOnly: false,
+    collapsed: {
+      issueSessions: false,
+      namedShells: false,
+      issueBody: false,
+      launchPrep: false,
+      repoSettings: false,
+    },
+  };
+
+  function currentRepo() {
+    return repos.find((repo) => repo.id === state.repoId) ?? repos[0];
+  }
+
+  function activeIssueNumbers(repo) {
+    return new Set(repo.instances.filter((instance) => instance.type === "issue").map((instance) => instance.issueNumber));
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  function render() {
+    const repo = currentRepo();
+    document.body.dataset.mode = state.mode;
+    document.getElementById("routeLabel").textContent = routeForMode();
+    renderRepoRail();
+    renderInstances(repo);
+    renderIssues(repo);
+    renderFocus(repo);
+    renderModeButtons();
+  }
+
+  function renderRepoRail() {
+    const rail = document.getElementById("repoRail");
+    rail.innerHTML = repos.map((repo) => {
+      const live = repo.instances.length;
+      return `
+        <button class="repo-button ${repo.id === state.repoId ? "active" : ""}" title="${repo.owner}/${repo.name}" onclick="selectRepo('${repo.id}')">
+          ${repo.initials}${live ? `<span class="badge">${live}</span>` : ""}
+        </button>
+      `;
+    }).join("") + `
+      <div class="rail-spacer"></div>
+      <button class="rail-button" title="Add repository" onclick="openRepoSetup()">+</button>
+      <button class="rail-button" title="Repo settings" onclick="openRepoSetup()">...</button>
+    `;
+  }
+
+  function renderInstances(repo) {
+    document.getElementById("instanceRepoTitle").textContent = repo.name;
+    document.getElementById("instanceCount").textContent = `${repo.instances.length} live`;
+    const sortedInstances = sortInstances(repo.instances);
+    const issueSessions = sortedInstances.filter((instance) => instance.type === "issue");
+    const shells = sortedInstances.filter((instance) => instance.type === "shell");
+    document.getElementById("instanceList").innerHTML = `
+      ${renderDisclosure("issueSessions", `Issue sessions`, `${issueSessions.length}`)}
+      ${state.collapsed.issueSessions ? "" : issueSessions.length ? issueSessions.map(renderInstance).join("") : `<div class="meta" style="padding:8px 6px 14px">No issue sessions</div>`}
+      ${renderDisclosure("namedShells", `Named shells`, `${shells.length}`)}
+      ${state.collapsed.namedShells ? "" : shells.length ? shells.map(renderInstance).join("") : `<div class="meta" style="padding:8px 6px 14px">No named shells</div>`}
+    `;
+  }
+
+  function renderInstance(instance) {
+    const isActive = state.mode === "terminal" && state.selectedInstanceId === instance.id;
+    const statusClass = instance.status === "idle"
+      ? "idle"
+      : instance.status === "error"
+        ? "error"
+        : instance.status === "unavailable"
+          ? "unavailable"
+          : instance.type === "shell" ? "shell" : "";
+    const meta = instance.type === "issue"
+      ? `${instance.agent} - ${instance.branch} - ${instance.duration}`
+      : `Shell - ${instance.duration}`;
+    const previewLabel = instance.previewStatus === "idle"
+      ? "idle preview"
+      : instance.previewStatus === "error"
+        ? "preview error"
+        : instance.previewStatus === "unavailable"
+          ? "preview unavailable"
+          : "latest";
+    return `
+      <button class="instance ${instance.type === "shell" ? "manual" : ""} ${isActive ? "active" : ""}" type="button" onclick="selectInstance('${instance.id}')">
+        <div class="item-top">
+          <span class="status ${statusClass}"></span>
+          <span class="item-name">${escapeHtml(instance.name)}</span>
+        </div>
+        <div class="meta">${escapeHtml(meta)}</div>
+        <div class="session-preview ${escapeHtml(instance.previewStatus ?? "")}">${previewLabel}: ${escapeHtml(instance.preview ?? "preview unavailable")}</div>
+        <div class="instance-actions">
+          <span class="tiny-action">Reconnect</span>
+          <span class="tiny-action">End</span>
+        </div>
+      </button>
+    `;
+  }
+
+  function statusRank(instance) {
+    if (instance.status === "active") return 0;
+    if (instance.status === "idle") return 1;
+    if (instance.status === "error") return 2;
+    if (instance.status === "unavailable") return 3;
+    if (instance.type === "shell") return 4;
+    return 5;
+  }
+
+  function sortInstances(instances) {
+    return [...instances].sort((a, b) => {
+      if (state.instanceSort === "status") return statusRank(a) - statusRank(b);
+      if (state.instanceSort === "kind") return a.type.localeCompare(b.type) || statusRank(a) - statusRank(b);
+      return 0;
+    });
+  }
+
+  function renderDisclosure(key, label, count) {
+    const collapsed = state.collapsed[key];
+    return `
+      <button class="disclosure" onclick="toggleCollapse('${key}')">
+        <span>${collapsed ? "›" : "⌄"} ${label}</span>
+        <span>${count}</span>
+      </button>
+    `;
+  }
+
+  function renderCollapsibleCard(key, title, bodyHtml) {
+    const collapsed = state.collapsed[key];
+    return `
+      <section class="detail-card collapsible">
+        <button class="disclosure" onclick="toggleCollapse('${key}')">
+          <span>${collapsed ? "›" : "⌄"} ${title}</span>
+        </button>
+        ${collapsed ? "" : `<div class="card-body">${bodyHtml}</div>`}
+      </section>
+    `;
+  }
+
+  function renderIssues(repo) {
+    const activeIssues = activeIssueNumbers(repo);
+    document.getElementById("issueCount").textContent = String(repo.issues.length);
+    document.getElementById("issueList").innerHTML = repo.issues.length
+      ? repo.issues.map((issue) => renderIssue(issue, activeIssues)).join("")
+      : `<div class="empty-focus" style="min-height:280px"><h2>No open issues</h2><p>This repo still can have named shells.</p></div>`;
+  }
+
+  function renderIssue(issue, activeIssues) {
+    const running = activeIssues.has(issue.number);
+    const selected = state.mode === "issue" && state.selectedIssueNumber === issue.number;
+    const priorityClass = issue.priority === "high" ? "brick" : "";
+    const primaryAction = running
+      ? `<button class="mini-action primary" onclick="event.stopPropagation(); selectInstanceForIssue(${issue.number})">Jump to session</button>`
+      : `<button class="mini-action primary" onclick="event.stopPropagation(); selectIssue(${issue.number})">Launch</button>`;
+    return `
+      <article class="issue-card ${running ? "running" : ""} ${selected ? "selected" : ""}" onclick="selectIssue(${issue.number})">
+        <div class="issue-title">#${issue.number} ${escapeHtml(issue.title)}</div>
+        <div class="issue-meta">
+          <span class="pill ${running ? "green" : priorityClass}">${running ? "running" : issue.priority}</span>
+          <span>${running ? "session" : "open"}</span>
+          <span>updated ${issue.updated}</span>
+        </div>
+        <div class="issue-actions">
+          ${primaryAction}
+          <button class="mini-action" onclick="event.stopPropagation(); selectIssue(${issue.number})">Details</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderFocus(repo) {
+    if (state.mode === "terminal") {
+      const instance = repo.instances.find((item) => item.id === state.selectedInstanceId) ?? repo.instances[0];
+      if (!instance) {
+        renderRepoFocus(repo);
+        return;
+      }
+      const subtitle = instance.type === "issue"
+        ? `${instance.agent} - ${repo.owner}/${repo.name} - branch ${instance.branch} - ttyd :${instance.port}`
+        : `Plain shell - ${repo.owner}/${repo.name} - ${repo.path} - ttyd :${instance.port}`;
+      document.getElementById("focusHead").innerHTML = `
+        <div class="focus-head">
+          <div class="focus-title">
+            <h1>${escapeHtml(instance.name)}</h1>
+            <p>${escapeHtml(subtitle)}</p>
+          </div>
+          <div class="actions">
+            <button class="action" onclick="mockToast('Rename would open an inline session-name editor')">Rename</button>
+            <button class="action" onclick="mockToast('Open would launch the terminal in a separate browser tab')">Open</button>
+            <button class="action danger" onclick="endSelectedInstance()">End</button>
+          </div>
+        </div>
+      `;
+      document.getElementById("focusBody").innerHTML = `
+        <div class="terminal-frame">
+          <div class="terminal-tabs">
+            <span class="term-dot"></span>
+            <span>terminal</span>
+            <span style="margin-left:auto;color:#9b927f">connected</span>
+          </div>
+          <div class="terminal">${instance.lines.map((line) => line ? `<div>${line}</div>` : "<br>").join("")}</div>
+        </div>
+      `;
+      return;
+    }
+
+    if (state.mode === "issue") {
+      const issue = repo.issues.find((item) => item.number === state.selectedIssueNumber) ?? repo.issues[0];
+      if (!issue) {
+        renderRepoFocus(repo);
+        return;
+      }
+      const running = activeIssueNumbers(repo).has(issue.number);
+      document.getElementById("focusHead").innerHTML = `
+        <div class="focus-head">
+          <div class="focus-title">
+            <h1>#${issue.number} ${escapeHtml(issue.title)}</h1>
+            <p>${running ? "Running issue" : "Open issue"} - ${issue.priority} priority - ${repo.owner}/${repo.name}</p>
+          </div>
+          <div class="actions">
+            ${running ? `<button class="action primary" onclick="selectInstanceForIssue(${issue.number})">Jump to session</button>` : `<button class="action primary" onclick="launchIssue(${issue.number})">Launch</button>`}
+            <button class="action" onclick="mockToast('Open on GitHub would use the issue html_url')">Open on GitHub</button>
+          </div>
+        </div>
+      `;
+      document.getElementById("focusBody").innerHTML = `
+        <div class="issue-detail">
+          ${renderCollapsibleCard("issueBody", "Issue detail", `
+            <div class="chip-row">
+              <span class="detail-chip ${issue.priority === "high" ? "green" : ""}">priority: ${escapeHtml(issue.priority)}</span>
+              ${(issue.labels ?? []).map((label) => `<span class="detail-chip">${escapeHtml(label)}</span>`).join("")}
+              <span class="detail-chip">assignee: ${issue.assignees?.length ? issue.assignees.map(escapeHtml).join(", ") : "none"}</span>
+            </div>
+            <div class="body-copy">${issue.body.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}</div>
+            <div class="section-label">Editable fields</div>
+            <div class="input-like">Title and body can be edited inline from this detail pane.</div>
+            <div class="section-label">Referenced files</div>
+            <div class="input-like">${issue.files.map(escapeHtml).join("<br>") || "No referenced files"}</div>
+            <div class="section-label">Linked PRs</div>
+            <div class="input-like">${(issue.linkedPRs ?? []).map(escapeHtml).join("<br>") || "No linked PRs yet"}</div>
+            <div class="section-label">Recent comments</div>
+            <div class="input-like">${(issue.comments ?? []).map((comment) => `"${escapeHtml(comment)}"`).join("<br>") || "No comments yet"}</div>
+            <div class="section-label">Add comment</div>
+            <div class="comment-box">Write a comment or close note...</div>
+            <div class="issue-actions">
+              <button class="mini-action primary" onclick="mockToast('Comment posted')">Comment</button>
+              <button class="mini-action" onclick="closeIssue(${issue.number})">Comment and close</button>
+              <button class="mini-action" onclick="mockToast('Image upload picker would open')">Attach image</button>
+            </div>
+          `)}
+          ${renderCollapsibleCard("launchPrep", "Launch prep", `
+            <div class="field"><label>Agent</label><select class="input-like"><option>Codex</option><option>Claude Code</option></select></div>
+            <div class="field"><label>Workspace</label><select class="input-like"><option>Worktree</option><option>Existing repo</option><option>Fresh clone</option></select></div>
+            <div class="field"><label>Branch</label><div class="input-like">issue-${issue.number}-${slugify(issue.title)}</div></div>
+            <div class="field"><label>Context</label><div class="input-like">Issue body, selected comments, selected files, optional preamble</div></div>
+            <div class="field"><label>Worktree status</label><div class="input-like ${issue.worktree?.dirty ? "warn" : ""}">${formatWorktree(issue.worktree)}</div></div>
+            <div class="side-actions">
+              <button class="new-shell" onclick="launchIssue(${issue.number})">${running ? "Session already running" : "Launch Codex session"}</button>
+              <button class="action" onclick="mockToast('Worktree reset requested')">Reset worktree</button>
+              <button class="action" onclick="mockToast('Stale worktree cleanup requested')">Cleanup stale worktrees</button>
+              <button class="action" onclick="cyclePriority(${issue.number})">Set priority</button>
+              <button class="action" onclick="mockToast('Label picker would open')">Edit labels</button>
+              <button class="action" onclick="mockToast('Assignee picker would open')">Assign</button>
+              <button class="action" onclick="mockToast('Repo reassignment picker would open')">Reassign repo</button>
+              <button class="action danger" onclick="closeIssue(${issue.number})">Close issue</button>
+            </div>
+          `)}
+        </div>
+      `;
+      return;
+    }
+
+    if (state.mode === "shell") {
+      renderShellFlow(repo);
+      return;
+    }
+
+    if (state.mode === "repoSetup") {
+      renderRepoSetup(repo);
+      return;
+    }
+
+    if (state.mode === "quickCreate") {
+      renderQuickCreate(repo);
+      return;
+    }
+
+    if (state.mode === "settings") {
+      renderSettings(repo);
+      return;
+    }
+
+    if (state.mode === "globalIssues") {
+      renderGlobalIssues(repo);
+      return;
+    }
+
+    if (state.mode === "issueBoard") {
+      renderIssueBoard();
+      return;
+    }
+
+    if (state.mode === "pullRequests") {
+      renderPullRequests(repo);
+      return;
+    }
+
+    renderRepoFocus(repo);
+  }
+
+  function routeForMode() {
+    if (state.mode === "quickCreate") return "/parse";
+    if (state.mode === "settings") return "/settings";
+    if (state.mode === "globalIssues") return "/";
+    if (state.mode === "issueBoard") return "/workbench/board";
+    if (state.mode === "pullRequests") return "/?tab=prs";
+    return "/workbench";
+  }
+
+  function renderRepoFocus(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>${repo.owner}/${repo.name}</h1>
+          <p>Select an instance on the left or an issue on the right</p>
+        </div>
+        <div class="actions">
+          <button class="action primary" onclick="startShellFlow()">New shell</button>
+          <button class="action" onclick="mockToast('Repo data refreshed')">Refresh</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <div class="empty-focus">
+        <div class="empty-mark">${repo.initials.toLowerCase()}</div>
+        <h2>${escapeHtml(repo.name)} selected</h2>
+        <p>Active sessions are listed on the left. Current issues are listed on the right.</p>
+        <p>Choose a terminal instance or issue to use the center pane.</p>
+      </div>
+    `;
+  }
+
+  function renderRepoSetup(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>Repo setup</h1>
+          <p>Tracked repo settings, local path, branch pattern, and GitHub discovery</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="selectRepoOnly()">Done</button>
+          <button class="action primary" onclick="mockToast('Repo settings saved')">Save settings</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <div class="issue-detail">
+        ${renderCollapsibleCard("repoSettings", `${repo.owner}/${repo.name}`, `
+          <div class="two-col">
+            <div class="field"><label>Local path</label><div class="input-like strong">${repo.path}</div></div>
+            <div class="field"><label>Default agent</label><div class="input-like">${repo.defaultAgent === "codex" ? "Codex" : "Claude Code"}</div></div>
+          </div>
+          <div class="field"><label>Branch pattern</label><div class="input-like">${repo.branchPattern}</div></div>
+          <div class="field"><label>Cache age</label><div class="input-like ${repo.cacheAge === "fresh" ? "" : "warn"}">${repo.cacheAge}</div></div>
+          <h3>Available GitHub repos</h3>
+          <div class="input-like">mean-weasel/issuectl - tracked<br>mean-weasel/bugdrop - tracked<br>mean-weasel/desktop-lab - available to add</div>
+          <div class="issue-actions">
+            <button class="mini-action primary" onclick="mockToast('Accessible GitHub repos refreshed')">Refresh GitHub repos</button>
+            <button class="mini-action" onclick="mockToast('Selected repo added to rail')">Add selected repo</button>
+          </div>
+        `)}
+        <aside class="detail-card launch-box">
+          <h2>Workbench settings</h2>
+          <div class="field"><label>Worktree directory</label><div class="input-like">~/.issuectl/worktrees</div></div>
+          <div class="field"><label>Idle threshold</label><div class="input-like">10 minutes</div></div>
+          <div class="field"><label>Extra args</label><div class="input-like">codex: --ask-for-approval never<br>claude: --dangerously-skip-permissions</div></div>
+          <div class="side-actions">
+            <button class="action" onclick="openSettings()">Open settings</button>
+            <button class="action danger" onclick="mockToast('Repo removal confirmation would open')">Remove repo</button>
+          </div>
+        </aside>
+      </div>
+    `;
+  }
+
+  function renderQuickCreate(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>Quick Create</h1>
+          <p>Parse notes into issue drafts for ${repo.owner}/${repo.name}</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="mockToast('Input cleared')">Clear</button>
+          <button class="action primary" onclick="mockToast('Parsed 2 issue candidates')">Parse</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <div class="issue-detail">
+        <article class="detail-card">
+          <h2>Input</h2>
+          <div class="comment-box" style="min-height:220px">Create an issue for making the workbench mockup interactive. Include real launch options, worktree status, and session preview states.</div>
+          <div class="issue-actions">
+            <button class="mini-action primary" onclick="mockToast('Parsed 2 issue candidates')">Parse into issues</button>
+            <button class="mini-action" onclick="mockToast('Image upload picker would open')">Attach image</button>
+          </div>
+        </article>
+        <aside class="detail-card launch-box">
+          <h2>Parsed candidates</h2>
+          <button class="issue-card selected" onclick="mockToast('Candidate selected')">
+            <div class="issue-title">Desktop workbench interactive prototype</div>
+            <div class="issue-meta"><span class="pill brick">enhancement</span><span>high clarity</span></div>
+          </button>
+          <button class="issue-card" onclick="mockToast('Candidate selected')">
+            <div class="issue-title">Expose launch options in workbench</div>
+            <div class="issue-meta"><span class="pill">task</span><span>${repo.name}</span></div>
+          </button>
+          <div class="side-actions">
+            <button class="new-shell" onclick="mockToast('Accepted issues created')">Create accepted issues</button>
+            <button class="action" onclick="mockToast('Candidates sent to drafts')">Send to drafts</button>
+          </div>
+        </aside>
+      </div>
+    `;
+  }
+
+  function renderSettings(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>Settings</h1>
+          <p>Desktop settings surface, matching current app configuration</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="mockToast('Settings reset to saved values')">Reset</button>
+          <button class="action primary" onclick="mockToast('Settings saved')">Save</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <div class="issue-detail">
+        <article class="detail-card">
+          <h2>Launch defaults</h2>
+          <div class="two-col">
+            <div class="field"><label>Default agent</label><div class="input-like">${repo.defaultAgent === "codex" ? "Codex" : "Claude Code"}</div></div>
+            <div class="field"><label>Cache TTL</label><div class="input-like">300 seconds</div></div>
+          </div>
+          <div class="field"><label>Branch pattern</label><div class="input-like">${repo.branchPattern}</div></div>
+          <div class="field"><label>Worktree directory</label><div class="input-like">~/.issuectl/worktrees</div></div>
+          <h3>Agent extra args</h3>
+          <div class="input-like">codex: --ask-for-approval never<br>claude: --dangerously-skip-permissions</div>
+        </article>
+        <aside class="detail-card launch-box">
+          <h2>Health</h2>
+          <div class="field"><label>Server</label><div class="input-like">localhost:3847 connected</div></div>
+          <div class="field"><label>GitHub user</label><div class="input-like">Jeremy Watt</div></div>
+          <div class="field"><label>Tracked repos</label><div class="input-like">${repos.length}</div></div>
+          <div class="field"><label>Idle thresholds</label><div class="input-like">grace 5m / idle 10m</div></div>
+        </aside>
+      </div>
+    `;
+  }
+
+  function renderGlobalIssues(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>Issues</h1>
+          <p>Current desktop issue list, shown here as a workbench-adjacent mock state</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="mockToast('Filters sheet would open')">Filters</button>
+          <button class="action primary" onclick="openQuickCreate()">New issue</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <article class="detail-card">
+        ${repos.flatMap((item) => item.issues.map((issue) => `
+          <button class="issue-card" onclick="selectRepo('${item.id}'); selectIssue(${issue.number})">
+            <div class="issue-title">${item.name} #${issue.number} ${escapeHtml(issue.title)}</div>
+            <div class="issue-meta"><span class="pill ${issue.priority === "high" ? "brick" : ""}">${issue.priority}</span><span>updated ${issue.updated}</span></div>
+          </button>
+        `)).join("")}
+      </article>
+    `;
+  }
+
+  function renderIssueBoard() {
+    const issueCount = repos.reduce((total, repo) => total + repo.issues.length, 0);
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>Repo issue board</h1>
+          <p>${issueCount} open issues across ${repos.length} admitted repos</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="setBoardSort('priority')">Sort by priority</button>
+          <button class="action" onclick="toggleBoardRunningOnly()">Show running only</button>
+          <button class="action primary" onclick="mockToast('All repos refreshed')">Refresh all</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <div class="repo-board">
+        ${repos.map((repo) => {
+          const activeIssues = activeIssueNumbers(repo);
+          const visibleIssues = boardIssues(repo, activeIssues);
+          return `
+            <section class="repo-board-column">
+              <div class="repo-board-head">
+                <div class="repo-board-title">
+                  <span>${repo.owner}/${repo.name}</span>
+                  <span class="count">${repo.issues.length}</span>
+                </div>
+                <div class="repo-board-subtitle">${repo.instances.length} live instances · cache ${repo.cacheAge}</div>
+              </div>
+              <div class="repo-board-list">
+                ${visibleIssues.length ? visibleIssues.map((issue) => {
+                  const running = activeIssues.has(issue.number);
+                  return `
+                    <button class="issue-card ${running ? "running" : ""}" onclick="selectRepo('${repo.id}'); selectIssue(${issue.number})">
+                      <div class="issue-title">#${issue.number} ${escapeHtml(issue.title)}</div>
+                      <div class="issue-meta">
+                        <span class="pill ${running ? "green" : issue.priority === "high" ? "brick" : ""}">${running ? "running" : issue.priority}</span>
+                        <span>updated ${issue.updated}</span>
+                      </div>
+                    </button>
+                  `;
+                }).join("") : `<div class="empty-focus" style="min-height:180px"><h2>No matching issues</h2><p>${repo.name} is clear for this view.</p></div>`}
+              </div>
+            </section>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function boardIssues(repo, activeIssues) {
+    let issues = [...repo.issues];
+    if (state.boardRunningOnly) {
+      issues = issues.filter((issue) => activeIssues.has(issue.number));
+    }
+    if (state.boardSort === "priority") {
+      issues.sort((a, b) => Number(b.priority === "high") - Number(a.priority === "high"));
+    }
+    return issues;
+  }
+
+  function renderPullRequests(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>Pull requests</h1>
+          <p>Repo-scoped PR review surface can reuse existing PR APIs later</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="mockToast('Filtered to PRs needing review')">Needs review</button>
+          <button class="action" onclick="mockToast('Checks refreshed')">Refresh checks</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <article class="detail-card">
+        <button class="issue-card running" onclick="mockToast('PR detail would open')">
+          <div class="issue-title">#501 terminal-reconnect-fix</div>
+          <div class="issue-meta"><span class="pill green">checks passing</span><span>linked to #498</span><span>review requested</span></div>
+          <div class="issue-actions"><button class="mini-action primary" onclick="event.stopPropagation(); mockToast('Review panel would open')">Review</button><button class="mini-action" onclick="event.stopPropagation(); mockToast('Merge confirmation would open')">Merge squash</button></div>
+        </button>
+        <button class="issue-card" onclick="mockToast('PR detail would open')">
+          <div class="issue-title">#449 mac-sidebar-display-state</div>
+          <div class="issue-meta"><span class="pill green">merged</span><span>linked to #447</span></div>
+        </button>
+      </article>
+    `;
+  }
+
+  function renderShellFlow(repo) {
+    document.getElementById("focusHead").innerHTML = `
+      <div class="focus-head">
+        <div class="focus-title">
+          <h1>New named shell</h1>
+          <p>Create a durable plain shell for ${repo.owner}/${repo.name}</p>
+        </div>
+        <div class="actions">
+          <button class="action" onclick="selectRepoOnly()">Cancel</button>
+          <button class="action primary" onclick="createShell()">Create shell</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("focusBody").innerHTML = `
+      <div class="shell-form-layout">
+        <section class="detail-card shell-form">
+          <h2>Shell settings</h2>
+          <div class="field">
+            <label>Name</label>
+            <input id="shellName" class="input-like strong" value="design-review-${state.shellDraftCounter}">
+          </div>
+          <div class="field"><label>Repository</label><div class="input-like">${repo.owner}/${repo.name}</div></div>
+          <div class="field"><label>Working directory</label><div class="input-like">${repo.path}</div></div>
+          <div class="field"><label>Start command</label><div class="input-like">zsh</div></div>
+          <div class="field"><label>Branch behavior</label><div class="input-like">Use current branch</div></div>
+        </section>
+        <aside class="detail-card">
+          <h2>What this creates</h2>
+          <div class="body-copy">
+            <p>A named plain shell appears under <strong>Named shells</strong> for this repo.</p>
+            <p>It is not tied to a GitHub issue, does not apply lifecycle labels, and does not launch an agent.</p>
+            <p>The shell can later be resumed, renamed, or ended from the instance stack.</p>
+          </div>
+          <button class="new-shell" style="width:100%;margin:8px 0 0" onclick="createShell()">Create shell</button>
+        </aside>
+      </div>
+    `;
+  }
+
+  function renderModeButtons() {
+    document.getElementById("sortStatus").classList.toggle("active", state.instanceSort === "status");
+    document.getElementById("sortRecent").classList.toggle("active", state.instanceSort === "recent");
+    document.getElementById("sortKind").classList.toggle("active", state.instanceSort === "kind");
+    document.getElementById("navIssues").classList.toggle("active", state.mode === "globalIssues");
+    document.getElementById("navBoard").classList.toggle("active", state.mode === "issueBoard");
+    document.getElementById("navPrs").classList.toggle("active", state.mode === "pullRequests");
+    document.getElementById("navWorkbench").classList.toggle("active", !["globalIssues", "issueBoard", "pullRequests", "quickCreate", "settings"].includes(state.mode));
+    document.getElementById("navQuickCreate").classList.toggle("active", state.mode === "quickCreate");
+    document.getElementById("navSettings").classList.toggle("active", state.mode === "settings");
+  }
+
+  function setInstanceSort(sort) {
+    state.instanceSort = sort;
+    render();
+  }
+
+  function setBoardSort(sort) {
+    state.boardSort = sort;
+    mockToast(sort === "priority" ? "Board sorted by priority" : "Board sorted by repo");
+    render();
+  }
+
+  function toggleBoardRunningOnly() {
+    state.boardRunningOnly = !state.boardRunningOnly;
+    mockToast(state.boardRunningOnly ? "Showing running issues only" : "Showing all open issues");
+    render();
+  }
+
+  function toggleCollapse(key) {
+    state.collapsed[key] = !state.collapsed[key];
+    render();
+  }
+
+  function selectRepo(repoId) {
+    state.repoId = repoId;
+    state.mode = "repo";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function selectRepoOnly() {
+    state.mode = "repo";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function goWorkbenchHome() {
+    state.mode = "repo";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    state.repoId = state.repoId || repos[0].id;
+    render();
+  }
+
+  function openQuickCreate() {
+    state.mode = "quickCreate";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function openSettings() {
+    state.mode = "settings";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function openGlobalIssues() {
+    state.mode = "globalIssues";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function openIssueBoard() {
+    state.mode = "issueBoard";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function openPullRequests() {
+    state.mode = "pullRequests";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function openRepoSetup() {
+    state.mode = "repoSetup";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function selectInstance(instanceId) {
+    state.mode = "terminal";
+    state.selectedInstanceId = instanceId;
+    state.selectedIssueNumber = null;
+    render();
+  }
+
+  function selectFirstInstance() {
+    const repo = currentRepo();
+    if (repo.instances[0]) {
+      selectInstance(repo.instances[0].id);
+      return;
+    }
+    selectRepoOnly();
+  }
+
+  function selectIssue(number) {
+    state.mode = "issue";
+    state.selectedIssueNumber = number;
+    state.selectedInstanceId = null;
+    render();
+  }
+
+  function selectFirstOpenIssue() {
+    const repo = currentRepo();
+    if (repo.issues[0]) {
+      selectIssue(repo.issues[0].number);
+      return;
+    }
+    selectRepoOnly();
+  }
+
+  function selectInstanceForIssue(number) {
+    const repo = currentRepo();
+    const instance = repo.instances.find((item) => item.type === "issue" && item.issueNumber === number);
+    if (instance) selectInstance(instance.id);
+  }
+
+  function startShellFlow() {
+    state.mode = "shell";
+    state.selectedInstanceId = null;
+    state.selectedIssueNumber = null;
+    render();
+    const input = document.getElementById("shellName");
+    if (input) input.focus();
+  }
+
+  function createShell() {
+    const repo = currentRepo();
+    const input = document.getElementById("shellName");
+    const name = (input?.value || `shell-${state.shellDraftCounter}`).trim();
+    const id = `${repo.id}-shell-${Date.now()}`;
+    repo.instances.push({
+      id,
+      type: "shell",
+      status: "shell",
+      name,
+      branch: "main",
+      duration: repo.path,
+      port: 7800 + state.shellDraftCounter,
+      lines: [
+        `<span class="prompt">${repo.name} git:(main)</span> zsh`,
+        `<span class="muted">named shell ${escapeHtml(name)} created</span>`,
+        `<span class="prompt">${repo.name} git:(main)</span> <span class="cursor"></span>`,
+      ],
+      preview: `named shell ${name} created`,
+      previewStatus: "active",
+    });
+    state.shellDraftCounter += 1;
+    selectInstance(id);
+  }
+
+  function launchIssue(number) {
+    const repo = currentRepo();
+    const existing = repo.instances.find((item) => item.issueNumber === number);
+    if (existing) {
+      selectInstance(existing.id);
+      return;
+    }
+    const issue = repo.issues.find((item) => item.number === number);
+    if (!issue) return;
+    const id = `${repo.id}-${number}`;
+    repo.instances.unshift({
+      id,
+      type: "issue",
+      status: "active",
+      name: `#${number} ${issue.title}`,
+      issueNumber: number,
+      agent: "Codex",
+      branch: `issue-${number}-${slugify(issue.title)}`,
+      duration: "just now",
+      port: 7900 + number,
+      lines: [
+        `<span class="prompt">${repo.name} git:(issue-${number}-${slugify(issue.title)})</span> codex "${escapeHtml(issue.title)}"`,
+        '<span class="muted">context loaded from issue body, comments, and referenced files</span>',
+        "Starting Codex session...",
+        `<span class="prompt">${repo.name} git:(issue-${number}-${slugify(issue.title)})</span> <span class="cursor"></span>`,
+      ],
+      preview: "Starting Codex session...",
+      previewStatus: "active",
+    });
+    selectInstance(id);
+  }
+
+  function endSelectedInstance() {
+    const repo = currentRepo();
+    const index = repo.instances.findIndex((item) => item.id === state.selectedInstanceId);
+    if (index >= 0) {
+      const [removed] = repo.instances.splice(index, 1);
+      mockToast(`${removed.name} ended`);
+    }
+    selectRepoOnly();
+  }
+
+  function closeIssue(number) {
+    const repo = currentRepo();
+    const index = repo.issues.findIndex((item) => item.number === number);
+    if (index >= 0) {
+      const [removed] = repo.issues.splice(index, 1);
+      mockToast(`#${removed.number} closed`);
+    }
+    selectRepoOnly();
+  }
+
+  function cyclePriority(number) {
+    const repo = currentRepo();
+    const issue = repo.issues.find((item) => item.number === number);
+    if (!issue) return;
+    issue.priority = issue.priority === "high" ? "normal" : "high";
+    mockToast(`Priority set to ${issue.priority}`);
+    selectIssue(number);
+  }
+
+  function slugify(value) {
+    return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 28);
+  }
+
+  function formatWorktree(worktree) {
+    if (!worktree) return "No worktree status available";
+    if (!worktree.exists) return `Not created yet - ${worktree.path}`;
+    return `${worktree.dirty ? "Dirty" : "Clean"} - ${worktree.path}`;
+  }
+
+  function resetColumnWidths() {
+    const root = document.querySelector(".workbench");
+    root.style.removeProperty("--instances-width");
+    root.style.removeProperty("--issues-width");
+    mockToast("Column widths reset");
+  }
+
+  function mockToast(message) {
+    const existing = document.querySelector(".toast");
+    if (existing) existing.remove();
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    window.setTimeout(() => toast.remove(), 1800);
+  }
+
+  function initColumnResize() {
+    const root = document.querySelector(".workbench");
+    const handles = document.querySelectorAll(".resize-handle");
+    handles.forEach((handle) => {
+      handle.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        handle.classList.add("dragging");
+        const target = handle.dataset.resize;
+        const startX = event.clientX;
+        const style = getComputedStyle(root);
+        const variable = target === "instances" ? "--instances-width" : "--issues-width";
+        const start = parseInt(style.getPropertyValue(variable), 10) || (target === "instances" ? 284 : 348);
+        const onMove = (moveEvent) => {
+          const delta = moveEvent.clientX - startX;
+          const next = target === "instances"
+            ? Math.max(220, Math.min(420, start + delta))
+            : Math.max(260, Math.min(520, start - delta));
+          root.style.setProperty(variable, `${next}px`);
+        };
+        const onUp = () => {
+          handle.classList.remove("dragging");
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+        };
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+      });
+    });
+  }
+
+  initColumnResize();
+  render();
+</script>
+</body>
+</html>

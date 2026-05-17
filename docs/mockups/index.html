@@ -406,6 +406,10 @@
       Web Dashboard
       <span class="tab-type web">WEB</span>
     </div>
+    <div class="nav-tab" onclick="switchTab('workbench', this)">
+      Workbench
+      <span class="tab-type web">WEB</span>
+    </div>
   </div>
 
   <div class="nav-right">
@@ -451,13 +455,14 @@
     </div>
 
     <p class="landing-footer">
-      Use the tabs above or click a card to view. Keyboard: <code>1</code> TUI &nbsp; <code>2</code> Web &nbsp; <code>0</code> Overview
+      Use the tabs above or click a card to view. Keyboard: <code>1</code> TUI &nbsp; <code>2</code> Web &nbsp; <code>3</code> Workbench &nbsp; <code>0</code> Overview
     </p>
   </div>
 
   <!-- Iframes -->
   <iframe id="frame-tui" src="tui.html"></iframe>
   <iframe id="frame-web" src="web.html"></iframe>
+  <iframe id="frame-workbench" src="workbench.html"></iframe>
 </div>
 
 <!-- Keyboard hint (shown when viewing a mockup) -->
@@ -465,6 +470,7 @@
   <span><kbd>0</kbd> Overview</span>
   <span><kbd>1</kbd> TUI</span>
   <span><kbd>2</kbd> Web</span>
+  <span><kbd>3</kbd> Workbench</span>
 </div>
 
 <script>
@@ -477,11 +483,13 @@
     const landing = document.getElementById('landing');
     const frameTui = document.getElementById('frame-tui');
     const frameWeb = document.getElementById('frame-web');
+    const frameWorkbench = document.getElementById('frame-workbench');
     const kbdHint = document.getElementById('kbd-hint');
 
     landing.classList.add('hidden');
     frameTui.classList.remove('active');
     frameWeb.classList.remove('active');
+    frameWorkbench.classList.remove('active');
     kbdHint.classList.add('hidden');
 
     if (tab === 'landing') {
@@ -491,6 +499,9 @@
       kbdHint.classList.remove('hidden');
     } else if (tab === 'web') {
       frameWeb.classList.add('active');
+      kbdHint.classList.remove('hidden');
+    } else if (tab === 'workbench') {
+      frameWorkbench.classList.add('active');
       kbdHint.classList.remove('hidden');
     }
   }
@@ -502,6 +513,7 @@
     if (e.key === '0') switchTab('landing', tabs[0]);
     if (e.key === '1') switchTab('tui', tabs[1]);
     if (e.key === '2') switchTab('web', tabs[2]);
+    if (e.key === '3') switchTab('workbench', tabs[3]);
   });
 </script>
 

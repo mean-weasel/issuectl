@@ -1,0 +1,1008 @@
+"use client";
+
+/* eslint-disable max-lines */
+
+import Link from "next/link";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
+import { BoardFocus } from "./BoardFocus";
+import { GlobalIssuesFocus } from "./GlobalIssuesFocus";
+import { InstancePane } from "./InstancePane";
+import { IssueFocus } from "./IssueFocus";
+import { IssueQueuePane } from "./IssueQueuePane";
+import { PullRequestsFocus } from "./PullRequestsFocus";
+import { QuickCreateFocus } from "./QuickCreateFocus";
+import { RepoOverviewFocus } from "./RepoOverviewFocus";
+import { RepoRail } from "./RepoRail";
+import { RepoSetupFocus } from "./RepoSetupFocus";
+import { SettingsFocus } from "./SettingsFocus";
+import { TerminalFocus } from "./TerminalFocus";
+import { endDeploymentSession, ensureDeploymentTtyd, fetchWorkbench } from "./workbench-api";
+import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchPayload, WorkbenchRepo, WorkbenchSettings } from "./workbench-types";
+import {
+  type IssueQueueFilter,
+  type SessionSortMode,
+  type WorkbenchColumnKey,
+  type WorkbenchSectionCollapseState,
+  type WorkbenchSectionId,
+  DEFAULT_WORKBENCH_COLUMN_WIDTHS,
+  DEFAULT_WORKBENCH_SECTION_COLLAPSE_STATE,
+  WORKBENCH_COLUMN_WIDTH_LIMITS,
+  WORKBENCH_COLUMN_WIDTH_STORAGE_KEY,
+  type WorkbenchMode,
+  selectedDeployment as resolveSelectedDeployment,
+  selectedRepo as resolveSelectedRepo,
+  sidePaneWidthsApply,
+  workbenchReducer,
+} from "./workbench-state";
+import styles from "./WorkbenchShell.module.css";
+
+type LoadState = { status: "loading"; data: null; error: null }
+  | { status: "loaded"; data: WorkbenchPayload; error: null }
+  | { status: "error"; data: null; error: string };
+
+const NAV_ITEMS: Array<{ mode: WorkbenchMode; label: string; path: string }> = [
+  { mode: "globalIssues", label: "Issues", path: "/workbench/issues" },
+  { mode: "board", label: "Board", path: "/workbench/board" },
+  { mode: "pullRequests", label: "PRs", path: "/workbench/prs" },
+  { mode: "workbench", label: "Workbench", path: "/workbench" },
+  { mode: "quickCreate", label: "Quick Create", path: "/workbench/quick-create" },
+  { mode: "settings", label: "Settings", path: "/workbench/settings" },
+];
+
+type Props = {
+  initialPayload?: WorkbenchPayload | null;
+  onRefreshPayload?: () => Promise<WorkbenchPayload>;
+  initialMode?: WorkbenchMode;
+};
+
+export function WorkbenchShell({
+  initialPayload = null,
+  onRefreshPayload,
+  initialMode = "workbench",
+}: Props) {
+  const [selection, dispatch] = useReducer(workbenchReducer, {
+    mode: initialMode,
+    selectedRepoId: null,
+    selectedIssueNumber: null,
+    selectedDeploymentId: null,
+    columnWidths: DEFAULT_WORKBENCH_COLUMN_WIDTHS,
+    collapsedSections: DEFAULT_WORKBENCH_SECTION_COLLAPSE_STATE,
+  });
+  const [loadState, setLoadState] = useState<LoadState>(
+    initialPayload
+      ? { status: "loaded", data: initialPayload, error: null }
+      : { status: "loading", data: null, error: null },
+  );
+  const [sessionSortMode, setSessionSortMode] = useState<SessionSortMode>("running first");
+  const [issueFilter, setIssueFilter] = useState<IssueQueueFilter>("open");
+  const [pendingDeploymentId, setPendingDeploymentId] = useState<number | null>(null);
+  const [sessionRowErrors, setSessionRowErrors] = useState<Record<number, string>>({});
+  const [repoSetupRequested, setRepoSetupRequested] = useState(false);
+  const [storageReady, setStorageReady] = useState(false);
+  const [resizingColumn, setResizingColumn] = useState<WorkbenchColumnKey | null>(null);
+  const dragRef = useRef<{
+    column: WorkbenchColumnKey;
+    startX: number;
+    startWidth: number;
+    previousUserSelect: string;
+  } | null>(null);
+
+  const load = useCallback(() => {
+    const controller = new AbortController();
+    setLoadState((current) =>
+      current.status === "loaded" ? current : { status: "loading", data: null, error: null },
+    );
+    const request = onRefreshPayload
+      ? onRefreshPayload()
+      : fetchWorkbench({ signal: controller.signal });
+    request
+      .then((data) => {
+        setLoadState({ status: "loaded", data, error: null });
+        dispatch({ type: "payloadLoaded", payload: data });
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setLoadState({
+          status: "error",
+          data: null,
+          error: err instanceof Error ? err.message : "Unable to load workbench",
+        });
+      });
+    return controller;
+  }, [onRefreshPayload]);
+
+  useEffect(() => {
+    if (initialPayload) {
+      dispatch({ type: "payloadLoaded", payload: initialPayload });
+      return;
+    }
+    const controller = load();
+    return () => controller.abort();
+  }, [initialPayload, load]);
+
+  useEffect(() => {
+    const syncModeFromPath = () => {
+      dispatch({ type: "selectMode", mode: modeFromPath(window.location.pathname) });
+      setRepoSetupRequested(new URLSearchParams(window.location.search).get("repoSetup") === "1");
+    };
+    syncModeFromPath();
+    window.addEventListener("popstate", syncModeFromPath);
+    return () => window.removeEventListener("popstate", syncModeFromPath);
+  }, []);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
+    if (stored) {
+      try {
+        const widths = JSON.parse(stored) as Partial<Record<WorkbenchColumnKey, unknown>>;
+        dispatch({
+          type: "setColumnWidths",
+          widths: {
+            instances: typeof widths.instances === "number" ? widths.instances : undefined,
+            issues: typeof widths.issues === "number" ? widths.issues : undefined,
+          },
+        });
+      } catch {
+        window.localStorage.removeItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
+      }
+    }
+    setStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    window.localStorage.setItem(
+      WORKBENCH_COLUMN_WIDTH_STORAGE_KEY,
+      JSON.stringify(selection.columnWidths),
+    );
+  }, [selection.columnWidths, storageReady]);
+
+  useEffect(() => () => finishColumnResize(), []);
+
+  const payload = loadState.status === "loaded" ? loadState.data : null;
+  const selectedRepo = resolveSelectedRepo(payload, selection);
+  const selectedDeployment = resolveSelectedDeployment(payload, selection);
+  const selectedIssue = selectedRepo?.issues.find((issue) => issue.number === selection.selectedIssueNumber) ?? null;
+  const reassignTargets = payload?.repos.filter((repo) => repo.id !== selectedRepo?.id) ?? [];
+  const hideSidePanes = !sidePaneWidthsApply(selection.mode);
+  const navLabels = NAV_ITEMS.map((item) => item.label);
+  const workbenchStyle = {
+    "--workbench-instances-width": `${selection.columnWidths.instances}px`,
+    "--workbench-issues-width": `${selection.columnWidths.issues}px`,
+  } as CSSProperties;
+
+  function selectMode(nextMode: WorkbenchMode, path: string) {
+    dispatch({ type: "selectMode", mode: nextMode });
+    window.history.pushState(null, "", path);
+    setRepoSetupRequested(new URLSearchParams(path.split("?")[1] ?? "").get("repoSetup") === "1");
+  }
+
+  function selectRepo(repoId: number) {
+    dispatch({ type: "selectRepo", repoId });
+    window.history.pushState(null, "", "/workbench");
+    setRepoSetupRequested(false);
+  }
+
+  function openRepoSetup() {
+    selectMode("settings", "/workbench/settings?repoSetup=1");
+  }
+
+  function selectDeployment(deploymentId: number) {
+    dispatch({ type: "selectDeployment", deploymentId });
+    window.history.pushState(null, "", "/workbench");
+    setRepoSetupRequested(false);
+  }
+
+  function selectIssue(issueNumber: number) {
+    dispatch({ type: "selectIssue", issueNumber });
+    window.history.pushState(null, "", "/workbench");
+    setRepoSetupRequested(false);
+  }
+
+  function selectGlobalIssue(repoId: number, issueNumber: number) {
+    dispatch({ type: "selectRepo", repoId });
+    dispatch({ type: "selectIssue", issueNumber });
+    window.history.pushState(null, "", "/workbench");
+    setRepoSetupRequested(false);
+  }
+
+  async function reconnectDeployment(deployment: WorkbenchDeployment) {
+    setPendingDeploymentId(deployment.id);
+    setSessionRowErrors((current) => withoutKey(current, deployment.id));
+    try {
+      const result = await ensureDeploymentTtyd(deployment.id);
+      if (!("port" in result)) {
+        throw new Error(result.error ?? "Terminal is not available");
+      }
+      updateDeployment(deployment.id, { ttydPort: result.port });
+      selectDeployment(deployment.id);
+    } catch (err) {
+      setSessionRowErrors((current) => ({
+        ...current,
+        [deployment.id]: err instanceof Error ? err.message : "Reconnect failed",
+      }));
+    } finally {
+      setPendingDeploymentId(null);
+    }
+  }
+
+  async function endSession(deployment: WorkbenchDeployment) {
+    setPendingDeploymentId(deployment.id);
+    setSessionRowErrors((current) => withoutKey(current, deployment.id));
+    try {
+      await endDeploymentSession(deployment);
+      removeDeployment(deployment.id);
+    } catch (err) {
+      setSessionRowErrors((current) => ({
+        ...current,
+        [deployment.id]: err instanceof Error ? err.message : "End session failed",
+      }));
+    } finally {
+      setPendingDeploymentId(null);
+    }
+  }
+
+  function updateDeployment(deploymentId: number, patch: Partial<WorkbenchDeployment>) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      const data = mapPayloadDeployments(current.data, deploymentId, (deployment) => ({
+        ...deployment,
+        ...patch,
+      }));
+      return { status: "loaded", data, error: null };
+    });
+  }
+
+  function removeDeployment(deploymentId: number) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          deployments: current.data.deployments.filter((deployment) => deployment.id !== deploymentId),
+          repos: current.data.repos.map((repo) => {
+            const removed = repo.deployments.find((deployment) => deployment.id === deploymentId);
+            const deployments = repo.deployments.filter((deployment) => deployment.id !== deploymentId);
+            return {
+              ...repo,
+              deployments,
+              badgeCount: deployments.length,
+              deployedCount: deployments.length,
+              issues: removed
+                ? repo.issues.map((issue) =>
+                  issue.number === removed.issueNumber
+                    ? {
+                      ...issue,
+                      hasActiveDeployment: deployments.some(
+                        (deployment) => deployment.issueNumber === issue.number,
+                      ),
+                    }
+                    : issue,
+                )
+                : repo.issues,
+            };
+          }),
+        },
+        error: null,
+      };
+    });
+    if (selection.selectedDeploymentId === deploymentId) {
+      dispatch({ type: "clearDeployment" });
+    }
+  }
+
+  function updateIssue(repoId: number, issueNumber: number, patch: Partial<WorkbenchIssueSummary>) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          repos: current.data.repos.map((repo) =>
+            repo.id === repoId
+              ? {
+                ...repo,
+                issues: repo.issues.map((issue) =>
+                  issue.number === issueNumber ? { ...issue, ...patch } : issue,
+                ),
+              }
+              : repo,
+          ),
+        },
+        error: null,
+      };
+    });
+  }
+
+  function focusReassignedIssue(result: { owner: string; repo: string; issueNumber: number }) {
+    const targetRepo = payload?.repos.find((repo) => repo.owner === result.owner && repo.name === result.repo);
+    const sourceRepoId = selection.selectedRepoId;
+    const sourceIssueNumber = selection.selectedIssueNumber;
+    if (!targetRepo) return;
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          repos: current.data.repos.map((repo) => {
+            if (repo.id === sourceRepoId && sourceIssueNumber !== null) {
+              return {
+                ...repo,
+                issues: repo.issues.map((issue) =>
+                  issue.number === sourceIssueNumber
+                    ? { ...issue, state: "closed", priority: "normal" }
+                    : issue,
+                ),
+              };
+            }
+            if (repo.id !== targetRepo.id || repo.issues.some((issue) => issue.number === result.issueNumber)) {
+              return repo;
+            }
+            return {
+              ...repo,
+              issues: [
+                {
+                  number: result.issueNumber,
+                  title: `Reassigned issue #${result.issueNumber}`,
+                  state: "open",
+                  labels: [],
+                  updatedAt: new Date().toISOString(),
+                  priority: "normal",
+                  hasActiveDeployment: false,
+                  htmlUrl: `https://github.com/${result.owner}/${result.repo}/issues/${result.issueNumber}`,
+                  authorLogin: null,
+                },
+                ...repo.issues,
+              ],
+            };
+          }),
+        },
+        error: null,
+      };
+    });
+    queueMicrotask(() => {
+      dispatch({ type: "selectRepo", repoId: targetRepo.id });
+      dispatch({ type: "selectIssue", issueNumber: result.issueNumber });
+    });
+  }
+
+  function addLaunchedSession(deployment: WorkbenchDeployment) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      const repoHasDeployment = (repoDeployments: WorkbenchDeployment[]) =>
+        repoDeployments.some((item) => item.id === deployment.id);
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          deployments: current.data.deployments.some((item) => item.id === deployment.id)
+            ? current.data.deployments
+            : [deployment, ...current.data.deployments],
+          repos: current.data.repos.map((repo) => {
+            if (repo.id !== deployment.repoId) return repo;
+            const deployments = repoHasDeployment(repo.deployments)
+              ? repo.deployments
+              : [deployment, ...repo.deployments];
+            return {
+              ...repo,
+              deployments,
+              badgeCount: deployments.length,
+              deployedCount: deployments.length,
+              issues: repo.issues.map((issue) =>
+                issue.number === deployment.issueNumber
+                  ? { ...issue, hasActiveDeployment: true }
+                  : issue,
+              ),
+            };
+          }),
+        },
+        error: null,
+      };
+    });
+    dispatch({ type: "selectDeployment", deploymentId: deployment.id });
+  }
+
+  function updateRepo(updatedRepo: WorkbenchRepo) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          repos: current.data.repos.map((repo) => repo.id === updatedRepo.id ? { ...repo, ...updatedRepo } : repo),
+        },
+        error: null,
+      };
+    });
+  }
+
+  function addRepo(repo: WorkbenchRepo) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      if (current.data.repos.some((item) => item.id === repo.id || (item.owner === repo.owner && item.name === repo.name))) {
+        return current;
+      }
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          repos: [...current.data.repos, repo],
+        },
+        error: null,
+      };
+    });
+  }
+
+  function removeRepo(owner: string, name: string) {
+    const currentData = loadState.status === "loaded" ? loadState.data : null;
+    const repoBeingRemoved = currentData?.repos.find((repo) => repo.owner === owner && repo.name === name);
+    const nextSelectedRepoId = repoBeingRemoved?.id === selection.selectedRepoId
+      ? currentData?.repos.find((repo) => repo.id !== repoBeingRemoved.id)?.id ?? null
+      : undefined;
+
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      const removed = current.data.repos.find((repo) => repo.owner === owner && repo.name === name);
+      const repos = current.data.repos.filter((repo) => repo.owner !== owner || repo.name !== name);
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          repos,
+          deployments: removed
+            ? current.data.deployments.filter((deployment) => deployment.repoId !== removed.id)
+            : current.data.deployments,
+        },
+        error: null,
+      };
+    });
+
+    if (nextSelectedRepoId !== undefined) {
+      dispatch({ type: "replaceSelectedRepo", repoId: nextSelectedRepoId });
+    }
+  }
+
+  function updateSettings(settings: WorkbenchSettings) {
+    setLoadState((current) => {
+      if (current.status !== "loaded") return current;
+      return {
+        status: "loaded",
+        data: {
+          ...current.data,
+          settings: { ...current.data.settings, ...settings },
+        },
+        error: null,
+      };
+    });
+  }
+
+  function toggleSection(section: WorkbenchSectionId) {
+    dispatch({ type: "toggleSection", section });
+  }
+
+  function beginColumnResize(column: WorkbenchColumnKey, event: ReactPointerEvent<HTMLElement>) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    startColumnResize(column, event.clientX);
+  }
+
+  function beginColumnResizeWithMouse(column: WorkbenchColumnKey, event: ReactMouseEvent<HTMLElement>) {
+    if (dragRef.current) return;
+    event.preventDefault();
+    startColumnResize(column, event.clientX);
+  }
+
+  function startColumnResize(column: WorkbenchColumnKey, clientX: number) {
+    if (dragRef.current) return;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    dragRef.current = {
+      column,
+      startX: clientX,
+      startWidth: selection.columnWidths[column],
+      previousUserSelect,
+    };
+    setResizingColumn(column);
+    window.addEventListener("mousemove", resizeColumnFromWindow);
+    window.addEventListener("mouseup", finishColumnResize);
+    window.addEventListener("pointermove", resizeColumnFromWindow);
+    window.addEventListener("pointerup", finishColumnResize);
+  }
+
+  function resizeColumn(event: ReactPointerEvent<HTMLElement>) {
+    resizeColumnAt(event.clientX);
+  }
+
+  function resizeColumnWithMouse(event: ReactMouseEvent<HTMLElement>) {
+    resizeColumnAt(event.clientX);
+  }
+
+  function resizeColumnFromWindow(event: MouseEvent | PointerEvent) {
+    resizeColumnAt(event.clientX);
+  }
+
+  function resizeColumnAt(clientX: number) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const delta = clientX - drag.startX;
+    dispatch({
+      type: "setColumnWidth",
+      column: drag.column,
+      width: drag.column === "instances" ? drag.startWidth + delta : drag.startWidth - delta,
+    });
+  }
+
+  function finishColumnResize() {
+    if (!dragRef.current) return;
+    document.body.style.userSelect = dragRef.current.previousUserSelect;
+    dragRef.current = null;
+    setResizingColumn(null);
+    window.removeEventListener("mousemove", resizeColumnFromWindow);
+    window.removeEventListener("mouseup", finishColumnResize);
+    window.removeEventListener("pointermove", resizeColumnFromWindow);
+    window.removeEventListener("pointerup", finishColumnResize);
+  }
+
+  function nudgeColumn(column: WorkbenchColumnKey, event: KeyboardEvent<HTMLElement>) {
+    const step = event.shiftKey ? 32 : 16;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    dispatch({
+      type: "setColumnWidth",
+      column,
+      width: selection.columnWidths[column] + (column === "instances" ? direction : -direction) * step,
+    });
+  }
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.topbar}>
+        <Link href="/workbench" className={styles.brand} aria-label="issuectl workbench">
+          issuectl<span className={styles.brandDot} />
+        </Link>
+        <span className={styles.routeLabel}>/workbench</span>
+        <button
+          type="button"
+          className={styles.resetColumnsButton}
+          onClick={() => dispatch({ type: "resetColumnWidths" })}
+        >
+          Reset column widths
+        </button>
+        <nav className={styles.topnav} aria-label="Workbench navigation">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.mode}
+              type="button"
+              className={styles.navButton}
+              data-active={selection.mode === item.mode ? "true" : undefined}
+              aria-current={selection.mode === item.mode ? "page" : undefined}
+              onClick={() => selectMode(item.mode, item.path)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <main
+        className={styles.workbench}
+        data-mode={selection.mode}
+        data-side-panes={hideSidePanes ? "collapsed" : "visible"}
+        data-resizing={resizingColumn ? "true" : undefined}
+        style={workbenchStyle}
+        aria-label="Workbench"
+      >
+        <aside className={`${styles.pane} ${styles.repoRail}`} aria-label="Repositories">
+          <RepoRail
+            repos={payload?.repos ?? null}
+            selectedRepoId={selection.selectedRepoId}
+            status={loadState.status}
+            onSelectRepo={selectRepo}
+            onAddRepository={openRepoSetup}
+            onOpenSettings={() => selectMode("settings", "/workbench/settings")}
+          />
+        </aside>
+
+        {!hideSidePanes && (
+          <aside className={`${styles.pane} ${styles.instancePane}`} aria-label="Active sessions">
+            <InstancePane
+              repo={selectedRepo}
+              selectedDeploymentId={selection.selectedDeploymentId}
+              sortMode={sessionSortMode}
+              pendingDeploymentId={pendingDeploymentId}
+              rowErrors={sessionRowErrors}
+              onSortChange={setSessionSortMode}
+              onSelectDeployment={selectDeployment}
+              onReconnect={reconnectDeployment}
+              onEnd={endSession}
+              collapsedSections={selection.collapsedSections}
+              onToggleSection={toggleSection}
+            />
+          </aside>
+        )}
+
+        {!hideSidePanes && (
+          <ColumnResizeHandle
+            label="Resize instances column"
+            value={selection.columnWidths.instances}
+            min={WORKBENCH_COLUMN_WIDTH_LIMITS.instances.min}
+            max={WORKBENCH_COLUMN_WIDTH_LIMITS.instances.max}
+            column="instances"
+            resizing={resizingColumn === "instances"}
+            onPointerDown={beginColumnResize}
+            onPointerMove={resizeColumn}
+            onPointerUp={finishColumnResize}
+            onMouseDown={beginColumnResizeWithMouse}
+            onMouseMove={resizeColumnWithMouse}
+            onMouseUp={finishColumnResize}
+            onKeyDown={nudgeColumn}
+          />
+        )}
+
+        <section className={styles.focusPane} aria-label="Workbench focus">
+          <FocusContent
+            loadState={loadState}
+            mode={selection.mode}
+            selectedRepo={selectedRepo}
+            selectedDeployment={selectedDeployment}
+            selectedIssue={selectedIssue}
+            reassignTargets={reassignTargets}
+            navLabels={navLabels}
+            repoSetupRequested={repoSetupRequested}
+            collapsedSections={selection.collapsedSections}
+            onToggleSection={toggleSection}
+            onRetry={() => {
+              load();
+            }}
+            onRefresh={() => {
+              load();
+            }}
+            onIssueUpdated={updateIssue}
+            onIssueReassigned={focusReassignedIssue}
+            onGlobalIssueSelected={selectGlobalIssue}
+            onSessionLaunched={addLaunchedSession}
+            onRepoUpdated={updateRepo}
+            onRepoAdded={addRepo}
+            onRepoRemoved={removeRepo}
+            onSettingsUpdated={updateSettings}
+            onOpenRepoSetup={openRepoSetup}
+            onOpenSettings={() => selectMode("settings", "/workbench/settings")}
+          />
+        </section>
+
+        {!hideSidePanes && (
+          <ColumnResizeHandle
+            label="Resize issues column"
+            value={selection.columnWidths.issues}
+            min={WORKBENCH_COLUMN_WIDTH_LIMITS.issues.min}
+            max={WORKBENCH_COLUMN_WIDTH_LIMITS.issues.max}
+            column="issues"
+            resizing={resizingColumn === "issues"}
+            onPointerDown={beginColumnResize}
+            onPointerMove={resizeColumn}
+            onPointerUp={finishColumnResize}
+            onMouseDown={beginColumnResizeWithMouse}
+            onMouseMove={resizeColumnWithMouse}
+            onMouseUp={finishColumnResize}
+            onKeyDown={nudgeColumn}
+          />
+        )}
+
+        {!hideSidePanes && (
+          <aside className={`${styles.pane} ${styles.issuePane}`} aria-label="Repo issues">
+            <IssueQueuePane
+              repo={selectedRepo}
+              filter={issueFilter}
+              selectedIssueNumber={selection.selectedIssueNumber}
+              onFilterChange={setIssueFilter}
+              onSelectIssue={selectIssue}
+              onJumpToSession={selectDeployment}
+            />
+          </aside>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function FocusContent({
+  loadState,
+  mode,
+  selectedRepo,
+  selectedDeployment,
+  selectedIssue,
+  reassignTargets,
+  navLabels,
+  repoSetupRequested,
+  collapsedSections,
+  onToggleSection,
+  onRetry,
+  onRefresh,
+  onIssueUpdated,
+  onIssueReassigned,
+  onGlobalIssueSelected,
+  onSessionLaunched,
+  onRepoUpdated,
+  onRepoAdded,
+  onRepoRemoved,
+  onSettingsUpdated,
+  onOpenRepoSetup,
+  onOpenSettings,
+}: {
+  loadState: LoadState;
+  mode: WorkbenchMode;
+  selectedRepo: WorkbenchPayload["repos"][number] | null;
+  selectedDeployment: WorkbenchDeployment | null;
+  selectedIssue: WorkbenchPayload["repos"][number]["issues"][number] | null;
+  reassignTargets: WorkbenchPayload["repos"][number][];
+  navLabels: string[];
+  repoSetupRequested: boolean;
+  collapsedSections: WorkbenchSectionCollapseState;
+  onToggleSection: (section: WorkbenchSectionId) => void;
+  onRetry: () => void;
+  onRefresh: () => void;
+  onIssueUpdated: (repoId: number, issueNumber: number, patch: Partial<WorkbenchIssueSummary>) => void;
+  onIssueReassigned: (result: { owner: string; repo: string; issueNumber: number }) => void;
+  onGlobalIssueSelected: (repoId: number, issueNumber: number) => void;
+  onSessionLaunched: (deployment: WorkbenchDeployment) => void;
+  onRepoUpdated: (repo: WorkbenchRepo) => void;
+  onRepoAdded: (repo: WorkbenchRepo) => void;
+  onRepoRemoved: (owner: string, name: string) => void;
+  onSettingsUpdated: (settings: WorkbenchSettings) => void;
+  onOpenRepoSetup: () => void;
+  onOpenSettings: () => void;
+}) {
+  if (loadState.status === "loading") {
+    return (
+      <div className={styles.focusInner}>
+        <p className={styles.kicker}>Loading</p>
+        <h1>Opening workbench</h1>
+        <p className={styles.muted}>Preparing repositories, sessions, and issue queues.</p>
+      </div>
+    );
+  }
+
+  if (loadState.status === "error") {
+    return (
+      <div className={styles.focusInner} role="alert">
+        <p className={styles.kicker}>Workbench unavailable</p>
+        <h1>Unable to load workbench</h1>
+        <p className={styles.muted}>{loadState.error}</p>
+        <button type="button" className={styles.primaryButton} onClick={onRetry}>
+          Retry workbench load
+        </button>
+      </div>
+    );
+  }
+
+  if (mode === "settings" && repoSetupRequested) {
+    return (
+      <RepoSetupFocus
+        repos={loadState.data.repos}
+        selectedRepo={selectedRepo}
+        onRepoUpdated={onRepoUpdated}
+        onRepoAdded={onRepoAdded}
+        onRepoRemoved={onRepoRemoved}
+      />
+    );
+  }
+
+  if (mode === "settings") {
+    return (
+      <SettingsFocus
+        payload={loadState.data}
+        collapsedSections={collapsedSections}
+        onToggleSection={onToggleSection}
+        onSettingsUpdated={onSettingsUpdated}
+      />
+    );
+  }
+
+  if (loadState.data.repos.length === 0) {
+    return (
+      <div className={styles.focusInner}>
+        <p className={styles.kicker}>Setup</p>
+        <h1>No tracked repositories</h1>
+        <div className={styles.emptyActions}>
+          <button
+            type="button"
+            className={styles.primaryButton}
+            aria-label="Add repository"
+            onClick={onOpenRepoSetup}
+          >
+            Add repository
+          </button>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            aria-label="Open settings"
+            onClick={onOpenSettings}
+          >
+            Open settings
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "globalIssues") {
+    return (
+      <GlobalIssuesFocus
+        repos={loadState.data.repos}
+        onSelectIssue={onGlobalIssueSelected}
+      />
+    );
+  }
+
+  if (mode === "board") {
+    return (
+      <BoardFocus
+        repos={loadState.data.repos}
+        deployments={loadState.data.deployments}
+        onSelectIssue={onGlobalIssueSelected}
+      />
+    );
+  }
+
+  if (mode === "quickCreate") {
+    return <QuickCreateFocus repos={loadState.data.repos} selectedRepo={selectedRepo} />;
+  }
+
+  if (mode === "pullRequests") {
+    return <PullRequestsFocus selectedRepo={selectedRepo} />;
+  }
+
+  if (mode === "workbench" && selectedIssue) {
+    return selectedRepo ? (
+      <IssueFocus
+        repo={selectedRepo}
+        issue={selectedIssue}
+        reassignTargets={reassignTargets}
+        currentUserLogin={loadState.data.user.login}
+        collapsedSections={collapsedSections}
+        onToggleSection={onToggleSection}
+        onIssueUpdated={(issueNumber, patch) => onIssueUpdated(selectedRepo.id, issueNumber, patch)}
+        onIssueReassigned={onIssueReassigned}
+        onSessionLaunched={onSessionLaunched}
+      />
+    ) : null;
+  }
+
+  if (mode === "workbench" && selectedDeployment) {
+    return <TerminalFocus deployment={selectedDeployment} repo={selectedRepo} />;
+  }
+
+  if (mode === "workbench" && selectedRepo) {
+    return (
+      <RepoOverviewFocus
+        repo={selectedRepo}
+        health={loadState.data.health}
+        onRefresh={onRefresh}
+        onOpenRepoSetup={onOpenRepoSetup}
+      />
+    );
+  }
+
+  const modeTitle = titleForMode(mode);
+  return (
+    <div className={styles.focusInner}>
+      <p className={styles.kicker}>{modeTitle}</p>
+      <h1>{selectedRepo ? `${selectedRepo.owner}/${selectedRepo.name}` : "Workbench"}</h1>
+      <p className={styles.muted}>
+        {modeTitle} surface selected from {navLabels.join(", ")}.
+      </p>
+    </div>
+  );
+}
+
+function ColumnResizeHandle({
+  label,
+  value,
+  min,
+  max,
+  column,
+  resizing,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onMouseDown,
+  onMouseMove,
+  onMouseUp,
+  onKeyDown,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  column: WorkbenchColumnKey;
+  resizing: boolean;
+  onPointerDown: (column: WorkbenchColumnKey, event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: () => void;
+  onMouseDown: (column: WorkbenchColumnKey, event: ReactMouseEvent<HTMLElement>) => void;
+  onMouseMove: (event: ReactMouseEvent<HTMLElement>) => void;
+  onMouseUp: () => void;
+  onKeyDown: (column: WorkbenchColumnKey, event: KeyboardEvent<HTMLElement>) => void;
+}) {
+  return (
+    <div
+      className={styles.columnResizeHandle}
+      data-resizing={resizing ? "true" : undefined}
+      role="separator"
+      tabIndex={0}
+      aria-label={label}
+      aria-orientation="vertical"
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      onPointerDown={(event) => onPointerDown(column, event)}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onMouseDown={(event) => onMouseDown(column, event)}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onKeyDown={(event) => onKeyDown(column, event)}
+    />
+  );
+}
+
+function mapPayloadDeployments(
+  payload: WorkbenchPayload,
+  deploymentId: number,
+  mapper: (deployment: WorkbenchDeployment) => WorkbenchDeployment,
+): WorkbenchPayload {
+  return {
+    ...payload,
+    deployments: payload.deployments.map((deployment) =>
+      deployment.id === deploymentId ? mapper(deployment) : deployment,
+    ),
+    repos: payload.repos.map((repo) => ({
+      ...repo,
+      deployments: repo.deployments.map((deployment) =>
+        deployment.id === deploymentId ? mapper(deployment) : deployment,
+      ),
+    })),
+  };
+}
+
+function withoutKey(record: Record<number, string>, key: number): Record<number, string> {
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
+function modeFromPath(pathname: string): WorkbenchMode {
+  if (pathname.endsWith("/issues")) return "globalIssues";
+  if (pathname.endsWith("/board")) return "board";
+  if (pathname.endsWith("/prs")) return "pullRequests";
+  if (pathname.endsWith("/quick-create")) return "quickCreate";
+  if (pathname.endsWith("/settings")) return "settings";
+  return "workbench";
+}
+
+function titleForMode(mode: WorkbenchMode): string {
+  switch (mode) {
+    case "globalIssues":
+      return "Issues";
+    case "board":
+      return "Board";
+    case "pullRequests":
+      return "PRs";
+    case "quickCreate":
+      return "Quick Create";
+    case "settings":
+      return "Settings";
+    case "workbench":
+      return "Workbench";
+  }
+}
