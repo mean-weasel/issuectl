@@ -272,7 +272,60 @@ test("resizes workbench columns, persists widths, and resets them", async ({ pag
 
   await page.getByRole("button", { name: "Reset column widths" }).click();
   await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
-    .toBe(JSON.stringify({ instances: 284, issues: 348 }));
+    .toBeNull();
+
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      "issuectl.workbench.columnWidths",
+      JSON.stringify({ instances: 284, issues: 348 }),
+    );
+  });
+  await page.getByRole("button", { name: "Reset column widths" }).click();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
+    .toBeNull();
+  const noOpResetLeftBox = await leftHandle.boundingBox();
+  expect(noOpResetLeftBox).not.toBeNull();
+  await page.mouse.move(
+    noOpResetLeftBox!.x + noOpResetLeftBox!.width / 2,
+    noOpResetLeftBox!.y + noOpResetLeftBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    noOpResetLeftBox!.x + noOpResetLeftBox!.width / 2 + 92,
+    noOpResetLeftBox!.y + noOpResetLeftBox!.height / 2,
+  );
+  await page.mouse.up();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
+    .toBe(JSON.stringify({ instances: 360, issues: 348 }));
+  await page.getByRole("button", { name: "Reset column widths" }).click();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
+    .toBeNull();
+
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      "issuectl.workbench.columnWidths",
+      JSON.stringify({ instances: 284, issues: 348 }),
+    );
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await assertVisibleWorkbenchLayout(page);
+  await page.getByRole("button", { name: "Reset column widths" }).click();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
+    .toBeNull();
+
+  await page.getByRole("button", { name: "Reset column widths" }).click();
+  const resetLeftBox = await leftHandle.boundingBox();
+  expect(resetLeftBox).not.toBeNull();
+  await page.mouse.move(resetLeftBox!.x + resetLeftBox!.width / 2, resetLeftBox!.y + resetLeftBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(resetLeftBox!.x + resetLeftBox!.width / 2 + 92, resetLeftBox!.y + resetLeftBox!.height / 2);
+  await page.mouse.up();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
+    .toBe(JSON.stringify({ instances: 360, issues: 348 }));
+
+  await page.getByRole("button", { name: "Reset column widths" }).click();
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.workbench.columnWidths")))
+    .toBeNull();
 
   await page.setViewportSize({ width: 1100, height: 850 });
   await assertVisibleWorkbenchLayout(page);
