@@ -33,6 +33,7 @@ const TMUX_SESSION_RE = /^[a-zA-Z0-9_-]+$/;
 // Detached tmux sessions otherwise start at 80 columns, wider than phones.
 const TMUX_INITIAL_COLUMNS = 40;
 const TMUX_INITIAL_ROWS = 24;
+const TTYD_TERMINATION_GRACE_MS = 150;
 
 /**
  * Build a tmux-safe session name from repo + issue number. Dots, colons,
@@ -98,6 +99,14 @@ export function killTtyd(pid: number, sessionName?: string): void {
     } catch {
       // Session may already be gone — that's fine.
     }
+  }
+
+  try {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, TTYD_TERMINATION_GRACE_MS);
+    process.kill(pid, 0);
+    process.kill(pid, "SIGKILL");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ESRCH") throw err;
   }
 }
 

@@ -40,10 +40,14 @@ type Props = {
   reassignTargets: WorkbenchRepo[];
   currentUserLogin: string | null;
   collapsedSections: WorkbenchSectionCollapseState;
+  sessionsHidden: boolean;
+  hasHiddenSessions: boolean;
   onToggleSection: (section: WorkbenchSectionId) => void;
+  onShowSessions: () => void;
   onIssueUpdated: (issueNumber: number, patch: Partial<WorkbenchIssueSummary>) => void;
   onIssueReassigned: (result: ReassignResult) => void;
   onSessionLaunched: (deployment: WorkbenchDeployment) => void;
+  onJumpToSession: (deploymentId: number) => void;
 };
 
 export function IssueFocus({
@@ -52,19 +56,26 @@ export function IssueFocus({
   reassignTargets,
   currentUserLogin,
   collapsedSections,
+  sessionsHidden,
+  hasHiddenSessions,
   onToggleSection,
+  onShowSessions,
   onIssueUpdated,
   onIssueReassigned,
   onSessionLaunched,
+  onJumpToSession,
 }: Props) {
   const [detail, setDetail] = useState<WorkbenchIssueDetail | null>(null);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
-  const [comment, setComment] = useState("Workbench comment");
+  const [comment, setComment] = useState("");
+  const [titleDraft, setTitleDraft] = useState(issue.title);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [reassignedIssue, setReassignedIssue] = useState<ReassignResult | null>(null);
   const [agent, setAgent] = useState<LaunchAgent>("codex");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("worktree");
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => defaultWorkspaceMode(repo));
   const [branchName, setBranchName] = useState(() => defaultBranchName(repo, issue));
   const [selectedComments, setSelectedComments] = useState<number[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
@@ -87,6 +98,7 @@ export function IssueFocus({
       .then((nextDetail) => {
         if (cancelled) return;
         setDetail(nextDetail);
+        setTitleDraft(nextDetail.issue.title);
         setStatus("loaded");
       })
       .catch((err: unknown) => {
@@ -107,9 +119,14 @@ export function IssueFocus({
     setForceResume(false);
     setWorktreeStatus(null);
     setLaunchMessage(null);
+    setActionMessage(null);
+    setComment("");
+    setTitleDraft(issue.title);
+    setImageFile(null);
+    setWorkspaceMode(defaultWorkspaceMode(repo));
     setReassignedIssue(null);
     setReassignTargetKey("");
-  }, [issue.number, repo.name, repo.owner]);
+  }, [issue.number, repo.localPath, repo.name, repo.owner]);
 
   useEffect(() => {
     if (!detail) return;
@@ -133,10 +150,13 @@ export function IssueFocus({
 
   const loadedIssue = detail?.issue;
   const title = loadedIssue?.title ?? issue.title;
+  const titleChanged = titleDraft.trim().length > 0 && titleDraft.trim() !== title;
   const priority = issue.priority;
   const state = loadedIssue?.state ?? issue.state;
   const comments = detail?.comments ?? [];
   const referencedFiles = detail?.referencedFiles ?? [];
+  const activeDeployments = detail?.deployments.filter(isActiveDeployment) ?? [];
+  const historicalDeployments = detail?.deployments.filter((deployment) => !isActiveDeployment(deployment)) ?? [];
   const selectedReassignTarget = reassignTargets.find(
     (target) => reassignKey(target) === reassignTargetKey,
   ) ?? null;
@@ -159,10 +179,14 @@ export function IssueFocus({
   async function runAction(name: string, action: () => Promise<void>): Promise<void> {
     setPendingAction(name);
     setError(null);
+    setActionMessage(null);
     try {
       await action();
+      if (name !== "launch") setActionMessage(actionSuccessMessage(name));
     } catch (err) {
-      setError(`${name} failed: ${err instanceof Error ? err.message : "request failed"}`);
+      const message = `${name} failed: ${err instanceof Error ? err.message : "request failed"}`;
+      setError(message);
+      if (name === "launch") setLaunchMessage(message);
     } finally {
       setPendingAction(null);
     }
@@ -178,10 +202,23 @@ export function IssueFocus({
         <p className={styles.kicker}>Issue details</p>
         <h1>#{issue.number} {title}</h1>
         <div className={styles.issueFocusMeta}>
+          <span>{repo.owner}/{repo.name}</span>
           <span>{state}</span>
           <span>{priority}</span>
           {detail?.fromCache && <span>Cached</span>}
         </div>
+        {loadedIssue?.labels.length ? (
+          <div className={styles.issueLabels} aria-label="Issue labels">
+            {loadedIssue.labels.map((label) => (
+              <span key={label.name}>{label.name}</span>
+            ))}
+          </div>
+        ) : null}
+        {sessionsHidden && hasHiddenSessions && (
+          <button type="button" className={styles.sessionRevealButton} onClick={onShowSessions}>
+            Sessions hidden · Show sessions
+          </button>
+        )}
       </header>
 
       {status === "loading" && <p className={styles.issueFocusNotice}>Loading issue #{issue.number}</p>}
@@ -191,6 +228,7 @@ export function IssueFocus({
         </p>
       )}
       {error && status !== "error" && <p className={styles.issueFocusError}>{error}</p>}
+      {actionMessage && <p className={styles.issueFocusNotice} role="status">{actionMessage}</p>}
 
       <section className={styles.issueFocusBody} aria-label="Issue body">
         <BodyText body={loadedIssue?.body ?? issue.title} />
@@ -216,10 +254,34 @@ export function IssueFocus({
               )) : <p>No linked PRs</p>}
             </div>
             <div>
-              <h2>Deployments</h2>
-              {detail?.deployments.length ? detail.deployments.map((deployment) => (
-                <p key={deployment.id}>Deployment {deployment.id} · {deployment.branchName}</p>
-              )) : <p>No deployments</p>}
+              <h2>Active sessions</h2>
+              {activeDeployments.length ? (
+                <div className={styles.deploymentList}>
+                  {activeDeployments.map((deployment) => (
+                    <DeploymentRow
+                      key={deployment.id}
+                      deployment={deployment}
+                      active
+                      canJump={repo.deployments.some((item) => item.id === deployment.id)}
+                      onJumpToSession={onJumpToSession}
+                    />
+                  ))}
+                </div>
+              ) : <p>No active sessions</p>}
+              <h2>History</h2>
+              {historicalDeployments.length ? (
+                <div className={styles.deploymentList}>
+                  {historicalDeployments.map((deployment) => (
+                    <DeploymentRow
+                      key={deployment.id}
+                      deployment={deployment}
+                      active={false}
+                      canJump={false}
+                      onJumpToSession={onJumpToSession}
+                    />
+                  ))}
+                </div>
+              ) : <p>No deployment history</p>}
             </div>
           </section>
         </CollapsibleSection>
@@ -240,122 +302,163 @@ export function IssueFocus({
       </div>
 
       <section className={styles.issueActionGrid} aria-label="Issue actions">
-        <label>
-          Priority
-          <select
-            value={priority}
+        <div className={styles.issueActionGroup} aria-label="Metadata actions">
+          <h2>Metadata</h2>
+          <label>
+            Priority
+            <select
+              value={priority}
+              disabled={pendingAction !== null}
+              onChange={(event) => {
+                const nextPriority = event.currentTarget.value as Priority;
+                void runAction("priority", async () => {
+                  await setIssuePriority(ref, nextPriority);
+                  onIssueUpdated(issue.number, { priority: nextPriority });
+                });
+              }}
+            >
+              <option value="high">high</option>
+              <option value="normal">normal</option>
+              <option value="low">low</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={pendingAction !== null || status !== "loaded" || !titleChanged}
+            onClick={() => void runAction("edit issue", async () => {
+              const nextTitle = titleDraft.trim();
+              await patchIssue(ref, { title: nextTitle });
+              updateLoadedIssue({ title: nextTitle });
+              onIssueUpdated(issue.number, { title: nextTitle });
+            })}
+          >
+            Save title
+          </button>
+          <label>
+            Issue title
+            <input
+              value={titleDraft}
+              disabled={pendingAction !== null || status !== "loaded"}
+              onChange={(event) => setTitleDraft(event.currentTarget.value)}
+            />
+          </label>
+        </div>
+
+        <div className={styles.issueActionGroup} aria-label="Comment actions">
+          <h2>Comment</h2>
+          <label>
+            Comment
+            <textarea
+              placeholder="Add a comment..."
+              value={comment}
+              onChange={(event) => setComment(event.currentTarget.value)}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={pendingAction !== null || comment.trim().length === 0}
+            onClick={() => void runAction("comment", async () => {
+              await addIssueComment(ref, comment);
+              setComment("");
+            })}
+          >
+            Add comment
+          </button>
+        </div>
+
+        <details className={styles.issueActionGroup}>
+          <summary>State and labels</summary>
+          <button
+            type="button"
             disabled={pendingAction !== null}
-            onChange={(event) => {
-              const nextPriority = event.currentTarget.value as Priority;
-              void runAction("priority", async () => {
-                await setIssuePriority(ref, nextPriority);
-                onIssueUpdated(issue.number, { priority: nextPriority });
+            onClick={() => void runAction("state", async () => {
+              const nextState = state === "closed" ? "open" : "closed";
+              await setIssueState(ref, nextState, nextState === "closed" ? "Closing from workbench" : undefined);
+              updateLoadedIssue({ state: nextState });
+              onIssueUpdated(issue.number, { state: nextState });
+            })}
+          >
+            {state === "closed" ? "Reopen issue" : "Close issue"}
+          </button>
+          <button
+            type="button"
+            disabled={pendingAction !== null}
+            onClick={() => void runAction("labels", async () => {
+              await toggleIssueLabel(ref, "workbench", "add");
+              updateLoadedIssue({
+                labels: loadedIssue?.labels.some((label) => label.name === "workbench")
+                  ? loadedIssue.labels
+                  : [...(loadedIssue?.labels ?? []), { name: "workbench", color: "ffffff", description: null }],
               });
-            }}
+            })}
           >
-            <option value="high">high</option>
-            <option value="normal">normal</option>
-            <option value="low">low</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          disabled={pendingAction !== null || status !== "loaded"}
-          onClick={() => void runAction("edit issue", async () => {
-            const nextTitle = `${title} updated`;
-            await patchIssue(ref, { title: nextTitle });
-            updateLoadedIssue({ title: nextTitle });
-            onIssueUpdated(issue.number, { title: nextTitle });
-          })}
-        >
-          Save title
-        </button>
-        <label>
-          Comment
-          <textarea value={comment} onChange={(event) => setComment(event.currentTarget.value)} />
-        </label>
-        <button
-          type="button"
-          disabled={pendingAction !== null}
-          onClick={() => void runAction("comment", async () => {
-            await addIssueComment(ref, comment);
-          })}
-        >
-          Add comment
-        </button>
-        <button
-          type="button"
-          disabled={pendingAction !== null}
-          onClick={() => void runAction("state", async () => {
-            const nextState = state === "closed" ? "open" : "closed";
-            await setIssueState(ref, nextState, nextState === "closed" ? "Closing from workbench" : undefined);
-            updateLoadedIssue({ state: nextState });
-            onIssueUpdated(issue.number, { state: nextState });
-          })}
-        >
-          {state === "closed" ? "Reopen issue" : "Close issue"}
-        </button>
-        <button
-          type="button"
-          disabled={pendingAction !== null}
-          onClick={() => void runAction("labels", async () => {
-            await toggleIssueLabel(ref, "workbench", "add");
-          })}
-        >
-          Add label
-        </button>
-        <button
-          type="button"
-          disabled={pendingAction !== null || !currentUserLogin}
-          onClick={() => void runAction("assignees", async () => {
-            if (!currentUserLogin) return;
-            await setIssueAssignees(ref, [currentUserLogin]);
-          })}
-        >
-          Assign me
-        </button>
-        <label>
-          Reassign target
-          <select
-            value={reassignTargetKey}
-            disabled={pendingAction !== null || reassignTargets.length === 0}
-            onChange={(event) => setReassignTargetKey(event.currentTarget.value)}
+            Add label
+          </button>
+          <button
+            type="button"
+            disabled={pendingAction !== null || !currentUserLogin}
+            onClick={() => void runAction("assignees", async () => {
+              if (!currentUserLogin) return;
+              await setIssueAssignees(ref, [currentUserLogin]);
+            })}
           >
-            <option value="">Choose repo...</option>
-            {reassignTargets.map((target) => (
-              <option key={reassignKey(target)} value={reassignKey(target)}>
-                {target.owner}/{target.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          disabled={pendingAction !== null || !selectedReassignTarget}
-          onClick={() => void runAction("reassign", async () => {
-            if (!selectedReassignTarget) return;
-            const result = await reassignIssue(ref, selectedReassignTarget.owner, selectedReassignTarget.name);
-            const reassigned = {
-              owner: result.newOwner,
-              repo: result.newRepo,
-              issueNumber: result.newIssueNumber,
-            };
-            setReassignedIssue(reassigned);
-            onIssueReassigned(reassigned);
-          })}
-        >
-          Reassign
-        </button>
-        <button
-          type="button"
-          disabled={pendingAction !== null}
-          onClick={() => void runAction("attach image", async () => {
-            const file = new File(["workbench"], "workbench.png", { type: "image/png" });
-            await uploadIssueImage(repo.owner, repo.name, file);
-          })}
-        >
-          Attach image
-        </button>
+            Assign me
+          </button>
+        </details>
+
+        <details className={styles.issueActionGroup}>
+          <summary>Reassign and attachments</summary>
+          <label>
+            Reassign target
+            <select
+              value={reassignTargetKey}
+              disabled={pendingAction !== null || reassignTargets.length === 0}
+              onChange={(event) => setReassignTargetKey(event.currentTarget.value)}
+            >
+              <option value="">Choose repo...</option>
+              {reassignTargets.map((target) => (
+                <option key={reassignKey(target)} value={reassignKey(target)}>
+                  {target.owner}/{target.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={pendingAction !== null || !selectedReassignTarget}
+            onClick={() => void runAction("reassign", async () => {
+              if (!selectedReassignTarget) return;
+              const result = await reassignIssue(ref, selectedReassignTarget.owner, selectedReassignTarget.name);
+              const reassigned = {
+                owner: result.newOwner,
+                repo: result.newRepo,
+                issueNumber: result.newIssueNumber,
+              };
+              setReassignedIssue(reassigned);
+              onIssueReassigned(reassigned);
+            })}
+          >
+            Reassign
+          </button>
+          <label>
+            Image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => setImageFile(event.currentTarget.files?.[0] ?? null)}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={pendingAction !== null || !imageFile}
+            onClick={() => void runAction("attach image", async () => {
+              if (!imageFile) return;
+              await uploadIssueImage(repo.owner, repo.name, imageFile);
+            })}
+          >
+            Attach image
+          </button>
+        </details>
       </section>
 
       <div className={styles.issueDetailSections}>
@@ -478,6 +581,75 @@ export function IssueFocus({
   );
 }
 
+function DeploymentRow({
+  deployment,
+  active,
+  canJump,
+  onJumpToSession,
+}: {
+  deployment: WorkbenchDeployment;
+  active: boolean;
+  canJump: boolean;
+  onJumpToSession: (deploymentId: number) => void;
+}) {
+  return (
+    <article className={styles.deploymentRow} data-status={active ? "active" : "history"}>
+      <div>
+        <strong>{active ? "Active session" : "Historical deployment"}</strong>
+        <span>Deployment {deployment.id} · {deployment.branchName}</span>
+        <span>{deploymentStatusLabel(deployment)}</span>
+      </div>
+      {active && canJump && (
+        <button type="button" onClick={() => onJumpToSession(deployment.id)}>
+          Jump to session
+        </button>
+      )}
+    </article>
+  );
+}
+
+function isActiveDeployment(deployment: WorkbenchDeployment): boolean {
+  return deployment.state === "active" && deployment.endedAt === null;
+}
+
+function deploymentStatusLabel(deployment: WorkbenchDeployment): string {
+  if (isActiveDeployment(deployment)) return "running";
+  if (deployment.endedAt) return `ended ${formatDateTime(deployment.endedAt)}`;
+  return deployment.state;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function actionSuccessMessage(name: string): string {
+  switch (name) {
+    case "edit issue":
+      return "Title saved";
+    case "comment":
+      return "Comment added";
+    case "priority":
+      return "Priority saved";
+    case "labels":
+      return "Label updated";
+    case "assignees":
+      return "Assignees updated";
+    case "state":
+      return "Issue state updated";
+    case "attach image":
+      return "Image attached";
+    default:
+      return `${name} saved`;
+  }
+}
+
 function CollapsibleSection({
   id,
   title,
@@ -519,6 +691,10 @@ function CollapsibleSection({
 
 function defaultBranchName(repo: WorkbenchRepo, issue: WorkbenchIssueSummary): string {
   return generateBranchName(repo.branchPattern ?? "issue-{number}-{slug}", issue.number, issue.title);
+}
+
+function defaultWorkspaceMode(repo: WorkbenchRepo): WorkspaceMode {
+  return repo.localPath ? "worktree" : "clone";
 }
 
 function toggleValue<T>(values: T[], value: T): T[] {

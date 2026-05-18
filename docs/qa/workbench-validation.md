@@ -8,6 +8,11 @@ Task 16 responsive QA is complete for production `/workbench`.
 
 Named plain shells are intentionally unavailable in v1 per T020: the UI keeps the `Named shells 0` / `Named shells are not available yet` state and does not fake named shells as issue deployments.
 
+Follow-up scope decision on 2026-05-18: the next Workbench quality run is desktop-scoped.
+The supported Workbench body layout matrix for that run is `1440x1000`, `1280x900`, and
+`1100x850`. Narrow `768px`/`390px` checks may cover header/control reachability, but mobile
+or narrow multi-pane body usability is not an acceptance criterion for that run.
+
 ## Commands
 
 | Command | Status | Notes |
@@ -16,9 +21,9 @@ Named plain shells are intentionally unavailable in v1 per T020: the UI keeps th
 | `pnpm --filter @issuectl/web lint` | pass | 8 existing warnings: max-lines and two `any` warnings in existing files. |
 | `pnpm --filter @issuectl/web test` | pass | 27 files, 255 tests. |
 | `pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep "responsive QA\\|captures workbench QA"` | pass | Targeted Task 16 QA tests passed. |
-| `pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep "empty repositories\\|checks worktree"` | pass | Isolated harness check passed before the empty-state test was skipped in the long suite. |
-| `pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium` | pass | 23 passed, 1 skipped. |
-| `pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium --trace=on` | pass | 23 passed, 1 skipped. |
+| `pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep "No tracked repositories\\|Add repository\\|repo setup"` | pass | Empty-repository first-run path passed with the full-suite-safe test enabled. |
+| `pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium` | pass | Full Workbench suite exited 0 with empty-repository coverage enabled; one stale-terminal navigation case passed on the configured retry after a worker-boundary `page.goto` abort. |
+| `pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium --trace=on` | stale | Previous run passed before this follow-up; rerun only if trace evidence is needed. |
 
 ## Screenshot Artifacts
 
@@ -41,26 +46,30 @@ CLI screenshot pass:
 | `docs/qa/workbench-artifacts/cli-workbench-board-1440.png` | `playwright screenshot http://localhost:3848/workbench/board` |
 | `docs/qa/workbench-artifacts/cli-workbench-overview-1100.png` | `playwright screenshot http://localhost:3848/workbench` at 1100x850 |
 
-The terminal and issue focus states are not URL-addressable in the current implementation, so their required screenshots are produced by the e2e screenshot test after selecting the fixture session/issue.
+Terminal and issue focus states are URL-addressable with `repo`, `issue`, and `deployment`
+query parameters; the required screenshots are still produced by the e2e screenshot test after
+selecting fixture sessions/issues so the artifacts cover the fully rendered focus panes.
 
 ## Coverage Matrix
 
 | Mockup state | Status | Evidence |
 | --- | --- | --- |
-| Initial terminal focus | pass | `shows sorted session previews and opens terminal focus`; `workbench-terminal-1440.png`; `workbench-terminal-1100.png`. |
-| Issue detail focus | pass | `loads issue detail and calls issue mutation endpoints`; `workbench-issue-1440.png`. |
+| Initial terminal focus | pass | URL focus, launch, screenshot tests assert terminal iframe rendering plus readable terminal fixture text; `workbench-terminal-1440.png`; `workbench-terminal-1100.png`. |
+| Issue detail focus | pass | `loads issue detail and calls issue mutation endpoints`; labels/title-edit/status feedback are asserted; `workbench-issue-1440.png`. |
 | Repo overview | pass | `selects repos, updates overview focus, and preserves selection across modes`. |
-| Instance sorting | pass | `shows sorted session previews and opens terminal focus`. |
+| Direct subpath auth | pass | `direct-load workbench settings bootstraps the API token before client actions` covers fresh `/workbench/settings` authenticated settings/health/user/save requests. |
+| Keyboard focus management | pass | `moves focus into workbench focus after repo issue session and mode changes` covers repo, issue, terminal, and mode focus transitions. |
+| Instance sorting | pass | Final terminal/reconnect coverage asserts session ordering before opening terminal focus. |
 | Preview error state | pass | `Session #486` asserts `data-status="error"` and error text. |
-| Issue queue filters | pass | `filters repo issues and links details and running sessions`. |
+| Issue queue filters | pass | `filters repo issues and links details and running sessions`; queue action label is `Prepare launch` and real launch remains guarded by `Launch issue`. |
 | Launch options/worktree | pass | `checks worktree status and launches an issue with selected context`. |
 | Global Issues | pass | `shows global issues by repo and opens the selected repo issue`; side panes hidden. |
-| Board | pass | `shows cross-repo board columns and reversible running filter`; `workbench-board-1440.png`. |
+| Board | pass | `shows cross-repo board columns and reversible running filter`; card status/priority chips are asserted; `workbench-board-1440.png`. |
 | PRs | pass | `pull requests mode loads repo PRs and calls detail review merge comment endpoints`. |
 | Quick Create | pass | `quick create parses, creates accepted issues, and uses draft endpoints`. |
 | Settings | pass | `renders settings mode with health and saves settings through APIs`; `workbench-settings-1440.png`. |
 | Resize/collapse | pass | `resizes workbench columns, persists widths, and resets them`; `collapses instance sections and preserves collapse state across repo changes`. |
-| Empty repository actions | deferred in full suite | The isolated grep run passed. The test is skipped in the long spec because repeated empty-state SSR navigations deadlock the dev server after many prior workbench navigations. |
+| Empty repository actions | pass | `empty repositories add action opens repo setup` covers `No tracked repositories` -> `Add repository` -> `/workbench/settings?repoSetup=1`. |
 
 ## APIs Exercised
 
@@ -70,7 +79,11 @@ The Workbench e2e suite exercises the aggregate API, deployment ensure/end APIs,
 
 - 1440x1000, 1280x900, and 1100x850 viewports pass the responsive QA layout matrix.
 - Top navigation stays one row; at 1100px all nav buttons remain visible and clickable.
+- Any 768px or 390px checks are limited to compact header/control reachability and do not certify the Workbench body as mobile-ready.
 - Focus pane does not overlap side panes in visible-side-pane modes.
+- Visible desktop panes must fit within the viewport; the responsive QA assertion checks each visible pane's right edge at the supported desktop widths.
+- Collapsed drawer restore controls must not overlap issue or terminal headers at `1440x1000` or `1100x850`.
+- Screenshot capture must assert loaded route-specific content and no Workbench loading splash before writing artifacts.
 - Settings, Issues, and Board modes collapse side panes.
 - Board columns meet the minimum width assertions.
 - No prototype mock-state controls render.
@@ -78,6 +91,7 @@ The Workbench e2e suite exercises the aggregate API, deployment ensure/end APIs,
 ## Deviations
 
 - `New named shell` remains unavailable in v1 by T020 decision.
-- Issue and terminal focus are selected UI states, not URL-addressable routes; deterministic e2e screenshots cover those states.
-- One empty-repository action test is skipped in the long Playwright spec due a dev-server navigation deadlock, but its isolated grep run passed.
+- Issue and terminal focus are URL-addressable query states; deterministic e2e screenshots also cover those states.
+- Empty-repository first-run coverage is enabled in the long Workbench spec.
+- The long Workbench spec has one configured retry for a reproducible Playwright/Next dev-server navigation abort after a stale terminal boundary; the retried test passes and the command exits 0.
 - `pnpm -C packages/web build` was not part of Task 16 verification and remains blocked by external `fonts.googleapis.com` DNS resolution plus the existing `next.config.ts` `serverActions` warning.

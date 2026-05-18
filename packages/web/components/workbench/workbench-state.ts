@@ -71,7 +71,14 @@ export type WorkbenchAction =
   | { type: "selectRepo"; repoId: number }
   | { type: "selectMode"; mode: WorkbenchMode }
   | { type: "selectIssue"; issueNumber: number }
-  | { type: "selectDeployment"; deploymentId: number }
+  | { type: "selectDeployment"; deploymentId: number; repoId?: number | null }
+  | {
+      type: "applyUrlSelection";
+      mode: WorkbenchMode;
+      repoId: number | null;
+      issueNumber: number | null;
+      deploymentId: number | null;
+    }
   | { type: "replaceSelectedRepo"; repoId: number | null }
   | { type: "setColumnWidth"; column: WorkbenchColumnKey; width: number }
   | { type: "setColumnWidths"; widths: Partial<WorkbenchColumnWidths> }
@@ -132,8 +139,17 @@ export function workbenchReducer(
       return {
         ...state,
         mode: "workbench",
+        selectedRepoId: action.repoId ?? state.selectedRepoId,
         selectedDeploymentId: action.deploymentId,
         selectedIssueNumber: null,
+      };
+    case "applyUrlSelection":
+      return {
+        ...state,
+        mode: action.mode,
+        selectedRepoId: action.repoId,
+        selectedIssueNumber: action.issueNumber,
+        selectedDeploymentId: action.deploymentId,
       };
     case "replaceSelectedRepo":
       return {

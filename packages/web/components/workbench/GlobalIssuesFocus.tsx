@@ -62,11 +62,11 @@ function GlobalIssueRow({
     >
       <div className={styles.issueCardHead}>
         <strong>#{issue.number}</strong>
-        <span>{status}</span>
-        <span>{issue.priority}</span>
+        <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>
+        <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>
       </div>
       <h3>{issue.title}</h3>
-      <p>{repo.owner}/{repo.name}</p>
+      <p className={styles.issueCardMeta}>{repo.owner}/{repo.name}</p>
       <div className={styles.issueActions}>
         <button type="button" onClick={() => onSelectIssue(repo.id, issue.number)}>
           Open issue
