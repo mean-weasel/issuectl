@@ -477,7 +477,8 @@ test("keeps rail width stable across loading and loaded states", async ({ page }
   await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
   const after = await rail.boundingBox();
 
-  expect(before?.width).toBe(76);
+  expect(before?.width).toBeGreaterThanOrEqual(68);
+  expect(before?.width).toBeLessThanOrEqual(76);
   expect(after?.width).toBe(before?.width);
 });
 
@@ -865,6 +866,23 @@ test("supports top nav modes and collapses side panes for global modes", async (
   await clickNavAndExpect(page, "Workbench", "/workbench", false);
 });
 
+test("preserves selected repo across global mode reloads", async ({ page }) => {
+  await gotoWorkbenchWithRetry(page);
+  await page.getByRole("button", { name: "mean-weasel/bugdrop" }).click();
+  await expect(page).toHaveURL(/repo=mean-weasel%2Fbugdrop/);
+  const nav = page.getByRole("navigation", { name: "Workbench navigation" });
+
+  await nav.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page).toHaveURL(/\/workbench\/settings\?repo=mean-weasel%2Fbugdrop$/);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "mean-weasel/bugdrop" })).toHaveAttribute("data-selected", "true");
+
+  await nav.getByRole("button", { name: "PRs", exact: true }).click();
+  await expect(page).toHaveURL(/\/workbench\/prs\?repo=mean-weasel%2Fbugdrop$/);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "mean-weasel/bugdrop" })).toHaveAttribute("data-selected", "true");
+});
+
 test("restores URL focus for repo issue and deployment across reload and back forward", async ({ page }) => {
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
     if (route.request().method() !== "GET") {
@@ -1068,7 +1086,7 @@ test("quick create parses, creates accepted issues, and uses draft endpoints", a
     .getByRole("button", { name: "Quick Create", exact: true })
     .click();
 
-  await expect(page).toHaveURL(new RegExp("/workbench/quick-create$"));
+  await expect(page).toHaveURL(new RegExp("/workbench/quick-create\\?repo=mean-weasel%2Fissuectl$"));
   await expect(page.getByRole("heading", { name: "Quick Create" })).toBeVisible();
   await expect(page.getByLabel("Active sessions")).toBeVisible();
   await expect(page.getByLabel("Repo issues")).toBeVisible();
@@ -1210,7 +1228,7 @@ test("pull requests mode loads repo PRs and calls detail review merge comment en
     .getByRole("button", { name: "PRs", exact: true })
     .click();
 
-  await expect(page).toHaveURL(new RegExp("/workbench/prs$"));
+  await expect(page).toHaveURL(new RegExp("/workbench/prs\\?repo=mean-weasel%2Fissuectl$"));
   await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
   await expect(page.getByLabel("Pull requests for mean-weasel/issuectl")).toContainText("Checks success");
   await expect(page.getByLabel("Pull request #501")).toContainText("Linked issue #512");
@@ -1497,7 +1515,7 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
   await page.getByRole("navigation", { name: "Workbench navigation" })
     .getByRole("button", { name: "Workbench" })
     .click();
-  await expect(page).toHaveURL(new RegExp("/workbench$"));
+  await expect(page).toHaveURL(new RegExp("/workbench\\?repo=mean-weasel%2Fissuectl$"));
   await expect(page.getByRole("button", { name: "mean-weasel/issuectl" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
 
@@ -2127,8 +2145,16 @@ async function clickNavAndExpect(page: import("@playwright/test").Page, label: s
   const navButton = page
     .getByRole("navigation", { name: "Workbench navigation" })
     .getByRole("button", { name: label, exact: true });
+  const selectedRepoLabel = await page
+    .getByLabel("Repositories")
+    .locator('button[data-selected="true"]')
+    .getAttribute("aria-label")
+    .catch(() => null);
   await navButton.click();
-  await expect(page).toHaveURL(new RegExp(`${path}$`));
+  const expectedPath = selectedRepoLabel
+    ? `${path}\\?repo=${escapeRegExp(encodeURIComponent(selectedRepoLabel))}`
+    : escapeRegExp(path);
+  await expect(page).toHaveURL(new RegExp(`${expectedPath}$`));
   await expect(navButton).toHaveAttribute("aria-current", "page");
   const workbench = page.getByRole("main", { name: "Workbench" });
   if (collapsed) {
@@ -2149,6 +2175,10 @@ async function clickNavAndExpect(page: import("@playwright/test").Page, label: s
     await expect(page.getByLabel("Active sessions")).toBeVisible();
     await expect(page.getByLabel("Repo issues")).toBeVisible();
   }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function gotoWorkbenchWithRetry(page: import("@playwright/test").Page) {

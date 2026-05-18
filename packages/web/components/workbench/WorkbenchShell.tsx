@@ -223,6 +223,12 @@ export function WorkbenchShell({
     setRepoSetupRequested(new URLSearchParams(path.split("?")[1] ?? "").get("repoSetup") === "1");
   }
 
+  function modePathWithRepo(path: string): string {
+    if (!selectedRepo) return path;
+    const separator = path.includes("?") ? "&" : "?";
+    return `${path}${separator}repo=${encodeURIComponent(`${selectedRepo.owner}/${selectedRepo.name}`)}`;
+  }
+
   function selectRepo(repoId: number) {
     dispatch({ type: "selectRepo", repoId });
     setDrawerCollapse({ instances: false, issues: false });
@@ -672,7 +678,7 @@ export function WorkbenchShell({
               className={styles.navButton}
               data-active={selection.mode === item.mode ? "true" : undefined}
               aria-current={selection.mode === item.mode ? "page" : undefined}
-              onClick={() => selectMode(item.mode, item.path)}
+              onClick={() => selectMode(item.mode, modePathWithRepo(item.path))}
             >
               {item.label}
             </button>
@@ -697,7 +703,7 @@ export function WorkbenchShell({
             status={loadState.status}
             onSelectRepo={selectRepo}
             onAddRepository={openRepoSetup}
-            onOpenSettings={() => selectMode("settings", "/workbench/settings")}
+            onOpenSettings={() => selectMode("settings", modePathWithRepo("/workbench/settings"))}
           />
         </aside>
 
