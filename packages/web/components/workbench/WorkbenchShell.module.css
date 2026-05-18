@@ -271,7 +271,8 @@
 }
 
 .repoRail {
-  width: var(--repo-rail-width, 76px);
+  width: 100%;
+  box-sizing: border-box;
   background: var(--paper-bg-warm);
   display: flex;
   flex-direction: column;
@@ -1345,7 +1346,7 @@
   }
 }
 
-@media (max-width: 1160px) {
+@media (max-width: 1312px) {
   .topbar {
     gap: 10px;
   }
@@ -1384,5 +1385,150 @@
       8px
       minmax(440px, 1fr)
       40px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .page {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    min-height: 54px;
+    height: auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand tools"
+      "nav nav";
+    align-items: center;
+    row-gap: 6px;
+    padding: 8px 10px;
+    overflow: hidden;
+  }
+
+  .brand {
+    grid-area: brand;
+  }
+
+  .toolbarTools {
+    grid-area: tools;
+    justify-self: end;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .drawerControls {
+    display: none;
+  }
+
+  .topnav {
+    grid-area: nav;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .topnav::-webkit-scrollbar {
+    display: initial;
+    height: 4px;
+  }
+
+  .navButton,
+  .resetColumnsButton,
+  .drawerControls button,
+  .paneCollapseButton,
+  .repoButton,
+  .railButton {
+    min-height: 44px;
+  }
+
+  .navButton {
+    padding: 0 6px;
+  }
+
+  .workbench,
+  .workbench[data-side-panes="visible"],
+  .workbench[data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"],
+  .workbench[data-side-panes="visible"][data-instances-pane="visible"][data-issues-pane="collapsed"],
+  .workbench[data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
+    --repo-rail-width: 68px;
+    grid-template-columns: var(--repo-rail-width, 68px) minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .instancePane,
+  .issuePane,
+  .columnResizeHandle,
+  .drawerRestoreButton {
+    display: none;
+  }
+
+  .repoRail {
+    padding: 10px 6px;
+  }
+
+  .repoButton,
+  .railButton,
+  .emptyRailMark,
+  .repoSkeleton {
+    width: 44px;
+    height: 44px;
+  }
+
+  .focusPane {
+    min-width: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .focusInner {
+    max-width: none;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 22px 16px;
+  }
+
+  .issueFocusGrid,
+  .issueActionGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .issueActionGrid select,
+  .issueActionGrid textarea,
+  .issueActionGrid input[type="text"],
+  .issueActionGrid input[type="file"],
+  .issueActionGrid button {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .issueFocusGrid button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar {
+    padding-inline: 8px;
+  }
+
+  .brand {
+    font-size: 20px;
+  }
+
+  .workbench,
+  .workbench[data-side-panes="visible"],
+  .workbench[data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"],
+  .workbench[data-side-panes="visible"][data-instances-pane="visible"][data-issues-pane="collapsed"],
+  .workbench[data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
+    --repo-rail-width: 60px;
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .repoRail {
+    padding-inline: 5px;
   }
 }

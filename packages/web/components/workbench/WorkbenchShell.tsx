@@ -55,6 +55,8 @@ const NAV_ITEMS: Array<{ mode: WorkbenchMode; label: string; path: string }> = [
   { mode: "settings", label: "Settings", path: "/workbench/settings" },
 ];
 
+const COMPACT_WORKBENCH_QUERY = "(max-width: 1099px)";
+
 type Props = {
   initialPayload?: WorkbenchPayload | null;
   onRefreshPayload?: () => Promise<WorkbenchPayload>;
@@ -87,6 +89,7 @@ export function WorkbenchShell({
   const [sessionRowErrors, setSessionRowErrors] = useState<Record<number, string>>({});
   const [repoSetupRequested, setRepoSetupRequested] = useState(false);
   const [drawerCollapse, setDrawerCollapse] = useState({ instances: false, issues: false });
+  const [compactLayout, setCompactLayout] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<WorkbenchColumnKey | null>(null);
   const skipNextColumnWidthPersistRef = useRef(false);
@@ -150,6 +153,14 @@ export function WorkbenchShell({
     return () => window.removeEventListener("popstate", syncSelectionFromUrl);
   }, [payload]);
 
+  useLayoutEffect(() => {
+    const media = window.matchMedia(COMPACT_WORKBENCH_QUERY);
+    const syncCompactLayout = () => setCompactLayout(media.matches);
+    syncCompactLayout();
+    media.addEventListener("change", syncCompactLayout);
+    return () => media.removeEventListener("change", syncCompactLayout);
+  }, []);
+
   useEffect(() => {
     const stored = window.localStorage.getItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
     if (stored) {
@@ -194,8 +205,9 @@ export function WorkbenchShell({
   const selectedIssue = selectedRepo?.issues.find((issue) => issue.number === selection.selectedIssueNumber) ?? null;
   const reassignTargets = payload?.repos.filter((repo) => repo.id !== selectedRepo?.id) ?? [];
   const hideSidePanes = !sidePaneWidthsApply(selection.mode);
-  const instancesPaneCollapsed = hideSidePanes || drawerCollapse.instances;
-  const issuesPaneCollapsed = hideSidePanes || drawerCollapse.issues;
+  const compactSidePanesHidden = compactLayout || hideSidePanes;
+  const instancesPaneCollapsed = compactSidePanesHidden || drawerCollapse.instances;
+  const issuesPaneCollapsed = compactSidePanesHidden || drawerCollapse.issues;
   const navLabels = NAV_ITEMS.map((item) => item.label);
   const workbenchStyle = {
     "--workbench-instances-width": `${selection.columnWidths.instances}px`,
@@ -631,7 +643,7 @@ export function WorkbenchShell({
           >
             Reset
           </button>
-          {!hideSidePanes && (
+          {!compactSidePanesHidden && (
             <div className={styles.drawerControls} aria-label="Workbench drawers">
               <button
                 type="button"
@@ -671,7 +683,7 @@ export function WorkbenchShell({
       <main
         className={styles.workbench}
         data-mode={selection.mode}
-        data-side-panes={hideSidePanes ? "collapsed" : "visible"}
+        data-side-panes={compactSidePanesHidden ? "collapsed" : "visible"}
         data-instances-pane={instancesPaneCollapsed ? "collapsed" : "visible"}
         data-issues-pane={issuesPaneCollapsed ? "collapsed" : "visible"}
         data-resizing={resizingColumn ? "true" : undefined}
@@ -689,7 +701,7 @@ export function WorkbenchShell({
           />
         </aside>
 
-        {!hideSidePanes && instancesPaneCollapsed && (
+        {!compactSidePanesHidden && instancesPaneCollapsed && (
           <button
             type="button"
             className={`${styles.drawerRestoreButton} ${styles.drawerRestoreButtonLeft}`}
@@ -747,7 +759,7 @@ export function WorkbenchShell({
             navLabels={navLabels}
             repoSetupRequested={repoSetupRequested}
             collapsedSections={selection.collapsedSections}
-            sessionsHidden={drawerCollapse.instances}
+            sessionsHidden={!compactSidePanesHidden && drawerCollapse.instances}
             onToggleSection={toggleSection}
             onShowSessions={() => setDrawerCollapse((current) => ({ ...current, instances: false }))}
             onRetry={() => {
@@ -803,7 +815,7 @@ export function WorkbenchShell({
           </aside>
         )}
 
-        {!hideSidePanes && issuesPaneCollapsed && (
+        {!compactSidePanesHidden && issuesPaneCollapsed && (
           <button
             type="button"
             className={`${styles.drawerRestoreButton} ${styles.drawerRestoreButtonRight}`}

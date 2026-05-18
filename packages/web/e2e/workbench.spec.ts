@@ -607,6 +607,18 @@ test("passes the responsive QA layout matrix", async ({ page }) => {
     await expectNoHorizontalPageScroll(page);
   }
 
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      "issuectl.workbench.columnWidths",
+      JSON.stringify({ instances: 360, issues: 420 }),
+    );
+  });
+  await page.goto(`${baseUrl}/workbench`);
+  await assertVisibleWorkbenchLayout(page);
+  await expectNoHorizontalPageScroll(page);
+  await page.evaluate(() => window.localStorage.removeItem("issuectl.workbench.columnWidths"));
+
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${baseUrl}/workbench/board`);
   await expectBoardColumnWidths(page, 240);
