@@ -1,20 +1,26 @@
 import { expect, test } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { generateApiToken, initSchema, runMigrations } from "@issuectl/core";
 
-const TEST_PORT = 3859;
-const BASE_URL = `http://localhost:${TEST_PORT}`;
+const WEB_ROOT = join(import.meta.dirname, "..");
+const REPO_ROOT = join(WEB_ROOT, "..", "..");
+const NEXT_BIN = join(WEB_ROOT, "node_modules", ".bin", "next");
+const SERVER_MARKER = `workbench-e2e-${process.pid}-${Date.now()}`;
 
 test.describe.configure({ retries: 1 });
 
 let server: ChildProcess | undefined;
 let tmpDir: string | undefined;
+let testPort = 0;
+let baseUrl = "";
 let dbPath = "";
 let apiToken = "";
+let isolatedWebRoot = "";
+let serverOutput = "";
 
 type FixtureIssue = {
   number: number;
@@ -33,18 +39,51 @@ type FixtureIssue = {
 
 type FixtureRepo = ReturnType<typeof repo>;
 
-function waitForServer(url: string, timeoutMs: number): Promise<void> {
+async function findFreePort(): Promise<number> {
+  const { createServer } = await import("node:net");
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, () => {
+      const address = server.address();
+      server.close(() => {
+        if (typeof address === "object" && address?.port) resolve(address.port);
+        else reject(new Error("Unable to allocate free port"));
+      });
+    });
+  });
+}
+
+function appendServerOutput(chunk: Buffer): void {
+  serverOutput = `${serverOutput}${chunk.toString("utf-8")}`.slice(-8_000);
+}
+
+function serverTimeoutError(): Error {
+  return new Error(`Server timeout\n${serverOutput.trim()}`);
+}
+
+function waitForServer(url: string, token: string, timeoutMs: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const check = () => {
-      fetch(url)
+      fetch(`${url}/api/v1/workbench`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then((res) => {
-          if (res.ok || res.status === 404) resolve();
-          else if (Date.now() > deadline) reject(new Error("Server timeout"));
-          else setTimeout(check, 500);
+          if (!res.ok) return null;
+          return res.json() as Promise<{ health?: { version?: string } }>;
+        })
+        .then((payload) => {
+          if (payload?.health?.version === SERVER_MARKER) {
+            resolve();
+          } else if (Date.now() > deadline) {
+            reject(serverTimeoutError());
+          } else {
+            setTimeout(check, 500);
+          }
         })
         .catch(() => {
-          if (Date.now() > deadline) reject(new Error("Server timeout"));
+          if (Date.now() > deadline) reject(serverTimeoutError());
           else setTimeout(check, 500);
         });
     };
@@ -52,8 +91,36 @@ function waitForServer(url: string, timeoutMs: number): Promise<void> {
   });
 }
 
+function createIsolatedWebRoot(path: string): string {
+  const root = join(path, "web");
+  mkdirSync(root);
+  symlinkSync(join(REPO_ROOT, "node_modules"), join(path, "node_modules"), "dir");
+
+  for (const file of ["next.config.ts", "package.json"]) {
+    copyFileSync(join(WEB_ROOT, file), join(root, file));
+  }
+  writeFileSync(
+    join(root, "tsconfig.json"),
+    readFileSync(join(WEB_ROOT, "tsconfig.json"), "utf-8").replace(
+      '"extends": "../../tsconfig.base.json"',
+      `"extends": "${join(REPO_ROOT, "tsconfig.base.json")}"`,
+    ),
+  );
+
+  symlinkSync(join(WEB_ROOT, "node_modules"), join(root, "node_modules"), "dir");
+  for (const entry of ["app", "components", "hooks", "lib", "public"]) {
+    cpSync(join(WEB_ROOT, entry), join(root, entry), { recursive: true });
+  }
+
+  return root;
+}
+
 test.beforeAll(async () => {
+  serverOutput = "";
   tmpDir = mkdtempSync(join(tmpdir(), "issuectl-e2e-workbench-"));
+  isolatedWebRoot = createIsolatedWebRoot(tmpDir);
+  testPort = await findFreePort();
+  baseUrl = `http://localhost:${testPort}`;
   dbPath = join(tmpDir, "test.db");
   apiToken = createTestDb(dbPath);
   const fakeGh = join(tmpDir, "gh");
@@ -92,19 +159,24 @@ test.beforeAll(async () => {
   );
   chmodSync(fakeTmux, 0o755);
 
-  server = spawn("npx", ["next", "dev", "--port", String(TEST_PORT)], {
-    cwd: `${import.meta.dirname}/..`,
+  server = spawn(NEXT_BIN, ["dev", "--port", String(testPort)], {
+    cwd: isolatedWebRoot,
     env: {
       ...process.env,
       ISSUECTL_DB_PATH: dbPath,
+      ISSUECTL_E2E_MARKER: SERVER_MARKER,
+      NEXT_PUBLIC_APP_VERSION: SERVER_MARKER,
+      NEXT_DIST_DIR: join(isolatedWebRoot, ".next"),
       NEXT_PRIVATE_SKIP_SETUP: "1",
       PATH: `${tmpDir}:${process.env.PATH ?? ""}`,
     },
     stdio: "pipe",
     detached: true,
   });
+  server.stdout?.on("data", appendServerOutput);
+  server.stderr?.on("data", appendServerOutput);
 
-  await waitForServer(BASE_URL, 60_000);
+  await waitForServer(baseUrl, apiToken, 60_000);
 });
 
 test.beforeEach(async ({ page }) => {
@@ -174,13 +246,31 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
   }
 }
 
-test.afterAll(() => {
+test.afterAll(async () => {
   if (server?.pid) {
+    const waitForClose = new Promise<void>((resolve) => {
+      if (server?.exitCode !== null) {
+        resolve();
+        return;
+      }
+      server?.once("close", () => resolve());
+    });
     try {
       process.kill(-server.pid, "SIGTERM");
     } catch {
       server.kill("SIGTERM");
     }
+    const killTimeout = setTimeout(() => {
+      if (server?.pid && server.exitCode === null) {
+        try {
+          process.kill(-server.pid, "SIGKILL");
+        } catch {
+          server.kill("SIGKILL");
+        }
+      }
+    }, 5_000);
+    await waitForClose;
+    clearTimeout(killTimeout);
   }
   if (tmpDir) {
     rmSync(tmpDir, { recursive: true, force: true });
@@ -318,7 +408,7 @@ test("direct-load workbench settings bootstraps the API token before client acti
   });
 
   try {
-    await page.goto(`${BASE_URL}/workbench/settings`);
+    await page.goto(`${baseUrl}/workbench/settings`);
     await expect(page.getByRole("heading", { name: "Workbench settings" })).toBeVisible();
     await expect(page.getByLabel("Health summary")).toContainText("jeremy");
     await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("issuectl.apiToken")))
@@ -460,7 +550,7 @@ test("passes the responsive QA layout matrix", async ({ page }) => {
 
   for (const viewport of matrix) {
     await page.setViewportSize(viewport);
-    await page.goto(`${BASE_URL}/workbench`);
+    await page.goto(`${baseUrl}/workbench`);
     await expectNavOneRowAndClickable(page);
     await assertVisibleWorkbenchLayout(page);
 
@@ -471,12 +561,12 @@ test("passes the responsive QA layout matrix", async ({ page }) => {
   }
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(`${BASE_URL}/workbench/board`);
+  await page.goto(`${baseUrl}/workbench/board`);
   await expectBoardColumnWidths(page, 240);
   await expectNoHorizontalPageScroll(page);
 
   await page.setViewportSize({ width: 1100, height: 850 });
-  await page.goto(`${BASE_URL}/workbench/board`);
+  await page.goto(`${baseUrl}/workbench/board`);
   await expectBoardColumnWidths(page, 220);
   await expectNoHorizontalPageScroll(page);
 });
@@ -487,7 +577,7 @@ test("keeps compact header controls reachable on narrow viewports without certif
     { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto(`${BASE_URL}/workbench`);
+    await page.goto(`${baseUrl}/workbench`);
 
     const brand = page.getByRole("link", { name: "issuectl workbench" });
     const tools = page.getByLabel("Workbench layout controls");
@@ -525,7 +615,8 @@ test("keeps compact header controls reachable on narrow viewports without certif
 });
 
 test("captures workbench QA screenshots", async ({ browser }) => {
-  const artifactDir = join(import.meta.dirname, "../../../docs/qa/workbench-artifacts");
+  if (!tmpDir) throw new Error("Expected workbench e2e tmpDir to be initialized");
+  const artifactDir = join(tmpDir, "workbench-artifacts");
   mkdirSync(artifactDir, { recursive: true });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
@@ -581,7 +672,7 @@ test("captures workbench QA screenshots", async ({ browser }) => {
   });
 
   try {
-    await page.goto(`${BASE_URL}/workbench`);
+    await page.goto(`${baseUrl}/workbench`);
     await expectNoWorkbenchSplash(page);
     await page.getByLabel("Session #447").getByRole("button").first().click();
     await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
@@ -595,14 +686,14 @@ test("captures workbench QA screenshots", async ({ browser }) => {
     await expectNoWorkbenchSplash(page);
     await page.screenshot({ path: join(artifactDir, "workbench-issue-1440.png"), fullPage: true });
 
-    await page.goto(`${BASE_URL}/workbench/settings?repoSetup=1`);
+    await page.goto(`${baseUrl}/workbench/settings?repoSetup=1`);
     await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
     await expect(page.getByLabel("Repository picker")).toBeVisible();
     await expectNoWorkbenchSplash(page);
     await page.screenshot({ path: join(artifactDir, "workbench-settings-1440.png"), fullPage: true });
 
     await page.setViewportSize({ width: 1440, height: 1400 });
-    await page.goto(`${BASE_URL}/workbench/board`);
+    await page.goto(`${baseUrl}/workbench/board`);
     await expect(page.getByRole("heading", { name: "Board" })).toBeVisible();
     await expect(page.getByLabel("Cross-repo board")).toBeVisible();
     await expect(page.getByLabel("Board issue mean-weasel/issuectl #512")).toBeVisible();
@@ -610,7 +701,7 @@ test("captures workbench QA screenshots", async ({ browser }) => {
     await page.screenshot({ path: join(artifactDir, "workbench-board-1440.png"), fullPage: true });
 
     await page.setViewportSize({ width: 1100, height: 850 });
-    await page.goto(`${BASE_URL}/workbench`);
+    await page.goto(`${baseUrl}/workbench`);
     await page.getByLabel("Session #447").getByRole("button").first().click();
     await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
     await expect(page.frameLocator('iframe[title="Terminal for issue 447"]').getByText("terminal ready")).toBeVisible();
@@ -665,7 +756,7 @@ test("keeps drawer restore controls out of issue and terminal headers", async ({
     { width: 1100, height: 850 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto(`${BASE_URL}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+    await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
     await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Expand running sessions" })).toBeVisible();
     await expectNoBoxOverlap(
@@ -673,7 +764,7 @@ test("keeps drawer restore controls out of issue and terminal headers", async ({
       page.getByRole("heading", { name: "#512 Desktop instance manager workbench" }),
     );
 
-    await page.goto(`${BASE_URL}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
+    await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
     await expect(page.getByRole("heading", { name: /#447/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Expand issues drawer" })).toBeVisible();
     await expectNoBoxOverlap(
@@ -702,7 +793,7 @@ test("supports top nav modes and collapses side panes for global modes", async (
   });
   await mockTerminalPage(page, 7701, "terminal-token-101");
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
 
   await clickNavAndExpect(page, "Issues", "/workbench/issues", true);
   await clickNavAndExpect(page, "Board", "/workbench/board", true);
@@ -739,8 +830,8 @@ test("restores URL focus for repo issue and deployment across reload and back fo
   });
   await mockTerminalPage(page, 7701, "terminal-token-101");
 
-  const issueUrl = `${BASE_URL}/workbench?repo=mean-weasel%2Fissuectl&issue=512`;
-  const deploymentUrl = `${BASE_URL}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`;
+  const issueUrl = `${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`;
+  const deploymentUrl = `${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`;
 
   await page.goto(issueUrl);
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
@@ -764,7 +855,7 @@ test("restores URL focus for repo issue and deployment across reload and back fo
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
 
-  await page.goto(`${BASE_URL}/workbench?repo=mean-weasel%2Fissuectl&issue=9999`);
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=9999`);
   await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
 });
 
@@ -915,7 +1006,7 @@ test("quick create parses, creates accepted issues, and uses draft endpoints", a
   });
   await mockTerminalPage(page, 7701, "terminal-token-101");
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   await page
     .getByRole("navigation", { name: "Workbench navigation" })
     .getByRole("button", { name: "Quick Create", exact: true })
@@ -1057,7 +1148,7 @@ test("pull requests mode loads repo PRs and calls detail review merge comment en
     await route.fallback();
   });
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   await page
     .getByRole("navigation", { name: "Workbench navigation" })
     .getByRole("button", { name: "PRs", exact: true })
@@ -1102,7 +1193,7 @@ test("pull requests mode loads repo PRs and calls detail review merge comment en
 });
 
 test("shows global issues by repo and opens the selected repo issue", async ({ page }) => {
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
 
   await clickNavAndExpect(page, "Issues", "/workbench/issues", true);
   await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
@@ -1142,7 +1233,7 @@ test("shows cross-repo board columns and reversible running filter", async ({ pa
     });
   });
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   await clickNavAndExpect(page, "Board", "/workbench/board", true);
 
   await expect(page.getByLabel("Repositories")).toBeVisible();
@@ -1180,7 +1271,7 @@ test("shows cross-repo board columns and reversible running filter", async ({ pa
 });
 
 test("deep links workbench subpaths without a 404", async ({ page }) => {
-  await page.goto(`${BASE_URL}/workbench/settings`);
+  await page.goto(`${baseUrl}/workbench/settings`);
   await expect(page.getByRole("link", { name: "issuectl workbench" })).toBeVisible();
   await expect(
     page
@@ -1249,7 +1340,7 @@ test("renders settings mode with health and saves settings through APIs", async 
     });
   });
 
-  await page.goto(`${BASE_URL}/workbench/settings`);
+  await page.goto(`${baseUrl}/workbench/settings`);
 
   const workbench = page.getByRole("main", { name: "Workbench" });
   await expect(workbench).toHaveAttribute("data-side-panes", "collapsed");
@@ -1330,7 +1421,7 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
     await dialog.accept();
   });
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   await page.getByRole("button", { name: "mean-weasel/web" }).click();
   await page.getByRole("button", { name: "Open repo setup" }).click();
   await expect(page).toHaveURL(new RegExp("/workbench/settings\\?repoSetup=1&repo=mean-weasel%2Fweb$"));
@@ -1365,7 +1456,7 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
 });
 
 test("selects repos, updates overview focus, and preserves selection across modes", async ({ page }) => {
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   await page.getByRole("button", { name: "mean-weasel/bugdrop" }).click();
   await expect(page.getByRole("heading", { name: "mean-weasel/bugdrop" })).toBeVisible();
   await expect(page.getByRole("button", { name: "mean-weasel/bugdrop" })).toHaveAttribute("aria-pressed", "true");
@@ -1418,7 +1509,7 @@ test("removes a stale selected session when terminal focus reports the session e
     });
   });
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   await expect(page.getByLabel("Session #447")).toBeVisible();
   await page.getByLabel("Session #447").getByRole("button").first().click();
 
@@ -1443,7 +1534,7 @@ test("ends a session through the deployment endpoint and removes its row", async
     });
   });
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   const session = page.getByLabel("Session #498");
   await session.getByText("End", { exact: true }).click();
   await expect(session.getByText("End session?")).toBeVisible();
@@ -1467,7 +1558,7 @@ test("canceling end session is local-only and does not navigate or call the end 
     });
   });
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
   page.on("framenavigated", (frame) => {
     if (frame === page.mainFrame()) navigations.push(frame.url());
   });
@@ -1495,7 +1586,7 @@ test("filters repo issues and links details and running sessions", async ({ page
   });
   await mockTerminalPage(page, 7701, "terminal-token-101");
 
-  await page.goto(`${BASE_URL}/workbench`);
+  await page.goto(`${baseUrl}/workbench`);
 
   await expect(page.getByText("open work 4", { exact: true })).toBeVisible();
   const issueRows = page.getByLabel("Repo issue queue").getByRole("article");
@@ -2007,7 +2098,7 @@ async function clickNavAndExpect(page: import("@playwright/test").Page, label: s
 async function gotoWorkbenchWithRetry(page: import("@playwright/test").Page) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      await page.goto(`${BASE_URL}/workbench`, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.goto(`${baseUrl}/workbench`, { waitUntil: "domcontentloaded", timeout: 30_000 });
       return;
     } catch (err) {
       if (attempt === 2) throw err;
