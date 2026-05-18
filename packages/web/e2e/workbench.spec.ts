@@ -618,46 +618,35 @@ test("passes the responsive QA layout matrix", async ({ page }) => {
   await expectNoHorizontalPageScroll(page);
 });
 
-test("keeps compact header controls reachable on narrow viewports without certifying body layout", async ({ page }) => {
+test("keeps compact workbench layouts usable on tablet and mobile", async ({ page }) => {
   for (const viewport of [
+    { width: 1024, height: 768 },
     { width: 768, height: 850 },
-    { width: 390, height: 844 },
+    { width: 393, height: 852 },
+    { width: 320, height: 568 },
   ]) {
     await page.setViewportSize(viewport);
     await page.goto(`${baseUrl}/workbench`);
 
-    const brand = page.getByRole("link", { name: "issuectl workbench" });
-    const tools = page.getByLabel("Workbench layout controls");
     const nav = page.getByRole("navigation", { name: "Workbench navigation" });
 
-    await expect(brand).toBeVisible();
-    await expect(tools).toBeVisible();
-    await expect(page.getByRole("button", { name: "Reset column widths" })).toBeVisible();
-    await expect(tools.getByRole("button", { name: "Hide sessions drawer" })).toBeVisible();
-    await expect(tools.getByRole("button", { name: "Hide issues drawer" })).toBeVisible();
-    await expect(nav.getByRole("button")).toHaveCount(6);
+    await expect(page.getByRole("link", { name: "issuectl workbench" })).toBeVisible();
+    await expect(page.getByLabel("Workbench layout controls")).toBeVisible();
+    await expect(nav).toBeVisible();
     await expectNoHorizontalPageScroll(page);
+    await expectWorkbenchFitsViewport(page);
 
-    const brandBox = await brand.boundingBox();
-    const toolsBox = await tools.boundingBox();
-    const navBox = await nav.boundingBox();
-    expect(brandBox).not.toBeNull();
-    expect(toolsBox).not.toBeNull();
-    expect(navBox).not.toBeNull();
-    expect(brandBox!.x).toBeGreaterThanOrEqual(0);
-    expect(toolsBox!.x).toBeGreaterThanOrEqual(brandBox!.x + brandBox!.width - 1);
-    expect(navBox!.x).toBeGreaterThanOrEqual(toolsBox!.x + toolsBox!.width - 1);
-    expect(navBox!.x + navBox!.width).toBeLessThanOrEqual(viewport.width);
-
-    await nav.getByRole("button", { name: "Settings" }).scrollIntoViewIfNeeded();
     await nav.getByRole("button", { name: "Settings" }).click();
-    await expect(page).toHaveURL(new RegExp("/workbench/settings$"));
-    await expect(page.getByRole("button", { name: "Reset column widths" })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp("/workbench/settings"));
+    await expectNoHorizontalPageScroll(page);
+    await expectWorkbenchFitsViewport(page);
+    await expect(page.getByLabel("Cache TTL")).toBeVisible();
 
-    await nav.getByRole("button", { name: "Workbench" }).scrollIntoViewIfNeeded();
-    await nav.getByRole("button", { name: "Workbench" }).click();
-    await expect(page).toHaveURL(new RegExp("/workbench$"));
-    await expect(tools.getByRole("button", { name: "Hide sessions drawer" })).toBeVisible();
+    await nav.getByRole("button", { name: "Quick Create" }).click();
+    await page.getByLabel("Parse text").fill("Fix compact workbench layout");
+    await expect(page.getByLabel("Parse text")).toHaveValue("Fix compact workbench layout");
+    await expectNoHorizontalPageScroll(page);
+    await expectWorkbenchFitsViewport(page);
   }
 });
 
@@ -2273,6 +2262,37 @@ async function expectBoardColumnWidths(page: import("@playwright/test").Page, mi
 async function expectNoHorizontalPageScroll(page: import("@playwright/test").Page) {
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
     .toBeLessThanOrEqual(2);
+}
+
+async function expectWorkbenchFitsViewport(page: import("@playwright/test").Page) {
+  const workbenchLocator = page.getByRole("main", { name: "Workbench" });
+  const focusLocator = page.getByLabel("Workbench focus");
+  await expect(workbenchLocator).toBeVisible();
+  await expect(focusLocator).toBeVisible();
+  const overflow = await page.evaluate(() => {
+    const workbench = document.querySelector<HTMLElement>('main[aria-label="Workbench"]');
+    const focus = document.querySelector<HTMLElement>('[aria-label="Workbench focus"]');
+    if (!workbench || !focus) {
+      throw new Error("Workbench viewport targets are missing");
+    }
+    const viewportWidth = window.innerWidth;
+    const workbenchRect = workbench.getBoundingClientRect();
+    const focusRect = focus.getBoundingClientRect();
+    return {
+      pageOverflow: document.documentElement.scrollWidth - viewportWidth,
+      workbenchOverflow: workbench.scrollWidth - workbench.clientWidth,
+      workbenchLeft: workbenchRect.left,
+      workbenchRight: workbenchRect.right,
+      focusLeft: focusRect.left,
+      focusRight: focusRect.right,
+    };
+  });
+  expect(overflow.pageOverflow).toBeLessThanOrEqual(1);
+  expect(overflow.workbenchLeft).toBeGreaterThanOrEqual(0);
+  expect(overflow.workbenchRight).toBeLessThanOrEqual((await page.viewportSize())!.width + 1);
+  expect(overflow.focusLeft).toBeGreaterThanOrEqual(0);
+  expect(overflow.focusRight).toBeLessThanOrEqual((await page.viewportSize())!.width + 1);
+  expect(overflow.workbenchOverflow).toBeLessThanOrEqual(1);
 }
 
 async function expectJsonRequest(
