@@ -2056,6 +2056,34 @@ test("defaults launches to fresh clone when a repo has no local path", async ({ 
   await expect.poll(async () => terminalFrameViewportState(page, "440")).toEqual("visible-in-viewport");
 });
 
+test("shows terminal reconnect after terminal auth failure", async ({ page }) => {
+  let attempts = 0;
+  let allowSuccess = false;
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    attempts += 1;
+    if (!allowSuccess) {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "temporary terminal failure" }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
+  await expect(page.getByRole("heading", { name: "Terminal unavailable" })).toBeVisible();
+  expect(attempts).toBeGreaterThanOrEqual(1);
+  allowSuccess = true;
+  await page.getByRole("button", { name: "Reconnect terminal" }).click();
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+});
+
 test("reconnects a session and shows a Workbench terminal error when the proxy rejects the token", async ({ page }) => {
   await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
     expect(route.request().method()).toBe("POST");

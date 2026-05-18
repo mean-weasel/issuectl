@@ -143,7 +143,7 @@ export function TerminalFocus({ deployment, repo, onDeploymentStale }: Props) {
         <div className={styles.terminalUnavailable} role="alert">
           <h2>Terminal unavailable</h2>
           <p>{terminal.error}</p>
-          {terminal.port && terminal.token && (
+          {deployment.ttydPort && (
             <button
               type="button"
               className={styles.secondaryButton}
