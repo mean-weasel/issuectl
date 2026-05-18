@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import type { BatchCreateResult, ParsedIssue, ParsedIssuesResponse, Priority } from "@issuectl/core";
 import type { WorkbenchPayload } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
@@ -28,13 +28,6 @@ type Props = {
   repos: WorkbenchPayload["repos"];
   selectedRepo: WorkbenchPayload["repos"][number] | null;
 };
-
-const rowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  flexWrap: "wrap",
-} satisfies CSSProperties;
 
 export function QuickCreateFocus({ repos, selectedRepo }: Props) {
   const defaultRepoKey = repoKey(selectedRepo) ?? repoKey(repos[0]) ?? "";
@@ -190,15 +183,14 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
           Parse text
           <textarea
             aria-label="Parse text"
-            className={styles.workbenchInput}
-            style={{ minHeight: 132, resize: "vertical" }}
+            className={`${styles.workbenchInput} ${styles.quickCreateParseInput}`}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Fix login timeout in issuectl. Also add keyboard shortcuts to the workbench."
             disabled={parseStatus !== "idle"}
           />
         </label>
-        <div style={rowStyle}>
+        <div className={styles.quickCreateRow}>
           <button
             type="button"
             className={styles.primaryButton}
@@ -214,19 +206,15 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
       </section>
 
       {cards.length > 0 && (
-        <section aria-label="Candidate issues" style={{ display: "grid", gap: "10px" }}>
+        <section aria-label="Candidate issues" className={styles.quickCreateCandidates}>
           {cards.map((card, index) => (
             <article
               key={card.id}
               aria-label={`Candidate issue ${index + 1}`}
               data-state={card.accepted ? "accepted" : "rejected"}
               className={styles.quickCreateCard}
-              style={{
-                opacity: card.accepted ? 1 : 0.64,
-                borderColor: card.accepted ? "var(--paper-accent)" : "var(--paper-line)",
-              }}
             >
-              <div style={{ ...rowStyle, justifyContent: "space-between" }}>
+              <div className={`${styles.quickCreateRow} ${styles.quickCreateSplitRow}`}>
                 <strong>{card.accepted ? "accepted" : "rejected"}</strong>
                 <button
                   type="button"
@@ -268,8 +256,7 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
                 Body
                 <textarea
                   aria-label={`Candidate ${index + 1} body`}
-                  className={styles.workbenchInput}
-                  style={{ minHeight: 84, resize: "vertical" }}
+                  className={`${styles.workbenchInput} ${styles.quickCreateCandidateBody}`}
                   value={card.body}
                   onChange={(event) => updateCard(card.id, { body: event.target.value })}
                 />
@@ -294,7 +281,7 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
             {result.created} created, {result.drafted} drafted, {result.failed} failed
           </strong>
           {result.results.map((item) => (
-            <div key={item.id} style={rowStyle}>
+            <div key={item.id} className={styles.quickCreateRow}>
               <span>{item.success ? "created" : "failed"}</span>
               <span>{item.owner && item.repo ? `${item.owner}/${item.repo}` : "draft"}</span>
               {item.issueNumber ? <span>#{item.issueNumber}</span> : null}
@@ -323,8 +310,7 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
           Draft body
           <textarea
             aria-label="Draft body"
-            className={styles.workbenchInput}
-            style={{ minHeight: 86, resize: "vertical" }}
+            className={`${styles.workbenchInput} ${styles.quickCreateDraftBody}`}
             value={draft.body}
             onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))}
           />
@@ -352,7 +338,7 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
             placeholder="bug, workbench"
           />
         </label>
-        <div style={rowStyle}>
+        <div className={styles.quickCreateRow}>
           <button type="button" className={styles.primaryButton} onClick={handleSaveDraft} disabled={!draft.title.trim()}>
             Save draft
           </button>

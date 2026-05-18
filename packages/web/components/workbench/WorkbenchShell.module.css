@@ -1243,8 +1243,43 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.settingsSummaryGrid dt {
+  color: var(--paper-ink-muted);
+  font: 700 10px var(--paper-mono);
+  text-transform: uppercase;
+}
+
 .settingsFormGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settingsSection {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.settingsSection h2 {
+  font-family: var(--paper-serif);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.workbenchStatus,
+.workbenchError {
+  margin-top: 14px;
+}
+
+.workbenchStatus {
+  color: var(--paper-accent);
+}
+
+.workbenchError {
+  color: #9f1d12;
 }
 
 .workbenchField {
@@ -1293,11 +1328,58 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+.quickCreateCard[data-state="accepted"] {
+  border-color: var(--paper-accent);
+}
+
+.quickCreateCard[data-state="rejected"] {
+  border-color: var(--paper-line);
+  opacity: 0.64;
+}
+
+.quickCreateRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quickCreateSplitRow {
+  justify-content: space-between;
+}
+
+.quickCreateCandidates {
+  display: grid;
+  gap: 10px;
+}
+
+.quickCreateParseInput {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.quickCreateCandidateBody {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.quickCreateDraftBody {
+  min-height: 86px;
+  resize: vertical;
+}
+
 .boardFocus {
   max-width: none;
   width: 100%;
   min-height: 100%;
   overflow: hidden;
+}
+
+.boardControls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 18px 0;
 }
 
 .boardScroll {
@@ -1309,6 +1391,26 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding-bottom: 12px;
+}
+
+.boardColumn {
+  min-width: 190px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.boardColumn h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.boardColumnMeta {
+  margin: 4px 0 0;
 }
 
 .focusInner h1 {

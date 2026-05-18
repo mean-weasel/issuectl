@@ -36,10 +36,7 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
         {visibleIssues} {runningOnly ? "running" : "open"} issues across {repos.length} tracked repositories.
       </p>
 
-      <div
-        aria-label="Board controls"
-        style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "18px 0" }}
-      >
+      <div aria-label="Board controls" className={styles.boardControls}>
         <button
           type="button"
           className={runningOnly ? styles.primaryButton : styles.secondaryButton}
@@ -73,20 +70,11 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
             <section
               key={repo.id}
               aria-label={`Board column ${repo.owner}/${repo.name}`}
-              style={{
-                minWidth: 190,
-                display: "grid",
-                alignContent: "start",
-                gap: 10,
-                padding: 12,
-                border: "1px solid var(--paper-line)",
-                borderRadius: "var(--paper-radius-md)",
-                background: "rgba(255, 255, 255, 0.18)",
-              }}
+              className={styles.boardColumn}
             >
               <header>
-                <h2 style={{ margin: 0, fontSize: 18 }}>{repo.owner}/{repo.name}</h2>
-                <p className={styles.muted} style={{ margin: "4px 0 0" }}>
+                <h2>{repo.owner}/{repo.name}</h2>
+                <p className={`${styles.muted} ${styles.boardColumnMeta}`}>
                   {issues.length} {runningOnly ? "running" : "open"}
                 </p>
               </header>
