@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { chmodSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -8,8 +20,20 @@ import { generateApiToken, initSchema, runMigrations } from "@issuectl/core";
 
 const WEB_ROOT = join(import.meta.dirname, "..");
 const REPO_ROOT = join(WEB_ROOT, "..", "..");
-const NEXT_BIN = join(WEB_ROOT, "node_modules", ".bin", "next");
+const NEXT_BIN = join(WEB_ROOT, "node_modules", "next", "dist", "bin", "next");
 const SERVER_MARKER = `workbench-e2e-${process.pid}-${Date.now()}`;
+const DIRECTORY_SYMLINK_TYPE = process.platform === "win32" ? "junction" : "dir";
+const ISOLATED_WEB_ROOT_LINKS = [
+  "middleware.ts",
+  "instrumentation.ts",
+  "instrumentation-client.ts",
+  "next-env.d.ts",
+  "app",
+  "components",
+  "hooks",
+  "lib",
+  "public",
+];
 
 test.describe.configure({ retries: 1 });
 
@@ -62,6 +86,28 @@ function serverTimeoutError(): Error {
   return new Error(`Server timeout\n${serverOutput.trim()}`);
 }
 
+function linkDirectory(target: string, path: string): void {
+  symlinkSync(target, path, DIRECTORY_SYMLINK_TYPE);
+}
+
+function linkWebRootEntry(root: string, entry: string): void {
+  const target = join(WEB_ROOT, entry);
+  if (!existsSync(target)) return;
+
+  if (entry === "app") {
+    // Next's app router route discovery does not reliably index a symlinked app directory in this harness.
+    cpSync(target, join(root, entry), { recursive: true });
+    return;
+  }
+
+  if (lstatSync(target).isDirectory()) {
+    symlinkSync(target, join(root, entry), DIRECTORY_SYMLINK_TYPE);
+    return;
+  }
+
+  copyFileSync(target, join(root, entry));
+}
+
 function waitForServer(url: string, token: string, timeoutMs: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
@@ -94,7 +140,7 @@ function waitForServer(url: string, token: string, timeoutMs: number): Promise<v
 function createIsolatedWebRoot(path: string): string {
   const root = join(path, "web");
   mkdirSync(root);
-  symlinkSync(join(REPO_ROOT, "node_modules"), join(path, "node_modules"), "dir");
+  linkDirectory(join(REPO_ROOT, "node_modules"), join(path, "node_modules"));
 
   for (const file of ["next.config.ts", "package.json"]) {
     copyFileSync(join(WEB_ROOT, file), join(root, file));
@@ -107,9 +153,10 @@ function createIsolatedWebRoot(path: string): string {
     ),
   );
 
-  symlinkSync(join(WEB_ROOT, "node_modules"), join(root, "node_modules"), "dir");
-  for (const entry of ["app", "components", "hooks", "lib", "public"]) {
-    cpSync(join(WEB_ROOT, entry), join(root, entry), { recursive: true });
+  linkDirectory(join(WEB_ROOT, "node_modules"), join(root, "node_modules"));
+  // Keep the isolated app root small while still exposing common Next runtime entrypoints when they exist.
+  for (const entry of ISOLATED_WEB_ROOT_LINKS) {
+    linkWebRootEntry(root, entry);
   }
 
   return root;
@@ -159,7 +206,7 @@ test.beforeAll(async () => {
   );
   chmodSync(fakeTmux, 0o755);
 
-  server = spawn(NEXT_BIN, ["dev", "--port", String(testPort)], {
+  server = spawn(process.execPath, [NEXT_BIN, "dev", "--port", String(testPort)], {
     cwd: isolatedWebRoot,
     env: {
       ...process.env,
