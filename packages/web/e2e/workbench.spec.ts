@@ -1568,7 +1568,7 @@ test("removes a stale session when reconnect reports the deployment already ende
 
   await expect.poll(() => Promise.resolve(ensureCount)).toBe(1);
   await expect(page.getByLabel("Session #486")).toHaveCount(0);
-  await page.getByRole("tab", { name: /Running/ }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: /Running/ }).click();
   await expect(page.getByLabel("Issue #486")).toHaveCount(0);
 });
 
@@ -1616,7 +1616,7 @@ test("ends a session through the deployment endpoint and removes its row", async
 
   await expect(page.getByLabel("Session #498")).toHaveCount(0);
   await expect(page.getByLabel("Issue-backed sessions").getByRole("article")).toHaveCount(2);
-  await page.getByRole("tab", { name: "Running 2" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Running 2" }).click();
   await expect(page.getByLabel("Issue #498")).toHaveCount(0);
 });
 
@@ -1648,6 +1648,26 @@ test("canceling end session is local-only and does not navigate or call the end 
   expect(navigations).toEqual([]);
 });
 
+test("exposes issue queue actions with semantic controls", async ({ page }) => {
+  await gotoWorkbenchWithRetry(page);
+
+  const filters = page.getByRole("group", { name: "Issue filters" });
+  await expect(filters.getByRole("button", { name: "Open work 4" })).toHaveAttribute("aria-pressed", "true");
+  await filters.getByRole("button", { name: "Running 3" }).click();
+  await expect(filters.getByRole("button", { name: "Running 3" })).toHaveAttribute("aria-pressed", "true");
+
+  await filters.getByRole("button", { name: "Open work 4" }).click();
+  const issueAction = page
+    .getByLabel("Issue #512")
+    .getByRole("button", { name: "Open #512: Desktop instance manager workbench" });
+  await expect(page.getByRole("button", { name: "Open issue", exact: true })).toHaveCount(0);
+  await issueAction.focus();
+  await expect(issueAction).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+});
+
 test("filters repo issues and links details and running sessions", async ({ page }) => {
   await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
     expect(route.request().method()).toBe("POST");
@@ -1671,14 +1691,14 @@ test("filters repo issues and links details and running sessions", async ({ page
     expect(box!.height).toBeLessThanOrEqual(118);
   }
 
-  await page.getByRole("tab", { name: "Running 3" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Running 3" }).click();
   await expect(page.getByLabel("Repo issue queue").getByRole("article")).toHaveCount(3);
   await expect(page.getByLabel("Issue #512")).toHaveCount(0);
 
-  await page.getByRole("tab", { name: "Closed 0" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 0" }).click();
   await expect(page.getByLabel("Repo issue queue").getByRole("article")).toHaveCount(0);
 
-  await page.getByRole("tab", { name: "Open work 4" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Open work 4" }).click();
   await expect(page.getByLabel("Issue #512").getByRole("button", { name: "Prepare launch" })).toBeVisible();
   await expect(page.getByLabel("Issue #512").getByRole("button", { name: "Launch", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Issue #512").locator("[data-card-chip]")).toHaveCount(2);
@@ -1829,7 +1849,7 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await issueActions.getByRole("button", { name: "Close issue" }).click();
   await expect(page.getByRole("status")).toContainText("Issue state updated");
   await expect(page.getByLabel("Issue #512")).toHaveCount(0);
-  await page.getByRole("tab", { name: "Closed 1" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
   await expect(page.getByLabel("Issue #512")).toBeVisible();
   await issueActions.getByRole("button", { name: "Add label" }).click();
   await expect(page.getByRole("status")).toContainText("Label updated");
@@ -1849,7 +1869,7 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await issueActions.getByRole("button", { name: "Reassign" }).click();
   await expect(page.getByRole("heading", { name: "#612 Reassigned issue #612" })).toBeVisible();
   await page.getByRole("button", { name: "mean-weasel/issuectl" }).click();
-  await page.getByRole("tab", { name: "Closed 1" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
   await expect(page.getByLabel("Issue #512")).toBeVisible();
 });
 

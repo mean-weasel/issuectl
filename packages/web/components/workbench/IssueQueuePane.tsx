@@ -54,13 +54,12 @@ export function IssueQueuePane({
           </button>
         </div>
         <p className={styles.queueSummary}>open work {counts.open}</p>
-        <div className={styles.issueFilters} role="tablist" aria-label="Issue filters">
+        <div className={styles.issueFilters} role="group" aria-label="Issue filters">
           {FILTERS.map((item) => (
             <button
               key={item.id}
               type="button"
-              role="tab"
-              aria-selected={filter === item.id}
+              aria-pressed={filter === item.id}
               data-active={filter === item.id ? "true" : undefined}
               onClick={() => onFilterChange(item.id)}
             >
@@ -107,28 +106,26 @@ function IssueRow({
 
   return (
     <article
-      className={styles.issueCard}
+      className={`${styles.issueCard} ${styles.issueQueueCard}`}
       data-selected={selected ? "true" : undefined}
       data-status={status}
       aria-label={`Issue #${issue.number}`}
-      onClick={openDetails}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openDetails();
-        }
-      }}
-      tabIndex={0}
     >
-      <div className={styles.issueCardHead}>
-        <strong>#{issue.number}</strong>
-        <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>
-        <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>
-      </div>
-      <h3>{issue.title}</h3>
-      <p className={styles.issueCardMeta}>updated {formatAge(issue.updatedAt)}</p>
-      <div className={styles.issueActions}>
+      <button
+        type="button"
+        className={styles.issueCardMain}
+        aria-label={`Open #${issue.number}: ${issue.title}`}
+        onClick={openDetails}
+      >
+        <span className={styles.issueCardHead}>
+          <strong>#{issue.number}</strong>
+          <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>
+          <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>
+        </span>
+        <span className={styles.issueCardTitle}>{issue.title}</span>
+        <span className={styles.issueCardMeta}>updated {formatAge(issue.updatedAt)}</span>
+      </button>
+      <div className={`${styles.issueActions} ${styles.issueQueueActions}`}>
         {deployment ? (
           <button
             type="button"

@@ -506,13 +506,14 @@
     "title actions"
     "age actions";
   align-items: center;
-  column-gap: 10px;
   row-gap: 5px;
+  column-gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
   padding: 9px 10px;
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-sm);
   background: rgba(255, 255, 255, 0.24);
-  cursor: pointer;
 }
 
 .issueCard[data-selected="true"] {
@@ -521,14 +522,44 @@
 }
 
 .issueCard:hover,
-.issueCard:focus-visible {
+.issueCard:focus-within {
   border-color: rgba(42, 111, 75, 0.4);
   background: rgba(255, 255, 255, 0.36);
 }
 
-.issueCard:focus-visible {
+.issueCard:focus-within {
   outline: 2px solid rgba(42, 111, 75, 0.34);
   outline-offset: 2px;
+}
+
+.issueQueueCard {
+  grid-template-areas: "main actions";
+  row-gap: 0;
+  min-height: 86px;
+  padding: 8px 9px;
+}
+
+.issueCardMain {
+  min-width: 0;
+  grid-area: main;
+  display: grid;
+  grid-template-areas:
+    "meta"
+    "title"
+    "age";
+  align-items: center;
+  row-gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.issueCardMain:focus-visible {
+  outline: none;
 }
 
 .issueCardHead,
@@ -545,6 +576,9 @@
 
 .issueActions {
   grid-area: actions;
+}
+
+.issueQueueActions {
   flex-direction: column;
   align-items: stretch;
 }
@@ -560,7 +594,7 @@
 }
 
 .issueChip {
-  padding: 2px 7px;
+  padding: 1px 6px;
   border: 1px solid var(--paper-line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.38);
@@ -572,7 +606,8 @@
   color: #2a6f4b;
 }
 
-.issueCard h3 {
+.issueCard h3,
+.issueCardTitle {
   grid-area: title;
   display: -webkit-box;
   overflow: hidden;
@@ -590,7 +625,7 @@
 }
 
 .issueActions button {
-  min-height: 30px;
+  min-height: 28px;
   padding: 0 10px;
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-sm);
