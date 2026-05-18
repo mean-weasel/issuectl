@@ -205,6 +205,17 @@ describe("killTtyd", () => {
     killSpy.mockRestore();
   });
 
+  it("escalates to SIGKILL when ttyd remains alive after SIGTERM", () => {
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    killTtyd(12345);
+
+    expect(killSpy).toHaveBeenCalledWith(12345, "SIGTERM");
+    expect(killSpy).toHaveBeenCalledWith(12345, 0);
+    expect(killSpy).toHaveBeenCalledWith(12345, "SIGKILL");
+    killSpy.mockRestore();
+  });
+
   it("ignores tmux kill-session failure (session already gone)", () => {
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
     execFileSyncSpy.mockImplementation(() => {

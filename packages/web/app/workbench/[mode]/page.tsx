@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { generateApiToken, getDb } from "@issuectl/core";
 import { WorkbenchShell } from "@/components/workbench/WorkbenchShell";
 import type { WorkbenchMode } from "@/components/workbench/workbench-state";
 import { getWorkbenchPayload } from "@/lib/workbench-data";
@@ -28,6 +29,7 @@ export default async function WorkbenchSubpathPage({ params }: Props) {
   if (!WORKBENCH_SUBPATHS.has(mode)) {
     notFound();
   }
+  const apiToken = generateApiToken(getDb());
 
   return (
     <div className={styles.page}>
@@ -35,6 +37,7 @@ export default async function WorkbenchSubpathPage({ params }: Props) {
         initialPayload={await getWorkbenchPayload()}
         onRefreshPayload={refreshWorkbenchPayload}
         initialMode={modeToWorkbenchMode(mode)}
+        apiToken={apiToken}
       />
     </div>
   );

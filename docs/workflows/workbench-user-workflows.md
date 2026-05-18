@@ -2,6 +2,10 @@
 
 These workflows are for manual dogfooding and Playwright CLI passes against the desktop `/workbench` surface.
 
+Current follow-up scope: desktop Workbench only. Supported layout widths for this tranche are
+`1440x1000`, `1280x900`, and `1100x850`. Narrow `768px`/`390px` checks may verify header
+reachability, but they are not acceptance criteria for main Workbench layout usability in this run.
+
 ## Test Setup
 
 - Server: `http://localhost:3847`
@@ -56,9 +60,9 @@ For a first smoke pass, run only workflows 1-9 and the read-only portions of wor
 5. Click the first session row.
 6. Verify the focus area changes to terminal focus for that session.
 7. Verify the terminal iframe is present.
-8. Verify the URL remains `/workbench`.
+8. Verify the URL is query-addressable, such as `/workbench?repo=OWNER%2FREPO&deployment=ID`.
 
-**Expected:** Session rows are sorted running-first, preview errors are visible, and selecting a session replaces the focus area with the terminal.
+**Expected:** Session rows are sorted running-first, preview errors are visible, and selecting a session replaces the focus area with the terminal while preserving a shareable deployment-focus URL.
 
 ## Workflow 4: Session Reconnect
 
@@ -93,20 +97,21 @@ For a first smoke pass, run only workflows 1-9 and the read-only portions of wor
 
 **Expected:** Ending a session requires confirmation and updates both the session list and issue queue after completion.
 
-## Workflow 6: Instance Pane Collapsing
+## Workflow 6: Drawer Collapsing
 
 **Route:** `/workbench`
 
 1. Navigate to `/workbench`.
-2. Click `Toggle sessions section`.
-3. Verify the issue sessions body hides and the header remains visible.
-4. Click another repo.
-5. Verify the sessions section remains collapsed.
-6. Expand the sessions section again.
-7. Click `Toggle named shells section`.
-8. Verify named shells remain unavailable for v1 and do not masquerade as issue deployments.
+2. In the `Active sessions` drawer, click `Collapse running sessions`.
+3. Verify the sessions drawer hides and a visible `Expand running sessions` restore control appears.
+4. Verify the `Repo issues` drawer remains visible.
+5. Click `Expand running sessions`.
+6. In the `Repo issues` drawer, click `Collapse issues drawer`.
+7. Verify the issues drawer hides and a visible `Expand issues drawer` restore control appears.
+8. Click `Expand issues drawer`.
+9. Verify named shells remain unavailable for v1 and do not masquerade as issue deployments.
 
-**Expected:** Collapse state persists across repo changes, and named shells are honestly disabled.
+**Expected:** Drawer collapse/restore works at the drawer level, one drawer can stay visible while the other is collapsed, and named shells are honestly disabled.
 
 ## Workflow 7: Repo Issue Queue Filters
 
@@ -129,13 +134,14 @@ For a first smoke pass, run only workflows 1-9 and the read-only portions of wor
 **Route:** `/workbench`
 
 1. Navigate to `/workbench`.
-2. In the `Repo issues` pane, click `Details` for an issue.
+2. In the `Repo issues` pane, click an issue card body for an issue. For non-running issues, `Prepare launch` also opens the issue detail and launch-prep surface.
 3. Verify the focus area changes to issue detail, not terminal focus.
 4. Verify title, issue number, state, labels, body, comments, linked PRs, deployments, and launch options are visible when present.
 5. Collapse and expand the comments section.
-6. Verify the issue queue and active sessions panes remain visible.
+6. Verify the `Repo issues` drawer remains visible or is restorable.
+7. Verify the `Active sessions` drawer may be collapsed so issue detail and the issue queue are prioritized.
 
-**Expected:** Issue selection opens issue details in the focus area while preserving the repo-scoped side panes.
+**Expected:** Issue selection opens issue details in the focus area, prioritizes the repo issue queue, shows repo/label context, and keeps session context available through the sessions drawer restore control or the visible `Sessions hidden · Show sessions` action.
 
 ## Workflow 9: Jump From Issue To Running Session
 
@@ -148,9 +154,10 @@ For a first smoke pass, run only workflows 1-9 and the read-only portions of wor
 3. Click `Jump to session`.
 4. Verify focus changes to terminal focus.
 5. Verify the active repo remains selected.
-6. Verify the issue queue still shows the selected repo.
+6. Verify the `Active sessions` drawer remains visible or is restorable.
+7. Verify the `Repo issues` drawer may be collapsed so terminal focus and session navigation are prioritized.
 
-**Expected:** Running issue cards can jump directly to their active terminal session.
+**Expected:** Running issue cards can jump directly to their active terminal session while preserving repo context and session navigation.
 
 ## Workflow 10: Issue Detail Mutations
 
@@ -160,13 +167,14 @@ For a first smoke pass, run only workflows 1-9 and the read-only portions of wor
 
 1. Navigate to `/workbench`.
 2. Open issue details for a disposable issue.
-3. Change priority and verify the issue queue updates locally.
-4. Add a comment with harmless text such as `Workbench dogfood check`.
-5. Add a safe label only if it already exists and is appropriate.
-6. Use `Assign me` only if assigning the issue to the current user is acceptable.
-7. Test `Attach image` only with a throwaway image and disposable issue.
-8. Test `Close issue` only on a disposable issue, and verify it moves to the closed filter.
-9. Test `Reassign` only when moving the issue between safe repos is intended.
+3. Edit the issue title only on a disposable issue and verify `Save title` is disabled until the title changes.
+4. Change priority and verify the issue queue updates locally.
+5. Add a comment with harmless text such as `Workbench dogfood check` and verify status feedback.
+6. Add a safe label only if it already exists and is appropriate.
+7. Use `Assign me` only if assigning the issue to the current user is acceptable.
+8. Test `Attach image` only with a throwaway image and disposable issue.
+9. Test `Close issue` only on a disposable issue, and verify it moves to the closed filter.
+10. Test `Reassign` only when moving the issue between safe repos is intended.
 
 **Expected:** Mutations show status feedback and keep the issue queue/focus state coherent after each action.
 
@@ -186,7 +194,8 @@ For a first smoke pass, run only workflows 1-9 and the read-only portions of wor
 8. Add a clear preamble.
 9. Click `Launch issue`.
 10. Verify duplicate-launch protection if shown.
-11. Verify a new session appears and terminal focus opens through `/api/terminal/...`.
+11. Verify terminal focus opens through `/api/terminal/...`.
+12. Verify the new session is discoverable without guessing hidden state, either because the sessions drawer is visible or because a visible restore affordance exposes it.
 
 **Expected:** Real launch options are visible, worktree status is explicit, and launch creates a terminal session only after an intentional click.
 
@@ -325,6 +334,8 @@ Steps:
 
 **Expected:** The workbench remains usable at supported desktop widths.
 
+Narrower viewport checks, when run, cover header/control reachability only. They do not imply that the multi-pane Workbench body is accepted as a supported mobile layout for this desktop tranche.
+
 ## Workflow 19: Deep Links And Browser Navigation
 
 **Routes:** `/workbench`, `/workbench/issues`, `/workbench/board`, `/workbench/prs`, `/workbench/quick-create`, `/workbench/settings`
@@ -358,11 +369,15 @@ Steps:
 
 Capture these after running the safe workflows:
 
+Before each screenshot, verify the route-specific heading/content is loaded and the `Opening workbench`
+loading copy is absent. Terminal screenshots should show readable terminal content, not only an empty
+iframe rectangle.
+
 | Screenshot | Route or State |
 | --- | --- |
 | `workbench-overview-1440.png` | `/workbench` after selecting an active repo |
 | `workbench-terminal-1440.png` | Terminal focus after selecting an existing session |
-| `workbench-issue-1440.png` | Issue detail focus after clicking `Details` |
+| `workbench-issue-1440.png` | Issue detail focus after selecting an issue card |
 | `workbench-issues-1440.png` | `/workbench/issues` |
 | `workbench-board-1440.png` | `/workbench/board` |
 | `workbench-settings-1440.png` | `/workbench/settings` |

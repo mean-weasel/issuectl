@@ -14,6 +14,7 @@ type Props = {
   onFilterChange: (filter: IssueQueueFilter) => void;
   onSelectIssue: (issueNumber: number) => void;
   onJumpToSession: (deploymentId: number) => void;
+  onCollapseDrawer: () => void;
 };
 
 const FILTERS: Array<{ id: IssueQueueFilter; label: string }> = [
@@ -29,6 +30,7 @@ export function IssueQueuePane({
   onFilterChange,
   onSelectIssue,
   onJumpToSession,
+  onCollapseDrawer,
 }: Props) {
   const counts = repo ? issueQueueCounts(repo) : { open: 0, running: 0, closed: 0 };
   const issues = repo ? filterIssueQueue(repo.issues, filter) : [];
@@ -36,16 +38,28 @@ export function IssueQueuePane({
   return (
     <div className={styles.issuePaneContent}>
       <div className={styles.paneHead}>
-        <p className={styles.kicker}>Queue</p>
-        <h2>Issues</h2>
+        <div className={styles.paneTitleRow}>
+          <div>
+            <p className={styles.kicker}>Queue</p>
+            <h2>Issues</h2>
+          </div>
+          <button
+            type="button"
+            className={styles.paneCollapseButton}
+            aria-label="Collapse issues drawer"
+            title="Collapse issues drawer"
+            onClick={onCollapseDrawer}
+          >
+            <span aria-hidden="true">&gt;</span>
+          </button>
+        </div>
         <p className={styles.queueSummary}>open work {counts.open}</p>
-        <div className={styles.issueFilters} role="tablist" aria-label="Issue filters">
+        <div className={styles.issueFilters} role="group" aria-label="Issue filters">
           {FILTERS.map((item) => (
             <button
               key={item.id}
               type="button"
-              role="tab"
-              aria-selected={filter === item.id}
+              aria-pressed={filter === item.id}
               data-active={filter === item.id ? "true" : undefined}
               onClick={() => onFilterChange(item.id)}
             >
@@ -88,34 +102,52 @@ function IssueRow({
 }) {
   const deployment = deploymentForIssue(repo, issue.number);
   const status = issue.state === "closed" ? "closed" : deployment ? "running" : "open";
+  const openDetails = () => onSelectIssue(issue.number);
 
   return (
     <article
-      className={styles.issueCard}
+      className={`${styles.issueCard} ${styles.issueQueueCard}`}
       data-selected={selected ? "true" : undefined}
       data-status={status}
       aria-label={`Issue #${issue.number}`}
     >
-      <div className={styles.issueCardHead}>
-        <strong>#{issue.number}</strong>
-        <span>{status}</span>
-        <span>{issue.priority}</span>
-      </div>
-      <h3>{issue.title}</h3>
-      <p>updated {formatAge(issue.updatedAt)}</p>
-      <div className={styles.issueActions}>
+      <button
+        type="button"
+        className={styles.issueCardMain}
+        aria-label={`Open #${issue.number}: ${issue.title}`}
+        onClick={openDetails}
+      >
+        <span className={styles.issueCardHead}>
+          <strong>#{issue.number}</strong>
+          <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>
+          <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>
+        </span>
+        <span className={styles.issueCardTitle}>{issue.title}</span>
+        <span className={styles.issueCardMeta}>updated {formatAge(issue.updatedAt)}</span>
+      </button>
+      <div className={`${styles.issueActions} ${styles.issueQueueActions}`}>
         {deployment ? (
-          <button type="button" onClick={() => onJumpToSession(deployment.id)}>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onJumpToSession(deployment.id);
+            }}
+          >
             Jump to session
           </button>
         ) : (
-          <button type="button" disabled={issue.state === "closed"} onClick={() => onSelectIssue(issue.number)}>
-            Launch
+          <button
+            type="button"
+            disabled={issue.state === "closed"}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectIssue(issue.number);
+            }}
+          >
+            Prepare launch
           </button>
         )}
-        <button type="button" onClick={() => onSelectIssue(issue.number)}>
-          Details
-        </button>
       </div>
     </article>
   );

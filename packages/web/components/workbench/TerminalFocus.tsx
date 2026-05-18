@@ -1,37 +1,48 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ensureDeploymentTtyd } from "./workbench-api";
+import {
+  checkTerminalProxy,
+  ensureDeploymentTtyd,
+  isStaleEnsureTtydResult,
+  terminalProxyUrl,
+} from "./workbench-api";
 import type { WorkbenchDeployment, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
 type Props = {
   deployment: WorkbenchDeployment;
   repo: WorkbenchRepo | null;
+  onDeploymentStale: (deploymentId: number) => void;
 };
 
-export function TerminalFocus({ deployment, repo }: Props) {
+export function TerminalFocus({ deployment, repo, onDeploymentStale }: Props) {
   const issue = repo?.issues.find((item) => item.number === deployment.issueNumber);
   const title = issue?.title ?? "Issue session";
   const [terminal, setTerminal] = useState<{
     status: "loading" | "ready" | "error";
     port: number | null;
     token: string | null;
+    src: string | null;
     error: string | null;
   }>({
     status: deployment.ttydPort ? "loading" : "error",
     port: deployment.ttydPort,
     token: null,
+    src: null,
     error: deployment.ttydPort ? null : "Reconnect this session to open the terminal.",
   });
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     if (!deployment.ttydPort) {
       setTerminal({
         status: "error",
         port: null,
         token: null,
+        src: null,
         error: "Reconnect this session to open the terminal.",
       });
       return;
@@ -41,44 +52,68 @@ export function TerminalFocus({ deployment, repo }: Props) {
       status: "loading",
       port: deployment.ttydPort,
       token: null,
+      src: null,
       error: null,
     });
 
     ensureDeploymentTtyd(deployment.id)
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled) return;
         if (!("port" in result) || !result.terminalToken) {
+          if (isStaleEnsureTtydResult(result)) {
+            onDeploymentStale(deployment.id);
+            return;
+          }
           setTerminal({
             status: "error",
             port: deployment.ttydPort,
             token: null,
+            src: null,
             error: "error" in result && result.error
               ? result.error
               : "Terminal auth token could not be created.",
           });
           return;
         }
+
+        const proxy = await checkTerminalProxy(result.port, result.terminalToken, controller.signal);
+        if (cancelled) return;
+        if (!proxy.ok) {
+          setTerminal({
+            status: "error",
+            port: result.port,
+            token: result.terminalToken,
+            src: null,
+            error: proxy.error,
+          });
+          return;
+        }
+
         setTerminal({
           status: "ready",
           port: result.port,
           token: result.terminalToken,
+          src: terminalProxyUrl(result.port, result.terminalToken),
           error: null,
         });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setTerminal({
           status: "error",
           port: deployment.ttydPort,
           token: null,
+          src: null,
           error: err instanceof Error ? err.message : "Terminal is not available.",
         });
       });
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [deployment.id, deployment.ttydPort]);
+  }, [deployment.id, deployment.ttydPort, onDeploymentStale, retryAttempt]);
 
   return (
     <div className={styles.terminalFocus}>
@@ -88,15 +123,16 @@ export function TerminalFocus({ deployment, repo }: Props) {
           <h1>#{deployment.issueNumber} {title}</h1>
         </div>
         <div className={styles.terminalMeta}>
+          <span>{repo ? `${repo.owner}/${repo.name}` : `${deployment.owner}/${deployment.repoName}`}</span>
           <span>{deployment.agent}</span>
           <span>{deployment.branchName}</span>
         </div>
       </header>
-      {terminal.status === "ready" && terminal.port && terminal.token ? (
+      {terminal.status === "ready" && terminal.src ? (
         <iframe
           className={styles.terminalFrame}
           title={`Terminal for issue ${deployment.issueNumber}`}
-          src={`/api/terminal/${terminal.port}/?terminalToken=${encodeURIComponent(terminal.token)}`}
+          src={terminal.src}
         />
       ) : terminal.status === "loading" ? (
         <div className={styles.terminalUnavailable}>
@@ -104,9 +140,18 @@ export function TerminalFocus({ deployment, repo }: Props) {
           <p>Preparing the terminal session.</p>
         </div>
       ) : (
-        <div className={styles.terminalUnavailable}>
-          <h2>No terminal port</h2>
+        <div className={styles.terminalUnavailable} role="alert">
+          <h2>Terminal unavailable</h2>
           <p>{terminal.error}</p>
+          {deployment.ttydPort && (
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => setRetryAttempt((current) => current + 1)}
+            >
+              Reconnect terminal
+            </button>
+          )}
         </div>
       )}
     </div>

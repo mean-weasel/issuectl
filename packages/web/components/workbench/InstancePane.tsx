@@ -1,8 +1,6 @@
 import type { WorkbenchDeployment, WorkbenchRepo } from "./workbench-types";
 import {
   type SessionSortMode,
-  type WorkbenchSectionCollapseState,
-  type WorkbenchSectionId,
   previewForDeployment,
   sortDeploymentSessions,
 } from "./workbench-state";
@@ -18,8 +16,7 @@ type Props = {
   onSelectDeployment: (deploymentId: number) => void;
   onReconnect: (deployment: WorkbenchDeployment) => void;
   onEnd: (deployment: WorkbenchDeployment) => void;
-  collapsedSections: WorkbenchSectionCollapseState;
-  onToggleSection: (section: WorkbenchSectionId) => void;
+  onCollapseDrawer: () => void;
 };
 
 const SORT_MODES: SessionSortMode[] = ["running first", "recent", "kind"];
@@ -34,18 +31,32 @@ export function InstancePane({
   onSelectDeployment,
   onReconnect,
   onEnd,
-  collapsedSections,
-  onToggleSection,
+  onCollapseDrawer,
 }: Props) {
   const deployments = repo ? sortDeploymentSessions(repo.deployments, repo.previews, sortMode) : [];
-  const issueSessionsCollapsed = collapsedSections.issueSessions;
-  const namedShellsCollapsed = collapsedSections.namedShells;
+  const activeCount = deployments.length;
 
   return (
     <div className={styles.instancePaneContent}>
       <div className={styles.paneHead}>
-        <p className={styles.kicker}>Sessions</p>
-        <h2>Active instances</h2>
+        <div className={styles.paneTitleRow}>
+          <div>
+            <p className={styles.kicker}>Sessions</p>
+            <h2>Running sessions</h2>
+            <p className={styles.paneSubtitle}>
+              {repo ? `${activeCount} active ${activeCount === 1 ? "instance" : "instances"}` : "No repo selected"}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.paneCollapseButton}
+            aria-label="Collapse running sessions"
+            title="Collapse running sessions"
+            onClick={onCollapseDrawer}
+          >
+            <span aria-hidden="true">&lt;</span>
+          </button>
+        </div>
         <label className={styles.sortControl}>
           <span>Sort</span>
           <select value={sortMode} onChange={(event) => onSortChange(event.currentTarget.value as SessionSortMode)}>
@@ -56,64 +67,32 @@ export function InstancePane({
         </label>
       </div>
 
-      <section className={styles.collapsibleSection} data-section="issue-sessions">
-        <button
-          type="button"
-          className={styles.collapsibleHeader}
-          aria-expanded={!issueSessionsCollapsed}
-          aria-controls="workbench-issue-sessions"
-          aria-label="Toggle sessions section"
-          onClick={() => onToggleSection("issueSessions")}
-        >
-          <span>Issue sessions {deployments.length}</span>
-          <span aria-hidden="true">v</span>
-        </button>
-        <div
-          id="workbench-issue-sessions"
-          className={`${styles.collapsibleBody} ${styles.sessionList}`}
-          aria-label="Issue sessions"
-          hidden={issueSessionsCollapsed}
-        >
-          {!repo && <p className={styles.emptyPaneText}>No session data loaded.</p>}
-          {repo && deployments.length === 0 && (
-            <p className={styles.emptyPaneText}>No active sessions for this repo.</p>
-          )}
-          {repo && deployments.map((deployment) => (
-            <SessionCard
-              key={deployment.id}
-              deployment={deployment}
-              repo={repo}
-              selected={deployment.id === selectedDeploymentId}
-              pending={deployment.id === pendingDeploymentId}
-              rowError={rowErrors[deployment.id]}
-              onSelectDeployment={onSelectDeployment}
-              onReconnect={onReconnect}
-              onEnd={onEnd}
-            />
-          ))}
-        </div>
-      </section>
+      <div className={styles.sessionList} aria-label="Issue-backed sessions">
+        {!repo && <p className={styles.emptyPaneText}>No session data loaded.</p>}
+        {repo && deployments.length === 0 && (
+          <p className={styles.emptyPaneText}>No active sessions for this repo.</p>
+        )}
+        {repo && deployments.map((deployment) => (
+          <SessionCard
+            key={deployment.id}
+            deployment={deployment}
+            repo={repo}
+            selected={deployment.id === selectedDeploymentId}
+            pending={deployment.id === pendingDeploymentId}
+            rowError={rowErrors[deployment.id]}
+            onSelectDeployment={onSelectDeployment}
+            onReconnect={onReconnect}
+            onEnd={onEnd}
+          />
+        ))}
+      </div>
 
-      <section className={styles.collapsibleSection} data-section="named-shells">
-        <button
-          type="button"
-          className={styles.collapsibleHeader}
-          aria-expanded={!namedShellsCollapsed}
-          aria-controls="workbench-named-shells"
-          aria-label="Toggle named shells section"
-          onClick={() => onToggleSection("namedShells")}
-        >
-          <span>Named shells 0</span>
-          <span aria-hidden="true">v</span>
-        </button>
-        <div
-          id="workbench-named-shells"
-          className={`${styles.collapsibleBody} ${styles.namedShellPlaceholder}`}
-          hidden={namedShellsCollapsed}
-        >
-          Named shells are not available yet.
+      <div className={styles.namedShellPlaceholder} aria-label="Named shells">
+        <div>
+          <strong>Named shells</strong>
+          <span>Not available yet.</span>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
@@ -157,8 +136,8 @@ function SessionCard({
       >
         <span className={styles.sessionTopline}>
           <strong>#{deployment.issueNumber}</strong>
-          <span>{deployment.agent}</span>
-          <span data-status-dot={status}>{status}</span>
+          <span className={styles.sessionAgent}>{deployment.agent}</span>
+          <span className={styles.sessionStatus} data-status-dot={status}>{status}</span>
         </span>
         <span className={styles.sessionTitle}>{issue?.title ?? "Issue session"}</span>
         <span className={styles.sessionMeta}>

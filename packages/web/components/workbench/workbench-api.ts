@@ -58,10 +58,55 @@ export type EnsureTtydResult =
       error?: string;
     };
 
+const STALE_DEPLOYMENT_ERRORS = [
+  "Deployment not found or already ended",
+  "Terminal session has ended",
+];
+
+export function isStaleDeploymentError(message: string | undefined): boolean {
+  return message !== undefined && STALE_DEPLOYMENT_ERRORS.some((staleMessage) => message.includes(staleMessage));
+}
+
+export function isStaleEnsureTtydResult(result: EnsureTtydResult): boolean {
+  return !("port" in result) && isStaleDeploymentError(result.error);
+}
+
 export async function ensureDeploymentTtyd(deploymentId: number): Promise<EnsureTtydResult> {
   return requestJson<EnsureTtydResult>(`/api/v1/deployments/${deploymentId}/ensure-ttyd`, {
     method: "POST",
   });
+}
+
+export function terminalProxyUrl(port: number, terminalToken: string): string {
+  return `/api/terminal/${port}/?terminalToken=${encodeURIComponent(terminalToken)}`;
+}
+
+export async function checkTerminalProxy(
+  port: number,
+  terminalToken: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const response = await fetch(terminalProxyUrl(port, terminalToken), {
+    method: "GET",
+    headers: { Accept: "text/html" },
+    cache: "no-store",
+    signal,
+  });
+
+  if (response.ok) return { ok: true };
+
+  let body: string;
+  try {
+    body = (await response.text()).trim();
+  } catch {
+    body = "";
+  }
+
+  const detail = body || response.statusText || `HTTP ${response.status}`;
+  return {
+    ok: false,
+    error: `Terminal proxy returned ${response.status}: ${detail}`,
+  };
 }
 
 export async function endDeploymentSession(

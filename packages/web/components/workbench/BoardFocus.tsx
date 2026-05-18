@@ -29,10 +29,7 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
   );
 
   return (
-    <div
-      className={styles.focusInner}
-      style={{ maxWidth: "none", width: "100%", minHeight: "100%", overflow: "hidden" }}
-    >
+    <div className={`${styles.focusInner} ${styles.boardFocus}`}>
       <p className={styles.kicker}>Board</p>
       <h1>Cross-repo board</h1>
       <p className={styles.muted}>
@@ -69,17 +66,7 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
         </button>
       </div>
 
-      <div
-        aria-label="Cross-repo board"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(190px, 1fr))",
-          gap: 12,
-          minHeight: 0,
-          overflowX: "auto",
-          paddingBottom: 12,
-        }}
-      >
+      <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
         {repos.map((repo) => {
           const issues = boardIssues(repo, deployments, runningOnly, sortMode);
           return (
@@ -147,12 +134,13 @@ function BoardCard({
     >
       <div className={styles.issueCardHead}>
         <strong>#{issue.number}</strong>
-        <span>{status}</span>
-        <span>{issue.priority}</span>
+        <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>
+        <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>
       </div>
       <h3>{issue.title}</h3>
-      <p>updated {formatAge(issue.updatedAt)}</p>
-      {isRunning ? <p>active session</p> : null}
+      <p className={styles.issueCardMeta}>
+        updated {formatAge(issue.updatedAt)}{isRunning ? " · active session" : ""}
+      </p>
       <div className={styles.issueActions}>
         <button type="button" onClick={() => onSelectIssue(repo.id, issue.number)}>
           Open issue

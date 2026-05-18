@@ -1,0 +1,683 @@
+version: 2
+
+goal:
+  title: "Workbench Quality Follow-Up"
+  slug: "workbench-quality-followup"
+  kind: existing_plan
+  tranche: "Desktop-scoped Workbench functionality, UX, styling, accessibility, and QA evidence fixes from three independent critiques."
+  status: done
+  intake:
+    original_request: "Make a detailed to-do list for the Workbench critique items so we can drive development using Goal Buddy Prep."
+    interpreted_outcome: "A GoalBuddy board exists with granular, sequenced Workbench follow-up tasks, explicit acceptance criteria, verification commands, and a local live board."
+    input_shape: existing_plan
+    audience: "Jeremy as desktop Workbench operator and future GoalBuddy/Codex workers."
+    authority: approved
+    proof_type: test
+    completion_proof: "Final audit maps the three critique reports to verified Workbench fixes, updated QA docs, and focused Playwright/typecheck evidence."
+    likely_misfire: "Treating this as generic polish while leaving direct subpath auth, misleading issue actions, focus management, 1100px clipping, or screenshot reliability unresolved."
+    blind_spots_considered:
+      - "Mobile/narrow Workbench body redesign is out of scope for this tranche."
+      - "Live GitHub mutation should stay gated and manual; automated tests should use fixtures/mocks."
+      - "Issue-card styling may deserve a small shared primitive only if it reduces real drift without broad refactor risk."
+      - "The existing Workbench suite has one configured retry; new tests should avoid increasing flake."
+    existing_plan_facts:
+      - "Functionality critique found direct submode auth bootstrapping, missing labels, synthetic title editing, misleading Launch action, and weak mutation feedback."
+      - "UX critique independently found misleading issue queue actions, missing focus movement, weak session discoverability, under-labeled repo context, and stale dogfooding docs."
+      - "Styling critique found restore-control overlap, unreliable screenshot evidence, inconsistent issue-card styling, possible 1100px clipping, low-contrast terminal fixture proof, and heavy issue-detail hierarchy."
+      - "User selected a local live GoalBuddy board."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/workbench-quality-followup/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/workbench-quality-followup"
+    open_method: "regular_browser_fallback"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate this Workbench quality follow-up board before implementation and confirm the safest first Worker slice."
+    inputs:
+      - "Three critique receipts from functionality, UX, and styling sub-agents."
+      - "docs/goals/workbench-quality-followup/goal.md"
+      - "docs/goals/workbench-quality-followup/state.yaml"
+      - "Current Workbench files and tests."
+    constraints:
+      - "Read-only."
+      - "Do not implement product changes."
+      - "Preserve desktop scope; mobile/narrow body redesign stays out of scope."
+    acceptance_criteria:
+      - "Judge confirms the task order is safe and preserves all critique findings."
+      - "Judge confirms the first Worker slice is the largest safe useful slice, not merely the smallest edit."
+      - "Judge records any required sequencing corrections or blockers on the task receipt."
+      - "Judge confirms the board has enough acceptance criteria and verification commands to start execution."
+    expected_output:
+      - "Decision: approved | revise_before_worker."
+      - "Recommended first Worker task and any sequencing changes."
+      - "Blockers, if any."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Judge approved the board for execution. T002 is the largest safe useful first Worker slice because it is a bounded vertical auth bootstrapping fix for direct Workbench subpaths. No blocker prevents starting T002."
+      evidence:
+        - "goal.md lists all controlling findings from the functionality, UX, and styling critiques."
+        - "state.yaml maps findings into T002-T010, followed by docs refresh and final audit."
+        - "Desktop scope is explicit; mobile/narrow body redesign remains out of scope."
+        - "T002 has allowed files, acceptance criteria, verification commands, and stop conditions."
+      required_board_updates:
+        - "Before executing T011, change its rg verification into an explicit negative stale-text check; the current plain rg command succeeds when stale terms are found and fails when none are found."
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Fix direct Workbench subpath API-token bootstrapping so fresh-browser loads of global modes can perform authenticated client actions."
+    inputs:
+      - "T001 Judge receipt."
+      - "Functionality finding: `/workbench` seeds `apiToken`, but `/workbench/<mode>` does not."
+      - "packages/web/app/workbench/page.tsx"
+      - "packages/web/app/workbench/[mode]/page.tsx"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/app/workbench/page.tsx"
+      - "packages/web/app/workbench/[mode]/page.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"direct-load|quick create|pull requests|settings\""
+    stop_if:
+      - "Subpath token generation requires changing the API authentication contract."
+      - "A direct-load test would need real GitHub credentials instead of fixture/mocked requests."
+    acceptance_criteria:
+      - "Fresh browser context loading `/workbench/quick-create` can call parse/draft/create APIs with an `Authorization: Bearer ...` header without first visiting `/workbench`."
+      - "Fresh browser context loading `/workbench/prs` can call PR APIs with the bearer token when fixture routes request it."
+      - "Fresh browser context loading `/workbench/settings` can save settings with the bearer token when fixture routes request it."
+      - "Existing `/workbench` token bootstrapping behavior still works."
+      - "No token is logged or rendered visibly in the UI."
+    test_coverage:
+      - "Add or extend Playwright direct-load coverage in `packages/web/e2e/workbench.spec.ts` for at least one authenticated subpath action."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Fixed direct Workbench subpath API-token bootstrapping. `/workbench/[mode]` now generates and passes the same API token as `/workbench`, and WorkbenchShell writes it in a layout effect so subpath child effects can make authenticated client requests on first load."
+      changed_files:
+        - "packages/web/app/workbench/[mode]/page.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"direct-load|quick create|pull requests|settings\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"direct-load|quick create|pull requests|settings\" — 4 passed."
+      evidence:
+        - "New fresh-browser test loads `/workbench/settings` without localStorage setup and verifies settings, health, user, and save requests include `Authorization: Bearer ${apiToken}`."
+        - "Existing quick-create, pull-requests, and settings authenticated paths still pass."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Make issue-card actions truthful after removing the visible Details button."
+    inputs:
+      - "T001 Judge receipt."
+      - "Functionality and UX findings: queue `Launch` only opens details."
+      - "packages/web/components/workbench/IssueQueuePane.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/workflows/workbench-user-workflows.md"
+    allowed_files:
+      - "packages/web/components/workbench/IssueQueuePane.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/workflows/workbench-user-workflows.md"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"filters repo issues|issue detail|launch options\""
+    stop_if:
+      - "The intended label or behavior conflicts with the user's latest direction that card body opens details and no Details button is needed."
+    acceptance_criteria:
+      - "Clicking an issue card outside action buttons opens issue details."
+      - "Running issue cards keep `Jump to session` and that action opens terminal/session focus without opening details."
+      - "Non-running issue-card action text no longer implies immediate launch unless it opens the issue detail launch section explicitly."
+      - "Actual session creation still only happens from the guarded issue-detail `Launch issue` action."
+      - "Manual workflow docs no longer tell users to click a removed `Details` button."
+    test_coverage:
+      - "Playwright asserts the removed `Details` button stays absent."
+      - "Playwright asserts card click opens details, running action jumps to session, and non-running action has the chosen truthful behavior."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Made non-running issue-card action truthful by renaming the queue action to `Prepare launch`. Card body still opens issue detail, `Jump to session` still opens terminal focus, and actual session creation remains behind the guarded `Launch issue` action in issue detail."
+      changed_files:
+        - "packages/web/components/workbench/IssueQueuePane.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/workflows/workbench-user-workflows.md"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"filters repo issues|issue detail|launch options\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"filters repo issues|issue detail|launch options\" — 3 passed."
+      evidence:
+        - "Repo issue queue test asserts `Prepare launch` is visible, exact `Launch` button is absent on issue cards, and Details remains absent."
+        - "Issue detail mutation test opens #512 through `Prepare launch` and still exercises guarded `Launch issue` separately in launch option coverage."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Move keyboard and screen-reader focus into newly selected Workbench content."
+    inputs:
+      - "T001 Judge receipt."
+      - "UX finding: selection changes call `scrollTo` but do not move focus."
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "Focus components under packages/web/components/workbench/"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/RepoOverviewFocus.tsx"
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/PullRequestsFocus.tsx"
+      - "packages/web/components/workbench/QuickCreateFocus.tsx"
+      - "packages/web/components/workbench/SettingsFocus.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"focus|keyboard|issue detail|terminal\""
+    stop_if:
+      - "Programmatic focus causes regressions in form/mutation flows after in-pane actions."
+    acceptance_criteria:
+      - "Selecting a repo moves focus to the repo overview heading or focus region."
+      - "Selecting an issue moves focus to the issue detail heading or focus region."
+      - "Selecting a session/deployment moves focus to the terminal heading or focus region."
+      - "Switching global modes moves focus to the new mode heading or focus region."
+      - "In-pane mutations, typing, and form submissions do not steal focus unexpectedly."
+    test_coverage:
+      - "Add keyboard-path Playwright coverage with `document.activeElement` or `toBeFocused` assertions for repo -> issue -> terminal."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Centralized focus movement in WorkbenchShell. The focus pane is now programmatically focused after repo, issue, session/deployment, and mode selection changes while remaining untouched during in-pane mutations."
+      changed_files:
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"focus|keyboard|issue detail|terminal\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"focus|keyboard|issue detail|terminal\" — 7 passed."
+      evidence:
+        - "New Playwright test asserts `Workbench focus` is focused after repo, issue, session, and Board mode changes."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Make hidden sessions discoverable from issue focus and show selected repo context consistently."
+    inputs:
+      - "T001 Judge receipt."
+      - "UX findings: sessions hidden behind narrow restore control; repo-centered mental model under-labeled."
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/RepoRail.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/RepoRail.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"drawer|session|repo|issue detail\""
+    stop_if:
+      - "The visible session affordance duplicates or conflicts with top toolbar drawer controls."
+    acceptance_criteria:
+      - "Issue focus visibly shows the selected `owner/repo`."
+      - "Terminal focus visibly shows the selected `owner/repo`."
+      - "When sessions are hidden and the selected repo or issue has active sessions, issue focus exposes a text-labeled way to show sessions."
+      - "The text-labeled session affordance opens/restores the sessions drawer without changing the selected issue."
+      - "Existing top toolbar drawer controls remain functional."
+    test_coverage:
+      - "Playwright asserts full repo name is visible in issue and terminal focus."
+      - "Playwright asserts issue focus with active sessions exposes and operates a visible show-sessions path."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Added visible repo context to issue and terminal focus headers, plus a text-labeled `Sessions hidden · Show sessions` affordance in issue focus when active sessions exist and the sessions drawer is collapsed."
+      changed_files:
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"drawer|session|repo|issue detail\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"drawer|session|repo|issue detail\" — 18 passed."
+      evidence:
+        - "Issue queue test asserts `mean-weasel/issuectl` appears in issue focus."
+        - "Issue queue test asserts `Sessions hidden · Show sessions` is visible, restores the Active sessions drawer, and preserves the selected issue."
+        - "Terminal focus assertion verifies repo context remains visible after jumping to a session."
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Prevent collapsed drawer restore controls from overlapping focus content."
+    inputs:
+      - "T001 Judge receipt."
+      - "Styling finding: restore controls overlap terminal and issue headers."
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"drawer|responsive QA|terminal|issue detail\""
+    stop_if:
+      - "Fixing overlap requires changing the approved drawer collapse policy."
+    acceptance_criteria:
+      - "Left restore control does not overlap issue focus heading, repo context, or first visible content at `1440x1000`."
+      - "Right restore control does not overlap terminal focus heading, repo context, or first visible content at `1440x1000`."
+      - "Same non-overlap assertions pass at `1100x850`."
+      - "Restore controls remain visible and keyboard accessible."
+      - "Column resize handles and visible panes still lay out correctly."
+    test_coverage:
+      - "Add Playwright bounding-box assertions that restore controls do not intersect issue/terminal header regions."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Moved collapsed drawer restore controls into reserved grid columns instead of absolute overlay positions, preventing overlap with issue and terminal focus headers while keeping the controls visible and keyboard accessible."
+      changed_files:
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"drawer|responsive QA|terminal|issue detail\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"drawer|responsive QA|terminal|issue detail\" — 7 passed."
+      evidence:
+        - "New Playwright test asserts `Expand running sessions` does not overlap the issue heading and `Expand issues drawer` does not overlap the terminal heading at `1440x1000` and `1100x850`."
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Tighten supported 1100px desktop layout so tests catch clipping and the visible panes fit."
+    inputs:
+      - "T001 Judge receipt."
+      - "Styling finding: current fixed minimums can exceed 1100px."
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-state.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/qa/workbench-validation.md"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"responsive QA|resizes workbench columns|captures workbench QA\""
+    stop_if:
+      - "A correct 1100px fit requires changing desktop scope or treating 1100px as unsupported."
+    acceptance_criteria:
+      - "At `1100x850`, every visible pane and restore control has `right <= window.innerWidth`."
+      - "At `1100x850`, focus pane remains usable and not squeezed below the agreed minimum."
+      - "At `1440x1000` and `1280x900`, current desktop layout remains stable."
+      - "Tests fail if any visible pane clips horizontally."
+      - "QA docs accurately state the supported desktop width matrix."
+    test_coverage:
+      - "Extend `assertVisibleWorkbenchLayout` or equivalent to check pane bounding boxes against viewport right edge."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Capped visible side-pane tracks below 1160px so the supported 1100px desktop layout fits without clipping, and strengthened layout assertions to fail if any visible pane extends past the viewport."
+      changed_files:
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/qa/workbench-validation.md"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"responsive QA|resizes workbench columns|captures workbench QA\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"responsive QA|resizes workbench columns|captures workbench QA\" — 3 passed."
+      evidence:
+        - "Shared `assertVisibleWorkbenchLayout` now asserts each visible pane starts at or after x=0 and has right edge <= viewport width."
+        - "QA docs now state right-edge viewport assertions are part of desktop layout acceptance."
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Make issue detail metadata and mutation flows real enough for dogfooding."
+    inputs:
+      - "T001 Judge receipt."
+      - "Functionality findings: labels absent, synthetic title editing, inconsistent mutation feedback."
+      - "Styling finding: issue detail remains visually heavy."
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/workbench-types.ts"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"issue detail|mutation|launch options\""
+    stop_if:
+      - "Real label editing requires an API/list-labels capability not currently exposed."
+      - "Changing issue edit behavior would mutate live GitHub data outside fixture tests."
+    acceptance_criteria:
+      - "Issue detail visibly renders current labels from the fixture/API payload."
+      - "Title editing uses a real user-editable value, not a synthetic appended suffix."
+      - "Save title is disabled or unavailable when unchanged."
+      - "Priority/comment/label/assignee/state/image actions provide visible success or error status."
+      - "Comment submission either appends/refreshes visible comments or clearly reports that the comment was submitted."
+      - "Lower-frequency mutation controls are grouped so issue reading and launch prep remain the primary scan path."
+    test_coverage:
+      - "Playwright asserts labels are visible."
+      - "Playwright asserts title PATCH body matches typed user input."
+      - "Playwright asserts at least comment and one metadata mutation show status or updated UI."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Made issue detail metadata and mutation flows more realistic for dogfooding. Issue labels now render visibly, title editing uses a real input with unchanged-save disabled, and common mutations report visible status while comment submission clears the composer."
+      changed_files:
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"issue detail|mutation|launch options\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"issue detail|mutation|launch options\" — 2 passed."
+      evidence:
+        - "Issue detail test asserts fixture label `high` is visible."
+        - "Issue detail test fills `Issue title`, verifies `Save title` disabled/enabled behavior, and asserts PATCH body equals the typed title."
+        - "Issue detail test asserts visible status for title, priority, comment, state, and label mutations."
+
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Make Workbench screenshot QA wait for loaded route-specific content and avoid splash-only artifacts."
+    inputs:
+      - "T001 Judge receipt."
+      - "Styling finding: screenshot artifacts can capture splash/loading states."
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/qa/workbench-validation.md"
+      - "docs/qa/workbench-artifacts/*"
+    allowed_files:
+      - "packages/web/e2e/workbench.spec.ts"
+      - "docs/qa/workbench-validation.md"
+      - "docs/qa/workbench-artifacts/*"
+    verify:
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"captures workbench QA screenshots\""
+    stop_if:
+      - "Screenshot generation requires live credentials instead of deterministic fixture routes."
+    acceptance_criteria:
+      - "Each screenshot path waits for route-specific loaded content before capture."
+      - "Screenshot test asserts no splash/logo-only state is visible."
+      - "Board screenshot asserts board heading and at least one expected column/card or empty-column state."
+      - "Settings screenshot asserts settings/repo setup content is visible."
+      - "Terminal screenshot asserts readable terminal or terminal-ready content is visible, not just a blank black rectangle."
+      - "QA docs only mark screenshot evidence passing after these assertions pass."
+    test_coverage:
+      - "Strengthen the existing screenshot Playwright test with loaded-state assertions and terminal content readability checks."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Strengthened screenshot QA so captures wait for loaded, route-specific content and readable terminal fixture text before writing artifacts."
+      changed_files:
+        - "packages/web/e2e/workbench.spec.ts"
+        - "docs/qa/workbench-artifacts/workbench-terminal-1440.png"
+        - "docs/qa/workbench-artifacts/workbench-terminal-1100.png"
+        - "docs/qa/workbench-artifacts/workbench-issue-1440.png"
+        - "docs/qa/workbench-artifacts/workbench-settings-1440.png"
+        - "docs/qa/workbench-artifacts/workbench-board-1440.png"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"captures workbench QA screenshots\""
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"captures workbench QA screenshots\" — 1 passed."
+        - "pnpm --filter @issuectl/web typecheck — passed."
+      evidence:
+        - "Screenshot flow asserts no Workbench splash/loading copy before capture."
+        - "Terminal screenshots assert iframe text `terminal ready` is visible."
+        - "Issue, settings, and board screenshots assert route-specific content before capture."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Unify issue-card styling across repo queue, global issues, and board surfaces without broad visual churn."
+    inputs:
+      - "T001 Judge receipt."
+      - "Styling finding: board/global cards drift from repo queue cards."
+      - "packages/web/components/workbench/IssueQueuePane.tsx"
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    allowed_files:
+      - "packages/web/components/workbench/IssueQueuePane.tsx"
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"filters repo issues|global issues|cross-repo board|responsive QA\""
+    stop_if:
+      - "A shared component would force a broad refactor across unrelated issue views."
+    acceptance_criteria:
+      - "Repo queue, global issue, and board cards use consistent status/priority chip treatment."
+      - "Action placement is consistent enough that users can scan cards across modes."
+      - "Board cards remain compact enough for multi-column scanning."
+      - "Global issue cards still show repo grouping clearly."
+      - "No nested-card or heavy visual treatment is introduced."
+    test_coverage:
+      - "Playwright asserts status/priority chips or shared styling hooks appear in repo queue, global issues, and board cards."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Unified issue-card chip treatment across repo queue, global issues, and board cards without broad visual churn."
+      changed_files:
+        - "packages/web/components/workbench/IssueQueuePane.tsx"
+        - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+        - "packages/web/components/workbench/BoardFocus.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"filters repo issues|global issues|cross-repo board|responsive QA\""
+          status: pass
+      verification:
+        - "pnpm --filter @issuectl/web typecheck — passed."
+        - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"filters repo issues|global issues|cross-repo board|responsive QA\" — 4 passed."
+      evidence:
+        - "Repo queue, global issue, and board cards now use `styles.issueChip` and `data-card-chip` hooks for status and priority."
+        - "Playwright asserts `[data-card-chip]` appears in all three card surfaces."
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Refresh manual dogfooding workflows and QA validation docs after behavior fixes land."
+    inputs:
+      - "Receipts from T002-T010."
+      - "docs/workflows/workbench-user-workflows.md"
+      - "docs/qa/workbench-validation.md"
+      - "docs/qa/workbench-ux-review-2026-05-18.md"
+    allowed_files:
+      - "docs/workflows/workbench-user-workflows.md"
+      - "docs/qa/workbench-validation.md"
+      - "docs/qa/workbench-ux-review-2026-05-18.md"
+    verify:
+      - "! rg -n \"click `Details`|URL remains `/workbench`|leaves the URL remains /workbench|splash-only|Toggle sessions section\" docs/workflows/workbench-user-workflows.md docs/qa/workbench-validation.md docs/qa/workbench-ux-review-2026-05-18.md"
+    stop_if:
+      - "Implementation tasks are still pending and docs would need to guess final behavior."
+    acceptance_criteria:
+      - "Manual workflows match the final issue-card action labels and behavior."
+      - "Manual workflows describe query-addressable issue/session URLs accurately."
+      - "QA validation documents direct subpath auth coverage."
+      - "QA validation documents focus-management coverage."
+      - "QA validation documents 1100px right-edge assertions and screenshot loaded-state assertions."
+      - "Mobile/narrow body redesign remains clearly out of scope."
+    test_coverage:
+      - "Use `rg` checks to catch stale removed-control names and contradicted URL expectations."
+    receipt:
+      result: done
+      full_outcome_complete: false
+      summary: "Refreshed manual dogfooding and QA validation docs to match the implemented Workbench behavior, including query-addressable session URLs, `Prepare launch`, session reveal affordance, direct subpath auth, focus management, right-edge layout assertions, and loaded screenshot checks."
+      changed_files:
+        - "docs/workflows/workbench-user-workflows.md"
+        - "docs/qa/workbench-validation.md"
+        - "docs/qa/workbench-ux-review-2026-05-18.md"
+      commands:
+        - cmd: "! rg -n 'click `Details`|URL remains `/workbench`|leaves the URL remains /workbench|splash-only|Toggle sessions section' docs/workflows/workbench-user-workflows.md docs/qa/workbench-validation.md docs/qa/workbench-ux-review-2026-05-18.md"
+          status: pass
+      verification:
+        - "! rg -n 'click `Details`|URL remains `/workbench`|leaves the URL remains /workbench|splash-only|Toggle sessions section' docs/workflows/workbench-user-workflows.md docs/qa/workbench-validation.md docs/qa/workbench-ux-review-2026-05-18.md — passed with no matches."
+      evidence:
+        - "Workflow 3 now describes query-addressable deployment focus URLs."
+        - "Workflow 8 now describes card-body details, `Prepare launch`, repo/label context, and `Sessions hidden · Show sessions`."
+        - "Validation matrix documents direct subpath auth, keyboard focus, card chips, right-edge layout checks, restore-control non-overlap, and loaded screenshot assertions."
+
+  - id: T012
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit the Workbench quality follow-up against all three critique reports and this board."
+    inputs:
+      - "All task receipts."
+      - "Three critique reports."
+      - "docs/goals/workbench-quality-followup/state.yaml"
+      - "Current git diff."
+      - "Latest verification command outputs."
+    constraints:
+      - "Read-only unless recording the final receipt in state.yaml."
+      - "Do not mark complete if any required Worker task is still pending or unverified."
+    acceptance_criteria:
+      - "Every functionality critique finding is mapped to a verified fix, existing solid area, or explicit approved deferral."
+      - "Every UX critique finding is mapped to a verified fix, existing solid area, or explicit approved deferral."
+      - "Every styling critique finding is mapped to a verified fix, existing solid area, or explicit approved deferral."
+      - "Typecheck and the targeted Workbench Playwright set pass."
+      - "No implementation file outside the intended Workbench/doc/test scope was changed without receipt rationale."
+      - "Judge states whether the goal is complete."
+    expected_output:
+      - "Final audit summary."
+      - "Residual risks."
+      - "Completion decision."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Final audit passed. All required Workbench quality follow-up findings are mapped to verified fixes or existing accepted behavior, and no required Worker task remains queued."
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium"
+          status: pass
+        - cmd: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.6/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/workbench-quality-followup/state.yaml"
+          status: pass
+        - cmd: "! rg -n 'click `Details`|URL remains `/workbench`|leaves the URL remains /workbench|splash-only|Toggle sessions section' docs/workflows/workbench-user-workflows.md docs/qa/workbench-validation.md docs/qa/workbench-ux-review-2026-05-18.md"
+          status: pass
+      evidence:
+        - "Direct subpath auth: T002 added token generation to `/workbench/[mode]` and Playwright direct-load settings auth coverage."
+        - "Issue-card intent: T003 changed non-running queue action to `Prepare launch`, preserved card-body details and guarded `Launch issue`."
+        - "Focus management: T004 focuses the Workbench focus region after repo, issue, session, and mode changes."
+        - "Session/repo context: T005 shows full repo context in issue/terminal focus and adds `Sessions hidden · Show sessions`."
+        - "Drawer overlap: T006 reserves restore-control grid columns and asserts no overlap at `1440x1000` and `1100x850`."
+        - "1100px fit: T007 caps side-pane tracks below 1160px and asserts all visible pane right edges are within viewport."
+        - "Issue detail realism: T008 renders labels, uses a real title input, and asserts mutation status feedback."
+        - "Screenshot evidence: T009 asserts loaded route-specific content and readable terminal text before screenshots."
+        - "Card styling: T010 uses shared status/priority chip hooks across repo queue, global issues, and board cards."
+        - "Docs: T011 updates manual and QA docs and passes stale-text checks."
+        - "Full Workbench suite exited 0: 32 passed and one known URL-focus navigation case passed on configured retry."
+      residual_risks:
+        - "The long Workbench Playwright spec still has the previously documented configured retry around one URL-focus navigation case."
+        - "Mobile/narrow Workbench body redesign remains explicitly out of scope."
+      completion_decision: "complete"

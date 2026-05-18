@@ -1,0 +1,630 @@
+version: 2
+
+goal:
+  title: "Workbench Session Lifecycle Hardening"
+  slug: "workbench-session-lifecycle"
+  kind: recovery
+  tranche: "Create safe workflow artifacts, add rigorous Playwright/API coverage, fix root causes, and manually verify Workbench session lifecycle end to end."
+  status: done
+  intake:
+    original_request: "Use goalbuddy goal-prep to plan rigorous Workbench session lifecycle workflows and tests."
+    interpreted_outcome: "Workbench issue-backed terminal sessions can be created, reopened, reconnected, ended, and reconciled after stale or restarted states with automated and manual proof."
+    input_shape: recovery
+    audience: "Jeremy dogfooding Workbench"
+    authority: requested
+    proof_type: test
+    completion_proof: "Markdown workflows, Playwright/API tests, manual QA receipts, and final audit prove launch/open/reconnect/end/stale/restart session flows behave deterministically."
+    likely_misfire: "Passing mocked happy-path e2e tests while real session lifecycle and stale deployment states remain broken."
+    blind_spots_considered:
+      - "Deployment rows, tmux sessions, and ttyd processes can diverge."
+      - "Refresh/restart can expose stale Workbench payload data."
+      - "Cancel/end interactions may accidentally submit or navigate."
+      - "Reconnect failures must reconcile UI state instead of leaving impossible cards."
+      - "Tests must avoid destructive operations on non-test repos."
+    existing_plan_facts:
+      - "Create markdown workflows before implementation."
+      - "Run workflows one at a time and pause to reflect/fix."
+      - "Use Playwright CLI/headless where possible."
+      - "Cover create, manage, return to, reconnect, stale cleanup, web restart, and close sessions."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/workbench-session-lifecycle/"
+    command: "npx goalbuddy board docs/goals/workbench-session-lifecycle"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map current Workbench session lifecycle code paths and identify the exact boundaries that can produce stale session cards or failed reconnects."
+    inputs:
+      - "packages/web/components/workbench"
+      - "packages/web/app/api"
+      - "packages/web/e2e"
+      - "packages/core or other deployment/session lifecycle modules discovered by Scout"
+      - "User-reported symptom: #152 card says active, reconnect reports Deployment not found or already ended"
+    constraints:
+      - "Read-only."
+      - "Do not edit product, test, or docs files."
+      - "Do not end or mutate live sessions."
+      - "Prefer concrete file paths, route names, DB fields, and process boundaries."
+    expected_output:
+      - "Lifecycle map from launch request to DB deployment row, tmux, ttyd, Workbench payload, session card, terminal iframe, reconnect, and end."
+      - "List of existing tests and workflow gaps."
+      - "Evidence-backed hypotheses for stale card and reconnect error."
+      - "Recommended Worker allowed_files and verification commands for first implementation slice."
+    receipt:
+      result: done
+      note: "notes/T001-lifecycle-map.md"
+      summary: "Mapped launch, DB deployment, tmux/ttyd, Workbench payload, reconnect, terminal focus, and end-session boundaries. Found the likely #152 failure boundary: ensure-ttyd can return ended/not-found or end a deployment when tmux is gone, while the already-loaded Workbench React payload keeps rendering the stale session card."
+      evidence:
+        - "packages/core/src/launch/launch.ts"
+        - "packages/core/src/db/deployments.ts"
+        - "packages/core/src/launch/ttyd.ts"
+        - "packages/web/lib/ensure-ttyd.ts"
+        - "packages/web/lib/workbench-data.ts"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/InstancePane.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "packages/web/e2e/terminal-respawn.spec.ts"
+        - "packages/web/e2e/terminal-persistence.spec.ts"
+      gaps:
+        - "No Workbench stale ensure-ttyd error reconciliation test."
+        - "No Workbench TerminalFocus failure reconciliation test."
+        - "No end-cancel no-navigation/no-endpoint test."
+        - "No markdown workflow suite for real Workbench session lifecycle QA."
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Create safe markdown QA workflows for Workbench session lifecycle, with precise steps and pass/fail criteria for each flow."
+    inputs:
+      - "T001 receipt"
+      - "docs/qa existing structure"
+      - "User requirement to drive workflows one at a time with Playwright CLI/headless where possible"
+    constraints:
+      - "Write only QA workflow docs and an index."
+      - "Workflows must avoid destructive actions on non-test repos."
+      - "Each workflow must include setup, steps, expected UI/API/process observations, cleanup, and stop conditions."
+    allowed_files:
+      - "docs/qa/workbench-session-workflows/README.md"
+      - "docs/qa/workbench-session-workflows/01-create-issue-session.md"
+      - "docs/qa/workbench-session-workflows/02-return-to-active-session.md"
+      - "docs/qa/workbench-session-workflows/03-reconnect-stopped-ttyd.md"
+      - "docs/qa/workbench-session-workflows/04-end-session-cancel-confirm.md"
+      - "docs/qa/workbench-session-workflows/05-stale-deployment-reconciliation.md"
+      - "docs/qa/workbench-session-workflows/06-web-app-restart.md"
+      - "docs/qa/workbench-session-workflows/07-session-regression-matrix.md"
+    verify:
+      - "test -f docs/qa/workbench-session-workflows/README.md"
+      - "rg -n \"Acceptance criteria|Stop conditions|Playwright\" docs/qa/workbench-session-workflows"
+    stop_if:
+      - "Need to inspect or mutate live session state."
+      - "A workflow requires credentials or destructive operations not already approved."
+      - "A workflow cannot name measurable acceptance criteria."
+    expected_output:
+      - "Seven workflow markdown files plus README."
+      - "Each workflow has quantifiable acceptance criteria."
+      - "Receipt summarizes workflow coverage and any intentionally deferred flows."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/qa/workbench-session-workflows/README.md"
+        - "docs/qa/workbench-session-workflows/01-create-issue-session.md"
+        - "docs/qa/workbench-session-workflows/02-return-to-active-session.md"
+        - "docs/qa/workbench-session-workflows/03-reconnect-stopped-ttyd.md"
+        - "docs/qa/workbench-session-workflows/04-end-session-cancel-confirm.md"
+        - "docs/qa/workbench-session-workflows/05-stale-deployment-reconciliation.md"
+        - "docs/qa/workbench-session-workflows/06-web-app-restart.md"
+        - "docs/qa/workbench-session-workflows/07-session-regression-matrix.md"
+      commands:
+        - cmd: "test -f docs/qa/workbench-session-workflows/README.md && echo README_OK"
+          status: pass
+        - cmd: "rg -n \"Acceptance criteria|Stop conditions|Playwright\" docs/qa/workbench-session-workflows"
+          status: pass
+      summary: "Created seven safe Workbench session lifecycle workflow docs plus an index. Each workflow includes setup, Playwright/process checks, acceptance criteria, and stop conditions for launch, return, reconnect, end cancel/confirm, stale reconciliation, restart, and final regression mapping."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add automated Playwright coverage for the Workbench session UI state machine using safe mocked API routes."
+    inputs:
+      - "T001 receipt"
+      - "T002 workflow docs"
+      - "packages/web/e2e/workbench.spec.ts or a new workbench-sessions spec"
+    constraints:
+      - "Tests must assert visible UI state, route calls, and no unexpected page reload on cancel/end."
+      - "Tests must include stale deployment and failed reconnect cases."
+      - "Use mocked routes for destructive or hard-to-reproduce states."
+    allowed_files:
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/e2e/workbench-sessions.spec.ts"
+      - "packages/web/e2e/fixtures/**"
+    verify:
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"session|reconnect|stale|end\""
+      - "pnpm --filter @issuectl/web typecheck"
+    stop_if:
+      - "Needed app behavior is ambiguous and cannot be inferred from the workflow docs."
+      - "Tests require live GitHub or real process mutation."
+      - "The new tests cannot fail against the current bug shape."
+    expected_output:
+      - "Tests for launch-to-session-card-to-terminal."
+      - "Tests for reopen after browser refresh."
+      - "Tests for reconnect stopped ttyd while deployment remains active."
+      - "Tests for cancel end without navigation and confirm end removes card."
+      - "Tests for stale deployment or ended deployment error reconciliation."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"stale session|stale selected session|canceling end session|reconnects a session through\""
+          status: fail_expected
+          summary: "2 passed, 2 failed. Passing: reconnect happy path; cancel end is local-only. Failing as intended: stale reconnect and stale terminal-focus both leave session card visible."
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+      summary: "Added Workbench e2e coverage for stale ensure-ttyd responses and cancel-end behavior. The stale tests reproduce the dogfood bug shape: the backend reports ended/not-found or terminal-session-ended, but the UI keeps an active-looking session card."
+      failing_tests:
+        - "removes a stale session when reconnect reports the deployment already ended"
+        - "removes a stale selected session when terminal focus reports the session ended"
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Fix Workbench frontend session state reconciliation based on failing tests and Scout evidence."
+    inputs:
+      - "T001 receipt"
+      - "T003 failing tests"
+      - "Current Workbench frontend state files"
+    constraints:
+      - "Fix root cause, not only error text."
+      - "Session cards must not remain actionable when backend reports ended/not found."
+      - "Cancel in an end confirmation must not reload the page."
+      - "Session selection must keep left drawer visible, close right drawer, and render terminal in viewport."
+    allowed_files:
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/InstancePane.tsx"
+      - "packages/web/components/workbench/IssueQueuePane.tsx"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/workbench-state.ts"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/e2e/workbench-sessions.spec.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"session|reconnect|stale|end\""
+    stop_if:
+      - "Backend/API contract changes are required."
+      - "Fix requires files outside allowed_files."
+      - "Verification fails twice with different root causes."
+    expected_output:
+      - "Frontend reconciles ended/not-found reconnect errors by removing or clearly demoting stale cards."
+      - "End cancel is purely local and never submits or reloads."
+      - "Session row errors are actionable and consistent."
+      - "Receipt names changed files and passing commands."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/components/workbench/workbench-api.ts"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"stale session|stale selected session|canceling end session|reconnects a session through\""
+          status: pass
+      summary: "Added frontend stale-deployment detection for ensure-ttyd results. Reconnect and terminal-focus paths now remove ended/not-found or terminal-session-ended deployments from Workbench state, clearing the selected terminal and updating running issue state. Cancel-end remains local-only."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: high
+    objective: "Fix backend/API deployment lifecycle contracts if frontend-only reconciliation is insufficient."
+    inputs:
+      - "T001 receipt"
+      - "T003/T004 test failures or stop receipt"
+      - "Deployment lifecycle API modules discovered by Scout"
+    constraints:
+      - "Only activate this task if T004 proves backend/API contract changes are needed."
+      - "Prefer typed JSON responses over string matching."
+      - "Ensure Workbench payload and ensure-ttyd/end routes agree about active versus ended deployments."
+      - "Do not alter unrelated launch semantics."
+    allowed_files:
+      - "packages/web/app/api/v1/deployments/**"
+      - "packages/web/app/api/v1/launch/**"
+      - "packages/web/app/api/v1/workbench/**"
+      - "packages/core/**"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/e2e/workbench-sessions.spec.ts"
+      - "packages/web/**/*.test.ts"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"session|reconnect|stale|end\""
+      - "pnpm test --filter @issuectl/core"
+    stop_if:
+      - "Database migration is required."
+      - "Need destructive cleanup of live deployments without explicit approval."
+      - "The correct active/ended policy is ambiguous."
+    expected_output:
+      - "API returns deterministic typed status for not_found, ended, missing_ttyd, missing_tmux, and active where supported."
+      - "Workbench payload does not advertise ended deployments as active sessions, or marks them explicitly stale."
+      - "Tests prove the contract."
+    receipt:
+      result: blocked
+      reason: "not_needed_for_current_slice"
+      summary: "Frontend reconciliation was sufficient for the currently reproduced stale-card bug shape. Existing ensure-ttyd responses already distinguish active success from ended/not-found and terminal-session-ended errors. Backend typed-status improvements remain optional follow-up, not required for this tranche unless manual QA exposes ambiguity."
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Drive each markdown workflow with Playwright CLI/headless against the local app and record QA receipts."
+    inputs:
+      - "T002 workflow docs"
+      - "Implemented fixes from T004/T005"
+      - "Local dev server"
+    constraints:
+      - "Run workflows one at a time."
+      - "Pause after each workflow in the receipt with pass/fail and any fixes needed."
+      - "Do not use non-test repo issues for destructive lifecycle operations."
+      - "If a workflow fails, stop and create/fix the smallest safe Worker follow-up before continuing."
+    allowed_files:
+      - "docs/qa/workbench-session-workflows/**"
+      - "docs/qa/workbench-artifacts/**"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/e2e/workbench-sessions.spec.ts"
+      - "packages/web/components/workbench/**"
+      - "packages/web/app/api/v1/deployments/**"
+      - "packages/web/app/api/v1/launch/**"
+      - "packages/core/**"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "test -d docs/qa/workbench-artifacts"
+    stop_if:
+      - "A workflow requires destructive cleanup of a real user session."
+      - "The local server cannot start."
+      - "A live workflow failure indicates a new root cause not covered by existing tests."
+    expected_output:
+      - "Workflow receipts in state.yaml naming each workflow, result, screenshot/artifact path, and fixes made."
+      - "Manual QA confirms launch, return, reconnect, end, stale reconciliation, and restart behavior."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-05-stale-152.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-live-152-timeout-state.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-live-152-terminal-timeout.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-live-152-ended.png"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+      commands:
+        - cmd: "curl -sS -I http://localhost:3847/workbench | head -n 1"
+          status: pass
+          output: "HTTP/1.1 200 OK"
+        - cmd: "Live Playwright workflow against mean-weasel/issuectl-test-repo#152"
+          status: pass
+          summary: "Launch created deployment 97, existing session reopened, reconnect opened terminal with tmux alive, cancel End made 0 end requests and 0 navigations, confirm End removed the card, backend active deployment became false, tmux became false, refresh kept card count 0."
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium --grep \"supports top nav modes|captures workbench QA screenshots\""
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+          status: pass
+          output: "28 passed, 1 skipped"
+      summary: "Drove the safe live #152 lifecycle through launch, return/reconnect, cancel End, confirm End, stale removal after refresh, and full mocked Workbench e2e. Also fixed a drawer-state regression found during full-suite verification: side-pane modes now restore drawers when selected from nav."
+      workflow_results:
+        - workflow: "01-create-issue-session"
+          result: pass
+          evidence: "Deployment 97 for issuectl-test-repo#152 appeared with terminal iframe and tmux-backed session."
+        - workflow: "02-return-to-active-session"
+          result: pass
+          evidence: "Session #152 reopened from the left drawer and terminal iframe was visible."
+        - workflow: "03-reconnect-stopped-ttyd"
+          result: pass
+          evidence: "Reconnect opened terminal while tmux was alive; ttyd listener was already absent/respawn path remained successful."
+        - workflow: "04-end-session-cancel-confirm"
+          result: pass
+          evidence: "Cancel made 0 end requests and 0 navigations; confirm End removed card and ended tmux/backend active state."
+        - workflow: "05-stale-deployment-reconciliation"
+          result: pass
+          evidence: "Previously stale #152 card absent on reload; mocked stale e2e tests pass."
+        - workflow: "06-web-app-restart"
+          result: partial
+          evidence: "App health verified at HTTP 200 and refresh convergence verified; full server restart with active tmux was not repeated after live cleanup."
+        - workflow: "07-session-regression-matrix"
+          result: pass
+          evidence: "Full Workbench e2e includes launch, reconnect, stale reconnect, stale selected terminal, end confirm, cancel end, drawer, and refresh assertions."
+
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review lifecycle coverage and decide whether any remaining gaps must be fixed before PR/review."
+    inputs:
+      - "T001-T006 receipts"
+      - "Current dirty diff"
+      - "Latest Playwright/typecheck outputs"
+      - "QA artifacts"
+    constraints:
+      - "Read-only."
+      - "Reject if tests cover only mocked happy paths."
+      - "Reject if stale deployment behavior is unspecified."
+      - "Reject if manual workflows were not driven or receipts are missing."
+    expected_output:
+      - "Decision: approved | needs_more_work"
+      - "Coverage matrix mapping workflows to tests and receipts."
+      - "Remaining blockers or follow-up tasks."
+      - "Recommended PR/review readiness."
+    receipt:
+      result: needs_more_work
+      decision: needs_more_work
+      summary: "Coverage is strong for the #152 stale-card failure, mocked stale ensure-ttyd paths, cancel/confirm end behavior, drawer state, and the live launch/reconnect/end flow. Two gaps remain before final audit: workflow 06 did not repeat a full web-app restart while a live tmux-backed deployment remained active, and the live workflow screenshots were captured under packages/web/docs/qa/workbench-artifacts while the receipt names docs/qa/workbench-artifacts."
+      coverage_matrix:
+        - workflow: "01-create-issue-session"
+          status: "covered"
+          evidence: "Live #152 launch receipt plus Workbench e2e launch-selection coverage."
+        - workflow: "02-return-to-active-session"
+          status: "covered"
+          evidence: "Live #152 reopen receipt plus browser-refresh/session-card checks."
+        - workflow: "03-reconnect-stopped-ttyd"
+          status: "covered"
+          evidence: "Live reconnect receipt and mocked reconnect route coverage."
+        - workflow: "04-end-session-cancel-confirm"
+          status: "covered"
+          evidence: "Live cancel/confirm receipt and e2e assertions for 0 cancel end requests, 0 navigations, and confirm removal."
+        - workflow: "05-stale-deployment-reconciliation"
+          status: "covered"
+          evidence: "Mocked stale reconnect and stale selected terminal tests pass; stale #152 card absent after refresh."
+        - workflow: "06-web-app-restart"
+          status: "gap"
+          evidence: "Only HTTP health and refresh convergence were recorded; no live active-session restart proof."
+        - workflow: "07-session-regression-matrix"
+          status: "covered"
+          evidence: "Full Workbench e2e passed with 28 passed, 1 skipped."
+      blockers:
+        - "Run workflow 06 with an active test-repo session through a web app restart."
+        - "Move or recapture live workflow screenshots into the canonical docs/qa/workbench-artifacts path named by receipts."
+      recommended_next_task: "T009"
+
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close Judge gaps by verifying workflow 06 with an active session across a web-app restart and normalizing live QA artifacts into the canonical docs path."
+    inputs:
+      - "T007 needs_more_work receipt"
+      - "docs/qa/workbench-session-workflows/06-web-app-restart.md"
+      - "Local Workbench server"
+      - "Safe test repo mean-weasel/issuectl-test-repo"
+    constraints:
+      - "Use only the test repo for live session lifecycle operations."
+      - "Record whether a live issue launch creates external test-repo side effects."
+      - "End any live session created by this task before marking done."
+      - "If the restart workflow exposes a product bug, fix the smallest safe root cause before rerunning verification."
+    allowed_files:
+      - "docs/qa/workbench-artifacts/**"
+      - "packages/web/components/workbench/**"
+      - "packages/web/app/workbench/**"
+      - "packages/web/app/api/v1/deployments/**"
+      - "packages/web/app/api/v1/launch/**"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/core/**"
+    verify:
+      - "curl -sS -I http://localhost:3847/workbench | head -n 1"
+      - "Playwright-driven workflow 06: active session visible before restart, web server restarted, same session visible after restart, terminal iframe opens, End removes card, refresh keeps card absent."
+      - "test -f docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-before.png"
+      - "test -f docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-after.png"
+    stop_if:
+      - "Local server cannot restart."
+      - "A live launch would target a non-test repo."
+      - "The session cannot be safely ended after verification."
+    expected_output:
+      - "Workflow 06 pass/fail receipt with screenshots in docs/qa/workbench-artifacts."
+      - "Any misplaced previous artifacts copied or replaced in docs/qa/workbench-artifacts."
+      - "No active test session left behind."
+      - "If code changes are needed, typecheck and focused e2e pass."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-05-stale-152.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-live-152-ended.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-live-152-terminal-timeout.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-live-152-timeout-state.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-before.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-after.png"
+        - "docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-ended.png"
+        - "packages/core/src/launch/ttyd.ts"
+        - "packages/core/src/launch/ttyd.test.ts"
+      commands:
+        - cmd: "Playwright-driven workflow 06 synthetic issue-backed restart proof"
+          status: pass
+          summary: "Created local test-repo deployment 98 for issuectl-test-repo#152, opened terminal before restart, restarted the web server, reopened the same session after restart, ended it, and confirmed card count 0 after refresh. Screenshots were captured before restart, after restart, and after ending."
+        - cmd: "Playwright-driven cleanup regression against rebuilt core dist"
+          status: pass
+          summary: "Created local test-repo deployment 99 for issuectl-test-repo#152, ended it through Workbench, confirmed card count 0, tmux has-session exit status 1, and no ttyd listener on port 7700."
+        - cmd: "pnpm --filter @issuectl/core build"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/core test -- src/launch/ttyd.test.ts"
+          status: pass
+          output: "53 passed"
+        - cmd: "pnpm --filter @issuectl/core typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "curl -sS -I http://localhost:3847/workbench | head -n 1"
+          status: pass
+          output: "HTTP/1.1 200 OK"
+        - cmd: "test -f docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-before.png && test -f docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-after.png && test -f docs/qa/workbench-artifacts/workbench-session-workflow-06-restart-ended.png"
+          status: pass
+      summary: "Closed Judge gaps. Canonicalized previous live screenshots into docs/qa/workbench-artifacts, drove workflow 06 with an active local issue-backed test deployment across a real web app restart, and fixed the cleanup leak found during QA by making killTtyd escalate to SIGKILL when ttyd remains alive after SIGTERM."
+      side_effects:
+        - "Used synthetic local deployments 98 and 99 tied to mean-weasel/issuectl-test-repo#152; both were ended and no active test session was left behind."
+        - "No new GitHub issue launch or autonomous agent run was created during T009."
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Run final verification and prepare the branch for code review if Judge approves lifecycle coverage."
+    inputs:
+      - "T007 approved receipt"
+      - "Current branch"
+    constraints:
+      - "Only activate after T007 approves."
+      - "Do not merge."
+      - "Do not create PR unless the operator asks during /goal execution or prior repo practice already authorizes it."
+    allowed_files:
+      - "docs/qa/workbench-session-workflows/**"
+      - "docs/qa/workbench-artifacts/**"
+      - "packages/web/**"
+      - "packages/core/**"
+    verify:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "git diff --check"
+    stop_if:
+      - "Verification fails."
+      - "Unrelated dirty files make review unsafe."
+      - "PR creation requires owner approval not already present."
+    expected_output:
+      - "Final verification commands and pass/fail results."
+      - "Review-ready summary."
+      - "Open questions or follow-ups."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/workbench-session-lifecycle/state.yaml"
+        - "packages/core/src/launch/ttyd.ts"
+        - "packages/core/src/launch/ttyd.test.ts"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/workbench-api.ts"
+      commands:
+        - cmd: "pnpm --filter @issuectl/web typecheck"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/core typecheck && pnpm --filter @issuectl/core test -- src/launch/ttyd.test.ts"
+          status: pass
+          output: "Core typecheck passed; ttyd.test.ts 53 passed."
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+          status: fail_then_pass
+          output: "First run: 27 passed, 1 skipped, 1 navigation timeout in final test before behavior assertion. Rerun: 28 passed, 1 skipped."
+        - cmd: "Local active deployment/process cleanup check"
+          status: pass
+          output: "No active deployments, no tmux sessions, and no listener on port 7700 after T009/T008."
+      summary: "Final verification is review-ready. Web and core typechecks pass, core ttyd cleanup tests pass, diff hygiene passes, and the full Workbench e2e suite passed on rerun after one transient navigation timeout."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether Workbench session lifecycle hardening satisfies the original dogfood recovery outcome."
+    inputs:
+      - "All done task receipts"
+      - "Latest verification"
+      - "Current dirty diff"
+      - "Workflow artifacts"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any required Worker remains queued or active."
+      - "Reject completion if stale #152-style reconnect behavior lacks test/manual proof."
+      - "Reject completion if launch, return, reconnect, end, stale, refresh, and restart flows are not all mapped to evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence map by workflow"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: complete
+      full_outcome_complete: true
+      summary: "Workbench session lifecycle hardening satisfies the original dogfood recovery outcome. The stale #152-style card/reconnect failure is covered by failing-then-passing Playwright tests, live/synthetic QA receipts, and final verification. Launch, return, reconnect, end, stale cleanup, refresh, restart, and process cleanup all map to evidence."
+      evidence_map:
+        - workflow: "01-create-issue-session"
+          evidence: "Live #152 issue-backed launch created deployment 97; e2e launch selected-context test passes."
+        - workflow: "02-return-to-active-session"
+          evidence: "Live #152 reopen showed terminal iframe; refresh and session-card e2e coverage passes."
+        - workflow: "03-reconnect-stopped-ttyd"
+          evidence: "Live reconnect opened terminal with tmux alive; mocked reconnect e2e passes."
+        - workflow: "04-end-session-cancel-confirm"
+          evidence: "Live cancel made 0 end requests and 0 navigations; confirm End removed card and ended backend/tmux state; e2e cancel and confirm tests pass."
+        - workflow: "05-stale-deployment-reconciliation"
+          evidence: "Stale reconnect and stale selected-terminal e2e tests now pass; previously stale #152 card absent after refresh."
+        - workflow: "06-web-app-restart"
+          evidence: "Synthetic local test-repo deployment 98 survived a real web-server restart and reopened into terminal; screenshots before/after/end are in docs/qa/workbench-artifacts."
+        - workflow: "07-session-regression-matrix"
+          evidence: "Full Workbench e2e suite passed on rerun: 28 passed, 1 skipped."
+        - workflow: "process cleanup"
+          evidence: "T009 found and fixed lingering ttyd after End. Rebuilt live app cleanup check shows no active deployments, no tmux sessions, and no listener on port 7700."
+      final_verification:
+        - "pnpm --filter @issuectl/web typecheck: pass"
+        - "pnpm --filter @issuectl/core typecheck: pass"
+        - "pnpm --filter @issuectl/core test -- src/launch/ttyd.test.ts: 53 passed"
+        - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium: first run had one navigation timeout; rerun passed with 28 passed, 1 skipped"
+        - "git diff --check: pass"
+        - "npx goalbuddy doctor --target codex --goal-ready: ready true"
+      remaining_followups:
+        - "T005 backend typed-status contract remains optional follow-up and was not required for the completed stale-card recovery tranche."
+      missing_evidence: []
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T008
+    commands:
+      - "pnpm --filter @issuectl/web typecheck"
+      - "pnpm --filter @issuectl/core typecheck"
+      - "pnpm --filter @issuectl/core test -- src/launch/ttyd.test.ts"
+      - "pnpm --filter @issuectl/web test:e2e -- e2e/workbench.spec.ts --project=desktop-chromium"
+      - "git diff --check"

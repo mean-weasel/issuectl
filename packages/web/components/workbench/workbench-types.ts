@@ -1,5 +1,6 @@
 import type {
   ActiveDeploymentWithRepo,
+  Deployment,
   IssuePriority,
   LaunchAgent,
   Priority,
@@ -25,7 +26,7 @@ export type WorkbenchUser = {
 
 export type WorkbenchPreview = SessionPreview;
 
-export type WorkbenchDeployment = ActiveDeploymentWithRepo;
+export type WorkbenchDeployment = (Deployment & { owner: string; repoName: string }) | ActiveDeploymentWithRepo;
 
 export type WorkbenchIssueSummary = {
   number: number;
