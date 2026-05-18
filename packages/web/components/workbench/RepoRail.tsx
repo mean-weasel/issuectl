@@ -1,5 +1,5 @@
 import type { WorkbenchRepo } from "./workbench-types";
-import { compactRepoInitials, repoRailBadgeCount } from "./workbench-state";
+import { compactRepoInitials, repoRailBadgeCount } from "./workbench-selectors";
 import styles from "./WorkbenchShell.module.css";
 
 type Props = {

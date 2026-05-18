@@ -25,6 +25,10 @@ import { TerminalFocus } from "./TerminalFocus";
 import { endDeploymentSession, ensureDeploymentTtyd, fetchWorkbench, isStaleEnsureTtydResult } from "./workbench-api";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchPayload, WorkbenchRepo, WorkbenchSettings } from "./workbench-types";
 import {
+  selectedDeployment as resolveSelectedDeployment,
+  selectedRepo as resolveSelectedRepo,
+} from "./workbench-selectors";
+import {
   type IssueQueueFilter,
   type SessionSortMode,
   type WorkbenchColumnKey,
@@ -35,8 +39,6 @@ import {
   WORKBENCH_COLUMN_WIDTH_LIMITS,
   WORKBENCH_COLUMN_WIDTH_STORAGE_KEY,
   type WorkbenchMode,
-  selectedDeployment as resolveSelectedDeployment,
-  selectedRepo as resolveSelectedRepo,
   sidePaneWidthsApply,
   workbenchReducer,
 } from "./workbench-state";

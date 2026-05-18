@@ -1,111 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  checksSummary,
+  errorMessage,
+  linkedIssueNumber,
+  requestJson,
+  type ListResponse,
+  type PullDetail,
+  type PullSummary,
+} from "./pull-requests-data";
+import { cardStyle, fieldStyle, panelStyle, rowStyle, textareaStyle } from "./pull-requests-styles";
 import type { WorkbenchPayload } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
 type Props = {
   selectedRepo: WorkbenchPayload["repos"][number] | null;
 };
-
-type ChecksStatus = "success" | "failure" | "pending" | null;
-
-type PullSummary = {
-  number: number;
-  title: string;
-  body: string | null;
-  state: "open" | "closed";
-  draft: boolean;
-  merged: boolean;
-  user: { login: string; avatarUrl: string } | null;
-  headRef: string;
-  baseRef: string;
-  additions: number;
-  deletions: number;
-  changedFiles: number;
-  createdAt: string;
-  updatedAt: string;
-  mergedAt: string | null;
-  closedAt: string | null;
-  htmlUrl: string;
-  checksStatus?: ChecksStatus;
-};
-
-type PullDetail = {
-  pull: PullSummary;
-  checks: Array<{
-    name: string;
-    status: string;
-    conclusion: string | null;
-    htmlUrl: string | null;
-  }>;
-  files: Array<{
-    filename: string;
-    status: string;
-    additions: number;
-    deletions: number;
-  }>;
-  linkedIssue: {
-    number: number;
-    title: string;
-    state: "open" | "closed";
-    htmlUrl: string;
-  } | null;
-  reviews: Array<{
-    id: number;
-    state: string;
-    body: string;
-    user: { login: string; avatarUrl: string } | null;
-  }>;
-};
-
-type ListResponse = {
-  pulls: PullSummary[];
-  fromCache?: boolean;
-  cachedAt?: string | null;
-};
-
-const panelStyle = {
-  display: "grid",
-  gap: "16px",
-  maxWidth: "980px",
-} satisfies CSSProperties;
-
-const rowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  flexWrap: "wrap",
-} satisfies CSSProperties;
-
-const cardStyle = {
-  display: "grid",
-  gap: "12px",
-  padding: "14px",
-  border: "1px solid var(--paper-line)",
-  borderRadius: "var(--paper-radius-md)",
-  background: "rgba(255, 255, 255, 0.22)",
-} satisfies CSSProperties;
-
-const fieldStyle = {
-  display: "grid",
-  gap: "7px",
-  color: "var(--paper-ink-muted)",
-  font: "700 10px var(--paper-mono)",
-  textTransform: "uppercase",
-} satisfies CSSProperties;
-
-const textareaStyle = {
-  minHeight: "82px",
-  padding: "8px 10px",
-  border: "1px solid var(--paper-line)",
-  borderRadius: "var(--paper-radius-sm)",
-  background: "rgba(255, 255, 255, 0.28)",
-  color: "var(--paper-ink)",
-  font: "14px var(--paper-serif)",
-  textTransform: "none",
-  resize: "vertical",
-} satisfies CSSProperties;
 
 export function PullRequestsFocus({ selectedRepo }: Props) {
   const [pulls, setPulls] = useState<PullSummary[]>([]);
@@ -359,48 +270,4 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
       </section>
     </div>
   );
-}
-
-async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  if (init.body) headers.set("Content-Type", "application/json");
-  const token = readApiToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  const response = await fetch(path, { ...init, headers });
-  const body = await response.json().catch(() => undefined);
-  if (!response.ok) {
-    const message =
-      body && typeof body === "object" && "error" in body && typeof body.error === "string"
-        ? body.error
-        : `Pull request request failed with ${response.status}`;
-    throw new Error(message);
-  }
-  return body as T;
-}
-
-function linkedIssueNumber(body: string | null): number | null {
-  if (!body) return null;
-  const match = body.match(/(?:closes|fixes|resolves)\s+(?:[\w.-]+\/[\w.-]+)?#(\d+)/i);
-  return match ? Number(match[1]) : null;
-}
-
-function checksSummary(checks: PullDetail["checks"]): string {
-  if (checks.length === 0) return "none";
-  const failed = checks.filter((check) => check.conclusion === "failure").length;
-  const pending = checks.filter((check) => check.status !== "completed").length;
-  if (failed > 0) return `${failed} failing`;
-  if (pending > 0) return `${pending} pending`;
-  return "success";
-}
-
-function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error ? err.message : fallback;
-}
-
-function readApiToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("issuectl.apiToken")
-    ?? window.localStorage.getItem("issuectlApiToken");
 }

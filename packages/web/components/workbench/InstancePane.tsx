@@ -1,8 +1,7 @@
 import type { WorkbenchDeployment, WorkbenchRepo } from "./workbench-types";
+import { previewForDeployment, sortDeploymentSessions } from "./workbench-selectors";
 import {
   type SessionSortMode,
-  previewForDeployment,
-  sortDeploymentSessions,
 } from "./workbench-state";
 import styles from "./WorkbenchShell.module.css";
 
