@@ -1,9 +1,7 @@
 import type { WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
+import { deploymentForIssue, filterIssueQueue, issueQueueCounts } from "./workbench-selectors";
 import {
   type IssueQueueFilter,
-  deploymentForIssue,
-  filterIssueQueue,
-  issueQueueCounts,
 } from "./workbench-state";
 import styles from "./WorkbenchShell.module.css";
 

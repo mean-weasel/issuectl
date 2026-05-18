@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { WorkbenchPayload, WorkbenchRepo } from "./workbench-types";
 import {
-  DEFAULT_WORKBENCH_COLUMN_WIDTHS,
-  WORKBENCH_COLUMN_WIDTH_LIMITS,
-  clampWorkbenchColumnWidths,
   compactRepoInitials,
-  createWorkbenchState,
   filterIssueQueue,
   issueQueueCounts,
   repoRailBadgeCount,
   selectedRepo,
-  sidePaneWidthsApply,
   sortDeploymentSessions,
+} from "./workbench-selectors";
+import {
+  DEFAULT_WORKBENCH_COLUMN_WIDTHS,
+  WORKBENCH_COLUMN_WIDTH_LIMITS,
+  clampWorkbenchColumnWidths,
+  createWorkbenchState,
+  sidePaneWidthsApply,
   workbenchReducer,
 } from "./workbench-state";
 
