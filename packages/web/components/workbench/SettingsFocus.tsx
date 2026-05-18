@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { WorkbenchSectionCollapseState, WorkbenchSectionId } from "./workbench-state";
 import type { WorkbenchHealth, WorkbenchPayload, WorkbenchSettings, WorkbenchUser } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
@@ -97,23 +97,23 @@ export function SettingsFocus({ payload, collapsedSections, onToggleSection, onS
       >
         <dl className={styles.settingsSummaryGrid}>
           <div>
-            <dt style={labelStyle}>Server</dt>
+            <dt>Server</dt>
             <dd>{health.ok ? "ok" : "unavailable"}</dd>
           </div>
           <div>
-            <dt style={labelStyle}>User</dt>
+            <dt>User</dt>
             <dd>{user.login ?? user.error ?? "unknown"}</dd>
           </div>
           <div>
-            <dt style={labelStyle}>Tracked repos</dt>
+            <dt>Tracked repos</dt>
             <dd>{payload.repos.length}</dd>
           </div>
           <div>
-            <dt style={labelStyle}>Version</dt>
+            <dt>Version</dt>
             <dd>{health.version ?? "unknown"}</dd>
           </div>
         </dl>
-        {health.error && <p role="alert" style={errorStyle}>{health.error}</p>}
+        {health.error && <p role="alert" className={styles.workbenchError}>{health.error}</p>}
       </SettingsSection>
 
       <SettingsSection
@@ -151,8 +151,8 @@ export function SettingsFocus({ payload, collapsedSections, onToggleSection, onS
         </button>
       </SettingsSection>
 
-      {status && <p role="status" style={statusStyle}>{status}</p>}
-      {error && <p role="alert" style={errorStyle}>{error}</p>}
+      {status && <p role="status" className={styles.workbenchStatus}>{status}</p>}
+      {error && <p role="alert" className={styles.workbenchError}>{error}</p>}
     </div>
   );
 }
@@ -177,7 +177,7 @@ function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section className={styles.collapsibleSection} style={sectionStyle}>
+    <section className={`${styles.collapsibleSection} ${styles.settingsSection}`}>
       <button
         type="button"
         className={styles.collapsibleHeader}
@@ -190,7 +190,7 @@ function SettingsSection({
         <span aria-hidden="true">v</span>
       </button>
       <div id={id} className={styles.collapsibleBody} aria-label={bodyLabel} hidden={collapsed}>
-        <h2 style={headingStyle}>{title}</h2>
+        <h2>{title}</h2>
         {children}
       </div>
     </section>
@@ -240,35 +240,3 @@ function readApiToken(): string | null {
   return window.localStorage.getItem("issuectl.apiToken")
     ?? window.localStorage.getItem("issuectlApiToken");
 }
-
-const sectionStyle = {
-  display: "grid",
-  gap: 12,
-  marginTop: 22,
-  padding: 16,
-  border: "1px solid var(--paper-line)",
-  borderRadius: "var(--paper-radius-md)",
-  background: "rgba(255, 255, 255, 0.2)",
-} satisfies CSSProperties;
-
-const headingStyle = {
-  fontFamily: "var(--paper-serif)",
-  fontSize: 20,
-  fontWeight: 500,
-} satisfies CSSProperties;
-
-const labelStyle = {
-  color: "var(--paper-ink-muted)",
-  font: "700 10px var(--paper-mono)",
-  textTransform: "uppercase",
-} satisfies CSSProperties;
-
-const statusStyle = {
-  marginTop: 14,
-  color: "var(--paper-accent)",
-} satisfies CSSProperties;
-
-const errorStyle = {
-  marginTop: 14,
-  color: "#9f1d12",
-} satisfies CSSProperties;
