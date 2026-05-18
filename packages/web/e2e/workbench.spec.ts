@@ -659,6 +659,14 @@ test("keeps compact workbench layouts usable on tablet and mobile", async ({ pag
     await expect(page.getByLabel("Parse text")).toHaveValue("Fix compact workbench layout");
     await expectNoHorizontalPageScroll(page);
     await expectWorkbenchFitsViewport(page);
+
+    await nav.getByRole("button", { name: "Board" }).click();
+    await expect(page).toHaveURL(new RegExp("/workbench/board"));
+    await expect(page.getByRole("heading", { name: "Cross-repo board" })).toBeVisible();
+    await expect(page.getByLabel("Cross-repo board")).toBeVisible();
+    await expectNoHorizontalPageScroll(page);
+    await expectWorkbenchFitsViewport(page);
+    await expectBoardScrollsHorizontally(page);
   }
 });
 
@@ -2268,6 +2276,28 @@ async function expectBoardColumnWidths(page: import("@playwright/test").Page, mi
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThanOrEqual(minimumWidth);
     expect(box!.x).toBeGreaterThanOrEqual(focusBox!.x - 2);
+  }
+}
+
+async function expectBoardScrollsHorizontally(page: import("@playwright/test").Page) {
+  const board = page.getByLabel("Cross-repo board");
+  await expect(board).toBeVisible();
+  await expect(board).toHaveAttribute("role", "region");
+  await expect.poll(async () => board.evaluate((element) => getComputedStyle(element).overflowX))
+    .toBe("auto");
+  await board.focus();
+  await expect(board).toBeFocused();
+  if ((page.viewportSize()?.width ?? 0) <= 768) {
+    await expect.poll(async () => board.evaluate((element) => element.scrollWidth - element.clientWidth))
+      .toBeGreaterThan(0);
+    await board.evaluate((element) => {
+      element.scrollLeft = 0;
+    });
+    await board.evaluate((element) => {
+      element.scrollLeft = 96;
+    });
+    await expect.poll(async () => board.evaluate((element) => element.scrollLeft))
+      .toBeGreaterThan(0);
   }
 }
 

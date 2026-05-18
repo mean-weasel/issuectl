@@ -1258,6 +1258,24 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+.boardFocus {
+  max-width: none;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.boardScroll {
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(190px, 1fr));
+  gap: 12px;
+  min-height: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 12px;
+}
+
 .focusInner h1 {
   margin-bottom: 10px;
   font-size: 34px;
@@ -1577,6 +1595,10 @@
   .settingsSummaryGrid,
   .settingsFormGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .boardScroll {
+    grid-template-columns: repeat(4, minmax(190px, 82vw));
   }
 }
 
