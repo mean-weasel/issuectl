@@ -1195,6 +1195,69 @@
   padding: 42px;
 }
 
+.settingsSummaryGrid,
+.settingsFormGrid {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: 12px;
+}
+
+.settingsSummaryGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settingsFormGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workbenchField {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  color: var(--paper-ink-muted);
+  font: 700 10px var(--paper-mono);
+  text-transform: uppercase;
+}
+
+.workbenchInput {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--paper-ink);
+  font: 13px var(--paper-serif);
+  text-transform: none;
+}
+
+.quickCreatePanel {
+  min-width: 0;
+  width: 100%;
+  max-width: 920px;
+  box-sizing: border-box;
+  display: grid;
+  gap: 16px;
+}
+
+.quickCreateCard {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .focusInner h1 {
   margin-bottom: 10px;
   font-size: 34px;
@@ -1507,6 +1570,13 @@
 
   .issueFocusGrid button {
     width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .settingsSummaryGrid,
+  .settingsFormGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

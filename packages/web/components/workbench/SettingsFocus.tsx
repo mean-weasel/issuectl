@@ -95,7 +95,7 @@ export function SettingsFocus({ payload, collapsedSections, onToggleSection, onS
         section="settingsHealth"
         onToggle={onToggleSection}
       >
-        <dl style={summaryGridStyle}>
+        <dl className={styles.settingsSummaryGrid}>
           <div>
             <dt style={labelStyle}>Server</dt>
             <dd>{health.ok ? "ok" : "unavailable"}</dd>
@@ -125,17 +125,17 @@ export function SettingsFocus({ payload, collapsedSections, onToggleSection, onS
         section="settingsLaunchDefaults"
         onToggle={onToggleSection}
       >
-        <div style={formGridStyle}>
+        <div className={styles.settingsFormGrid}>
           <SettingInput label="Branch pattern" value={settings.branch_pattern} onChange={(value) => updateSetting("branch_pattern", value)} />
           <SettingInput label="Cache TTL" value={settings.cache_ttl} onChange={(value) => updateSetting("cache_ttl", value)} />
           <SettingInput label="Worktree directory" value={settings.worktree_dir} onChange={(value) => updateSetting("worktree_dir", value)} />
-          <label style={fieldStyle}>
+          <label className={styles.workbenchField}>
             <span>Launch agent</span>
             <select
               aria-label="Launch agent"
               value={settings.launch_agent ?? "codex"}
               onChange={(event) => updateSetting("launch_agent", event.target.value)}
-              style={inputStyle}
+              className={styles.workbenchInput}
             >
               <option value="codex">Codex</option>
               <option value="claude">Claude Code</option>
@@ -207,13 +207,13 @@ function SettingInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <label style={fieldStyle}>
+    <label className={styles.workbenchField}>
       <span>{label}</span>
       <input
         aria-label={label}
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
-        style={inputStyle}
+        className={styles.workbenchInput}
         autoComplete="off"
       />
     </label>
@@ -257,41 +257,10 @@ const headingStyle = {
   fontWeight: 500,
 } satisfies CSSProperties;
 
-const summaryGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 12,
-} satisfies CSSProperties;
-
-const formGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 12,
-} satisfies CSSProperties;
-
-const fieldStyle = {
-  display: "grid",
-  gap: 6,
-  color: "var(--paper-ink-muted)",
-  font: "700 10px var(--paper-mono)",
-  textTransform: "uppercase",
-} satisfies CSSProperties;
-
 const labelStyle = {
   color: "var(--paper-ink-muted)",
   font: "700 10px var(--paper-mono)",
   textTransform: "uppercase",
-} satisfies CSSProperties;
-
-const inputStyle = {
-  minHeight: 38,
-  padding: "0 10px",
-  border: "1px solid var(--paper-line)",
-  borderRadius: "var(--paper-radius-sm)",
-  background: "rgba(255, 255, 255, 0.28)",
-  color: "var(--paper-ink)",
-  font: "13px var(--paper-serif)",
-  textTransform: "none",
 } satisfies CSSProperties;
 
 const statusStyle = {

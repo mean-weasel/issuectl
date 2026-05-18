@@ -29,46 +29,6 @@ type Props = {
   selectedRepo: WorkbenchPayload["repos"][number] | null;
 };
 
-const panelStyle = {
-  display: "grid",
-  gap: "16px",
-  maxWidth: "920px",
-} satisfies CSSProperties;
-
-const fieldStyle = {
-  display: "grid",
-  gap: "7px",
-  color: "var(--paper-ink-muted)",
-  font: "700 10px var(--paper-mono)",
-  textTransform: "uppercase",
-} satisfies CSSProperties;
-
-const inputStyle = {
-  minHeight: "38px",
-  padding: "8px 10px",
-  border: "1px solid var(--paper-line)",
-  borderRadius: "var(--paper-radius-sm)",
-  background: "rgba(255, 255, 255, 0.28)",
-  color: "var(--paper-ink)",
-  font: "14px var(--paper-serif)",
-  textTransform: "none",
-} satisfies CSSProperties;
-
-const textareaStyle = {
-  ...inputStyle,
-  minHeight: "132px",
-  resize: "vertical",
-} satisfies CSSProperties;
-
-const cardStyle = {
-  display: "grid",
-  gap: "12px",
-  padding: "14px",
-  border: "1px solid var(--paper-line)",
-  borderRadius: "var(--paper-radius-md)",
-  background: "rgba(255, 255, 255, 0.22)",
-} satisfies CSSProperties;
-
 const rowStyle = {
   display: "flex",
   alignItems: "center",
@@ -216,7 +176,7 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
   }
 
   return (
-    <div className={styles.focusInner} style={panelStyle}>
+    <div className={`${styles.focusInner} ${styles.quickCreatePanel}`}>
       <div>
         <p className={styles.kicker}>Quick Create</p>
         <h1>Quick Create</h1>
@@ -225,12 +185,13 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
         </p>
       </div>
 
-      <section aria-label="Parse issue text" style={cardStyle}>
-        <label style={fieldStyle}>
+      <section aria-label="Parse issue text" className={styles.quickCreateCard}>
+        <label className={styles.workbenchField}>
           Parse text
           <textarea
             aria-label="Parse text"
-            style={textareaStyle}
+            className={styles.workbenchInput}
+            style={{ minHeight: 132, resize: "vertical" }}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Fix login timeout in issuectl. Also add keyboard shortcuts to the workbench."
@@ -259,8 +220,8 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
               key={card.id}
               aria-label={`Candidate issue ${index + 1}`}
               data-state={card.accepted ? "accepted" : "rejected"}
+              className={styles.quickCreateCard}
               style={{
-                ...cardStyle,
                 opacity: card.accepted ? 1 : 0.64,
                 borderColor: card.accepted ? "var(--paper-accent)" : "var(--paper-line)",
               }}
@@ -275,20 +236,20 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
                   {card.accepted ? "Reject" : "Accept"}
                 </button>
               </div>
-              <label style={fieldStyle}>
+              <label className={styles.workbenchField}>
                 Title
                 <input
                   aria-label={`Candidate ${index + 1} title`}
-                  style={inputStyle}
+                  className={styles.workbenchInput}
                   value={card.title}
                   onChange={(event) => updateCard(card.id, { title: event.target.value })}
                 />
               </label>
-              <label style={fieldStyle}>
+              <label className={styles.workbenchField}>
                 Repository
                 <select
                   aria-label={`Candidate ${index + 1} repository`}
-                  style={inputStyle}
+                  className={styles.workbenchInput}
                   value={card.owner && card.repo ? `${card.owner}/${card.repo}` : ""}
                   onChange={(event) => {
                     const [owner = "", repo = ""] = event.target.value.split("/");
@@ -303,11 +264,12 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
                   ))}
                 </select>
               </label>
-              <label style={fieldStyle}>
+              <label className={styles.workbenchField}>
                 Body
                 <textarea
                   aria-label={`Candidate ${index + 1} body`}
-                  style={{ ...textareaStyle, minHeight: "84px" }}
+                  className={styles.workbenchInput}
+                  style={{ minHeight: 84, resize: "vertical" }}
                   value={card.body}
                   onChange={(event) => updateCard(card.id, { body: event.target.value })}
                 />
@@ -327,7 +289,7 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
       )}
 
       {result && (
-        <section aria-label="Quick create results" style={cardStyle}>
+        <section aria-label="Quick create results" className={styles.quickCreateCard}>
           <strong>
             {result.created} created, {result.drafted} drafted, {result.failed} failed
           </strong>
@@ -343,34 +305,35 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
         </section>
       )}
 
-      <section aria-label="Draft fallback" style={cardStyle}>
+      <section aria-label="Draft fallback" className={styles.quickCreateCard}>
         <div>
           <h2>Draft fallback</h2>
           <p className={styles.muted}>Save unclear work locally, revise it, then assign it to the selected repo.</p>
         </div>
-        <label style={fieldStyle}>
+        <label className={styles.workbenchField}>
           Draft title
           <input
             aria-label="Draft title"
-            style={inputStyle}
+            className={styles.workbenchInput}
             value={draft.title}
             onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
           />
         </label>
-        <label style={fieldStyle}>
+        <label className={styles.workbenchField}>
           Draft body
           <textarea
             aria-label="Draft body"
-            style={{ ...textareaStyle, minHeight: "86px" }}
+            className={styles.workbenchInput}
+            style={{ minHeight: 86, resize: "vertical" }}
             value={draft.body}
             onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))}
           />
         </label>
-        <label style={fieldStyle}>
+        <label className={styles.workbenchField}>
           Priority
           <select
             aria-label="Draft priority"
-            style={inputStyle}
+            className={styles.workbenchInput}
             value={draft.priority}
             onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value as Priority }))}
           >
@@ -379,11 +342,11 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
             <option value="high">high</option>
           </select>
         </label>
-        <label style={fieldStyle}>
+        <label className={styles.workbenchField}>
           Assign labels
           <input
             aria-label="Draft labels"
-            style={inputStyle}
+            className={styles.workbenchInput}
             value={draft.labels}
             onChange={(event) => setDraft((current) => ({ ...current, labels: event.target.value }))}
             placeholder="bug, workbench"
