@@ -871,6 +871,101 @@ test("preserves compact repo-scoped mode while switching repos from deep links",
   await expectWorkbenchFitsViewport(page);
 });
 
+test("keeps compact issue mutations and session navigation coherent end to end", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  const requests: Array<{ method: string; url: string; body: unknown }> = [];
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    const request = route.request();
+    if (request.method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512/priority", async (route) => {
+    const request = route.request();
+    const body = await request.postDataJSON();
+    requests.push({ method: request.method(), url: request.url(), body });
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(request.method()).toBe("PUT");
+    expect(body).toEqual({ priority: "normal" });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, priority: "normal" }),
+    });
+  });
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512/comments", async (route) => {
+    const request = route.request();
+    const body = await request.postDataJSON();
+    requests.push({ method: request.method(), url: request.url(), body });
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(request.method()).toBe("POST");
+    expect(body).toEqual({ body: "Compact workflow comment" });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, commentId: 9901 }),
+    });
+  });
+
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    const request = route.request();
+    requests.push({ method: request.method(), url: request.url(), body: request.postData() });
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(request.method()).toBe("POST");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl #512");
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Repo issues" })).toHaveCount(0);
+
+  const issueActions = page.getByLabel("Issue actions");
+  await expect(issueActions).toBeVisible();
+  await issueActions.getByLabel("Priority").selectOption("normal");
+  await expect(page.getByRole("status")).toContainText("Priority updated");
+  await expect(page.getByLabel("Workbench focus")).toContainText("#512 Desktop instance manager workbench");
+  await expect(page.getByLabel("Workbench focus")).toContainText("normal");
+
+  await issueActions.getByLabel("Comment", { exact: true }).fill("Compact workflow comment");
+  await issueActions.getByRole("button", { name: "Add comment" }).click();
+  await expect(page.getByRole("status")).toContainText("Comment added");
+  await expect(issueActions.getByLabel("Comment", { exact: true })).toHaveValue("");
+
+  await page.getByLabel("Issue detail metadata").getByRole("button", { name: "Jump to session" }).click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl&deployment=101$/);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl #447 terminal");
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await expect(page.frameLocator('iframe[title="Terminal for issue 447"]').getByText("terminal ready")).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to overview" }).click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByLabel("Compact active sessions")).toBeVisible();
+  await expect(page.getByLabel("Compact repo issues")).toBeVisible();
+  await expect(page.getByLabel("Issue #512")).toContainText("normal");
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+
+  expect(requests.some((item) => item.url.includes("/priority") && item.method === "PUT")).toBe(true);
+  expect(requests.some((item) => item.url.includes("/comments") && item.method === "POST")).toBe(true);
+  expect(requests.some((item) => item.url.includes("/deployments/101/ensure-ttyd") && item.method === "POST")).toBe(true);
+});
+
 test("returns compact issue and terminal focus to the workbench overview", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -2086,7 +2181,7 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await expect(page.getByRole("status")).toContainText("Title saved");
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench renamed" })).toBeVisible();
   await issueActions.getByLabel("Priority").selectOption("normal");
-  await expect(page.getByRole("status")).toContainText("Priority saved");
+  await expect(page.getByRole("status")).toContainText("Priority updated");
   await expect(page.getByLabel("Issue #512")).toContainText("normal");
   await expect(preamble).toHaveValue("Keep this launch context");
   await expect(issueActions.getByLabel("Comment", { exact: true })).toHaveValue("");
@@ -2120,7 +2215,7 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await expect(page.getByRole("heading", { name: "#612 Reassigned issue #612" })).toBeVisible();
   await page.getByRole("button", { name: "mean-weasel/issuectl" }).click();
   await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
-  await expect(page.getByLabel("Issue #512")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512")).toBeVisible();
 });
 
 test("empty repositories add action opens repo setup", async ({ page }) => {
@@ -2215,7 +2310,7 @@ test("checks worktree status and launches an issue with selected context", async
   });
 
   await gotoWorkbenchWithRetry(page);
-  await page.getByLabel("Issue #512").click();
+  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Codex", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Claude Code", { exact: true })).toBeVisible();
