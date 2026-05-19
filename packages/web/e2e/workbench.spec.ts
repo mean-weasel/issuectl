@@ -1543,6 +1543,108 @@ test("keeps compact issue mutations and session navigation coherent end to end",
   expect(requests.some((item) => item.url.includes("/deployments/101/ensure-ttyd") && item.method === "POST")).toBe(true);
 });
 
+test("preserves compact issue and terminal context across keyboard navigation history and reload", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  const requests: Array<{ method: string; url: string; body: unknown }> = [];
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    const request = route.request();
+    if (request.method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512/comments", async (route) => {
+    const request = route.request();
+    const body = await request.postDataJSON();
+    requests.push({ method: request.method(), url: request.url(), body });
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(request.method()).toBe("POST");
+    expect(body).toEqual({ body: "History context comment" });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, commentId: 9902 }),
+    });
+  });
+
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    const request = route.request();
+    requests.push({ method: request.method(), url: request.url(), body: request.postData() });
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(request.method()).toBe("POST");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+
+  const focusPane = page.getByLabel("Workbench focus");
+  const issueActions = page.getByLabel("Issue actions");
+  await issueActions.getByLabel("Comment", { exact: true }).fill("History context comment");
+  await issueActions.getByRole("button", { name: "Add comment" }).click();
+  await expect(page.getByRole("status")).toContainText("Comment added");
+  await expect(issueActions.getByLabel("Comment", { exact: true })).toHaveValue("");
+
+  const jumpToSession = page.getByLabel("Issue detail metadata").getByRole("button", { name: "Jump to session" });
+  await jumpToSession.focus();
+  await expect(jumpToSession).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl&deployment=101$/);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl #447 terminal");
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expect.poll(() => focusPane.evaluate((element) => Math.round(element.scrollTop))).toBe(0);
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await expect(page.frameLocator('iframe[title="Terminal for issue 447"]').getByText("terminal ready")).toBeVisible();
+  await testInfo.attach("compact-terminal-after-keyboard-jump", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl&issue=512$/);
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expect(issueActions).toBeVisible();
+
+  await page.goForward();
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl&deployment=101$/);
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+
+  await page
+    .getByRole("navigation", { name: "Workbench navigation" })
+    .getByRole("button", { name: "Workbench", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByLabel("Compact active sessions")).toBeVisible();
+  await expect(page.getByLabel("Compact repo issues")).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expectCompactWorkbenchViewport(page);
+  await testInfo.attach("compact-overview-after-history-reload", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  expect(requests.some((item) => item.url.includes("/comments") && item.method === "POST")).toBe(true);
+  expect(requests.some((item) => item.url.includes("/deployments/101/ensure-ttyd") && item.method === "POST")).toBe(true);
+});
+
 test("returns compact issue and terminal focus to the workbench overview", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
