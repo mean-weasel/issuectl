@@ -217,12 +217,23 @@ export function WorkbenchShell({
   } as CSSProperties;
 
   function selectMode(nextMode: WorkbenchMode, path: string) {
-    dispatch({ type: "selectMode", mode: nextMode });
+    const pathParams = new URLSearchParams(path.split("?")[1] ?? "");
+    if (nextMode === "workbench" && !pathParams.has("issue") && !pathParams.has("deployment")) {
+      dispatch({
+        type: "applyUrlSelection",
+        mode: nextMode,
+        repoId: selectedRepo?.id ?? selection.selectedRepoId,
+        issueNumber: null,
+        deploymentId: null,
+      });
+    } else {
+      dispatch({ type: "selectMode", mode: nextMode });
+    }
     if (sidePaneWidthsApply(nextMode)) {
       setDrawerCollapse({ instances: false, issues: false });
     }
     window.history.pushState(null, "", path);
-    setRepoSetupRequested(new URLSearchParams(path.split("?")[1] ?? "").get("repoSetup") === "1");
+    setRepoSetupRequested(pathParams.get("repoSetup") === "1");
   }
 
   function modePathWithRepo(path: string): string {
