@@ -778,6 +778,7 @@ export function WorkbenchShell({
             }}
             onIssueUpdated={updateIssue}
             onIssueReassigned={focusReassignedIssue}
+            onSelectDeployment={selectDeployment}
             onSelectIssue={selectIssue}
             onGlobalIssueSelected={selectGlobalIssue}
             onSessionLaunched={addLaunchedSession}
@@ -857,6 +858,7 @@ function FocusContent({
   onRefresh,
   onIssueUpdated,
   onIssueReassigned,
+  onSelectDeployment,
   onSelectIssue,
   onGlobalIssueSelected,
   onSessionLaunched,
@@ -885,6 +887,7 @@ function FocusContent({
   onRefresh: () => void;
   onIssueUpdated: (repoId: number, issueNumber: number, patch: Partial<WorkbenchIssueSummary>) => void;
   onIssueReassigned: (result: { owner: string; repo: string; issueNumber: number }) => void;
+  onSelectDeployment: (deploymentId: number) => void;
   onSelectIssue: (issueNumber: number) => void;
   onGlobalIssueSelected: (repoId: number, issueNumber: number) => void;
   onSessionLaunched: (deployment: WorkbenchDeployment) => void;
@@ -1029,6 +1032,7 @@ function FocusContent({
         repo={selectedRepo}
         health={loadState.data.health}
         onRefresh={onRefresh}
+        onSelectDeployment={onSelectDeployment}
         onSelectIssue={onSelectIssue}
         onOpenRepoSetup={onOpenRepoSetup}
       />
