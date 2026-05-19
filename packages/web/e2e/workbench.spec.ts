@@ -1198,6 +1198,52 @@ test("keeps compact keyboard focus visible after issue and terminal shortcut act
   await expectCompactWorkbenchViewport(page);
 });
 
+test("restores compact overview scroll after opening an issue detail", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  const focus = page.getByLabel("Workbench focus");
+  await expect(focus).toBeFocused();
+  await focus.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect.poll(() => focus.evaluate((element) => element.scrollTop)).toBeGreaterThan(150);
+
+  const issueShortcut = page.getByLabel("Compact repo issues")
+    .getByLabel("Issue #512")
+    .getByRole("button", { name: "Open issue" });
+  await issueShortcut.scrollIntoViewIfNeeded();
+  const overviewScroll = await focus.evaluate((element) => element.scrollTop);
+  expect(overviewScroll).toBeGreaterThan(150);
+
+  await issueShortcut.click();
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expect.poll(() => focus.evaluate((element) => element.scrollTop)).toBe(0);
+
+  await page
+    .getByRole("navigation", { name: "Workbench navigation" })
+    .getByRole("button", { name: "Workbench", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expect.poll(() => focus.evaluate((element) => element.scrollTop)).toBeGreaterThanOrEqual(overviewScroll - 2);
+  await expect(page.getByLabel("Compact repo issues").getByLabel("Issue #512")).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+});
+
 test("recovers compact unavailable terminal sessions without showing the sessions pane", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   const unavailableRepos = workbenchPayload().repos;

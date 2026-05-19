@@ -96,6 +96,7 @@ export function WorkbenchShell({
   const [resizingColumn, setResizingColumn] = useState<WorkbenchColumnKey | null>(null);
   const skipNextColumnWidthPersistRef = useRef(false);
   const focusPaneRef = useRef<HTMLElement | null>(null);
+  const compactOverviewScrollRef = useRef<Record<number, number>>({});
   const dragRef = useRef<{
     column: WorkbenchColumnKey;
     startX: number;
@@ -198,9 +199,23 @@ export function WorkbenchShell({
 
   useEffect(() => {
     const focusPane = focusPaneRef.current;
-    focusPane?.scrollTo({ top: 0, left: 0 });
+    const shouldRestoreOverviewScroll =
+      compactLayout
+      && selection.mode === "workbench"
+      && selection.selectedIssueNumber === null
+      && selection.selectedDeploymentId === null;
+    const top = shouldRestoreOverviewScroll
+      ? compactOverviewScrollRef.current[overviewScrollKey(selection.selectedRepoId)] ?? 0
+      : 0;
+    focusPane?.scrollTo({ top, left: 0 });
     focusPane?.focus({ preventScroll: true });
-  }, [selection.mode, selection.selectedDeploymentId, selection.selectedIssueNumber, selection.selectedRepoId]);
+  }, [
+    compactLayout,
+    selection.mode,
+    selection.selectedDeploymentId,
+    selection.selectedIssueNumber,
+    selection.selectedRepoId,
+  ]);
 
   const selectedRepo = resolveSelectedRepo(payload, selection);
   const selectedDeployment = selection.selectedDeploymentId === null
@@ -226,6 +241,7 @@ export function WorkbenchShell({
   } as CSSProperties;
 
   function selectMode(nextMode: WorkbenchMode, path: string) {
+    rememberCompactOverviewScroll();
     const pathParams = new URLSearchParams(path.split("?")[1] ?? "");
     if (nextMode === "workbench" && !pathParams.has("issue") && !pathParams.has("deployment")) {
       dispatch({
@@ -252,6 +268,7 @@ export function WorkbenchShell({
   }
 
   function selectRepo(repoId: number) {
+    rememberCompactOverviewScroll();
     const repo = payload?.repos.find((item) => item.id === repoId) ?? null;
     const nextMode = repoScopedMode(selection.mode) ? selection.mode : "workbench";
     dispatch({
@@ -271,6 +288,7 @@ export function WorkbenchShell({
   }
 
   function selectDeployment(deploymentId: number, deploymentOverride?: WorkbenchDeployment) {
+    rememberCompactOverviewScroll();
     const deployment = deploymentOverride
       ?? payload?.deployments.find((item) => item.id === deploymentId)
       ?? selectedRepo?.deployments.find((item) => item.id === deploymentId)
@@ -282,6 +300,7 @@ export function WorkbenchShell({
   }
 
   function selectIssue(issueNumber: number) {
+    rememberCompactOverviewScroll();
     dispatch({ type: "selectIssue", issueNumber });
     setDrawerCollapse((current) => ({ ...current, instances: true, issues: false }));
     window.history.pushState(null, "", selectedRepo ? workbenchIssueUrl(selectedRepo, issueNumber) : "/workbench");
@@ -289,6 +308,7 @@ export function WorkbenchShell({
   }
 
   function selectGlobalIssue(repoId: number, issueNumber: number) {
+    rememberCompactOverviewScroll();
     dispatch({ type: "selectRepo", repoId });
     dispatch({ type: "selectIssue", issueNumber });
     setDrawerCollapse({ instances: false, issues: false });
@@ -573,6 +593,20 @@ export function WorkbenchShell({
         error: null,
       };
     });
+  }
+
+  function rememberCompactOverviewScroll() {
+    const focusPane = focusPaneRef.current;
+    if (
+      !compactLayout
+      || !focusPane
+      || selection.mode !== "workbench"
+      || selection.selectedIssueNumber !== null
+      || selection.selectedDeploymentId !== null
+    ) {
+      return;
+    }
+    compactOverviewScrollRef.current[overviewScrollKey(selection.selectedRepoId)] = focusPane.scrollTop;
   }
 
   function toggleSection(section: WorkbenchSectionId) {
@@ -1188,6 +1222,10 @@ function withoutKey(record: Record<number, string>, key: number): Record<number,
 function columnsAreDefault(widths: Record<WorkbenchColumnKey, number>): boolean {
   return widths.instances === DEFAULT_WORKBENCH_COLUMN_WIDTHS.instances
     && widths.issues === DEFAULT_WORKBENCH_COLUMN_WIDTHS.issues;
+}
+
+function overviewScrollKey(repoId: number | null): number {
+  return repoId ?? 0;
 }
 
 type UrlSelection = {
