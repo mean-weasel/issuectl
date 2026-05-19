@@ -1,10 +1,12 @@
-import type { WorkbenchHealth, WorkbenchRepo } from "./workbench-types";
+import { previewForDeployment } from "./workbench-selectors";
+import type { WorkbenchDeployment, WorkbenchHealth, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
 type Props = {
   repo: WorkbenchRepo;
   health: WorkbenchHealth;
   onRefresh: () => void;
+  onSelectDeployment: (deploymentId: number) => void;
   onSelectIssue: (issueNumber: number) => void;
   onOpenRepoSetup: () => void;
 };
@@ -13,6 +15,7 @@ export function RepoOverviewFocus({
   repo,
   health,
   onRefresh,
+  onSelectDeployment,
   onSelectIssue,
   onOpenRepoSetup,
 }: Props) {
@@ -63,14 +66,30 @@ export function RepoOverviewFocus({
         </button>
       </div>
 
+      {repo.deployments.length > 0 && (
+        <section className={styles.overviewSessionShortcuts} aria-label="Compact active sessions">
+          <h2>Active sessions</h2>
+          <div className={styles.overviewShortcutList}>
+            {repo.deployments.map((deployment) => (
+              <OverviewSessionCard
+                key={deployment.id}
+                deployment={deployment}
+                repo={repo}
+                onSelectDeployment={onSelectDeployment}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {repo.issues.length > 0 && (
         <section className={styles.overviewIssueShortcuts} aria-label="Compact repo issues">
           <h2>Repo issues</h2>
-          <div className={styles.overviewIssueList}>
+          <div className={styles.overviewShortcutList}>
             {repo.issues.map((issue) => {
               const status = issue.state === "closed" ? "closed" : issue.hasActiveDeployment ? "running" : "open";
               return (
-                <article key={issue.number} className={styles.overviewIssueCard} aria-label={`Issue #${issue.number}`}>
+                <article key={issue.number} className={styles.overviewShortcutCard} aria-label={`Issue #${issue.number}`}>
                   <div>
                     <strong>#{issue.number}</strong>
                     <span>{status}</span>
@@ -87,5 +106,34 @@ export function RepoOverviewFocus({
         </section>
       )}
     </div>
+  );
+}
+
+function OverviewSessionCard({
+  deployment,
+  repo,
+  onSelectDeployment,
+}: {
+  deployment: WorkbenchDeployment;
+  repo: WorkbenchRepo;
+  onSelectDeployment: (deploymentId: number) => void;
+}) {
+  const issue = repo.issues.find((item) => item.number === deployment.issueNumber);
+  const preview = previewForDeployment(deployment, repo.previews);
+  const status = preview?.status ?? "running";
+  const runtimeLabel = deployment.idleSince ? "idle" : "running";
+  return (
+    <article className={styles.overviewShortcutCard} aria-label={`Session #${deployment.issueNumber}`}>
+      <div>
+        <strong>#{deployment.issueNumber}</strong>
+        <span>{deployment.agent}</span>
+        <span>{status}</span>
+      </div>
+      <h3>{issue?.title ?? "Issue session"}</h3>
+      <p>{deployment.branchName} - {runtimeLabel}</p>
+      <button type="button" onClick={() => onSelectDeployment(deployment.id)}>
+        Open terminal
+      </button>
+    </article>
   );
 }

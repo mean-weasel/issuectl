@@ -1513,22 +1513,24 @@
   flex-wrap: wrap;
 }
 
+.overviewSessionShortcuts,
 .overviewIssueShortcuts {
   display: none;
 }
 
+.overviewSessionShortcuts h2,
 .overviewIssueShortcuts h2 {
   font-family: var(--paper-serif);
   font-size: 20px;
   font-weight: 500;
 }
 
-.overviewIssueList {
+.overviewShortcutList {
   display: grid;
   gap: 10px;
 }
 
-.overviewIssueCard {
+.overviewShortcutCard {
   min-width: 0;
   display: grid;
   gap: 8px;
@@ -1538,7 +1540,7 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
-.overviewIssueCard div {
+.overviewShortcutCard div {
   min-width: 0;
   display: flex;
   gap: 6px;
@@ -1548,7 +1550,7 @@
   font: 11px var(--paper-mono);
 }
 
-.overviewIssueCard h3 {
+.overviewShortcutCard h3 {
   min-width: 0;
   color: var(--paper-ink);
   font-family: var(--paper-serif);
@@ -1558,7 +1560,14 @@
   overflow-wrap: anywhere;
 }
 
-.overviewIssueCard button {
+.overviewShortcutCard p {
+  min-width: 0;
+  color: var(--paper-ink-muted);
+  font: 12px var(--paper-mono);
+  overflow-wrap: anywhere;
+}
+
+.overviewShortcutCard button {
   justify-self: start;
   min-height: 36px;
   padding: 0 12px;
@@ -1765,6 +1774,7 @@
     padding: 22px 16px;
   }
 
+  .overviewSessionShortcuts,
   .overviewIssueShortcuts {
     max-width: 620px;
     display: grid;

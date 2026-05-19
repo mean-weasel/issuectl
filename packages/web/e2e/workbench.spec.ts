@@ -732,6 +732,33 @@ test("keeps compact issue entry reachable from the workbench overview", async ({
   await expectWorkbenchFitsViewport(page);
 });
 
+test("keeps compact session entry reachable from the workbench overview", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Active sessions" })).toHaveCount(0);
+  const compactSessions = page.getByLabel("Compact active sessions");
+  await expect(compactSessions).toBeVisible();
+  await expect(compactSessions.getByLabel("Session #447")).toBeVisible();
+  await compactSessions.getByLabel("Session #447").getByRole("button", { name: "Open terminal" }).click();
+  await expect(page).toHaveURL(/deployment=101/);
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await expect(page.frameLocator('iframe[title="Terminal for issue 447"]').getByText("terminal ready")).toBeVisible();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("captures workbench QA screenshots", async ({ browser }) => {
   if (!tmpDir) throw new Error("Expected workbench e2e tmpDir to be initialized");
   const artifactDir = join(tmpDir, "workbench-artifacts");
