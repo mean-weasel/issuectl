@@ -671,6 +671,102 @@ test("keeps compact workbench layouts usable on tablet and mobile", async ({ pag
   }
 });
 
+test("keeps compact mode matrix primary actions reachable", async ({ page }) => {
+  await page.route("**/api/v1/pulls/mean-weasel/issuectl?**", async (route) => {
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(route.request().method()).toBe("GET");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        pulls: [pullFixture(501, { title: "Compact workbench mode audit", checksStatus: "success" })],
+        fromCache: false,
+        cachedAt: null,
+      }),
+    });
+  });
+
+  const matrix = [
+    {
+      path: "/workbench",
+      current: "Workbench",
+      primary: async () => page.getByRole("button", { name: "Refresh" }),
+      verify: async () => {
+        await expect(page.getByLabel("Compact active sessions")).toBeVisible();
+        await expect(page.getByLabel("Compact repo issues")).toBeVisible();
+      },
+    },
+    {
+      path: "/workbench/issues",
+      current: "Issues",
+      primary: async () =>
+        page.getByLabel("mean-weasel/issuectl issue #512").getByRole("button", { name: "Open issue" }),
+      verify: async () => {
+        await expect(page.getByRole("heading", { name: "Issues" })).toBeVisible();
+        await expect(page.getByLabel("Global issues")).toBeVisible();
+      },
+    },
+    {
+      path: "/workbench/board",
+      current: "Board",
+      primary: async () => page.getByLabel("Board controls").getByRole("button", { name: "Show running only" }),
+      verify: async () => {
+        await expect(page.getByRole("heading", { name: "Cross-repo board" })).toBeVisible();
+        await expect(page.getByLabel("Cross-repo board")).toBeVisible();
+        await expectBoardScrollsHorizontally(page);
+      },
+    },
+    {
+      path: "/workbench/prs",
+      current: "PRs",
+      primary: async () => page.getByRole("button", { name: "Refresh checks" }),
+      verify: async () => {
+        await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+        await expect(page.getByLabel("Pull requests for mean-weasel/issuectl")).toBeVisible();
+      },
+    },
+    {
+      path: "/workbench/quick-create",
+      current: "Quick Create",
+      primary: async () => page.getByRole("button", { name: "Parse", exact: true }),
+      verify: async () => {
+        await expect(page.getByRole("heading", { name: "Quick Create" })).toBeVisible();
+        await page.getByLabel("Parse text").fill("Fix compact mode matrix");
+        await expect(page.getByLabel("Parse text")).toHaveValue("Fix compact mode matrix");
+      },
+    },
+    {
+      path: "/workbench/settings",
+      current: "Settings",
+      primary: async () => page.getByRole("button", { name: "Save settings" }),
+      verify: async () => {
+        await expect(page.getByRole("heading", { name: "Workbench settings" })).toBeVisible();
+        await expect(page.getByLabel("Cache TTL")).toBeVisible();
+      },
+    },
+  ];
+
+  for (const viewport of [
+    { width: 393, height: 852 },
+    { width: 360, height: 740 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const item of matrix) {
+      await page.goto(`${baseUrl}${item.path}?repo=mean-weasel%2Fissuectl`);
+      await expect(page.getByRole("link", { name: "issuectl workbench" })).toBeVisible();
+      await expect(
+        page
+          .getByRole("navigation", { name: "Workbench navigation" })
+          .getByRole("button", { name: item.current, exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      await item.verify();
+      await expectNoHorizontalPageScroll(page);
+      await expectWorkbenchFitsViewport(page);
+      await expectLocatorWithinViewport(await item.primary(), viewport.width);
+    }
+  }
+});
+
 test("keeps compact issue action controls readable and ordered", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -2609,6 +2705,14 @@ async function expectNoBoxOverlap(
     && firstBox!.y < secondBox!.y + secondBox!.height
     && firstBox!.y + firstBox!.height > secondBox!.y;
   expect(overlaps).toBe(false);
+}
+
+async function expectLocatorWithinViewport(locator: import("@playwright/test").Locator, viewportWidth: number) {
+  await expect(locator).toBeVisible();
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewportWidth + 1);
 }
 
 async function expectVerticallyBefore(
