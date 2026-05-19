@@ -252,11 +252,18 @@ export function WorkbenchShell({
   }
 
   function selectRepo(repoId: number) {
-    dispatch({ type: "selectRepo", repoId });
-    setDrawerCollapse({ instances: false, issues: false });
     const repo = payload?.repos.find((item) => item.id === repoId) ?? null;
-    window.history.pushState(null, "", repo ? workbenchRepoUrl(repo) : "/workbench");
-    setRepoSetupRequested(false);
+    const nextMode = repoScopedMode(selection.mode) ? selection.mode : "workbench";
+    dispatch({
+      type: "applyUrlSelection",
+      mode: nextMode,
+      repoId,
+      issueNumber: null,
+      deploymentId: null,
+    });
+    setDrawerCollapse({ instances: false, issues: false });
+    window.history.pushState(null, "", repo ? workbenchRepoModeUrl(repo, nextMode, repoSetupRequested) : "/workbench");
+    setRepoSetupRequested(nextMode === "settings" && repoSetupRequested);
   }
 
   function openRepoSetup() {
@@ -1273,6 +1280,30 @@ function workbenchIssueUrl(repo: Pick<WorkbenchRepo, "owner" | "name">, issueNum
 
 function workbenchDeploymentUrl(deployment: Pick<WorkbenchDeployment, "owner" | "repoName" | "id">): string {
   return `/workbench?repo=${encodeURIComponent(`${deployment.owner}/${deployment.repoName}`)}&deployment=${deployment.id}`;
+}
+
+function workbenchRepoModeUrl(
+  repo: Pick<WorkbenchRepo, "owner" | "name">,
+  mode: WorkbenchMode,
+  repoSetupRequested: boolean,
+): string {
+  const repoParam = `repo=${encodeURIComponent(`${repo.owner}/${repo.name}`)}`;
+  if (mode === "pullRequests") {
+    return `/workbench/prs?${repoParam}`;
+  }
+  if (mode === "quickCreate") {
+    return `/workbench/quick-create?${repoParam}`;
+  }
+  if (mode === "settings") {
+    return repoSetupRequested
+      ? `/workbench/settings?repoSetup=1&${repoParam}`
+      : `/workbench/settings?${repoParam}`;
+  }
+  return workbenchRepoUrl(repo);
+}
+
+function repoScopedMode(mode: WorkbenchMode): boolean {
+  return mode === "pullRequests" || mode === "quickCreate" || mode === "settings";
 }
 
 function modeFromPath(pathname: string): WorkbenchMode {

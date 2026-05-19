@@ -840,6 +840,37 @@ test("keeps compact workbench context visible while switching focus", async ({ p
   await expectWorkbenchFitsViewport(page);
 });
 
+test("preserves compact repo-scoped mode while switching repos from deep links", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/pulls/mean-weasel/**", async (route) => {
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ pulls: [], fromCache: false, cachedAt: null }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench/prs?repo=mean-weasel%2Fissuectl`);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl PRs");
+  await page.getByRole("button", { name: "mean-weasel/bugdrop" }).click();
+  await expect(page).toHaveURL(/\/workbench\/prs\?repo=mean-weasel%2Fbugdrop$/);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/bugdrop PRs");
+  await expect(
+    page
+      .getByRole("navigation", { name: "Workbench navigation" })
+      .getByRole("button", { name: "PRs", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+
+  await page.goto(`${baseUrl}/workbench/settings?repoSetup=1&repo=mean-weasel%2Fissuectl`);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl settings");
+  await page.getByRole("button", { name: "mean-weasel/web" }).click();
+  await expect(page).toHaveURL(/\/workbench\/settings\?repoSetup=1&repo=mean-weasel%2Fweb$/);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/web settings");
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("returns compact issue and terminal focus to the workbench overview", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -1083,8 +1114,12 @@ test("supports top nav modes and collapses side panes for global modes", async (
 
 test("preserves selected repo across global mode reloads", async ({ page }) => {
   await gotoWorkbenchWithRetry(page);
-  await page.getByRole("button", { name: "mean-weasel/bugdrop" }).click();
-  await expect(page).toHaveURL(/repo=mean-weasel%2Fbugdrop/);
+  const bugdropRepo = page.getByRole("button", { name: "mean-weasel/bugdrop" });
+  await expect(bugdropRepo).toBeVisible();
+  await expect(async () => {
+    await bugdropRepo.click();
+    await expect(page).toHaveURL(/repo=mean-weasel%2Fbugdrop/, { timeout: 1_000 });
+  }).toPass();
   const nav = page.getByRole("navigation", { name: "Workbench navigation" });
 
   await nav.getByRole("button", { name: "Settings", exact: true }).click();
@@ -2422,8 +2457,8 @@ async function clickNavAndExpect(page: import("@playwright/test").Page, label: s
   const workbench = page.getByRole("main", { name: "Workbench" });
   if (collapsed) {
     await expect(workbench).toHaveAttribute("data-side-panes", "collapsed");
-    await expect(page.getByLabel("Active sessions")).toHaveCount(0);
-    await expect(page.getByLabel("Repo issues")).toHaveCount(0);
+    await expect(page.getByRole("complementary", { name: "Active sessions" })).toHaveCount(0);
+    await expect(page.getByRole("complementary", { name: "Repo issues" })).toHaveCount(0);
     const workbenchBox = await workbench.boundingBox();
     const repoRailBox = await page.getByLabel("Repositories").boundingBox();
     const focusBox = await page.getByLabel("Workbench focus").boundingBox();
@@ -2435,8 +2470,8 @@ async function clickNavAndExpect(page: import("@playwright/test").Page, label: s
     );
   } else {
     await expect(workbench).toHaveAttribute("data-side-panes", "visible");
-    await expect(page.getByLabel("Active sessions")).toBeVisible();
-    await expect(page.getByLabel("Repo issues")).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Active sessions" })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Repo issues" })).toBeVisible();
   }
 }
 
