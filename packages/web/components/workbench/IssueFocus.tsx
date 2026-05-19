@@ -322,6 +322,14 @@ export function IssueFocus({
               <option value="low">low</option>
             </select>
           </label>
+          <label>
+            Issue title
+            <input
+              value={titleDraft}
+              disabled={pendingAction !== null || status !== "loaded"}
+              onChange={(event) => setTitleDraft(event.currentTarget.value)}
+            />
+          </label>
           <button
             type="button"
             disabled={pendingAction !== null || status !== "loaded" || !titleChanged}
@@ -334,14 +342,6 @@ export function IssueFocus({
           >
             Save title
           </button>
-          <label>
-            Issue title
-            <input
-              value={titleDraft}
-              disabled={pendingAction !== null || status !== "loaded"}
-              onChange={(event) => setTitleDraft(event.currentTarget.value)}
-            />
-          </label>
         </div>
 
         <div className={styles.issueActionGroup} aria-label="Comment actions">
