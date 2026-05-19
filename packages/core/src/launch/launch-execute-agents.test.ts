@@ -104,6 +104,15 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     db = createTestDb();
   });
 
+  async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      return await fn();
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
   it("allows launch when the prior deployment has ended", async () => {
     const repo = addRepo(db, {
       owner: "acme",
@@ -122,7 +131,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       "UPDATE deployments SET ended_at = datetime('now') WHERE id = ?",
     ).run(prior.id);
 
-    const result = await executeLaunch(db, {} as Octokit, {
+    const result = await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
       owner: "acme",
       repo: "api",
       issueNumber: 42,
@@ -130,7 +139,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       workspaceMode: "existing",
       selectedComments: [],
       selectedFiles: [],
-    });
+    }));
 
     expect(prepareWorkspaceSpy).toHaveBeenCalledTimes(1);
     expect(spawnTtydSpy).toHaveBeenCalledTimes(1);
@@ -167,7 +176,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       "--model gpt-5 --full-auto",
     );
 
-    await executeLaunch(db, {} as Octokit, {
+    await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
       owner: "acme",
       repo: "api",
       issueNumber: 43,
@@ -175,7 +184,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       workspaceMode: "existing",
       selectedComments: [],
       selectedFiles: [],
-    });
+    }));
 
     expect(spawnTtydSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -204,7 +213,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       "--sandbox danger-full-access --ask-for-approval never",
     );
 
-    await executeLaunch(db, {} as Octokit, {
+    await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
       owner: "acme",
       repo: "api",
       issueNumber: 44,
@@ -213,7 +222,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       workspaceMode: "existing",
       selectedComments: [],
       selectedFiles: [],
-    });
+    }));
 
     expect(spawnTtydSpy).toHaveBeenCalledWith(
       expect.objectContaining({

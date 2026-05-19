@@ -22,6 +22,15 @@ beforeEach(() => {
   execFileMock.mockReset();
 });
 
+async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+  const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    return await fn();
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 /* ---------- generateBranchName (pure, no mock needed) ---------- */
 
 describe("generateBranchName", () => {
@@ -112,7 +121,7 @@ describe("getDefaultBranch", () => {
     const err = new Error("ref not found");
     Object.assign(err, { stderr: "fatal: ref not found" });
     execFileMock.mockRejectedValue(err);
-    const branch = await getDefaultBranch("/repo");
+    const branch = await withConsoleWarnSilenced(() => getDefaultBranch("/repo"));
     expect(branch).toBe("origin/main");
   });
 });

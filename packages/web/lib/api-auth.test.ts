@@ -7,6 +7,15 @@ vi.mock("@issuectl/core", () => ({
   getSetting: vi.fn(),
 }));
 
+const loggerMock = vi.hoisted(() => ({
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock("./logger", () => ({
+  default: loggerMock,
+}));
+
 import { validateApiToken, requireAuth, resetApiTokenCache } from "./api-auth.js";
 import { getDb, getSetting } from "@issuectl/core";
 
@@ -25,6 +34,8 @@ describe("validateApiToken", () => {
     resetApiTokenCache();
     vi.mocked(getDb).mockReturnValue(mockDb);
     vi.mocked(getSetting).mockReset();
+    loggerMock.warn.mockClear();
+    loggerMock.error.mockClear();
   });
 
   it("returns true for a valid bearer token", () => {

@@ -81,6 +81,15 @@ function validFormData(overrides: Partial<Parameters<typeof makeFormData>[0]> = 
   });
 }
 
+async function withConsoleErrorSilenced<T>(fn: () => Promise<T>): Promise<T> {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    return await fn();
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -246,7 +255,7 @@ describe("uploadImage server action", () => {
       new Error("GitHub image upload failed (403): Forbidden"),
     );
 
-    const result = await uploadImage(validFormData());
+    const result = await withConsoleErrorSilenced(() => uploadImage(validFormData()));
 
     expect(result).toMatchObject({
       success: false,
@@ -257,7 +266,7 @@ describe("uploadImage server action", () => {
   it("returns { success: false } when getGhToken throws", async () => {
     getGhTokenMock.mockRejectedValue(new Error("gh auth: not logged in"));
 
-    const result = await uploadImage(validFormData());
+    const result = await withConsoleErrorSilenced(() => uploadImage(validFormData()));
 
     expect(result).toMatchObject({ success: false });
     expect((result as { error: string }).error).toBeTruthy();

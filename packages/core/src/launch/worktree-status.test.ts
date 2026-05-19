@@ -32,11 +32,22 @@ beforeEach(() => {
   branchMocks.isWorkingTreeClean.mockReset();
 });
 
+async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+  const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    return await fn();
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 describe("checkWorktreeStatus", () => {
   it("returns exists: false when directory does not exist", async () => {
     accessMock.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
 
-    const result = await checkWorktreeStatus("/worktrees", "myrepo", 42);
+    const result = await withConsoleWarnSilenced(() =>
+      checkWorktreeStatus("/worktrees", "myrepo", 42)
+    );
     expect(result).toEqual({ exists: false, dirty: false, path: "/worktrees/myrepo-issue-42" });
   });
 
@@ -45,7 +56,9 @@ describe("checkWorktreeStatus", () => {
     execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
     branchMocks.isWorkingTreeClean.mockResolvedValue(true);
 
-    const result = await checkWorktreeStatus("/worktrees", "myrepo", 42);
+    const result = await withConsoleWarnSilenced(() =>
+      checkWorktreeStatus("/worktrees", "myrepo", 42)
+    );
     expect(result).toEqual({ exists: true, dirty: false, path: "/worktrees/myrepo-issue-42" });
   });
 
@@ -54,7 +67,9 @@ describe("checkWorktreeStatus", () => {
     execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
     branchMocks.isWorkingTreeClean.mockResolvedValue(false);
 
-    const result = await checkWorktreeStatus("/worktrees", "myrepo", 42);
+    const result = await withConsoleWarnSilenced(() =>
+      checkWorktreeStatus("/worktrees", "myrepo", 42)
+    );
     expect(result).toEqual({ exists: true, dirty: true, path: "/worktrees/myrepo-issue-42" });
   });
 
@@ -71,7 +86,9 @@ describe("checkWorktreeStatus", () => {
     execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
     branchMocks.isWorkingTreeClean.mockRejectedValue(new Error("git status timed out"));
 
-    const result = await checkWorktreeStatus("/worktrees", "myrepo", 42);
+    const result = await withConsoleWarnSilenced(() =>
+      checkWorktreeStatus("/worktrees", "myrepo", 42)
+    );
     expect(result).toEqual({ exists: true, dirty: true, path: "/worktrees/myrepo-issue-42" });
   });
 });
@@ -100,7 +117,9 @@ describe("resetWorktree", () => {
     rmMock.mockResolvedValue(undefined);
     execFileMock.mockRejectedValue(new Error("git not found"));
 
-    await expect(resetWorktree("/worktrees/myrepo-issue-42", "/repos/myrepo"))
+    await expect(withConsoleWarnSilenced(() =>
+      resetWorktree("/worktrees/myrepo-issue-42", "/repos/myrepo")
+    ))
       .resolves.toBeUndefined();
     expect(rmMock).toHaveBeenCalledWith("/worktrees/myrepo-issue-42", { recursive: true, force: true });
   });

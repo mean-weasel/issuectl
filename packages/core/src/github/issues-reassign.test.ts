@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { reassignIssue } from "./issues.js";
 import { createTestDb } from "../db/test-helpers.js";
@@ -39,10 +39,21 @@ describe("reassignIssue", () => {
     newRepoId = newRepo.id;
   });
 
+  async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      return await fn();
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
   it("happy path: creates new issue, comments, closes old, returns result without cleanupWarning", async () => {
     const { octokit, create, createComment, update } = makeReassignOctokit();
 
-    const result = await reassignIssue(db, octokit, oldRepoId, 1, newRepoId);
+    const result = await withConsoleWarnSilenced(() =>
+      reassignIssue(db, octokit, oldRepoId, 1, newRepoId)
+    );
 
     // Verify new issue created on target repo with correct title/body
     expect(create).toHaveBeenCalledWith({
@@ -109,7 +120,9 @@ describe("reassignIssue", () => {
     // addComment succeeds (uses createComment), but closeIssue (uses update) fails.
     update.mockRejectedValue(new Error("API rate limit exceeded"));
 
-    const result = await reassignIssue(db, octokit, oldRepoId, 1, newRepoId);
+    const result = await withConsoleWarnSilenced(() =>
+      reassignIssue(db, octokit, oldRepoId, 1, newRepoId)
+    );
 
     // Should NOT throw
     expect(result.newIssueNumber).toBe(42);
@@ -123,7 +136,9 @@ describe("reassignIssue", () => {
 
     createComment.mockRejectedValue(new Error("Forbidden"));
 
-    const result = await reassignIssue(db, octokit, oldRepoId, 1, newRepoId);
+    const result = await withConsoleWarnSilenced(() =>
+      reassignIssue(db, octokit, oldRepoId, 1, newRepoId)
+    );
 
     expect(result.newIssueNumber).toBe(42);
     expect(result.cleanupWarning).toContain("could not be closed");

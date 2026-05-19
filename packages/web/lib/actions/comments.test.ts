@@ -42,6 +42,15 @@ function expectFailure(result: { success: boolean }) {
   return result as { success: false; error: string };
 }
 
+async function withConsoleErrorSilenced<T>(fn: () => Promise<T>): Promise<T> {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    return await fn();
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // editComment
 // ---------------------------------------------------------------------------
@@ -105,7 +114,9 @@ describe("editComment action", () => {
 
   it("returns formatted error on API failure", async () => {
     withAuthRetryMock.mockRejectedValueOnce(new Error("API failure"));
-    const result = await editComment("acme", "web", 1, 100, "hello");
+    const result = await withConsoleErrorSilenced(() =>
+      editComment("acme", "web", 1, 100, "hello")
+    );
     expect(expectFailure(result).error).toBe("API failure");
   });
 });
@@ -155,7 +166,9 @@ describe("deleteComment action", () => {
 
   it("returns formatted error on API failure", async () => {
     withAuthRetryMock.mockRejectedValueOnce(new Error("Forbidden"));
-    const result = await deleteComment("acme", "web", 1, 100);
+    const result = await withConsoleErrorSilenced(() =>
+      deleteComment("acme", "web", 1, 100)
+    );
     expect(expectFailure(result).error).toBe("Forbidden");
   });
 });

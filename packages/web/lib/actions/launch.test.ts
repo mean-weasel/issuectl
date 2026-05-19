@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  withConsoleErrorSilenced,
+  withConsoleWarnSilenced,
+} from "../test-utils/console.js";
 
 // vi.mock is hoisted, so we cannot reference a const declared above it.
 // Use vi.hoisted() to create spies before hoisting occurs, then reference them.
@@ -184,7 +188,7 @@ describe("launchIssue", () => {
 
 describe("endSession", () => {
   it("kills ttyd before ending deployment", async () => {
-    const result = await endSession(...ARGS);
+    const result = await withConsoleWarnSilenced(() => endSession(...ARGS));
 
     expect(killTtyd).toHaveBeenCalledWith(42, "issuectl-repo-7");
     expect(coreEndDeployment).toHaveBeenCalled();
@@ -196,7 +200,7 @@ describe("endSession", () => {
       throw Object.assign(new Error("Operation not permitted"), { code: "EPERM" });
     });
 
-    const result = await endSession(...ARGS);
+    const result = await withConsoleWarnSilenced(() => endSession(...ARGS));
 
     // Kill failure must not prevent the DB update.
     expect(coreEndDeployment).toHaveBeenCalled();
@@ -243,7 +247,7 @@ describe("checkSessionAlive", () => {
   it("returns alive when tmux session exists (even if ttyd is dead)", async () => {
     isTmuxSessionAlive.mockReturnValue(true);
 
-    const result = await checkSessionAlive(1);
+    const result = await withConsoleErrorSilenced(() => checkSessionAlive(1));
 
     expect(result).toEqual({ alive: true });
     expect(coreEndDeployment).not.toHaveBeenCalled();
@@ -252,7 +256,7 @@ describe("checkSessionAlive", () => {
   it("ends deployment and returns not alive when tmux session is gone", async () => {
     isTmuxSessionAlive.mockReturnValue(false);
 
-    const result = await checkSessionAlive(1);
+    const result = await withConsoleErrorSilenced(() => checkSessionAlive(1));
 
     expect(result).toEqual({ alive: false });
     expect(coreEndDeployment).toHaveBeenCalled();
@@ -261,7 +265,7 @@ describe("checkSessionAlive", () => {
   it("returns not alive when deployment is already ended", async () => {
     getDeploymentById.mockReturnValue({ ...makeDeployment(42), endedAt: "2026-01-01" });
 
-    const result = await checkSessionAlive(1);
+    const result = await withConsoleErrorSilenced(() => checkSessionAlive(1));
 
     expect(result).toEqual({ alive: false });
     expect(isTmuxSessionAlive).not.toHaveBeenCalled();
@@ -290,7 +294,7 @@ describe("checkSessionAlive", () => {
       throw new Error("DB locked");
     });
 
-    const result = await checkSessionAlive(1);
+    const result = await withConsoleErrorSilenced(() => checkSessionAlive(1));
 
     expect(result).toEqual({ alive: false, error: "Health check failed" });
   });
@@ -301,7 +305,7 @@ describe("ensureTtyd", () => {
     getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
     isTtydAlive.mockReturnValue(true);
 
-    const result = await ensureTtyd(1);
+    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
 
     expect(result).toEqual({ port: 7700, terminalToken: expect.any(String) });
     expect(respawnTtyd).not.toHaveBeenCalled();
@@ -313,7 +317,7 @@ describe("ensureTtyd", () => {
     isTmuxSessionAlive.mockReturnValue(true);
     respawnTtyd.mockResolvedValue({ pid: 99 });
 
-    const result = await ensureTtyd(1);
+    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
 
     expect(result).toEqual({ port: 7700, terminalToken: expect.any(String), respawned: true });
     expect(respawnTtyd).toHaveBeenCalledWith(7700, "issuectl-repo-7");
@@ -324,7 +328,7 @@ describe("ensureTtyd", () => {
     isTtydAlive.mockReturnValue(false);
     isTmuxSessionAlive.mockReturnValue(false);
 
-    const result = await ensureTtyd(1);
+    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
 
     expect(result).toEqual({ alive: false, error: "Terminal session has ended" });
     expect(respawnTtyd).not.toHaveBeenCalled();
@@ -364,7 +368,7 @@ describe("ensureTtyd", () => {
     isTmuxSessionAlive.mockReturnValue(true);
     respawnTtyd.mockRejectedValue(new Error("port conflict"));
 
-    const result = await ensureTtyd(1);
+    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
 
     // formatErrorForUser passes through Error.message
     expect(result).toEqual({ alive: false, error: "port conflict" });
