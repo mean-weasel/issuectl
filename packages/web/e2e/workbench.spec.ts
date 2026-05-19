@@ -2286,6 +2286,8 @@ async function mockTerminalPage(
 }
 
 async function expectNoWorkbenchSplash(page: import("@playwright/test").Page) {
+  await expect(page.getByTestId("splash-overlay")).toHaveCount(0);
+  await expect(page.getByLabel("Loading workbench")).toHaveCount(0);
   await expect(page.getByText("Opening workbench")).toHaveCount(0);
   await expect(page.getByText("Preparing repositories, sessions, and issue queues.")).toHaveCount(0);
 }
