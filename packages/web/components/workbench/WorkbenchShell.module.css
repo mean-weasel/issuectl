@@ -39,13 +39,18 @@
 }
 
 .routeLabel {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 32vw;
   padding: 5px 8px;
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-sm);
   color: var(--paper-ink-muted);
   background: rgba(255, 255, 255, 0.22);
   font: 12px var(--paper-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topnav {
@@ -1702,6 +1707,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
       "brand tools"
+      "context context"
       "nav nav";
     align-items: center;
     row-gap: 6px;
@@ -1718,6 +1724,12 @@
     justify-self: end;
     max-width: 100%;
     overflow-x: auto;
+  }
+
+  .routeLabel {
+    grid-area: context;
+    display: block;
+    max-width: 100%;
   }
 
   .drawerControls {

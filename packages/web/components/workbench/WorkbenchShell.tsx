@@ -208,6 +208,12 @@ export function WorkbenchShell({
     : selectedRepo?.deployments.find((deployment) => deployment.id === selection.selectedDeploymentId)
       ?? resolveSelectedDeployment(payload, selection);
   const selectedIssue = selectedRepo?.issues.find((issue) => issue.number === selection.selectedIssueNumber) ?? null;
+  const contextLabel = workbenchContextLabel({
+    mode: selection.mode,
+    repo: selectedRepo,
+    issue: selectedIssue,
+    deployment: selectedDeployment,
+  });
   const reassignTargets = payload?.repos.filter((repo) => repo.id !== selectedRepo?.id) ?? [];
   const hideSidePanes = !sidePaneWidthsApply(selection.mode);
   const compactSidePanesHidden = compactLayout || hideSidePanes;
@@ -647,7 +653,9 @@ export function WorkbenchShell({
         <Link href="/workbench" className={styles.brand} aria-label="issuectl workbench">
           issuectl<span className={styles.brandDot} />
         </Link>
-        <span className={styles.routeLabel}>/workbench</span>
+        <span className={styles.routeLabel} aria-label="Workbench context" title={contextLabel}>
+          {contextLabel}
+        </span>
         {!compactSidePanesHidden && (
           <div className={styles.toolbarTools} aria-label="Workbench layout controls">
             <button
@@ -1274,6 +1282,28 @@ function modeFromPath(pathname: string): WorkbenchMode {
   if (pathname.endsWith("/quick-create")) return "quickCreate";
   if (pathname.endsWith("/settings")) return "settings";
   return "workbench";
+}
+
+function workbenchContextLabel({
+  mode,
+  repo,
+  issue,
+  deployment,
+}: {
+  mode: WorkbenchMode;
+  repo: WorkbenchRepo | null;
+  issue: WorkbenchIssueSummary | null;
+  deployment: WorkbenchDeployment | null;
+}): string {
+  if (mode === "globalIssues") return "Issues";
+  if (mode === "board") return "Board";
+  if (mode === "pullRequests") return repo ? `${repo.owner}/${repo.name} PRs` : "PRs";
+  if (mode === "quickCreate") return repo ? `${repo.owner}/${repo.name} quick create` : "Quick Create";
+  if (mode === "settings") return repo ? `${repo.owner}/${repo.name} settings` : "Settings";
+  if (repo && deployment) return `${repo.owner}/${repo.name} #${deployment.issueNumber} terminal`;
+  if (repo && issue) return `${repo.owner}/${repo.name} #${issue.number}`;
+  if (repo) return `${repo.owner}/${repo.name}`;
+  return "Workbench";
 }
 
 function titleForMode(mode: WorkbenchMode): string {
