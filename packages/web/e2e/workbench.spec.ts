@@ -703,6 +703,35 @@ test("keeps compact issue action controls readable and ordered", async ({ page }
   await expectWorkbenchFitsViewport(page);
 });
 
+test("keeps compact issue entry reachable from the workbench overview", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Repo issues" })).toHaveCount(0);
+  const compactIssues = page.getByLabel("Compact repo issues");
+  await expect(compactIssues).toBeVisible();
+  await expect(compactIssues.getByLabel("Issue #512")).toBeVisible();
+  await compactIssues.getByLabel("Issue #512").getByRole("button", { name: "Open issue" }).click();
+  await expect(page).toHaveURL(/issue=512/);
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  const issueActions = page.getByLabel("Issue actions");
+  await expect(issueActions).toBeVisible();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("captures workbench QA screenshots", async ({ browser }) => {
   if (!tmpDir) throw new Error("Expected workbench e2e tmpDir to be initialized");
   const artifactDir = join(tmpDir, "workbench-artifacts");

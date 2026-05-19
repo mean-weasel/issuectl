@@ -1513,6 +1513,63 @@
   flex-wrap: wrap;
 }
 
+.overviewIssueShortcuts {
+  display: none;
+}
+
+.overviewIssueShortcuts h2 {
+  font-family: var(--paper-serif);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.overviewIssueList {
+  display: grid;
+  gap: 10px;
+}
+
+.overviewIssueCard {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.overviewIssueCard div {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--paper-ink-muted);
+  font: 11px var(--paper-mono);
+}
+
+.overviewIssueCard h3 {
+  min-width: 0;
+  color: var(--paper-ink);
+  font-family: var(--paper-serif);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.overviewIssueCard button {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--paper-ink);
+  font-family: var(--paper-serif);
+  font-style: italic;
+}
+
 .secondaryButton:disabled {
   opacity: 0.62;
   cursor: default;
@@ -1706,6 +1763,13 @@
     width: 100%;
     box-sizing: border-box;
     padding: 22px 16px;
+  }
+
+  .overviewIssueShortcuts {
+    max-width: 620px;
+    display: grid;
+    gap: 12px;
+    margin-top: 22px;
   }
 
   .issueFocusGrid,

@@ -5,6 +5,7 @@ type Props = {
   repo: WorkbenchRepo;
   health: WorkbenchHealth;
   onRefresh: () => void;
+  onSelectIssue: (issueNumber: number) => void;
   onOpenRepoSetup: () => void;
 };
 
@@ -12,6 +13,7 @@ export function RepoOverviewFocus({
   repo,
   health,
   onRefresh,
+  onSelectIssue,
   onOpenRepoSetup,
 }: Props) {
   return (
@@ -60,6 +62,30 @@ export function RepoOverviewFocus({
           New shell unavailable
         </button>
       </div>
+
+      {repo.issues.length > 0 && (
+        <section className={styles.overviewIssueShortcuts} aria-label="Compact repo issues">
+          <h2>Repo issues</h2>
+          <div className={styles.overviewIssueList}>
+            {repo.issues.map((issue) => {
+              const status = issue.state === "closed" ? "closed" : issue.hasActiveDeployment ? "running" : "open";
+              return (
+                <article key={issue.number} className={styles.overviewIssueCard} aria-label={`Issue #${issue.number}`}>
+                  <div>
+                    <strong>#{issue.number}</strong>
+                    <span>{status}</span>
+                    <span>{issue.priority}</span>
+                  </div>
+                  <h3>{issue.title}</h3>
+                  <button type="button" onClick={() => onSelectIssue(issue.number)}>
+                    Open issue
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
