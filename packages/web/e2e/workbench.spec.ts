@@ -759,6 +759,52 @@ test("keeps compact session entry reachable from the workbench overview", async 
   await expectWorkbenchFitsViewport(page);
 });
 
+test("returns compact issue and terminal focus to the workbench overview", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByRole("button", { name: "Workbench" }).click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByLabel("Compact repo issues")).toBeVisible();
+  await expect(page.getByLabel("Compact active sessions")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toHaveCount(0);
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByRole("button", { name: "Workbench" }).click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByLabel("Compact active sessions")).toBeVisible();
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toHaveCount(0);
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("captures workbench QA screenshots", async ({ browser }) => {
   if (!tmpDir) throw new Error("Expected workbench e2e tmpDir to be initialized");
   const artifactDir = join(tmpDir, "workbench-artifacts");
