@@ -39,8 +39,6 @@ const { getIssues, getIssueDetail } = await import("./issues.js");
 
 /* ---------- helpers ---------- */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MockFn = ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 
 function fakeOctokit(): Octokit {
   return {} as unknown as Octokit;
