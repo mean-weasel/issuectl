@@ -13,10 +13,24 @@ import styles from "./WorkbenchShell.module.css";
 type Props = {
   deployment: WorkbenchDeployment;
   repo: WorkbenchRepo | null;
+  pending: boolean;
+  rowError?: string;
+  onReconnect: (deployment: WorkbenchDeployment) => Promise<void> | void;
+  onEnd: (deployment: WorkbenchDeployment) => void;
+  onBackToOverview: () => void;
   onDeploymentStale: (deploymentId: number) => void;
 };
 
-export function TerminalFocus({ deployment, repo, onDeploymentStale }: Props) {
+export function TerminalFocus({
+  deployment,
+  repo,
+  pending,
+  rowError,
+  onReconnect,
+  onEnd,
+  onBackToOverview,
+  onDeploymentStale,
+}: Props) {
   const issue = repo?.issues.find((item) => item.number === deployment.issueNumber);
   const title = issue?.title ?? "Issue session";
   const [terminal, setTerminal] = useState<{
@@ -115,6 +129,11 @@ export function TerminalFocus({ deployment, repo, onDeploymentStale }: Props) {
     };
   }, [deployment.id, deployment.ttydPort, onDeploymentStale, retryAttempt]);
 
+  async function reconnectTerminal() {
+    await onReconnect(deployment);
+    setRetryAttempt((current) => current + 1);
+  }
+
   return (
     <div className={styles.terminalFocus}>
       <header className={styles.terminalHeader}>
@@ -143,15 +162,39 @@ export function TerminalFocus({ deployment, repo, onDeploymentStale }: Props) {
         <div className={styles.terminalUnavailable} role="alert">
           <h2>Terminal unavailable</h2>
           <p>{terminal.error}</p>
-          {deployment.ttydPort && (
+          <div className={styles.terminalRecoveryActions}>
             <button
               type="button"
               className={styles.secondaryButton}
-              onClick={() => setRetryAttempt((current) => current + 1)}
+              disabled={pending}
+              onClick={reconnectTerminal}
             >
-              Reconnect terminal
+              Reconnect session
             </button>
-          )}
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={onBackToOverview}
+            >
+              Back to overview
+            </button>
+            <details className={styles.endDetails}>
+              <summary>End</summary>
+              <div className={styles.confirmBox}>
+                <strong>End session?</strong>
+                <button
+                  type="button"
+                  onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}
+                >
+                  Cancel
+                </button>
+                <button type="button" disabled={pending} onClick={() => onEnd(deployment)}>
+                  End session
+                </button>
+              </div>
+            </details>
+          </div>
+          {rowError && <p className={styles.rowError}>{rowError}</p>}
         </div>
       )}
     </div>
