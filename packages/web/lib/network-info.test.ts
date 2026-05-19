@@ -13,6 +13,15 @@ const { getLanIp, getPublicIp, getLanRedirectUrl, resetForTesting } = await impo
 
 const originalFetch = globalThis.fetch;
 
+async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+  const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    return await fn();
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 describe("getLanIp", () => {
   beforeEach(() => {
     resetForTesting();
@@ -42,7 +51,7 @@ describe("getLanIp", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("no network"));
 
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    await withConsoleWarnSilenced(() => refresh());
 
     expect(getLanIp()).toBe("192.168.1.30");
   });
@@ -57,7 +66,7 @@ describe("getLanIp", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("no network"));
 
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    await withConsoleWarnSilenced(() => refresh());
 
     expect(getLanIp()).toBeNull();
   });
@@ -68,7 +77,7 @@ describe("getLanIp", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("no network"));
 
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    await withConsoleWarnSilenced(() => refresh());
 
     expect(getLanIp()).toBeNull();
   });
@@ -95,7 +104,7 @@ describe("getPublicIp", () => {
     });
 
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    await withConsoleWarnSilenced(() => refresh());
 
     expect(getPublicIp()).toBe("203.0.113.42");
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -112,7 +121,7 @@ describe("getPublicIp", () => {
     });
 
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    await withConsoleWarnSilenced(() => refresh());
 
     expect(getPublicIp()).toBeNull();
   });
@@ -121,7 +130,7 @@ describe("getPublicIp", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("fetch failed"));
 
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    await withConsoleWarnSilenced(() => refresh());
 
     expect(getPublicIp()).toBeNull();
   });
@@ -159,7 +168,11 @@ describe("getLanRedirectUrl", () => {
       globalThis.fetch = vi.fn().mockRejectedValue(new Error("no network"));
     }
     const { refreshNetworkInfo: refresh } = await import("./network-info.js");
-    await refresh();
+    if (pub) {
+      await refresh();
+    } else {
+      await withConsoleWarnSilenced(() => refresh());
+    }
   }
 
   it("returns null when ISSUECTL_TUNNEL_URL is not set", async () => {

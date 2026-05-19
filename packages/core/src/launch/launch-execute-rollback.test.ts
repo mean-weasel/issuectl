@@ -104,6 +104,26 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     db = createTestDb();
   });
 
+  async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      return await fn();
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
+  async function withConsoleOutputSilenced<T>(fn: () => Promise<T>): Promise<T> {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      return await fn();
+    } finally {
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  }
+
   it("rolls back pending deployment when spawnTtyd fails", async () => {
     const repo = addRepo(db, {
       owner: "acme",
@@ -115,7 +135,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     spawnTtydSpy.mockRejectedValueOnce(spawnError);
 
     await expect(
-      executeLaunch(db, {} as Octokit, {
+      withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
         owner: "acme",
         repo: "api",
         issueNumber: 42,
@@ -123,7 +143,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
         workspaceMode: "existing",
         selectedComments: [],
         selectedFiles: [],
-      }),
+      })),
     ).rejects.toThrow("ttyd process failed to start");
 
     // The pending deployment row must have been deleted by the rollback
@@ -136,7 +156,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
 
     // The slot is freed — a second launch for the same issue succeeds
     spawnTtydSpy.mockResolvedValueOnce({ pid: 99999, port: 7700 });
-    const result = await executeLaunch(db, {} as Octokit, {
+    const result = await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
       owner: "acme",
       repo: "api",
       issueNumber: 42,
@@ -144,7 +164,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       workspaceMode: "existing",
       selectedComments: [],
       selectedFiles: [],
-    });
+    }));
     expect(result.ttydPort).toBe(7700);
   });
 
@@ -167,7 +187,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
 
     try {
       await expect(
-        executeLaunch(db, {} as Octokit, {
+        withConsoleOutputSilenced(() => executeLaunch(db, {} as Octokit, {
           owner: "acme",
           repo: "api",
           issueNumber: 42,
@@ -175,7 +195,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
           workspaceMode: "existing",
           selectedComments: [],
           selectedFiles: [],
-        }),
+        })),
         // Must rethrow the original spawn error, not the rollback error
       ).rejects.toThrow("ttyd crashed");
     } finally {
@@ -193,7 +213,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     allocatePortSpy.mockRejectedValueOnce(new Error("no free ports"));
 
     await expect(
-      executeLaunch(db, {} as Octokit, {
+      withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
         owner: "acme",
         repo: "api",
         issueNumber: 42,
@@ -201,7 +221,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
         workspaceMode: "existing",
         selectedComments: [],
         selectedFiles: [],
-      }),
+      })),
     ).rejects.toThrow("no free ports");
 
     // Pending deployment row must be gone after the rollback
@@ -230,7 +250,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       return { pid: 12345, port: 7700 };
     });
 
-    await executeLaunch(db, {} as Octokit, {
+    await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
       owner: "acme",
       repo: "api",
       issueNumber: 42,
@@ -238,7 +258,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       workspaceMode: "existing",
       selectedComments: [],
       selectedFiles: [],
-    });
+    }));
 
     expect(callOrder).toEqual(["reserveTtydPort", "spawnTtyd"]);
     expect(reserveTtydPortSpy).toHaveBeenCalledWith(

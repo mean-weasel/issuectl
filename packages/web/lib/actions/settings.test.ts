@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { withConsoleErrorSilenced, withConsoleWarnSilenced } from "../test-utils/console.js";
 
 // vi.mock is hoisted, so we cannot reference a const declared above it.
 // Use vi.hoisted() to create the spy before hoisting occurs, then reference it.
@@ -212,7 +213,7 @@ describe("updateSetting", () => {
       err.code = "SQLITE_BUSY";
       throw err;
     });
-    const result = await updateSetting("branch_pattern", "main");
+    const result = await withConsoleErrorSilenced(() => updateSetting("branch_pattern", "main"));
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/busy|another/i);
   });
@@ -221,7 +222,7 @@ describe("updateSetting", () => {
     setSetting.mockImplementationOnce(() => {
       throw new Error("some unrecognized failure");
     });
-    const result = await updateSetting("branch_pattern", "main");
+    const result = await withConsoleErrorSilenced(() => updateSetting("branch_pattern", "main"));
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/^Failed to update setting:/);
     expect(result.error).toContain("some unrecognized failure");
@@ -231,7 +232,7 @@ describe("updateSetting", () => {
     revalidatePath.mockImplementationOnce(() => {
       throw new Error("revalidation failed");
     });
-    const result = await updateSetting("branch_pattern", "main");
+    const result = await withConsoleWarnSilenced(() => updateSetting("branch_pattern", "main"));
     expect(result.success).toBe(true);
     expect(result.cacheStale).toBe(true);
     expect(fakeDb.settings.get("branch_pattern")).toBe("main");
@@ -282,10 +283,10 @@ describe("updateSettings (batch)", () => {
   });
 
   it("applies all updates in one transaction", async () => {
-    const result = await updateSettings({
+    const result = await withConsoleErrorSilenced(() => updateSettings({
       branch_pattern: "main",
       cache_ttl: "600",
-    });
+    }));
     expect(result.success).toBe(true);
     expect(fakeDb.settings.get("branch_pattern")).toBe("main");
     expect(fakeDb.settings.get("cache_ttl")).toBe("600");
@@ -345,10 +346,10 @@ describe("updateSettings (batch)", () => {
       db.settings.set(key, value);
     });
 
-    const result = await updateSettings({
+    const result = await withConsoleErrorSilenced(() => updateSettings({
       branch_pattern: "main",
       cache_ttl: "600",
-    });
+    }));
 
     expect(result.success).toBe(false);
     // Neither write should survive — the transaction rolls back the first.

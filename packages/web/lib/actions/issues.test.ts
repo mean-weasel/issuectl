@@ -33,10 +33,17 @@ vi.mock("@/lib/revalidate", () => ({
   revalidateSafely: () => ({ stale: false }),
 }));
 
+const notifyNewIssueMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/push/notifications", () => ({
+  notifyNewIssue: notifyNewIssueMock,
+}));
+
 const { createIssue } = await import("./issues");
 
 beforeEach(() => {
   vi.clearAllMocks();
+  notifyNewIssueMock.mockReset();
   coreMocks.getDb.mockReturnValue({});
   coreMocks.setSetting.mockReset();
   coreMocks.getRepo.mockReturnValue({
