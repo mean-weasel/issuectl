@@ -671,6 +671,38 @@ test("keeps compact workbench layouts usable on tablet and mobile", async ({ pag
   }
 });
 
+test("keeps compact issue action controls readable and ordered", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+
+  const issueActions = page.getByLabel("Issue actions");
+  await expect(issueActions.getByLabel("Metadata actions")).toBeVisible();
+  const titleInput = issueActions.getByLabel("Issue title");
+  const saveTitleButton = issueActions.getByRole("button", { name: "Save title" });
+  await expect(titleInput).toHaveValue("Desktop instance manager workbench");
+  await expect(saveTitleButton).toBeDisabled();
+  await expectVerticallyBefore(titleInput, saveTitleButton);
+  await titleInput.fill("Desktop instance manager workbench renamed");
+  await expect(saveTitleButton).toBeEnabled();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("captures workbench QA screenshots", async ({ browser }) => {
   if (!tmpDir) throw new Error("Expected workbench e2e tmpDir to be initialized");
   const artifactDir = join(tmpDir, "workbench-artifacts");
@@ -2264,6 +2296,17 @@ async function expectNoBoxOverlap(
     && firstBox!.y < secondBox!.y + secondBox!.height
     && firstBox!.y + firstBox!.height > secondBox!.y;
   expect(overlaps).toBe(false);
+}
+
+async function expectVerticallyBefore(
+  first: import("@playwright/test").Locator,
+  second: import("@playwright/test").Locator,
+) {
+  const firstBox = await first.boundingBox();
+  const secondBox = await second.boundingBox();
+  expect(firstBox).not.toBeNull();
+  expect(secondBox).not.toBeNull();
+  expect(firstBox!.y + firstBox!.height).toBeLessThanOrEqual(secondBox!.y);
 }
 
 async function mockTerminalPage(
