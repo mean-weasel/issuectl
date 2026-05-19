@@ -802,6 +802,44 @@ test("recovers compact unavailable terminal sessions without showing the session
   await expectWorkbenchFitsViewport(page);
 });
 
+test("keeps compact workbench context visible while switching focus", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench`);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl");
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl #512");
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/issuectl #447 terminal");
+
+  await page.getByRole("button", { name: "mean-weasel/bugdrop" }).click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fbugdrop$/);
+  await expect(page.getByLabel("Workbench context")).toContainText("mean-weasel/bugdrop");
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("returns compact issue and terminal focus to the workbench overview", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
