@@ -146,6 +146,9 @@ export function TerminalFocus({
           <span>{deployment.agent}</span>
           <span>{deployment.branchName}</span>
         </div>
+        <button type="button" className={styles.secondaryButton} onClick={onBackToOverview}>
+          Back to overview
+        </button>
       </header>
       {terminal.status === "ready" && terminal.src ? (
         <iframe
@@ -170,13 +173,6 @@ export function TerminalFocus({
               onClick={reconnectTerminal}
             >
               Reconnect session
-            </button>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={onBackToOverview}
-            >
-              Back to overview
             </button>
             <details className={styles.endDetails}>
               <summary>End</summary>

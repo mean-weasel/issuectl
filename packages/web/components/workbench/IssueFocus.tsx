@@ -636,7 +636,7 @@ function actionSuccessMessage(name: string): string {
     case "comment":
       return "Comment added";
     case "priority":
-      return "Priority saved";
+      return "Priority updated";
     case "labels":
       return "Label updated";
     case "assignees":
