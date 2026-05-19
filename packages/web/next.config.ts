@@ -39,6 +39,14 @@ const appVersion = resolveVersion();
 
 const nextConfig: NextConfig = {
   experimental: {
+    serverActions: {
+      // Next.js defaults to 1 MB for server action request bodies.
+      // Image uploads from mobile phones are typically 3-8 MB, so the
+      // default silently rejects them before the action code runs. This
+      // matches the explicit 10 MB limit enforced in useImageUpload and
+      // the uploadImage server action.
+      bodySizeLimit: "10mb",
+    },
     // Keep Next.js 15's default of 0 seconds for the client Router
     // Cache on dynamic pages. This ensures mutations (create issue,
     // add comment, close issue) are immediately visible when
@@ -47,14 +55,6 @@ const nextConfig: NextConfig = {
     staleTimes: {
       dynamic: 0,
     },
-  },
-  serverActions: {
-    // Next.js defaults to 1 MB for server action request bodies.
-    // Image uploads from mobile phones are typically 3-8 MB, so the
-    // default silently rejects them before the action code runs. This
-    // matches the explicit 10 MB limit enforced in useImageUpload and
-    // the uploadImage server action.
-    bodySizeLimit: "10mb",
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
