@@ -634,24 +634,24 @@ export function WorkbenchShell({
           issuectl<span className={styles.brandDot} />
         </Link>
         <span className={styles.routeLabel}>/workbench</span>
-        <div className={styles.toolbarTools} aria-label="Workbench layout controls">
-          <button
-            type="button"
-            className={styles.resetColumnsButton}
-            aria-label="Reset column widths"
-            title="Reset column widths"
-            onClick={() => {
-              const storedColumnWidths = window.localStorage.getItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
-              skipNextColumnWidthPersistRef.current =
-                !columnsAreDefault(selection.columnWidths)
-                || (storedColumnWidths !== null && selection.columnWidths !== DEFAULT_WORKBENCH_COLUMN_WIDTHS);
-              window.localStorage.removeItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
-              dispatch({ type: "resetColumnWidths" });
-            }}
-          >
-            Reset
-          </button>
-          {!compactSidePanesHidden && (
+        {!compactSidePanesHidden && (
+          <div className={styles.toolbarTools} aria-label="Workbench layout controls">
+            <button
+              type="button"
+              className={styles.resetColumnsButton}
+              aria-label="Reset column widths"
+              title="Reset column widths"
+              onClick={() => {
+                const storedColumnWidths = window.localStorage.getItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
+                skipNextColumnWidthPersistRef.current =
+                  !columnsAreDefault(selection.columnWidths)
+                  || (storedColumnWidths !== null && selection.columnWidths !== DEFAULT_WORKBENCH_COLUMN_WIDTHS);
+                window.localStorage.removeItem(WORKBENCH_COLUMN_WIDTH_STORAGE_KEY);
+                dispatch({ type: "resetColumnWidths" });
+              }}
+            >
+              Reset
+            </button>
             <div className={styles.drawerControls} aria-label="Workbench drawers">
               <button
                 type="button"
@@ -670,8 +670,8 @@ export function WorkbenchShell({
                 Issues
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
         <nav className={styles.topnav} aria-label="Workbench navigation">
           {NAV_ITEMS.map((item) => (
             <button

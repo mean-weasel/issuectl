@@ -644,7 +644,7 @@ test("keeps compact workbench layouts usable on tablet and mobile", async ({ pag
     const nav = page.getByRole("navigation", { name: "Workbench navigation" });
 
     await expect(page.getByRole("link", { name: "issuectl workbench" })).toBeVisible();
-    await expect(page.getByLabel("Workbench layout controls")).toBeVisible();
+    await expect(page.getByLabel("Workbench layout controls")).toHaveCount(0);
     await expect(nav).toBeVisible();
     await expectNoHorizontalPageScroll(page);
     await expectWorkbenchFitsViewport(page);
