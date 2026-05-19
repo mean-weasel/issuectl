@@ -6,6 +6,14 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    plugins: { "@next/next": nextPlugin },
+    settings: {
+      next: {
+        rootDir: "packages/web/",
+      },
+    },
+  },
+  {
     ignores: ["**/dist/", "**/.next/", "**/.turbo/"],
   },
   {
@@ -33,8 +41,17 @@ export default tseslint.config(
   },
   {
     // Next.js plugin for web package
-    files: ["packages/web/**/*.{ts,tsx}"],
-    plugins: { "@next/next": nextPlugin },
-    rules: { ...nextPlugin.configs.recommended.rules },
+    files: [
+      "packages/web/**/*.{ts,tsx}",
+      "app/**/*.{ts,tsx}",
+      "components/**/*.{ts,tsx}",
+      "lib/**/*.{ts,tsx}",
+    ],
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      // issuectl uses only the App Router; there is no pages directory
+      // for this legacy Pages Router rule to inspect.
+      "@next/next/no-html-link-for-pages": "off",
+    },
   },
 );
