@@ -1184,6 +1184,98 @@ test("recovers compact unavailable terminal sessions without showing the session
   await expectWorkbenchFitsViewport(page);
 });
 
+test("keeps compact failure empty and stale workbench states inside the viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+
+  seedWorkbenchRepos(dbPath, []);
+  await page.goto(`${baseUrl}/workbench`);
+  await expect(page.getByRole("heading", { name: "No tracked repositories" })).toBeVisible();
+  await expect(page.getByLabel("Workbench focus").getByRole("button", { name: "Add repository" })).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  seedWorkbenchRepos(dbPath);
+  await page.goto(`${baseUrl}/workbench`);
+  await page.getByRole("button", { name: "mean-weasel/web" }).click();
+  await expect(page.getByRole("heading", { name: "mean-weasel/web" })).toBeVisible();
+  await expect(page.getByText("Set up local path")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open repo setup" })).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  await page.route("**/api/v1/pulls/mean-weasel/issuectl**", async (route) => {
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "GitHub checks are temporarily unavailable for this repository." }),
+    });
+  });
+  await page.goto(`${baseUrl}/workbench/prs?repo=mean-weasel%2Fissuectl`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.locator('[role="alert"]').filter({ hasText: "GitHub checks are temporarily unavailable" })).toBeVisible();
+  await expect(page.getByText("Select a pull request to open details in this focus pane.")).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  await page.route("**/api/v1/settings", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Settings service is temporarily unavailable." }),
+    });
+  });
+  await page.route("**/api/v1/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: false, version: "test-version", timestamp: "2026-05-16T16:00:00.000Z" }),
+    });
+  });
+  await page.route("**/api/v1/user", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ login: null, error: "GitHub user unavailable" }),
+    });
+  });
+  await page.goto(`${baseUrl}/workbench/settings?repo=mean-weasel%2Fissuectl`);
+  await expect(page.getByRole("heading", { name: "Workbench settings" })).toBeVisible();
+  await expect(page.locator('[role="alert"]').filter({ hasText: "Settings service is temporarily unavailable" })).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  await page.route("**/api/v1/parse", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Parser service is temporarily unavailable." }),
+    });
+  });
+  await page.goto(`${baseUrl}/workbench/quick-create?repo=mean-weasel%2Fissuectl`);
+  await page.getByLabel("Parse text").fill("Turn this outage note into an issue");
+  await page.getByRole("button", { name: "Parse", exact: true }).click();
+  await expect(page.locator('[role="alert"]').filter({ hasText: "Parser service is temporarily unavailable" })).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  await page.unroute("**/api/v1/settings");
+  await page.unroute("**/api/v1/health");
+  await page.unroute("**/api/v1/user");
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ alive: false, error: "Terminal session has ended" }),
+    });
+  });
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
+  await expect(page.getByLabel("Session #447")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+});
+
 test("keeps compact workbench context visible while switching focus", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {

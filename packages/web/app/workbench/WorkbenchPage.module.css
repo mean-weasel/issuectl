@@ -6,6 +6,7 @@
   min-height: 100dvh;
   display: grid;
   grid-template-rows: 54px minmax(0, 1fr);
+  overflow: hidden;
   background: var(--paper-bg);
 }
 
@@ -16,8 +17,10 @@
 
 .loadingGrid {
   display: grid;
-  grid-template-columns: 76px minmax(220px, 284px) minmax(360px, 1fr) minmax(260px, 348px);
+  grid-template-columns: 76px minmax(0, 284px) minmax(0, 1fr) minmax(0, 348px);
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .loadingRail {
@@ -38,9 +41,11 @@
 
 .errorPage {
   min-height: 100dvh;
+  box-sizing: border-box;
   padding: 42px;
   background: var(--paper-bg);
   color: var(--paper-ink);
+  overflow-wrap: anywhere;
 }
 
 .errorPage h1 {
@@ -73,4 +78,24 @@
   color: var(--paper-ink-muted);
   font: 700 10px var(--paper-mono);
   text-transform: uppercase;
+}
+
+@media (max-width: 1099px) {
+  .loadingGrid {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .loadingPane {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .errorPage {
+    padding: 24px;
+  }
+
+  .errorPage h1 {
+    font-size: 28px;
+  }
 }
