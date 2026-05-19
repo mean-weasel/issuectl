@@ -1141,6 +1141,63 @@ test("keeps compact session entry reachable from the workbench overview", async 
   await expectWorkbenchFitsViewport(page);
 });
 
+test("keeps compact keyboard focus visible after issue and terminal shortcut activation", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench`);
+  await expectFocusedWorkbenchPaneVisible(page);
+
+  const issueShortcut = page.getByLabel("Compact repo issues")
+    .getByLabel("Issue #512")
+    .getByRole("button", { name: "Open issue" });
+  await issueShortcut.focus();
+  await expect(issueShortcut).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expectCompactWorkbenchViewport(page);
+
+  const workbenchNav = page
+    .getByRole("navigation", { name: "Workbench navigation" })
+    .getByRole("button", { name: "Workbench", exact: true });
+  await workbenchNav.focus();
+  await expect(workbenchNav).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+
+  const terminalShortcut = page.getByLabel("Compact active sessions")
+    .getByLabel("Session #447")
+    .getByRole("button", { name: "Open terminal" });
+  await terminalShortcut.focus();
+  await expect(terminalShortcut).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await expectFocusedWorkbenchPaneVisible(page);
+  await expectCompactWorkbenchViewport(page);
+});
+
 test("recovers compact unavailable terminal sessions without showing the sessions pane", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   const unavailableRepos = workbenchPayload().repos;
@@ -2993,7 +3050,7 @@ test("moves focus into workbench focus after repo issue session and mode changes
 
   await page.getByRole("button", { name: "mean-weasel/issuectl" }).click();
   await expect(page.getByLabel("Workbench focus")).toBeFocused();
-  await page.getByLabel("Issue #512").click();
+  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.getByLabel("Workbench focus")).toBeFocused();
 
@@ -3227,6 +3284,20 @@ async function expectNoHorizontalPageScroll(page: import("@playwright/test").Pag
 async function expectCompactWorkbenchViewport(page: import("@playwright/test").Page) {
   await expectNoHorizontalPageScroll(page);
   await expectWorkbenchFitsViewport(page);
+}
+
+async function expectFocusedWorkbenchPaneVisible(page: import("@playwright/test").Page) {
+  const focus = page.getByLabel("Workbench focus");
+  await expect(focus).toBeFocused();
+  const outline = await focus.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      style: style.outlineStyle,
+      width: Number.parseFloat(style.outlineWidth),
+    };
+  });
+  expect(outline.style).not.toBe("none");
+  expect(outline.width).toBeGreaterThanOrEqual(2);
 }
 
 async function expectWorkbenchFitsViewport(page: import("@playwright/test").Page) {
