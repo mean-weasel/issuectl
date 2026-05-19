@@ -10,6 +10,8 @@ vi.mock("@issuectl/core", () => ({
 import { validateApiToken, requireAuth, resetApiTokenCache } from "./api-auth.js";
 import { getDb, getSetting } from "@issuectl/core";
 
+const mockDb = {} as ReturnType<typeof getDb>;
+
 function makeRequest(headers: Record<string, string> = {}): NextRequest {
   return new NextRequest("http://localhost:3847/api/v1/test", { headers });
 }
@@ -21,7 +23,7 @@ afterEach(() => {
 describe("validateApiToken", () => {
   beforeEach(() => {
     resetApiTokenCache();
-    vi.mocked(getDb).mockReturnValue({} as any);
+    vi.mocked(getDb).mockReturnValue(mockDb);
     vi.mocked(getSetting).mockReset();
   });
 
@@ -106,7 +108,7 @@ describe("validateApiToken", () => {
 describe("requireAuth", () => {
   beforeEach(() => {
     resetApiTokenCache();
-    vi.mocked(getDb).mockReturnValue({} as any);
+    vi.mocked(getDb).mockReturnValue(mockDb);
     vi.mocked(getSetting).mockReset();
   });
 

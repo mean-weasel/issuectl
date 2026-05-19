@@ -4,21 +4,17 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { updateSettings } from "@/lib/actions/settings";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/paper";
-import { cn } from "@/lib/cn";
 import * as validation from "@issuectl/core/validation";
 import type { SettingKey } from "@issuectl/core";
-import { LAUNCH_AGENTS, launchAgentCommand, launchAgentLabel, normalizeLaunchAgent, type LaunchAgent } from "@/components/launch/agent";
+import { normalizeLaunchAgent, type LaunchAgent } from "@/components/launch/agent";
+import { SettingsAgentSection } from "./SettingsAgentSection";
+import type { ArgsValidation, FormValues } from "./settings-form-types";
 import styles from "./SettingsForm.module.css";
 
 // Save button gets an inline flash in addition to the toast: the
 // toast is the global + screen-reader path, but after clicking the
 // user's eyes are on the button, not the toast region.
 const SAVED_FLASH_MS = 2500;
-
-const AGENT_DETAILS: Record<LaunchAgent, string> = {
-  claude: "Use Claude Code by default for new agent sessions.",
-  codex: "Use Codex by default for new agent sessions.",
-};
 
 type Props = {
   branchPattern: string;
@@ -28,22 +24,6 @@ type Props = {
   launchAgent: LaunchAgent;
   idleGracePeriod: string;
   idleThreshold: string;
-};
-
-type FormValues = {
-  branch_pattern: string;
-  cache_ttl: string;
-  claude_extra_args: string;
-  codex_extra_args: string;
-  launch_agent: LaunchAgent;
-  idle_grace_period: string;
-  idle_threshold: string;
-};
-
-type ArgsValidation = {
-  ok: boolean;
-  errors: readonly string[];
-  warnings: readonly string[];
 };
 
 export function SettingsForm({
@@ -207,114 +187,13 @@ export function SettingsForm({
         </div>
       </section>
 
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>Agent Harness</div>
-        <div className={styles.helpBlock}>
-          Choose the default agentic harness for launches. You can still override
-          the agent from the launch dialog for a single session.
-        </div>
-        <div className={styles.agentOptions} role="radiogroup" aria-labelledby="sf-launch-agent-label">
-          <div id="sf-launch-agent-label" className={styles.label}>Default Agent</div>
-          {LAUNCH_AGENTS.map((agent) => {
-            const isSelected = values.launch_agent === agent;
-            return (
-              <label
-                key={agent}
-                className={cn(
-                  styles.agentOption,
-                  isSelected && styles.agentOptionSelected,
-                  isPending && styles.agentOptionDisabled,
-                )}
-              >
-                <input
-                  type="radio"
-                  name="sf-launch-agent"
-                  className={styles.agentRadio}
-                  checked={isSelected}
-                  disabled={isPending}
-                  onChange={() => handleChange("launch_agent", agent)}
-                />
-                <span>
-                  <span className={styles.agentLabel}>{launchAgentLabel(agent)}</span>
-                  <span className={styles.agentDetail}>{AGENT_DETAILS[agent]}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-        <div className={styles.row}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-claude-args">Claude Extra Args</label>
-            <input
-              id="sf-claude-args"
-              className={styles.input}
-              value={values.claude_extra_args}
-              onChange={(e) => handleChange("claude_extra_args", e.target.value)}
-              disabled={isPending}
-              placeholder="--dangerously-skip-permissions"
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="done"
-            />
-            <div className={styles.help}>
-              Passed verbatim after <code>{launchAgentCommand("claude")}</code> when launching Claude Code.
-              Leave empty for defaults.
-            </div>
-            {claudeArgsValidation.errors.length > 0 && (
-              <div className={styles.fieldError} role="alert">
-                {claudeArgsValidation.errors.map((e, i) => (
-                  <div key={i}>{e}</div>
-                ))}
-              </div>
-            )}
-            {claudeArgsValidation.errors.length === 0 &&
-              claudeArgsValidation.warnings.length > 0 && (
-                <div className={styles.fieldWarning}>
-                  {claudeArgsValidation.warnings.map((w, i) => (
-                    <div key={i}>{w}</div>
-                  ))}
-                </div>
-              )}
-          </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="sf-codex-args">Codex Extra Args</label>
-            <input
-              id="sf-codex-args"
-              className={styles.input}
-              value={values.codex_extra_args}
-              onChange={(e) => handleChange("codex_extra_args", e.target.value)}
-              disabled={isPending}
-              placeholder="--model gpt-5"
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="done"
-            />
-            <div className={styles.help}>
-              Passed verbatim after <code>{launchAgentCommand("codex")}</code> when launching Codex.
-              Leave empty for defaults.
-            </div>
-            {codexArgsValidation.errors.length > 0 && (
-              <div className={styles.fieldError} role="alert">
-                {codexArgsValidation.errors.map((e, i) => (
-                  <div key={i}>{e}</div>
-                ))}
-              </div>
-            )}
-            {codexArgsValidation.errors.length === 0 &&
-              codexArgsValidation.warnings.length > 0 && (
-                <div className={styles.fieldWarning}>
-                  {codexArgsValidation.warnings.map((w, i) => (
-                    <div key={i}>{w}</div>
-                  ))}
-                </div>
-              )}
-          </div>
-        </div>
-      </section>
+      <SettingsAgentSection
+        values={values}
+        isPending={isPending}
+        claudeArgsValidation={claudeArgsValidation}
+        codexArgsValidation={codexArgsValidation}
+        onChange={handleChange}
+      />
 
       <section className={styles.section}>
         <div className={styles.sectionTitle}>Terminal Idle Detection</div>
