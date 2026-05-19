@@ -203,7 +203,10 @@ export function WorkbenchShell({
   }, [selection.mode, selection.selectedDeploymentId, selection.selectedIssueNumber, selection.selectedRepoId]);
 
   const selectedRepo = resolveSelectedRepo(payload, selection);
-  const selectedDeployment = resolveSelectedDeployment(payload, selection);
+  const selectedDeployment = selection.selectedDeploymentId === null
+    ? null
+    : selectedRepo?.deployments.find((deployment) => deployment.id === selection.selectedDeploymentId)
+      ?? resolveSelectedDeployment(payload, selection);
   const selectedIssue = selectedRepo?.issues.find((issue) => issue.number === selection.selectedIssueNumber) ?? null;
   const reassignTargets = payload?.repos.filter((repo) => repo.id !== selectedRepo?.id) ?? [];
   const hideSidePanes = !sidePaneWidthsApply(selection.mode);
@@ -779,6 +782,8 @@ export function WorkbenchShell({
             repoSetupRequested={repoSetupRequested}
             collapsedSections={selection.collapsedSections}
             sessionsHidden={!compactSidePanesHidden && drawerCollapse.instances}
+            pendingDeploymentId={pendingDeploymentId}
+            sessionRowErrors={sessionRowErrors}
             onToggleSection={toggleSection}
             onShowSessions={() => setDrawerCollapse((current) => ({ ...current, instances: false }))}
             onRetry={() => {
@@ -794,6 +799,11 @@ export function WorkbenchShell({
             onGlobalIssueSelected={selectGlobalIssue}
             onSessionLaunched={addLaunchedSession}
             onDeploymentStale={removeDeployment}
+            onReconnectDeployment={reconnectDeployment}
+            onEndSession={endSession}
+            onBackToOverview={() => {
+              selectMode("workbench", selectedRepo ? workbenchRepoUrl(selectedRepo) : "/workbench");
+            }}
             onJumpToSession={selectDeployment}
             onRepoUpdated={updateRepo}
             onRepoAdded={addRepo}
@@ -863,6 +873,8 @@ function FocusContent({
   repoSetupRequested,
   collapsedSections,
   sessionsHidden,
+  pendingDeploymentId,
+  sessionRowErrors,
   onToggleSection,
   onShowSessions,
   onRetry,
@@ -874,6 +886,9 @@ function FocusContent({
   onGlobalIssueSelected,
   onSessionLaunched,
   onDeploymentStale,
+  onReconnectDeployment,
+  onEndSession,
+  onBackToOverview,
   onJumpToSession,
   onRepoUpdated,
   onRepoAdded,
@@ -892,6 +907,8 @@ function FocusContent({
   repoSetupRequested: boolean;
   collapsedSections: WorkbenchSectionCollapseState;
   sessionsHidden: boolean;
+  pendingDeploymentId: number | null;
+  sessionRowErrors: Record<number, string>;
   onToggleSection: (section: WorkbenchSectionId) => void;
   onShowSessions: () => void;
   onRetry: () => void;
@@ -903,6 +920,9 @@ function FocusContent({
   onGlobalIssueSelected: (repoId: number, issueNumber: number) => void;
   onSessionLaunched: (deployment: WorkbenchDeployment) => void;
   onDeploymentStale: (deploymentId: number) => void;
+  onReconnectDeployment: (deployment: WorkbenchDeployment) => void;
+  onEndSession: (deployment: WorkbenchDeployment) => void;
+  onBackToOverview: () => void;
   onJumpToSession: (deploymentId: number) => void;
   onRepoUpdated: (repo: WorkbenchRepo) => void;
   onRepoAdded: (repo: WorkbenchRepo) => void;
@@ -1034,7 +1054,18 @@ function FocusContent({
   }
 
   if (mode === "workbench" && selectedDeployment) {
-    return <TerminalFocus deployment={selectedDeployment} repo={selectedRepo} onDeploymentStale={onDeploymentStale} />;
+    return (
+      <TerminalFocus
+        deployment={selectedDeployment}
+        repo={selectedRepo}
+        pending={pendingDeploymentId === selectedDeployment.id}
+        rowError={sessionRowErrors[selectedDeployment.id]}
+        onReconnect={onReconnectDeployment}
+        onEnd={onEndSession}
+        onBackToOverview={onBackToOverview}
+        onDeploymentStale={onDeploymentStale}
+      />
+    );
   }
 
   if (mode === "workbench" && selectedRepo) {

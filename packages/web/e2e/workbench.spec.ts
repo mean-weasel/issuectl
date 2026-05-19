@@ -759,6 +759,49 @@ test("keeps compact session entry reachable from the workbench overview", async 
   await expectWorkbenchFitsViewport(page);
 });
 
+test("recovers compact unavailable terminal sessions without showing the sessions pane", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  const unavailableRepos = workbenchPayload().repos;
+  unavailableRepos[0] = {
+    ...unavailableRepos[0],
+    deployments: unavailableRepos[0].deployments.map((deployment) =>
+      deployment.id === 101
+        ? { ...deployment, ttydPort: null, ttydPid: null }
+        : deployment,
+    ),
+  };
+  seedWorkbenchRepos(dbPath, unavailableRepos);
+  let ensureTtydCalls = 0;
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    ensureTtydCalls += 1;
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=101`);
+
+  await expect(page.getByRole("heading", { name: "Terminal unavailable" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reconnect session" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to overview" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Active sessions" })).toHaveCount(0);
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+
+  await page.getByRole("button", { name: "Reconnect session" }).click();
+
+  await expect.poll(() => ensureTtydCalls).toBeGreaterThanOrEqual(1);
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await expect(page.frameLocator('iframe[title="Terminal for issue 447"]').getByText("terminal ready")).toBeVisible();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("returns compact issue and terminal focus to the workbench overview", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -2234,7 +2277,7 @@ test("shows terminal reconnect after terminal auth failure", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Terminal unavailable" })).toBeVisible();
   expect(attempts).toBeGreaterThanOrEqual(1);
   allowSuccess = true;
-  await page.getByRole("button", { name: "Reconnect terminal" }).click();
+  await page.getByRole("button", { name: "Reconnect session" }).click();
   await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
 });
 
@@ -2269,19 +2312,19 @@ test("reconnects a session and shows a Workbench terminal error when the proxy r
   await expect(sessions.nth(0)).toContainText("#447");
   await expect(sessions.nth(1)).toContainText("#486");
   await expect(sessions.nth(2)).toContainText("#498");
-  await expect(page.getByLabel("Session #486")).toHaveAttribute("data-status", "error");
-  await expect(page.getByLabel("Session #486")).toContainText("Error: preview failed");
+  await expect(sessions.nth(1)).toHaveAttribute("data-status", "error");
+  await expect(sessions.nth(1)).toContainText("Error: preview failed");
 
-  await page.getByLabel("Session #447").getByRole("button").first().click();
+  await sessions.nth(0).getByRole("button").first().click();
 
   await expect(page.getByRole("heading", { name: /#447/ })).toBeVisible();
   await expect(page.locator('iframe[title="Terminal for issue 447"]')).toHaveCount(0);
   const terminalAlert = page.getByRole("alert").filter({ hasText: "Terminal unavailable" });
   await expect(terminalAlert).toBeVisible();
   await expect(terminalAlert).toContainText("Terminal proxy returned 401: Unauthorized");
-  await expect(page.getByRole("button", { name: "Reconnect terminal" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reconnect session" })).toBeVisible();
 
-  await page.getByLabel("Session #486").getByRole("button", { name: "Reconnect" }).click();
+  await sessions.nth(1).getByRole("button", { name: "Reconnect" }).click();
   await expect(page.getByRole("heading", { name: /#486/ })).toBeVisible();
   await expect(page.locator('iframe[title="Terminal for issue 486"]')).toHaveAttribute(
     "src",
@@ -2765,8 +2808,8 @@ function repo(id: number, name: string, deploymentCount: number): {
     state: "active";
     launchedAt: string;
     endedAt: null;
-    ttydPort: number;
-    ttydPid: number;
+    ttydPort: number | null;
+    ttydPid: number | null;
     idleSince: null;
     owner: string;
     repoName: string;

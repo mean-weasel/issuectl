@@ -973,6 +973,24 @@
   font-weight: 500;
 }
 
+.terminalRecoveryActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminalRecoveryActions .secondaryButton {
+  min-height: 44px;
+  margin-top: 0;
+}
+
+.terminalRecoveryActions .endDetails summary {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
 .deploymentList {
   display: grid;
   gap: 8px;
