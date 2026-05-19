@@ -767,6 +767,292 @@ test("keeps compact mode matrix primary actions reachable", async ({ page }) => 
   }
 });
 
+test("keeps compact state-changing workbench workflows inside the viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  const seen = {
+    settings: false,
+    parse: false,
+    create: false,
+    draftCreate: false,
+    draftUpdate: false,
+    draftAssign: false,
+    listPulls: false,
+    detailPull: false,
+    reviewPull: false,
+    mergePull: false,
+    commentPull: false,
+  };
+  const draftId = "22222222-2222-4222-8222-222222222222";
+
+  await page.route("**/api/v1/settings", async (route) => {
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          settings: {
+            branch_pattern: "issue-{number}-{slug}",
+            cache_ttl: "99999",
+            worktree_dir: "/tmp/worktrees",
+            launch_agent: "codex",
+            claude_extra_args: "--verbose",
+            codex_extra_args: "",
+            idle_grace_period: "300",
+            idle_threshold: "300",
+          },
+        }),
+      });
+      return;
+    }
+    seen.settings = true;
+    expect(route.request().method()).toBe("PATCH");
+    expect(await route.request().postDataJSON()).toEqual({
+      branch_pattern: "issue-{number}-{slug}",
+      cache_ttl: "120",
+      worktree_dir: "",
+      launch_agent: "codex",
+      claude_extra_args: "",
+      codex_extra_args: "",
+      idle_grace_period: "",
+      idle_threshold: "",
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
+  });
+  await page.route("**/api/v1/pulls/mean-weasel/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+
+    if (url.pathname === "/api/v1/pulls/mean-weasel/issuectl" && request.method() === "GET") {
+      seen.listPulls = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          pulls: [pullFixture(501, {
+            title: "Compact state-changing PR audit",
+            body: "Fixes #512",
+            checksStatus: "success",
+          })],
+          fromCache: false,
+          cachedAt: null,
+        }),
+      });
+      return;
+    }
+    if (url.pathname === "/api/v1/pulls/mean-weasel/issuectl/501" && request.method() === "GET") {
+      seen.detailPull = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(pullDetailFixture()),
+      });
+      return;
+    }
+    if (url.pathname === "/api/v1/pulls/mean-weasel/issuectl/501/review") {
+      seen.reviewPull = true;
+      expect(request.method()).toBe("POST");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, reviewId: 7001 }),
+      });
+      return;
+    }
+    if (url.pathname === "/api/v1/pulls/mean-weasel/issuectl/501/merge") {
+      seen.mergePull = true;
+      expect(request.method()).toBe("POST");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, sha: "abc123" }),
+      });
+      return;
+    }
+    if (url.pathname === "/api/v1/pulls/mean-weasel/issuectl/501/comments") {
+      seen.commentPull = true;
+      expect(request.method()).toBe("POST");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, commentId: 8001 }),
+      });
+      return;
+    }
+
+    await route.fallback();
+  });
+  await page.route("**/api/v1/parse", async (route) => {
+    seen.parse = true;
+    expect(route.request().method()).toBe("POST");
+    expect(await route.request().postDataJSON()).toEqual({
+      input: "Fix compact workflow state changes",
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        parsed: {
+          suggestedOrder: ["compact-1", "compact-2"],
+          issues: [
+            {
+              id: "compact-1",
+              originalText: "Fix compact workflow state changes",
+              title: "Fix compact workflow state changes",
+              body: "State changes should stay reachable on compact workbench screens.",
+              type: "bug",
+              repoOwner: "mean-weasel",
+              repoName: "issuectl",
+              repoConfidence: 0.95,
+              suggestedLabels: ["bug"],
+              clarity: "clear",
+            },
+            {
+              id: "compact-2",
+              originalText: "Add compact workflow notes",
+              title: "Add compact workflow notes",
+              body: "Document the compact state-changing workflow audit.",
+              type: "task",
+              repoOwner: "mean-weasel",
+              repoName: "issuectl",
+              repoConfidence: 0.8,
+              suggestedLabels: ["workbench"],
+              clarity: "clear",
+            },
+          ],
+        },
+      }),
+    });
+  });
+  await page.route("**/api/v1/parse/create", async (route) => {
+    seen.create = true;
+    expect(route.request().method()).toBe("POST");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        created: 1,
+        drafted: 0,
+        failed: 0,
+        results: [{ id: "compact-1", success: true, issueNumber: 903, owner: "mean-weasel", repo: "issuectl" }],
+      }),
+    });
+  });
+  await page.route("**/api/v1/drafts/*/assign", async (route) => {
+    seen.draftAssign = true;
+    expect(route.request().method()).toBe("POST");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, issueNumber: 904, issueUrl: "https://github.com/mean-weasel/issuectl/904" }),
+    });
+  });
+  await page.route("**/api/v1/drafts/*", async (route) => {
+    if (route.request().method() !== "PATCH") {
+      await route.fallback();
+      return;
+    }
+    seen.draftUpdate = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        draft: {
+          id: draftId,
+          title: "Compact draft follow-up",
+          body: "Saved from compact state audit.",
+          priority: "high",
+        },
+      }),
+    });
+  });
+  await page.route("**/api/v1/drafts", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
+    seen.draftCreate = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true, id: draftId }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench/board?repo=mean-weasel%2Fissuectl`);
+  await page.getByRole("button", { name: "Show running only" }).click();
+  await expect(page.locator('article[aria-label^="Board issue"]')).toHaveCount(4);
+  await expectCompactWorkbenchViewport(page);
+  await page.getByRole("button", { name: "Sort by priority" }).click();
+  await expect(page.getByLabel("Board column mean-weasel/issuectl").locator('article[aria-label^="Board issue"]').first())
+    .toHaveAttribute("aria-label", "Board issue mean-weasel/issuectl #447");
+  await expectCompactWorkbenchViewport(page);
+
+  await page.goto(`${baseUrl}/workbench/prs?repo=mean-weasel%2Fissuectl`);
+  await page.getByLabel("Pull request #501").getByRole("button", { name: "Open PR" }).click();
+  await expect(page.getByLabel("Pull request detail")).toContainText("Linked issue #512");
+  await expectCompactWorkbenchViewport(page);
+  const pullDetail = page.getByLabel("Pull request detail");
+  await pullDetail.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Review approved for #501");
+  await expectCompactWorkbenchViewport(page);
+  await pullDetail.getByRole("button", { name: "Merge squash", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("merged with squash");
+  await expectCompactWorkbenchViewport(page);
+  await pullDetail.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Comment added to #501");
+  await expectCompactWorkbenchViewport(page);
+
+  await page.goto(`${baseUrl}/workbench/settings?repo=mean-weasel%2Fissuectl`);
+  await page.getByLabel("Cache TTL").fill("120");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page.getByText("Settings saved")).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  await page.goto(`${baseUrl}/workbench/quick-create?repo=mean-weasel%2Fissuectl`);
+  await page.getByLabel("Parse text").fill("Fix compact workflow state changes");
+  await page.getByRole("button", { name: "Parse", exact: true }).click();
+  await expect(page.getByLabel("Candidate issue 1")).toContainText("accepted");
+  await expectCompactWorkbenchViewport(page);
+  await page.getByLabel("Candidate issue 2").getByRole("button", { name: "Reject" }).click();
+  await page.getByRole("button", { name: "Create accepted issues" }).click();
+  await expect(page.getByLabel("Quick create results")).toContainText("1 created, 0 drafted, 0 failed");
+  await expectCompactWorkbenchViewport(page);
+  await page.getByLabel("Draft title").fill("Compact draft follow-up");
+  await page.getByLabel("Draft body").fill("Saved from compact state audit.");
+  await page.getByLabel("Draft priority").selectOption("high");
+  await page.getByLabel("Draft labels").fill("bug, workbench");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByRole("status")).toContainText("Draft saved");
+  await expectCompactWorkbenchViewport(page);
+  await page.getByRole("button", { name: "Update draft" }).click();
+  await expect(page.getByRole("status")).toContainText("Draft updated");
+  await expectCompactWorkbenchViewport(page);
+  await page.getByRole("button", { name: "Assign draft" }).click();
+  await expect(page.getByRole("status")).toContainText("mean-weasel/issuectl#904");
+  await expectCompactWorkbenchViewport(page);
+
+  expect(seen).toEqual({
+    settings: true,
+    parse: true,
+    create: true,
+    draftCreate: true,
+    draftUpdate: true,
+    draftAssign: true,
+    listPulls: true,
+    detailPull: true,
+    reviewPull: true,
+    mergePull: true,
+    commentPull: true,
+  });
+});
+
 test("keeps compact issue action controls readable and ordered", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -2844,6 +3130,11 @@ async function expectBoardScrollsHorizontally(page: import("@playwright/test").P
 async function expectNoHorizontalPageScroll(page: import("@playwright/test").Page) {
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
     .toBeLessThanOrEqual(2);
+}
+
+async function expectCompactWorkbenchViewport(page: import("@playwright/test").Page) {
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
 }
 
 async function expectWorkbenchFitsViewport(page: import("@playwright/test").Page) {
