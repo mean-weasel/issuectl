@@ -30,5 +30,13 @@ export default defineConfig({
       },
       testMatch: /(mobile-ux-patterns|launch-ui|action-sheets|pull-to-refresh|issue-close|viewport-health)\.spec\.ts/,
     },
+    {
+      name: "mobile-webkit",
+      use: {
+        ...devices["iPhone 13"],
+        viewport: { width: 393, height: 852 },
+      },
+      testMatch: /workbench\.spec\.ts/,
+    },
   ],
 });
