@@ -139,8 +139,8 @@ jobs:
         # Specs hard-fail in CI if canRun() returns false, so a
         # misconfigured token causes a loud failure, not a silent skip.
         run: gh auth status
-      - name: Install Playwright chromium
-        run: pnpm --filter @issuectl/web exec playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: pnpm --filter @issuectl/web exec playwright install --with-deps chromium webkit
       - name: Run mobile UX regression spec
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -157,6 +157,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test viewport-health.spec.ts --project=mobile-chromium
+      - name: Run compact workbench WebKit dynamic journey
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "preserves compact issue and terminal context across keyboard navigation history and reload"
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
