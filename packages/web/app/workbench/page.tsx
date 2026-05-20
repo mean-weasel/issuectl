@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { generateApiToken, getDb } from "@issuectl/core";
 import { WorkbenchShell } from "@/components/workbench/WorkbenchShell";
 import { getWorkbenchPayload } from "@/lib/workbench-data";
-import { refreshWorkbenchPayload } from "./actions";
 import styles from "./WorkbenchPage.module.css";
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export default async function WorkbenchPage() {
     <div className={styles.page}>
       <WorkbenchShell
         initialPayload={await getWorkbenchPayload()}
-        onRefreshPayload={refreshWorkbenchPayload}
         initialMode="workbench"
         apiToken={apiToken}
       />

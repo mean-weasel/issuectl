@@ -4,7 +4,6 @@ import { generateApiToken, getDb } from "@issuectl/core";
 import { WorkbenchShell } from "@/components/workbench/WorkbenchShell";
 import type { WorkbenchMode } from "@/components/workbench/workbench-state";
 import { getWorkbenchPayload } from "@/lib/workbench-data";
-import { refreshWorkbenchPayload } from "../actions";
 import styles from "../WorkbenchPage.module.css";
 
 export const metadata: Metadata = {
@@ -35,7 +34,6 @@ export default async function WorkbenchSubpathPage({ params }: Props) {
     <div className={styles.page}>
       <WorkbenchShell
         initialPayload={await getWorkbenchPayload()}
-        onRefreshPayload={refreshWorkbenchPayload}
         initialMode={modeToWorkbenchMode(mode)}
         apiToken={apiToken}
       />

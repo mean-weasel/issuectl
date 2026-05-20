@@ -6,6 +6,8 @@ type Props = {
   repo: WorkbenchRepo;
   health: WorkbenchHealth;
   onRefresh: () => void;
+  refreshPending: boolean;
+  refreshError: string | null;
   onSelectDeployment: (deploymentId: number) => void;
   onSelectIssue: (issueNumber: number) => void;
   onOpenRepoSetup: () => void;
@@ -15,6 +17,8 @@ export function RepoOverviewFocus({
   repo,
   health,
   onRefresh,
+  refreshPending,
+  refreshError,
   onSelectDeployment,
   onSelectIssue,
   onOpenRepoSetup,
@@ -58,13 +62,32 @@ export function RepoOverviewFocus({
       )}
 
       <div className={styles.overviewActions}>
-        <button type="button" className={styles.primaryButton} onClick={onRefresh}>
-          Refresh
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={onRefresh}
+          disabled={refreshPending}
+          aria-label={refreshPending ? "Refreshing workbench data" : "Refresh workbench data"}
+        >
+          {refreshPending ? "Refreshing" : "Refresh"}
         </button>
         <button type="button" className={styles.secondaryButton} disabled>
           New shell unavailable
         </button>
       </div>
+
+      {refreshPending && (
+        <p className={styles.refreshStatus} role="status">
+          Refreshing workbench data...
+        </p>
+      )}
+
+      {refreshError && (
+        <div className={styles.notice} role="alert">
+          <strong>Refresh failed</strong>
+          <p>{refreshError}</p>
+        </div>
+      )}
 
       {repo.deployments.length > 0 && (
         <section className={styles.overviewSessionShortcuts} aria-label="Compact active sessions">

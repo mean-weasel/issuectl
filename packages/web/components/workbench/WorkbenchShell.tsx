@@ -85,6 +85,10 @@ export function WorkbenchShell({
       ? { status: "loaded", data: initialPayload, error: null }
       : { status: "loading", data: null, error: null },
   );
+  const [refreshState, setRefreshState] = useState<{ pending: boolean; error: string | null }>({
+    pending: false,
+    error: null,
+  });
   const [sessionSortMode, setSessionSortMode] = useState<SessionSortMode>("running first");
   const [issueFilter, setIssueFilter] = useState<IssueQueueFilter>("open");
   const [pendingDeploymentId, setPendingDeploymentId] = useState<number | null>(null);
@@ -107,27 +111,36 @@ export function WorkbenchShell({
 
   const load = useCallback(() => {
     const controller = new AbortController();
-    setLoadState((current) =>
-      current.status === "loaded" ? current : { status: "loading", data: null, error: null },
-    );
+    const refreshingExistingData = loadState.status === "loaded";
+    if (refreshingExistingData) {
+      setRefreshState({ pending: true, error: null });
+    } else {
+      setLoadState({ status: "loading", data: null, error: null });
+    }
     const request = onRefreshPayload
       ? onRefreshPayload()
       : fetchWorkbench({ signal: controller.signal });
     request
       .then((data) => {
         setLoadState({ status: "loaded", data, error: null });
+        setRefreshState({ pending: false, error: null });
         dispatch({ type: "payloadLoaded", payload: data });
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
+        const message = err instanceof Error ? err.message : "Unable to load workbench";
+        if (refreshingExistingData) {
+          setRefreshState({ pending: false, error: message });
+          return;
+        }
         setLoadState({
           status: "error",
           data: null,
-          error: err instanceof Error ? err.message : "Unable to load workbench",
+          error: message,
         });
       });
     return controller;
-  }, [onRefreshPayload]);
+  }, [loadState.status, onRefreshPayload]);
 
   useEffect(() => {
     if (initialPayload) {
@@ -841,6 +854,8 @@ export function WorkbenchShell({
             onRefresh={() => {
               load();
             }}
+            refreshPending={refreshState.pending}
+            refreshError={refreshState.error}
             onIssueUpdated={updateIssue}
             onIssueReassigned={focusReassignedIssue}
             onSelectDeployment={selectDeployment}
@@ -928,6 +943,8 @@ function FocusContent({
   onShowSessions,
   onRetry,
   onRefresh,
+  refreshPending,
+  refreshError,
   onIssueUpdated,
   onIssueReassigned,
   onSelectDeployment,
@@ -962,6 +979,8 @@ function FocusContent({
   onShowSessions: () => void;
   onRetry: () => void;
   onRefresh: () => void;
+  refreshPending: boolean;
+  refreshError: string | null;
   onIssueUpdated: (repoId: number, issueNumber: number, patch: Partial<WorkbenchIssueSummary>) => void;
   onIssueReassigned: (result: { owner: string; repo: string; issueNumber: number }) => void;
   onSelectDeployment: (deploymentId: number) => void;
@@ -1123,6 +1142,8 @@ function FocusContent({
         repo={selectedRepo}
         health={loadState.data.health}
         onRefresh={onRefresh}
+        refreshPending={refreshPending}
+        refreshError={refreshError}
         onSelectDeployment={onSelectDeployment}
         onSelectIssue={onSelectIssue}
         onOpenRepoSetup={onOpenRepoSetup}

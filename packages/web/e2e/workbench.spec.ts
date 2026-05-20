@@ -1486,6 +1486,62 @@ test("keeps compact empty and service failure states stable in WebKit", async ({
   });
 });
 
+test("keeps compact degraded refresh states usable in WebKit", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  seedWorkbenchRepos(dbPath);
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+
+  let releaseRefresh!: () => void;
+  let markRefreshStarted!: () => void;
+  const refreshStarted = new Promise<void>((resolve) => {
+    markRefreshStarted = resolve;
+  });
+  let refreshCalls = 0;
+  await page.route("**/api/v1/workbench", async (route) => {
+    refreshCalls += 1;
+    expect(route.request().method()).toBe("GET");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+
+    if (refreshCalls === 1) {
+      markRefreshStarted();
+      await new Promise<void>((resolve) => {
+        releaseRefresh = resolve;
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(workbenchPayload()),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Workbench refresh is temporarily unavailable." }),
+    });
+  });
+
+  await page.getByRole("button", { name: "Refresh workbench data" }).click();
+  await refreshStarted;
+  await expect(page.getByRole("button", { name: "Refreshing workbench data" })).toBeDisabled();
+  await expect(page.getByText("Refreshing workbench data...")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+
+  releaseRefresh();
+  await expect(page.getByRole("button", { name: "Refresh workbench data" })).toBeEnabled();
+  await expect(page.getByText("Refreshing workbench data...")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Refresh workbench data" }).click();
+  await expect(page.locator('[role="alert"]').filter({ hasText: "Refresh failed" })).toBeVisible();
+  await expect(page.getByText("Workbench refresh is temporarily unavailable.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Refresh workbench data" })).toBeEnabled();
+  await expectCompactWorkbenchViewport(page);
+});
+
 test("keeps compact workbench context visible while switching focus", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
