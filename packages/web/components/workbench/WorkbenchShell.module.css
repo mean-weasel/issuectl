@@ -1474,6 +1474,11 @@
   color: var(--paper-ink);
 }
 
+.primaryButton:disabled {
+  opacity: 0.72;
+  cursor: progress;
+}
+
 .emptyActions {
   display: flex;
   gap: 10px;
@@ -1539,6 +1544,12 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.refreshStatus {
+  margin-top: 10px;
+  color: var(--paper-ink-muted);
+  font: 12px var(--paper-mono);
 }
 
 .overviewSessionShortcuts,
