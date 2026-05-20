@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ParsedIssuesResponse } from "@issuectl/core";
 import { CandidateIssuesSection, DraftFallback, QuickCreateResults } from "./QuickCreateSections";
 import {
@@ -21,6 +21,16 @@ type Props = {
   selectedRepo: WorkbenchPayload["repos"][number] | null;
 };
 
+const QUICK_CREATE_INPUT_STORAGE_KEY = "issuectl.workbench.quickCreate.input";
+const QUICK_CREATE_DRAFT_STORAGE_KEY = "issuectl.workbench.quickCreate.draft";
+const DEFAULT_DRAFT: DraftState = {
+  id: null,
+  title: "",
+  body: "",
+  priority: "normal",
+  labels: "",
+};
+
 export function QuickCreateFocus({ repos, selectedRepo }: Props) {
   const defaultRepoKey = repoKey(selectedRepo) ?? repoKey(repos[0]) ?? "";
   const repoOptions = useMemo(() => repos.map((repo) => ({
@@ -30,21 +40,23 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
     owner: repo.owner,
     repo: repo.name,
   })), [repos]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(readStoredInput);
   const [parseStatus, setParseStatus] = useState<"idle" | "parsing" | "creating">("idle");
   const [cards, setCards] = useState<CandidateIssue[]>([]);
   const [result, setResult] = useState<QuickCreateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<DraftState>({
-    id: null,
-    title: "",
-    body: "",
-    priority: "normal",
-    labels: "",
-  });
+  const [draft, setDraft] = useState<DraftState>(readStoredDraft);
   const [draftMessage, setDraftMessage] = useState<string | null>(null);
 
   const acceptedCount = cards.filter((card) => card.accepted).length;
+
+  useEffect(() => {
+    writeStoredValue(QUICK_CREATE_INPUT_STORAGE_KEY, input);
+  }, [input]);
+
+  useEffect(() => {
+    writeStoredValue(QUICK_CREATE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  }, [draft]);
 
   async function handleParse() {
     setParseStatus("parsing");
@@ -223,4 +235,45 @@ export function QuickCreateFocus({ repos, selectedRepo }: Props) {
   function updateCard(id: string, patch: Partial<CandidateIssue>) {
     setCards((current) => current.map((card) => card.id === id ? { ...card, ...patch } : card));
   }
+}
+
+function readStoredInput(): string {
+  try {
+    return window.localStorage.getItem(QUICK_CREATE_INPUT_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function readStoredDraft(): DraftState {
+  try {
+    const raw = window.localStorage.getItem(QUICK_CREATE_DRAFT_STORAGE_KEY);
+    if (!raw) return DEFAULT_DRAFT;
+    const parsed = JSON.parse(raw) as Partial<DraftState>;
+    return {
+      id: typeof parsed.id === "string" ? parsed.id : null,
+      title: typeof parsed.title === "string" ? parsed.title : "",
+      body: typeof parsed.body === "string" ? parsed.body : "",
+      priority: isDraftPriority(parsed.priority) ? parsed.priority : "normal",
+      labels: typeof parsed.labels === "string" ? parsed.labels : "",
+    };
+  } catch {
+    return DEFAULT_DRAFT;
+  }
+}
+
+function writeStoredValue(key: string, value: string): void {
+  try {
+    if (value) {
+      window.localStorage.setItem(key, value);
+    } else {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // Persistence is a convenience; the form remains usable if storage is unavailable.
+  }
+}
+
+function isDraftPriority(value: unknown): value is DraftState["priority"] {
+  return value === "low" || value === "normal" || value === "high";
 }
