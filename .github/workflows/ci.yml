@@ -161,6 +161,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "preserves compact issue and terminal context across keyboard navigation history and reload"
+      - name: Run command sheet WebKit scroll lock
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test mobile-ux-patterns.spec.ts --project=mobile-webkit --grep "body is scroll-locked when command sheet is open"
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
