@@ -173,6 +173,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact dense issue detail content readable in WebKit"
+      - name: Run compact workbench WebKit invalid deep-link recovery
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "recovers compact invalid deep links to a usable overview"
       - name: Run compact workbench WebKit cross-mode quick create persistence
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

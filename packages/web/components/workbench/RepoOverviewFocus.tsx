@@ -8,6 +8,7 @@ type Props = {
   onRefresh: () => void;
   refreshPending: boolean;
   refreshError: string | null;
+  recoveryNotice?: string | null;
   onSelectDeployment: (deploymentId: number) => void;
   onSelectIssue: (issueNumber: number) => void;
   onOpenRepoSetup: () => void;
@@ -19,6 +20,7 @@ export function RepoOverviewFocus({
   onRefresh,
   refreshPending,
   refreshError,
+  recoveryNotice = null,
   onSelectDeployment,
   onSelectIssue,
   onOpenRepoSetup,
@@ -28,6 +30,13 @@ export function RepoOverviewFocus({
       <p className={styles.kicker}>Workbench</p>
       <h1>{repo.owner}/{repo.name}</h1>
       <p className={styles.muted}>Select a session or issue to open its focused workspace.</p>
+
+      {recoveryNotice && (
+        <div className={styles.notice} role="alert">
+          <strong>Deep link unavailable</strong>
+          <p>{recoveryNotice}</p>
+        </div>
+      )}
 
       <div className={styles.overviewGrid} aria-label="Repo health summary">
         <div>

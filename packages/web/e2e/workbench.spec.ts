@@ -2083,6 +2083,31 @@ test("returns compact issue and terminal focus to the workbench overview", async
   await expectWorkbenchFitsViewport(page);
 });
 
+test("recovers compact invalid deep links to a usable overview", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=9999`);
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByText("Issue #9999 is not available in mean-weasel/issuectl")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByLabel("Compact repo issues")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Refresh workbench data" })).toBeVisible();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&deployment=9999`);
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await expect(page.getByText("Session 9999 is not available")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByLabel("Compact active sessions")).toBeVisible();
+  await expectNoHorizontalPageScroll(page);
+  await expectWorkbenchFitsViewport(page);
+});
+
 test("captures workbench QA screenshots", async ({ browser }) => {
   if (!tmpDir) throw new Error("Expected workbench e2e tmpDir to be initialized");
   const artifactDir = join(tmpDir, "workbench-artifacts");

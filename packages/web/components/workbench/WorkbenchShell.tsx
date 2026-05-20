@@ -94,6 +94,7 @@ export function WorkbenchShell({
   const [pendingDeploymentId, setPendingDeploymentId] = useState<number | null>(null);
   const [sessionRowErrors, setSessionRowErrors] = useState<Record<number, string>>({});
   const [repoSetupRequested, setRepoSetupRequested] = useState(false);
+  const [urlRecoveryNotice, setUrlRecoveryNotice] = useState<string | null>(null);
   const [drawerCollapse, setDrawerCollapse] = useState({ instances: false, issues: false });
   const [compactLayout, setCompactLayout] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
@@ -163,6 +164,10 @@ export function WorkbenchShell({
       dispatch({ type: "applyUrlSelection", ...urlSelection });
       setDrawerCollapse(drawersForUrlSelection(urlSelection.mode, urlSelection.issueNumber, urlSelection.deploymentId));
       setRepoSetupRequested(new URLSearchParams(window.location.search).get("repoSetup") === "1");
+      setUrlRecoveryNotice(urlSelection.recoveryNotice);
+      if (urlSelection.normalizedUrl) {
+        window.history.replaceState(null, "", urlSelection.normalizedUrl);
+      }
     };
     syncSelectionFromUrl();
     window.addEventListener("popstate", syncSelectionFromUrl);
@@ -255,6 +260,7 @@ export function WorkbenchShell({
 
   function selectMode(nextMode: WorkbenchMode, path: string) {
     rememberCompactOverviewScroll();
+    setUrlRecoveryNotice(null);
     const pathParams = new URLSearchParams(path.split("?")[1] ?? "");
     if (nextMode === "workbench" && !pathParams.has("issue") && !pathParams.has("deployment")) {
       dispatch({
@@ -282,6 +288,7 @@ export function WorkbenchShell({
 
   function selectRepo(repoId: number) {
     rememberCompactOverviewScroll();
+    setUrlRecoveryNotice(null);
     const repo = payload?.repos.find((item) => item.id === repoId) ?? null;
     const nextMode = repoScopedMode(selection.mode) ? selection.mode : "workbench";
     dispatch({
@@ -302,6 +309,7 @@ export function WorkbenchShell({
 
   function selectDeployment(deploymentId: number, deploymentOverride?: WorkbenchDeployment) {
     rememberCompactOverviewScroll();
+    setUrlRecoveryNotice(null);
     const deployment = deploymentOverride
       ?? payload?.deployments.find((item) => item.id === deploymentId)
       ?? selectedRepo?.deployments.find((item) => item.id === deploymentId)
@@ -314,6 +322,7 @@ export function WorkbenchShell({
 
   function selectIssue(issueNumber: number) {
     rememberCompactOverviewScroll();
+    setUrlRecoveryNotice(null);
     dispatch({ type: "selectIssue", issueNumber });
     setDrawerCollapse((current) => ({ ...current, instances: true, issues: false }));
     window.history.pushState(null, "", selectedRepo ? workbenchIssueUrl(selectedRepo, issueNumber) : "/workbench");
@@ -322,6 +331,7 @@ export function WorkbenchShell({
 
   function selectGlobalIssue(repoId: number, issueNumber: number) {
     rememberCompactOverviewScroll();
+    setUrlRecoveryNotice(null);
     dispatch({ type: "selectRepo", repoId });
     dispatch({ type: "selectIssue", issueNumber });
     setDrawerCollapse({ instances: false, issues: false });
@@ -839,6 +849,7 @@ export function WorkbenchShell({
             selectedRepo={selectedRepo}
             selectedDeployment={selectedDeployment}
             selectedIssue={selectedIssue}
+            recoveryNotice={urlRecoveryNotice}
             reassignTargets={reassignTargets}
             navLabels={navLabels}
             repoSetupRequested={repoSetupRequested}
@@ -932,6 +943,7 @@ function FocusContent({
   selectedRepo,
   selectedDeployment,
   selectedIssue,
+  recoveryNotice,
   reassignTargets,
   navLabels,
   repoSetupRequested,
@@ -968,6 +980,7 @@ function FocusContent({
   selectedRepo: WorkbenchPayload["repos"][number] | null;
   selectedDeployment: WorkbenchDeployment | null;
   selectedIssue: WorkbenchPayload["repos"][number]["issues"][number] | null;
+  recoveryNotice: string | null;
   reassignTargets: WorkbenchPayload["repos"][number][];
   navLabels: string[];
   repoSetupRequested: boolean;
@@ -1144,6 +1157,7 @@ function FocusContent({
         onRefresh={onRefresh}
         refreshPending={refreshPending}
         refreshError={refreshError}
+        recoveryNotice={recoveryNotice}
         onSelectDeployment={onSelectDeployment}
         onSelectIssue={onSelectIssue}
         onOpenRepoSetup={onOpenRepoSetup}
@@ -1254,12 +1268,15 @@ type UrlSelection = {
   repoId: number | null;
   issueNumber: number | null;
   deploymentId: number | null;
+  recoveryNotice: string | null;
+  normalizedUrl: string | null;
 };
 
 function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: string): UrlSelection {
   const mode = modeFromPath(pathname);
   const params = new URLSearchParams(search);
-  const requestedRepo = repoFromUrlParam(payload, params.get("repo")) ?? payload.repos[0] ?? null;
+  const requestedRepoParam = params.get("repo");
+  const requestedRepo = repoFromUrlParam(payload, requestedRepoParam) ?? payload.repos[0] ?? null;
 
   if (mode !== "workbench") {
     return {
@@ -1267,6 +1284,8 @@ function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: s
       repoId: requestedRepo?.id ?? null,
       issueNumber: null,
       deploymentId: null,
+      recoveryNotice: null,
+      normalizedUrl: null,
     };
   }
 
@@ -1279,8 +1298,19 @@ function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: s
         repoId: deployment.repoId,
         issueNumber: null,
         deploymentId: deployment.id,
+        recoveryNotice: null,
+        normalizedUrl: null,
       };
     }
+    const repoLabel = requestedRepo ? `${requestedRepo.owner}/${requestedRepo.name}` : "the workbench";
+    return {
+      mode,
+      repoId: requestedRepo?.id ?? null,
+      issueNumber: null,
+      deploymentId: null,
+      recoveryNotice: `Session ${deploymentId} is not available. Showing ${repoLabel} overview.`,
+      normalizedUrl: requestedRepo ? workbenchRepoUrl(requestedRepo) : "/workbench",
+    };
   }
 
   const issueNumber = numberParam(params.get("issue"));
@@ -1290,6 +1320,30 @@ function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: s
       repoId: requestedRepo.id,
       issueNumber,
       deploymentId: null,
+      recoveryNotice: null,
+      normalizedUrl: null,
+    };
+  }
+  if (requestedRepo && issueNumber !== null) {
+    return {
+      mode,
+      repoId: requestedRepo.id,
+      issueNumber: null,
+      deploymentId: null,
+      recoveryNotice: `Issue #${issueNumber} is not available in ${requestedRepo.owner}/${requestedRepo.name}. Showing the repo overview.`,
+      normalizedUrl: workbenchRepoUrl(requestedRepo),
+    };
+  }
+
+  if (requestedRepoParam && !repoFromUrlParam(payload, requestedRepoParam)) {
+    const repoLabel = requestedRepo ? `${requestedRepo.owner}/${requestedRepo.name}` : "the workbench";
+    return {
+      mode,
+      repoId: requestedRepo?.id ?? null,
+      issueNumber: null,
+      deploymentId: null,
+      recoveryNotice: `Repository ${requestedRepoParam} is not tracked. Showing ${repoLabel} overview.`,
+      normalizedUrl: requestedRepo ? workbenchRepoUrl(requestedRepo) : "/workbench",
     };
   }
 
@@ -1298,6 +1352,8 @@ function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: s
     repoId: requestedRepo?.id ?? null,
     issueNumber: null,
     deploymentId: null,
+    recoveryNotice: null,
+    normalizedUrl: null,
   };
 }
 
