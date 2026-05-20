@@ -1649,6 +1649,49 @@ test("preserves compact repo-scoped mode while switching repos from deep links",
   await expectWorkbenchFitsViewport(page);
 });
 
+test("preserves compact quick create drafts across cross-mode navigation in WebKit", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.route("**/api/v1/pulls/mean-weasel/**", async (route) => {
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ pulls: [], fromCache: false, cachedAt: null }),
+    });
+  });
+  await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ port: 7701, terminalToken: "terminal-token-101" }),
+    });
+  });
+  await mockTerminalPage(page, 7701, "terminal-token-101");
+
+  await page.goto(`${baseUrl}/workbench/quick-create?repo=mean-weasel%2Fissuectl`);
+  await page.getByLabel("Parse text").fill("Fix compact cross-mode quick create persistence");
+  await page.getByLabel("Draft title").fill("Preserve compact quick create draft");
+  await page.getByLabel("Draft body").fill("Do not lose in-progress work when switching workbench modes.");
+  await page.getByLabel("Draft labels").fill("ux, workbench");
+
+  await clickNavAndExpect(page, "PRs", "/workbench/prs", true);
+  await clickNavAndExpect(page, "Settings", "/workbench/settings", true);
+  await clickNavAndExpect(page, "Workbench", "/workbench", true);
+  await page
+    .getByLabel("Compact active sessions")
+    .getByLabel("Session #447")
+    .getByRole("button", { name: "Open terminal" })
+    .click();
+  await expect(page.locator('iframe[title="Terminal for issue 447"]')).toBeVisible();
+  await clickNavAndExpect(page, "Quick Create", "/workbench/quick-create", true);
+
+  await expect(page.getByLabel("Parse text")).toHaveValue("Fix compact cross-mode quick create persistence");
+  await expect(page.getByLabel("Draft title")).toHaveValue("Preserve compact quick create draft");
+  await expect(page.getByLabel("Draft body")).toHaveValue("Do not lose in-progress work when switching workbench modes.");
+  await expect(page.getByLabel("Draft labels")).toHaveValue("ux, workbench");
+  await expectCompactWorkbenchViewport(page);
+});
+
 test("keeps compact issue mutations and session navigation coherent end to end", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   const requests: Array<{ method: string; url: string; body: unknown }> = [];
