@@ -169,6 +169,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "recovers compact unavailable terminal sessions without showing the sessions pane"
+      - name: Run compact workbench WebKit failure states
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact empty and service failure states stable in WebKit"
       - name: Run command sheet WebKit scroll lock
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
