@@ -42,6 +42,75 @@ describe("workbench state", () => {
     expect(next.mode).toBe("workbench");
   });
 
+  it("clears stale issue selection when refreshed payload removes the issue", () => {
+    const payload = payloadFixture();
+    const selectedIssue = workbenchReducer(createWorkbenchState(payload), {
+      type: "selectIssue",
+      issueNumber: 512,
+    });
+    const refreshedPayload = {
+      ...payload,
+      repos: payload.repos.map((repo) =>
+        repo.id === 1
+          ? { ...repo, issues: repo.issues.filter((issue) => issue.number !== 512) }
+          : repo,
+      ),
+    };
+
+    const next = workbenchReducer(selectedIssue, { type: "payloadLoaded", payload: refreshedPayload });
+
+    expect(next.selectedRepoId).toBe(1);
+    expect(next.selectedIssueNumber).toBeNull();
+    expect(next.selectedDeploymentId).toBeNull();
+  });
+
+  it("clears stale issue selection when refreshed payload replaces the selected repo", () => {
+    const payload = payloadFixture();
+    const selectedIssue = workbenchReducer(createWorkbenchState(payload), {
+      type: "selectIssue",
+      issueNumber: 512,
+    });
+    const refreshedPayload = {
+      ...payload,
+      repos: [
+        {
+          ...repo(5, "replacement", 0),
+          issues: [{ ...issue(512, "Replacement repo issue"), hasActiveDeployment: false }],
+        },
+        ...payload.repos.filter((item) => item.id !== 1),
+      ],
+    };
+
+    const next = workbenchReducer(selectedIssue, { type: "payloadLoaded", payload: refreshedPayload });
+
+    expect(next.selectedRepoId).toBe(5);
+    expect(next.selectedIssueNumber).toBeNull();
+    expect(next.selectedDeploymentId).toBeNull();
+  });
+
+  it("clears stale deployment selection when refreshed payload removes the deployment", () => {
+    const payload = payloadFixture();
+    const selectedDeployment = workbenchReducer(createWorkbenchState(payload), {
+      type: "selectDeployment",
+      deploymentId: 101,
+      repoId: 1,
+    });
+    const refreshedPayload = {
+      ...payload,
+      repos: payload.repos.map((repo) =>
+        repo.id === 1
+          ? { ...repo, deployments: repo.deployments.filter((deployment) => deployment.id !== 101) }
+          : repo,
+      ),
+    };
+
+    const next = workbenchReducer(selectedDeployment, { type: "payloadLoaded", payload: refreshedPayload });
+
+    expect(next.selectedRepoId).toBe(1);
+    expect(next.selectedIssueNumber).toBeNull();
+    expect(next.selectedDeploymentId).toBeNull();
+  });
+
   it("uses live deployment counts for rail badges", () => {
     const payload = payloadFixture();
 

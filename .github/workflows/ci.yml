@@ -177,6 +177,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact degraded refresh states usable in WebKit"
+      - name: Run compact workbench WebKit stale refresh reconciliation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "reconciles compact stale overview data after refresh in WebKit"
       - name: Run command sheet WebKit scroll lock
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
