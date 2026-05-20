@@ -79,12 +79,41 @@ describe("POST /api/v1/launch/[owner]/[repo]/[number]", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(json).toMatchObject({ success: true, deploymentId: 123, ttydPort: 7700 });
+    expect(json).toMatchObject({
+      success: true,
+      deploymentId: 123,
+      ttydPort: 7700,
+      correlationId: expect.any(String),
+    });
     expect(executeLaunch).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      expect.objectContaining({ agent: "codex" }),
+      expect.objectContaining({ agent: "codex", correlationId: json.correlationId }),
     );
+  });
+
+  it("returns the cached correlation ID when replaying completed idempotent launches", async () => {
+    withIdempotency.mockResolvedValue({
+      correlationId: "cached-correlation-id",
+      deploymentId: 456,
+      ttydPort: 7800,
+      labelWarning: null,
+    });
+
+    const response = await POST(
+      makeRequest({ ...baseBody, idempotencyKey: "launch-key" }),
+      { params },
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toMatchObject({
+      success: true,
+      correlationId: "cached-correlation-id",
+      deploymentId: 456,
+      ttydPort: 7800,
+    });
+    expect(executeLaunch).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid launch agent", async () => {

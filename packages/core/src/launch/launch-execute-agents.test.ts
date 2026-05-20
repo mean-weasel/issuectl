@@ -40,6 +40,14 @@ const { reserveTtydPortSpy, updateTtydInfoSpy } = vi.hoisted(() => ({
   updateTtydInfoSpy: vi.fn(),
 }));
 
+const { recordDiagnosticEventSpy } = vi.hoisted(() => ({
+  recordDiagnosticEventSpy: vi.fn(),
+}));
+
+vi.mock("../db/diagnostics.js", () => ({
+  recordDiagnosticEventSafely: recordDiagnosticEventSpy,
+}));
+
 vi.mock("../db/deployments.js", async () => {
   const actual =
     await vi.importActual<typeof import("../db/deployments.js")>(
@@ -101,6 +109,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     allocatePortSpy.mockClear();
     reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
+    recordDiagnosticEventSpy.mockClear();
     db = createTestDb();
   });
 
@@ -158,6 +167,16 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       7700,
       12345,
     );
+    const spawnedDiagnosticCall = recordDiagnosticEventSpy.mock.calls.findIndex(
+      ([, input]) =>
+        (input as { event?: string } | undefined)?.event === "ttyd.spawned",
+    );
+    expect(spawnedDiagnosticCall).toBeGreaterThanOrEqual(0);
+    expect(
+      updateTtydInfoSpy.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      recordDiagnosticEventSpy.mock.invocationCallOrder[spawnedDiagnosticCall],
+    );
     expect(result.ttydPort).toBe(7700);
   });
 
@@ -180,6 +199,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       owner: "acme",
       repo: "api",
       issueNumber: 43,
+      correlationId: "test-correlation",
       branchName: "codex-branch",
       workspaceMode: "existing",
       selectedComments: [],
@@ -196,6 +216,16 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       .prepare("SELECT agent FROM deployments WHERE repo_id = ? AND issue_number = ?")
       .get(repo.id, 43) as { agent: string };
     expect(row.agent).toBe("codex");
+    expect(recordDiagnosticEventSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        event: "launch.requested",
+        correlationId: "test-correlation",
+        owner: "acme",
+        repo: "api",
+        issueNumber: 43,
+      }),
+    );
   });
 
   it("uses an explicit launch agent over the saved default", async () => {

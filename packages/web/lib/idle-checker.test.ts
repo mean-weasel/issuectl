@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { checkIdleDeployments } from "./idle-checker";
+import { checkDeploymentLiveness, checkIdleDeployments } from "./idle-checker";
 
 // Mock the modules the checker depends on
 vi.mock("./idle-registry", () => ({
@@ -13,6 +13,11 @@ vi.mock("@issuectl/core", async () => {
     ...actual,
     getDb: vi.fn(),
     getActiveDeploymentByPort: vi.fn(),
+    getActiveDeployments: vi.fn(),
+    endDeployment: vi.fn(),
+    isTmuxSessionAlive: vi.fn(),
+    tmuxSessionName: vi.fn((repoName: string, issueNumber: number) => `issuectl-${repoName}-${issueNumber}`),
+    recordDiagnosticEventSafely: vi.fn(),
     setIdleSince: vi.fn(),
     clearIdleSince: vi.fn(),
     getSetting: vi.fn(),
@@ -32,6 +37,10 @@ import { getRegisteredPorts, getLastPtyOutput } from "./idle-registry";
 import {
   getDb,
   getActiveDeploymentByPort,
+  getActiveDeployments,
+  endDeployment,
+  isTmuxSessionAlive,
+  recordDiagnosticEventSafely,
   setIdleSince,
   clearIdleSince,
   getSetting,
@@ -41,6 +50,10 @@ const mockGetRegisteredPorts = vi.mocked(getRegisteredPorts);
 const mockGetLastPtyOutput = vi.mocked(getLastPtyOutput);
 const mockGetDb = vi.mocked(getDb);
 const mockGetActiveDeploymentByPort = vi.mocked(getActiveDeploymentByPort);
+const mockGetActiveDeployments = vi.mocked(getActiveDeployments);
+const mockEndDeployment = vi.mocked(endDeployment);
+const mockIsTmuxSessionAlive = vi.mocked(isTmuxSessionAlive);
+const mockRecordDiagnosticEvent = vi.mocked(recordDiagnosticEventSafely);
 const mockSetIdleSince = vi.mocked(setIdleSince);
 const mockClearIdleSince = vi.mocked(clearIdleSince);
 const mockGetSetting = vi.mocked(getSetting);
@@ -185,5 +198,77 @@ describe("checkIdleDeployments", () => {
 
     expect(mockSetIdleSince).not.toHaveBeenCalled();
     expect(mockClearIdleSince).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkDeploymentLiveness", () => {
+  const fakeDb = {} as ReturnType<typeof getDb>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetDb.mockReturnValue(fakeDb);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("records liveness.tmux_missing when it ends a deployment for a missing tmux session", () => {
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 3,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: 7,
+        agent: "claude",
+        branchName: "issue-7",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date().toISOString(),
+        endedAt: null,
+        ttydPort: 7700,
+        ttydPid: 1234,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(false);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).toHaveBeenCalledWith(fakeDb, 3);
+    expect(mockRecordDiagnosticEvent).toHaveBeenCalledWith(
+      fakeDb,
+      expect.objectContaining({
+        level: "warn",
+        event: "liveness.tmux_missing",
+        source: "web.idle-checker",
+        owner: "owner",
+        repo: "repo",
+        issueNumber: 7,
+        deploymentId: 3,
+        sessionName: "issuectl-repo-7",
+      }),
+    );
+  });
+
+  it("records liveness.check_failed when querying active deployments fails", () => {
+    mockGetActiveDeployments.mockImplementation(() => {
+      throw new Error("SQLITE_BUSY");
+    });
+
+    checkDeploymentLiveness();
+
+    expect(mockRecordDiagnosticEvent).toHaveBeenCalledWith(
+      fakeDb,
+      expect.objectContaining({
+        level: "error",
+        event: "liveness.check_failed",
+        source: "web.idle-checker",
+        message: "SQLITE_BUSY",
+      }),
+    );
   });
 });

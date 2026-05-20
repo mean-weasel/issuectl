@@ -9,6 +9,7 @@ import {
   getSetting,
   setIdleSince,
   clearIdleSince,
+  recordDiagnosticEventSafely,
 } from "@issuectl/core";
 import { getRegisteredPorts, getLastPtyOutput } from "./idle-registry";
 import log from "./logger";
@@ -124,6 +125,12 @@ export function checkDeploymentLiveness(): void {
     deployments = getActiveDeployments(db);
   } catch (err) {
     log.error({ msg: "liveness_check_query_failed", err });
+    recordDiagnosticEventSafely(db, {
+      level: "error",
+      event: "liveness.check_failed",
+      source: "web.idle-checker",
+      message: err instanceof Error ? err.message : String(err),
+    });
     return;
   }
 
@@ -132,6 +139,17 @@ export function checkDeploymentLiveness(): void {
       const sessionName = tmuxSessionName(deployment.repoName, deployment.issueNumber);
       if (!isTmuxSessionAlive(sessionName)) {
         endDeployment(db, deployment.id);
+        recordDiagnosticEventSafely(db, {
+          level: "warn",
+          event: "liveness.tmux_missing",
+          source: "web.idle-checker",
+          owner: deployment.owner,
+          repo: deployment.repoName,
+          issueNumber: deployment.issueNumber,
+          deploymentId: deployment.id,
+          sessionName,
+          message: `tmux session ${sessionName} is gone`,
+        });
         log.info({
           msg: "deployment_session_dead",
           deploymentId: deployment.id,
@@ -141,6 +159,16 @@ export function checkDeploymentLiveness(): void {
       }
     } catch (err) {
       log.error({ msg: "liveness_check_error", deploymentId: deployment.id, err });
+      recordDiagnosticEventSafely(db, {
+        level: "error",
+        event: "liveness.check_failed",
+        source: "web.idle-checker",
+        owner: deployment.owner,
+        repo: deployment.repoName,
+        issueNumber: deployment.issueNumber,
+        deploymentId: deployment.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 }

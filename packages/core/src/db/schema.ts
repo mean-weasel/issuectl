@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -102,6 +102,36 @@ const CREATE_TABLES = `
 
   CREATE INDEX IF NOT EXISTS idx_push_devices_enabled
     ON push_devices(enabled);
+
+  CREATE TABLE IF NOT EXISTS diagnostic_events (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts             INTEGER NOT NULL,
+    level          TEXT NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error')),
+    event          TEXT NOT NULL,
+    source         TEXT NOT NULL,
+    correlation_id TEXT,
+    owner          TEXT,
+    repo           TEXT,
+    issue_number   INTEGER,
+    deployment_id  INTEGER,
+    session_name   TEXT,
+    ttyd_port      INTEGER,
+    ttyd_pid       INTEGER,
+    status         TEXT,
+    message        TEXT,
+    data_json      TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_diagnostic_events_ts
+    ON diagnostic_events(ts);
+  CREATE INDEX IF NOT EXISTS idx_diagnostic_events_issue
+    ON diagnostic_events(owner, repo, issue_number, ts);
+  CREATE INDEX IF NOT EXISTS idx_diagnostic_events_deployment
+    ON diagnostic_events(deployment_id, ts);
+  CREATE INDEX IF NOT EXISTS idx_diagnostic_events_event
+    ON diagnostic_events(event, ts);
+  CREATE INDEX IF NOT EXISTS idx_diagnostic_events_correlation
+    ON diagnostic_events(correlation_id, ts);
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL

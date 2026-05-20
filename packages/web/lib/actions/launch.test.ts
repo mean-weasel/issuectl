@@ -19,10 +19,7 @@ const getSetting = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
-const isTtydAlive = vi.hoisted(() => vi.fn());
 const isTmuxSessionAlive = vi.hoisted(() => vi.fn());
-const respawnTtyd = vi.hoisted(() => vi.fn());
-const updateTtydInfo = vi.hoisted(() => vi.fn());
 const executeLaunch = vi.hoisted(() => vi.fn());
 const withAuthRetry = vi.hoisted(() => vi.fn());
 const withIdempotency = vi.hoisted(() => vi.fn());
@@ -38,10 +35,7 @@ vi.mock("@issuectl/core", () => ({
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
   tmuxSessionName: (repo: string, issueNumber: number) =>
     `issuectl-${repo}-${issueNumber}`,
-  isTtydAlive: (...args: unknown[]) => isTtydAlive(...args),
   isTmuxSessionAlive: (...args: unknown[]) => isTmuxSessionAlive(...args),
-  respawnTtyd: (...args: unknown[]) => respawnTtyd(...args),
-  updateTtydInfo: (...args: unknown[]) => updateTtydInfo(...args),
   executeLaunch: (...args: unknown[]) => executeLaunch(...args),
   withAuthRetry: (...args: unknown[]) => withAuthRetry(...args),
   withIdempotency: (...args: unknown[]) => withIdempotency(...args),
@@ -51,7 +45,7 @@ vi.mock("@issuectl/core", () => ({
 }));
 
 // Import AFTER mocks so the mocked module is in place.
-import { endSession, checkSessionAlive, ensureTtyd, launchIssue } from "./launch.js";
+import { endSession, checkSessionAlive, launchIssue } from "./launch.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,10 +93,7 @@ beforeEach(() => {
   coreEndDeployment.mockReset();
   cleanupStaleContextFiles.mockReset();
 
-  isTtydAlive.mockReset();
   isTmuxSessionAlive.mockReset();
-  respawnTtyd.mockReset();
-  updateTtydInfo.mockReset();
   executeLaunch.mockReset();
   withAuthRetry.mockReset();
   withIdempotency.mockReset();
@@ -297,91 +288,5 @@ describe("checkSessionAlive", () => {
     const result = await withConsoleErrorSilenced(() => checkSessionAlive(1));
 
     expect(result).toEqual({ alive: false, error: "Health check failed" });
-  });
-});
-
-describe("ensureTtyd", () => {
-  it("returns port immediately when ttyd is alive", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
-    isTtydAlive.mockReturnValue(true);
-
-    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
-
-    expect(result).toEqual({ port: 7700, terminalToken: expect.any(String) });
-    expect(respawnTtyd).not.toHaveBeenCalled();
-  });
-
-  it("respawns ttyd when dead but tmux alive", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
-    isTtydAlive.mockReturnValue(false);
-    isTmuxSessionAlive.mockReturnValue(true);
-    respawnTtyd.mockResolvedValue({ pid: 99 });
-
-    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
-
-    expect(result).toEqual({ port: 7700, terminalToken: expect.any(String), respawned: true });
-    expect(respawnTtyd).toHaveBeenCalledWith(7700, "issuectl-repo-7");
-  });
-
-  it("returns alive false when both ttyd and tmux are dead", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
-    isTtydAlive.mockReturnValue(false);
-    isTmuxSessionAlive.mockReturnValue(false);
-
-    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
-
-    expect(result).toEqual({ alive: false, error: "Terminal session has ended" });
-    expect(respawnTtyd).not.toHaveBeenCalled();
-    expect(coreEndDeployment).toHaveBeenCalled();
-  });
-
-  it("returns alive false when deployment already ended", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), endedAt: "2026-01-01" });
-
-    const result = await ensureTtyd(1);
-
-    expect(result).toEqual({ alive: false, error: "Deployment not found or already ended" });
-  });
-
-  it("returns alive false when deployment has no ttydPid", async () => {
-    getDeploymentById.mockReturnValue(makeDeployment(null));
-
-    const result = await ensureTtyd(1);
-
-    expect(result).toEqual({ alive: false, error: "No terminal process configured" });
-  });
-
-  it("calls updateTtydInfo with new PID after respawn", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
-    isTtydAlive.mockReturnValue(false);
-    isTmuxSessionAlive.mockReturnValue(true);
-    respawnTtyd.mockResolvedValue({ pid: 99 });
-
-    await ensureTtyd(1);
-
-    expect(updateTtydInfo).toHaveBeenCalledWith(expect.anything(), 1, 7700, 99);
-  });
-
-  it("returns formatted error when respawnTtyd throws", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
-    isTtydAlive.mockReturnValue(false);
-    isTmuxSessionAlive.mockReturnValue(true);
-    respawnTtyd.mockRejectedValue(new Error("port conflict"));
-
-    const result = await withConsoleErrorSilenced(() => ensureTtyd(1));
-
-    // formatErrorForUser passes through Error.message
-    expect(result).toEqual({ alive: false, error: "port conflict" });
-  });
-
-  it("returns alive false when repo is not found", async () => {
-    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
-    isTtydAlive.mockReturnValue(false);
-    getRepoById.mockReturnValue(undefined);
-
-    const result = await ensureTtyd(1);
-
-    expect(result).toEqual({ alive: false, error: "Repository not found" });
-    expect(isTmuxSessionAlive).not.toHaveBeenCalled();
   });
 });

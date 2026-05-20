@@ -25,6 +25,7 @@ describe("initSchema", () => {
       "action_nonces",
       "cache",
       "deployments",
+      "diagnostic_events",
       "drafts",
       "github_accessible_repos",
       "issue_metadata",
@@ -35,15 +36,15 @@ describe("initSchema", () => {
     ]);
   });
 
-  it("sets schema_version to 14", () => {
+  it("sets schema_version to 15", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
   });
 });
 
@@ -60,7 +61,7 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
   });
 
   it("migrates v1 schema through v9 and drops claude_aliases", () => {
@@ -76,7 +77,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -100,7 +101,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -143,7 +144,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -155,5 +156,58 @@ describe("runMigrations", () => {
     );
 
     warnSpy.mockRestore();
+  });
+
+  it("migrates v14 schema to v15 and creates diagnostic_events indexes", () => {
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (14);
+    `);
+
+    expect(
+      db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'diagnostic_events'",
+        )
+        .all(),
+    ).toHaveLength(0);
+
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(15);
+    const cols = db
+      .prepare("PRAGMA table_info(diagnostic_events)")
+      .all() as { name: string; pk: number }[];
+    expect(cols.map((c) => c.name)).toEqual([
+      "id",
+      "ts",
+      "level",
+      "event",
+      "source",
+      "correlation_id",
+      "owner",
+      "repo",
+      "issue_number",
+      "deployment_id",
+      "session_name",
+      "ttyd_port",
+      "ttyd_pid",
+      "status",
+      "message",
+      "data_json",
+    ]);
+    expect(cols.find((c) => c.name === "id")?.pk).toBe(1);
+
+    const indexes = db
+      .prepare("SELECT name FROM pragma_index_list('diagnostic_events') ORDER BY name")
+      .all() as { name: string }[];
+    expect(indexes.map((i) => i.name)).toEqual([
+      "idx_diagnostic_events_correlation",
+      "idx_diagnostic_events_deployment",
+      "idx_diagnostic_events_event",
+      "idx_diagnostic_events_issue",
+      "idx_diagnostic_events_ts",
+    ]);
   });
 });
