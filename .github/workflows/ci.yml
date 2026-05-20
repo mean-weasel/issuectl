@@ -161,6 +161,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "preserves compact issue and terminal context across keyboard navigation history and reload"
+      - name: Run compact workbench WebKit issue mutation and terminal navigation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact issue mutations and session navigation coherent end to end"
       - name: Run command sheet WebKit scroll lock
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
