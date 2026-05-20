@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { LaunchAgent, Priority, WorkspaceMode } from "@issuectl/core";
 import { AgentSelector } from "@/components/launch/AgentSelector";
@@ -74,6 +74,7 @@ export function IssueFocus({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [reassignedIssue, setReassignedIssue] = useState<ReassignResult | null>(null);
+  const actionAlertRef = useRef<HTMLParagraphElement | null>(null);
   const [agent, setAgent] = useState<LaunchAgent>("codex");
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => defaultWorkspaceMode(repo));
   const [branchName, setBranchName] = useState(() => defaultBranchName(repo, issue));
@@ -133,6 +134,12 @@ export function IssueFocus({
     setSelectedComments(detail.comments.map((_, index) => index));
     setSelectedFiles(detail.referencedFiles);
   }, [detail?.comments, detail?.issue.number, detail?.referencedFiles]);
+
+  useEffect(() => {
+    if (error && status !== "error") {
+      actionAlertRef.current?.focus();
+    }
+  }, [error, status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -227,7 +234,6 @@ export function IssueFocus({
           Issue detail failed to load: {error}
         </p>
       )}
-      {error && status !== "error" && <p className={styles.issueFocusError}>{error}</p>}
       {actionMessage && <p className={styles.issueFocusNotice} role="status">{actionMessage}</p>}
 
       <section className={styles.issueFocusBody} aria-label="Issue body">
@@ -302,6 +308,11 @@ export function IssueFocus({
       </div>
 
       <section className={styles.issueActionGrid} aria-label="Issue actions">
+        {error && status !== "error" && (
+          <p ref={actionAlertRef} className={styles.issueFocusError} role="alert" tabIndex={-1}>
+            {error}
+          </p>
+        )}
         <div className={styles.issueActionGroup} aria-label="Metadata actions">
           <h2>Metadata</h2>
           <label>

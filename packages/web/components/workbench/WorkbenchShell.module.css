@@ -1196,6 +1196,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.issueActionGrid > .issueFocusError {
+  grid-column: 1 / -1;
+}
+
 .issueActionGroup {
   padding: 12px;
   border: 1px solid var(--paper-line);
