@@ -169,6 +169,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact issue mutation failures visible and recoverable in WebKit"
+      - name: Run compact workbench WebKit dense issue detail content
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact dense issue detail content readable in WebKit"
       - name: Run compact workbench WebKit cross-mode quick create persistence
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1023,6 +1023,7 @@
 }
 
 .deploymentRow div {
+  min-width: 0;
   display: grid;
   gap: 3px;
 }
@@ -1033,8 +1034,10 @@
 }
 
 .deploymentRow span {
+  min-width: 0;
   color: var(--paper-ink-muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .issueFocus {
@@ -1053,6 +1056,7 @@
   font-family: var(--paper-serif);
   font-size: 30px;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .issueFocusMeta {
@@ -1087,6 +1091,8 @@
 }
 
 .issueLabels span {
+  min-width: 0;
+  max-width: 100%;
   min-height: 22px;
   display: inline-grid;
   place-items: center;
@@ -1096,6 +1102,8 @@
   background: rgba(255, 255, 255, 0.42);
   color: var(--paper-ink);
   font: 11px var(--paper-mono);
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .issueFocusNotice,
@@ -1143,7 +1151,9 @@
 }
 
 .issueDetailSections .collapsibleBody {
+  min-width: 0;
   padding: 14px;
+  overflow-wrap: anywhere;
 }
 
 .issueDetailSections .issueFocusGrid {
