@@ -1,12 +1,10 @@
 import type Database from "better-sqlite3";
 import type { Octokit } from "@octokit/rest";
-import { getRepo } from "../db/repos.js";
 import { getSetting } from "../db/settings.js";
 import {
   recordDeployment,
   activateDeployment,
   deletePendingDeployment,
-  hasLiveDeploymentForIssue,
   reserveTtydPort,
   updateTtydInfo,
 } from "../db/deployments.js";
@@ -17,9 +15,31 @@ import {
   writeContextFile,
   type LaunchContext,
 } from "./context.js";
-import { prepareWorkspace, type WorkspaceMode } from "./workspace.js";
+import type { WorkspaceMode } from "./workspace.js";
 import { verifyTtyd, spawnTtyd, allocatePort, tmuxSessionName } from "./ttyd.js";
 import type { LaunchAgent } from "../types.js";
+import {
+  buildLaunchAgentCommand,
+  extraArgsSettingForAgent,
+  getLaunchAgent,
+  normalizeLaunchAgent,
+  retryLabel,
+} from "./launch-agent-command.js";
+import {
+  createLaunchCorrelationId,
+  recordDeploymentActivated,
+  recordDeploymentRecorded,
+  recordLaunchActivationFailed,
+  recordLaunchLabelsFailed,
+  recordLaunchRequested,
+  recordLaunchSpawnFailed,
+  recordTtydSpawned,
+  recordWorkspacePrepared,
+} from "./launch-diagnostics.js";
+import {
+  duplicateLaunchError,
+  prepareLaunchWorkspace,
+} from "./launch-workspace-setup.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -32,6 +52,7 @@ export interface LaunchOptions {
   selectedFiles: string[];
   preamble?: string;
   forceResume?: boolean;
+  correlationId?: string;
 }
 
 export interface LaunchResult {
@@ -51,24 +72,25 @@ export interface LaunchResult {
   labelWarning?: string;
 }
 
-export function expandHome(p: string): string {
-  const home = process.env.HOME ?? process.env.USERPROFILE ?? "/";
-  if (p === "~") return home;
-  if (p.startsWith("~/")) return home + p.slice(1);
-  return p;
-}
-
-function duplicateLaunchError(issueNumber: number): Error {
-  return new Error(
-    `Issue #${issueNumber} already has an active deployment. End the existing session before launching again.`,
-  );
-}
-
 export async function executeLaunch(
   db: Database.Database,
   octokit: Octokit,
   options: LaunchOptions,
 ): Promise<LaunchResult> {
+  const correlationId = options.correlationId ?? createLaunchCorrelationId();
+  const diagnosticContext = {
+    db,
+    correlationId,
+    owner: options.owner,
+    repo: options.repo,
+    issueNumber: options.issueNumber,
+  };
+  recordLaunchRequested(diagnosticContext, {
+    agent: options.agent,
+    branchName: options.branchName,
+    workspaceMode: options.workspaceMode,
+  });
+
   // 0. Verify ttyd is installed
   verifyTtyd();
 
@@ -114,50 +136,8 @@ export async function executeLaunch(
     options.issueNumber,
   );
 
-  // 5. Get repo local path from DB
-  const repoRecord = getRepo(db, options.owner, options.repo);
-  if (!repoRecord) {
-    throw new Error(
-      `Repository ${options.owner}/${options.repo} not found in database`,
-    );
-  }
-
-  // Cheap pre-check before the expensive git work in step 6. The partial
-  // unique index `idx_deployments_live` is the source of truth at insert
-  // time (step 8); this lookup just avoids burning workspace prep on a
-  // request that will be rejected anyway.
-  if (hasLiveDeploymentForIssue(db, repoRecord.id, options.issueNumber)) {
-    throw duplicateLaunchError(options.issueNumber);
-  }
-
-  const repoPath = repoRecord.localPath
-    ? expandHome(repoRecord.localPath)
-    : null;
-
-  if (!repoPath && options.workspaceMode !== "clone") {
-    const modeLabel =
-      options.workspaceMode === "worktree" ? "Worktree mode" : "Existing-repo mode";
-    throw new Error(
-      `${modeLabel} requires a local path for ${options.owner}/${options.repo}. ` +
-      `Set a local path in Settings, or use "Fresh clone" mode instead.`,
-    );
-  }
-
-  // 6. Prepare workspace
-  const worktreeDir = expandHome(
-    getSetting(db, "worktree_dir") ?? "~/.issuectl/worktrees/",
-  );
-
-  const workspace = await prepareWorkspace({
-    mode: options.workspaceMode,
-    repoPath: repoPath ?? "",
-    owner: options.owner,
-    repo: options.repo,
-    branchName: options.branchName,
-    issueNumber: options.issueNumber,
-    worktreeDir,
-    forceResume: options.forceResume,
-  });
+  const { repoRecord, workspace } = await prepareLaunchWorkspace(db, options);
+  recordWorkspacePrepared(diagnosticContext, workspace.path);
 
   // Steps 7-9 have side effects — if one fails, earlier artifacts remain.
   // Workspace cleanup is not attempted since the branch/files may be valuable.
@@ -182,6 +162,7 @@ export async function executeLaunch(
     // but record a warning so the caller can tell the user.
     const msg = err instanceof Error ? err.message : String(err);
     labelWarning = `Could not apply lifecycle labels after 3 attempts (${msg}). Launch continued, but lifecycle status may not update automatically — you may need to add labels manually.`;
+    recordLaunchLabelsFailed(diagnosticContext, msg);
     console.warn("[issuectl] Failed to apply lifecycle labels after retries:", err);
   }
 
@@ -205,6 +186,7 @@ export async function executeLaunch(
       workspacePath: workspace.path,
       state: "pending",
     });
+    recordDeploymentRecorded(diagnosticContext, deployment.id);
   } catch (err) {
     // `idx_deployments_live` is the only unique constraint on
     // `deployments`, so any SQLITE_CONSTRAINT_UNIQUE thrown here came
@@ -227,6 +209,7 @@ export async function executeLaunch(
   );
   console.warn(`[issuectl] launching: ${agentCommand}`);
   let ttydPort: number;
+  const sessionName = tmuxSessionName(options.repo, options.issueNumber);
   try {
     const port = await allocatePort(db);
     // Reserve the port in the DB *before* spawning so concurrent launches
@@ -238,11 +221,22 @@ export async function executeLaunch(
       contextFilePath,
       agentCommand,
       agentInputMode: launchAgent === "codex" ? "argument" : "stdin",
-      sessionName: tmuxSessionName(options.repo, options.issueNumber),
+      sessionName,
     });
     updateTtydInfo(db, deployment.id, port, pid);
+    recordTtydSpawned(diagnosticContext, {
+      deploymentId: deployment.id,
+      sessionName,
+      ttydPort: port,
+      ttydPid: pid,
+    });
     ttydPort = port;
   } catch (err) {
+    recordLaunchSpawnFailed(diagnosticContext, {
+      deploymentId: deployment.id,
+      sessionName,
+      error: err,
+    });
     try {
       deletePendingDeployment(db, deployment.id);
     } catch (rollbackErr) {
@@ -261,7 +255,12 @@ export async function executeLaunch(
   // The terminal is already open — the user must close it manually.
   try {
     activateDeployment(db, deployment.id);
+    recordDeploymentActivated(diagnosticContext, deployment.id);
   } catch (err) {
+    recordLaunchActivationFailed(diagnosticContext, {
+      deploymentId: deployment.id,
+      error: err,
+    });
     console.error(
       "[issuectl] Failed to activate deployment after terminal opened — deleting pending row",
       { deploymentId: deployment.id },
@@ -293,75 +292,8 @@ export async function executeLaunch(
   };
 }
 
-async function retryLabel<T>(fn: () => Promise<T>): Promise<T> {
-  const delaysMs = [500, 1_000, 2_000];
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < delaysMs.length; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      if (attempt < delaysMs.length - 1) {
-        await new Promise((r) => setTimeout(r, delaysMs[attempt]));
-      }
-    }
-  }
-  throw lastErr;
-}
-
-const DANGEROUS_METACHARS = /[;&|<>`$\n\r\t()]/;
-const LAUNCH_AGENTS = new Set<LaunchAgent>(["claude", "codex"]);
-
-function normalizeLaunchAgent(
-  value: LaunchAgent | undefined,
-  fallback: LaunchAgent,
-): LaunchAgent {
-  if (value && LAUNCH_AGENTS.has(value)) return value;
-  return fallback;
-}
-
-function getLaunchAgent(db: Database.Database): LaunchAgent {
-  const raw = getSetting(db, "launch_agent")?.trim();
-  if (raw && LAUNCH_AGENTS.has(raw as LaunchAgent)) {
-    return raw as LaunchAgent;
-  }
-  if (raw) {
-    console.warn(
-      `[issuectl] launch_agent setting is invalid; falling back to 'claude'. Got: ${JSON.stringify(raw)}`,
-    );
-  }
-  return "claude";
-}
-
-function extraArgsSettingForAgent(agent: LaunchAgent): "claude_extra_args" | "codex_extra_args" {
-  return agent === "codex" ? "codex_extra_args" : "claude_extra_args";
-}
-
-/**
- * Build the shell command that the terminal launcher will run. The stored
- * value is trusted (validated at save time) but we apply a cheap metachar
- * check as defense-in-depth — if the value looks dangerous (tampered DB,
- * backup restore, etc.), fall back to the plain agent command and warn.
- */
-export function buildLaunchAgentCommand(
-  agent: LaunchAgent,
-  rawExtraArgs: string | undefined,
-): string {
-  const extraArgs = rawExtraArgs?.trim() ?? "";
-  if (extraArgs === "") return agent;
-  if (DANGEROUS_METACHARS.test(extraArgs)) {
-    console.warn(
-      `[issuectl] ${extraArgsSettingForAgent(agent)} contains unexpected shell metacharacters; falling back to plain '${agent}'. Re-save the value in Settings to re-validate. Got: ${JSON.stringify(extraArgs)}`,
-    );
-    return agent;
-  }
-  return `${agent} ${extraArgs}`;
-}
-
-export function buildClaudeCommand(rawExtraArgs: string | undefined): string {
-  return buildLaunchAgentCommand("claude", rawExtraArgs);
-}
-
 export { generateBranchName } from "./branch.js";
 export { type WorkspaceMode, type WorkspaceResult } from "./workspace.js";
 export { type LaunchContext } from "./context.js";
+export { buildClaudeCommand, buildLaunchAgentCommand } from "./launch-agent-command.js";
+export { expandHome } from "./launch-workspace-setup.js";

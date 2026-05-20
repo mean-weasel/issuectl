@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import net from "node:net";
 import type Database from "better-sqlite3";
+import { recordDiagnosticEventSafely } from "../db/diagnostics.js";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -392,11 +393,11 @@ function killTmuxSession(name: string): void {
  * still active.
  */
 export function reconcileOrphanedDeployments(db: Database.Database): void {
-  let rows: { id: number; issue_number: number; repo_name: string }[];
+  let rows: { id: number; issue_number: number; owner: string; repo_name: string }[];
   try {
     rows = db
       .prepare(
-        `SELECT d.id, d.issue_number, r.name AS repo_name
+        `SELECT d.id, d.issue_number, r.owner AS owner, r.name AS repo_name
          FROM deployments d
          JOIN repos r ON r.id = d.repo_id
          WHERE d.ended_at IS NULL
@@ -415,6 +416,17 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
         db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
           row.id,
         );
+        recordDiagnosticEventSafely(db, {
+          level: "warn",
+          event: "reconcile.tmux_missing",
+          source: "core.ttyd",
+          owner: row.owner,
+          repo: row.repo_name,
+          issueNumber: row.issue_number,
+          deploymentId: row.id,
+          sessionName,
+          message: `tmux session ${sessionName} is gone`,
+        });
         console.warn(
           `[issuectl] Reconciled orphaned deployment ${row.id} (tmux session ${sessionName} is gone)`,
         );

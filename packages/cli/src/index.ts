@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { iosSetupCommand } from "./commands/ios.js";
 import { webCommand } from "./commands/web.js";
+import { registerDiagCommands } from "./commands/diag.js";
 import {
   repoAddCommand,
   repoRemoveCommand,
@@ -67,5 +68,7 @@ repo
   .description("Update a tracked repository")
   .option("--path <local-path>", "New local filesystem path")
   .action(repoUpdateCommand);
+
+registerDiagCommands(program);
 
 program.parse();

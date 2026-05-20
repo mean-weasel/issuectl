@@ -25,6 +25,14 @@ vi.mock("node:net", () => ({
   default: { connect: netConnectSpy },
 }));
 
+const { recordDiagnosticEventSpy } = vi.hoisted(() => ({
+  recordDiagnosticEventSpy: vi.fn(),
+}));
+
+vi.mock("../db/diagnostics.js", () => ({
+  recordDiagnosticEventSafely: recordDiagnosticEventSpy,
+}));
+
 import type Database from "better-sqlite3";
 import { respawnTtyd, reconcileOrphanedDeployments } from "./ttyd.js";
 
@@ -102,6 +110,7 @@ describe("respawnTtyd", () => {
 describe("reconcileOrphanedDeployments", () => {
   beforeEach(() => {
     execFileSyncSpy.mockReset();
+    recordDiagnosticEventSpy.mockReset();
   });
 
   it("marks deployments as ended only when tmux session is gone", () => {
@@ -121,7 +130,7 @@ describe("reconcileOrphanedDeployments", () => {
           return {
             all: vi.fn(() => [
               { id: 1, issue_number: 10, repo_name: "repoA" },
-              { id: 2, issue_number: 20, repo_name: "repoB" },
+              { id: 2, issue_number: 20, owner: "ownerB", repo_name: "repoB" },
             ]),
           };
         }
@@ -136,6 +145,19 @@ describe("reconcileOrphanedDeployments", () => {
     expect(runSpy).toHaveBeenCalledWith(2);
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Reconciled orphaned deployment 2"),
+    );
+    expect(recordDiagnosticEventSpy).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        level: "warn",
+        event: "reconcile.tmux_missing",
+        source: "core.ttyd",
+        owner: "ownerB",
+        repo: "repoB",
+        issueNumber: 20,
+        deploymentId: 2,
+        sessionName: "issuectl-repoB-20",
+      }),
     );
 
     warnSpy.mockRestore();
@@ -219,7 +241,7 @@ describe("reconcileOrphanedDeployments", () => {
           return {
             all: vi.fn(() => [
               { id: 1, issue_number: 10, repo_name: "repoA" },
-              { id: 2, issue_number: 20, repo_name: "repoB" },
+              { id: 2, issue_number: 20, owner: "ownerB", repo_name: "repoB" },
             ]),
           };
         }

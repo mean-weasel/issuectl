@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
 import {
@@ -47,6 +48,7 @@ export async function POST(
   if (Number.isNaN(issueNumber) || issueNumber <= 0) {
     return NextResponse.json({ error: "Invalid issue number" }, { status: 400 });
   }
+  const correlationId = randomUUID();
 
   let body: LaunchRequestBody;
   try {
@@ -100,21 +102,24 @@ export async function POST(
     }
 
     const runLaunch = async () => {
+      const launchOptions = {
+        owner,
+        repo,
+        issueNumber,
+        agent: body.agent,
+        branchName: trimmedBranch,
+        workspaceMode: body.workspaceMode,
+        selectedComments: body.selectedCommentIndices,
+        selectedFiles: body.selectedFilePaths,
+        preamble: body.preamble || undefined,
+        forceResume: body.forceResume,
+        correlationId,
+      } as Parameters<typeof executeLaunch>[2] & { correlationId: string };
       const r = await withAuthRetry((octokit) =>
-        executeLaunch(db, octokit, {
-          owner,
-          repo,
-          issueNumber,
-          agent: body.agent,
-          branchName: trimmedBranch,
-          workspaceMode: body.workspaceMode,
-          selectedComments: body.selectedCommentIndices,
-          selectedFiles: body.selectedFilePaths,
-          preamble: body.preamble || undefined,
-          forceResume: body.forceResume,
-        }),
+        executeLaunch(db, octokit, launchOptions),
       );
       return {
+        correlationId,
         deploymentId: r.deploymentId,
         ttydPort: r.ttydPort,
         labelWarning: r.labelWarning ?? null,
@@ -126,6 +131,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      correlationId: result.correlationId,
       deploymentId: result.deploymentId,
       ttydPort: result.ttydPort,
       ...(result.labelWarning ? { labelWarning: result.labelWarning } : {}),

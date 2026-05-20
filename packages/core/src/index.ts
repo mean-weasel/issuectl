@@ -108,6 +108,17 @@ export {
   listPushDevicesForKind,
   type PushDeviceInput,
 } from "./db/push-devices.js";
+export {
+  recordDiagnosticEvent,
+  recordDiagnosticEventSafely,
+  queryDiagnosticEvents,
+  getDiagnosticTimeline,
+  type DiagnosticLevel,
+  type DiagnosticEventInput,
+  type DiagnosticEvent,
+  type DiagnosticIssueFilter,
+  type DiagnosticQuery,
+} from "./db/diagnostics.js";
 // GitHub client
 export type {
   GitHubUser,

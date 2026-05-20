@@ -98,10 +98,11 @@ describe("codex ttyd integration", () => {
     tempDir = undefined;
   });
 
-  it("spawns a real ttyd/tmux session backed by the actual codex binary", async () => {
+  it("spawns a real ttyd/tmux session backed by the actual codex binary", async (ctx) => {
     const check = await prereqs();
     if (!check.ok) {
       console.warn(`[issuectl] skipping codex ttyd integration: ${check.reason}`);
+      ctx.skip();
       return;
     }
 
@@ -141,5 +142,39 @@ describe("codex ttyd integration", () => {
 
     const versionOutput = await readFileEventually(versionOutputPath);
     expect(versionOutput).toMatch(/codex/i);
+  });
+
+  it("keeps a real Codex tmux session alive when context is passed as an argument", async (ctx) => {
+    const check = await prereqs();
+    if (!check.ok) {
+      console.warn(`[issuectl] skipping codex ttyd integration: ${check.reason}`);
+      ctx.skip();
+      return;
+    }
+
+    tempDir = await mkdtemp(join(tmpdir(), "issuectl-codex-arg-"));
+    const contextFilePath = join(tempDir, "context.md");
+    await writeFile(
+      contextFilePath,
+      "Issue #152\n\nInvestigate workbench implementation\n",
+      "utf8",
+    );
+
+    const port = await getFreePort();
+    sessionName = `issuectl_codex_arg_${process.pid}_${Date.now()}`;
+    const result = await spawnTtyd({
+      port,
+      workspacePath: tempDir,
+      contextFilePath,
+      agentCommand: `${check.codexPath} --sandbox danger-full-access --ask-for-approval never`,
+      agentInputMode: "argument",
+      sessionName,
+    });
+    ttydPid = result.pid;
+
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+
+    expect(isTtydAlive(ttydPid)).toBe(true);
+    expect(isTmuxSessionAlive(sessionName)).toBe(true);
   });
 });

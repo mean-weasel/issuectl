@@ -4,10 +4,10 @@ import { initSchema, getSchemaVersion } from "./schema.js";
 import { runMigrations } from "./migrations.js";
 
 describe("schema v5 — drafts and issue_metadata", () => {
-  it("initSchema on a fresh DB produces schema version 9", () => {
+  it("initSchema on a fresh DB produces the current schema version", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -51,7 +51,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
     ).toThrow();
   });
 
-  it("migration from v4 → v9 adds drafts, issue_metadata, deployments.state+CHECK+CASCADE+live index, and action_nonces", () => {
+  it("migration from v4 → current adds drafts, issue_metadata, deployments.state+CHECK+CASCADE+live index, and action_nonces", () => {
     const db = createRawTestDb();
     // Simulate a v4 DB: run the v4-era schema manually. The deployments
     // table is included here because v6's migration does ALTER TABLE on it.
@@ -83,7 +83,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -171,7 +171,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -254,7 +254,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db

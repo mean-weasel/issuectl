@@ -134,7 +134,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -164,7 +164,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -179,7 +179,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(pkCols).toEqual(["name", "owner"]);
   });
 
-  it("v12 to v14 migration adds deployment agent, default settings, and push devices", () => {
+  it("v12 to v15 migration adds deployment agent, default settings, push devices, and diagnostics", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -215,7 +215,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(14);
+    expect(getSchemaVersion(db)).toBe(15);
     const deployment = db
       .prepare("SELECT agent FROM deployments WHERE id = 1")
       .get() as { agent: string };
@@ -235,5 +235,11 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       .prepare("PRAGMA table_info(push_devices)")
       .all() as { name: string }[];
     expect(pushDeviceCols.map((c) => c.name)).toContain("merged_pull_requests");
+    const tables = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'diagnostic_events'",
+      )
+      .all();
+    expect(tables).toHaveLength(1);
   });
 });
