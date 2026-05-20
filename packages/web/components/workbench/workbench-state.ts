@@ -94,12 +94,31 @@ export function workbenchReducer(
 ): WorkbenchSelectionState {
   switch (action.type) {
     case "payloadLoaded": {
-      const repoIds = new Set(action.payload.repos.map((repo) => repo.id));
+      const repos = action.payload.repos;
+      const repoIds = new Set(repos.map((repo) => repo.id));
+      const retainedRepoId = state.selectedRepoId && repoIds.has(state.selectedRepoId)
+        ? state.selectedRepoId
+        : null;
+      const selectedDeployment = state.selectedDeploymentId === null
+        ? null
+        : action.payload.deployments.find((deployment) => deployment.id === state.selectedDeploymentId)
+          ?? repos.flatMap((repo) => repo.deployments).find((deployment) => deployment.id === state.selectedDeploymentId)
+          ?? null;
+      const selectedRepoId = selectedDeployment?.repoId ?? retainedRepoId ?? repos[0]?.id ?? null;
+      const selectedRepo = repos.find((repo) => repo.id === selectedRepoId) ?? null;
+      const selectedIssueNumber =
+        !selectedDeployment
+        && retainedRepoId === selectedRepoId
+        && state.selectedIssueNumber !== null
+        && selectedRepo?.issues.some((issue) => issue.number === state.selectedIssueNumber)
+          ? state.selectedIssueNumber
+          : null;
+
       return {
         ...state,
-        selectedRepoId: state.selectedRepoId && repoIds.has(state.selectedRepoId)
-          ? state.selectedRepoId
-          : action.payload.repos[0]?.id ?? null,
+        selectedRepoId,
+        selectedIssueNumber,
+        selectedDeploymentId: selectedDeployment?.id ?? null,
       };
     }
     case "selectRepo":

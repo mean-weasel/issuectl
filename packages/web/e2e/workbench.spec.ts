@@ -1542,6 +1542,44 @@ test("keeps compact degraded refresh states usable in WebKit", async ({ page }) 
   await expectCompactWorkbenchViewport(page);
 });
 
+test("reconciles compact stale overview data after refresh in WebKit", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  seedWorkbenchRepos(dbPath);
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/issuectl" })).toBeVisible();
+  await expect(page.getByLabel("Repo health summary")).toContainText("4");
+  await expect(page.getByLabel("Repo health summary")).toContainText("issues loaded");
+  await expect(page.getByLabel("Compact repo issues").getByLabel("Issue #512")).toBeVisible();
+
+  const refreshedPayload = workbenchPayload();
+  refreshedPayload.repos[0] = {
+    ...refreshedPayload.repos[0],
+    issues: refreshedPayload.repos[0].issues.filter((issue) => issue.number !== 512),
+    deployments: refreshedPayload.repos[0].deployments.slice(0, 1),
+    badgeCount: 1,
+    deployedCount: 1,
+  };
+
+  await page.route("**/api/v1/workbench", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(refreshedPayload),
+    });
+  });
+
+  await page.getByRole("button", { name: "Refresh workbench data" }).click();
+  await expect(page.getByRole("button", { name: "Refresh workbench data" })).toBeEnabled();
+  await expect(page.getByLabel("Repo health summary")).toContainText("3");
+  await expect(page.getByLabel("Repo health summary")).toContainText("1");
+  await expect(page.getByLabel("Repo health summary")).toContainText("active sessions");
+  await expect(page.getByLabel("Compact repo issues").getByLabel("Issue #512")).toHaveCount(0);
+  await expect(page.getByLabel("Compact repo issues").getByLabel("Issue #447")).toBeVisible();
+  await expectCompactWorkbenchViewport(page);
+});
+
 test("keeps compact workbench context visible while switching focus", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
