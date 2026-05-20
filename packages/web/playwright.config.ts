@@ -36,7 +36,7 @@ export default defineConfig({
         ...devices["iPhone 13"],
         viewport: { width: 393, height: 852 },
       },
-      testMatch: /workbench\.spec\.ts/,
+      testMatch: /(workbench|mobile-ux-patterns)\.spec\.ts/,
     },
   ],
 });
