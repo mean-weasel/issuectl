@@ -1787,6 +1787,63 @@ test("keeps compact issue mutations and session navigation coherent end to end",
   expect(requests.some((item) => item.url.includes("/deployments/101/ensure-ttyd") && item.method === "POST")).toBe(true);
 });
 
+test("keeps compact issue mutation failures visible and recoverable in WebKit", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  const requests: Array<{ method: string; url: string; body: unknown }> = [];
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    const request = route.request();
+    if (request.method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512/priority", async (route) => {
+    const request = route.request();
+    const body = await request.postDataJSON();
+    requests.push({ method: request.method(), url: request.url(), body });
+    expect(request.headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(request.method()).toBe("PUT");
+    expect(body).toEqual({ priority: "normal" });
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Priority API unavailable" }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+
+  const issueActions = page.getByLabel("Issue actions");
+  await issueActions.getByLabel("Priority").selectOption("normal");
+
+  const alert = page.getByRole("alert").filter({ hasText: "priority failed: Priority API unavailable" });
+  await expect(alert).toBeVisible();
+  await expect(alert).toBeFocused();
+  await expect(alert).toBeInViewport();
+  await expect(issueActions.getByLabel("Priority")).toHaveValue("high");
+  await expect(page.getByLabel("Workbench focus")).toContainText("high");
+  await expectCompactWorkbenchViewport(page);
+  await testInfo.attach("compact-issue-mutation-failure-recovery", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  expect(requests).toEqual([{
+    method: "PUT",
+    url: expect.stringContaining("/api/v1/issues/mean-weasel/issuectl/512/priority"),
+    body: { priority: "normal" },
+  }]);
+});
+
 test("preserves compact issue and terminal context across keyboard navigation history and reload", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 393, height: 852 });
   const requests: Array<{ method: string; url: string; body: unknown }> = [];
