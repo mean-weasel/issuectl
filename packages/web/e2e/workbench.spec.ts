@@ -1844,6 +1844,97 @@ test("keeps compact issue mutation failures visible and recoverable in WebKit", 
   }]);
 });
 
+test("keeps compact dense issue detail content readable in WebKit", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  const longToken = "supercalifragilisticexpialidocious-workbench-regression-without-natural-breaks";
+  const denseRepos = workbenchPayload().repos;
+  denseRepos[0] = {
+    ...denseRepos[0],
+    issues: denseRepos[0].issues.map((issue) => issue.number === 512
+      ? {
+        ...issue,
+        title: `Audit ${longToken} compact overflow when many controls stay visible`,
+        labels: [
+          { name: longToken, color: "ffffff", description: null },
+          { name: "dense-content", color: "ffffff", description: null },
+        ],
+      }
+      : issue),
+    deployments: denseRepos[0].deployments.map((deployment) => deployment.id === 101
+      ? {
+        ...deployment,
+        branchName: `issue-447-${longToken}`,
+      }
+      : deployment),
+  };
+  seedWorkbenchRepos(dbPath, denseRepos);
+
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    const detail = issueDetailFixture();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...detail,
+        issue: {
+          ...detail.issue,
+          title: `Audit ${longToken} compact overflow when many controls stay visible`,
+          body: `This issue includes ${longToken} in body text plus ordinary prose.`,
+          labels: [
+            { name: longToken, color: "ffffff", description: null },
+            { name: "dense-content", color: "ffffff", description: null },
+          ],
+        },
+        comments: [{
+          ...detail.comments[0],
+          body: `Existing comment with ${longToken} and enough surrounding words to wrap.`,
+        }],
+        deployments: detail.deployments.map((deployment) => deployment.id === 101
+          ? {
+            ...deployment,
+            branchName: `issue-447-${longToken}`,
+          }
+          : deployment),
+        linkedPRs: [{
+          ...detail.linkedPRs[0],
+          title: `Fix ${longToken} pull request overflow`,
+        }],
+        referencedFiles: [
+          `packages/web/components/workbench/${longToken}/IssueFocus.tsx`,
+          `packages/web/components/workbench/${longToken}/WorkbenchShell.module.css`,
+        ],
+      }),
+    });
+  });
+  await page.route("**/api/v1/worktrees/status?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ exists: true, dirty: false, path: `/tmp/${longToken}` }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench?repo=mean-weasel%2Fissuectl&issue=512`);
+  await expect(page.getByRole("heading", { name: new RegExp(`^#512 Audit ${longToken}`) })).toBeVisible();
+  await expect(page.getByLabel("Issue labels").getByText(longToken, { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Issue body" })).toContainText(longToken);
+  await expect(page.getByLabel("Issue detail metadata", { exact: true })).toContainText(longToken);
+  await expect(page.getByLabel("Issue comments", { exact: true })).toContainText(longToken);
+  await expect(page.getByLabel("Issue context", { exact: true })).toContainText(longToken);
+
+  await expectCompactWorkbenchViewport(page);
+  await expectLocatorWithinViewport(page.getByLabel("Issue labels").getByText(longToken, { exact: true }), 393);
+  await expectLocatorWithinViewport(page.getByRole("button", { name: "Launch issue" }), 393);
+  await testInfo.attach("compact-dense-issue-detail", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+});
+
 test("preserves compact issue and terminal context across keyboard navigation history and reload", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 393, height: 852 });
   const requests: Array<{ method: string; url: string; body: unknown }> = [];
