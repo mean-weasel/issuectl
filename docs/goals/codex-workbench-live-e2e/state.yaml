@@ -1,0 +1,372 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Live Codex Workbench E2E Coverage"
+  slug: "codex-workbench-live-e2e"
+  kind: specific
+  tranche: "Add guarded live E2E coverage for issue creation, Codex workbench launch, terminal persistence across navigation, return-to-session, and cleanup."
+  status: done
+  oracle:
+    signal: "A guarded live E2E command creates a marked issue in an allowlisted issuectl test repo, launches Codex, verifies terminal/session persistence across navigation and return, ends the session, closes the issue, and leaves no live deployment/tmux/ttyd residue."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipt-backed test output plus static/behavioral evidence that only mean-weasel/issuectl-test-repo and mean-weasel/issuectl-test-repo-2 can be targeted for side effects."
+  intake:
+    original_request: "Make a detailed GoalBuddy prep plan for live Codex workbench E2E coverage restricted to the two issuectl test repos."
+    interpreted_outcome: "The repo has a safe, guarded live E2E test for the real Codex workbench launch/session lifecycle."
+    input_shape: specific
+    audience: "issuectl maintainers and future debugging agents"
+    authority: requested
+    proof_type: test
+    completion_proof: "A final audit shows the live E2E harness and verification evidence satisfy the oracle without permitting non-test repo side effects."
+    likely_misfire: "Adding only mocked UI or isolated terminal tests while leaving the real integrated launch/session path untested."
+    blind_spots_considered:
+      - "GitHub issue creation and cleanup side effects"
+      - "Accidental non-test repository targeting"
+      - "Local Codex, ttyd, tmux, gh, and auth prerequisites"
+      - "Server lifecycle and stale browser/service-worker state"
+      - "Failure cleanup for deployments, tmux sessions, ttyd listeners, and created issues"
+      - "Flakiness around terminal readiness and navigation timing"
+      - "Whether this should be default CI, opt-in CI, or local/manual only"
+    existing_plan_facts:
+      - "Allowed repos are mean-weasel/issuectl-test-repo and mean-weasel/issuectl-test-repo-2 only."
+      - "The workflow must create a uniquely-marked test issue."
+      - "The workflow must launch the issue using Codex."
+      - "The workflow must verify terminal/session reachability after navigating to a different issue or view and returning."
+      - "The workflow must close/end the session and clean up the created issue."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/codex-workbench-live-e2e/"
+    command: "npx goalbuddy board docs/goals/codex-workbench-live-e2e"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Map the current launch, workbench, terminal, and E2E test harness paths relevant to a guarded live Codex workflow."
+    inputs:
+      - "packages/web/e2e/"
+      - "packages/web/playwright.config.ts"
+      - "packages/web/lib/actions/launch*.test.ts"
+      - "packages/core/src/launch/*"
+      - "packages/core/src/db/deployments*"
+      - "Existing diagnostics journal docs and tests"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not create GitHub issues or launch sessions."
+      - "Identify existing helpers, gaps, and prerequisite checks with file-path evidence."
+    expected_output:
+      - "Recommended test file or harness location."
+      - "Existing helpers that should be reused."
+      - "Exact live workflow steps and cleanup requirements."
+      - "Risks and prerequisite gates."
+      - "Candidate Worker allowed_files, verify commands, and stop conditions."
+    receipt:
+      result: done
+      summary: "Mapped the current harness. Modern workbench UI coverage is mocked in workbench.spec.ts; the old real launch-flow spec is stale; real terminal websocket coverage requires the custom server.ts harness, not npx next dev."
+      evidence:
+        - "packages/web/e2e/workbench.spec.ts:3328"
+        - "packages/web/e2e/workbench.spec.ts:3036"
+        - "packages/web/e2e/launch-flow.spec.ts:9"
+        - "packages/web/server.ts:147"
+        - "packages/web/lib/terminal-proxy.ts:1"
+        - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.ts:1"
+        - "packages/web/app/api/v1/deployments/[id]/end/route.ts:1"
+        - "packages/core/src/launch/launch.ts:205"
+        - "packages/core/src/launch/codex-ttyd.integration.test.ts:147"
+      findings:
+        - "Recommended location: add a new opt-in live spec under packages/web/e2e, e.g. codex-workbench-live.spec.ts, rather than extending the large mocked workbench.spec.ts."
+        - "The live spec should start node --import tsx server.ts --dev with PORT and ISSUECTL_DB_PATH so terminal websocket upgrades go through server.ts."
+        - "Existing helpers to reuse or copy: isolated DB setup using initSchema/runMigrations/generateApiToken, process-group server cleanup, gh-auth prerequisite checks, ttyd/tmux/codex prerequisite checks, and created-issue cleanup patterns."
+        - "The workflow should create a uniquely-marked GitHub issue in an allowlisted test repo, seed/track that repo in the isolated DB, launch via /api/v1/launch with agent=codex and workspaceMode=clone, open /workbench?repo=...&deployment=..., verify iframe/token/websocket-visible terminal content, navigate away to an issue/view and return, then end via /api/v1/deployments/:id/end and close the issue."
+        - "Cleanup must include best-effort deployment end, tmux kill using tmuxSessionName(repo, issueNumber), ttyd listener kill by recorded PID/port, created issue close, server process group shutdown, and temp DB/worktree removal."
+        - "Live verification should be opt-in/skippable before side effects unless prerequisites and an explicit live-test env flag are present."
+      candidate_worker:
+        objective: "Add an opt-in guarded live Codex workbench E2E spec plus script/config hooks needed to run it without default CI side effects."
+        allowed_files:
+          - "packages/web/e2e/codex-workbench-live.spec.ts"
+          - "packages/web/playwright.config.ts"
+          - "packages/web/package.json"
+          - "README.md"
+          - "AGENTS.md"
+          - "CLAUDE.md"
+          - "docs/**/*.md"
+        verify:
+          - "git diff --check"
+          - "pnpm --dir packages/web test -- --run packages/web/lib/actions/launch.test.ts packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+          - "pnpm --dir packages/web exec playwright test packages/web/e2e/codex-workbench-live.spec.ts --project=desktop-chromium"
+        stop_if:
+          - "The live spec cannot skip before side effects when prerequisites or the live env flag are missing."
+          - "Any create/launch/end/cleanup path can target a repo outside mean-weasel/issuectl-test-repo or mean-weasel/issuectl-test-repo-2."
+          - "The real terminal path cannot use packages/web/server.ts."
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the Scout plan and choose the largest safe Worker slice for implementing guarded live E2E coverage."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and non-negotiable constraints"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject any plan that can create, launch, close, or clean up outside the allowlisted repos."
+      - "Prefer a vertical slice that proves the real integration path while keeping risky side effects gated and cleanup-first."
+    expected_output:
+      - "Decision: approved, revise, or blocked."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+      - "Whether the live test should be opt-in, tagged, skipped by default, or CI-gated."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The Scout plan targets the missing real integration path and uses opt-in prerequisite gates before side effects. The first Worker should implement the guarded live spec plus minimal script/docs, with no default CI side effects."
+      worker_objective: "Add an opt-in guarded live Codex workbench E2E spec that starts the custom web server, creates a marked issue only in the explicit test-repo allowlist, launches Codex, verifies terminal persistence across navigation/return, and performs best-effort cleanup."
+      allowed_files:
+        - "packages/web/e2e/codex-workbench-live.spec.ts"
+        - "packages/web/package.json"
+        - "docs/workflows/live-codex-workbench-e2e.md"
+      verify:
+        - "git diff --check"
+        - "pnpm --dir packages/web test -- --run packages/web/lib/actions/launch.test.ts packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+        - "pnpm --dir packages/web exec playwright test packages/web/e2e/codex-workbench-live.spec.ts --project=desktop-chromium"
+      stop_if:
+        - "The spec can create, launch, end, close, or clean up a repo outside mean-weasel/issuectl-test-repo or mean-weasel/issuectl-test-repo-2."
+        - "The spec cannot skip before side effects when ISSUECTL_LIVE_CODEX_WORKBENCH_E2E is not enabled."
+        - "The custom server.ts harness cannot be used for the live terminal websocket path."
+        - "Need to modify launch/core implementation to make the test pass."
+      live_test_policy: "Skipped by default; run locally or in an explicitly configured job only with ISSUECTL_LIVE_CODEX_WORKBENCH_E2E=1 and ISSUECTL_LIVE_CODEX_WORKBENCH_REPO set to one of the two allowlisted repos."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Add an opt-in guarded live Codex workbench E2E spec that starts the custom web server, creates a marked issue only in the explicit test-repo allowlist, launches Codex, verifies terminal persistence across navigation/return, and performs best-effort cleanup."
+    allowed_files:
+      - "packages/web/e2e/codex-workbench-live.spec.ts"
+      - "packages/web/package.json"
+      - "docs/workflows/live-codex-workbench-e2e.md"
+    verify:
+      - "git diff --check"
+      - "pnpm --dir packages/web test -- --run packages/web/lib/actions/launch.test.ts packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+      - "pnpm --dir packages/web exec playwright test packages/web/e2e/codex-workbench-live.spec.ts --project=desktop-chromium"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The test would target a repo outside the explicit allowlist."
+      - "Cleanup cannot be made best-effort and narrowly scoped to marked test artifacts."
+      - "Prerequisite handling is ambiguous."
+      - "Verification fails twice with different root causes."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/e2e/codex-workbench-live.spec.ts"
+        - "packages/web/package.json"
+        - "docs/workflows/live-codex-workbench-e2e.md"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- --run lib/actions/launch.test.ts lib/actions/launch-ensure-ttyd.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web exec playwright test e2e/codex-workbench-live.spec.ts --project=desktop-chromium"
+          status: pass
+          note: "Default non-side-effect mode: allowlist assertion passed; live workflow skipped before side effects."
+        - cmd: "pnpm --dir packages/web test:e2e:live-codex-workbench"
+          status: pass
+          note: "Default non-side-effect mode: allowlist assertion passed; live workflow skipped before side effects."
+      summary: "Added an opt-in live Codex workbench E2E spec, package script, and workflow doc. The spec hard-gates side effects with ISSUECTL_LIVE_CODEX_WORKBENCH_E2E=1, restricts target repos to the two allowlisted issuectl test repos, starts the custom server.ts harness, and includes best-effort cleanup for deployments, tmux/ttyd, created marked issues, server, DB, and worktrees."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: default
+    objective: "Add or update developer documentation for running the guarded live Codex workbench E2E test, if Judge or Worker determines docs are required."
+    allowed_files:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "README.md"
+      - "docs/**/*.md"
+      - "packages/web/package.json"
+      - "package.json"
+    verify:
+      - "git diff --check"
+      - "Run the relevant docs/script smoke command selected by the active Worker, if any."
+    stop_if:
+      - "No docs or script changes are needed after T003."
+      - "Need to edit implementation files beyond the allowed documentation/script scope."
+    receipt:
+      result: blocked
+      summary: "No separate documentation Worker is needed because T003 added docs/workflows/live-codex-workbench-e2e.md and a package script in the same approved implementation slice."
+
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit side-effect safety before any live verification that creates issues or launches Codex."
+    inputs:
+      - "T003 receipt or current diff"
+      - "Allowlist implementation"
+      - "Cleanup paths"
+    constraints:
+      - "Read-only."
+      - "Do not run live side-effecting tests."
+      - "Reject live verification if allowlist, marker, or cleanup proof is weak."
+    expected_output:
+      - "approved_for_live_verification: true | false"
+      - "Safety gaps, if any."
+      - "Exact live verification command if approved."
+    receipt:
+      result: done
+      decision: approved_for_live_verification
+      approved_for_live_verification: true
+      full_outcome_complete: false
+      rationale: "The spec skips before side effects without ISSUECTL_LIVE_CODEX_WORKBENCH_E2E=1, asserts the repo allowlist before DB setup, issue creation, issue close, deployment cleanup, and the main live launch path, and closes only issues whose current title starts with the test marker."
+      safety_evidence:
+        - "packages/web/e2e/codex-workbench-live.spec.ts:21"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:24"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:67"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:164"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:187"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:241"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:378"
+      exact_live_verification_command: "ISSUECTL_LIVE_CODEX_WORKBENCH_E2E=1 ISSUECTL_LIVE_CODEX_WORKBENCH_REPO=mean-weasel/issuectl-test-repo-2 pnpm --dir packages/web test:e2e:live-codex-workbench"
+      note: "If prerequisites are absent, the live test may skip before side effects. Any non-allowlisted repo must fail before side effects rather than skip silently."
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Run the approved verification commands and record whether the live E2E oracle passes, skips safely, or exposes follow-up defects."
+    allowed_files:
+      - "docs/goals/codex-workbench-live-e2e/state.yaml"
+      - "docs/goals/codex-workbench-live-e2e/notes/**"
+    verify:
+      - "Run non-side-effecting test/lint commands selected by T003/T005."
+      - "Run the live side-effecting command only if T005 approves it and prerequisites are present."
+    stop_if:
+      - "T005 has not approved live verification."
+      - "The command would target a non-allowlisted repo."
+      - "Cleanup fails and manual intervention is required."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/codex-workbench-live-e2e/state.yaml"
+      commands:
+        - cmd: "ISSUECTL_LIVE_CODEX_WORKBENCH_E2E=1 ISSUECTL_LIVE_CODEX_WORKBENCH_REPO=mean-weasel/issuectl-test-repo-2 pnpm --dir packages/web test:e2e:live-codex-workbench"
+          status: pass
+          summary: "2 passed in 1.0m on the fresh completion audit: allowlist assertion passed; live test created marked issues, launched Codex, returned/reconnected to terminal, ended session, and cleaned up."
+        - cmd: "gh issue list --repo mean-weasel/issuectl-test-repo-2 --state all --search '\"[issuectl-e2e-live]\" in:title' --limit 30 --json number,title,state,closedAt,url"
+          status: pass
+          summary: "Marked live issues from the fresh successful run (#11 and #12) are CLOSED; earlier marked issues are also CLOSED."
+        - cmd: "tmux has-session -t issuectl-issuectl-test-repo-2-11; tmux has-session -t issuectl-issuectl-test-repo-2-12"
+          status: pass
+          summary: "Both fresh successful-run issue sessions are absent after cleanup."
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web test:e2e:live-codex-workbench"
+          status: pass
+          summary: "Default non-side-effect mode still passes allowlist assertion and skips live workflow before side effects."
+      summary: "Verified the live oracle on mean-weasel/issuectl-test-repo-2 and confirmed cleanup of the created marked issues and their tmux sessions."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the live Codex workbench E2E coverage satisfies the original restricted-repo outcome."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Goal oracle"
+    constraints:
+      - "Read-only."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if only mocked coverage exists."
+      - "Reject completion if allowlist or cleanup proof is incomplete."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapping to each workflow step."
+      - "Missing evidence or next task if not complete."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      evidence:
+        - "packages/web/e2e/codex-workbench-live.spec.ts"
+        - "packages/web/package.json"
+        - "docs/workflows/live-codex-workbench-e2e.md"
+        - "T003 verification receipt"
+        - "T005 safety audit receipt"
+        - "T006 live verification receipt"
+      mapping:
+        - requirement: "Issue creation restricted to the two issuectl test repos."
+          proof: "ALLOWED_E2E_REPOS plus assertAllowedRepo before createMarkedIssue; allowlist test rejects mean-weasel/issuectl and accepts both allowed repos."
+        - requirement: "Codex terminal launch restricted to the two issuectl test repos."
+          proof: "Main live path asserts repo allowlist before API launch; successful live run used mean-weasel/issuectl-test-repo-2."
+        - requirement: "Terminal remains reachable after navigating to another issue and returning."
+          proof: "Successful live Playwright run clicked a second marked issue, returned to the deployment URL, reconnected when needed, and observed the terminal iframe/websocket."
+        - requirement: "Session can be ended and cleanup is narrow."
+          proof: "Fresh successful live run ended the session, closed marked issues #11/#12, and tmux has-session returned absent for both successful-run issue sessions."
+        - requirement: "No default CI/live side effects."
+          proof: "Default package script run without ISSUECTL_LIVE_CODEX_WORKBENCH_E2E passed allowlist assertion and skipped the live workflow."
+      summary: "The original GoalBuddy outcome is satisfied: the repo now has guarded live Codex workbench E2E coverage with explicit two-repo side-effect boundaries, docs, script, passing default-safe verification, and a successful allowlisted live oracle run."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T006
+    commands:
+      - "git diff --check"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web test:e2e:live-codex-workbench"
+      - "ISSUECTL_LIVE_CODEX_WORKBENCH_E2E=1 ISSUECTL_LIVE_CODEX_WORKBENCH_REPO=mean-weasel/issuectl-test-repo-2 pnpm --dir packages/web test:e2e:live-codex-workbench"
