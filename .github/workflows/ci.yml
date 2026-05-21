@@ -95,6 +95,8 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Rebuild native test dependencies
+        run: pnpm rebuild better-sqlite3
       - run: pnpm turbo test
 
   build:
