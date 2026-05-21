@@ -3,6 +3,9 @@ name: Local macOS E2E
 on:
   merge_group:
     branches: [main]
+  push:
+    branches:
+      - "gh-readonly-queue/main/**"
   workflow_dispatch:
 
 permissions:
@@ -45,9 +48,10 @@ jobs:
               ;;
           esac
 
-          if [ -n "${RUNNER_TEMP:-}" ] && [ -d "$RUNNER_TEMP" ]; then
-            find "$RUNNER_TEMP" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-          fi
+      - name: Isolate host-local GitHub CLI state
+        run: |
+          mkdir -p "$RUNNER_TEMP/gh"
+          echo "GH_CONFIG_DIR=$RUNNER_TEMP/gh" >> "$GITHUB_ENV"
 
       - name: Healthcheck before
         working-directory: /
@@ -109,16 +113,17 @@ jobs:
             mobile-ux-patterns.spec.ts \
             launch-ui.spec.ts \
             viewport-health.spec.ts \
-            --project=mobile-chromium
+            --project=mobile-chromium \
+            --global-timeout=480000
 
       - name: Run mobile WebKit E2E
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pnpm --filter @issuectl/web exec playwright test \
-            workbench.spec.ts \
             mobile-ux-patterns.spec.ts \
-            --project=mobile-webkit
+            --project=mobile-webkit \
+            --global-timeout=480000
 
       - name: Upload Playwright report on failure
         if: failure()

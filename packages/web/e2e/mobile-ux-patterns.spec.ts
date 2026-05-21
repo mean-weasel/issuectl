@@ -600,8 +600,12 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
 
   test("touchmove events are blocked on document when sheet is open", async ({
     browser,
-  }) => {
+  }, testInfo) => {
     if (skipReason) test.skip(true, skipReason);
+    test.skip(
+      testInfo.project.name === "mobile-webkit",
+      "WebKit does not expose constructible synthetic Touch events to page.evaluate.",
+    );
     await withMobilePage(browser, "/", async (page) => {
       await page.click('button[aria-label="Open command sheet"]');
       const dialog = page.locator('[role="dialog"]');
@@ -644,8 +648,12 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
 });
 
 test.describe("Mobile UX regressions — sheet swipe-to-dismiss", () => {
-  test("swipe down on sheet triggers dismiss", async ({ browser }) => {
+  test("swipe down on sheet triggers dismiss", async ({ browser }, testInfo) => {
     if (skipReason) test.skip(true, skipReason);
+    test.skip(
+      testInfo.project.name === "mobile-webkit",
+      "WebKit does not expose constructible synthetic Touch events to page.evaluate.",
+    );
     await withMobilePage(browser, "/", async (page) => {
       await page.click('button[aria-label="Open command sheet"]');
       const dialog = page.locator('[role="dialog"]');
@@ -705,8 +713,12 @@ test.describe("Mobile UX regressions — sheet swipe-to-dismiss", () => {
     });
   });
 
-  test("small swipe down snaps sheet back", async ({ browser }) => {
+  test("small swipe down snaps sheet back", async ({ browser }, testInfo) => {
     if (skipReason) test.skip(true, skipReason);
+    test.skip(
+      testInfo.project.name === "mobile-webkit",
+      "WebKit does not expose constructible synthetic Touch events to page.evaluate.",
+    );
     await withMobilePage(browser, "/", async (page) => {
       await page.click('button[aria-label="Open command sheet"]');
       const dialog = page.locator('[role="dialog"]');
