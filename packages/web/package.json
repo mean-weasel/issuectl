@@ -10,7 +10,8 @@
     "lint": "eslint app/ components/ lib/",
     "dev": "node --import tsx server.ts --dev",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:live-codex-workbench": "playwright test e2e/codex-workbench-live.spec.ts --project=desktop-chromium"
   },
   "dependencies": {
     "@issuectl/core": "workspace:*",
