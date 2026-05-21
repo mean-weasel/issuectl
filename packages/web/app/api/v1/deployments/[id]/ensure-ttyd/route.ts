@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { ensureTtydForDeployment } from "@/lib/ensure-ttyd";
+import { ensureTerminalForDeployment } from "@/lib/ensure-terminal";
 import log from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +18,11 @@ export async function POST(
     return NextResponse.json({ alive: false, error: "Invalid deployment ID" }, { status: 400 });
   }
 
-  const result = await ensureTtydForDeployment(deploymentId);
-  if ("respawned" in result && result.respawned) {
+  const result = await ensureTerminalForDeployment(deploymentId);
+  if (result.backend === "ttyd" && "respawned" in result && result.respawned) {
     log.info({ msg: "ttyd_respawned", deploymentId, port: result.port });
   }
-  if (result.alive === false && result.error) {
+  if ("alive" in result && result.alive === false && result.error) {
     log.error({ msg: "ensure_ttyd_failed", deploymentId, error: result.error });
   }
   return NextResponse.json(result);

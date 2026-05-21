@@ -13,6 +13,7 @@ type TerminalTokenPayload = {
   deploymentId: number;
   port: number;
   exp: number;
+  backend?: "ttyd" | "pty_bridge";
 };
 
 function base64UrlEncode(input: string): string {
@@ -45,6 +46,24 @@ export function createTerminalToken(deploymentId: number, port: number): string 
     return `${encoded}.${sign(encoded, secret)}`;
   } catch (err) {
     log.error({ err, msg: "terminal_token_create_failed", deploymentId, port });
+    return null;
+  }
+}
+
+export function createPtyTerminalToken(deploymentId: number): string | null {
+  try {
+    const secret = getTerminalSecret();
+    if (!secret) return null;
+    const payload: TerminalTokenPayload = {
+      deploymentId,
+      port: 0,
+      backend: "pty_bridge",
+      exp: Date.now() + TOKEN_TTL_MS,
+    };
+    const encoded = base64UrlEncode(JSON.stringify(payload));
+    return `${encoded}.${sign(encoded, secret)}`;
+  } catch (err) {
+    log.error({ err, msg: "pty_terminal_token_create_failed", deploymentId });
     return null;
   }
 }
@@ -99,6 +118,32 @@ export function validateTerminalToken(token: string | null | undefined, port: nu
     return activeByPort?.id === deployment.id;
   } catch (err) {
     log.error({ err, msg: "terminal_token_validate_failed", port });
+    return false;
+  }
+}
+
+export function validatePtyTerminalToken(
+  token: string | null | undefined,
+  deploymentId: number,
+): boolean {
+  if (!token) return false;
+  try {
+    const payload = parseToken(token);
+    if (
+      !payload ||
+      payload.backend !== "pty_bridge" ||
+      payload.deploymentId !== deploymentId ||
+      payload.exp < Date.now()
+    ) {
+      return false;
+    }
+
+    const db = getDb();
+    const deployment = getDeploymentById(db, deploymentId);
+    return deployment?.endedAt === null
+      && (deployment as { terminalBackend?: string }).terminalBackend === "pty_bridge";
+  } catch (err) {
+    log.error({ err, msg: "pty_terminal_token_validate_failed", deploymentId });
     return false;
   }
 }

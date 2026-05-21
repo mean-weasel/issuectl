@@ -7,7 +7,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
   it("initSchema on a fresh DB produces the current schema version", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -38,6 +38,16 @@ describe("schema v5 — drafts and issue_metadata", () => {
     const agentCol = cols.find((c) => c.name === "agent");
     expect(agentCol).toBeDefined();
     expect(agentCol?.dflt_value).toContain("claude");
+  });
+
+  it("fresh deployments schema includes terminal backend defaulting to ttyd", () => {
+    const db = createTestDb();
+    const cols = db
+      .prepare("PRAGMA table_info(deployments)")
+      .all() as { name: string; dflt_value: string | null }[];
+    const terminalBackendCol = cols.find((c) => c.name === "terminal_backend");
+    expect(terminalBackendCol).toBeDefined();
+    expect(terminalBackendCol?.dflt_value).toContain("ttyd");
   });
 
   it("drafts table enforces the priority CHECK constraint", () => {
@@ -83,7 +93,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -103,6 +113,9 @@ describe("schema v5 — drafts and issue_metadata", () => {
     const stateCol = cols.find((c) => c.name === "state");
     expect(stateCol).toBeDefined();
     expect(stateCol?.dflt_value).toContain("active");
+    const terminalBackendCol = cols.find((c) => c.name === "terminal_backend");
+    expect(terminalBackendCol).toBeDefined();
+    expect(terminalBackendCol?.dflt_value).toContain("ttyd");
   });
 });
 
@@ -171,7 +184,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -254,7 +267,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db

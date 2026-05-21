@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { Deployment, DeploymentState, LaunchAgent } from "../types.js";
+import type { Deployment, DeploymentState, LaunchAgent, TerminalBackend } from "../types.js";
 
 type DeploymentRow = {
   id: number;
@@ -11,6 +11,7 @@ type DeploymentRow = {
   workspace_path: string;
   linked_pr_number: number | null;
   state: string;
+  terminal_backend: string;
   launched_at: string;
   ended_at: string | null;
   ttyd_port: number | null;
@@ -29,6 +30,7 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     workspacePath: row.workspace_path,
     linkedPrNumber: row.linked_pr_number,
     state: (row.state as DeploymentState) ?? "active",
+    terminalBackend: (row.terminal_backend as TerminalBackend | undefined) ?? "ttyd",
     launchedAt: row.launched_at,
     endedAt: row.ended_at,
     ttydPort: row.ttyd_port,
@@ -46,6 +48,7 @@ export function recordDeployment(
     workspaceMode: Deployment["workspaceMode"];
     workspacePath: string;
     agent?: LaunchAgent;
+    terminalBackend?: TerminalBackend;
     /**
      * Optional initial state. Defaults to "active" for callers that want
      * the legacy one-shot write. The launch flow passes "pending" so the
@@ -58,15 +61,18 @@ export function recordDeployment(
 ): Deployment {
   const state: DeploymentState = deployment.state ?? "active";
   const agent: LaunchAgent = deployment.agent ?? "claude";
+  const terminalBackend: TerminalBackend = deployment.terminalBackend ?? "ttyd";
   const result = db
     .prepare(
-      `INSERT INTO deployments (repo_id, issue_number, agent, branch_name, workspace_mode, workspace_path, state)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO deployments (
+        repo_id, issue_number, agent, terminal_backend, branch_name, workspace_mode, workspace_path, state
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       deployment.repoId,
       deployment.issueNumber,
       agent,
+      terminalBackend,
       deployment.branchName,
       deployment.workspaceMode,
       deployment.workspacePath,

@@ -49,13 +49,21 @@ export async function fetchWorkbench({
 
 export type EnsureTtydResult =
   | {
+      backend?: "ttyd";
       port: number;
       terminalToken: string;
       respawned?: boolean;
     }
   | {
+      backend: "pty_bridge";
+      deploymentId: number;
+      terminalToken: string;
+      wsUrl: string;
+    }
+  | {
       alive: false;
       error?: string;
+      backend?: "ttyd" | "pty_bridge";
     };
 
 const STALE_DEPLOYMENT_ERRORS = [
@@ -68,7 +76,7 @@ export function isStaleDeploymentError(message: string | undefined): boolean {
 }
 
 export function isStaleEnsureTtydResult(result: EnsureTtydResult): boolean {
-  return !("port" in result) && isStaleDeploymentError(result.error);
+  return !("port" in result) && !("wsUrl" in result) && isStaleDeploymentError(result.error);
 }
 
 export async function ensureDeploymentTtyd(deploymentId: number): Promise<EnsureTtydResult> {

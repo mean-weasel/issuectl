@@ -345,6 +345,10 @@ export function WorkbenchShell({
     setSessionRowErrors((current) => withoutKey(current, deployment.id));
     try {
       const result = await ensureDeploymentTtyd(deployment.id);
+      if ("wsUrl" in result) {
+        selectDeployment(deployment.id);
+        return;
+      }
       if (!("port" in result)) {
         if (isStaleEnsureTtydResult(result)) {
           removeDeployment(deployment.id);

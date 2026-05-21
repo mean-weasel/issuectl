@@ -10,6 +10,7 @@ import {
   updateTtydInfo,
 } from "@issuectl/core";
 import log from "./logger";
+import { recordTerminalEventForDeployment } from "./terminal-diagnostics";
 
 const PORT_MIN = 7700;
 const PORT_MAX = 7799;
@@ -46,6 +47,12 @@ export async function ensureTtydRunning(port: number): Promise<boolean> {
 
   if (!deployment.ttydPid) {
     log.warn({ msg: "ttyd_no_pid_recorded", port, deploymentId: deployment.id });
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "warn",
+      event: "terminal.unavailable",
+      source: "web.terminal-lifecycle",
+      message: "No ttyd PID recorded",
+    });
     return false;
   }
 
@@ -71,6 +78,12 @@ async function doRespawn(
   const repo = getRepoById(db, deployment.repoId);
   if (!repo) {
     log.warn({ msg: "ttyd_respawn_no_repo", port, deploymentId: deployment.id, repoId: deployment.repoId });
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "error",
+      event: "terminal.respawn_failed",
+      source: "web.terminal-lifecycle",
+      message: "Repository not found",
+    });
     return false;
   }
 
@@ -80,6 +93,12 @@ async function doRespawn(
     sessionAlive = isTmuxSessionAlive(sessionName);
   } catch (err) {
     log.error({ msg: "ttyd_tmux_check_failed", port, deploymentId: deployment.id, sessionName, err });
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "error",
+      event: "terminal.tmux_check_failed",
+      source: "web.terminal-lifecycle",
+      message: err instanceof Error ? err.message : String(err),
+    }, repo);
     return false;
   }
 
@@ -90,10 +109,21 @@ async function doRespawn(
       log.debug({ msg: "ttyd_end_deployment_skipped", deploymentId: deployment.id, err });
     }
     log.info({ msg: "ttyd_session_dead", port, deploymentId: deployment.id, sessionName });
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "warn",
+      event: "terminal.tmux_missing",
+      source: "web.terminal-lifecycle",
+      message: "Terminal session has ended",
+    }, repo);
     return false;
   }
 
   try {
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "info",
+      event: "terminal.respawn_started",
+      source: "web.terminal-lifecycle",
+    }, repo);
     const result = await respawnTtyd(port, sessionName);
     updateTtydInfo(db, deployment.id, port, result.pid);
     log.info({
@@ -104,9 +134,21 @@ async function doRespawn(
       newPid: result.pid,
       sessionName,
     });
+    recordTerminalEventForDeployment(db, { ...deployment, ttydPid: result.pid }, {
+      level: "info",
+      event: "terminal.respawned",
+      source: "web.terminal-lifecycle",
+      data: { oldPid: deployment.ttydPid, newPid: result.pid },
+    }, repo);
     return true;
   } catch (err) {
     log.error({ msg: "ttyd_respawn_failed", port, deploymentId: deployment.id, err });
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "error",
+      event: "terminal.respawn_failed",
+      source: "web.terminal-lifecycle",
+      message: err instanceof Error ? err.message : String(err),
+    }, repo);
     return false;
   }
 }

@@ -3,10 +3,12 @@ import type { Duplex } from "node:stream";
 import next from "next";
 import log, { logPath } from "./lib/logger";
 import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
+import { handlePtyUpgrade, activePtyWsCount } from "./lib/pty-terminal-websocket";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
+const PTY_TERMINAL_WS_RE = /^\/api\/terminal\/pty\/(\d+)\/ws/;
 const SENSITIVE_QUERY_PARAMS = new Set(["terminalToken"]);
 
 const dev = process.argv.includes("--dev");
@@ -147,6 +149,20 @@ interceptUpgradeRegistrations("addListener");
 // Our terminal handler runs first (prepend). It marks the socket so
 // any later upgrade listeners (Next.js HMR, etc.) are no-ops.
 server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HANDLED]?: boolean }, head: Buffer) => {
+  const ptyMatch = req.url?.match(PTY_TERMINAL_WS_RE);
+  if (ptyMatch) {
+    const deploymentId = Number(ptyMatch[1]);
+    socket[HANDLED] = true;
+    handlePtyUpgrade(req, socket, head, deploymentId).catch((err) => {
+      log.error({ err, msg: "pty_terminal_upgrade_failed", deploymentId });
+      if (!socket.destroyed) {
+        socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+        socket.destroy();
+      }
+    });
+    return;
+  }
+
   const match = req.url?.match(TERMINAL_WS_RE);
   if (match) {
     const terminalPort = Number(match[1]);
@@ -175,6 +191,7 @@ function heartbeat(): void {
     heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
     rssMB: Math.round(mem.rss / 1024 / 1024),
     activeWs: activeWsCount(),
+    activePtyWs: activePtyWsCount(),
   });
 }
 
