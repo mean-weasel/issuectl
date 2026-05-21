@@ -11,6 +11,9 @@ jobs:
     name: mac-mini-1
     runs-on: [self-hosted, macOS, ARM64, trusted-macos-e2e, mac-mini-1]
     timeout-minutes: 10
+    env:
+      RUNNER_HOME: /Users/neonwatty
+      RUNNER_WORK: /Users/neonwatty/actions-runner/_work
     steps:
       - name: Cleanup before
         run: /usr/local/ci/bin/macos-runner-cleanup --json
@@ -27,6 +30,9 @@ jobs:
     name: mac-mini-2
     runs-on: [self-hosted, macOS, ARM64, trusted-macos-e2e, mac-mini-2]
     timeout-minutes: 10
+    env:
+      RUNNER_HOME: /Users/jeremywatt
+      RUNNER_WORK: /Users/jeremywatt/actions-runner/_work
     steps:
       - name: Cleanup before
         run: /usr/local/ci/bin/macos-runner-cleanup --json
@@ -43,6 +49,9 @@ jobs:
     name: mac-mini-3
     runs-on: [self-hosted, macOS, ARM64, trusted-macos-e2e, mac-mini-3]
     timeout-minutes: 10
+    env:
+      RUNNER_HOME: /Users/jeremywatt
+      RUNNER_WORK: /Users/jeremywatt/actions-runner/_work
     steps:
       - name: Cleanup before
         run: /usr/local/ci/bin/macos-runner-cleanup --json
