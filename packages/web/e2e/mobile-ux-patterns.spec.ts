@@ -521,19 +521,34 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
   }) => {
     if (skipReason) test.skip(true, skipReason);
     await withMobilePage(browser, "/", async (page) => {
-      // Ensure the page is tall enough to scroll, regardless of how many
-      // issues the test DB has.  Inject a spacer if needed.
+      // Ensure the browser's actual scroll root is tall enough to scroll,
+      // regardless of how many issues the test DB has.
       await page.evaluate(() => {
-        if (document.body.scrollHeight <= window.innerHeight) {
+        document.documentElement.style.minHeight = "2200px";
+        document.body.style.minHeight = "2200px";
+
+        if (!document.querySelector("[data-e2e-scroll-spacer]")) {
           const spacer = document.createElement("div");
-          spacer.style.height = "2000px";
+          spacer.dataset.e2eScrollSpacer = "true";
+          spacer.style.display = "block";
+          spacer.style.height = "2200px";
+          spacer.style.flex = "0 0 auto";
+          spacer.style.pointerEvents = "none";
           document.body.appendChild(spacer);
         }
       });
+      await page.waitForFunction(() => {
+        const scroller = document.scrollingElement;
+        return (
+          !!scroller && scroller.scrollHeight - scroller.clientHeight >= 400
+        );
+      });
 
       // Scroll down first.
-      await page.evaluate(() => window.scrollTo(0, 200));
-      const scrollBefore = await page.evaluate(() => window.scrollY);
+      await page.evaluate(() => document.scrollingElement?.scrollTo(0, 200));
+      const scrollBefore = await page.evaluate(
+        () => document.scrollingElement?.scrollTop ?? window.scrollY,
+      );
       expect(scrollBefore).toBeGreaterThan(0);
 
       // Open and close the sheet.
@@ -551,7 +566,10 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       // clearing position:fixed, so we verify the mechanism works
       // by calling scrollTo from the test context.
       const afterClose = await page.evaluate(() => ({
-        scrollable: document.body.scrollHeight > window.innerHeight,
+        scrollable:
+          !!document.scrollingElement &&
+          document.scrollingElement.scrollHeight >
+            document.scrollingElement.clientHeight,
         htmlPos: document.documentElement.style.position,
         bodyPos: document.body.style.position,
       }));
@@ -564,13 +582,19 @@ test.describe("Mobile UX regressions — sheet scroll lock", () => {
       expect(afterClose.scrollable, "page should be scrollable").toBe(true);
 
       // Verify scrollTo works after lock release.
-      await page.evaluate((y) => window.scrollTo(0, y), scrollBefore);
-      await page.waitForTimeout(100);
-      const scrollAfter = await page.evaluate(() => window.scrollY);
-      expect(
-        scrollAfter,
-        "scrollTo should work after lock is released",
-      ).toBe(scrollBefore);
+      await page.evaluate(
+        (y) => document.scrollingElement?.scrollTo(0, y),
+        scrollBefore,
+      );
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              () => document.scrollingElement?.scrollTop ?? window.scrollY,
+            ),
+          { message: "scrollTo should work after lock is released" },
+        )
+        .toBe(scrollBefore);
     });
   });
 

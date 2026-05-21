@@ -94,9 +94,17 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        env:
+          PNPM_CONFIG_SIDE_EFFECTS_CACHE: "false"
+        run: pnpm install --frozen-lockfile
       - name: Rebuild native test dependencies
-        run: pnpm rebuild better-sqlite3
+        env:
+          npm_config_build_from_source: "true"
+        run: |
+          rm -rf node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build
+          pnpm --filter @issuectl/core rebuild better-sqlite3
+          pnpm --dir packages/core exec node -e "require('better-sqlite3')(':memory:').close()"
       - run: pnpm turbo test
 
   build:
@@ -126,7 +134,17 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        env:
+          PNPM_CONFIG_SIDE_EFFECTS_CACHE: "false"
+        run: pnpm install --frozen-lockfile
+      - name: Rebuild native E2E dependencies
+        env:
+          npm_config_build_from_source: "true"
+        run: |
+          rm -rf node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build
+          pnpm --filter @issuectl/core rebuild better-sqlite3
+          pnpm --dir packages/core exec node -e "require('better-sqlite3')(':memory:').close()"
       - name: Build core package
         # next dev resolves @issuectl/core via its package.json exports
         # (dist/index.js), so the workspace package must be built before

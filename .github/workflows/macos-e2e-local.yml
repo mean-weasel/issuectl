@@ -24,8 +24,33 @@ jobs:
           sw_vers
           uname -m
           xcodebuild -version
+          {
+            echo "/opt/homebrew/bin"
+            echo "/usr/local/bin"
+          } >> "$GITHUB_PATH"
+
+      - name: Workspace cleanup before
+        working-directory: /
+        run: |
+          set -euo pipefail
+
+          case "${GITHUB_WORKSPACE:-}" in
+            "$HOME/actions-runner/_work/"*)
+              rm -rf "$GITHUB_WORKSPACE"
+              mkdir -p "$GITHUB_WORKSPACE"
+              ;;
+            *)
+              echo "Refusing to clean unexpected GITHUB_WORKSPACE: ${GITHUB_WORKSPACE:-<unset>}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -n "${RUNNER_TEMP:-}" ] && [ -d "$RUNNER_TEMP" ]; then
+            find "$RUNNER_TEMP" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          fi
 
       - name: Healthcheck before
+        working-directory: /
         run: |
           RUNNER_HOME="$HOME" \
           RUNNER_WORK="$HOME/actions-runner/_work" \
@@ -41,13 +66,32 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        env:
+          PNPM_CONFIG_SIDE_EFFECTS_CACHE: "false"
         run: pnpm install --frozen-lockfile
 
       - name: Rebuild native dependencies
-        run: pnpm rebuild better-sqlite3
+        env:
+          npm_config_build_from_source: "true"
+        run: |
+          rm -rf node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build
+          pnpm --filter @issuectl/core rebuild better-sqlite3
+          pnpm --dir packages/core exec node -e "require('better-sqlite3')(':memory:').close()"
 
       - name: Build core package
         run: pnpm turbo build --filter=@issuectl/core
+
+      - name: Ensure gh CLI
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            if command -v brew >/dev/null 2>&1; then
+              brew install gh
+            else
+              echo "gh CLI is required for E2E auth checks, but neither gh nor brew is available" >&2
+              exit 1
+            fi
+          fi
+          gh --version
 
       - name: Verify gh CLI auth
         env:
@@ -84,15 +128,9 @@ jobs:
           path: packages/web/playwright-report/
           retention-days: 7
 
-      - name: Cleanup after
-        if: always()
-        run: |
-          RUNNER_HOME="$HOME" \
-          RUNNER_WORK="$HOME/actions-runner/_work" \
-          /usr/local/ci/bin/macos-runner-cleanup --json
-
       - name: Healthcheck after
         if: always()
+        working-directory: /
         run: |
           RUNNER_HOME="$HOME" \
           RUNNER_WORK="$HOME/actions-runner/_work" \
