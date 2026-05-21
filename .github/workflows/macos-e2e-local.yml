@@ -1,0 +1,96 @@
+name: Local macOS E2E
+
+on:
+  merge_group:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  e2e-web:
+    name: Browser E2E on local Mac
+    runs-on: [self-hosted, macOS, ARM64, trusted-macos-e2e, e2e, gui, browser]
+    timeout-minutes: 35
+    steps:
+      - name: Host proof
+        run: |
+          hostname
+          sw_vers
+          uname -m
+          xcodebuild -version
+
+      - name: Healthcheck before
+        run: |
+          RUNNER_HOME="$HOME" \
+          RUNNER_WORK="$HOME/actions-runner/_work" \
+          /usr/local/ci/bin/macos-runner-healthcheck --json
+
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core package
+        run: pnpm turbo build --filter=@issuectl/core
+
+      - name: Verify gh CLI auth
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth status
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @issuectl/web exec playwright install chromium webkit
+
+      - name: Run mobile Chromium E2E
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @issuectl/web exec playwright test \
+            mobile-ux-patterns.spec.ts \
+            launch-ui.spec.ts \
+            viewport-health.spec.ts \
+            --project=mobile-chromium
+
+      - name: Run mobile WebKit E2E
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @issuectl/web exec playwright test \
+            workbench.spec.ts \
+            mobile-ux-patterns.spec.ts \
+            --project=mobile-webkit
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-local-macos-e2e
+          path: packages/web/playwright-report/
+          retention-days: 7
+
+      - name: Cleanup after
+        if: always()
+        run: |
+          RUNNER_HOME="$HOME" \
+          RUNNER_WORK="$HOME/actions-runner/_work" \
+          /usr/local/ci/bin/macos-runner-cleanup --json
+
+      - name: Healthcheck after
+        if: always()
+        run: |
+          RUNNER_HOME="$HOME" \
+          RUNNER_WORK="$HOME/actions-runner/_work" \
+          /usr/local/ci/bin/macos-runner-healthcheck --json
