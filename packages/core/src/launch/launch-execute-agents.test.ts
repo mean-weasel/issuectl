@@ -156,7 +156,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       expect.objectContaining({
         port: 7700,
         workspacePath: "/tmp/fake-workspace",
-        agentCommand: "claude",
+        agentCommand: expect.stringMatching(/(^|\/)claude$/),
         agentInputMode: "stdin",
         sessionName: "issuectl-api-42",
       }),
@@ -208,7 +208,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
 
     expect(spawnTtydSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        agentCommand: "codex --model gpt-5 --full-auto",
+        agentCommand: expect.stringMatching(/(^|\/)codex --model gpt-5 --full-auto$/),
         agentInputMode: "argument",
       }),
     );
@@ -256,7 +256,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
 
     expect(spawnTtydSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        agentCommand: "codex --sandbox danger-full-access --ask-for-approval never",
+        agentCommand: expect.stringMatching(/(^|\/)codex --sandbox danger-full-access --ask-for-approval never$/),
         agentInputMode: "argument",
       }),
     );

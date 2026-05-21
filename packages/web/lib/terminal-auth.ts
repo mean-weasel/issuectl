@@ -102,3 +102,22 @@ export function validateTerminalToken(token: string | null | undefined, port: nu
     return false;
   }
 }
+
+export function terminalTokenFromRequest(
+  url: URL,
+  port: number,
+  referer: string | null,
+): string | null {
+  const token = url.searchParams.get("terminalToken");
+  if (token) return token;
+  if (!referer) return null;
+
+  try {
+    const refererUrl = new URL(referer, url.origin);
+    if (refererUrl.origin !== url.origin) return null;
+    if (!refererUrl.pathname.startsWith(`/api/terminal/${port}/`)) return null;
+    return refererUrl.searchParams.get("terminalToken");
+  } catch {
+    return null;
+  }
+}

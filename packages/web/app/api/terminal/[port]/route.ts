@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidTerminalPort, proxyHttpRequest, rewriteHtml } from "@/lib/terminal-proxy";
-import { validateTerminalToken } from "@/lib/terminal-auth";
+import { terminalTokenFromRequest, validateTerminalToken } from "@/lib/terminal-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function GET(
   if (!isValidTerminalPort(port)) {
     return new NextResponse("Not Found", { status: 404 });
   }
-  const terminalToken = request.nextUrl.searchParams.get("terminalToken");
+  const terminalToken = terminalTokenFromRequest(request.nextUrl, port, request.headers.get("referer"));
   if (!validateTerminalToken(terminalToken, port)) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
@@ -27,7 +27,7 @@ export async function GET(
       const rewritten = rewriteHtml(upstream.body.toString("utf-8"), port, terminalToken ?? undefined);
       return new NextResponse(rewritten, {
         status: upstream.status,
-        headers: { "content-type": contentType },
+        headers: { "content-type": contentType, "referrer-policy": "same-origin" },
       });
     }
 
