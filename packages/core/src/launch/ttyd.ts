@@ -2,6 +2,14 @@ import { execFileSync, spawn } from "node:child_process";
 import net from "node:net";
 import type Database from "better-sqlite3";
 import { recordDiagnosticEventSafely } from "../db/diagnostics.js";
+import {
+  createTmuxAgentSession,
+  killTmuxSession,
+  TMUX_SESSION_RE,
+  TMUX_TIMEOUT_MS,
+  type SpawnPtyBridgeSessionOptions,
+} from "./tmux-session.js";
+export type { SpawnPtyBridgeSessionOptions } from "./tmux-session.js";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -25,18 +33,7 @@ export interface SpawnTtydOptions {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function shellEscape(s: string): string {
-  return `'${s.replace(/'/g, "'\\''")}'`;
-}
-
-const TMUX_TIMEOUT_MS = 10_000;
-const TMUX_SESSION_RE = /^[a-zA-Z0-9_-]+$/;
-// Detached tmux sessions otherwise start at 80 columns, wider than phones.
-const TMUX_INITIAL_COLUMNS = 40;
-const TMUX_INITIAL_ROWS = 24;
 const TTYD_TERMINATION_GRACE_MS = 150;
-const AGENT_ENV_RESET =
-  "for name in $(env | awk -F= '/^npm_/ {print $1}'); do unset \"$name\"; done; unset PNPM_SCRIPT_SRC_DIR";
 
 /**
  * Build a tmux-safe session name from repo + issue number. Dots, colons,
@@ -71,6 +68,22 @@ export function verifyTtyd(): void {
         { cause: err },
       );
     }
+  }
+}
+
+export function verifyTmux(): void {
+  try {
+    execFileSync("which", ["tmux"], { stdio: "ignore" });
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    const status = (err as { status?: number }).status;
+    if (code === "ENOENT" || status === 1) {
+      throw new Error("tmux is not installed. Run: brew install tmux", { cause: err });
+    }
+    throw new Error(
+      `Failed to verify tmux installation: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
   }
 }
 
@@ -255,45 +268,13 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
     throw new Error("spawnTtyd requires agentCommand");
   }
 
-  if (!TMUX_SESSION_RE.test(sessionName)) {
-    throw new Error(
-      `Invalid tmux session name: ${JSON.stringify(sessionName)}. Only alphanumeric, hyphens, and underscores are allowed.`,
-    );
-  }
-
-  // Build the inner shell command that runs inside tmux. Claude Code accepts
-  // piped context while staying interactive; Codex treats piped stdin as a
-  // non-interactive prompt, so it needs the context as its initial argument.
-  const contextInput =
-    agentInputMode === "argument"
-      ? `"$(cat ${shellEscape(contextFilePath)})"`
-      : `< ${shellEscape(contextFilePath)}`;
-  const innerCommand =
-    `${AGENT_ENV_RESET}; cd ${shellEscape(workspacePath)} && ${command} ${contextInput} ; exit`;
-
-  // Create a detached tmux session that runs the agent command.
-  // This is step 1 of 2 — ttyd will then serve `tmux attach` so
-  // every WebSocket client shares the same terminal view.
-  execFileSync("tmux", [
-    "new-session", "-d",
-    "-x", String(TMUX_INITIAL_COLUMNS),
-    "-y", String(TMUX_INITIAL_ROWS),
-    "-s", sessionName,
-    `bash -lic ${shellEscape(innerCommand)}`,
-  ], { timeout: TMUX_TIMEOUT_MS });
-
-  try {
-    execFileSync("tmux", ["set-option", "-t", sessionName, "status", "off"],
-      { timeout: TMUX_TIMEOUT_MS });
-    // "largest" sizing ensures the session expands to the biggest attached
-    // client instead of shrinking to the smallest — critical for shared
-    // viewing where desktop and mobile connect simultaneously.
-    execFileSync("tmux", ["set-option", "-t", sessionName, "window-size", "largest"],
-      { timeout: TMUX_TIMEOUT_MS });
-  } catch (err) {
-    killTmuxSession(sessionName);
-    throw err;
-  }
+  createTmuxAgentSession({
+    workspacePath,
+    contextFilePath,
+    agentCommand: command,
+    agentInputMode,
+    sessionName,
+  });
 
   // Bind to loopback only — the Next.js custom server proxies
   // terminal traffic through same-origin routes (/api/terminal/{port}),
@@ -325,6 +306,10 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
   }
 
   return { pid: child.pid, port };
+}
+
+export function spawnPtyBridgeSession(options: SpawnPtyBridgeSessionOptions): void {
+  createTmuxAgentSession(options);
 }
 
 /* ------------------------------------------------------------------ */
@@ -373,16 +358,6 @@ export async function respawnTtyd(
   return { pid: child.pid };
 }
 
-/** Best-effort cleanup of a tmux session. */
-function killTmuxSession(name: string): void {
-  try {
-    execFileSync("tmux", ["kill-session", "-t", name], {
-      stdio: "ignore",
-      timeout: TMUX_TIMEOUT_MS,
-    });
-  } catch { /* best effort */ }
-}
-
 /* ------------------------------------------------------------------ */
 /*  reconcileOrphanedDeployments                                       */
 /* ------------------------------------------------------------------ */
@@ -403,7 +378,7 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
          FROM deployments d
          JOIN repos r ON r.id = d.repo_id
          WHERE d.ended_at IS NULL
-           AND d.ttyd_pid IS NOT NULL`,
+           AND (d.ttyd_pid IS NOT NULL OR d.terminal_backend = 'pty_bridge')`,
       )
       .all() as typeof rows;
   } catch (err) {

@@ -62,6 +62,7 @@ beforeEach(() => {
   getRepo.mockReturnValue({ id: 1, owner: "owner", name: "repo" });
   executeLaunch.mockResolvedValue({
     deploymentId: 123,
+    terminalBackend: "ttyd",
     ttydPort: 7700,
     labelWarning: null,
   });
@@ -82,6 +83,7 @@ describe("POST /api/v1/launch/[owner]/[repo]/[number]", () => {
     expect(json).toMatchObject({
       success: true,
       deploymentId: 123,
+      terminalBackend: "ttyd",
       ttydPort: 7700,
       correlationId: expect.any(String),
     });
@@ -96,6 +98,7 @@ describe("POST /api/v1/launch/[owner]/[repo]/[number]", () => {
     withIdempotency.mockResolvedValue({
       correlationId: "cached-correlation-id",
       deploymentId: 456,
+      terminalBackend: "ttyd",
       ttydPort: 7800,
       labelWarning: null,
     });
@@ -111,9 +114,32 @@ describe("POST /api/v1/launch/[owner]/[repo]/[number]", () => {
       success: true,
       correlationId: "cached-correlation-id",
       deploymentId: 456,
+      terminalBackend: "ttyd",
       ttydPort: 7800,
     });
     expect(executeLaunch).not.toHaveBeenCalled();
+  });
+
+  it("returns the terminal backend selected by core", async () => {
+    executeLaunch.mockResolvedValue({
+      deploymentId: 456,
+      terminalBackend: "pty_bridge",
+      ttydPort: null,
+      labelWarning: null,
+    });
+
+    const response = await POST(makeRequest({ ...baseBody, agent: "codex" }), {
+      params,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toMatchObject({
+      success: true,
+      deploymentId: 456,
+      terminalBackend: "pty_bridge",
+      ttydPort: null,
+    });
   });
 
   it("rejects an invalid launch agent", async () => {

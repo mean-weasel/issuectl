@@ -185,7 +185,7 @@ describe("reconcileOrphanedDeployments", () => {
     expect(runSpy).not.toHaveBeenCalled();
   });
 
-  it("only queries deployments that have a ttyd_pid (excludes pending)", () => {
+  it("queries spawned ttyd and pty bridge deployments only", () => {
     execFileSyncSpy.mockReturnValue(Buffer.from(""));
 
     const prepareSpy = vi.fn((sql: string) => {
@@ -202,7 +202,7 @@ describe("reconcileOrphanedDeployments", () => {
       (c: unknown[]) => (c[0] as string).includes("SELECT"),
     );
     expect(selectCall).toBeDefined();
-    expect(selectCall![0]).toContain("ttyd_pid IS NOT NULL");
+    expect(selectCall![0]).toContain("d.ttyd_pid IS NOT NULL OR d.terminal_backend = 'pty_bridge'");
   });
 
   it("logs error and does not throw when query fails", () => {

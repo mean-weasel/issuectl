@@ -11,7 +11,7 @@ import { WorkspaceModeSelector } from "@/components/launch/WorkspaceModeSelector
 import { BodyText } from "@/components/detail/BodyText";
 import { generateBranchName } from "@/lib/branch";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
+import type { TerminalBackend, WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import type { WorkbenchSectionCollapseState, WorkbenchSectionId } from "./workbench-state";
 import {
   addIssueComment,
@@ -564,7 +564,9 @@ export function IssueFocus({
                     forceResume,
                     idempotencyKey: newIdempotencyKey(),
                   });
-                  if (!result.success || result.deploymentId === undefined || result.ttydPort === undefined) {
+                  const terminalBackend = result.terminalBackend ?? "ttyd";
+                  const missingTtydPort = terminalBackend === "ttyd" && typeof result.ttydPort !== "number";
+                  if (!result.success || result.deploymentId === undefined || missingTtydPort) {
                     setLaunchMessage(result.error ?? "Launch failed");
                     return;
                   }
@@ -575,7 +577,8 @@ export function IssueFocus({
                     branchName,
                     workspaceMode,
                     deploymentId: result.deploymentId,
-                    ttydPort: result.ttydPort,
+                    terminalBackend,
+                    ttydPort: result.ttydPort ?? null,
                   });
                   setLaunchMessage("Launch started");
                   onSessionLaunched(deployment);
@@ -725,6 +728,7 @@ function deploymentFromLaunch({
   branchName,
   workspaceMode,
   deploymentId,
+  terminalBackend,
   ttydPort,
 }: {
   repo: WorkbenchRepo;
@@ -733,7 +737,8 @@ function deploymentFromLaunch({
   branchName: string;
   workspaceMode: WorkspaceMode;
   deploymentId: number;
-  ttydPort: number;
+  terminalBackend: TerminalBackend;
+  ttydPort: number | null;
 }): WorkbenchDeployment {
   return {
     id: deploymentId,
@@ -747,6 +752,7 @@ function deploymentFromLaunch({
     state: "active",
     launchedAt: new Date().toISOString(),
     endedAt: null,
+    terminalBackend,
     ttydPort,
     ttydPid: null,
     idleSince: null,
