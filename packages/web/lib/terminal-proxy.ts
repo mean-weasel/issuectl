@@ -39,8 +39,39 @@ export function rewriteHtml(html: string, port: number, terminalToken?: string):
   const token = terminalToken;
   const encodedToken = token ? encodeURIComponent(token) : "";
   const tokenQuery = encodedToken ? `?terminalToken=${encodedToken}` : "";
-  const wsPatch = terminalToken
-    ? `<script>(()=>{const token=${JSON.stringify(token)};const port=${JSON.stringify(port)};const Native=window.WebSocket;function AuthWebSocket(url,protocols){try{const u=new URL(url,window.location.href);if(u.origin===window.location.origin&&u.pathname.startsWith("/api/terminal/"+port+"/")&&!u.searchParams.has("terminalToken")){u.searchParams.set("terminalToken",token);url=u.toString();}}catch{}return protocols===undefined?new Native(url):new Native(url,protocols)}AuthWebSocket.prototype=Native.prototype;Object.setPrototypeOf(AuthWebSocket,Native);window.WebSocket=AuthWebSocket;})();</script>`
+  const browserApiPatch = terminalToken
+    ? `<script>${[
+        "(()=>{",
+        `const token=${JSON.stringify(token)};`,
+        `const port=${JSON.stringify(port)};`,
+        "function authUrl(url){",
+        "const u=new URL(url,window.location.href);",
+        "if(u.origin===window.location.origin&&u.pathname.startsWith('/api/terminal/'+port+'/')&&!u.searchParams.has('terminalToken'))u.searchParams.set('terminalToken',token);",
+        "return u;",
+        "}",
+        "const NativeWebSocket=window.WebSocket;",
+        "function AuthWebSocket(url,protocols){",
+        "try{url=authUrl(url).toString();}catch{}",
+        "return protocols===undefined?new NativeWebSocket(url):new NativeWebSocket(url,protocols);",
+        "}",
+        "AuthWebSocket.prototype=NativeWebSocket.prototype;",
+        "Object.setPrototypeOf(AuthWebSocket,NativeWebSocket);",
+        "window.WebSocket=AuthWebSocket;",
+        "const nativeFetch=window.fetch;",
+        "window.fetch=function(input,init){",
+        "try{",
+        "if(input instanceof Request){input=new Request(authUrl(input.url).toString(),input);}",
+        "else{input=authUrl(input).toString();}",
+        "}catch{}",
+        "return nativeFetch.call(this,input,init);",
+        "};",
+        "const nativeOpen=XMLHttpRequest.prototype.open;",
+        "XMLHttpRequest.prototype.open=function(method,url,...rest){",
+        "try{url=authUrl(url).toString();}catch{}",
+        "return nativeOpen.call(this,method,url,...rest);",
+        "};",
+        "})();",
+      ].join("")}</script>`
     : "";
   const rewritten = html
     .replace(/(href|src|action)="\/(?!\/)/g, `$1="${prefix}/`)
@@ -55,8 +86,8 @@ export function rewriteHtml(html: string, port: number, terminalToken?: string):
         },
       )
     : rewritten;
-  if (!wsPatch) return withToken;
+  if (!browserApiPatch) return withToken;
   return withToken.includes("</head>")
-    ? withToken.replace("</head>", `${wsPatch}</head>`)
-    : `${wsPatch}${withToken}`;
+    ? withToken.replace("</head>", `${browserApiPatch}</head>`)
+    : `${browserApiPatch}${withToken}`;
 }

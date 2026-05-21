@@ -13,74 +13,74 @@ describe("buildClaudeCommand", () => {
   });
 
   it("returns 'claude' for undefined", () => {
-    expect(buildClaudeCommand(undefined)).toBe("claude");
+    expect(buildClaudeCommand(undefined)).toMatch(/(^|\/)claude$/);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("returns 'claude' for empty string", () => {
-    expect(buildClaudeCommand("")).toBe("claude");
+    expect(buildClaudeCommand("")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("returns 'claude' for whitespace-only string", () => {
-    expect(buildClaudeCommand("   ")).toBe("claude");
+    expect(buildClaudeCommand("   ")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("appends trimmed extra args for a normal value", () => {
-    expect(buildClaudeCommand("--dangerously-skip-permissions")).toBe(
-      "claude --dangerously-skip-permissions",
+    expect(buildClaudeCommand("--dangerously-skip-permissions")).toMatch(
+      /(^|\/)claude --dangerously-skip-permissions$/,
     );
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("appends multiple args", () => {
-    expect(buildClaudeCommand("--verbose --model opus")).toBe("claude --verbose --model opus");
+    expect(buildClaudeCommand("--verbose --model opus")).toMatch(/(^|\/)claude --verbose --model opus$/);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("trims surrounding whitespace before composing", () => {
-    expect(buildClaudeCommand("  --verbose  ")).toBe("claude --verbose");
+    expect(buildClaudeCommand("  --verbose  ")).toMatch(/(^|\/)claude --verbose$/);
   });
 
   it("falls back to 'claude' and warns on semicolon (tampered DB)", () => {
-    expect(buildClaudeCommand("--foo; rm -rf /")).toBe("claude");
+    expect(buildClaudeCommand("--foo; rm -rf /")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0]?.[0]).toMatch(/metacharacters/i);
   });
 
   it("falls back on backtick", () => {
-    expect(buildClaudeCommand("`evil`")).toBe("claude");
+    expect(buildClaudeCommand("`evil`")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on $ variable", () => {
-    expect(buildClaudeCommand("--append $HOME")).toBe("claude");
+    expect(buildClaudeCommand("--append $HOME")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on && operator", () => {
-    expect(buildClaudeCommand("--foo && --bar")).toBe("claude");
+    expect(buildClaudeCommand("--foo && --bar")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on pipe", () => {
-    expect(buildClaudeCommand("--foo | cat")).toBe("claude");
+    expect(buildClaudeCommand("--foo | cat")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on redirect", () => {
-    expect(buildClaudeCommand("--foo > out.txt")).toBe("claude");
+    expect(buildClaudeCommand("--foo > out.txt")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on newline (injection attempt)", () => {
-    expect(buildClaudeCommand("--foo\nrm -rf /")).toBe("claude");
+    expect(buildClaudeCommand("--foo\nrm -rf /")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on parentheses", () => {
-    expect(buildClaudeCommand("(echo hi)")).toBe("claude");
+    expect(buildClaudeCommand("(echo hi)")).toMatch(/(^|\/)claude$/);
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 });
@@ -97,17 +97,17 @@ describe("buildLaunchAgentCommand", () => {
   });
 
   it("builds a plain codex command with no args", () => {
-    expect(buildLaunchAgentCommand("codex", undefined)).toBe("codex");
+    expect(buildLaunchAgentCommand("codex", undefined)).toMatch(/(^|\/)codex$/);
   });
 
   it("appends codex args", () => {
-    expect(buildLaunchAgentCommand("codex", "--model gpt-5 --full-auto")).toBe(
-      "codex --model gpt-5 --full-auto",
+    expect(buildLaunchAgentCommand("codex", "--model gpt-5 --full-auto")).toMatch(
+      /(^|\/)codex --model gpt-5 --full-auto$/,
     );
   });
 
   it("falls back to plain codex for dangerous stored args", () => {
-    expect(buildLaunchAgentCommand("codex", "--model gpt-5; rm -rf /")).toBe("codex");
+    expect(buildLaunchAgentCommand("codex", "--model gpt-5; rm -rf /")).toMatch(/(^|\/)codex$/);
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("codex_extra_args"));
   });
 });

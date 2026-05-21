@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { execFileSync } from "node:child_process";
 import { getSetting } from "../db/settings.js";
 import type { LaunchAgent } from "../types.js";
 
@@ -58,17 +59,26 @@ export function buildLaunchAgentCommand(
   agent: LaunchAgent,
   rawExtraArgs: string | undefined,
 ): string {
+  const command = resolveLaunchAgentBinary(agent);
   const extraArgs = rawExtraArgs?.trim() ?? "";
-  if (extraArgs === "") return agent;
+  if (extraArgs === "") return command;
   if (DANGEROUS_METACHARS.test(extraArgs)) {
     console.warn(
       `[issuectl] ${extraArgsSettingForAgent(agent)} contains unexpected shell metacharacters; falling back to plain '${agent}'. Re-save the value in Settings to re-validate. Got: ${JSON.stringify(extraArgs)}`,
     );
-    return agent;
+    return command;
   }
-  return `${agent} ${extraArgs}`;
+  return `${command} ${extraArgs}`;
 }
 
 export function buildClaudeCommand(rawExtraArgs: string | undefined): string {
   return buildLaunchAgentCommand("claude", rawExtraArgs);
+}
+
+function resolveLaunchAgentBinary(agent: LaunchAgent): string {
+  try {
+    return execFileSync("which", [agent], { encoding: "utf8" }).trim() || agent;
+  } catch {
+    return agent;
+  }
 }

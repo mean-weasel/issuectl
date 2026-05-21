@@ -35,6 +35,8 @@ const TMUX_SESSION_RE = /^[a-zA-Z0-9_-]+$/;
 const TMUX_INITIAL_COLUMNS = 40;
 const TMUX_INITIAL_ROWS = 24;
 const TTYD_TERMINATION_GRACE_MS = 150;
+const AGENT_ENV_RESET =
+  "for name in $(env | awk -F= '/^npm_/ {print $1}'); do unset \"$name\"; done; unset PNPM_SCRIPT_SRC_DIR";
 
 /**
  * Build a tmux-safe session name from repo + issue number. Dots, colons,
@@ -267,7 +269,7 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
       ? `"$(cat ${shellEscape(contextFilePath)})"`
       : `< ${shellEscape(contextFilePath)}`;
   const innerCommand =
-    `cd ${shellEscape(workspacePath)} && ${command} ${contextInput} ; exit`;
+    `${AGENT_ENV_RESET}; cd ${shellEscape(workspacePath)} && ${command} ${contextInput} ; exit`;
 
   // Create a detached tmux session that runs the agent command.
   // This is step 1 of 2 — ttyd will then serve `tmux attach` so

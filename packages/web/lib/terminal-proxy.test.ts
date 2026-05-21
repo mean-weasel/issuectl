@@ -85,6 +85,8 @@ describe("rewriteHtml", () => {
   it("injects a WebSocket token patch when terminalToken is present", () => {
     const result = rewriteHtml("<html><head></head><body></body></html>", 7701, "abc123");
     expect(result).toContain("window.WebSocket=AuthWebSocket");
+    expect(result).toContain("window.fetch=function");
+    expect(result).toContain("XMLHttpRequest.prototype.open=function");
     expect(result).toContain("abc123");
   });
 });
