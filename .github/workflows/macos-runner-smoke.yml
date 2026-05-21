@@ -15,8 +15,6 @@ jobs:
       RUNNER_HOME: /Users/neonwatty
       RUNNER_WORK: /Users/neonwatty/actions-runner/_work
     steps:
-      - name: Cleanup before
-        run: /usr/local/ci/bin/macos-runner-cleanup --json
       - name: Host proof
         run: |
           hostname
@@ -25,6 +23,9 @@ jobs:
       - name: Healthcheck after
         if: always()
         run: /usr/local/ci/bin/macos-runner-healthcheck --json
+      - name: Cleanup after
+        if: always()
+        run: /usr/local/ci/bin/macos-runner-cleanup --json
 
   mac-mini-2:
     name: mac-mini-2
@@ -34,8 +35,6 @@ jobs:
       RUNNER_HOME: /Users/jeremywatt
       RUNNER_WORK: /Users/jeremywatt/actions-runner/_work
     steps:
-      - name: Cleanup before
-        run: /usr/local/ci/bin/macos-runner-cleanup --json
       - name: Host proof
         run: |
           hostname
@@ -44,6 +43,9 @@ jobs:
       - name: Healthcheck after
         if: always()
         run: /usr/local/ci/bin/macos-runner-healthcheck --json
+      - name: Cleanup after
+        if: always()
+        run: /usr/local/ci/bin/macos-runner-cleanup --json
 
   mac-mini-3:
     name: mac-mini-3
@@ -53,8 +55,6 @@ jobs:
       RUNNER_HOME: /Users/jeremywatt
       RUNNER_WORK: /Users/jeremywatt/actions-runner/_work
     steps:
-      - name: Cleanup before
-        run: /usr/local/ci/bin/macos-runner-cleanup --json
       - name: Host proof
         run: |
           hostname
@@ -63,3 +63,6 @@ jobs:
       - name: Healthcheck after
         if: always()
         run: /usr/local/ci/bin/macos-runner-healthcheck --json
+      - name: Cleanup after
+        if: always()
+        run: /usr/local/ci/bin/macos-runner-cleanup --json
