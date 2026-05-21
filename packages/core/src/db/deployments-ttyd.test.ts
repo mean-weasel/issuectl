@@ -40,6 +40,23 @@ describe("reserveTtydPort", () => {
     const updated = getDeploymentById(db, dep.id);
     expect(updated!.ttydPort).toBe(7700);
     expect(updated!.ttydPid).toBeNull();
+    expect(updated!.terminalBackend).toBe("ttyd");
+  });
+
+  it("persists an explicit terminal backend", () => {
+    const dep = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+      terminalBackend: "pty_bridge",
+    });
+
+    const updated = getDeploymentById(db, dep.id);
+    expect(updated!.terminalBackend).toBe("pty_bridge");
+    expect(updated!.ttydPort).toBeNull();
+    expect(updated!.ttydPid).toBeNull();
   });
 
   it("makes the reserved port visible to concurrent allocatePort calls (#198)", () => {

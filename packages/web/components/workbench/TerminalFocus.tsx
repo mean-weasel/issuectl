@@ -7,6 +7,7 @@ import {
   isStaleEnsureTtydResult,
   terminalProxyUrl,
 } from "./workbench-api";
+import { PtyTerminal } from "./PtyTerminal";
 import type { WorkbenchDeployment, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
@@ -38,25 +39,33 @@ export function TerminalFocus({
     port: number | null;
     token: string | null;
     src: string | null;
+    backend: "ttyd" | "pty_bridge" | null;
+    wsUrl: string | null;
     error: string | null;
   }>({
-    status: deployment.ttydPort ? "loading" : "error",
+    status: deployment.ttydPort || deployment.terminalBackend === "pty_bridge" ? "loading" : "error",
     port: deployment.ttydPort,
     token: null,
     src: null,
-    error: deployment.ttydPort ? null : "Reconnect this session to open the terminal.",
+    backend: deployment.terminalBackend ?? "ttyd",
+    wsUrl: null,
+    error: deployment.ttydPort || deployment.terminalBackend === "pty_bridge"
+      ? null
+      : "Reconnect this session to open the terminal.",
   });
   const [retryAttempt, setRetryAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
-    if (!deployment.ttydPort) {
+    if (!deployment.ttydPort && deployment.terminalBackend !== "pty_bridge") {
       setTerminal({
         status: "error",
         port: null,
         token: null,
         src: null,
+        backend: deployment.terminalBackend ?? "ttyd",
+        wsUrl: null,
         error: "Reconnect this session to open the terminal.",
       });
       return;
@@ -67,12 +76,26 @@ export function TerminalFocus({
       port: deployment.ttydPort,
       token: null,
       src: null,
+      backend: deployment.terminalBackend ?? "ttyd",
+      wsUrl: null,
       error: null,
     });
 
     ensureDeploymentTtyd(deployment.id)
       .then(async (result) => {
         if (cancelled) return;
+        if ("wsUrl" in result) {
+          setTerminal({
+            status: "ready",
+            port: null,
+            token: result.terminalToken,
+            src: null,
+            backend: "pty_bridge",
+            wsUrl: result.wsUrl,
+            error: null,
+          });
+          return;
+        }
         if (!("port" in result) || !result.terminalToken) {
           if (isStaleEnsureTtydResult(result)) {
             onDeploymentStale(deployment.id);
@@ -83,6 +106,8 @@ export function TerminalFocus({
             port: deployment.ttydPort,
             token: null,
             src: null,
+            backend: deployment.terminalBackend ?? "ttyd",
+            wsUrl: null,
             error: "error" in result && result.error
               ? result.error
               : "Terminal auth token could not be created.",
@@ -98,6 +123,8 @@ export function TerminalFocus({
             port: result.port,
             token: result.terminalToken,
             src: null,
+            backend: "ttyd",
+            wsUrl: null,
             error: proxy.error,
           });
           return;
@@ -108,6 +135,8 @@ export function TerminalFocus({
           port: result.port,
           token: result.terminalToken,
           src: terminalProxyUrl(result.port, result.terminalToken),
+          backend: "ttyd",
+          wsUrl: null,
           error: null,
         });
       })
@@ -119,6 +148,8 @@ export function TerminalFocus({
           port: deployment.ttydPort,
           token: null,
           src: null,
+          backend: deployment.terminalBackend ?? "ttyd",
+          wsUrl: null,
           error: err instanceof Error ? err.message : "Terminal is not available.",
         });
       });
@@ -127,7 +158,7 @@ export function TerminalFocus({
       cancelled = true;
       controller.abort();
     };
-  }, [deployment.id, deployment.ttydPort, onDeploymentStale, retryAttempt]);
+  }, [deployment.id, deployment.terminalBackend, deployment.ttydPort, onDeploymentStale, retryAttempt]);
 
   async function reconnectTerminal() {
     await onReconnect(deployment);
@@ -150,7 +181,15 @@ export function TerminalFocus({
           Back to overview
         </button>
       </header>
-      {terminal.status === "ready" && terminal.src ? (
+      {terminal.status === "ready" && terminal.backend === "pty_bridge" && terminal.wsUrl ? (
+        <div className={styles.terminalFrame}>
+          <PtyTerminal
+            title={`Terminal for issue ${deployment.issueNumber}`}
+            wsUrl={terminal.wsUrl}
+            onError={(error) => setTerminal((current) => ({ ...current, status: "error", error }))}
+          />
+        </div>
+      ) : terminal.status === "ready" && terminal.src ? (
         <iframe
           className={styles.terminalFrame}
           title={`Terminal for issue ${deployment.issueNumber}`}

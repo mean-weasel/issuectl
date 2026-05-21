@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -30,6 +30,8 @@ const CREATE_TABLES = `
     linked_pr_number INTEGER,
     state            TEXT NOT NULL DEFAULT 'active'
                      CHECK (state IN ('pending', 'active')),
+    terminal_backend TEXT NOT NULL DEFAULT 'ttyd'
+                     CHECK (terminal_backend IN ('ttyd', 'pty_bridge')),
     launched_at      TEXT NOT NULL DEFAULT (datetime('now')),
     ended_at         TEXT,
     ttyd_port        INTEGER,

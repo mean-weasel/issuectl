@@ -12,6 +12,7 @@ import {
   recordDiagnosticEventSafely,
 } from "@issuectl/core";
 import { createTerminalToken } from "./terminal-auth";
+import { recordTerminalEventForDeployment } from "./terminal-diagnostics";
 
 export type EnsureTtydResult =
   | { port: number; terminalToken: string; respawned?: true; alive?: never; error?: never }
@@ -49,6 +50,11 @@ export async function ensureTtydForDeployment(
       return { alive: false, error: "No terminal process configured" };
     }
     const port = deployment.ttydPort;
+    recordTerminalEventForDeployment(db, deployment, {
+      level: "info",
+      event: "terminal.open_requested",
+      source: "web.ensure-ttyd",
+    });
 
     if (isTtydAlive(deployment.ttydPid)) {
       recordDiagnosticEventSafely(db, {
@@ -62,6 +68,12 @@ export async function ensureTtydForDeployment(
       });
       const terminalToken = createTerminalToken(deploymentId, port);
       if (!terminalToken) {
+        recordTerminalEventForDeployment(db, deployment, {
+          level: "error",
+          event: "terminal.token_failed",
+          source: "web.ensure-ttyd",
+          message: "Terminal auth token could not be created",
+        });
         recordDiagnosticEventSafely(db, {
           level: "error",
           event: "ensure_ttyd.failed",
@@ -74,6 +86,11 @@ export async function ensureTtydForDeployment(
         });
         return { alive: false, error: "Terminal auth token could not be created" };
       }
+      recordTerminalEventForDeployment(db, deployment, {
+        level: "info",
+        event: "terminal.token_issued",
+        source: "web.ensure-ttyd",
+      });
       return { port, terminalToken };
     }
 
@@ -93,6 +110,12 @@ export async function ensureTtydForDeployment(
     const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
     if (!isTmuxSessionAlive(sessionName)) {
       endDeployment(db, deploymentId);
+      recordTerminalEventForDeployment(db, deployment, {
+        level: "warn",
+        event: "terminal.tmux_missing",
+        source: "web.ensure-ttyd",
+        message: "Terminal session has ended",
+      }, repo);
       recordDiagnosticEventSafely(db, {
         level: "error",
         event: "ensure_ttyd.failed",
@@ -109,6 +132,7 @@ export async function ensureTtydForDeployment(
 
     const { pid } = await respawnTtyd(port, sessionName);
     updateTtydInfo(db, deploymentId, port, pid);
+    const respawnedDeployment = { ...deployment, ttydPid: pid };
     recordDiagnosticEventSafely(db, {
       level: "info",
       event: "ensure_ttyd.respawned",
@@ -121,8 +145,20 @@ export async function ensureTtydForDeployment(
       ttydPort: port,
       ttydPid: pid,
     });
+    recordTerminalEventForDeployment(db, respawnedDeployment, {
+      level: "info",
+      event: "terminal.respawned",
+      source: "web.ensure-ttyd",
+      data: { oldPid: deployment.ttydPid, newPid: pid },
+    }, repo);
     const terminalToken = createTerminalToken(deploymentId, port);
     if (!terminalToken) {
+      recordTerminalEventForDeployment(db, respawnedDeployment, {
+        level: "error",
+        event: "terminal.token_failed",
+        source: "web.ensure-ttyd",
+        message: "Terminal auth token could not be created",
+      }, repo);
       recordDiagnosticEventSafely(db, {
         level: "error",
         event: "ensure_ttyd.failed",
@@ -138,6 +174,11 @@ export async function ensureTtydForDeployment(
       });
       return { alive: false, error: "Terminal auth token could not be created" };
     }
+    recordTerminalEventForDeployment(db, respawnedDeployment, {
+      level: "info",
+      event: "terminal.token_issued",
+      source: "web.ensure-ttyd",
+    }, repo);
     return { port, terminalToken, respawned: true };
   } catch (err) {
     console.error("[issuectl] ensureTtydForDeployment failed:", deploymentId, err);

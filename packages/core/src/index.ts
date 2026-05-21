@@ -5,6 +5,7 @@ export type {
   Deployment,
   DeploymentState,
   LaunchAgent,
+  TerminalBackend,
   CacheEntry,
   Draft,
   DraftInput,

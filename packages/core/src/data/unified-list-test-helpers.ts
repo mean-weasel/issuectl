@@ -51,6 +51,7 @@ export function makeDeployment(issueNumber: number, ended = false): Deployment {
     workspacePath: `/tmp/${issueNumber}`,
     linkedPrNumber: null,
     state: "active",
+    terminalBackend: "ttyd",
     launchedAt: "2026-04-01T00:00:00Z",
     endedAt: ended ? "2026-04-02T00:00:00Z" : null,
     ttydPort: null,

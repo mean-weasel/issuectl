@@ -29,6 +29,7 @@ import type { GitHubIssue } from "./github/types.js";
 
 export type DeploymentState = "pending" | "active";
 export type LaunchAgent = "claude" | "codex";
+export type TerminalBackend = "ttyd" | "pty_bridge";
 
 export type Deployment = {
   id: number;
@@ -47,6 +48,7 @@ export type Deployment = {
    * only the rollback path in executeLaunch sees them.
    */
   state: DeploymentState;
+  terminalBackend?: TerminalBackend;
   launchedAt: string;
   endedAt: string | null;
   ttydPort: number | null;

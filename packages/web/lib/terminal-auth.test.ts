@@ -12,7 +12,13 @@ vi.mock("@issuectl/core", () => ({
   getActiveDeploymentByPort: mockGetActiveDeploymentByPort,
 }));
 
-import { createTerminalToken, terminalTokenFromRequest, validateTerminalToken } from "./terminal-auth.js";
+import {
+  createPtyTerminalToken,
+  createTerminalToken,
+  terminalTokenFromRequest,
+  validatePtyTerminalToken,
+  validateTerminalToken,
+} from "./terminal-auth.js";
 
 describe("terminal auth tokens", () => {
   beforeEach(() => {
@@ -22,6 +28,7 @@ describe("terminal auth tokens", () => {
       id: 7,
       endedAt: null,
       ttydPort: 7700,
+      terminalBackend: "ttyd",
     });
     mockGetActiveDeploymentByPort.mockReturnValue({ id: 7 });
   });
@@ -51,6 +58,44 @@ describe("terminal auth tokens", () => {
     mockGetDeploymentById.mockReturnValue({ id: 7, endedAt: "2026-04-28", ttydPort: 7700 });
 
     expect(validateTerminalToken(token, 7700)).toBe(false);
+  });
+});
+
+describe("pty terminal auth tokens", () => {
+  beforeEach(() => {
+    mockGetDb.mockReturnValue("fake-db");
+    mockGetSetting.mockReturnValue("test-secret");
+    mockGetDeploymentById.mockReturnValue({
+      id: 7,
+      endedAt: null,
+      ttydPort: null,
+      terminalBackend: "pty_bridge",
+    });
+  });
+
+  it("creates and validates a deployment-bound PTY token", () => {
+    const token = createPtyTerminalToken(7);
+
+    expect(token).toEqual(expect.any(String));
+    expect(validatePtyTerminalToken(token, 7)).toBe(true);
+  });
+
+  it("rejects a PTY token for a different deployment", () => {
+    const token = createPtyTerminalToken(7);
+
+    expect(validatePtyTerminalToken(token, 8)).toBe(false);
+  });
+
+  it("rejects a PTY token for a ttyd deployment", () => {
+    const token = createPtyTerminalToken(7);
+    mockGetDeploymentById.mockReturnValue({
+      id: 7,
+      endedAt: null,
+      ttydPort: 7700,
+      terminalBackend: "ttyd",
+    });
+
+    expect(validatePtyTerminalToken(token, 7)).toBe(false);
   });
 });
 

@@ -1,0 +1,733 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "PTY Bridge Terminal Experiment"
+  slug: "pty-bridge-terminal-experiment"
+  kind: existing_plan
+  tranche: "Operationalize the xterm.js + node-pty bridge design into the first feature-flagged implementation tranche, starting with ttyd telemetry and backend contracts."
+  status: done
+  oracle:
+    signal: "A verified first tranche improves current ttyd terminal diagnostics, preserves default ttyd behavior, and prepares a rollback-safe feature-flagged PTY bridge path while keeping tmux as the durable session layer."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipts and verification commands show current ttyd launch/session tests remain green, diagnostics can localize terminal attach failures, and the next PTY bridge slice is bounded behind a non-default backend flag."
+  intake:
+    original_request: "Use GoalBuddy prep to break the PTY bridge terminal design into concrete implementation tasks."
+    interpreted_outcome: "The repo has a GoalBuddy board that can drive the first safe tranche of feature-flagged PTY bridge terminal work."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and future agents debugging unreliable launch terminal sessions"
+    authority: requested
+    proof_type: test
+    completion_proof: "A final audit proves the first implementation tranche is complete against the design doc and does not regress ttyd-backed sessions."
+    likely_misfire: "Replacing ttyd broadly before validating telemetry, backend persistence, rollback, and tmux-preserving PTY attach behavior."
+    blind_spots_considered:
+      - "Native node-pty dependency and packaging risk"
+      - "Token transport and websocket auth"
+      - "Multi-client write policy"
+      - "DB schema naming while ttyd fields still exist"
+      - "Active ttyd deployment compatibility"
+      - "Apple client parity"
+      - "Live side-effecting test boundaries"
+      - "Avoiding terminal input/output capture in logs"
+    existing_plan_facts:
+      - "Design doc: docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+      - "Keep tmux as the durable session layer."
+      - "Keep ttyd as the default backend during experimentation."
+      - "Add Phase 0 telemetry for the current ttyd path."
+      - "Add a backend abstraction and record backend per deployment."
+      - "Build PTY bridge as an additive feature-flagged path."
+      - "Route deployments by the backend recorded at launch."
+      - "Do not log raw terminal input/output, tokens, context files, command strings, or environment variables."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/pty-bridge-terminal-experiment/"
+    command: "npx goalbuddy board docs/goals/pty-bridge-terminal-experiment"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Validate the PTY bridge design against current terminal code, diagnostics, schema, and tests, then identify the largest safe first Worker slice."
+    inputs:
+      - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+      - "packages/core/src/launch/launch.ts"
+      - "packages/core/src/launch/ttyd.ts"
+      - "packages/core/src/launch/launch-diagnostics.ts"
+      - "packages/core/src/db/diagnostics.ts"
+      - "packages/core/src/db/deployments.ts"
+      - "packages/web/lib/ensure-ttyd.ts"
+      - "packages/web/lib/terminal-websocket.ts"
+      - "packages/web/lib/terminal-proxy.ts"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/e2e/terminal-*.spec.ts"
+      - "packages/web/e2e/codex-workbench-live.spec.ts"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not run live side-effecting tests."
+      - "Preserve the design decision to keep tmux as durable session source."
+      - "Identify exact current tests and new tests needed for Phase 0 telemetry."
+    expected_output:
+      - "Evidence-backed map of current ttyd diagnostic gaps."
+      - "Recommended first Worker objective."
+      - "allowed_files for the first Worker."
+      - "verify commands for the first Worker."
+      - "stop_if conditions for the first Worker."
+      - "Risks that require Judge review before PTY bridge implementation."
+    receipt:
+      result: done
+      summary: "Validated the PTY bridge design against current ttyd/tmux code, diagnostics, schema, and tests. The largest safe first Worker slice is Phase 0 diagnostics for the current ttyd attach/proxy path: journal terminal open/token/proxy/websocket/first-output/backpressure/close/respawn events without changing default ttyd behavior or adding node-pty."
+      evidence:
+        - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+        - "packages/web/lib/ensure-ttyd.ts:20"
+        - "packages/web/lib/ensure-ttyd.ts:53"
+        - "packages/web/lib/ensure-ttyd.ts:93"
+        - "packages/web/lib/terminal-lifecycle.ts:32"
+        - "packages/web/lib/terminal-lifecycle.ts:96"
+        - "packages/web/lib/terminal-websocket.ts:37"
+        - "packages/web/lib/terminal-websocket.ts:73"
+        - "packages/web/lib/terminal-websocket.ts:90"
+        - "packages/web/lib/terminal-websocket.ts:177"
+        - "packages/web/lib/terminal-websocket.ts:249"
+        - "packages/web/components/workbench/TerminalFocus.tsx:73"
+        - "packages/web/components/workbench/workbench-api.ts:84"
+        - "packages/web/lib/actions/launch-ensure-ttyd.test.ts:86"
+        - "packages/web/lib/terminal-proxy.test.ts:15"
+        - "packages/web/lib/terminal-auth.test.ts:17"
+        - "packages/web/e2e/codex-workbench-live.spec.ts:395"
+      findings:
+        - "Current diagnostics cover launch and explicit ensure-ttyd outcomes, but not all terminal attach/proxy lifecycle events."
+        - "The WebSocket bridge already tracks frames, bytes, drops, and backpressure in web logs; those are not journaled with deployment/issue context."
+        - "The implicit proxy respawn path in terminal-lifecycle logs respawn and tmux-dead outcomes, but does not write diagnostic events like ensure-ttyd does."
+        - "TerminalFocus/checkTerminalProxy turns proxy failures into UI strings, but there is no durable server-side terminal proxy probe event."
+        - "Existing tests already cover ensure-ttyd diagnostics, token validation, proxy HTML rewriting, and live Codex workbench behavior; Phase 0 should extend those rather than introduce node-pty."
+      recommended_worker:
+        objective: "Add Phase 0 diagnostics journal events for current ttyd terminal open, token issuance/failure, proxy probe success/failure, WebSocket connect/first-output/backpressure/close, and implicit respawn/tmux-missing paths without changing terminal behavior."
+        allowed_files:
+          - "packages/web/lib/ensure-ttyd.ts"
+          - "packages/web/lib/terminal-lifecycle.ts"
+          - "packages/web/lib/terminal-websocket.ts"
+          - "packages/web/lib/terminal-proxy.ts"
+          - "packages/web/app/api/terminal/[port]/route.ts"
+          - "packages/web/lib/terminal-diagnostics.ts"
+          - "packages/web/lib/terminal-diagnostics.test.ts"
+          - "packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+          - "packages/web/lib/terminal-proxy.test.ts"
+          - "packages/web/lib/terminal-auth.test.ts"
+        verify:
+          - "git diff --check"
+          - "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/terminal-proxy.test.ts lib/terminal-auth.test.ts lib/terminal-diagnostics.test.ts"
+          - "pnpm --dir packages/web typecheck"
+        stop_if:
+          - "Need to add node-pty or xterm dependencies."
+          - "Need to change the default backend away from ttyd."
+          - "Need to log terminal input/output, tokens, context, command strings, or env."
+          - "Need schema changes before Judge approves backend contracts."
+          - "The diagnostics cannot be correlated to deployment/issue without broad DB changes."
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate Scout's recommendation and choose the first largest safe Worker slice for the PTY bridge experiment tranche."
+    inputs:
+      - "T001 receipt"
+      - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+      - "Goal oracle and non-negotiable constraints"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject any slice that changes the default terminal backend away from ttyd."
+      - "Reject any slice that logs raw terminal input/output, tokens, context, command strings, or env."
+      - "Prefer Phase 0 telemetry or backend-contract work before PTY bridge behavior unless Scout proves the bridge slice is safer."
+    expected_output:
+      - "Decision: approved, revise, or blocked."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+      - "Whether a follow-up Judge is required before node-pty dependency introduction."
+    receipt:
+      result: done
+      decision: "approved"
+      summary: "Approve Scout's Phase 0 current-ttyd diagnostics slice as the largest safe first Worker package. It improves evidence for the launch/session failures the PTY bridge experiment is meant to address, does not introduce node-pty or xterm, does not alter default ttyd behavior, and preserves the later backend-contract and PTY dependency gates."
+      rationale:
+        - "The current failure mode needs better terminal attach/proxy lifecycle evidence before adding a second terminal backend."
+        - "The proposed slice is additive diagnostics only and can be verified with existing web unit tests plus a new focused helper test."
+        - "No schema or native dependency changes are required for this first package."
+        - "The no-secret constraint is enforceable by a terminal diagnostics helper that allowlists safe aggregate fields."
+      worker:
+        objective: "Add Phase 0 diagnostics journal events for current ttyd terminal open, token issuance/failure, proxy probe success/failure, WebSocket connect/first-output/backpressure/close, and implicit respawn/tmux-missing paths without changing terminal behavior."
+        allowed_files:
+          - "packages/web/lib/ensure-ttyd.ts"
+          - "packages/web/lib/terminal-lifecycle.ts"
+          - "packages/web/lib/terminal-websocket.ts"
+          - "packages/web/lib/terminal-proxy.ts"
+          - "packages/web/app/api/terminal/[port]/route.ts"
+          - "packages/web/lib/terminal-diagnostics.ts"
+          - "packages/web/lib/terminal-diagnostics.test.ts"
+          - "packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+          - "packages/web/lib/terminal-proxy.test.ts"
+          - "packages/web/lib/terminal-auth.test.ts"
+        verify:
+          - "git diff --check"
+          - "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/terminal-proxy.test.ts lib/terminal-auth.test.ts lib/terminal-diagnostics.test.ts"
+          - "pnpm --dir packages/web typecheck"
+        stop_if:
+          - "Need to add node-pty or xterm dependencies."
+          - "Need to change the default backend away from ttyd."
+          - "Need to log terminal input/output, tokens, context, command strings, or env."
+          - "Need schema changes before Judge approves backend contracts."
+          - "The diagnostics cannot be correlated to deployment/issue without broad DB changes."
+      follow_up_gate: "A follow-up Judge remains required before node-pty or xterm dependency introduction."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Add Phase 0 diagnostics journal events for current ttyd terminal open, token issuance/failure, proxy probe success/failure, WebSocket connect/first-output/backpressure/close, and implicit respawn/tmux-missing paths without changing terminal behavior."
+    allowed_files:
+      - "packages/web/lib/ensure-ttyd.ts"
+      - "packages/web/lib/terminal-lifecycle.ts"
+      - "packages/web/lib/terminal-websocket.ts"
+      - "packages/web/lib/terminal-proxy.ts"
+      - "packages/web/app/api/terminal/[port]/route.ts"
+      - "packages/web/lib/terminal-diagnostics.ts"
+      - "packages/web/lib/terminal-diagnostics.test.ts"
+      - "packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+      - "packages/web/lib/terminal-proxy.test.ts"
+      - "packages/web/lib/terminal-auth.test.ts"
+    verify:
+      - "git diff --check"
+      - "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/terminal-proxy.test.ts lib/terminal-auth.test.ts lib/terminal-diagnostics.test.ts"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The slice would change the default backend away from ttyd."
+      - "The slice would log terminal input/output, tokens, context, command strings, or env."
+      - "Need schema changes before Judge approves backend contracts."
+      - "Existing ttyd launch/session tests fail twice with different root causes."
+      - "Implementation requires adding node-pty before Judge explicitly approves that dependency boundary."
+    receipt:
+      result: done
+      summary: "Implemented Phase 0 diagnostics for the current ttyd attach/proxy path without changing terminal behavior or introducing node-pty/xterm. Added a terminal diagnostics helper that enriches events with deployment/issue/repo context and allowlists only aggregate diagnostic data."
+      changed_files:
+        - "packages/web/lib/terminal-diagnostics.ts"
+        - "packages/web/lib/terminal-diagnostics.test.ts"
+        - "packages/web/lib/ensure-ttyd.ts"
+        - "packages/web/lib/terminal-lifecycle.ts"
+        - "packages/web/lib/terminal-websocket.ts"
+        - "packages/web/app/api/terminal/[port]/route.ts"
+        - "packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+        - "packages/web/lib/terminal-proxy.test.ts"
+      events_added:
+        - "terminal.open_requested"
+        - "terminal.token_issued"
+        - "terminal.token_failed"
+        - "terminal.proxy_probe_succeeded"
+        - "terminal.proxy_probe_failed"
+        - "terminal.ws_connected"
+        - "terminal.first_output_seen"
+        - "terminal.backpressure_start"
+        - "terminal.backpressure_clear"
+        - "terminal.ws_closed"
+        - "terminal.ws_upstream_error"
+        - "terminal.ws_client_error"
+        - "terminal.respawn_started"
+        - "terminal.respawned"
+        - "terminal.respawn_failed"
+        - "terminal.tmux_missing"
+        - "terminal.tmux_check_failed"
+        - "terminal.auth_failed"
+        - "terminal.port_invalid"
+        - "terminal.unavailable"
+      safety:
+        - "No terminal input/output frames are written to diagnostics."
+        - "No terminal tokens, context files, command strings, or environment variables are recorded."
+        - "Diagnostic event data is allowlisted to aggregate numeric/boolean counters."
+        - "ttyd remains the default and only implemented terminal backend."
+      verification:
+        - command: "git diff --check"
+          result: pass
+        - command: "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/terminal-proxy.test.ts lib/terminal-auth.test.ts lib/terminal-diagnostics.test.ts"
+          result: pass
+          details: "4 files passed, 35 tests passed"
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/terminal-proxy.test.ts lib/terminal-auth.test.ts lib/terminal-diagnostics.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the first Worker slice and decide whether the next tranche should be backend schema/contracts or PTY bridge MVP."
+    inputs:
+      - "T003 receipt"
+      - "Current diff"
+      - "Last verification output"
+      - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject progression to node-pty if current ttyd diagnostics or rollback boundaries are weak."
+    expected_output:
+      - "Decision: proceed_to_backend_contracts | proceed_to_pty_mvp | revise_first_slice | blocked."
+      - "Exact next Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+    receipt:
+      result: done
+      decision: "proceed_to_backend_contracts"
+      summary: "The Phase 0 telemetry slice is verified and additive. The next safest slice is terminal backend persistence and ttyd-compatible ensure-terminal contracts. PTY MVP remains deferred until the repo can record backend per deployment and route future attach behavior by that persisted value."
+      evidence:
+        - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+        - "packages/core/src/db/schema.ts"
+        - "packages/core/src/db/migrations.ts"
+        - "packages/core/src/db/deployments.ts"
+        - "packages/core/src/types.ts"
+        - "packages/web/lib/ensure-ttyd.ts"
+      rationale:
+        - "The design requires active deployments to route by the backend recorded at launch."
+        - "Existing ttyd deployments need a default backend value without migration risk."
+        - "A typed ensure-terminal contract can be introduced while preserving the current ensure-ttyd route and UI behavior."
+        - "The node-pty/xterm dependency boundary should stay behind a later Judge gate."
+      worker:
+        objective: "Add terminal backend persistence and ttyd-compatible ensure-terminal contracts while keeping ttyd as the only/default runtime backend."
+        allowed_files:
+          - "packages/core/src/types.ts"
+          - "packages/core/src/index.ts"
+          - "packages/core/src/db/schema.ts"
+          - "packages/core/src/db/migrations.ts"
+          - "packages/core/src/db/deployments.ts"
+          - "packages/core/src/data/unified-list-test-helpers.ts"
+          - "packages/core/src/db/schema-deployments.test.ts"
+          - "packages/core/src/db/schema-invariants.test.ts"
+          - "packages/core/src/db/schema.test.ts"
+          - "packages/core/src/db/deployments-ttyd.test.ts"
+          - "packages/web/lib/ensure-ttyd.ts"
+          - "packages/web/lib/ensure-terminal.ts"
+          - "packages/web/lib/ensure-terminal.test.ts"
+          - "packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+        verify:
+          - "git diff --check"
+          - "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+          - "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/ensure-terminal.test.ts"
+          - "pnpm --dir packages/core typecheck"
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/core lint"
+          - "pnpm --dir packages/web lint"
+        stop_if:
+          - "Need to add node-pty or xterm dependencies."
+          - "Need to make pty_bridge selectable before PTY runtime support exists."
+          - "Need to migrate active sessions or rewrite ttyd_port/ttyd_pid semantics."
+          - "Need files outside allowed_files."
+          - "Existing ttyd launch/session behavior changes."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Add terminal backend persistence and ttyd-compatible ensure-terminal contracts while keeping ttyd as the only/default runtime backend."
+    allowed_files:
+      - "packages/core/src/types.ts"
+      - "packages/core/src/index.ts"
+      - "packages/core/src/db/schema.ts"
+      - "packages/core/src/db/migrations.ts"
+      - "packages/core/src/db/deployments.ts"
+      - "packages/core/src/data/unified-list-test-helpers.ts"
+      - "packages/core/src/db/schema-deployments.test.ts"
+      - "packages/core/src/db/schema-invariants.test.ts"
+      - "packages/core/src/db/schema.test.ts"
+      - "packages/core/src/db/deployments-ttyd.test.ts"
+      - "packages/web/lib/ensure-ttyd.ts"
+      - "packages/web/lib/ensure-terminal.ts"
+      - "packages/web/lib/ensure-terminal.test.ts"
+      - "packages/web/lib/actions/launch-ensure-ttyd.test.ts"
+    verify:
+      - "git diff --check"
+      - "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+      - "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/ensure-terminal.test.ts"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The slice would migrate or break active ttyd deployments."
+      - "The slice would require node-pty before the dependency boundary is approved."
+      - "The slice would make pty_bridge selectable before PTY runtime support exists."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      summary: "Added terminal backend persistence and a ttyd-compatible ensure-terminal contract while preserving ttyd as the only runtime backend."
+      changed_files:
+        - "packages/core/src/types.ts"
+        - "packages/core/src/index.ts"
+        - "packages/core/src/db/schema.ts"
+        - "packages/core/src/db/migrations.ts"
+        - "packages/core/src/db/deployments.ts"
+        - "packages/core/src/data/unified-list-test-helpers.ts"
+        - "packages/core/src/db/schema-deployments.test.ts"
+        - "packages/core/src/db/schema-invariants.test.ts"
+        - "packages/core/src/db/schema.test.ts"
+        - "packages/core/src/db/deployments-ttyd.test.ts"
+        - "packages/web/lib/ensure-terminal.ts"
+        - "packages/web/lib/ensure-terminal.test.ts"
+      details:
+        - "Schema version advanced to 16 with deployments.terminal_backend TEXT NOT NULL DEFAULT 'ttyd'."
+        - "Deployment rows now map terminalBackend as 'ttyd' | 'pty_bridge'."
+        - "recordDeployment defaults terminalBackend to ttyd and can persist pty_bridge for future gated slices."
+        - "ensureTerminalForDeployment returns a discriminated ttyd response and refuses pty_bridge rows until the runtime exists."
+        - "No xterm/node-pty dependencies were added and no runtime backend selection was enabled."
+      verification:
+        - command: "git diff --check"
+          result: pass
+        - command: "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+          result: pass
+          details: "4 files passed, 46 tests passed"
+        - command: "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/ensure-terminal.test.ts"
+          result: pass
+          details: "2 files passed, 13 tests passed"
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/ensure-terminal.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Make the dependency and architecture go/no-go decision before any node-pty/xterm PTY bridge MVP work."
+    inputs:
+      - "Done receipts"
+      - "Current package manifests"
+      - "Current verification"
+      - "Design doc open questions"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Explicitly evaluate native dependency risk, rollback, security, and test coverage."
+    expected_output:
+      - "Decision: approve_pty_mvp | defer_pty_mvp | blocked."
+      - "Dependency acceptance criteria."
+      - "Exact PTY bridge MVP Worker objective if approved."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+    receipt:
+      result: done
+      decision: "approve_pty_mvp"
+      summary: "Approve a narrow PTY bridge MVP slice now that Phase 0 telemetry and terminal_backend persistence are in place. The approval is conditional: the bridge must remain non-default, feature-flagged, tmux-preserving, and routed only by a deployment's persisted backend."
+      dependency_acceptance_criteria:
+        - "Add xterm/node-pty dependencies only to packages/web."
+        - "Keep ttyd as the default for all launches unless an explicit non-default experiment path records terminalBackend='pty_bridge'."
+        - "Do not migrate active deployments between backends."
+        - "Killing a PTY attach process must not kill tmux."
+        - "Diagnostics must record lifecycle/counter data only, never terminal input/output, tokens, command strings, context, or env."
+        - "Rollback must be disabling the experiment flag for new sessions while existing ttyd deployments keep working."
+      worker:
+        objective: "Implement the first PTY bridge MVP path behind a non-default experiment flag: xterm client component, server websocket attach route for persisted pty_bridge deployments, node-pty tmux attach lifecycle, and diagnostics, while leaving ttyd UI/launch behavior unchanged by default."
+        allowed_files:
+          - "package.json"
+          - "pnpm-lock.yaml"
+          - "packages/web/package.json"
+          - "packages/web/server.ts"
+          - "packages/web/lib/pty-terminal-websocket.ts"
+          - "packages/web/lib/pty-terminal-websocket.test.ts"
+          - "packages/web/lib/ensure-terminal.ts"
+          - "packages/web/lib/ensure-terminal.test.ts"
+          - "packages/web/app/api/v1/deployments/[id]/ensure-ttyd/route.ts"
+          - "packages/web/lib/terminal-auth.ts"
+          - "packages/web/lib/terminal-auth.test.ts"
+          - "packages/web/components/workbench/PtyTerminal.tsx"
+          - "packages/web/components/workbench/PtyTerminal.module.css"
+          - "packages/web/components/workbench/TerminalFocus.tsx"
+          - "packages/web/components/workbench/WorkbenchShell.tsx"
+          - "packages/web/components/workbench/workbench-api.ts"
+          - "packages/web/components/workbench/workbench-types.ts"
+          - "packages/web/components/workbench/WorkbenchShell.module.css"
+        verify:
+          - "git diff --check"
+          - "pnpm --dir packages/web test -- --run lib/ensure-terminal.test.ts lib/terminal-auth.test.ts lib/pty-terminal-websocket.test.ts"
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/web lint"
+        stop_if:
+          - "Need to make pty_bridge the default backend."
+          - "Need to remove or rewrite ttyd paths."
+          - "Need to log terminal input/output, tokens, command strings, context, or env."
+          - "Need to replace tmux as the durable session layer."
+          - "Native dependency install/build fails twice."
+          - "The slice cannot keep rollback to an experiment flag."
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement the first PTY bridge MVP path behind a non-default experiment flag: xterm client component, server websocket attach route for persisted pty_bridge deployments, node-pty tmux attach lifecycle, and diagnostics, while leaving ttyd UI/launch behavior unchanged by default."
+    allowed_files:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "packages/web/package.json"
+      - "packages/web/server.ts"
+      - "packages/web/lib/pty-terminal-websocket.ts"
+      - "packages/web/lib/pty-terminal-websocket.test.ts"
+      - "packages/web/lib/ensure-terminal.ts"
+      - "packages/web/lib/ensure-terminal.test.ts"
+      - "packages/web/app/api/v1/deployments/[id]/ensure-ttyd/route.ts"
+      - "packages/web/lib/terminal-auth.ts"
+      - "packages/web/lib/terminal-auth.test.ts"
+      - "packages/web/components/workbench/PtyTerminal.tsx"
+      - "packages/web/components/workbench/PtyTerminal.module.css"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.tsx"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/components/workbench/workbench-types.ts"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+    verify:
+      - "git diff --check"
+      - "pnpm --dir packages/web test -- --run lib/ensure-terminal.test.ts lib/terminal-auth.test.ts lib/pty-terminal-websocket.test.ts"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "T006 did not approve PTY MVP."
+      - "Need files outside allowed_files."
+      - "The bridge would replace tmux as durable session layer."
+      - "The bridge would become default."
+      - "The bridge would log raw terminal content or secrets."
+      - "Rollback requires DB surgery."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      summary: "Implemented the first PTY bridge MVP path behind the non-default ISSUECTL_PTY_BRIDGE=1 experiment flag while preserving ttyd as the default and keeping tmux as the durable session layer."
+      changed_files:
+        - "packages/web/package.json"
+        - "pnpm-lock.yaml"
+        - "packages/web/server.ts"
+        - "packages/web/lib/pty-terminal-websocket.ts"
+        - "packages/web/lib/pty-terminal-websocket.test.ts"
+        - "packages/web/lib/ensure-terminal.ts"
+        - "packages/web/lib/ensure-terminal.test.ts"
+        - "packages/web/lib/terminal-auth.ts"
+        - "packages/web/lib/terminal-auth.test.ts"
+        - "packages/web/app/api/v1/deployments/[id]/ensure-ttyd/route.ts"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/components/workbench/PtyTerminal.module.css"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.tsx"
+        - "packages/web/components/workbench/workbench-api.ts"
+        - "packages/web/components/workbench/workbench-types.ts"
+      details:
+        - "Added @xterm/xterm, @xterm/addon-fit, and node-pty to packages/web."
+        - "Added PTY token creation/validation bound to deploymentId and backend='pty_bridge'."
+        - "Added /api/terminal/pty/:deploymentId/ws server upgrade routing."
+        - "Added node-pty attach to tmux attach-session for persisted pty_bridge deployments only."
+        - "Closing the websocket kills only the attach PTY process, not tmux."
+        - "Added PTY diagnostics for attach requested/attached/failed, auth failure, websocket connected/closed/error, first output, resize, backpressure, process exit, and tmux missing."
+        - "Added an xterm client component rendered only when ensure returns pty_bridge metadata."
+      safety:
+        - "ttyd remains the default; no launch path was changed to select pty_bridge by default."
+        - "PTY metadata is returned only for persisted pty_bridge deployments and only when ISSUECTL_PTY_BRIDGE=1."
+        - "Existing ttyd iframe/proxy path remains available."
+        - "Diagnostics record aggregate lifecycle/counter data only, not terminal input/output, tokens, commands, context, or env."
+      verification:
+        - command: "git diff --check"
+          result: pass
+        - command: "pnpm --dir packages/web test -- --run lib/ensure-terminal.test.ts lib/terminal-auth.test.ts lib/pty-terminal-websocket.test.ts"
+          result: pass
+          details: "3 files passed, 20 tests passed"
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+          result: pass
+          details: "4 files passed, 46 tests passed"
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "pnpm --dir packages/web test -- --run lib/ensure-terminal.test.ts lib/terminal-auth.test.ts lib/pty-terminal-websocket.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+        - command: "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the current PTY bridge experiment tranche is complete against the oracle."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+      - "Goal oracle"
+    constraints:
+      - "Read-only."
+      - "Reject completion if only planning exists and a required safe Worker remains queued."
+      - "Reject completion if ttyd default behavior lacks verification."
+      - "Reject completion if diagnostics or backend contracts could log terminal content or secrets."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false for the current tranche"
+      - "Evidence mapping to each tranche requirement."
+      - "Missing evidence or next task if not complete."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      scope: "current tranche, not full ttyd removal"
+      evidence:
+        - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+        - "packages/web/lib/terminal-diagnostics.ts"
+        - "packages/web/lib/ensure-ttyd.ts"
+        - "packages/web/lib/terminal-websocket.ts"
+        - "packages/web/app/api/terminal/[port]/route.ts"
+        - "packages/core/src/db/schema.ts"
+        - "packages/core/src/db/migrations.ts"
+        - "packages/core/src/db/deployments.ts"
+        - "packages/web/lib/ensure-terminal.ts"
+        - "packages/web/lib/terminal-auth.ts"
+        - "packages/web/lib/pty-terminal-websocket.ts"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "T003 receipt"
+        - "T005 receipt"
+        - "T007 receipt"
+      mapping:
+        - requirement: "Baseline current ttyd terminal telemetry in the diagnostics journal."
+          proof: "T003 added terminal.open_requested, token, proxy probe, websocket, first-output, backpressure, close/error, respawn, tmux-missing, auth, invalid-port, and unavailable diagnostics with aggregate-only data and focused tests."
+          status: complete
+        - requirement: "Prepare backend abstraction/schema/API contracts without changing the default backend."
+          proof: "T005 added deployments.terminal_backend defaulting to ttyd, typed terminalBackend mapping, recordDeployment defaulting to ttyd, and ensureTerminalForDeployment while tests prove schema/default behavior."
+          status: complete
+        - requirement: "Define or implement the first PTY bridge MVP slice behind a feature flag."
+          proof: "T006 approved the dependency boundary; T007 added @xterm/xterm, @xterm/addon-fit, node-pty, PTY token validation, /api/terminal/pty/:deploymentId/ws routing, node-pty tmux attach, and xterm rendering only for persisted pty_bridge deployments when ISSUECTL_PTY_BRIDGE=1."
+          status: complete
+        - requirement: "Keep rollback simple and existing ttyd deployments usable."
+          proof: "No launch path was changed to make pty_bridge default; ttyd remains the default schema value and existing iframe/proxy route remains in place. Disabling ISSUECTL_PTY_BRIDGE prevents PTY attach metadata and websocket handling."
+          status: complete
+        - requirement: "Keep tmux as the durable session layer."
+          proof: "The PTY bridge uses node-pty only to run tmux attach-session; websocket cleanup kills the attach PTY only and does not end tmux."
+          status: complete
+        - requirement: "Do not log terminal input/output, tokens, context, commands, or env."
+          proof: "Terminal diagnostics helper and PTY diagnostics record lifecycle/counter fields only; token values are not written to diagnostics, and PTY input/output is only forwarded over websocket."
+          status: complete
+        - requirement: "Existing ttyd launch/session behavior and tests remain green."
+          proof: "Focused ttyd diagnostics tests, web tests/typecheck/lint, and core schema/type/lint checks passed after all slices."
+          status: complete
+      verification:
+        - command: "git diff --check"
+          result: pass
+        - command: "pnpm --dir packages/web test -- --run lib/ensure-terminal.test.ts lib/terminal-auth.test.ts lib/pty-terminal-websocket.test.ts"
+          result: pass
+          details: "3 files passed, 20 tests passed"
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+          result: pass
+          details: "4 files passed, 46 tests passed"
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+      summary: "The current GoalBuddy tranche is complete: ttyd diagnostics, backend persistence/contracts, and a non-default feature-flagged PTY bridge MVP path are implemented and verified. The full migration and ttyd cleanup remain intentionally out of scope."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    commands:
+      - "git diff --check"
+      - "pnpm --dir packages/core test -- --run src/db/schema-deployments.test.ts src/db/schema-invariants.test.ts src/db/schema.test.ts src/db/deployments-ttyd.test.ts"
+      - "pnpm --dir packages/web test -- --run lib/actions/launch-ensure-ttyd.test.ts lib/ensure-terminal.test.ts"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/web test -- --run lib/ensure-terminal.test.ts lib/terminal-auth.test.ts lib/pty-terminal-websocket.test.ts"
+      - "pnpm --dir packages/web lint"

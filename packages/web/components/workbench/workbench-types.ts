@@ -26,7 +26,11 @@ export type WorkbenchUser = {
 
 export type WorkbenchPreview = SessionPreview;
 
-export type WorkbenchDeployment = (Deployment & { owner: string; repoName: string }) | ActiveDeploymentWithRepo;
+export type TerminalBackend = "ttyd" | "pty_bridge";
+
+export type WorkbenchDeployment =
+  | (Deployment & { owner: string; repoName: string; terminalBackend?: TerminalBackend })
+  | (ActiveDeploymentWithRepo & { terminalBackend?: TerminalBackend });
 
 export type WorkbenchIssueSummary = {
   number: number;

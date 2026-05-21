@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockGetActiveDeploymentByPort = vi.hoisted(() => vi.fn());
 const mockGetDb = vi.hoisted(() => vi.fn(() => "fake-db"));
+const mockGetRepoById = vi.hoisted(() => vi.fn());
+const mockRecordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: mockGetDb,
   getActiveDeploymentByPort: mockGetActiveDeploymentByPort,
+  getRepoById: mockGetRepoById,
+  recordDiagnosticEventSafely: mockRecordDiagnosticEventSafely,
   getDeploymentById: vi.fn(),
   getSetting: vi.fn(),
 }));

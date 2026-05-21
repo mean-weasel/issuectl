@@ -329,6 +329,22 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 16,
+    up(db) {
+      const { c } = db
+        .prepare(
+          "SELECT COUNT(*) as c FROM sqlite_master WHERE type = 'table' AND name = 'deployments'",
+        )
+        .get() as { c: number };
+      if (c === 0) return;
+
+      db.exec(`
+        ALTER TABLE deployments ADD COLUMN terminal_backend TEXT NOT NULL DEFAULT 'ttyd'
+          CHECK (terminal_backend IN ('ttyd', 'pty_bridge'));
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

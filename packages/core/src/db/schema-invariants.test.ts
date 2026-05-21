@@ -134,7 +134,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -164,7 +164,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -179,7 +179,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(pkCols).toEqual(["name", "owner"]);
   });
 
-  it("v12 to v15 migration adds deployment agent, default settings, push devices, and diagnostics", () => {
+  it("v12 to v16 migration adds deployment agent, default settings, push devices, diagnostics, and terminal backend", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -215,11 +215,12 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(15);
+    expect(getSchemaVersion(db)).toBe(16);
     const deployment = db
-      .prepare("SELECT agent FROM deployments WHERE id = 1")
-      .get() as { agent: string };
+      .prepare("SELECT agent, terminal_backend FROM deployments WHERE id = 1")
+      .get() as { agent: string; terminal_backend: string };
     expect(deployment.agent).toBe("claude");
+    expect(deployment.terminal_backend).toBe("ttyd");
     expect(
       (db.prepare("SELECT value FROM settings WHERE key = 'launch_agent'").get() as { value: string })
         .value,
@@ -230,6 +231,9 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     ).toBe("");
     expect(() =>
       db.prepare("UPDATE deployments SET agent = 'unknown' WHERE id = 1").run(),
+    ).toThrow();
+    expect(() =>
+      db.prepare("UPDATE deployments SET terminal_backend = 'unknown' WHERE id = 1").run(),
     ).toThrow();
     const pushDeviceCols = db
       .prepare("PRAGMA table_info(push_devices)")

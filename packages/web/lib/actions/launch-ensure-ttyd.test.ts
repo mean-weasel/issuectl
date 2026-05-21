@@ -5,6 +5,7 @@ const revalidatePath = vi.hoisted(() => vi.fn());
 vi.mock("next/cache", () => ({ revalidatePath }));
 
 const getDb = vi.hoisted(() => vi.fn());
+const getActiveDeploymentByPort = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
 const getRepoById = vi.hoisted(() => vi.fn());
 const getSetting = vi.hoisted(() => vi.fn());
@@ -17,6 +18,7 @@ const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
+  getActiveDeploymentByPort: (...args: unknown[]) => getActiveDeploymentByPort(...args),
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
   getRepoById: (...args: unknown[]) => getRepoById(...args),
   getSetting: (...args: unknown[]) => getSetting(...args),
@@ -58,6 +60,7 @@ function makeRepoRecord() {
 
 beforeEach(() => {
   getDb.mockReset();
+  getActiveDeploymentByPort.mockReset();
   getDeploymentById.mockReset();
   getRepoById.mockReset();
   getSetting.mockReset();
@@ -69,6 +72,7 @@ beforeEach(() => {
   recordDiagnosticEventSafely.mockReset();
 
   getDb.mockReturnValue({ prepare: vi.fn() });
+  getActiveDeploymentByPort.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
   getDeploymentById.mockReturnValue(makeDeployment(42));
   getRepoById.mockReturnValue(makeRepoRecord());
   getSetting.mockReturnValue("test-api-token");
@@ -100,6 +104,15 @@ describe("ensureTtyd", () => {
         ttydPid: 42,
       }),
     );
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        event: "terminal.token_issued",
+        deploymentId: 1,
+        ttydPort: 7700,
+        ttydPid: 42,
+      }),
+    );
   });
 
   it("respawns ttyd when dead but tmux alive", async () => {
@@ -122,6 +135,18 @@ describe("ensureTtyd", () => {
         sessionName: "issuectl-repo-7",
         ttydPort: 7700,
         ttydPid: 99,
+      }),
+    );
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        event: "terminal.respawned",
+        owner: "owner",
+        repo: "repo",
+        deploymentId: 1,
+        ttydPort: 7700,
+        ttydPid: 99,
+        data: { oldPid: 42, newPid: 99 },
       }),
     );
   });

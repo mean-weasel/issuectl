@@ -5,6 +5,7 @@ import { registerPort, unregisterPort, recordPtyOutput } from "./idle-registry";
 import log from "./logger";
 import { ensureTtydRunning, isValidTerminalPort } from "./terminal-lifecycle";
 import { validateTerminalToken } from "./terminal-auth";
+import { recordTerminalEventForPort } from "./terminal-diagnostics";
 
 const wss = new WebSocketServer({ noServer: true });
 wss.on("error", (err) => {
@@ -31,6 +32,7 @@ interface WsStats {
   backpressureDrops: number;
   backpressureShedding: boolean;
   backpressureEpisodeDrops: number;
+  firstOutputSeen: boolean;
   readonly connectedAt: number;
 }
 
@@ -42,12 +44,14 @@ export async function handleUpgrade(
 ): Promise<void> {
   const url = new URL(req.url ?? "/", "http://localhost");
   if (!validateTerminalToken(url.searchParams.get("terminalToken"), port)) {
+    recordTerminalEventForPort(port, { level: "warn", event: "terminal.auth_failed", source: "web.terminal-websocket", status: "unauthorized" });
     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
     socket.destroy();
     return;
   }
 
   if (!isValidTerminalPort(port)) {
+    recordTerminalEventForPort(port, { level: "warn", event: "terminal.port_invalid", source: "web.terminal-websocket", status: "not_found" });
     socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
     socket.destroy();
     return;
@@ -55,6 +59,7 @@ export async function handleUpgrade(
 
   const alive = await ensureTtydRunning(port);
   if (!alive) {
+    recordTerminalEventForPort(port, { level: "error", event: "terminal.unavailable", source: "web.terminal-websocket", status: "bad_gateway" });
     socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
     socket.destroy();
     return;
@@ -71,6 +76,7 @@ export async function handleUpgrade(
     const stats = createStats(port, clientIp);
 
     log.info({ msg: "ws_connect", port, clientIp, activeWs: _activeWsCount });
+    recordTerminalEventForPort(port, { level: "info", event: "terminal.ws_connected", source: "web.terminal-websocket", data: { activeWs: _activeWsCount } });
 
     const tickTimer = setInterval(() => logTick(stats), TICK_INTERVAL_MS);
     const protocols = req.headers["sec-websocket-protocol"]?.split(",").map((s) => s.trim());
@@ -114,12 +120,20 @@ export async function handleUpgrade(
     });
     upstream.on("error", (err) => {
       log.error({ err, msg: "ws_upstream_error", port, clientIp, bufferedMsgs: pendingClientMsgs.length });
+      recordTerminalEventForPort(port, {
+        level: "error",
+        event: "terminal.ws_upstream_error",
+        source: "web.terminal-websocket",
+        message: err instanceof Error ? err.message : String(err),
+        data: { pendingMessages: pendingClientMsgs.length },
+      });
       cleanup("upstream_error");
       if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
       upstream.terminate();
     });
     clientWs.on("error", (err) => {
       log.error({ err, msg: "ws_client_error", port, clientIp });
+      recordTerminalEventForPort(port, { level: "error", event: "terminal.ws_client_error", source: "web.terminal-websocket", message: err instanceof Error ? err.message : String(err) });
       cleanup("client_error");
       upstream.terminate();
     });
@@ -138,6 +152,7 @@ function createStats(port: number, clientIp: string): WsStats {
     backpressureDrops: 0,
     backpressureShedding: false,
     backpressureEpisodeDrops: 0,
+    firstOutputSeen: false,
     connectedAt: Date.now(),
   };
 }
@@ -150,6 +165,10 @@ function forwardFromUpstream(
 ) {
   stats.framesFromTtyd++;
   recordPtyOutput(stats.port, Date.now());
+  if (!stats.firstOutputSeen) {
+    stats.firstOutputSeen = true;
+    recordTerminalEventForPort(stats.port, { level: "info", event: "terminal.first_output_seen", source: "web.terminal-websocket" });
+  }
   if (clientWs.readyState !== WebSocket.OPEN) {
     stats.droppedFrames++;
     return;
@@ -186,6 +205,10 @@ function shouldDropForBackpressure(clientWs: WebSocket, stats: WsStats): boolean
         clientIp: stats.clientIp,
         droppedDuringEpisode: stats.backpressureEpisodeDrops,
       });
+      recordTerminalEventForPort(stats.port, {
+        level: "warn", event: "terminal.backpressure_clear", source: "web.terminal-websocket",
+        data: { droppedDuringEpisode: stats.backpressureEpisodeDrops },
+      });
       stats.backpressureEpisodeDrops = 0;
     }
     return false;
@@ -193,6 +216,7 @@ function shouldDropForBackpressure(clientWs: WebSocket, stats: WsStats): boolean
   if (!stats.backpressureShedding) {
     stats.backpressureShedding = true;
     log.warn({ msg: "ws_backpressure_start", port: stats.port, clientIp: stats.clientIp, bufferedBytes: buffered });
+    recordTerminalEventForPort(stats.port, { level: "warn", event: "terminal.backpressure_start", source: "web.terminal-websocket", data: { bufferedBytes: buffered } });
   }
   stats.backpressureDrops++;
   stats.backpressureEpisodeDrops++;
@@ -247,12 +271,13 @@ function logTick(stats: WsStats) {
 }
 
 function logClose(reason: string, stats: WsStats, activeWs: number) {
+  const uptimeSec = (Date.now() - stats.connectedAt) / 1000;
   log.info({
     msg: "ws_close",
     reason,
     port: stats.port,
     clientIp: stats.clientIp,
-    uptimeSec: ((Date.now() - stats.connectedAt) / 1000).toFixed(1),
+    uptimeSec: uptimeSec.toFixed(1),
     framesIn: stats.framesFromTtyd,
     framesOut: stats.framesToClient,
     bytesOut: stats.bytesToClient,
@@ -260,5 +285,22 @@ function logClose(reason: string, stats: WsStats, activeWs: number) {
     dropped: stats.droppedFrames,
     backpressureDrops: stats.backpressureDrops,
     activeWs,
+  });
+  recordTerminalEventForPort(stats.port, {
+    level: "info",
+    event: "terminal.ws_closed",
+    source: "web.terminal-websocket",
+    status: reason,
+    data: {
+      activeWs,
+      backpressureDrops: stats.backpressureDrops,
+      bytesOut: stats.bytesToClient,
+      dropped: stats.droppedFrames,
+      durationMs: Math.round(uptimeSec * 1000),
+      framesIn: stats.framesFromTtyd,
+      framesOut: stats.framesToClient,
+      peakBuffered: stats.peakBufferedAmount,
+      uptimeSec: Number(uptimeSec.toFixed(1)),
+    },
   });
 }
