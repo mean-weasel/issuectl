@@ -1,0 +1,137 @@
+name: Local macOS E2E
+
+on:
+  merge_group:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  e2e-web:
+    name: Browser E2E on local Mac
+    runs-on: [self-hosted, macOS, ARM64, trusted-macos-e2e, e2e, gui, browser]
+    timeout-minutes: 35
+    steps:
+      - name: Host proof
+        run: |
+          hostname
+          sw_vers
+          uname -m
+          xcodebuild -version
+          {
+            echo "/opt/homebrew/bin"
+            echo "/usr/local/bin"
+          } >> "$GITHUB_PATH"
+
+      - name: Workspace cleanup before
+        working-directory: /
+        run: |
+          set -euo pipefail
+
+          case "${GITHUB_WORKSPACE:-}" in
+            "$HOME/actions-runner/_work/"*)
+              rm -rf "$GITHUB_WORKSPACE"
+              mkdir -p "$GITHUB_WORKSPACE"
+              ;;
+            *)
+              echo "Refusing to clean unexpected GITHUB_WORKSPACE: ${GITHUB_WORKSPACE:-<unset>}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -n "${RUNNER_TEMP:-}" ] && [ -d "$RUNNER_TEMP" ]; then
+            find "$RUNNER_TEMP" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          fi
+
+      - name: Healthcheck before
+        working-directory: /
+        run: |
+          RUNNER_HOME="$HOME" \
+          RUNNER_WORK="$HOME/actions-runner/_work" \
+          /usr/local/ci/bin/macos-runner-healthcheck --json
+
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          PNPM_CONFIG_SIDE_EFFECTS_CACHE: "false"
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native dependencies
+        env:
+          npm_config_build_from_source: "true"
+        run: |
+          rm -rf node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build
+          pnpm --filter @issuectl/core rebuild better-sqlite3
+          pnpm --dir packages/core exec node -e "require('better-sqlite3')(':memory:').close()"
+
+      - name: Build core package
+        run: pnpm turbo build --filter=@issuectl/core
+
+      - name: Ensure gh CLI
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            if command -v brew >/dev/null 2>&1; then
+              brew install gh
+            else
+              echo "gh CLI is required for E2E auth checks, but neither gh nor brew is available" >&2
+              exit 1
+            fi
+          fi
+          gh --version
+
+      - name: Verify gh CLI auth
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth status
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @issuectl/web exec playwright install chromium webkit
+
+      - name: Run mobile Chromium E2E
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @issuectl/web exec playwright test \
+            mobile-ux-patterns.spec.ts \
+            launch-ui.spec.ts \
+            viewport-health.spec.ts \
+            --project=mobile-chromium
+
+      - name: Run mobile WebKit E2E
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @issuectl/web exec playwright test \
+            workbench.spec.ts \
+            mobile-ux-patterns.spec.ts \
+            --project=mobile-webkit
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-local-macos-e2e
+          path: packages/web/playwright-report/
+          retention-days: 7
+
+      - name: Healthcheck after
+        if: always()
+        working-directory: /
+        run: |
+          RUNNER_HOME="$HOME" \
+          RUNNER_WORK="$HOME/actions-runner/_work" \
+          /usr/local/ci/bin/macos-runner-healthcheck --json
