@@ -222,6 +222,30 @@ cat ~/.issuectl/logs/web.log | jq 'select(.level >= 50)'
 cat ~/.issuectl/logs/web.log | jq 'select(.msg | startswith("ws_"))'
 ```
 
+## Diagnostics journal
+
+When debugging launch, terminal, ttyd, tmux, session, or workbench failures, check the diagnostics journal before digging through raw web logs. The journal records structured launch lifecycle events in `~/.issuectl/issuectl.db`, including correlation IDs, deployment IDs, issue references, tmux session names, ttyd ports/PIDs, statuses, and failure messages.
+
+Use the local CLI through the workspace package:
+
+```bash
+# Recent diagnostic events
+pnpm --dir packages/cli exec issuectl diag list --limit 50
+
+# Chronological timeline for a deployment
+pnpm --dir packages/cli exec issuectl diag show --deployment <deployment-id>
+
+# Recent events for a GitHub issue
+pnpm --dir packages/cli exec issuectl diag tail --issue <owner>/<repo>#<issue-number>
+
+# Chronological timeline for a GitHub issue
+pnpm --dir packages/cli exec issuectl diag show --issue <owner>/<repo>#<issue-number>
+```
+
+For a failed launch, start with the deployment timeline if the UI or API returned a deployment ID. If no deployment ID is available, list recent events and look for `launch.requested`, `deployment.recorded`, `ttyd.spawned`, `deployment.activated`, `reconcile.tmux_missing`, `liveness.tmux_missing`, `ensure_ttyd.failed`, or `launch.spawn_failed`. Use the correlation ID to connect events from the same launch attempt.
+
+Read the timeline from top to bottom and identify the first failure or unexpected transition. For example, `ttyd.spawned` followed immediately by `reconcile.tmux_missing` means the launch API got past ttyd spawn and DB activation, but the tmux session disappeared before the UI could attach.
+
 ## Quality gates
 
 ### After writing code — ALWAYS run these
