@@ -3326,6 +3326,7 @@ test("empty repositories add action opens repo setup", async ({ page }) => {
 });
 
 test("checks worktree status and launches an issue with selected context", async ({ page }) => {
+  await installClipboardCapture(page);
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
     expect(route.request().method()).toBe("GET");
     await route.fulfill({
@@ -3437,12 +3438,24 @@ test("checks worktree status and launches an issue with selected context", async
     "src",
     /\/api\/terminal\/7790\/\?terminalToken=terminal-token-409$/,
   );
+  const diagnostics = page.getByLabel("Terminal diagnostics");
+  await expect(diagnostics).toBeVisible();
+  await expect(diagnostics).toContainText("TTYD");
+  await expect(diagnostics).toContainText("Deployment #409");
+  await expect(diagnostics).toContainText("TTYD ready");
+  await expect(diagnostics).toContainText("pnpm --dir packages/cli exec issuectl diag show --deployment 409");
+  await diagnostics.getByRole("button", { name: "Copy diagnostics command" }).click();
+  await expect(diagnostics.getByRole("button", { name: "Copied" })).toBeVisible();
+  await expect.poll(async () => page.evaluate(() =>
+    (window as Window & { __issuectlCopiedText?: string }).__issuectlCopiedText ?? "",
+  )).toBe("pnpm --dir packages/cli exec issuectl diag show --deployment 409");
   await expect(page.locator('iframe[title="Terminal for issue 512"]')).toBeVisible();
   await expect.poll(async () => terminalFrameViewportState(page, "512")).toEqual("visible-in-viewport");
   await page.goto("about:blank");
 });
 
 test("launches an issue with the PTY bridge backend and keeps the terminal session navigable", async ({ page }) => {
+  await installClipboardCapture(page);
   await installFakePtyWebSocket(page);
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
     expect(route.request().method()).toBe("GET");
@@ -3521,6 +3534,17 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
   const ptyTerminal = page.getByRole("application", { name: "Terminal for issue 512" });
   await expect(ptyTerminal).toBeVisible();
   await expect(ptyTerminal).toContainText("pty bridge ready");
+  const diagnostics = page.getByLabel("Terminal diagnostics");
+  await expect(diagnostics).toBeVisible();
+  await expect(diagnostics).toContainText("PTY bridge");
+  await expect(diagnostics).toContainText("Deployment #409");
+  await expect(diagnostics).toContainText("PTY first output seen");
+  await expect(diagnostics).toContainText("pnpm --dir packages/cli exec issuectl diag show --deployment 409");
+  await diagnostics.getByRole("button", { name: "Copy diagnostics command" }).click();
+  await expect(diagnostics.getByRole("button", { name: "Copied" })).toBeVisible();
+  await expect.poll(async () => page.evaluate(() =>
+    (window as Window & { __issuectlCopiedText?: string }).__issuectlCopiedText ?? "",
+  )).toBe("pnpm --dir packages/cli exec issuectl diag show --deployment 409");
   await expect.poll(async () => page.evaluate(() =>
     (window as Window & { __issuectlPtySocketUrls?: string[] }).__issuectlPtySocketUrls ?? [],
   )).toContain(
@@ -3800,6 +3824,19 @@ async function terminalFrameViewportState(page: import("@playwright/test").Page,
     return rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth
       ? "visible-in-viewport"
       : `offscreen:${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.right)},${Math.round(rect.bottom)}`;
+  });
+}
+
+async function installClipboardCapture(page: import("@playwright/test").Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          (window as Window & { __issuectlCopiedText?: string }).__issuectlCopiedText = text;
+        },
+      },
+    });
   });
 }
 

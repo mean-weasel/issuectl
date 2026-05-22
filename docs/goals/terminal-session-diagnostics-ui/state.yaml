@@ -1,0 +1,350 @@
+# GoalBuddy v2 state.yaml
+version: 2
+
+goal:
+  title: "Terminal Session Diagnostics UI"
+  slug: "terminal-session-diagnostics-ui"
+  kind: specific
+  tranche: "Add lightweight terminal backend/status and diagnostics affordances for issue launch sessions."
+  status: done
+  oracle:
+    signal: "Workbench UI, focused tests, Playwright screenshots, and diagnostics journal evidence prove terminal backend/status visibility and deployment diagnostics command affordance work for PTY bridge and TTYD sessions."
+    cadence: "after Scout, after each Worker slice, and at final audit"
+    final_proof: "Changed files, focused test commands, Playwright screenshot paths, manual QA notes, diagnostics excerpt, and requirement-by-requirement acceptance mapping."
+  intake:
+    original_request: "Okay plan it out."
+    interpreted_outcome: "Prepare a GoalBuddy execution board for a lightweight terminal/session diagnostics UI in the issuectl workbench."
+    input_shape: specific
+    audience: "issuectl maintainers debugging launch terminal sessions"
+    authority: requested
+    proof_type: demo
+    completion_proof: "Playwright plus diagnostics evidence proves the UI clearly displays backend/status and exposes the correct deployment diagnostics command."
+    likely_misfire: "Overbuilding a diagnostics dashboard or adding static labels that do not reflect real PTY/TTYD session state."
+    blind_spots_considered:
+      - "The workbench may not currently expose diagnostics journal records to the browser."
+      - "A copyable CLI command may be enough for this tranche without adding a backend diagnostics API."
+      - "TTYD remains the default path, so status UI must not imply PTY bridge is always active."
+      - "Compact layout can become cluttered if diagnostics metadata is placed in the wrong terminal surface."
+      - "Manual QA must stay constrained to issuectl test repos."
+    existing_plan_facts:
+      - "Start with backend badge, deployment ID, connection state, and Copy diagnostics command."
+      - "Avoid a full diagnostics browser unless a Scout/Judge pass proves it is necessary."
+      - "Keep PTY bridge feature-flagged behind ISSUECTL_PTY_BRIDGE=1."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: running
+    url: "http://goalbuddy.localhost:41737/terminal-session-diagnostics-ui/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/terminal-session-diagnostics-ui"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map existing terminal backend/status data, diagnostics journal access paths, UI insertion points, and tests needed for a lightweight terminal diagnostics surface."
+    inputs:
+      - "Goal charter in docs/goals/terminal-session-diagnostics-ui/goal.md"
+      - "Current workbench terminal/session implementation"
+      - "Diagnostics-first instructions in AGENTS.md"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not add a diagnostics API unless evidence proves one is required."
+      - "Keep real launch/manual QA scoped to issuectl test repos."
+    expected_output:
+      - "File/path map for terminal focus, session card, diagnostics CLI/API, and tests."
+      - "Recommendation on whether copy diagnostics command is enough or a read-only API is needed."
+      - "Proposed smallest vertical Worker slice with allowed_files, verification commands, Playwright acceptance criteria, and stop_if conditions."
+    receipt:
+      summary: "Mapped terminal diagnostics UI inputs and verified the first slice can avoid backend API work."
+      file_map:
+        - "packages/web/components/workbench/TerminalFocus.tsx owns terminal loading/ready/error state, backend selection, ensureDeploymentTtyd calls, reconnect, and terminal header rendering."
+        - "packages/web/components/workbench/PtyTerminal.tsx owns PTY websocket lifecycle and can report connecting, connected, attached, first output, closed, and error states to TerminalFocus."
+        - "packages/web/components/workbench/InstancePane.tsx already exposes session card backend-adjacent state through deployment.terminalBackend and preview fallback text."
+        - "packages/web/components/workbench/WorkbenchShell.module.css owns terminal header/frame/unavailable styling and is the right place for a compact status strip."
+        - "packages/web/components/workbench/workbench-api.ts already returns backend-specific ensure results and exposes deployment IDs to client code."
+        - "packages/web/e2e/workbench.spec.ts already has focused TTYD and PTY launch/navigation tests that can be extended for backend/status/diagnostics command assertions."
+        - "AGENTS.md and CLAUDE.md already document diagnostics-first CLI commands, including diag show --deployment <id>."
+      diagnostics_paths:
+        - "No browser diagnostics API currently exists, but it is not required for the first tranche because the UI can provide the exact local CLI command for the deployment ID."
+        - "The diagnostics journal remains available through pnpm --dir packages/cli exec issuectl diag show --deployment <deployment-id>."
+      recommendation:
+        decision: "no_new_backend_api_for_first_slice"
+        rationale: "TerminalFocus already knows deployment ID, backend, loading/ready/error state, and row errors; PtyTerminal can report PTY lifecycle state directly. A copyable CLI command satisfies the low-friction diagnostics affordance without overbuilding."
+      proposed_worker_slice:
+        objective: "Add a compact terminal diagnostics/status strip in TerminalFocus, report PTY lifecycle state from PtyTerminal, show backend/deployment/status, and provide a copy diagnostics command affordance."
+        allowed_files:
+          - "packages/web/components/workbench/TerminalFocus.tsx"
+          - "packages/web/components/workbench/PtyTerminal.tsx"
+          - "packages/web/components/workbench/WorkbenchShell.module.css"
+          - "packages/web/e2e/workbench.spec.ts"
+        verify:
+          - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/web lint"
+          - "Playwright live desktop screenshot proving backend/status/diagnostics strip is visible and readable."
+          - "Playwright live compact screenshot proving the strip does not clutter or overflow."
+        acceptance:
+          - "TTYD launch test sees backend label TTYD, ready status, deployment ID, and a diagnostics command containing deployment 409."
+          - "PTY bridge launch test sees backend label PTY bridge, attached/first output state, deployment ID, and a diagnostics command containing deployment 409."
+          - "Copy diagnostics command button writes pnpm --dir packages/cli exec issuectl diag show --deployment <id> to clipboard or exposes the command visibly when clipboard is unavailable."
+        stop_if:
+          - "A new diagnostics reader API appears necessary."
+          - "Files outside allowed_files are needed."
+          - "The UI cannot fit in compact layout without larger workbench layout changes."
+          - "Focused tests cannot cover both TTYD and PTY bridge behavior."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate Scout findings and choose the smallest useful implementation slice that satisfies the oracle without overbuilding."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and constraints"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject any slice that lacks focused tests and Playwright visual acceptance criteria."
+      - "Reject backend API work unless Scout proves it is necessary."
+    expected_output:
+      - "Decision"
+      - "Worker objective"
+      - "allowed_files"
+      - "verify commands"
+      - "Playwright screenshot/DOM acceptance criteria"
+      - "Manual QA checklist"
+      - "stop_if conditions"
+    receipt:
+      decision: "approved"
+      summary: "Approve the no-new-API vertical slice. It satisfies the oracle's first useful diagnostic affordance while avoiding a full diagnostics browser."
+      worker_objective: "Add a compact terminal diagnostics/status strip in TerminalFocus, wire PTY lifecycle state from PtyTerminal, show backend/deployment/status, and expose a copy diagnostics command affordance."
+      allowed_files:
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      verify_commands:
+        - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+        - "pnpm --dir packages/web typecheck"
+        - "pnpm --dir packages/web lint"
+      playwright_acceptance:
+        - "Desktop screenshot shows backend, deployment ID, lifecycle/status, and diagnostics command affordance without obscuring the terminal."
+        - "Compact screenshot shows the same strip readable without horizontal overflow or header/content overlap."
+      manual_qa_checklist:
+        - "Launch PTY bridge session in an approved issuectl test repo."
+        - "Confirm backend/status/deployment ID appear while terminal is usable."
+        - "Copy diagnostics command and verify it targets the deployment ID."
+        - "Navigate away/back, reconnect, and close session."
+      stop_if:
+        - "Need files outside allowed_files."
+        - "Need backend diagnostics API."
+        - "Focused tests fail twice for the same cause."
+        - "Playwright evidence shows compact layout clutter or overflow."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the Judge-approved smallest vertical terminal diagnostics/status UI slice."
+    allowed_files:
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/PtyTerminal.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Need a new backend diagnostics API that Judge did not approve."
+      - "Focused tests cannot prove both PTY and TTYD display behavior."
+      - "Playwright screenshots show clutter, overlap, unreadable metadata, or incorrect backend/status."
+      - "Verification fails twice for the same cause."
+    receipt:
+      summary: "Implemented the compact terminal diagnostics/status strip for TTYD and PTY bridge sessions."
+      changed_files:
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      implementation:
+        - "TerminalFocus now shows backend, deployment ID, lifecycle/status, and a copyable diagnostics CLI command."
+        - "PtyTerminal reports lifecycle states: connecting, connected, attached, first_output, closed, and error."
+        - "The diagnostics strip uses responsive wrapping so compact layouts do not clip the command or issue title."
+        - "Focused workbench E2E coverage now asserts TTYD and PTY bridge labels, statuses, deployment command text, and clipboard copy behavior."
+      verification:
+        - "PASS pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/web lint"
+      playwright_evidence:
+        - "Desktop: /tmp/issuectl-terminal-diagnostics-desktop-v2.png"
+        - "Compact: /tmp/issuectl-terminal-diagnostics-compact-v2.png"
+      diagnostics_evidence:
+        - "pnpm --dir packages/cli exec issuectl diag show --deployment 117 shows deployment.recorded, pty.bridge_spawned, deployment.activated, pty.ws_connected, pty.bridge_attached, and pty.first_output_seen for mean-weasel/issuectl-test-repo#137."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute a follow-up slice only if T003 leaves a proven oracle gap, such as missing compact layout polish or missing diagnostics API read path."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "No proven oracle gap remains after T003."
+      - "Need files outside allowed_files."
+      - "Playwright evidence does not improve after the change."
+    receipt:
+      summary: "Skipped follow-up worker slice because T003 closed the proven UI/test gaps without requiring a backend diagnostics API."
+      no_gap_reason:
+        - "Focused tests cover both backend display paths and diagnostics command copy behavior."
+        - "Playwright CLI screenshots show desktop and compact layouts are readable after responsive polish."
+        - "Live diagnostics evidence confirms the displayed deployment command targets a real approved test-repo PTY bridge deployment."
+  - id: T998
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run final local verification, Playwright visual QA, diagnostics check, and manual QA checklist against approved issuectl test repos."
+    constraints:
+      - "Use ISSUECTL_PTY_BRIDGE=1 for PTY bridge manual QA."
+      - "Keep launch testing scoped to approved issuectl test repos."
+      - "Record screenshot paths, commands, diagnostics excerpts, and manual QA notes."
+    expected_output:
+      - "Verification command results"
+      - "Desktop and compact screenshot paths"
+      - "Diagnostics excerpt"
+      - "Manual QA checklist result"
+      - "Explicit oracle acceptance mapping"
+    receipt:
+      summary: "Final PM verification and live QA passed against the approved issuectl test repo."
+      verification_commands:
+        - "PASS pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      playwright_evidence:
+        - "Desktop terminal view: /tmp/issuectl-terminal-diagnostics-desktop-v2.png"
+        - "Compact terminal view: /tmp/issuectl-terminal-diagnostics-compact-v2.png"
+        - "After close overview: /tmp/issuectl-terminal-diagnostics-after-close-desktop.png"
+        - "Live QA ended screenshot: /tmp/issuectl-terminal-diagnostics-live-qa-ended.png"
+      diagnostics_excerpt:
+        deployment: 117
+        issue: "mean-weasel/issuectl-test-repo#137"
+        command: "pnpm --dir packages/cli exec issuectl diag show --deployment 117"
+        events:
+          - "deployment.recorded"
+          - "pty.bridge_spawned"
+          - "deployment.activated"
+          - "pty.bridge_attach_requested"
+          - "pty.ws_connected"
+          - "pty.bridge_attached"
+          - "pty.first_output_seen"
+          - "pty.ws_closed"
+          - "pty.process_exit"
+      manual_qa:
+        scope: "Approved test repo only: mean-weasel/issuectl-test-repo#137, deployment 117."
+        result: pass
+        checklist:
+          - "Opened live PTY bridge terminal and confirmed backend/status/deployment ID."
+          - "Copied diagnostics command and verified clipboard text exactly matched deployment 117."
+          - "Navigated back to overview and returned to the active session."
+          - "Clicked Reconnect and confirmed the terminal reattached and remained visible."
+          - "Closed the session and confirmed Session #137 was removed while Session #152 remained."
+      docs_alignment:
+        - "AGENTS.md still documents diagnostics-first debugging and diag show --deployment <deployment-id>."
+        - "TerminalFocus uses the same workspace CLI form: pnpm --dir packages/cli exec issuectl diag show --deployment <id>."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the terminal diagnostics UI tranche satisfies the oracle."
+    inputs:
+      - "All task receipts"
+      - "Current diff"
+      - "Verification results"
+      - "Playwright evidence"
+      - "Manual QA notes"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any Worker task remains queued without a receipt explaining why it is unnecessary."
+      - "Reject completion if PTY and TTYD behavior are not both covered."
+      - "Reject completion if Playwright evidence is missing or only indirect."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      decision: complete
+      full_outcome_complete: true
+      oracle_mapping:
+        - requirement: "UI shows backend clearly: TTYD or PTY bridge."
+          evidence: "TerminalFocus renders backendLabel; focused TTYD and PTY tests assert TTYD and PTY bridge; desktop/compact screenshots show PTY bridge."
+          result: proven
+        - requirement: "Live PTY bridge session shows correct connected/attached status while usable."
+          evidence: "Live deployment 117 showed PTY first output seen while terminal was visible; diagnostics showed pty.ws_connected, pty.bridge_attached, and pty.first_output_seen."
+          result: proven
+        - requirement: "TTYD sessions render with correct backend/status indicator."
+          evidence: "Focused TTYD launch test asserts TTYD, Deployment #409, TTYD ready, and iframe terminal visibility."
+          result: proven
+        - requirement: "UI exposes low-friction diagnostics affordance for deployment ID."
+          evidence: "Focused tests and live QA verify the visible/copyable command pnpm --dir packages/cli exec issuectl diag show --deployment <id>."
+          result: proven
+        - requirement: "Diagnostics-first debugging remains documented and aligned with AGENTS.md."
+          evidence: "AGENTS.md includes Diagnostics-first debugging and diag show --deployment <deployment-id>; TerminalFocus command uses the same CLI path."
+          result: proven
+        - requirement: "Focused automated tests cover PTY and TTYD status display plus diagnostics command behavior."
+          evidence: "The two focused Playwright tests passed and assert backend labels, status text, deployment command text, and clipboard copy behavior."
+          result: proven
+        - requirement: "Playwright evidence against local server proves visible/readable/not cluttered desktop and compact layouts."
+          evidence: "/tmp/issuectl-terminal-diagnostics-desktop-v2.png and /tmp/issuectl-terminal-diagnostics-compact-v2.png inspected after fixing compact wrapping."
+          result: proven
+        - requirement: "Manual QA against approved issuectl test repos confirms launch, navigate away/back, reconnect, and close behavior."
+          evidence: "Browser-driven live QA passed against mean-weasel/issuectl-test-repo#137, deployment 117; post-close screenshot shows Session #137 removed."
+          result: proven
+      missing_evidence: []
+      next_task: null
+
+checks:
+  dirty_fingerprint: "terminal diagnostics UI changes plus GoalBuddy board"
+  last_verification:
+    result: "pass"
+    task: T998
+    commands:
+      - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"

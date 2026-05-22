@@ -7,9 +7,22 @@ import {
   isStaleEnsureTtydResult,
   terminalProxyUrl,
 } from "./workbench-api";
-import { PtyTerminal } from "./PtyTerminal";
+import { PtyTerminal, type PtyLifecycleState } from "./PtyTerminal";
 import type { WorkbenchDeployment, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
+
+type TerminalLifecycle = PtyLifecycleState | "ready" | "respawned";
+
+type TerminalState = {
+  status: "loading" | "ready" | "error";
+  port: number | null;
+  token: string | null;
+  src: string | null;
+  backend: "ttyd" | "pty_bridge" | null;
+  wsUrl: string | null;
+  error: string | null;
+  lifecycle: TerminalLifecycle | null;
+};
 
 type Props = {
   deployment: WorkbenchDeployment;
@@ -34,15 +47,7 @@ export function TerminalFocus({
 }: Props) {
   const issue = repo?.issues.find((item) => item.number === deployment.issueNumber);
   const title = issue?.title ?? "Issue session";
-  const [terminal, setTerminal] = useState<{
-    status: "loading" | "ready" | "error";
-    port: number | null;
-    token: string | null;
-    src: string | null;
-    backend: "ttyd" | "pty_bridge" | null;
-    wsUrl: string | null;
-    error: string | null;
-  }>({
+  const [terminal, setTerminal] = useState<TerminalState>({
     status: deployment.ttydPort || deployment.terminalBackend === "pty_bridge" ? "loading" : "error",
     port: deployment.ttydPort,
     token: null,
@@ -52,11 +57,17 @@ export function TerminalFocus({
     error: deployment.ttydPort || deployment.terminalBackend === "pty_bridge"
       ? null
       : "Reconnect this session to open the terminal.",
+    lifecycle: deployment.ttydPort || deployment.terminalBackend === "pty_bridge" ? "connecting" : "error",
   });
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
   const handlePtyError = useCallback((error: string) => {
     setTerminal((current) => ({ ...current, status: "error", error }));
   }, []);
+  const handlePtyLifecycle = useCallback((state: PtyLifecycleState) => {
+    setTerminal((current) => ({ ...current, lifecycle: state }));
+  }, []);
+  const diagnosticsCommand = diagnosticsCommandForDeployment(deployment.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +81,7 @@ export function TerminalFocus({
         backend: deployment.terminalBackend ?? "ttyd",
         wsUrl: null,
         error: "Reconnect this session to open the terminal.",
+        lifecycle: "error",
       });
       return;
     }
@@ -82,7 +94,9 @@ export function TerminalFocus({
       backend: deployment.terminalBackend ?? "ttyd",
       wsUrl: null,
       error: null,
+      lifecycle: "connecting",
     });
+    setDiagnosticsCopied(false);
 
     ensureDeploymentTtyd(deployment.id)
       .then(async (result) => {
@@ -96,6 +110,7 @@ export function TerminalFocus({
             backend: "pty_bridge",
             wsUrl: result.wsUrl,
             error: null,
+            lifecycle: "connecting",
           });
           return;
         }
@@ -114,6 +129,7 @@ export function TerminalFocus({
             error: "error" in result && result.error
               ? result.error
               : "Terminal auth token could not be created.",
+            lifecycle: "error",
           });
           return;
         }
@@ -129,6 +145,7 @@ export function TerminalFocus({
             backend: "ttyd",
             wsUrl: null,
             error: proxy.error,
+            lifecycle: "error",
           });
           return;
         }
@@ -141,6 +158,7 @@ export function TerminalFocus({
           backend: "ttyd",
           wsUrl: null,
           error: null,
+          lifecycle: result.respawned ? "respawned" : "ready",
         });
       })
       .catch((err: unknown) => {
@@ -154,6 +172,7 @@ export function TerminalFocus({
           backend: deployment.terminalBackend ?? "ttyd",
           wsUrl: null,
           error: err instanceof Error ? err.message : "Terminal is not available.",
+          lifecycle: "error",
         });
       });
 
@@ -166,6 +185,15 @@ export function TerminalFocus({
   async function reconnectTerminal() {
     await onReconnect(deployment);
     setRetryAttempt((current) => current + 1);
+  }
+
+  async function copyDiagnosticsCommand() {
+    try {
+      await navigator.clipboard.writeText(diagnosticsCommand);
+      setDiagnosticsCopied(true);
+    } catch {
+      setDiagnosticsCopied(false);
+    }
   }
 
   return (
@@ -184,12 +212,22 @@ export function TerminalFocus({
           Back to overview
         </button>
       </header>
+      <section className={styles.terminalDiagnostics} aria-label="Terminal diagnostics">
+        <span className={styles.diagnosticBadge}>{backendLabel(terminal.backend ?? deployment.terminalBackend)}</span>
+        <span>Deployment #{deployment.id}</span>
+        <span>{terminalStateLabel(terminal)}</span>
+        <code>{diagnosticsCommand}</code>
+        <button type="button" className={styles.secondaryButton} onClick={() => void copyDiagnosticsCommand()}>
+          {diagnosticsCopied ? "Copied" : "Copy diagnostics command"}
+        </button>
+      </section>
       {terminal.status === "ready" && terminal.backend === "pty_bridge" && terminal.wsUrl ? (
         <div className={styles.terminalFrame}>
           <PtyTerminal
             title={`Terminal for issue ${deployment.issueNumber}`}
             wsUrl={terminal.wsUrl}
             onError={handlePtyError}
+            onLifecycle={handlePtyLifecycle}
           />
         </div>
       ) : terminal.status === "ready" && terminal.src ? (
@@ -237,4 +275,26 @@ export function TerminalFocus({
       )}
     </div>
   );
+}
+
+function diagnosticsCommandForDeployment(deploymentId: number): string {
+  return `pnpm --dir packages/cli exec issuectl diag show --deployment ${deploymentId}`;
+}
+
+function backendLabel(backend: "ttyd" | "pty_bridge" | null | undefined): string {
+  return backend === "pty_bridge" ? "PTY bridge" : "TTYD";
+}
+
+function terminalStateLabel(terminal: TerminalState): string {
+  if (terminal.status === "error") return "Terminal error";
+  if (terminal.backend === "pty_bridge") {
+    if (terminal.lifecycle === "first_output") return "PTY first output seen";
+    if (terminal.lifecycle === "attached") return "PTY attached";
+    if (terminal.lifecycle === "connected") return "PTY websocket connected";
+    if (terminal.lifecycle === "closed") return "PTY websocket closed";
+    if (terminal.lifecycle === "error") return "PTY error";
+    return "PTY connecting";
+  }
+  if (terminal.status === "ready") return terminal.lifecycle === "respawned" ? "TTYD respawned" : "TTYD ready";
+  return "TTYD connecting";
 }
