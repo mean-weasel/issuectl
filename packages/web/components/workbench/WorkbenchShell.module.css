@@ -938,7 +938,7 @@
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .terminalHeader {
@@ -950,10 +950,59 @@
   border-bottom: 1px solid var(--paper-line);
 }
 
+.terminalHeader > div {
+  min-width: 0;
+}
+
 .terminalHeader h1 {
   font-family: var(--paper-serif);
   font-size: 24px;
   font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.terminalDiagnostics {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--paper-line);
+  background: rgba(255, 255, 255, 0.24);
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.terminalDiagnostics code {
+  max-width: min(100%, 560px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 6px;
+  border: 1px solid rgba(61, 55, 43, 0.16);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.36);
+  color: var(--paper-ink);
+  font-family: var(--paper-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.terminalDiagnostics .secondaryButton {
+  min-height: 32px;
+  margin-top: 0;
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.diagnosticBadge {
+  padding: 3px 7px;
+  border: 1px solid rgba(42, 111, 75, 0.28);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(42, 111, 75, 0.08);
+  color: var(--paper-ink);
+  font-weight: 700;
 }
 
 .terminalFrame {
@@ -1855,6 +1904,21 @@
 
   .terminalMeta {
     flex-wrap: wrap;
+  }
+
+  .terminalDiagnostics {
+    padding: 10px 16px;
+  }
+
+  .terminalDiagnostics code {
+    width: 100%;
+    max-width: none;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .terminalDiagnostics .secondaryButton {
+    margin-left: 0;
   }
 
   .overviewSessionShortcuts,

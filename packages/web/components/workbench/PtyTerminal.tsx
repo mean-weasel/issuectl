@@ -9,7 +9,10 @@ type Props = {
   wsUrl: string;
   title: string;
   onError: (message: string) => void;
+  onLifecycle?: (state: PtyLifecycleState) => void;
 };
+
+export type PtyLifecycleState = "connecting" | "connected" | "attached" | "first_output" | "closed" | "error";
 
 type ServerMessage =
   | { type: "ready" }
@@ -17,7 +20,7 @@ type ServerMessage =
   | { type: "exit"; code?: number; signal?: string }
   | { type: "error"; message: string };
 
-export function PtyTerminal({ wsUrl, title, onError }: Props) {
+export function PtyTerminal({ wsUrl, title, onError, onLifecycle }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -58,6 +61,8 @@ export function PtyTerminal({ wsUrl, title, onError }: Props) {
 
     const ws = new WebSocket(toAbsoluteWsUrl(wsUrl));
     let disposed = false;
+    let sawOutput = false;
+    onLifecycle?.("connecting");
     const disposables = [
       terminal.onData((data) => {
         if (ws.readyState === WebSocket.OPEN) {
@@ -80,27 +85,41 @@ export function PtyTerminal({ wsUrl, title, onError }: Props) {
     const resizeObserver = new ResizeObserver(fitAndReport);
     resizeObserver.observe(container);
 
-    ws.addEventListener("open", fitAndReport);
+    ws.addEventListener("open", () => {
+      onLifecycle?.("connected");
+      fitAndReport();
+    });
     ws.addEventListener("message", (event) => {
       const message = parseServerMessage(event.data);
       if (!message) return;
-      if (message.type === "output") {
+      if (message.type === "ready") {
+        onLifecycle?.("attached");
+      } else if (message.type === "output") {
         terminal.write(message.data);
+        if (!sawOutput) {
+          sawOutput = true;
+          onLifecycle?.("first_output");
+        }
       } else if (message.type === "exit") {
         terminal.writeln("");
         terminal.writeln(`[terminal attach exited${message.code === undefined ? "" : `: ${message.code}`}]`);
       } else if (message.type === "error") {
+        onLifecycle?.("error");
         onError(message.message);
       }
     });
     ws.addEventListener("close", (event) => {
       if (disposed) return;
+      onLifecycle?.("closed");
       if (event.code !== 1000 && event.code !== 1005) {
         onError("PTY terminal connection closed.");
       }
     });
     ws.addEventListener("error", () => {
-      if (!disposed) onError("PTY terminal connection failed.");
+      if (!disposed) {
+        onLifecycle?.("error");
+        onError("PTY terminal connection failed.");
+      }
     });
 
     return () => {
@@ -112,7 +131,7 @@ export function PtyTerminal({ wsUrl, title, onError }: Props) {
         ws.close(1000, "component unmounted");
       }
     };
-  }, [onError, wsUrl]);
+  }, [onError, onLifecycle, wsUrl]);
 
   return <div ref={containerRef} className={styles.terminal} role="application" aria-label={title} />;
 }
