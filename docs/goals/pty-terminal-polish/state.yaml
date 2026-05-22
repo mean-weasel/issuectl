@@ -6,7 +6,7 @@ goal:
   slug: "pty-terminal-polish"
   kind: specific
   tranche: "Fix PTY bridge terminal visual polish and session status reconciliation with Playwright-confirmed visual QA for every improvement step."
-  status: active
+  status: done
   oracle:
     signal: "Playwright CLI screenshots and diagnostics against a local ISSUECTL_PTY_BRIDGE=1 session show the PTY terminal connected, visually polished, status-correct, responsive, and error-free."
     cadence: "after every Worker package and at final audit"
