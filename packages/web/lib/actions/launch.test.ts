@@ -16,6 +16,7 @@ const getDeploymentById = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getRepoById = vi.hoisted(() => vi.fn());
 const getSetting = vi.hoisted(() => vi.fn());
+const killTmuxSession = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
@@ -30,6 +31,7 @@ vi.mock("@issuectl/core", () => ({
   getRepo: (...args: unknown[]) => getRepo(...args),
   getRepoById: (...args: unknown[]) => getRepoById(...args),
   getSetting: (...args: unknown[]) => getSetting(...args),
+  killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
@@ -89,6 +91,7 @@ beforeEach(() => {
   getRepo.mockReset();
   getRepoById.mockReset();
   getSetting.mockReset();
+  killTmuxSession.mockReset();
   killTtyd.mockReset();
   coreEndDeployment.mockReset();
   cleanupStaleContextFiles.mockReset();
@@ -204,6 +207,21 @@ describe("endSession", () => {
     const result = await endSession(...ARGS);
 
     expect(killTtyd).not.toHaveBeenCalled();
+    expect(killTmuxSession).not.toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalled();
+    expect(result).toMatchObject({ success: true });
+  });
+
+  it("kills tmux directly when ending a PTY bridge deployment", async () => {
+    getDeploymentById.mockReturnValue({
+      ...makeDeployment(null),
+      terminalBackend: "pty_bridge",
+    });
+
+    const result = await endSession(...ARGS);
+
+    expect(killTtyd).not.toHaveBeenCalled();
+    expect(killTmuxSession).toHaveBeenCalledWith("issuectl-repo-7");
     expect(coreEndDeployment).toHaveBeenCalled();
     expect(result).toMatchObject({ success: true });
   });

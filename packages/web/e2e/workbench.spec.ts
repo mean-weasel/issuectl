@@ -45,6 +45,8 @@ let dbPath = "";
 let apiToken = "";
 let isolatedWebRoot = "";
 let serverOutput = "";
+let tmuxCommandLog = "";
+let tmuxMissingSessionsFile = "";
 
 type FixtureIssue = {
   number: number;
@@ -190,10 +192,20 @@ test.beforeAll(async () => {
   );
   chmodSync(fakeGh, 0o755);
   const fakeTmux = join(tmpDir, "tmux");
+  tmuxCommandLog = join(tmpDir, "tmux-commands.log");
+  tmuxMissingSessionsFile = join(tmpDir, "tmux-missing-sessions");
   writeFileSync(
     fakeTmux,
     [
       "#!/bin/sh",
+      `echo "$*" >> ${JSON.stringify(tmuxCommandLog)}`,
+      `missing_file=${JSON.stringify(tmuxMissingSessionsFile)}`,
+      "if [ -f \"$missing_file\" ]; then",
+      "  while IFS= read -r missing; do",
+      "    [ -n \"$missing\" ] || continue",
+      "    case \"$*\" in *\"$missing\"*) exit 1 ;; esac",
+      "  done < \"$missing_file\"",
+      "fi",
       "case \"$*\" in",
       "  *issuectl-issuectl-447*) echo 'running tests'; exit 0 ;;",
       "  *issuectl-issuectl-486*) echo 'Error: preview failed'; exit 0 ;;",
@@ -228,6 +240,7 @@ test.beforeAll(async () => {
 
 test.beforeEach(async ({ page }) => {
   seedWorkbenchRepos(dbPath);
+  if (tmuxMissingSessionsFile) writeFileSync(tmuxMissingSessionsFile, "");
   await page.addInitScript((token) => {
     window.localStorage.setItem("issuectl.apiToken", token);
   }, apiToken);
@@ -264,8 +277,8 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
       for (const deployment of item.deployments) {
         db.prepare(
           `INSERT INTO deployments
-           (id, repo_id, issue_number, agent, branch_name, workspace_mode, workspace_path, state, launched_at, ended_at, ttyd_port, ttyd_pid, idle_since)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, repo_id, issue_number, agent, branch_name, workspace_mode, workspace_path, state, launched_at, ended_at, ttyd_port, ttyd_pid, idle_since, terminal_backend)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           deployment.id,
           item.id,
@@ -280,6 +293,7 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
           deployment.ttydPort,
           deployment.ttydPid,
           deployment.idleSince,
+          deployment.terminalBackend ?? "ttyd",
         );
       }
       for (const issue of item.issues) {
@@ -3013,6 +3027,38 @@ test("removes a stale session when reconnect reports the deployment already ende
   await expect(page.getByLabel("Issue #486")).toHaveCount(0);
 });
 
+test("removes a stale PTY bridge session when reconnect finds tmux missing", async ({ page }) => {
+  const staleRepo = repo(1, "issuectl", 1);
+  staleRepo.deployments[0] = {
+    ...staleRepo.deployments[0],
+    id: 104,
+    issueNumber: 447,
+    branchName: "issue-447-stale-pty",
+    ttydPort: null,
+    ttydPid: null,
+    terminalBackend: "pty_bridge",
+  };
+  seedWorkbenchRepos(dbPath, [staleRepo]);
+
+  await gotoWorkbenchWithRetry(page);
+  const activeSessions = page.getByRole("complementary", { name: "Active sessions" });
+  await expect(activeSessions.getByLabel("Session #447")).toBeVisible();
+  writeFileSync(tmuxMissingSessionsFile, "issuectl-issuectl-447\n");
+  const ensureResponse = page.waitForResponse("**/api/v1/deployments/104/ensure-ttyd");
+  await activeSessions.getByLabel("Session #447").getByRole("button", { name: "Reconnect" }).click();
+  const staleResponse = await ensureResponse;
+  expect(staleResponse.status()).toBe(200);
+  await expect(staleResponse.json()).resolves.toMatchObject({
+    alive: false,
+    backend: "pty_bridge",
+    error: "Terminal session has ended",
+  });
+
+  await expect(activeSessions.getByLabel("Session #447")).toHaveCount(0);
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: /Running/ }).click();
+  await expect(page.getByLabel("Repo issue queue").getByLabel("Issue #447")).toHaveCount(0);
+});
+
 test("removes a stale selected session when terminal focus reports the session ended", async ({ page }) => {
   await page.route("**/api/v1/deployments/101/ensure-ttyd", async (route) => {
     expect(route.request().method()).toBe("POST");
@@ -3059,6 +3105,33 @@ test("ends a session through the deployment endpoint and removes its row", async
   await expect(page.getByLabel("Issue-backed sessions").getByRole("article")).toHaveCount(2);
   await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Running 2" }).click();
   await expect(page.getByLabel("Issue #498")).toHaveCount(0);
+});
+
+test("ends a PTY bridge session and removes its tmux session", async ({ page }) => {
+  writeFileSync(tmuxCommandLog, "");
+  const ptyRepo = repo(1, "issuectl", 1);
+  ptyRepo.deployments[0] = {
+    ...ptyRepo.deployments[0],
+    id: 105,
+    issueNumber: 498,
+    branchName: "issue-498-pty-end",
+    ttydPort: null,
+    ttydPid: null,
+    terminalBackend: "pty_bridge",
+  };
+  seedWorkbenchRepos(dbPath, [ptyRepo]);
+
+  await gotoWorkbenchWithRetry(page);
+  const session = page.getByRole("complementary", { name: "Active sessions" }).getByLabel("Session #498");
+  await expect(session).toContainText("PTY bridge connected");
+  await session.getByText("End", { exact: true }).click();
+  const endResponse = page.waitForResponse("**/api/v1/deployments/105/end");
+  await session.getByRole("button", { name: "End session" }).click();
+  expect((await endResponse).status()).toBe(200);
+
+  await expect(page.getByRole("complementary", { name: "Active sessions" }).getByLabel("Session #498"))
+    .toHaveCount(0);
+  expect(readFileSync(tmuxCommandLog, "utf8")).toContain("kill-session -t issuectl-issuectl-498");
 });
 
 test("canceling end session is local-only and does not navigate or call the end endpoint", async ({ page }) => {
@@ -4308,6 +4381,7 @@ function repo(id: number, name: string, deploymentCount: number): {
     idleSince: null;
     owner: string;
     repoName: string;
+    terminalBackend?: "ttyd" | "pty_bridge";
   }>;
   previews: {};
   issues: FixtureIssue[];

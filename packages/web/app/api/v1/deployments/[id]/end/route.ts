@@ -6,9 +6,11 @@ import {
   getRepo,
   getDeploymentById,
   endDeployment,
+  killTmuxSession,
   killTtyd,
   tmuxSessionName,
   cleanupStaleContextFiles,
+  recordDiagnosticEventSafely,
   removeLabel,
   LIFECYCLE_LABEL,
   clearCacheKey,
@@ -70,12 +72,25 @@ export async function POST(
       return NextResponse.json({ success: true });
     }
 
+    const sessionName = tmuxSessionName(body.repo, body.issueNumber);
     if (deployment.ttydPid) {
       try {
-        killTtyd(deployment.ttydPid, tmuxSessionName(body.repo, body.issueNumber));
+        killTtyd(deployment.ttydPid, sessionName);
       } catch (killErr) {
         log.warn({ err: killErr, msg: "kill_ttyd_failed", deploymentId, pid: deployment.ttydPid });
       }
+    } else if ((deployment as { terminalBackend?: string }).terminalBackend === "pty_bridge") {
+      killTmuxSession(sessionName);
+      recordDiagnosticEventSafely(db, {
+        level: "info",
+        event: "pty.tmux_killed",
+        source: "web.end-session",
+        owner: body.owner,
+        repo: body.repo,
+        issueNumber: body.issueNumber,
+        deploymentId,
+        sessionName,
+      });
     }
     endDeployment(db, deploymentId);
 
