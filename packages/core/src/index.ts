@@ -243,6 +243,7 @@ export {
   tmuxSessionName,
   type SpawnTtydOptions,
 } from "./launch/ttyd.js";
+export { killTmuxSession } from "./launch/tmux-session.js";
 export { updateTtydInfo } from "./db/deployments.js";
 export {
   validateClaudeArgs,

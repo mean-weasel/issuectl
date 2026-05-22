@@ -7,6 +7,7 @@ import {
   getDeploymentById,
   executeLaunch,
   endDeployment as coreEndDeployment,
+  killTmuxSession,
   killTtyd,
   isTmuxSessionAlive,
   tmuxSessionName,
@@ -190,9 +191,10 @@ export async function endSession(
       return { success: false, error: "Deployment does not match the specified issue" };
     }
 
+    const sessionName = tmuxSessionName(repo, issueNumber);
     if (deployment.ttydPid) {
       try {
-        killTtyd(deployment.ttydPid, tmuxSessionName(repo, issueNumber));
+        killTtyd(deployment.ttydPid, sessionName);
       } catch (killErr) {
         console.warn(
           "[issuectl] Failed to kill ttyd process, proceeding with session end:",
@@ -200,6 +202,8 @@ export async function endSession(
           killErr,
         );
       }
+    } else if ((deployment as { terminalBackend?: string }).terminalBackend === "pty_bridge") {
+      killTmuxSession(sessionName);
     }
     coreEndDeployment(db, deploymentId);
 
