@@ -5,6 +5,7 @@ on:
     branches: [main]
   push:
     branches:
+      - main
       - "gh-readonly-queue/main/**"
   workflow_dispatch:
 
@@ -132,6 +133,21 @@ jobs:
           name: playwright-report-local-macos-e2e
           path: packages/web/playwright-report/
           retention-days: 7
+
+      - name: Workspace cleanup after
+        if: always()
+        run: |
+          set -euo pipefail
+
+          pkill -f 'next dev.*issuectl' || true
+          pkill -f 'playwright.*issuectl' || true
+
+          rm -rf packages/web/playwright-report packages/web/test-results test-results
+
+          cleanup="$HOME/Library/Application Support/macos-e2e-runner/macos-runner-cleanup"
+          RUNNER_HOME="$HOME" \
+          RUNNER_WORK="$HOME/actions-runner/_work" \
+          "$cleanup" --github-actions-safe --json
 
       - name: Healthcheck after
         if: always()
