@@ -117,8 +117,9 @@ function SessionCard({
 }) {
   const issue = repo.issues.find((item) => item.number === deployment.issueNumber);
   const preview = previewForDeployment(deployment, repo.previews);
-  const status = preview?.status ?? "unavailable";
-  const previewText = preview?.lines.join(" ") || status;
+  const status = preview?.status ?? (deployment.terminalBackend === "pty_bridge" ? "active" : "unavailable");
+  const previewText = preview?.lines.join(" ")
+    || (deployment.terminalBackend === "pty_bridge" ? "PTY bridge connected" : status);
   const runtimeLabel = deployment.idleSince ? `idle since ${formatTime(deployment.idleSince)}` : "running";
 
   return (

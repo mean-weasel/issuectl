@@ -3512,14 +3512,28 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
 
   await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-instances-pane", "visible");
   await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-issues-pane", "collapsed");
-  await expect(page.getByLabel("Session #512")).toBeVisible();
+  const ptySession = page.getByLabel("Session #512");
+  await expect(ptySession).toBeVisible();
+  await expect(ptySession).toHaveAttribute("data-status", "active");
+  await expect(ptySession).toContainText("PTY bridge connected");
+  await expect(ptySession).not.toContainText("unavailable");
   await expect(page.locator('iframe[title="Terminal for issue 512"]')).toHaveCount(0);
-  await expect(page.getByRole("application", { name: "Terminal for issue 512" })).toBeVisible();
+  const ptyTerminal = page.getByRole("application", { name: "Terminal for issue 512" });
+  await expect(ptyTerminal).toBeVisible();
+  await expect(ptyTerminal).toContainText("pty bridge ready");
   await expect.poll(async () => page.evaluate(() =>
     (window as Window & { __issuectlPtySocketUrls?: string[] }).__issuectlPtySocketUrls ?? [],
   )).toContain(
     `${baseUrl.replace(/^http/, "ws")}/api/terminal/pty/409/ws?terminalToken=pty-token-409`,
   );
+  await expect.poll(async () => page.evaluate(() =>
+    (window as Window & { __issuectlPtySocketMessages?: string[] }).__issuectlPtySocketMessages ?? [],
+  )).toContainEqual(expect.stringContaining('"type":"resize"'));
+  await ptyTerminal.click();
+  await page.keyboard.type("q");
+  await expect.poll(async () => page.evaluate(() =>
+    (window as Window & { __issuectlPtySocketMessages?: string[] }).__issuectlPtySocketMessages ?? [],
+  )).toContainEqual(expect.stringContaining('"type":"input","data":"q"'));
 
   await page.getByRole("button", { name: "Back to overview" }).click();
   await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);

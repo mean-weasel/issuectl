@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   checkTerminalProxy,
   ensureDeploymentTtyd,
@@ -54,6 +54,9 @@ export function TerminalFocus({
       : "Reconnect this session to open the terminal.",
   });
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const handlePtyError = useCallback((error: string) => {
+    setTerminal((current) => ({ ...current, status: "error", error }));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,7 +189,7 @@ export function TerminalFocus({
           <PtyTerminal
             title={`Terminal for issue ${deployment.issueNumber}`}
             wsUrl={terminal.wsUrl}
-            onError={(error) => setTerminal((current) => ({ ...current, status: "error", error }))}
+            onError={handlePtyError}
           />
         </div>
       ) : terminal.status === "ready" && terminal.src ? (
