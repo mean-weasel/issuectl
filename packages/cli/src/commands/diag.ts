@@ -7,6 +7,7 @@ import {
   type DiagnosticLevel,
   type DiagnosticQuery,
 } from "@issuectl/core";
+import { summarizeBackends, type BackendSummary } from "./diag-summary.js";
 import { requireDb } from "../utils/db.js";
 
 type CommonOptions = {
@@ -32,6 +33,13 @@ type ShowOptions = {
   deployment?: string;
   issue?: string;
   correlation?: string;
+  limit?: string;
+  json?: boolean;
+};
+
+type SummaryOptions = {
+  since?: string;
+  issue?: string;
   limit?: string;
   json?: boolean;
 };
@@ -98,6 +106,23 @@ export function registerDiagCommands(program: Command): void {
     .action((options: ShowOptions, command: Command) => {
       const query = parseCommandInput(command, () => buildQuery(options));
       printEvents(getDiagnosticTimeline(requireDb(), query), Boolean(options.json));
+    });
+
+  diag
+    .command("summary")
+    .description("Summarize diagnostics by terminal backend")
+    .option("--since <duration>", "Relative duration to query, e.g. 15m, 2h, 1d", "1d")
+    .option("--issue <owner/repo#number>", "Filter by issue")
+    .option("--limit <count>", "Maximum rows to summarize", "1000")
+    .option("--json", "Print JSON")
+    .action((options: SummaryOptions, command: Command) => {
+      const db = requireDb();
+      const query = parseCommandInput(command, () =>
+        buildQuery(options, {
+          since: options.since ? Date.now() - parseDurationMs(options.since) : undefined,
+        }),
+      );
+      printBackendSummary(summarizeBackends(queryDiagnosticEvents(db, query), db), Boolean(options.json));
     });
 }
 
@@ -258,5 +283,27 @@ function printEvents(events: DiagnosticEvent[], json: boolean): void {
 
   for (const event of events) {
     process.stdout.write(`${formatDiagnosticEvent(event)}\n`);
+  }
+}
+
+function printBackendSummary(summaries: BackendSummary[], json: boolean): void {
+  if (json) {
+    process.stdout.write(`${JSON.stringify(summaries, null, 2)}\n`);
+    return;
+  }
+
+  for (const summary of summaries) {
+    process.stdout.write(
+      [
+        `backend=${summary.backend}`,
+        `events=${summary.events}`,
+        `launches=${summary.launches}`,
+        `activations=${summary.activations}`,
+        `first_output=${summary.firstOutput}`,
+        `reconnects=${summary.reconnects}`,
+        `failures=${summary.failures}`,
+        `cleanups=${summary.cleanups}`,
+      ].join(" ") + "\n",
+    );
   }
 }

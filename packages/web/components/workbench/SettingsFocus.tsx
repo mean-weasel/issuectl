@@ -60,6 +60,7 @@ export function SettingsFocus({ payload, collapsedSections, onToggleSection, onS
         cache_ttl: settings.cache_ttl ?? "",
         worktree_dir: settings.worktree_dir ?? "",
         launch_agent: settings.launch_agent ?? "codex",
+        terminal_backend: settings.terminal_backend ?? "ttyd",
         claude_extra_args: settings.claude_extra_args ?? "",
         codex_extra_args: settings.codex_extra_args ?? "",
         idle_grace_period: settings.idle_grace_period ?? "",
@@ -139,6 +140,18 @@ export function SettingsFocus({ payload, collapsedSections, onToggleSection, onS
             >
               <option value="codex">Codex</option>
               <option value="claude">Claude Code</option>
+            </select>
+          </label>
+          <label className={styles.workbenchField}>
+            <span>Terminal backend</span>
+            <select
+              aria-label="Terminal backend"
+              value={settings.terminal_backend ?? "ttyd"}
+              onChange={(event) => updateSetting("terminal_backend", event.target.value)}
+              className={styles.workbenchInput}
+            >
+              <option value="ttyd">TTYD</option>
+              <option value="pty_bridge">PTY bridge (experimental)</option>
             </select>
           </label>
           <SettingInput label="Claude extra args" value={settings.claude_extra_args} onChange={(value) => updateSetting("claude_extra_args", value)} />

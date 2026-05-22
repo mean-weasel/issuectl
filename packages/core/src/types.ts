@@ -12,6 +12,7 @@ export type SettingKey =
   | "cache_ttl"
   | "worktree_dir"
   | "launch_agent"
+  | "terminal_backend"
   | "claude_extra_args"
   | "codex_extra_args"
   | "default_repo_id"

@@ -157,6 +157,7 @@ describe("diag command helpers", () => {
     expect(line).toContain("mean-weasel/issuectl-test-repo#152");
     expect(line).toContain("Deployment not found or already ended");
   });
+
 });
 
 describe("diag commands", () => {
@@ -220,6 +221,24 @@ describe("diag commands", () => {
       },
     });
     expect(JSON.parse(result.stdout)).toEqual(events);
+  });
+
+  it("summary prints backend-grouped counts", async () => {
+    vi.mocked(queryDiagnosticEvents).mockReturnValue([
+      makeEvent({ event: "ttyd.spawned", deploymentId: 1 }),
+      makeEvent({ event: "deployment.activated", deploymentId: 1, data: { backend: "ttyd" } }),
+      makeEvent({ event: "pty.bridge_spawned", deploymentId: 2 }),
+      makeEvent({ event: "pty.first_output_seen", deploymentId: 2 }),
+    ]);
+
+    const result = await parseCommand(["diag", "summary", "--since", "1h"]);
+
+    expect(queryDiagnosticEvents).toHaveBeenCalledWith(mockDb, {
+      since: Date.UTC(2026, 4, 20, 11, 0, 0),
+      limit: 1000,
+    });
+    expect(result.stdout).toContain("backend=pty_bridge events=2 launches=1");
+    expect(result.stdout).toContain("backend=ttyd events=2 launches=1 activations=1");
   });
 
   it("invalid since exits through Commander without stack trace output", async () => {

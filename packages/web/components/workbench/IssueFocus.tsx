@@ -156,6 +156,7 @@ export function IssueFocus({
   }, [ref, workspaceMode]);
 
   const loadedIssue = detail?.issue;
+  const selectedBackend = repo.terminalBackendDefault ?? "ttyd";
   const title = loadedIssue?.title ?? issue.title;
   const titleChanged = titleDraft.trim().length > 0 && titleDraft.trim() !== title;
   const priority = issue.priority;
@@ -515,6 +516,11 @@ export function IssueFocus({
                 repo={repo.name}
                 issueNumber={issue.number}
               />
+              <div className={styles.backendPreview} aria-label="Terminal backend for new launch">
+                <span>Terminal backend</span>
+                <strong>{terminalBackendLabel(selectedBackend)}</strong>
+                {selectedBackend === "pty_bridge" && <em>experimental</em>}
+              </div>
             </div>
             <div>
               <h2>Worktree</h2>
@@ -593,6 +599,10 @@ export function IssueFocus({
       </div>
     </div>
   );
+}
+
+function terminalBackendLabel(backend: TerminalBackend): string {
+  return backend === "pty_bridge" ? "PTY bridge" : "TTYD";
 }
 
 function DeploymentRow({
