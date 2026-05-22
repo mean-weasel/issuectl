@@ -961,7 +961,9 @@
   height: 100%;
   min-height: 0;
   border: 0;
-  background: #111;
+  padding: 14px;
+  box-sizing: border-box;
+  background: #151711;
 }
 
 .terminalUnavailable {

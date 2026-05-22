@@ -1,0 +1,342 @@
+# GoalBuddy v2 state.yaml
+version: 2
+
+goal:
+  title: "PTY Terminal Polish"
+  slug: "pty-terminal-polish"
+  kind: specific
+  tranche: "Fix PTY bridge terminal visual polish and session status reconciliation with Playwright-confirmed visual QA for every improvement step."
+  status: active
+  oracle:
+    signal: "Playwright CLI screenshots and diagnostics against a local ISSUECTL_PTY_BRIDGE=1 session show the PTY terminal connected, visually polished, status-correct, responsive, and error-free."
+    cadence: "after every Worker package and at final audit"
+    final_proof: "Before/after screenshot paths, viewport sizes, diagnostics excerpt, exact commands, and pass/fail acceptance mapping."
+  intake:
+    original_request: "excellent use $goalbuddy:goal-prep to organize this"
+    interpreted_outcome: "Prepare a GoalBuddy board for rigorous PTY terminal polish where each improvement is verified by Playwright CLI screenshots and diagnostics."
+    input_shape: existing_plan
+    audience: "issuectl maintainers validating the PTY bridge workbench experience"
+    authority: requested
+    proof_type: demo
+    completion_proof: "Playwright CLI visual QA plus diagnostics and focused automated checks prove the PTY terminal looks correct and behaves correctly."
+    likely_misfire: "Passing tests without verifying the actual live terminal screenshot, leaving visible status or styling issues in the UI."
+    blind_spots_considered:
+      - "The left session card may derive availability from ttyd fields instead of PTY connection state."
+      - "React development cleanup can make transient PTY websocket close events look like user-facing terminal failures."
+      - "Terminal theme, padding, and frame styles may look acceptable in one viewport but clipped or low-contrast in another."
+      - "Automated tests may not capture visual quality unless Playwright screenshots and DOM metrics are required."
+      - "Existing TTYD sessions must not be confused with new PTY bridge sessions during validation."
+    existing_plan_facts:
+      - "Capture baseline screenshots and DOM metrics first."
+      - "Fix session status reconciliation."
+      - "Improve PTY terminal visual container."
+      - "Improve terminal text readability."
+      - "Verify responsive/compact layouts."
+      - "Extend focused PTY workbench E2E coverage."
+      - "Run final Playwright visual QA gate with diagnostics."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/pty-terminal-polish/"
+    command: "npx goalbuddy board docs/goals/pty-terminal-polish"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the PTY terminal status and styling surfaces, existing tests, diagnostics hooks, and Playwright capture points needed to validate the planned polish work."
+    inputs:
+      - "User-provided plan requiring Playwright CLI visual confirmation for every fix."
+      - "Current local PTY bridge behavior and diagnostics may be used during /goal execution."
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Use diagnostics-first evidence for PTY launch/reconnect failures."
+      - "Keep real launch/reconnect checks constrained to approved issuectl test repositories."
+    expected_output:
+      - "Concrete file/path map for session status, PTY terminal rendering, terminal styling, and focused tests."
+      - "Baseline Playwright evidence plan with screenshot paths, viewport sizes, and DOM metrics to capture."
+      - "Risk list and recommended first Worker slice with allowed_files, verify commands, and Playwright acceptance criteria."
+    receipt:
+      summary: "Mapped PTY terminal polish surfaces and verification points from current files."
+      files:
+        - "packages/web/components/workbench/TerminalFocus.tsx owns ensureDeploymentTtyd, ready/error state, reconnect retry, and PTY/ttyd rendering choice."
+        - "packages/web/components/workbench/PtyTerminal.tsx owns xterm setup, websocket lifecycle, resize reporting, theme, and cleanup error handling."
+        - "packages/web/components/workbench/PtyTerminal.module.css owns xterm container padding/scrollbar/background."
+        - "packages/web/components/workbench/InstancePane.tsx derives session card status from previewForDeployment and currently falls back to unavailable."
+        - "packages/web/components/workbench/WorkbenchShell.module.css owns session card status styling plus terminal header/frame/unavailable layouts."
+        - "packages/web/e2e/workbench.spec.ts already has a focused PTY launch/navigation test with a fake WebSocket helper."
+      findings:
+        - "PTY bridge deployments can be active and connected while InstancePane still renders status unavailable if no ttyd preview exists."
+        - "PtyTerminal cleanup must ignore websocket close/error events after React unmount to avoid false Terminal unavailable states during reconnect/navigation."
+        - "The current PTY frame is a flat #111 block with 10px xterm padding and no visual integration with the workbench shell."
+        - "Existing E2E verifies PTY app visibility and navigation but does not assert session card status, terminal output text, resize messages, or visual polish metrics."
+      recommended_worker_slice:
+        objective: "Fix PTY bridge session status reconciliation, harden PTY websocket cleanup, polish terminal frame/theme/padding, and extend focused E2E coverage."
+        allowed_files:
+          - "packages/web/components/workbench/InstancePane.tsx"
+          - "packages/web/components/workbench/PtyTerminal.tsx"
+          - "packages/web/components/workbench/PtyTerminal.module.css"
+          - "packages/web/components/workbench/TerminalFocus.tsx"
+          - "packages/web/components/workbench/WorkbenchShell.module.css"
+          - "packages/web/e2e/workbench.spec.ts"
+        verify:
+          - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/web lint"
+          - "Playwright CLI live desktop screenshot at /tmp/issuectl-qa/pty-terminal-polish-desktop.png"
+          - "Playwright CLI live compact screenshot at /tmp/issuectl-qa/pty-terminal-polish-compact.png"
+          - "pnpm --dir packages/cli exec issuectl diag show --deployment <deployment-id>"
+      risks:
+        - "A visual-only CSS change could hide the status mismatch without fixing the underlying active PTY state derivation."
+        - "A fake-WebSocket test can pass while live diagnostics still lack pty.first_output_seen, so final proof must include the live diagnostics excerpt."
+        - "Responsive screenshots are required because the terminal header and side session card can look correct on desktop but crowd/clamp in compact layout."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the user-provided plan and choose the largest safe first implementation slice that preserves Playwright visual QA as a hard gate."
+    inputs:
+      - "T001 receipt"
+      - "Existing plan facts in goal intake"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject any slice that lacks explicit Playwright CLI visual acceptance criteria."
+      - "Prefer vertical fixes that change visible behavior over helper-only changes."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify commands"
+      - "Playwright screenshot and diagnostics acceptance criteria"
+      - "stop_if conditions"
+    receipt:
+      decision: "approved"
+      summary: "Use one vertical Worker slice spanning PTY connected-state reconciliation, cleanup hardening, visual polish, and focused E2E assertions."
+      worker_objective: "Make PTY bridge sessions render as active/live when connected, keep the PTY terminal from surfacing false unmount close errors, polish the xterm frame/theme/padding, and prove it with focused E2E plus live Playwright screenshots and diagnostics."
+      allowed_files:
+        - "packages/web/components/workbench/InstancePane.tsx"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/components/workbench/PtyTerminal.module.css"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      verify_commands:
+        - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+        - "pnpm --dir packages/web typecheck"
+        - "pnpm --dir packages/web lint"
+      playwright_acceptance:
+        - "Focused E2E asserts the PTY session card is not unavailable and has active/running status while the PTY terminal is visible."
+        - "Focused E2E asserts fake PTY output is visible and resize traffic reaches the bridge."
+        - "Live desktop screenshot proves terminal header, card status, frame padding, prompt/output, and contrast look correct."
+        - "Live compact screenshot proves no clipping, overlap, or unusable terminal framing in compact layout."
+      diagnostics_acceptance:
+        - "Relevant live deployment diagnostics include pty.ws_connected, pty.bridge_attached, pty.resize, and pty.first_output_seen."
+      stop_if:
+        - "Need to edit files outside the approved allowed_files list."
+        - "Playwright screenshot still shows unavailable session status for a connected PTY terminal."
+        - "Terminal output is clipped, unreadable, or absent in screenshots."
+        - "Focused verification fails twice for the same cause."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute the first safe PTY terminal polish slice selected by Judge, including Playwright CLI screenshot proof."
+    allowed_files:
+      - "packages/web/components/workbench/InstancePane.tsx"
+      - "packages/web/components/workbench/PtyTerminal.tsx"
+      - "packages/web/components/workbench/PtyTerminal.module.css"
+      - "packages/web/components/workbench/TerminalFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "Playwright CLI live desktop screenshot at /tmp/issuectl-qa/pty-terminal-polish-desktop.png"
+      - "Playwright CLI live compact screenshot at /tmp/issuectl-qa/pty-terminal-polish-compact.png"
+      - "pnpm --dir packages/cli exec issuectl diag show --deployment <deployment-id>"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Cannot capture Playwright screenshots for the changed behavior."
+      - "Visual QA evidence still shows incorrect status, clipping, unreadable contrast, or layout overlap."
+      - "Verification fails twice for the same cause."
+    receipt:
+      summary: "Implemented the approved PTY terminal polish slice."
+      changes:
+        - "PTY bridge session cards now fall back to active status with PTY bridge connected preview text when no ttyd preview exists."
+        - "PTY websocket close/error handlers now ignore cleanup-time events, and TerminalFocus passes a stable PTY error callback."
+        - "xterm theme, line height, scrollback, inner padding, terminal frame background, border, and contrast were polished."
+        - "Focused PTY E2E now verifies active session status, connected preview text, no unavailable status, visible PTY output, resize messages, and keyboard input delivery."
+      changed_files:
+        - "packages/web/components/workbench/InstancePane.tsx"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/components/workbench/PtyTerminal.module.css"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      verification:
+        - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\" passed."
+        - "pnpm --dir packages/web typecheck passed."
+        - "pnpm --dir packages/web lint passed."
+        - "git diff --check passed."
+      playwright_live_evidence:
+        desktop:
+          path: "/tmp/issuectl-qa/pty-terminal-polish-desktop.png"
+          viewport: "1440x1000"
+          result: "applicationCount=1, unavailableHeadings=0, cardStatus=active, card text includes PTY bridge connected, no horizontal overflow."
+        compact:
+          path: "/tmp/issuectl-qa/pty-terminal-polish-compact.png"
+          viewport: "900x780"
+          result: "applicationCount=1, unavailableHeadings=0, terminal visible inside viewport, bodyScrollWidth equals viewportWidth."
+      diagnostics:
+        deployment: 116
+        latest_relevant_events:
+          - "2026-05-22T13:25:05.578Z pty.bridge_attach_requested"
+          - "2026-05-22T13:25:05.580Z pty.ws_connected"
+          - "2026-05-22T13:25:05.595Z pty.bridge_attached"
+          - "2026-05-22T13:25:05.595Z pty.resize"
+          - "2026-05-22T13:25:05.604Z pty.first_output_seen"
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute the next PTY terminal polish slice after T003, covering remaining session status, frame, contrast, responsive, or test gaps with Playwright proof."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Cannot capture before/after Playwright evidence."
+      - "Visual QA evidence still looks wrong after the change."
+      - "Verification fails twice for the same cause."
+    receipt:
+      summary: "No second Worker slice required after T003 covered the remaining planned session status, frame, contrast, responsive, and E2E gaps."
+      evidence:
+        - "Desktop and compact Playwright screenshots satisfy the visible polish requirements."
+        - "Focused E2E covers the changed PTY bridge behavior and usability."
+        - "No allowed-file expansion was needed."
+  - id: T998
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run the final live Playwright visual QA gate and diagnostics capture against the local PTY bridge server."
+    constraints:
+      - "Use approved issuectl test repositories only."
+      - "Record screenshot paths, viewport sizes, diagnostics excerpt, and exact commands."
+      - "Do not mark the goal done if screenshots or diagnostics do not satisfy the oracle."
+    expected_output:
+      - "Desktop screenshot path"
+      - "Compact screenshot path"
+      - "DOM metrics"
+      - "Diagnostics excerpt"
+      - "Console/page error status"
+      - "Explicit visual acceptance checklist"
+    receipt:
+      summary: "Final live Playwright QA gate ran against local ISSUECTL_PTY_BRIDGE=1 server on port 3847 using approved issuectl test repo deployment 116."
+      screenshots:
+        - "/tmp/issuectl-qa/pty-terminal-polish-desktop.png"
+        - "/tmp/issuectl-qa/pty-terminal-polish-compact.png"
+      desktop_acceptance:
+        - "Live PTY terminal application is visible."
+        - "Session #152 card shows active status and PTY bridge connected text."
+        - "Terminal unavailable heading count is zero."
+        - "Terminal frame, padding, contrast, prompt/output, and header look correct in screenshot."
+      compact_acceptance:
+        - "Live PTY terminal application is visible."
+        - "No horizontal overflow."
+        - "Header and terminal content do not overlap."
+        - "Terminal frame and text remain usable in compact viewport."
+      diagnostics_acceptance:
+        - "Deployment 116 diagnostics include pty.ws_connected, pty.bridge_attached, pty.resize, and pty.first_output_seen in the latest QA captures."
+      console_status:
+        - "Compact capture reported no console/page errors."
+        - "Desktop capture reported no page errors; a transient WebSocket closed warning occurred during dev-mode reconnect before the successful attach."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the PTY terminal polish tranche satisfies the oracle."
+    inputs:
+      - "All done task receipts"
+      - "Final Playwright screenshot evidence"
+      - "Diagnostics excerpt"
+      - "Current dirty diff"
+      - "Last verification"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any required Worker task remains queued or active."
+      - "Reject completion if screenshots do not visibly prove correct status and styling."
+      - "Reject completion if diagnostics do not show a clean PTY lifecycle."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      decision: "complete"
+      full_outcome_complete: true
+      audit:
+        - requirement: "PTY terminal connected and usable"
+          evidence: "Live screenshots show one PTY terminal application visible; focused E2E proves output, resize, and keyboard input reach the PTY bridge."
+          status: "proved"
+        - requirement: "Session card status matches live connected terminal state"
+          evidence: "Desktop Playwright metrics show Session #152 cardStatus=active and card text includes PTY bridge connected; focused E2E asserts active status and no unavailable text."
+          status: "proved"
+        - requirement: "Frame, padding, contrast, prompt, header, and responsive layout look correct"
+          evidence: "Desktop and compact screenshots at /tmp/issuectl-qa/pty-terminal-polish-desktop.png and /tmp/issuectl-qa/pty-terminal-polish-compact.png were visually inspected; compact metrics show no horizontal overflow."
+          status: "proved"
+        - requirement: "No page or console errors"
+          evidence: "Compact capture reported no console/page errors; desktop capture had no page errors and only a transient dev-mode WebSocket close warning before successful attach."
+          status: "proved_with_note"
+        - requirement: "Diagnostics show clean PTY lifecycle"
+          evidence: "Deployment 116 diagnostics include latest pty.ws_connected, pty.bridge_attached, pty.resize, and pty.first_output_seen events."
+          status: "proved"
+        - requirement: "Focused automated tests, typecheck, and lint pass"
+          evidence: "Focused PTY E2E, packages/web typecheck, packages/web lint, and git diff --check passed."
+          status: "proved"
+      residual_notes:
+        - "The desktop Playwright capture saw one transient WebSocket warning from dev-mode reconnect/unmount behavior, but the UI remained connected and diagnostics recorded the successful attach/output lifecycle immediately after."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

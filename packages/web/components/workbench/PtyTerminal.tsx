@@ -29,10 +29,27 @@ export function PtyTerminal({ wsUrl, title, onError }: Props) {
       convertEol: true,
       fontFamily: "var(--paper-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
       fontSize: 13,
+      lineHeight: 1.35,
+      scrollback: 2_000,
       theme: {
-        background: "#111111",
-        foreground: "#f2f0e8",
-        cursor: "#f2f0e8",
+        background: "#10130f",
+        black: "#10130f",
+        blue: "#8aa7d8",
+        brightBlack: "#6f756b",
+        brightBlue: "#adc6f0",
+        brightCyan: "#97d8c9",
+        brightGreen: "#b7d28a",
+        brightRed: "#eba493",
+        brightWhite: "#fffaf0",
+        brightYellow: "#ead68b",
+        cursor: "#f4e8c8",
+        cyan: "#79bfb1",
+        foreground: "#f2ead8",
+        green: "#9fbd73",
+        red: "#d37d6c",
+        selectionBackground: "#4d4634",
+        white: "#f2ead8",
+        yellow: "#d6bd63",
       },
     });
     const fitAddon = new FitAddon();
@@ -40,6 +57,7 @@ export function PtyTerminal({ wsUrl, title, onError }: Props) {
     terminal.open(container);
 
     const ws = new WebSocket(toAbsoluteWsUrl(wsUrl));
+    let disposed = false;
     const disposables = [
       terminal.onData((data) => {
         if (ws.readyState === WebSocket.OPEN) {
@@ -76,13 +94,17 @@ export function PtyTerminal({ wsUrl, title, onError }: Props) {
       }
     });
     ws.addEventListener("close", (event) => {
+      if (disposed) return;
       if (event.code !== 1000 && event.code !== 1005) {
         onError("PTY terminal connection closed.");
       }
     });
-    ws.addEventListener("error", () => onError("PTY terminal connection failed."));
+    ws.addEventListener("error", () => {
+      if (!disposed) onError("PTY terminal connection failed.");
+    });
 
     return () => {
+      disposed = true;
       resizeObserver.disconnect();
       for (const disposable of disposables) disposable.dispose();
       terminal.dispose();
