@@ -121,6 +121,7 @@ export async function POST(
       return {
         correlationId,
         deploymentId: r.deploymentId,
+        terminalBackend: r.terminalBackend,
         ttydPort: r.ttydPort,
         labelWarning: r.labelWarning ?? null,
       };
@@ -133,6 +134,7 @@ export async function POST(
       success: true,
       correlationId: result.correlationId,
       deploymentId: result.deploymentId,
+      terminalBackend: result.terminalBackend,
       ttydPort: result.ttydPort,
       ...(result.labelWarning ? { labelWarning: result.labelWarning } : {}),
     });

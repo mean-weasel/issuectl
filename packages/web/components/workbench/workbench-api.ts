@@ -1,5 +1,5 @@
 import type { LaunchAgent, Priority, WorkspaceMode } from "@issuectl/core";
-import type { WorkbenchDeployment, WorkbenchPayload } from "./workbench-types";
+import type { TerminalBackend, WorkbenchDeployment, WorkbenchPayload } from "./workbench-types";
 
 export class WorkbenchApiError extends Error {
   constructor(
@@ -274,7 +274,8 @@ export type LaunchIssueRequest = {
 export type LaunchIssueResult = {
   success?: boolean;
   deploymentId?: number;
-  ttydPort?: number;
+  terminalBackend?: TerminalBackend;
+  ttydPort?: number | null;
   error?: string;
   labelWarning?: string;
 };

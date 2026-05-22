@@ -16,8 +16,8 @@ import {
   type LaunchContext,
 } from "./context.js";
 import type { WorkspaceMode } from "./workspace.js";
-import { verifyTtyd, spawnTtyd, allocatePort, tmuxSessionName } from "./ttyd.js";
-import type { LaunchAgent } from "../types.js";
+import { verifyTtyd, verifyTmux, spawnTtyd, spawnPtyBridgeSession, allocatePort, tmuxSessionName } from "./ttyd.js";
+import type { LaunchAgent, TerminalBackend } from "../types.js";
 import {
   buildLaunchAgentCommand,
   extraArgsSettingForAgent,
@@ -33,6 +33,7 @@ import {
   recordLaunchLabelsFailed,
   recordLaunchRequested,
   recordLaunchSpawnFailed,
+  recordPtyBridgeSpawned,
   recordTtydSpawned,
   recordWorkspacePrepared,
 } from "./launch-diagnostics.js";
@@ -60,7 +61,8 @@ export interface LaunchResult {
   branchName: string;
   workspacePath: string;
   contextFilePath: string;
-  ttydPort: number;
+  terminalBackend: TerminalBackend;
+  ttydPort: number | null;
   /**
    * Set when lifecycle labels (`issuectl:deployed`, `issuectl:in-progress`)
    * could not be applied after the retry budget was exhausted. Launch
@@ -91,8 +93,14 @@ export async function executeLaunch(
     workspaceMode: options.workspaceMode,
   });
 
-  // 0. Verify ttyd is installed
-  verifyTtyd();
+  const terminalBackend: TerminalBackend = process.env.ISSUECTL_PTY_BRIDGE === "1" ? "pty_bridge" : "ttyd";
+
+  // 0. Verify terminal backend prerequisites.
+  if (terminalBackend === "pty_bridge") {
+    verifyTmux();
+  } else {
+    verifyTtyd();
+  }
 
   // 1. Fetch issue detail
   const detail = await getIssueDetail(
@@ -184,6 +192,7 @@ export async function executeLaunch(
       branchName: options.branchName,
       workspaceMode: options.workspaceMode,
       workspacePath: workspace.path,
+      terminalBackend,
       state: "pending",
     });
     recordDeploymentRecorded(diagnosticContext, deployment.id);
@@ -202,35 +211,49 @@ export async function executeLaunch(
     throw err;
   }
 
-  // 9. Spawn ttyd
+  // 9. Spawn terminal backend
   const agentCommand = buildLaunchAgentCommand(
     launchAgent,
     getSetting(db, extraArgsSettingForAgent(launchAgent)),
   );
   console.warn(`[issuectl] launching: ${agentCommand}`);
-  let ttydPort: number;
+  let ttydPort: number | null = null;
   const sessionName = tmuxSessionName(options.repo, options.issueNumber);
   try {
-    const port = await allocatePort(db);
-    // Reserve the port in the DB *before* spawning so concurrent launches
-    // see it and pick a different port (fixes #198 TOCTOU race).
-    reserveTtydPort(db, deployment.id, port);
-    const { pid } = await spawnTtyd({
-      port,
-      workspacePath: workspace.path,
-      contextFilePath,
-      agentCommand,
-      agentInputMode: launchAgent === "codex" ? "argument" : "stdin",
-      sessionName,
-    });
-    updateTtydInfo(db, deployment.id, port, pid);
-    recordTtydSpawned(diagnosticContext, {
-      deploymentId: deployment.id,
-      sessionName,
-      ttydPort: port,
-      ttydPid: pid,
-    });
-    ttydPort = port;
+    if (terminalBackend === "pty_bridge") {
+      spawnPtyBridgeSession({
+        workspacePath: workspace.path,
+        contextFilePath,
+        agentCommand,
+        agentInputMode: launchAgent === "codex" ? "argument" : "stdin",
+        sessionName,
+      });
+      recordPtyBridgeSpawned(diagnosticContext, {
+        deploymentId: deployment.id,
+        sessionName,
+      });
+    } else {
+      const port = await allocatePort(db);
+      // Reserve the port in the DB *before* spawning so concurrent launches
+      // see it and pick a different port (fixes #198 TOCTOU race).
+      reserveTtydPort(db, deployment.id, port);
+      const { pid } = await spawnTtyd({
+        port,
+        workspacePath: workspace.path,
+        contextFilePath,
+        agentCommand,
+        agentInputMode: launchAgent === "codex" ? "argument" : "stdin",
+        sessionName,
+      });
+      updateTtydInfo(db, deployment.id, port, pid);
+      recordTtydSpawned(diagnosticContext, {
+        deploymentId: deployment.id,
+        sessionName,
+        ttydPort: port,
+        ttydPid: pid,
+      });
+      ttydPort = port;
+    }
   } catch (err) {
     recordLaunchSpawnFailed(diagnosticContext, {
       deploymentId: deployment.id,
@@ -287,6 +310,7 @@ export async function executeLaunch(
     branchName: options.branchName,
     workspacePath: workspace.path,
     contextFilePath,
+    terminalBackend,
     ttydPort,
     labelWarning,
   };

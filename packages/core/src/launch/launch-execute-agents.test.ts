@@ -21,15 +21,19 @@ vi.mock("./workspace.js", () => ({
   prepareWorkspace: prepareWorkspaceSpy,
 }));
 
-const { verifyTtydSpy, spawnTtydSpy, allocatePortSpy } = vi.hoisted(() => ({
+const { verifyTtydSpy, verifyTmuxSpy, spawnTtydSpy, spawnPtyBridgeSessionSpy, allocatePortSpy } = vi.hoisted(() => ({
   verifyTtydSpy: vi.fn(),
+  verifyTmuxSpy: vi.fn(),
   spawnTtydSpy: vi.fn(async () => ({ pid: 12345, port: 7700 })),
+  spawnPtyBridgeSessionSpy: vi.fn(),
   allocatePortSpy: vi.fn(async () => 7700),
 }));
 
 vi.mock("./ttyd.js", () => ({
   verifyTtyd: verifyTtydSpy,
+  verifyTmux: verifyTmuxSpy,
   spawnTtyd: spawnTtydSpy,
+  spawnPtyBridgeSession: spawnPtyBridgeSessionSpy,
   allocatePort: allocatePortSpy,
   tmuxSessionName: (repo: string, issueNumber: number) =>
     `issuectl-${repo}-${issueNumber}`,
@@ -103,9 +107,12 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
   let db: Database.Database;
 
   beforeEach(() => {
+    delete process.env.ISSUECTL_PTY_BRIDGE;
     prepareWorkspaceSpy.mockClear();
     verifyTtydSpy.mockClear();
+    verifyTmuxSpy.mockClear();
     spawnTtydSpy.mockClear();
+    spawnPtyBridgeSessionSpy.mockClear();
     allocatePortSpy.mockClear();
     reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
@@ -264,5 +271,60 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       .prepare("SELECT agent FROM deployments WHERE repo_id = ? AND issue_number = ?")
       .get(repo.id, 44) as { agent: string };
     expect(row.agent).toBe("codex");
+  });
+
+  it("records a pty bridge deployment and skips ttyd when the experiment is enabled", async () => {
+    process.env.ISSUECTL_PTY_BRIDGE = "1";
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    const result = await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 45,
+      agent: "codex",
+      branchName: "pty-bridge",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+    }));
+
+    expect(verifyTmuxSpy).toHaveBeenCalledTimes(1);
+    expect(verifyTtydSpy).not.toHaveBeenCalled();
+    expect(allocatePortSpy).not.toHaveBeenCalled();
+    expect(reserveTtydPortSpy).not.toHaveBeenCalled();
+    expect(spawnTtydSpy).not.toHaveBeenCalled();
+    expect(updateTtydInfoSpy).not.toHaveBeenCalled();
+    expect(spawnPtyBridgeSessionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspacePath: "/tmp/fake-workspace",
+        contextFilePath: "/tmp/fake-context.md",
+        agentCommand: expect.stringMatching(/(^|\/)codex$/),
+        agentInputMode: "argument",
+        sessionName: "issuectl-api-45",
+      }),
+    );
+    expect(result.ttydPort).toBeNull();
+
+    const row = db
+      .prepare("SELECT terminal_backend, ttyd_port, ttyd_pid, state FROM deployments WHERE repo_id = ? AND issue_number = ?")
+      .get(repo.id, 45) as { terminal_backend: string; ttyd_port: number | null; ttyd_pid: number | null; state: string };
+    expect(row).toEqual({
+      terminal_backend: "pty_bridge",
+      ttyd_port: null,
+      ttyd_pid: null,
+      state: "active",
+    });
+    expect(recordDiagnosticEventSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        event: "pty.bridge_spawned",
+        deploymentId: result.deploymentId,
+        sessionName: "issuectl-api-45",
+      }),
+    );
   });
 });

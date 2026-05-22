@@ -76,6 +76,18 @@ export function recordTtydSpawned(
   });
 }
 
+export function recordPtyBridgeSpawned(
+  ctx: LaunchDiagnosticContext,
+  data: { deploymentId: number; sessionName: string },
+): void {
+  recordDiagnosticEventSafely(ctx.db, {
+    ...baseEvent(ctx),
+    level: "info",
+    event: "pty.bridge_spawned",
+    ...data,
+  });
+}
+
 export function recordLaunchSpawnFailed(
   ctx: LaunchDiagnosticContext,
   data: { deploymentId: number; sessionName: string; error: unknown },
