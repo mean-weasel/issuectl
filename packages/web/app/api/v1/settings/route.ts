@@ -18,6 +18,7 @@ const EDITABLE_KEYS: readonly SettingKey[] = [
   "cache_ttl",
   "worktree_dir",
   "launch_agent",
+  "terminal_backend",
   "claude_extra_args",
   "codex_extra_args",
   "default_repo_id",
@@ -32,6 +33,9 @@ function validateSettingValue(
   const trimmed = value.trim();
   if (key === "launch_agent" && trimmed !== "claude" && trimmed !== "codex") {
     return "Launch agent must be claude or codex";
+  }
+  if (key === "terminal_backend" && trimmed !== "ttyd" && trimmed !== "pty_bridge") {
+    return "Terminal backend must be ttyd or pty_bridge";
   }
   if (key === "claude_extra_args") {
     const result = validateClaudeArgs(trimmed);

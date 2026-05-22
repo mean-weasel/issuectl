@@ -63,13 +63,14 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings).toHaveLength(8);
+    expect(settings).toHaveLength(9);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
     expect(keys).toContain("cache_ttl");
     expect(keys).toContain("worktree_dir");
     expect(keys).toContain("launch_agent");
+    expect(keys).toContain("terminal_backend");
     expect(keys).toContain("claude_extra_args");
     expect(keys).toContain("codex_extra_args");
     expect(keys).toContain("idle_grace_period");
@@ -85,6 +86,11 @@ describe("seedDefaults", () => {
     seedDefaults(db);
     expect(getSetting(db, "launch_agent")).toBe("claude");
     expect(getSetting(db, "codex_extra_args")).toBe("");
+  });
+
+  it("seedDefaults keeps ttyd as the terminal backend default", () => {
+    seedDefaults(db);
+    expect(getSetting(db, "terminal_backend")).toBe("ttyd");
   });
 
   it("uses INSERT OR IGNORE — does not overwrite existing values", () => {

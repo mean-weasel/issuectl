@@ -1,0 +1,417 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "PTY Bridge Rollout Controls"
+  slug: "pty-bridge-rollout-controls"
+  kind: specific
+  tranche: "Make PTY bridge backend selection visible, safely opt-in, and measurable before broader dogfooding."
+  status: done
+  oracle:
+    signal: "A verified ttyd/PT bridge launch comparison flow shows backend selection before launch, records backend per deployment, leaves active deployments on their original backend after setting changes, and exposes backend-grouped diagnostics/reporting without logging sensitive terminal data."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Focused tests, Playwright/manual QA evidence, and diagnostics/reporting output map backend visibility, immutable active deployment backend behavior, and comparison telemetry back to the oracle."
+  intake:
+    original_request: "Plan the backend selection visibility and safer opt-in controls work with $goalbuddy:goal-prep."
+    interpreted_outcome: "Prepare a GoalBuddy board for the next PTY bridge Phase 3 rollout-controls tranche."
+    input_shape: specific
+    audience: "issuectl maintainers dogfooding and debugging issue launch terminal sessions"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused tests, Playwright/manual QA evidence, and diagnostics/telemetry output prove backend selection visibility, safe opt-in behavior, and ttyd versus PTY bridge comparison signals."
+    likely_misfire: "Adding another hidden env flag or static label while users still cannot tell what backend a launch will use or whether changing the setting could affect active sessions."
+    blind_spots_considered:
+      - "Backend choice may belong in env, repo settings, launch UI, or all three."
+      - "Active deployments must be immutable by recorded backend even after rollout setting changes."
+      - "Telemetry must avoid terminal input/output, tokens, command strings, context, and environment."
+      - "Apple clients and CLI launches may need compatibility with any API or settings changes."
+      - "Live manual QA must stay within approved issuectl test repositories."
+    existing_plan_facts:
+      - "ttyd remains the default backend."
+      - "PTY bridge remains opt-in and feature-flagged for this tranche."
+      - "Existing PTY diagnostics, status strip, visual polish, stale cleanup, and tmux durability must be preserved."
+      - "This is Phase 3 rollout control work from docs/specs/2026-05-21-pty-bridge-terminal-design.md."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/pty-bridge-rollout-controls/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/pty-bridge-rollout-controls"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Map current backend selection, launch UI/API surfaces, diagnostics/reporting data, tests, and compatibility risks for safer PTY bridge rollout controls."
+    inputs:
+      - "docs/goals/pty-bridge-rollout-controls/goal.md"
+      - "docs/specs/2026-05-21-pty-bridge-terminal-design.md"
+      - "Current launch, deployment, workbench, diagnostics, CLI, and Apple-client surfaces"
+      - "Recent PTY bridge diagnostics/status/polish/cleanup receipts"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not launch real sessions outside approved issuectl test repositories."
+      - "Use diagnostics-first evidence for terminal/session behavior."
+      - "Preserve ttyd as default and PTY bridge as opt-in."
+      - "Do not propose logging terminal input/output, tokens, command strings, context, or environment."
+    expected_output:
+      - "File/path map for backend selection, launch request handling, deployment persistence, workbench launch UI, diagnostics CLI/reporting, tests, and Apple/CLI compatibility."
+      - "Assessment of env-only versus settings/UI-backed rollout controls for this tranche."
+      - "Recommended largest safe first Worker slice with allowed_files, verify commands, Playwright/manual QA acceptance criteria, and stop_if conditions."
+      - "Risks or unknowns that require Judge review before implementation."
+    receipt:
+      result: done
+      summary: "Mapped the current rollout-control surface. Backend selection is currently env-only in core launch, persisted per deployment, returned through launch APIs, and visible only after launch through deployment/session UI. Workbench settings and launch options do not show or control the backend before launch, and the diagnostics CLI can filter timelines but cannot summarize backend comparison metrics."
+      evidence:
+        - "packages/core/src/launch/launch.ts"
+        - "packages/core/src/db/deployments.ts"
+        - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.ts"
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/SettingsFocus.tsx"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/lib/workbench-data.ts"
+        - "packages/cli/src/commands/diag.ts"
+        - "apple/IssueCTLShared/Models/Deployment.swift"
+      file_map:
+        - "packages/core/src/launch/launch.ts selects terminalBackend from ISSUECTL_PTY_BRIDGE, verifies tmux for pty_bridge or ttyd for ttyd, records the selected backend in deployments, and returns terminalBackend/ttydPort."
+        - "packages/core/src/db/deployments.ts persists terminal_backend and defaults missing values to ttyd."
+        - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.ts validates launch input, delegates to executeLaunch, and returns terminalBackend/ttydPort."
+        - "packages/web/components/workbench/IssueFocus.tsx renders launch options and receives terminalBackend only after launch; it does not show the prospective backend before launch."
+        - "packages/web/components/workbench/SettingsFocus.tsx exposes launch agent/settings but no terminal backend default."
+        - "packages/web/components/workbench/TerminalFocus.tsx and InstancePane.tsx show active deployment backend/status after launch."
+        - "packages/web/lib/workbench-data.ts includes editable settings and active deployments but no computed terminal backend default."
+        - "packages/cli/src/commands/diag.ts supports list/tail/show filters but no backend-grouped rollup."
+        - "apple/IssueCTLShared/Models/Deployment.swift and Mac launch/session UI are ttyd-port shaped and do not decode terminalBackend yet."
+      assessment:
+        - "Env-only rollout control is safe for core behavior but too hidden for dogfooding because users cannot see the backend before launching."
+        - "A persistent settings-backed default would improve UI clarity but needs compatibility work because settings keys are typed in core, web settings routes, workbench payloads, and Apple settings models."
+        - "The largest safe first slice should add a typed terminal backend default setting while preserving env override semantics and ttyd as default."
+        - "Active deployment immutability is already mostly preserved by persisted terminal_backend; the next slice should add tests proving changing settings affects only new launch calls."
+        - "Backend comparison telemetry can be delivered first as a diagnostics CLI report over existing safe events and deployment backend metadata, without schema changes or logging terminal data."
+      recommended_worker:
+        objective: "Add a default terminal backend setting and Workbench launch visibility/control for new launches, keep ISSUECTL_PTY_BRIDGE as an override, preserve active deployment backend immutability, and add a diagnostics backend-summary CLI over existing events."
+        allowed_files:
+          - "packages/core/src/types.ts"
+          - "packages/core/src/db/settings.ts"
+          - "packages/core/src/db/settings.test.ts"
+          - "packages/core/src/launch/launch.ts"
+          - "packages/core/src/launch/launch-execute-agents.test.ts"
+          - "packages/core/src/launch/launch-terminal-backend.test.ts"
+          - "packages/web/lib/workbench-data.ts"
+          - "packages/web/app/api/v1/settings/route.ts"
+          - "packages/web/app/api/v1/settings/route.test.ts"
+          - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts"
+          - "packages/web/components/workbench/workbench-types.ts"
+          - "packages/web/components/workbench/workbench-api.ts"
+          - "packages/web/components/workbench/SettingsFocus.tsx"
+          - "packages/web/components/workbench/IssueFocus.tsx"
+          - "packages/web/components/workbench/WorkbenchShell.module.css"
+          - "packages/web/e2e/workbench.spec.ts"
+          - "packages/cli/src/commands/diag.ts"
+          - "packages/cli/src/commands/diag.test.ts"
+          - "packages/cli/src/commands/diag-summary.ts"
+          - "packages/cli/src/commands/diag-summary.test.ts"
+      verify:
+        - "pnpm --dir packages/core test -- src/db/settings.test.ts src/launch/launch-execute-agents.test.ts"
+        - "pnpm --dir packages/web test -- app/api/v1/settings/route.test.ts 'app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts'"
+        - "pnpm --dir packages/cli test -- src/commands/diag.test.ts"
+        - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+        - "pnpm --dir packages/core typecheck"
+        - "pnpm --dir packages/web typecheck"
+        - "pnpm --dir packages/cli typecheck"
+        - "pnpm --dir packages/web lint"
+      acceptance:
+        - "Workbench settings shows terminal backend default with ttyd default and PTY bridge experimental option."
+        - "Issue launch options show the backend that will be used before launch."
+        - "Launch API/core tests prove ttyd remains default, settings can select pty_bridge for new launches, and ISSUECTL_PTY_BRIDGE=1 still forces pty_bridge."
+        - "A test proves an existing active deployment keeps its recorded backend when the default setting changes."
+        - "Diagnostics CLI can summarize safe backend comparison counts such as launch/activation/first-output/failure events by backend using existing sanitized data."
+      risks:
+        - "Apple clients currently treat nil ttydPort as not ready and do not decode terminalBackend, so this tranche should avoid making PTY bridge the default for Apple paths."
+        - "If settings-backed selection requires a database migration beyond seeded key defaults, Judge should split the slice."
+        - "A diagnostics summary that cannot infer backend from existing events/deployments may need a narrower event-safety task first."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate Scout findings and choose the largest safe useful implementation slice for backend selection visibility, opt-in controls, and comparison telemetry."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and non-negotiable constraints"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Reject any slice that changes ttyd as the default."
+      - "Reject any slice that can alter active deployment backends after launch."
+      - "Reject telemetry that logs terminal input/output, tokens, command strings, context, or environment."
+      - "Prefer a vertical dogfood-enabling slice over helper-only work."
+    expected_output:
+      - "Decision: approved, revise, or blocked."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "Playwright/manual QA acceptance criteria."
+      - "Diagnostics/reporting acceptance criteria."
+      - "stop_if conditions."
+      - "Whether a follow-up Judge is required before broader rollout or default changes."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approve one vertical rollout-controls Worker slice. The slice is broad enough to make PTY dogfooding safer: typed backend default, Workbench settings and launch-option visibility, preserved env override, immutable persisted deployment backend behavior, and a backend summary diagnostics command. It does not change ttyd as default or broaden PTY rollout."
+      rationale:
+        - "Env-only selection is too hidden for manual QA and dogfooding because launch options do not show the prospective backend."
+        - "A settings-backed default is reversible and affects only new launches when executeLaunch snapshots the selected backend into the deployment row."
+        - "The diagnostics CLI already reads the local database, so a backend summary can be implemented without schema changes or logging terminal I/O."
+        - "Apple clients should remain compatible because ttyd remains default and JSON decoding tolerates additional launch response/settings fields; making PTY default for Apple is explicitly out of scope."
+      worker:
+        objective: "Add a safe terminal backend rollout control: typed default setting, Workbench settings selector, pre-launch backend visibility in issue launch options, core/API tests proving default/override/new-launch behavior, and a diagnostics backend-summary CLI over existing safe events."
+        allowed_files:
+          - "packages/core/src/types.ts"
+          - "packages/core/src/db/settings.ts"
+          - "packages/core/src/db/settings.test.ts"
+          - "packages/core/src/launch/launch.ts"
+          - "packages/core/src/launch/launch-execute-agents.test.ts"
+          - "packages/web/lib/workbench-data.ts"
+          - "packages/web/app/api/v1/settings/route.ts"
+          - "packages/web/app/api/v1/settings/route.test.ts"
+          - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts"
+          - "packages/web/components/workbench/workbench-types.ts"
+          - "packages/web/components/workbench/workbench-api.ts"
+          - "packages/web/components/workbench/SettingsFocus.tsx"
+          - "packages/web/components/workbench/IssueFocus.tsx"
+          - "packages/web/components/workbench/WorkbenchShell.module.css"
+          - "packages/web/e2e/workbench.spec.ts"
+          - "packages/cli/src/commands/diag.ts"
+          - "packages/cli/src/commands/diag.test.ts"
+        verify:
+          - "pnpm --dir packages/core test -- src/db/settings.test.ts src/launch/launch-execute-agents.test.ts src/launch/launch-terminal-backend.test.ts"
+          - "pnpm --dir packages/web test -- app/api/v1/settings/route.test.ts 'app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts'"
+          - "pnpm --dir packages/cli test -- src/commands/diag.test.ts src/commands/diag-summary.test.ts"
+          - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+          - "pnpm --dir packages/core typecheck"
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/cli typecheck"
+          - "pnpm --dir packages/web lint"
+        acceptance:
+          - "ttyd remains the seeded/default terminal backend."
+          - "ISSUECTL_PTY_BRIDGE=1 continues to force PTY bridge for new launches."
+          - "When no env override is set, a validated terminal_backend setting selects the backend for new launches."
+          - "Workbench settings exposes Terminal backend with ttyd and PTY bridge labels, with PTY clearly experimental."
+          - "Issue launch options show the backend that will be used before clicking Launch issue."
+          - "Tests prove active deployment rows retain their recorded terminalBackend and the UI displays that recorded backend after launch."
+          - "Diagnostics CLI exposes a backend-grouped summary using only event names, statuses, deployment IDs, timestamps, and safe aggregate data."
+      stop_if:
+        - "Implementation requires changing ttyd as the default backend."
+        - "Implementation requires migrating or mutating active deployment backends after launch."
+        - "Implementation requires logging terminal input/output, tokens, command strings, context, or environment."
+        - "Diagnostics summary cannot infer backend from safe existing data and deployment metadata."
+        - "Apple or CLI launch compatibility requires a separate API contract decision."
+      follow_up_gate: "A later Judge decision is required before any default switch, Apple PTY enablement, or repo/user-specific rollout policy beyond the default setting."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute the Judge-approved terminal backend rollout-control implementation slice."
+    allowed_files:
+      - "packages/core/src/types.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/db/settings.test.ts"
+      - "packages/core/src/launch/launch.ts"
+      - "packages/core/src/launch/launch-execute-agents.test.ts"
+      - "packages/core/src/launch/launch-terminal-backend.test.ts"
+      - "packages/web/lib/workbench-data.ts"
+      - "packages/web/app/api/v1/settings/route.ts"
+      - "packages/web/app/api/v1/settings/route.test.ts"
+      - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts"
+      - "packages/web/components/workbench/workbench-types.ts"
+      - "packages/web/components/workbench/workbench-api.ts"
+      - "packages/web/components/workbench/SettingsFocus.tsx"
+      - "packages/web/components/workbench/IssueFocus.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/cli/src/commands/diag.ts"
+      - "packages/cli/src/commands/diag.test.ts"
+      - "packages/cli/src/commands/diag-summary.ts"
+      - "packages/cli/src/commands/diag-summary.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- src/db/settings.test.ts src/launch/launch-execute-agents.test.ts src/launch/launch-terminal-backend.test.ts"
+      - "pnpm --dir packages/web test -- app/api/v1/settings/route.test.ts 'app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts'"
+      - "pnpm --dir packages/cli test -- src/commands/diag.test.ts src/commands/diag-summary.test.ts"
+      - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Need to change ttyd as the default backend."
+      - "Need to mutate active deployment backend behavior after launch."
+      - "Need to log terminal input/output, tokens, command strings, context, or environment."
+      - "Behavior is ambiguous between env, settings, launch UI, CLI, or Apple clients."
+      - "Focused verification fails twice for the same cause."
+    receipt:
+      result: done
+      summary: "Implemented the approved rollout-control slice. New launches now use a validated terminal_backend setting unless ISSUECTL_PTY_BRIDGE=1 forces PTY bridge, Workbench settings exposes the default, issue launch options show the prospective backend, and diag summary reports backend-grouped lifecycle counts from safe existing diagnostics/deployment data."
+      changed_files:
+        - "packages/core/src/types.ts"
+        - "packages/core/src/db/settings.ts"
+        - "packages/core/src/db/settings.test.ts"
+        - "packages/core/src/launch/launch.ts"
+        - "packages/core/src/launch/launch-execute-agents.test.ts"
+        - "packages/core/src/launch/launch-terminal-backend.test.ts"
+        - "packages/web/lib/workbench-data.ts"
+        - "packages/web/app/api/v1/settings/route.ts"
+        - "packages/web/app/api/v1/settings/route.test.ts"
+        - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts"
+        - "packages/web/components/workbench/workbench-types.ts"
+        - "packages/web/components/workbench/SettingsFocus.tsx"
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+        - "packages/cli/src/commands/diag.ts"
+        - "packages/cli/src/commands/diag.test.ts"
+        - "packages/cli/src/commands/diag-summary.ts"
+        - "packages/cli/src/commands/diag-summary.test.ts"
+      implementation:
+        - "Added terminal_backend to SettingKey and default settings with ttyd as the seeded default."
+        - "executeLaunch now snapshots a selected backend from ISSUECTL_PTY_BRIDGE=1 or terminal_backend, then persists it on the deployment row."
+        - "Workbench settings now shows a Terminal backend selector with TTYD and PTY bridge (experimental)."
+        - "Workbench issue launch options now show the backend that will be used before launching."
+        - "Workbench payload carries the effective terminal backend default, including the PTY env override."
+        - "Added diag summary to group safe lifecycle counts by ttyd, pty_bridge, or unknown backend."
+        - "Split new tests into focused files so max-lines lint remains clean."
+      commands:
+        - cmd: "pnpm --dir packages/core test -- src/db/settings.test.ts src/launch/launch-execute-agents.test.ts src/launch/launch-terminal-backend.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- app/api/v1/settings/route.test.ts 'app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts'"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test -- src/commands/diag.test.ts src/commands/diag-summary.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core build"
+          status: pass
+        - cmd: "pnpm --dir packages/cli build"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/cli lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm --dir packages/cli exec issuectl diag summary --since 7d --json"
+          status: pass
+      notes:
+        - "No real issue launch/manual QA was run during this Worker; the Playwright harness covered both backend UI paths without touching non-test repos."
+        - "Diagnostics summary against the local journal produced backend groups for pty_bridge, ttyd, and unknown."
+        - "A later Judge decision is still required before any default switch, Apple PTY enablement, or repo/user-specific rollout policy."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the rollout-controls tranche is complete against the original user outcome and goal oracle."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Playwright/manual QA evidence"
+      - "Diagnostics/reporting evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if backend selection remains invisible before launch."
+      - "Reject completion if changing defaults could affect active deployments."
+      - "Reject completion if comparison telemetry cannot distinguish ttyd from PTY bridge outcomes."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "oracle mapping"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "The rollout-controls tranche is complete. The implementation makes backend selection visible before launch, keeps ttyd as the default, preserves env-forced PTY opt-in, snapshots backend per deployment, proves active deployment backend immutability, and adds backend-grouped diagnostics reporting without logging terminal content or secrets."
+      oracle_mapping:
+        - requirement: "Backend selection visible before launch."
+          evidence: "IssueFocus renders Terminal backend for new launch; focused Playwright asserts TTYD in the ttyd flow and PTY bridge experimental in the PTY flow."
+        - requirement: "ttyd remains default."
+          evidence: "seedDefaults sets terminal_backend=ttyd; Workbench E2E seed uses ttyd; core tests pass default ttyd behavior."
+        - requirement: "PTY bridge remains opt-in/feature-flagged."
+          evidence: "executeLaunch uses terminal_backend only for new launches and ISSUECTL_PTY_BRIDGE=1 remains a PTY override; no default switch was introduced."
+        - requirement: "Active deployments keep their recorded backend."
+          evidence: "launch-terminal-backend.test.ts proves an existing ttyd deployment remains ttyd after the default changes to pty_bridge while a new launch uses pty_bridge."
+        - requirement: "Diagnostics/reporting compares ttyd and PTY bridge outcomes."
+          evidence: "diag summary groups safe lifecycle counts by backend; CLI tests cover formatting and local journal command returned pty_bridge, ttyd, and unknown groups."
+        - requirement: "No terminal content or secrets logged."
+          evidence: "The diagnostics summary reads existing DiagnosticEvent fields and deployment terminal_backend metadata; it adds no terminal I/O, token, command, context, or environment logging."
+        - requirement: "Verification covers both backend launch flows."
+          evidence: "Focused Playwright passed for checks worktree status and launches an issue with selected context, and launches an issue with the PTY bridge backend."
+      verification:
+        - "PASS pnpm --dir packages/core test -- src/db/settings.test.ts src/launch/launch-execute-agents.test.ts src/launch/launch-terminal-backend.test.ts"
+        - "PASS pnpm --dir packages/web test -- app/api/v1/settings/route.test.ts 'app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts'"
+        - "PASS pnpm --dir packages/cli test -- src/commands/diag.test.ts src/commands/diag-summary.test.ts"
+        - "PASS pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"checks worktree status and launches an issue with selected context|launches an issue with the PTY bridge backend\""
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/cli typecheck"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/cli lint"
+        - "PASS git diff --check"
+      follow_up:
+        - "Before any default switch, run a separate Judge-approved live dogfood pass against the two approved issuectl test repos."
+        - "Apple PTY enablement remains a separate compatibility tranche."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

@@ -53,6 +53,7 @@ export type WorkbenchRepo = {
   badgeCount: number;
   deployedCount: number;
   launchAgent: LaunchAgent | null;
+  terminalBackendDefault?: TerminalBackend;
   issueError: string | null;
   issuesFromCache: boolean;
   issuesCachedAt: string | null;

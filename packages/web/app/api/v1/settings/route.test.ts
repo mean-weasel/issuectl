@@ -57,6 +57,7 @@ describe("/api/v1/settings", () => {
   it("GET includes launch agent and codex args settings", async () => {
     getSettings.mockReturnValue([
       { key: "launch_agent", value: "codex" },
+      { key: "terminal_backend", value: "pty_bridge" },
       { key: "codex_extra_args", value: "--sandbox danger-full-access" },
       { key: "api_token", value: "secret" },
     ]);
@@ -67,6 +68,7 @@ describe("/api/v1/settings", () => {
     expect(response.status).toBe(200);
     expect(json.settings).toMatchObject({
       launch_agent: "codex",
+      terminal_backend: "pty_bridge",
       codex_extra_args: "--sandbox danger-full-access",
     });
     expect(json.settings.api_token).toBeUndefined();
@@ -76,6 +78,7 @@ describe("/api/v1/settings", () => {
     const response = await PATCH(
       makePatchRequest({
         launch_agent: "codex",
+        terminal_backend: "pty_bridge",
         codex_extra_args: " --ask-for-approval never ",
       }),
     );
@@ -84,6 +87,7 @@ describe("/api/v1/settings", () => {
     expect(response.status).toBe(200);
     expect(json).toEqual({ success: true });
     expect(setSetting).toHaveBeenCalledWith(expect.anything(), "launch_agent", "codex");
+    expect(setSetting).toHaveBeenCalledWith(expect.anything(), "terminal_backend", "pty_bridge");
     expect(setSetting).toHaveBeenCalledWith(
       expect.anything(),
       "codex_extra_args",
@@ -97,6 +101,15 @@ describe("/api/v1/settings", () => {
 
     expect(response.status).toBe(400);
     expect(json.error).toMatch(/launch_agent/i);
+    expect(setSetting).not.toHaveBeenCalled();
+  });
+
+  it("PATCH rejects an invalid terminal_backend", async () => {
+    const response = await PATCH(makePatchRequest({ terminal_backend: "shell" }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toMatch(/terminal_backend/i);
     expect(setSetting).not.toHaveBeenCalled();
   });
 

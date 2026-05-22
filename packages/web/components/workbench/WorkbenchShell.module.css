@@ -1233,6 +1233,35 @@
   overflow-wrap: anywhere;
 }
 
+.backendPreview {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: rgba(255, 255, 255, 0.24);
+  color: var(--paper-ink-muted);
+  font-size: 13px;
+}
+
+.backendPreview span {
+  font: 700 10px var(--paper-mono);
+  text-transform: uppercase;
+}
+
+.backendPreview strong {
+  color: var(--paper-ink);
+  font-weight: 700;
+}
+
+.backendPreview em {
+  color: var(--paper-accent);
+  font-size: 12px;
+}
+
 .issueFocusGrid button {
   justify-self: start;
   min-height: 36px;

@@ -267,6 +267,7 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("cache_ttl", "99999");
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("branch_pattern", "issue-{number}-{slug}");
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("launch_agent", "codex");
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("terminal_backend", "ttyd");
 
     for (const item of repos) {
       db.prepare(
@@ -302,6 +303,15 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
         ).run(item.id, issue.number, issue.priority, Date.now());
       }
     }
+  } finally {
+    db.close();
+  }
+}
+
+function setWorkbenchSetting(path: string, key: string, value: string): void {
+  const db = new Database(path);
+  try {
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
   } finally {
     db.close();
   }
@@ -421,6 +431,7 @@ test("direct-load workbench settings bootstraps the API token before client acti
             cache_ttl: "99999",
             worktree_dir: "/tmp/worktrees",
             launch_agent: "codex",
+            terminal_backend: "ttyd",
             claude_extra_args: "--verbose",
             codex_extra_args: "",
             idle_grace_period: "300",
@@ -438,6 +449,7 @@ test("direct-load workbench settings bootstraps the API token before client acti
       cache_ttl: "120",
       worktree_dir: "/tmp/worktrees",
       launch_agent: "codex",
+      terminal_backend: "ttyd",
       claude_extra_args: "--verbose",
       codex_extra_args: "",
       idle_grace_period: "300",
@@ -810,6 +822,7 @@ test("keeps compact state-changing workbench workflows inside the viewport", asy
             cache_ttl: "99999",
             worktree_dir: "/tmp/worktrees",
             launch_agent: "codex",
+            terminal_backend: "ttyd",
             claude_extra_args: "--verbose",
             codex_extra_args: "",
             idle_grace_period: "300",
@@ -826,6 +839,7 @@ test("keeps compact state-changing workbench workflows inside the viewport", asy
       cache_ttl: "120",
       worktree_dir: "",
       launch_agent: "codex",
+      terminal_backend: "ttyd",
       claude_extra_args: "",
       codex_extra_args: "",
       idle_grace_period: "",
@@ -2824,6 +2838,7 @@ test("renders settings mode with health and saves settings through APIs", async 
             cache_ttl: "99999",
             worktree_dir: "/tmp/worktrees",
             launch_agent: "codex",
+            terminal_backend: "ttyd",
             claude_extra_args: "--verbose",
             codex_extra_args: "",
             idle_grace_period: "300",
@@ -2839,6 +2854,7 @@ test("renders settings mode with health and saves settings through APIs", async 
       cache_ttl: "120",
       worktree_dir: "/tmp/worktrees",
       launch_agent: "codex",
+      terminal_backend: "ttyd",
       claude_extra_args: "--verbose",
       codex_extra_args: "",
       idle_grace_period: "300",
@@ -3484,6 +3500,7 @@ test("checks worktree status and launches an issue with selected context", async
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Codex", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Claude Code", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Terminal backend for new launch")).toContainText("TTYD");
   await expect(page.getByLabel("Launch options").getByText("Existing repo")).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Git worktree")).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Fresh clone")).toBeVisible();
@@ -3528,6 +3545,7 @@ test("checks worktree status and launches an issue with selected context", async
 });
 
 test("launches an issue with the PTY bridge backend and keeps the terminal session navigable", async ({ page }) => {
+  setWorkbenchSetting(dbPath, "terminal_backend", "pty_bridge");
   await installClipboardCapture(page);
   await installFakePtyWebSocket(page);
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -3594,6 +3612,8 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
   await gotoWorkbenchWithRetry(page);
   await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expect(page.getByLabel("Terminal backend for new launch")).toContainText("PTY bridge");
+  await expect(page.getByLabel("Terminal backend for new launch")).toContainText("experimental");
   await page.getByRole("button", { name: "Launch issue" }).click();
 
   await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-instances-pane", "visible");

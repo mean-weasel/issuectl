@@ -33,6 +33,7 @@ const WORKBENCH_SETTING_KEYS: readonly Exclude<SettingKey, "api_token">[] = [
   "cache_ttl",
   "worktree_dir",
   "launch_agent",
+  "terminal_backend",
   "claude_extra_args",
   "codex_extra_args",
   "default_repo_id",
@@ -59,7 +60,7 @@ export async function getWorkbenchPayload({
   const settings = readWorkbenchSettings(db);
   const [user, workbenchRepos] = await Promise.all([
     includeUser ? readCurrentUser() : Promise.resolve({ login: null, error: null }),
-    readWorkbenchRepos(db, repos, activeDeployments, previews),
+    readWorkbenchRepos(db, repos, activeDeployments, previews, settings),
   ]);
 
   return {
@@ -75,11 +76,17 @@ export async function getWorkbenchPayload({
 
 function readWorkbenchSettings(db: unknown): WorkbenchSettings {
   const allowed = new Set<string>(WORKBENCH_SETTING_KEYS);
-  return Object.fromEntries(
+  const settings = Object.fromEntries(
     getSettings(db as Parameters<typeof getSettings>[0])
       .filter((setting) => allowed.has(setting.key))
       .map((setting) => [setting.key, setting.value]),
   ) as WorkbenchSettings;
+  return {
+    ...settings,
+    terminal_backend: process.env.ISSUECTL_PTY_BRIDGE === "1"
+      ? "pty_bridge"
+      : settings.terminal_backend ?? "ttyd",
+  };
 }
 
 async function readCurrentUser(): Promise<WorkbenchUser> {
@@ -109,6 +116,7 @@ async function readWorkbenchRepos(
   repos: Repo[],
   deployments: ActiveDeploymentWithRepo[],
   previews: Record<string, WorkbenchPreview>,
+  settings: WorkbenchSettings,
 ): Promise<WorkbenchRepo[]> {
   return mapLimit(repos, DEFAULT_REPO_FANOUT, async (repo) => {
     const repoDeployments = sortDeploymentsByRunningState(
@@ -124,6 +132,7 @@ async function readWorkbenchRepos(
       );
       return buildWorkbenchRepo({
         repo,
+        terminalBackendDefault: terminalBackendDefault(settings),
         repoDeployments,
         priorities,
         repoPreviews,
@@ -141,6 +150,7 @@ async function readWorkbenchRepos(
       });
       return buildWorkbenchRepo({
         repo,
+        terminalBackendDefault: terminalBackendDefault(settings),
         repoDeployments,
         priorities,
         repoPreviews,
@@ -175,6 +185,7 @@ function previewRank(
 
 function buildWorkbenchRepo(input: {
   repo: Repo;
+  terminalBackendDefault: WorkbenchRepo["terminalBackendDefault"];
   repoDeployments: ActiveDeploymentWithRepo[];
   priorities: IssuePriority[];
   repoPreviews: Record<string, WorkbenchPreview>;
@@ -196,6 +207,7 @@ function buildWorkbenchRepo(input: {
     badgeCount: input.repoDeployments.length,
     deployedCount: input.repoDeployments.length,
     launchAgent: input.repoDeployments[0]?.agent ?? null,
+    terminalBackendDefault: input.terminalBackendDefault,
     issueError: input.issueError,
     issuesFromCache: input.issuesFromCache,
     issuesCachedAt: input.issuesCachedAt,
@@ -206,6 +218,10 @@ function buildWorkbenchRepo(input: {
       summarizeIssue(issue, priorityByIssue.get(issue.number) ?? "normal", activeIssueNumbers),
     ),
   };
+}
+
+function terminalBackendDefault(settings: WorkbenchSettings): WorkbenchRepo["terminalBackendDefault"] {
+  return settings.terminal_backend === "pty_bridge" ? "pty_bridge" : "ttyd";
 }
 
 function summarizeIssue(
