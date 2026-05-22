@@ -3442,6 +3442,104 @@ test("checks worktree status and launches an issue with selected context", async
   await page.goto("about:blank");
 });
 
+test("launches an issue with the PTY bridge backend and keeps the terminal session navigable", async ({ page }) => {
+  await installFakePtyWebSocket(page);
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+  await page.route("**/api/v1/worktrees/status?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ exists: true, dirty: false, path: "/tmp/issuectl-512" }),
+    });
+  });
+  await page.route("**/api/v1/launch/mean-weasel/issuectl/512", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    const body = await route.request().postDataJSON();
+    const { idempotencyKey, ...withoutNonce } = body;
+    expect(withoutNonce).toEqual({
+      agent: "codex",
+      branchName: "issue-512-desktop-instance-manager-workbench",
+      workspaceMode: "worktree",
+      selectedCommentIndices: [0],
+      selectedFilePaths: ["packages/web/app/workbench/page.tsx"],
+      preamble: "Investigate workbench implementation",
+      forceResume: false,
+    });
+    expect(typeof idempotencyKey).toBe("string");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        deploymentId: 409,
+        terminalBackend: "pty_bridge",
+        ttydPort: null,
+      }),
+    });
+  });
+  await page.route("**/api/v1/deployments/409/ensure-ttyd", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        backend: "pty_bridge",
+        deploymentId: 409,
+        terminalToken: "pty-token-409",
+        wsUrl: "/api/terminal/pty/409/ws?terminalToken=pty-token-409",
+      }),
+    });
+  });
+  await expectJsonRequest(page, "**/api/v1/deployments/409/end", "POST", {
+    owner: "mean-weasel",
+    repo: "issuectl",
+    issueNumber: 512,
+  });
+
+  await gotoWorkbenchWithRetry(page);
+  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await page.getByRole("button", { name: "Launch issue" }).click();
+
+  await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-instances-pane", "visible");
+  await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-issues-pane", "collapsed");
+  await expect(page.getByLabel("Session #512")).toBeVisible();
+  await expect(page.locator('iframe[title="Terminal for issue 512"]')).toHaveCount(0);
+  await expect(page.getByRole("application", { name: "Terminal for issue 512" })).toBeVisible();
+  await expect.poll(async () => page.evaluate(() =>
+    (window as Window & { __issuectlPtySocketUrls?: string[] }).__issuectlPtySocketUrls ?? [],
+  )).toContain(
+    `${baseUrl.replace(/^http/, "ws")}/api/terminal/pty/409/ws?terminalToken=pty-token-409`,
+  );
+
+  await page.getByRole("button", { name: "Back to overview" }).click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await page.getByRole("complementary", { name: "Active sessions" }).getByLabel("Session #512").click();
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl&deployment=409$/);
+  await expect(page.getByRole("application", { name: "Terminal for issue 512" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to overview" }).click();
+  const launchedSession = page.getByRole("complementary", { name: "Active sessions" }).getByLabel("Session #512");
+  await launchedSession.getByText("End", { exact: true }).click();
+  await launchedSession.getByRole("button", { name: "End session" }).click();
+  await expect(page.getByLabel("Session #512")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
+  await page.goto("about:blank");
+});
+
 test("defaults launches to fresh clone when a repo has no local path", async ({ page }) => {
   await page.route("**/api/v1/issues/mean-weasel/web/440", async (route) => {
     expect(route.request().method()).toBe("GET");
@@ -3688,6 +3786,61 @@ async function terminalFrameViewportState(page: import("@playwright/test").Page,
     return rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth
       ? "visible-in-viewport"
       : `offscreen:${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.right)},${Math.round(rect.bottom)}`;
+  });
+}
+
+async function installFakePtyWebSocket(page: import("@playwright/test").Page) {
+  await page.addInitScript(() => {
+    const state = window as Window & {
+      __issuectlPtySocketUrls?: string[];
+      __issuectlPtySocketMessages?: string[];
+    };
+    state.__issuectlPtySocketUrls = [];
+    state.__issuectlPtySocketMessages = [];
+
+    class FakePtyWebSocket extends EventTarget {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+
+      readonly url: string;
+      readonly protocol = "";
+      readonly extensions = "";
+      readonly binaryType = "blob";
+      bufferedAmount = 0;
+      readyState = FakePtyWebSocket.CONNECTING;
+
+      constructor(url: string | URL) {
+        super();
+        this.url = String(url);
+        state.__issuectlPtySocketUrls?.push(this.url);
+        queueMicrotask(() => {
+          this.readyState = FakePtyWebSocket.OPEN;
+          this.dispatchEvent(new Event("open"));
+          this.dispatchEvent(new MessageEvent("message", {
+            data: JSON.stringify({ type: "ready" }),
+          }));
+          this.dispatchEvent(new MessageEvent("message", {
+            data: JSON.stringify({ type: "output", data: "pty bridge ready\r\n" }),
+          }));
+        });
+      }
+
+      send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+        state.__issuectlPtySocketMessages?.push(typeof data === "string" ? data : "[binary]");
+      }
+
+      close(code = 1000) {
+        this.readyState = FakePtyWebSocket.CLOSED;
+        this.dispatchEvent(new CloseEvent("close", { code }));
+      }
+    }
+
+    Object.defineProperty(window, "WebSocket", {
+      configurable: true,
+      value: FakePtyWebSocket,
+    });
   });
 }
 

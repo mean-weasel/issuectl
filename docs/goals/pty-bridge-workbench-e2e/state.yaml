@@ -1,0 +1,290 @@
+# GoalBuddy v2 state.yaml
+version: 2
+
+goal:
+  title: "PTY Bridge Workbench E2E"
+  slug: "pty-bridge-workbench-e2e"
+  kind: specific
+  tranche: "Prove the feature-flagged PTY bridge workbench launch and terminal handoff path with focused tests plus local manual diagnostics."
+  status: done
+  oracle:
+    signal: "With ISSUECTL_PTY_BRIDGE=1, a workbench launch routes through PTY websocket attach, survives navigation, supports close/recovery behavior, and leaves diagnostics that explain the lifecycle."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Targeted tests pass and a local manual walkthrough receipt maps launch, attach, navigation, close/recovery, and diagnostics back to the oracle."
+  intake:
+    original_request: "plan it out with $goalbuddy:goal-prep"
+    interpreted_outcome: "Prepare a GoalBuddy board for the next PTY bridge client-side/end-to-end verification tranche."
+    input_shape: specific
+    audience: "issuectl maintainers debugging launch/session reliability"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused automated tests and local flagged manual walkthrough prove PTY bridge workbench launch/session behavior."
+    likely_misfire: "Stopping at response plumbing or type coverage without proving the workbench launch-to-terminal handoff works with null ttyd ports."
+    blind_spots_considered:
+      - "Workbench launch may create a deployment but not route TerminalFocus through PTY websocket attach."
+      - "Session persistence across issue navigation may still assume ttyd ports."
+      - "Close/recovery paths may not record enough diagnostics for failed PTY attach."
+      - "Manual launch tests must remain constrained to approved issuectl test repositories."
+    existing_plan_facts:
+      - "PR #497 merged the feature-flagged core/server launch skeleton."
+      - "The next risk is client-side handoff and local manual verification."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/pty-bridge-workbench-e2e/"
+    command: "npx goalbuddy board docs/goals/pty-bridge-workbench-e2e"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Map existing workbench launch, terminal focus, PTY websocket, diagnostics, and E2E test coverage relevant to PTY bridge launch/session behavior."
+    inputs:
+      - "PR #497 merged behavior and current repository files."
+      - "Workbench launch and terminal components."
+      - "Existing web/core tests and E2E specs."
+      - "Diagnostics journal CLI instructions in AGENTS.md."
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Prefer concrete file-path evidence and existing test names."
+      - "Do not launch real issue sessions during Scout."
+    expected_output:
+      - "Coverage map for launch result, deployment creation, TerminalFocus PTY attach, navigation persistence, close/recovery, and diagnostics."
+      - "Identified gaps and risk ranking."
+      - "Candidate Worker slices with likely allowed_files and verification commands."
+    receipt:
+      result: done
+      summary: "Mapped PTY bridge launch/session coverage. Core launch and ensure-terminal unit paths exist, and ttyd workbench launch/navigation E2E exists, but no workbench E2E proves a launch result with terminalBackend=pty_bridge and ttydPort=null routes through PTY websocket attach or survives navigation."
+      evidence:
+        - "packages/core/src/launch/launch-execute-agents.test.ts"
+        - "packages/web/app/api/v1/launch/[owner]/[repo]/[number]/route.test.ts"
+        - "packages/web/lib/ensure-terminal.test.ts"
+        - "packages/web/lib/terminal-auth.test.ts"
+        - "packages/web/lib/pty-terminal-websocket.ts"
+        - "packages/web/components/workbench/IssueFocus.tsx"
+        - "packages/web/components/workbench/TerminalFocus.tsx"
+        - "packages/web/components/workbench/PtyTerminal.tsx"
+        - "packages/web/e2e/workbench.spec.ts"
+      gaps:
+        - "No E2E coverage for launch response terminalBackend=pty_bridge with ttydPort=null."
+        - "No workbench E2E assertion that TerminalFocus renders the xterm PTY application instead of a ttyd iframe."
+        - "No workbench E2E assertion that PTY deployment selection survives issue navigation away and back."
+        - "No workbench E2E close-path coverage for PTY bridge launched sessions."
+      candidate_worker_slices:
+        - "Add a focused workbench E2E PTY bridge launch/session test in packages/web/e2e/workbench.spec.ts."
+        - "Later run a local manual flagged launch and diagnostics inspection against approved issuectl test repositories."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the largest safe first Worker slice for PTY bridge workbench automated coverage."
+    inputs:
+      - "T001 receipt"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Prefer a vertical behavior test slice over helper-only coverage."
+      - "Reject any slice that requires real issue launch outside the approved issuectl test repositories."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify commands"
+      - "stop_if conditions"
+      - "Deferred follow-up tasks"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The largest safe first slice is test-only and vertical: prove the workbench handles a PTY bridge launch result end to end in the mocked E2E harness. This targets the highest-risk handoff without real issue side effects."
+      worker_task: T003
+      allowed_files:
+        - "packages/web/e2e/workbench.spec.ts"
+      verify:
+        - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+        - "pnpm --dir packages/web typecheck"
+        - "pnpm --dir packages/web lint"
+      stop_if:
+        - "Need files outside packages/web/e2e/workbench.spec.ts."
+        - "Playwright cannot mock the PTY websocket attach deterministically in this harness."
+        - "The test would require real issue creation or launch outside approved issuectl test repositories."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Add a focused workbench E2E test proving a PTY bridge launch response creates a null-port deployment, renders the PTY terminal application through websocket attach, survives issue navigation away/back, and can be ended."
+    allowed_files:
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The test requires real issue creation or launch outside approved issuectl test repositories."
+      - "Playwright cannot mock the PTY websocket attach deterministically in this harness."
+      - "Verification fails twice for the same cause."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/e2e/workbench.spec.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+      summary: "Added a focused mocked workbench E2E that launches issue #512 with terminalBackend=pty_bridge and ttydPort=null, verifies no ttyd iframe is used, verifies the PTY terminal application opens with the expected websocket URL, navigates away/back through issue and session state, and ends the session from the active sessions pane."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Run a local feature-flagged manual launch walkthrough and diagnostics inspection for the PTY bridge path."
+    allowed_files:
+      - "docs/goals/pty-bridge-workbench-e2e/state.yaml"
+      - "docs/goals/pty-bridge-workbench-e2e/notes/**"
+    verify:
+      - "ISSUECTL_PTY_BRIDGE=1 local web launch walkthrough against an approved issuectl test repository"
+      - "pnpm --dir packages/cli exec issuectl diag list --limit 50"
+      - "pnpm --dir packages/cli exec issuectl diag show --deployment <deployment-id>"
+    stop_if:
+      - "No approved issuectl test repository is available."
+      - "The walkthrough would create or mutate issues outside the approved test repositories."
+      - "A launch/session failure occurs and diagnostics are insufficient to localize the first impossible transition."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/goals/pty-bridge-workbench-e2e/state.yaml"
+      commands:
+        - cmd: "ISSUECTL_PTY_BRIDGE=1 pnpm --dir packages/cli exec issuectl web --port 3897"
+          status: pass
+        - cmd: "POST /api/v1/launch/mean-weasel/issuectl-test-repo/169"
+          status: pass
+        - cmd: "POST /api/v1/deployments/115/ensure-ttyd"
+          status: pass
+        - cmd: "Node websocket attach to /api/terminal/pty/115/ws"
+          status: pass
+        - cmd: "pnpm --dir packages/cli exec issuectl diag show --deployment 115"
+          status: pass
+      summary: "Ran the flagged PTY bridge walkthrough against approved test repo mean-weasel/issuectl-test-repo#169. The first deployment 114 localized a node-pty attach failure to posix_spawnp failed because the packaged macOS spawn-helper was not executable. After local chmod validation, deployment 115 launched with terminalBackend=pty_bridge and ttydPort=null, ensure returned a PTY websocket URL, websocket attach saw ready plus terminal output, diagnostics recorded pty.bridge_attach_requested, pty.ws_connected, pty.bridge_attached, pty.first_output_seen, pty.ws_closed, and pty.process_exit, then deployments 114 and 115 were ended and the test tmux session was killed."
+      deployment_ids:
+        failed_attach: 114
+        passed_attach: 115
+      issue: "mean-weasel/issuectl-test-repo#169"
+      correlation_ids:
+        failed_attach: "c0429211-3419-4094-93d3-9a7365bb7417"
+        passed_attach: "47fdeb00-1844-460e-80a7-b3a72cc74660"
+      follow_up_needed: "Add a source-level guard so PTY bridge attach fixes or reports non-executable node-pty spawn-helper before spawning."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make PTY bridge attach self-heal non-executable node-pty macOS spawn-helper permissions and cover the guard with focused tests."
+    allowed_files:
+      - "packages/web/lib/pty-terminal-websocket.ts"
+      - "packages/web/lib/pty-terminal-websocket.test.ts"
+      - "packages/web/lib/node-pty-spawn-helper.ts"
+      - "packages/web/lib/pty-diagnostics-sanitize.ts"
+    verify:
+      - "pnpm --dir packages/web test -- pty-terminal-websocket"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "Need dependency or lockfile changes."
+      - "Need files outside allowed_files."
+      - "The guard cannot be tested without invoking real node-pty native spawning."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/pty-terminal-websocket.ts"
+        - "packages/web/lib/node-pty-spawn-helper.ts"
+        - "packages/web/lib/pty-diagnostics-sanitize.ts"
+        - "packages/web/lib/pty-terminal-websocket.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- pty-terminal-websocket"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
+          status: pass
+      summary: "Added a macOS node-pty spawn-helper guard before PTY attach. The guard resolves node-pty's packaged spawn-helper, chmods it to 0755 when the executable bit is missing, logs the self-heal, and is covered without invoking native PTY spawning. Split the sanitizer out so pty-terminal-websocket.ts stays under the 300-line lint limit."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the PTY bridge workbench E2E tranche satisfies the oracle."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Manual walkthrough diagnostics note if created"
+    constraints:
+      - "Read-only."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if tests pass but no manual flagged launch/diagnostics proof exists."
+      - "Reject completion if the PTY path still falls back to ttyd assumptions."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "The tranche satisfies the oracle. Automated coverage proves the PTY bridge workbench launch response renders the PTY terminal, preserves session navigation, and ends the session. Manual flagged diagnostics on approved test repo mean-weasel/issuectl-test-repo#169 proved launch through websocket attach and cleanup. The discovered node-pty spawn-helper install hazard now has a focused self-healing source guard and tests."
+      evidence:
+        - "T003 mocked workbench E2E passed."
+        - "T004 deployment 115 diagnostics recorded launch.requested, workspace.prepared, deployment.recorded, pty.bridge_spawned, deployment.activated, pty.bridge_attach_requested, pty.ws_connected, pty.bridge_attached, pty.first_output_seen, pty.ws_closed, and pty.process_exit."
+        - "T005 unit/typecheck/lint/focused E2E passed."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T005
+    commands:
+      - "pnpm --dir packages/web test -- pty-terminal-websocket"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/web exec playwright test e2e/workbench.spec.ts --project=desktop-chromium -g \"launches an issue with the PTY bridge backend\""
