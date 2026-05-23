@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type Database from "better-sqlite3";
 import {
+  getWebhookEventByDelivery,
   getRepoWebhookConfigById,
   getSetting,
   mergeWebhookIntent,
@@ -120,6 +121,20 @@ export async function handleGithubWebhookRequest(
   });
 
   if (recorded.deduped) {
+    const intentId = repairDedupedWebhookIntent(db, {
+      deliveryId,
+      repoId,
+      eventType,
+      action,
+      targetType,
+      targetNumber,
+      desiredHeadSha,
+    });
+    if (intentId !== null) {
+      writeJson(res, 200, { ok: true, deduped: true, intentId });
+      return true;
+    }
+
     writeJson(res, 200, { ok: true, deduped: true });
     return true;
   }
@@ -131,12 +146,7 @@ export async function handleGithubWebhookRequest(
     action &&
     GATING_RELEVANT_EVENTS.has(`${eventType}:${action}`)
   ) {
-    const debounceSeconds = Number(
-      getSetting(db, "webhook_debounce_seconds") ?? "60",
-    );
-    const debounceMs = Number.isFinite(debounceSeconds)
-      ? Math.max(0, debounceSeconds) * 1000
-      : 60_000;
+    const debounceMs = getWebhookDebounceMs(db);
     intentId = mergeWebhookIntent(db, {
       repoId,
       targetType,
@@ -150,6 +160,59 @@ export async function handleGithubWebhookRequest(
 
   writeJson(res, 200, { ok: true, eventId: recorded.eventId, intentId });
   return true;
+}
+
+function repairDedupedWebhookIntent(
+  db: Database.Database,
+  input: {
+    deliveryId: string;
+    repoId: number;
+    eventType: string;
+    action: string | null;
+    targetType: WebhookTargetType | null;
+    targetNumber: number | null;
+    desiredHeadSha: string | null;
+  },
+): number | null {
+  const event = getWebhookEventByDelivery(db, {
+    deliveryId: input.deliveryId,
+    repoId: input.repoId,
+  });
+  if (!event || event.intentId !== null) return null;
+  if (
+    !event.targetType ||
+    event.targetNumber === null ||
+    !event.action ||
+    !GATING_RELEVANT_EVENTS.has(`${event.eventType}:${event.action}`)
+  ) {
+    return null;
+  }
+
+  const debounceMs = getWebhookDebounceMs(db);
+  return mergeWebhookIntent(db, {
+    repoId: event.repoId,
+    targetType: event.targetType,
+    targetNumber: event.targetNumber,
+    signalAt: event.receivedAt,
+    scheduledAt: event.receivedAt + debounceMs,
+    desiredHeadSha:
+      input.eventType === event.eventType &&
+      input.action === event.action &&
+      input.targetType === event.targetType &&
+      input.targetNumber === event.targetNumber
+        ? input.desiredHeadSha
+        : null,
+    eventId: event.id,
+  });
+}
+
+function getWebhookDebounceMs(db: Database.Database): number {
+  const debounceSeconds = Number(
+    getSetting(db, "webhook_debounce_seconds") ?? "60",
+  );
+  return Number.isFinite(debounceSeconds)
+    ? Math.max(0, debounceSeconds) * 1000
+    : 60_000;
 }
 
 export function classifyWebhookTarget(payload: unknown): {

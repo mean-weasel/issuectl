@@ -264,6 +264,21 @@ export function recordWebhookEvent(
   }
 }
 
+export function getWebhookEventByDelivery(
+  db: Database.Database,
+  input: { deliveryId: string; repoId: number },
+): WebhookEvent | undefined {
+  const row = db
+    .prepare(
+      `SELECT * FROM webhook_events
+       WHERE delivery_id = ?
+         AND repo_id = ?
+       LIMIT 1`,
+    )
+    .get(input.deliveryId, input.repoId) as WebhookEventRow | undefined;
+  return row ? rowToWebhookEvent(row) : undefined;
+}
+
 export function mergeWebhookIntent(
   db: Database.Database,
   input: MergeWebhookIntentInput,

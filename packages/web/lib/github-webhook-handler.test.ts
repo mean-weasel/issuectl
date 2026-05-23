@@ -7,6 +7,7 @@ import {
   addRepo,
   initSchema,
   listWebhookEvents,
+  recordWebhookEvent,
   seedDefaults,
   updateRepoWebhookSettings,
 } from "@issuectl/core";
@@ -194,6 +195,86 @@ describe("handleGithubWebhookRequest", () => {
     expect(first.statusCode).toBe(200);
     expect(JSON.parse(second.body)).toEqual({ ok: true, deduped: true });
     expect(listWebhookEvents(db)).toHaveLength(1);
+  });
+
+  it("repairs a deduped gating event that was recorded without an intent", async () => {
+    const body = JSON.stringify(issuesOpenedPayload());
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-repair",
+      repoId: repo.id,
+      eventType: "issues",
+      action: "opened",
+      senderLogin: "octocat",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    const res = createResponse();
+
+    await handleGithubWebhookRequest(
+      db,
+      createSignedRequest({
+        repoId: repo.id,
+        body,
+        deliveryId: "delivery-repair",
+      }),
+      res,
+    );
+
+    const responseBody = JSON.parse(res.body) as {
+      ok: boolean;
+      deduped: boolean;
+      intentId: number;
+    };
+    const event = listWebhookEvents(db)[0];
+
+    expect(res.statusCode).toBe(200);
+    expect(responseBody).toEqual({
+      ok: true,
+      deduped: true,
+      intentId: 1,
+    });
+    expect(event?.intentId).toBe(responseBody.intentId);
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get(),
+    ).toEqual({ count: 1 });
+  });
+
+  it("preserves dedupe semantics for non-gating events", async () => {
+    const body = JSON.stringify({
+      action: "edited",
+      repository: { full_name: "mean-weasel/issuectl" },
+      issue: { number: 506 },
+      sender: { login: "octocat" },
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-non-gating",
+      repoId: repo.id,
+      eventType: "issues",
+      action: "edited",
+      senderLogin: "octocat",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    const res = createResponse();
+
+    await handleGithubWebhookRequest(
+      db,
+      createSignedRequest({
+        repoId: repo.id,
+        body,
+        deliveryId: "delivery-non-gating",
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ ok: true, deduped: true });
+    expect(listWebhookEvents(db)[0]?.intentId).toBeNull();
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get(),
+    ).toEqual({ count: 0 });
   });
 
   it("records metadata-only events by default", async () => {

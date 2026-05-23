@@ -128,6 +128,7 @@ export {
 } from "./db/diagnostics.js";
 export {
   recordWebhookEvent,
+  getWebhookEventByDelivery,
   mergeWebhookIntent,
   claimDueWebhookIntent,
   recoverExpiredWebhookIntentLeases,

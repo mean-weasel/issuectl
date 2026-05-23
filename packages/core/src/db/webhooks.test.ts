@@ -7,6 +7,7 @@ import { seedDefaults } from "./settings.js";
 import { addRepo } from "./repos.js";
 import {
   claimDueWebhookIntent,
+  getWebhookEventByDelivery,
   listWebhookEvents,
   mergeWebhookIntent,
   recordWebhookEvent,
@@ -88,6 +89,42 @@ describe("webhook DB helpers", () => {
     expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_events").get()).toEqual({
       count: 1,
     });
+  });
+
+  it("finds an existing event by delivery id and repo", () => {
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-1",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      senderLogin: "octocat",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+
+    expect(
+      getWebhookEventByDelivery(db, {
+        deliveryId: "delivery-1",
+        repoId,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        id: 1,
+        deliveryId: "delivery-1",
+        repoId,
+        eventType: "issues",
+        action: "opened",
+        intentId: null,
+      }),
+    );
+
+    expect(
+      getWebhookEventByDelivery(db, {
+        deliveryId: "delivery-1",
+        repoId: repoId + 1,
+      }),
+    ).toBeUndefined();
   });
 
   it("merges repeated signals into one active intent", () => {
