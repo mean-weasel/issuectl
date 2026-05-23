@@ -268,6 +268,7 @@ export type LaunchIssueRequest = {
   selectedFilePaths: string[];
   preamble?: string;
   forceResume: boolean;
+  terminalBackend?: TerminalBackend;
   idempotencyKey: string;
 };
 
