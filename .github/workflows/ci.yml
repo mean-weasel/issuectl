@@ -153,7 +153,7 @@ jobs:
         run: pnpm turbo build --filter=@issuectl/core
       - name: Verify gh CLI auth
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         # GH_TOKEN env var satisfies both `gh auth status` here and the
         # canRun() probe inside both specs (which call `gh auth token`).
         # Specs hard-fail in CI if canRun() returns false, so a
@@ -163,7 +163,7 @@ jobs:
         run: pnpm --filter @issuectl/web exec playwright install --with-deps chromium webkit
       - name: Run mobile UX regression spec
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         # Specs run in separate invocations because two `next dev`
         # processes against the same packages/web/.next/cache/webpack/
         # collide on pack file rename, even sequentially. Each
@@ -171,55 +171,55 @@ jobs:
         run: pnpm --filter @issuectl/web exec playwright test mobile-ux-patterns.spec.ts --project=mobile-chromium
       - name: Run launch UI spec
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test launch-ui.spec.ts --project=mobile-chromium
       - name: Run viewport health spec
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test viewport-health.spec.ts --project=mobile-chromium
       - name: Run compact workbench WebKit dynamic journey
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "preserves compact issue and terminal context across keyboard navigation history and reload"
       - name: Run compact workbench WebKit issue mutation and terminal navigation
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact issue mutations and session navigation coherent end to end"
       - name: Run compact workbench WebKit issue mutation failure recovery
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact issue mutation failures visible and recoverable in WebKit"
       - name: Run compact workbench WebKit dense issue detail content
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact dense issue detail content readable in WebKit"
       - name: Run compact workbench WebKit invalid deep-link recovery
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "recovers compact invalid deep links to a usable overview"
       - name: Run compact workbench WebKit cross-mode quick create persistence
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "preserves compact quick create drafts across cross-mode navigation in WebKit"
       - name: Run compact workbench WebKit terminal recovery
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "recovers compact unavailable terminal sessions without showing the sessions pane"
       - name: Run compact workbench WebKit failure states
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact empty and service failure states stable in WebKit"
       - name: Run compact workbench WebKit degraded refresh states
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact degraded refresh states usable in WebKit"
       - name: Run compact workbench WebKit stale refresh reconciliation
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "reconciles compact stale overview data after refresh in WebKit"
       - name: Run command sheet WebKit scroll lock
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test mobile-ux-patterns.spec.ts --project=mobile-webkit --grep "body is scroll-locked when command sheet is open"
       - name: Upload Playwright report on failure
         if: failure()

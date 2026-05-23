@@ -100,7 +100,7 @@ jobs:
 
       - name: Verify gh CLI auth
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: gh auth status
 
       - name: Install Playwright browsers
@@ -108,7 +108,7 @@ jobs:
 
       - name: Run mobile Chromium E2E
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           pnpm --filter @issuectl/web exec playwright test \
             mobile-ux-patterns.spec.ts \
@@ -119,7 +119,7 @@ jobs:
 
       - name: Run mobile WebKit E2E
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           pnpm --filter @issuectl/web exec playwright test \
             mobile-ux-patterns.spec.ts \
