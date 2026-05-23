@@ -18,7 +18,14 @@ export type SettingKey =
   | "default_repo_id"
   | "api_token"
   | "idle_grace_period"
-  | "idle_threshold";
+  | "idle_threshold"
+  | "webhook_debounce_seconds"
+  | "webhook_max_debounce_seconds"
+  | "max_webhook_launches_per_minute"
+  | "max_webhook_queue_depth"
+  | "max_webhook_intent_age_minutes"
+  | "max_concurrent_webhook_agents"
+  | "public_webhook_base_url";
 
 export type Setting = {
   key: SettingKey;
@@ -31,6 +38,20 @@ import type { GitHubIssue } from "./github/types.js";
 export type DeploymentState = "pending" | "active";
 export type LaunchAgent = "claude" | "codex";
 export type TerminalBackend = "ttyd" | "pty_bridge";
+
+export type WebhookTargetType = "issue" | "pr";
+
+export type WebhookIntentStatus =
+  | "pending"
+  | "processing"
+  | "deferred"
+  | "launched"
+  | "skipped_locked"
+  | "skipped_optout"
+  | "expired"
+  | "failed";
+
+export type WebhookPayloadMode = "metadata" | "raw";
 
 export type Deployment = {
   id: number;
