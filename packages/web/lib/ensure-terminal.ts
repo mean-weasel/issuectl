@@ -52,14 +52,6 @@ function ensurePtyBridgeTerminal(
   deploymentId: number,
   deployment: NonNullable<DeploymentWithTerminalBackend>,
 ): EnsureTerminalResult {
-  if (process.env.ISSUECTL_PTY_BRIDGE !== "1") {
-    return {
-      alive: false,
-      backend: "pty_bridge",
-      error: "PTY bridge terminal backend is not implemented yet",
-    };
-  }
-
   try {
     const repo = getRepoById(db, deployment.repoId);
     if (!repo) {

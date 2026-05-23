@@ -78,16 +78,17 @@ describe("ensureTerminalForDeployment", () => {
     });
   });
 
-  it("does not route pty_bridge deployments through ttyd when the experiment flag is disabled", async () => {
-    getDeploymentById.mockReturnValue({ id: 1, terminalBackend: "pty_bridge" });
+  it("returns PTY bridge attach metadata for recorded PTY deployments without the global flag", async () => {
+    getDeploymentById.mockReturnValue({ id: 1, repoId: 1, issueNumber: 7, terminalBackend: "pty_bridge" });
 
     await expect(ensureTerminalForDeployment(1)).resolves.toEqual({
-      alive: false,
       backend: "pty_bridge",
-      error: "PTY bridge terminal backend is not implemented yet",
+      deploymentId: 1,
+      terminalToken: "pty-token",
+      wsUrl: "/api/terminal/pty/1/ws?terminalToken=pty-token",
     });
     expect(ensureTtydForDeployment).not.toHaveBeenCalled();
-    expect(isTmuxSessionAlive).not.toHaveBeenCalled();
+    expect(isTmuxSessionAlive).toHaveBeenCalledWith("issuectl-api-7");
   });
 
   it("returns PTY bridge attach metadata when the experiment flag is enabled", async () => {

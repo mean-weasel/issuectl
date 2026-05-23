@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import type { IncomingMessage } from "node:http";
+import type { Duplex } from "node:stream";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ensureNodePtySpawnHelperExecutable } from "./node-pty-spawn-helper.js";
-import { isPtyBridgeEnabled, parsePtyClientMessage } from "./pty-terminal-websocket.js";
+import { handlePtyUpgrade, isPtyBridgeEnabled, parsePtyClientMessage } from "./pty-terminal-websocket.js";
 
 describe("isPtyBridgeEnabled", () => {
   beforeEach(() => {
@@ -33,6 +35,29 @@ describe("parsePtyClientMessage", () => {
   it("rejects malformed or oversized input", () => {
     expect(parsePtyClientMessage(Buffer.from("{"))).toBeNull();
     expect(parsePtyClientMessage(Buffer.from(JSON.stringify({ type: "input", data: "x".repeat(70_000) })))).toBeNull();
+  });
+});
+
+describe("handlePtyUpgrade", () => {
+  beforeEach(() => {
+    delete process.env.ISSUECTL_PTY_BRIDGE;
+  });
+
+  it("does not reject recorded PTY websocket upgrades only because the global launch flag is disabled", async () => {
+    const writes: string[] = [];
+    const socket = {
+      destroyed: false,
+      write: vi.fn((chunk: string) => {
+        writes.push(chunk);
+      }),
+      destroy: vi.fn(),
+    } as unknown as Duplex;
+    const req = { url: "/api/terminal/pty/1/ws" } as IncomingMessage;
+
+    await handlePtyUpgrade(req, socket, Buffer.alloc(0), 1);
+
+    expect(writes.join("")).toContain("401 Unauthorized");
+    expect(writes.join("")).not.toContain("404 Not Found");
   });
 });
 
