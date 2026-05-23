@@ -6,6 +6,7 @@ const ACTIVE_INTENT_STATUSES: WebhookIntentStatus[] = [
   "processing",
   "deferred",
 ];
+const MERGE_TRANSACTION_ATTEMPTS = 3;
 
 export type RecordWebhookEventInput = {
   deliveryId: string;
@@ -106,6 +107,14 @@ function isSqliteConstraint(error: unknown): boolean {
     "code" in error &&
     (error.code === "SQLITE_CONSTRAINT_PRIMARYKEY" ||
       error.code === "SQLITE_CONSTRAINT_UNIQUE")
+  );
+}
+
+function isSqliteBusySnapshot(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error.code === "SQLITE_BUSY" || error.code === "SQLITE_BUSY_SNAPSHOT")
   );
 }
 
@@ -256,6 +265,23 @@ export function recordWebhookEvent(
 }
 
 export function mergeWebhookIntent(
+  db: Database.Database,
+  input: MergeWebhookIntentInput,
+): number {
+  let lastBusyError: unknown;
+  for (let attempt = 0; attempt < MERGE_TRANSACTION_ATTEMPTS; attempt += 1) {
+    try {
+      return mergeWebhookIntentOnce(db, input);
+    } catch (error) {
+      if (!isSqliteBusySnapshot(error)) throw error;
+      lastBusyError = error;
+    }
+  }
+
+  throw lastBusyError;
+}
+
+function mergeWebhookIntentOnce(
   db: Database.Database,
   input: MergeWebhookIntentInput,
 ): number {

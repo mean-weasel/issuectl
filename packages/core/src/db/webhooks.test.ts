@@ -221,6 +221,47 @@ describe("webhook DB helpers", () => {
     ).toEqual({ signal_count: 2, desired_head_sha: "def" });
   });
 
+  it("retries merge in a fresh transaction after sqlite busy snapshot", () => {
+    const originalTransaction = db.transaction.bind(db);
+    let transactionAttempts = 0;
+
+    db.transaction = ((fn: Parameters<typeof db.transaction>[0]) => {
+      const transaction = originalTransaction(fn);
+      if (transactionAttempts === 0) {
+        return ((..._args: unknown[]) => {
+          transactionAttempts += 1;
+          const error = new Error("busy snapshot") as Error & { code: string };
+          error.code = "SQLITE_BUSY_SNAPSHOT";
+          throw error;
+        }) as unknown as ReturnType<typeof db.transaction>;
+      }
+
+      return ((...args: unknown[]) => {
+        transactionAttempts += 1;
+        return transaction(...args);
+      }) as unknown as ReturnType<typeof db.transaction>;
+    }) as typeof db.transaction;
+
+    try {
+      const intentId = mergeWebhookIntent(db, {
+        repoId,
+        targetType: "issue",
+        targetNumber: 508,
+        signalAt: 1_000,
+        scheduledAt: 1_060,
+      });
+
+      expect(intentId).toBe(1);
+      expect(transactionAttempts).toBe(2);
+    } finally {
+      db.transaction = originalTransaction;
+    }
+
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get()).toEqual({
+      count: 1,
+    });
+  });
+
   it("claims and recovers stale processing intents", () => {
     const intentId = mergeWebhookIntent(db, {
       repoId,
