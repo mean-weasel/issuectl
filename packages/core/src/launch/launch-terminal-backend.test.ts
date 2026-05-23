@@ -152,6 +152,74 @@ describe("executeLaunch terminal backend selection", () => {
     expect(row.terminal_backend).toBe("pty_bridge");
   });
 
+  it("uses a per-launch backend override without changing the saved default", async () => {
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "terminal_backend",
+      "ttyd",
+    );
+
+    const result = await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 48,
+      agent: "codex",
+      branchName: "override-pty-bridge",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+      terminalBackend: "pty_bridge",
+    }));
+
+    expect(result.terminalBackend).toBe("pty_bridge");
+    expect(verifyTmuxSpy).toHaveBeenCalledTimes(1);
+    expect(verifyTtydSpy).not.toHaveBeenCalled();
+    expect(spawnPtyBridgeSessionSpy).toHaveBeenCalledTimes(1);
+    expect(spawnTtydSpy).not.toHaveBeenCalled();
+
+    const row = db
+      .prepare("SELECT terminal_backend FROM deployments WHERE repo_id = ? AND issue_number = ?")
+      .get(repo.id, 48) as { terminal_backend: string };
+    expect(row.terminal_backend).toBe("pty_bridge");
+    expect(db.prepare("SELECT value FROM settings WHERE key = ?").get("terminal_backend")).toEqual({ value: "ttyd" });
+  });
+
+  it("lets an explicit ttyd launch override the PTY bridge environment flag", async () => {
+    process.env.ISSUECTL_PTY_BRIDGE = "1";
+    const repo = addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    const result = await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 49,
+      agent: "codex",
+      branchName: "override-ttyd",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+      terminalBackend: "ttyd",
+    }));
+
+    expect(result.terminalBackend).toBe("ttyd");
+    expect(verifyTtydSpy).toHaveBeenCalledTimes(1);
+    expect(verifyTmuxSpy).not.toHaveBeenCalled();
+    expect(spawnTtydSpy).toHaveBeenCalledTimes(1);
+    expect(spawnPtyBridgeSessionSpy).not.toHaveBeenCalled();
+
+    const row = db
+      .prepare("SELECT terminal_backend FROM deployments WHERE repo_id = ? AND issue_number = ?")
+      .get(repo.id, 49) as { terminal_backend: string };
+    expect(row.terminal_backend).toBe("ttyd");
+  });
+
   it("keeps the recorded backend on existing deployments when the default changes", async () => {
     const repo = addRepo(db, {
       owner: "acme",

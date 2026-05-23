@@ -35,6 +35,11 @@ vi.mock("@issuectl/core", () => ({
 import { POST } from "./route";
 
 const params = Promise.resolve({ owner: "owner", repo: "repo", number: "7" });
+const approvedParams = Promise.resolve({
+  owner: "mean-weasel",
+  repo: "issuectl-test-repo",
+  number: "7",
+});
 const baseBody = {
   branchName: "issue-7",
   workspaceMode: "worktree",
@@ -42,8 +47,8 @@ const baseBody = {
   selectedFilePaths: ["src/main.ts"],
 };
 
-function makeRequest(body: unknown): NextRequest {
-  return new NextRequest("http://localhost/api/v1/launch/owner/repo/7", {
+function makeRequest(body: unknown, path = "/api/v1/launch/owner/repo/7"): NextRequest {
+  return new NextRequest(`http://localhost${path}`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -140,6 +145,58 @@ describe("POST /api/v1/launch/[owner]/[repo]/[number]", () => {
       terminalBackend: "pty_bridge",
       ttydPort: null,
     });
+  });
+
+  it("passes a terminal backend override for approved test repositories", async () => {
+    getRepo.mockReturnValue({ id: 1, owner: "mean-weasel", name: "issuectl-test-repo" });
+
+    const response = await POST(
+      makeRequest(
+        { ...baseBody, terminalBackend: "pty_bridge" },
+        "/api/v1/launch/mean-weasel/issuectl-test-repo/7",
+      ),
+      { params: approvedParams },
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(executeLaunch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        terminalBackend: "pty_bridge",
+        correlationId: json.correlationId,
+      }),
+    );
+  });
+
+  it("rejects a terminal backend override for non-test repositories", async () => {
+    const response = await POST(
+      makeRequest({ ...baseBody, terminalBackend: "pty_bridge" }),
+      { params },
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json).toEqual({
+      error: "Terminal backend override is only available for approved issuectl test repositories",
+    });
+    expect(executeLaunch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid terminal backend override", async () => {
+    const response = await POST(
+      makeRequest(
+        { ...baseBody, terminalBackend: "screen" },
+        "/api/v1/launch/mean-weasel/issuectl-test-repo/7",
+      ),
+      { params: approvedParams },
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json).toEqual({ error: "Invalid terminal backend" });
+    expect(executeLaunch).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid launch agent", async () => {

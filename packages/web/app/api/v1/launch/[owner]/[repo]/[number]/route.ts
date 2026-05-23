@@ -12,6 +12,7 @@ import {
   DuplicateInFlightError,
   formatErrorForUser,
   type LaunchAgent,
+  type TerminalBackend,
   type WorkspaceMode,
 } from "@issuectl/core";
 import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
@@ -26,6 +27,7 @@ type LaunchRequestBody = {
   selectedFilePaths: string[];
   preamble?: string;
   forceResume?: boolean;
+  terminalBackend?: TerminalBackend;
   idempotencyKey?: string;
 };
 
@@ -35,6 +37,11 @@ const VALID_WORKSPACE_MODES: WorkspaceMode[] = [
   "clone",
 ];
 const VALID_LAUNCH_AGENTS: LaunchAgent[] = ["claude", "codex"];
+const VALID_TERMINAL_BACKENDS: TerminalBackend[] = ["ttyd", "pty_bridge"];
+const TERMINAL_BACKEND_OVERRIDE_REPOS = new Set([
+  "mean-weasel/issuectl-test-repo",
+  "mean-weasel/issuectl-test-repo-2",
+]);
 
 export async function POST(
   request: NextRequest,
@@ -69,6 +76,15 @@ export async function POST(
   }
   if (body.agent && !VALID_LAUNCH_AGENTS.includes(body.agent)) {
     return NextResponse.json({ error: "Invalid launch agent" }, { status: 400 });
+  }
+  if (body.terminalBackend && !VALID_TERMINAL_BACKENDS.includes(body.terminalBackend)) {
+    return NextResponse.json({ error: "Invalid terminal backend" }, { status: 400 });
+  }
+  if (body.terminalBackend && !TERMINAL_BACKEND_OVERRIDE_REPOS.has(`${owner}/${repo}`)) {
+    return NextResponse.json(
+      { error: "Terminal backend override is only available for approved issuectl test repositories" },
+      { status: 400 },
+    );
   }
   if (!Array.isArray(body.selectedCommentIndices) ||
       body.selectedCommentIndices.some((i) => !Number.isInteger(i) || i < 0)) {
@@ -113,6 +129,7 @@ export async function POST(
         selectedFiles: body.selectedFilePaths,
         preamble: body.preamble || undefined,
         forceResume: body.forceResume,
+        terminalBackend: body.terminalBackend,
         correlationId,
       } as Parameters<typeof executeLaunch>[2] & { correlationId: string };
       const r = await withAuthRetry((octokit) =>

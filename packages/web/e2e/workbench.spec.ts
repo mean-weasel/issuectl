@@ -3501,6 +3501,7 @@ test("checks worktree status and launches an issue with selected context", async
   await expect(page.getByLabel("Launch options").getByText("Codex", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Claude Code", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Terminal backend for new launch")).toContainText("TTYD");
+  await expect(page.getByLabel("Terminal backend for this launch")).toHaveValue("default");
   await expect(page.getByLabel("Launch options").getByText("Existing repo")).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Git worktree")).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Fresh clone")).toBeVisible();
@@ -3545,7 +3546,6 @@ test("checks worktree status and launches an issue with selected context", async
 });
 
 test("launches an issue with the PTY bridge backend and keeps the terminal session navigable", async ({ page }) => {
-  setWorkbenchSetting(dbPath, "terminal_backend", "pty_bridge");
   await installClipboardCapture(page);
   await installFakePtyWebSocket(page);
   await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
@@ -3576,6 +3576,7 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
       selectedFilePaths: ["packages/web/app/workbench/page.tsx"],
       preamble: "Investigate workbench implementation",
       forceResume: false,
+      terminalBackend: "pty_bridge",
     });
     expect(typeof idempotencyKey).toBe("string");
     await route.fulfill({
@@ -3612,6 +3613,8 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
   await gotoWorkbenchWithRetry(page);
   await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+  await expect(page.getByLabel("Terminal backend for new launch")).toContainText("TTYD");
+  await page.getByLabel("Terminal backend for this launch").selectOption("pty_bridge");
   await expect(page.getByLabel("Terminal backend for new launch")).toContainText("PTY bridge");
   await expect(page.getByLabel("Terminal backend for new launch")).toContainText("experimental");
   await page.getByRole("button", { name: "Launch issue" }).click();

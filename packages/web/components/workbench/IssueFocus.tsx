@@ -82,6 +82,7 @@ export function IssueFocus({
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [preamble, setPreamble] = useState("Investigate workbench implementation");
   const [forceResume, setForceResume] = useState(false);
+  const [terminalBackendOverride, setTerminalBackendOverride] = useState<TerminalBackend | "default">("default");
   const [worktreeStatus, setWorktreeStatus] = useState<WorktreeStatusResult | null>(null);
   const [launchMessage, setLaunchMessage] = useState<string | null>(null);
   const [reassignTargetKey, setReassignTargetKey] = useState("");
@@ -118,6 +119,7 @@ export function IssueFocus({
     setSelectedFiles([]);
     setPreamble("Investigate workbench implementation");
     setForceResume(false);
+    setTerminalBackendOverride("default");
     setWorktreeStatus(null);
     setLaunchMessage(null);
     setActionMessage(null);
@@ -156,7 +158,9 @@ export function IssueFocus({
   }, [ref, workspaceMode]);
 
   const loadedIssue = detail?.issue;
-  const selectedBackend = repo.terminalBackendDefault ?? "ttyd";
+  const selectedBackend = terminalBackendOverride === "default"
+    ? repo.terminalBackendDefault ?? "ttyd"
+    : terminalBackendOverride;
   const title = loadedIssue?.title ?? issue.title;
   const titleChanged = titleDraft.trim().length > 0 && titleDraft.trim() !== title;
   const priority = issue.priority;
@@ -520,6 +524,16 @@ export function IssueFocus({
                 <span>Terminal backend</span>
                 <strong>{terminalBackendLabel(selectedBackend)}</strong>
                 {selectedBackend === "pty_bridge" && <em>experimental</em>}
+                <select
+                  aria-label="Terminal backend for this launch"
+                  value={terminalBackendOverride}
+                  disabled={pendingAction !== null}
+                  onChange={(event) => setTerminalBackendOverride(event.target.value as TerminalBackend | "default")}
+                >
+                  <option value="default">Default</option>
+                  <option value="ttyd">TTYD for this launch</option>
+                  <option value="pty_bridge">PTY bridge for this launch</option>
+                </select>
               </div>
             </div>
             <div>
@@ -568,6 +582,7 @@ export function IssueFocus({
                     selectedFilePaths: selectedFiles,
                     preamble,
                     forceResume,
+                    terminalBackend: terminalBackendOverride === "default" ? undefined : terminalBackendOverride,
                     idempotencyKey: newIdempotencyKey(),
                   });
                   const terminalBackend = result.terminalBackend ?? "ttyd";

@@ -53,6 +53,7 @@ export interface LaunchOptions {
   selectedFiles: string[];
   preamble?: string;
   forceResume?: boolean;
+  terminalBackend?: TerminalBackend;
   correlationId?: string;
 }
 
@@ -93,7 +94,7 @@ export async function executeLaunch(
     workspaceMode: options.workspaceMode,
   });
 
-  const terminalBackend = selectTerminalBackend(db);
+  const terminalBackend = selectTerminalBackend(db, options.terminalBackend);
 
   // 0. Verify terminal backend prerequisites.
   if (terminalBackend === "pty_bridge") {
@@ -322,7 +323,11 @@ export { type LaunchContext } from "./context.js";
 export { buildClaudeCommand, buildLaunchAgentCommand } from "./launch-agent-command.js";
 export { expandHome } from "./launch-workspace-setup.js";
 
-function selectTerminalBackend(db: Database.Database): TerminalBackend {
+function selectTerminalBackend(
+  db: Database.Database,
+  override?: TerminalBackend,
+): TerminalBackend {
+  if (override) return override;
   if (process.env.ISSUECTL_PTY_BRIDGE === "1") return "pty_bridge";
   return getSetting(db, "terminal_backend") === "pty_bridge" ? "pty_bridge" : "ttyd";
 }
