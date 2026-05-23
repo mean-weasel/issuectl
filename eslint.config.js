@@ -21,7 +21,7 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     rules: {
       // Max file length — encourages decomposition into focused modules
-      "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
 
       // Type safety
       "@typescript-eslint/no-explicit-any": "warn",
