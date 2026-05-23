@@ -1,5 +1,6 @@
 export type {
   Repo,
+  RepoWebhookConfig,
   Setting,
   SettingKey,
   Deployment,
@@ -33,6 +34,7 @@ export {
   removeRepo,
   getRepo,
   getRepoById,
+  getRepoWebhookConfigById,
   listRepos,
   updateRepo,
   updateRepoWebhookSettings,

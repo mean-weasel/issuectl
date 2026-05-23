@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { Repo } from "../types.js";
+import type { Repo, RepoWebhookConfig } from "../types.js";
 
 type RepoRow = {
   id: number;
@@ -29,7 +29,6 @@ function rowToRepo(row: RepoRow): Repo {
     autoReviewPrs: row.auto_review_prs === 1,
     issueAgent: row.issue_agent as Repo["issueAgent"],
     reviewAgent: row.review_agent as Repo["reviewAgent"],
-    webhookSecret: row.webhook_secret,
     webhookId: row.webhook_id,
     reviewPreamble: row.review_preamble,
     webhookPayloadMode: row.webhook_payload_mode as Repo["webhookPayloadMode"],
@@ -88,6 +87,20 @@ export function getRepoById(
     | RepoRow
     | undefined;
   return row ? rowToRepo(row) : undefined;
+}
+
+export function getRepoWebhookConfigById(
+  db: Database.Database,
+  id: number,
+): RepoWebhookConfig | undefined {
+  const row = db.prepare("SELECT * FROM repos WHERE id = ?").get(id) as
+    | RepoRow
+    | undefined;
+  if (!row) return undefined;
+  return {
+    ...rowToRepo(row),
+    webhookSecret: row.webhook_secret,
+  };
 }
 
 export function listRepos(db: Database.Database): Repo[] {

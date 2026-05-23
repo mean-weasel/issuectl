@@ -11,7 +11,6 @@ export const repo: Repo = {
   autoReviewPrs: false,
   issueAgent: "claude",
   reviewAgent: "claude",
-  webhookSecret: null,
   webhookId: null,
   reviewPreamble: null,
   webhookPayloadMode: "metadata",
