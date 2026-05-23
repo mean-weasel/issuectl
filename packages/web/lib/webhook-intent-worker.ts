@@ -12,13 +12,23 @@ export type WebhookIntentWorkerResult = {
   expired: number;
 };
 
+const DEFAULT_MAX_WEBHOOK_INTENT_AGE_MINUTES = 60;
+
+function parseMaxWebhookIntentAgeMinutes(value: string | undefined): number {
+  const parsed = Number(value ?? String(DEFAULT_MAX_WEBHOOK_INTENT_AGE_MINUTES));
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_MAX_WEBHOOK_INTENT_AGE_MINUTES;
+  }
+  return parsed;
+}
+
 export function runWebhookIntentWorkerOnce(
   db: Database.Database,
   now = Date.now(),
 ): WebhookIntentWorkerResult {
   const recovered = recoverExpiredWebhookIntentLeases(db, now);
-  const maxAgeMinutes = Number(
-    getSetting(db, "max_webhook_intent_age_minutes") ?? "60",
+  const maxAgeMinutes = parseMaxWebhookIntentAgeMinutes(
+    getSetting(db, "max_webhook_intent_age_minutes"),
   );
   const expired = expireOldWebhookIntents(db, now, maxAgeMinutes * 60_000);
   const intent = claimDueWebhookIntent(db, now, 60_000);

@@ -137,6 +137,52 @@ describe("runWebhookIntentWorkerOnce", () => {
     );
   });
 
+  it("uses the fallback max age for invalid setting values", () => {
+    setSetting(db, "max_webhook_intent_age_minutes", "invalid");
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 70_000,
+    });
+
+    const result = runWebhookIntentWorkerOnce(db, 61_000);
+
+    expect(result).toEqual({ claimed: 0, recovered: 0, expired: 0 });
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({
+        status: "pending",
+        processing_started_at: null,
+        lease_expires_at: null,
+        resolved_at: null,
+      }),
+    );
+  });
+
+  it("uses the fallback max age for negative setting values", () => {
+    setSetting(db, "max_webhook_intent_age_minutes", "-1");
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 70_000,
+    });
+
+    const result = runWebhookIntentWorkerOnce(db, 61_000);
+
+    expect(result).toEqual({ claimed: 0, recovered: 0, expired: 0 });
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({
+        status: "pending",
+        processing_started_at: null,
+        lease_expires_at: null,
+        resolved_at: null,
+      }),
+    );
+  });
+
   it("does not launch agents in phase 1", () => {
     const intentId = mergeWebhookIntent(db, {
       repoId,
