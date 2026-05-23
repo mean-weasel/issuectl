@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getRepoWebhookConfigById,
@@ -63,15 +63,27 @@ function makeWebhookEvent(overrides: Partial<WebhookEvent> = {}): WebhookEvent {
   };
 }
 
-function createProgram(): Command {
+function createProgram(): { program: Command; stderr: () => string } {
+  let stderr = "";
   const program = new Command();
-  program.name("issuectl").exitOverride();
+  program
+    .name("issuectl")
+    .exitOverride()
+    .configureOutput({
+      writeErr: (value) => {
+        stderr += value;
+      },
+    });
   registerWebhookCommands(program);
-  return program;
+  return { program, stderr: () => stderr };
 }
 
-async function parseCommand(args: string[]): Promise<string> {
-  const program = createProgram();
+async function parseCommand(args: string[]): Promise<{
+  error?: unknown;
+  stderr: string;
+  stdout: string;
+}> {
+  const { program, stderr } = createProgram();
   let stdout = "";
   const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation((value) => {
     stdout += String(value);
@@ -80,7 +92,9 @@ async function parseCommand(args: string[]): Promise<string> {
 
   try {
     await program.parseAsync(args, { from: "user" });
-    return stdout;
+    return { stderr: stderr(), stdout };
+  } catch (error) {
+    return { error, stderr: stderr(), stdout };
   } finally {
     writeSpy.mockRestore();
   }
@@ -121,13 +135,21 @@ describe("webhook commands", () => {
       } satisfies RepoWebhookConfig;
     });
 
-    const output = await parseCommand(["webhook", "status"]);
+    const result = await parseCommand(["webhook", "status"]);
 
-    expect(output).toContain("mean-weasel/issuectl");
-    expect(output).toContain("secret=set");
-    expect(output).toContain("mean-weasel/issuectl-test");
-    expect(output).toContain("secret=missing");
-    expect(output).not.toContain("super-secret-webhook-value");
+    expect(result.stdout).toContain("mean-weasel/issuectl");
+    expect(result.stdout).toContain("secret=set");
+    expect(result.stdout).toContain("mean-weasel/issuectl-test");
+    expect(result.stdout).toContain("secret=missing");
+    expect(result.stdout).not.toContain("super-secret-webhook-value");
+  });
+
+  it("tail with default limit prints recent webhook events", async () => {
+    vi.mocked(listWebhookEvents).mockReturnValue([makeWebhookEvent()]);
+
+    await parseCommand(["webhook", "tail"]);
+
+    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, 20);
   });
 
   it("tail with limit 1 prints the newest webhook event", async () => {
@@ -143,10 +165,25 @@ describe("webhook commands", () => {
       }),
     ]);
 
-    const output = await parseCommand(["webhook", "tail", "--limit", "1"]);
+    const result = await parseCommand(["webhook", "tail", "--limit", "1"]);
 
     expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, 1);
-    expect(output).toContain("2\tpull_request\tsynchronize\tpr#17");
-    expect(output).not.toContain("issues");
+    expect(result.stdout).toContain("2\tpull_request\tsynchronize\tpr#17");
+    expect(result.stdout).not.toContain("issues");
+  });
+
+  it.each([
+    ["non-numeric", "abc"],
+    ["zero", "0"],
+    ["decimal", "1.5"],
+    ["unsafe integer", "9007199254740992"],
+  ])("rejects %s tail limit before opening the database", async (_, limit) => {
+    const result = await parseCommand(["webhook", "tail", "--limit", limit]);
+
+    expect(result.error).toBeInstanceOf(CommanderError);
+    expect(result.stderr).toContain("--limit must be a positive integer.");
+    expect(result.stderr).not.toContain("at ");
+    expect(requireDb).not.toHaveBeenCalled();
+    expect(listWebhookEvents).not.toHaveBeenCalled();
   });
 });

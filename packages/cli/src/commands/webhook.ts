@@ -6,10 +6,29 @@ import {
 } from "@issuectl/core";
 import { requireDb } from "../utils/db.js";
 
-function parseLimit(value: string | undefined): number {
-  const parsed = Number(value ?? "20");
-  if (!Number.isFinite(parsed)) return 20;
-  return Math.max(1, Math.floor(parsed));
+function parseLimit(value: string): number {
+  const trimmed = value.trim();
+  if (!/^[1-9]\d*$/.test(trimmed)) {
+    throw new Error("--limit must be a positive integer.");
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error("--limit must be a positive integer.");
+  }
+
+  return parsed;
+}
+
+function parseCommandInput<T>(command: Command, parse: () => T): T {
+  try {
+    return parse();
+  } catch (error) {
+    if (error instanceof Error) {
+      command.error(error.message);
+    }
+    throw error;
+  }
 }
 
 export function registerWebhookCommands(program: Command): void {
@@ -21,9 +40,10 @@ export function registerWebhookCommands(program: Command): void {
     .command("tail")
     .description("Show recent webhook events")
     .option("--limit <n>", "Number of events to show", "20")
-    .action((opts: { limit?: string }) => {
+    .action((opts: { limit: string }, command: Command) => {
+      const limit = parseCommandInput(command, () => parseLimit(opts.limit));
       const db = requireDb();
-      const events = listWebhookEvents(db, parseLimit(opts.limit));
+      const events = listWebhookEvents(db, limit);
 
       for (const event of events) {
         process.stdout.write(
