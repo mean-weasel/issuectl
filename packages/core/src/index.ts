@@ -123,6 +123,21 @@ export {
   type DiagnosticIssueFilter,
   type DiagnosticQuery,
 } from "./db/diagnostics.js";
+export {
+  recordWebhookEvent,
+  mergeWebhookIntent,
+  claimDueWebhookIntent,
+  recoverExpiredWebhookIntentLeases,
+  expireOldWebhookIntents,
+  listWebhookEvents,
+} from "./db/webhooks.js";
+export type {
+  RecordWebhookEventInput,
+  RecordWebhookEventResult,
+  MergeWebhookIntentInput,
+  WebhookEvent,
+  WebhookIntent,
+} from "./db/webhooks.js";
 // GitHub client
 export type {
   GitHubUser,
