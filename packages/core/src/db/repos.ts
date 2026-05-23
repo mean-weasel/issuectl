@@ -7,6 +7,14 @@ type RepoRow = {
   name: string;
   local_path: string | null;
   branch_pattern: string | null;
+  auto_launch_issues: number;
+  auto_review_prs: number;
+  issue_agent: string;
+  review_agent: string;
+  webhook_secret: string | null;
+  webhook_id: number | null;
+  review_preamble: string | null;
+  webhook_payload_mode: string;
   created_at: string;
 };
 
@@ -17,6 +25,14 @@ function rowToRepo(row: RepoRow): Repo {
     name: row.name,
     localPath: row.local_path,
     branchPattern: row.branch_pattern,
+    autoLaunchIssues: row.auto_launch_issues === 1,
+    autoReviewPrs: row.auto_review_prs === 1,
+    issueAgent: row.issue_agent as Repo["issueAgent"],
+    reviewAgent: row.review_agent as Repo["reviewAgent"],
+    webhookSecret: row.webhook_secret,
+    webhookId: row.webhook_id,
+    reviewPreamble: row.review_preamble,
+    webhookPayloadMode: row.webhook_payload_mode as Repo["webhookPayloadMode"],
     createdAt: row.created_at,
   };
 }
@@ -96,6 +112,68 @@ export function updateRepo(
   if (updates.branchPattern !== undefined) {
     fields.push("branch_pattern = ?");
     values.push(updates.branchPattern);
+  }
+
+  if (fields.length > 0) {
+    values.push(id);
+    db.prepare(`UPDATE repos SET ${fields.join(", ")} WHERE id = ?`).run(
+      ...values,
+    );
+  }
+
+  const updated = getRepoById(db, id);
+  if (!updated) throw new Error(`Repo with id ${id} not found`);
+  return updated;
+}
+
+export function updateRepoWebhookSettings(
+  db: Database.Database,
+  id: number,
+  updates: Partial<{
+    autoLaunchIssues: boolean;
+    autoReviewPrs: boolean;
+    issueAgent: Repo["issueAgent"];
+    reviewAgent: Repo["reviewAgent"];
+    webhookSecret: string | null;
+    webhookId: number | null;
+    reviewPreamble: string | null;
+    webhookPayloadMode: Repo["webhookPayloadMode"];
+  }>,
+): Repo {
+  const fields: string[] = [];
+  const values: Array<string | number | null> = [];
+
+  if (updates.autoLaunchIssues !== undefined) {
+    fields.push("auto_launch_issues = ?");
+    values.push(updates.autoLaunchIssues ? 1 : 0);
+  }
+  if (updates.autoReviewPrs !== undefined) {
+    fields.push("auto_review_prs = ?");
+    values.push(updates.autoReviewPrs ? 1 : 0);
+  }
+  if (updates.issueAgent !== undefined) {
+    fields.push("issue_agent = ?");
+    values.push(updates.issueAgent);
+  }
+  if (updates.reviewAgent !== undefined) {
+    fields.push("review_agent = ?");
+    values.push(updates.reviewAgent);
+  }
+  if (updates.webhookSecret !== undefined) {
+    fields.push("webhook_secret = ?");
+    values.push(updates.webhookSecret);
+  }
+  if (updates.webhookId !== undefined) {
+    fields.push("webhook_id = ?");
+    values.push(updates.webhookId);
+  }
+  if (updates.reviewPreamble !== undefined) {
+    fields.push("review_preamble = ?");
+    values.push(updates.reviewPreamble);
+  }
+  if (updates.webhookPayloadMode !== undefined) {
+    fields.push("webhook_payload_mode = ?");
+    values.push(updates.webhookPayloadMode);
   }
 
   if (fields.length > 0) {

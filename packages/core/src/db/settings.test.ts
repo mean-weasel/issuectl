@@ -63,7 +63,7 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings).toHaveLength(9);
+    expect(settings).toHaveLength(16);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
@@ -75,6 +75,13 @@ describe("seedDefaults", () => {
     expect(keys).toContain("codex_extra_args");
     expect(keys).toContain("idle_grace_period");
     expect(keys).toContain("idle_threshold");
+    expect(keys).toContain("webhook_debounce_seconds");
+    expect(keys).toContain("webhook_max_debounce_seconds");
+    expect(keys).toContain("max_webhook_launches_per_minute");
+    expect(keys).toContain("max_webhook_queue_depth");
+    expect(keys).toContain("max_webhook_intent_age_minutes");
+    expect(keys).toContain("max_concurrent_webhook_agents");
+    expect(keys).toContain("public_webhook_base_url");
   });
 
   it("seedDefaults sets claude_extra_args to --dangerously-skip-permissions by default", () => {
@@ -103,6 +110,14 @@ describe("seedDefaults", () => {
     seedDefaults(db);
     expect(getSetting(db, "idle_grace_period")).toBe("300");
     expect(getSetting(db, "idle_threshold")).toBe("300");
+  });
+
+  it("seeds webhook defaults", () => {
+    seedDefaults(db);
+    expect(getSetting(db, "webhook_debounce_seconds")).toBe("60");
+    expect(getSetting(db, "webhook_max_debounce_seconds")).toBe("300");
+    expect(getSetting(db, "max_webhook_queue_depth")).toBe("100");
+    expect(getSetting(db, "public_webhook_base_url")).toBe("");
   });
 
   it("is idempotent", () => {

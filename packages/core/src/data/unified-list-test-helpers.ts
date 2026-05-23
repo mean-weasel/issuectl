@@ -7,6 +7,14 @@ export const repo: Repo = {
   name: "api",
   localPath: null,
   branchPattern: null,
+  autoLaunchIssues: false,
+  autoReviewPrs: false,
+  issueAgent: "claude",
+  reviewAgent: "claude",
+  webhookSecret: null,
+  webhookId: null,
+  reviewPreamble: null,
+  webhookPayloadMode: "metadata",
   createdAt: "2026-01-01",
 };
 

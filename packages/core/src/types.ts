@@ -4,6 +4,14 @@ export type Repo = {
   name: string;
   localPath: string | null;
   branchPattern: string | null;
+  autoLaunchIssues: boolean;
+  autoReviewPrs: boolean;
+  issueAgent: LaunchAgent;
+  reviewAgent: LaunchAgent;
+  webhookSecret: string | null;
+  webhookId: number | null;
+  reviewPreamble: string | null;
+  webhookPayloadMode: WebhookPayloadMode;
   createdAt: string;
 };
 

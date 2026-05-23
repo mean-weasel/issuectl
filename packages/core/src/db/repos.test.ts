@@ -8,6 +8,7 @@ import {
   getRepoById,
   listRepos,
   updateRepo,
+  updateRepoWebhookSettings,
 } from "./repos.js";
 import { recordDeployment, getDeploymentsByRepo } from "./deployments.js";
 
@@ -199,5 +200,35 @@ describe("updateRepo", () => {
     expect(() => updateRepo(db, 999, { localPath: "/x" })).toThrow(
       "Repo with id 999 not found",
     );
+  });
+});
+
+describe("updateRepoWebhookSettings", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("updates webhook settings for a repo", () => {
+    const repo = addRepo(db, { owner: "mean-weasel", name: "issuectl" });
+
+    const updated = updateRepoWebhookSettings(db, repo.id, {
+      autoLaunchIssues: true,
+      autoReviewPrs: true,
+      issueAgent: "codex",
+      reviewAgent: "claude",
+      webhookSecret: "secret",
+      webhookId: 123,
+      webhookPayloadMode: "raw",
+    });
+
+    expect(updated.autoLaunchIssues).toBe(true);
+    expect(updated.autoReviewPrs).toBe(true);
+    expect(updated.issueAgent).toBe("codex");
+    expect(updated.reviewAgent).toBe("claude");
+    expect(updated.webhookSecret).toBe("secret");
+    expect(updated.webhookId).toBe(123);
+    expect(updated.webhookPayloadMode).toBe("raw");
   });
 });
