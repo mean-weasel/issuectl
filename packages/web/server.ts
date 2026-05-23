@@ -1,7 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import next from "next";
+import { getDb } from "@issuectl/core";
 import log, { logPath } from "./lib/logger";
+import { handleGithubWebhookRequest, isGithubWebhookRequest } from "./lib/github-webhook-handler";
 import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 import { handlePtyUpgrade, activePtyWsCount } from "./lib/pty-terminal-websocket";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
@@ -75,9 +77,7 @@ function redactSensitiveUrl(rawUrl: string | undefined, host: string | undefined
   }
 }
 
-const server = createServer((req, res) => {
-  logRequest(req, res);
-
+function handleDashboardRequest(req: IncomingMessage, res: ServerResponse): void {
   // LAN auto-switch: redirect tunnel requests from same-network clients.
   // Only process CF header when Host matches the tunnel — prevents spoofing on direct LAN requests.
   const cfHeader = req.headers["cf-connecting-ip"];
@@ -107,6 +107,33 @@ const server = createServer((req, res) => {
     }
     res.end("Internal Server Error");
   });
+}
+
+const server = createServer((req, res) => {
+  logRequest(req, res);
+
+  if (!isGithubWebhookRequest(req.url)) {
+    handleDashboardRequest(req, res);
+    return;
+  }
+
+  handleGithubWebhookRequest(getDb(), req, res)
+    .then((handled) => {
+      if (!handled) {
+        handleDashboardRequest(req, res);
+      }
+    })
+    .catch((err) => {
+      log.error({
+        err,
+        msg: "github_webhook_handler_error",
+        url: redactSensitiveUrl(req.url, req.headers.host),
+      });
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Internal server error" }));
+      }
+    });
 });
 
 // ---------------------------------------------------------------------------
