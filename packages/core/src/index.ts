@@ -35,6 +35,7 @@ export {
   getRepoById,
   listRepos,
   updateRepo,
+  updateRepoWebhookSettings,
 } from "./db/repos.js";
 export {
   listCachedAccessibleRepos,
