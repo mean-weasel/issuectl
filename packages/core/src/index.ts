@@ -1,5 +1,6 @@
 export type {
   Repo,
+  RepoWebhookConfig,
   Setting,
   SettingKey,
   Deployment,
@@ -22,6 +23,9 @@ export type {
   PushDevicePlatform,
   PushNotificationKind,
   PushNotificationPreferences,
+  WebhookTargetType,
+  WebhookIntentStatus,
+  WebhookPayloadMode,
 } from "./types.js";
 export { SORT_MODES } from "./types.js";
 
@@ -33,8 +37,10 @@ export {
   removeRepo,
   getRepo,
   getRepoById,
+  getRepoWebhookConfigById,
   listRepos,
   updateRepo,
+  updateRepoWebhookSettings,
 } from "./db/repos.js";
 export {
   listCachedAccessibleRepos,
@@ -120,6 +126,22 @@ export {
   type DiagnosticIssueFilter,
   type DiagnosticQuery,
 } from "./db/diagnostics.js";
+export {
+  recordWebhookEvent,
+  getWebhookEventByDelivery,
+  mergeWebhookIntent,
+  claimDueWebhookIntent,
+  recoverExpiredWebhookIntentLeases,
+  expireOldWebhookIntents,
+  listWebhookEvents,
+} from "./db/webhooks.js";
+export type {
+  RecordWebhookEventInput,
+  RecordWebhookEventResult,
+  MergeWebhookIntentInput,
+  WebhookEvent,
+  WebhookIntent,
+} from "./db/webhooks.js";
 // GitHub client
 export type {
   GitHubUser,

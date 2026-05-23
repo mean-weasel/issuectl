@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Repo } from "@issuectl/core";
 
 const getDb = vi.hoisted(() => vi.fn());
 const getActiveDeploymentByPort = vi.hoisted(() => vi.fn());
@@ -28,12 +29,19 @@ const deployment = {
   ttydPort: 7700,
   ttydPid: 456,
 };
-const repo = {
+const repo: Repo = {
   id: 9,
   owner: "issuectl-tests",
   name: "issuectl-alpha",
   localPath: "/tmp/repo",
   branchPattern: null,
+  autoLaunchIssues: false,
+  autoReviewPrs: false,
+  issueAgent: "claude",
+  reviewAgent: "claude",
+  webhookId: null,
+  reviewPreamble: null,
+  webhookPayloadMode: "metadata",
   createdAt: "2026-05-21T00:00:00.000Z",
 };
 

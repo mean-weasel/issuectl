@@ -14,6 +14,13 @@ const DEFAULT_SETTINGS: Setting[] = [
   { key: "codex_extra_args", value: "" },
   { key: "idle_grace_period", value: "300" },
   { key: "idle_threshold", value: "300" },
+  { key: "webhook_debounce_seconds", value: "60" },
+  { key: "webhook_max_debounce_seconds", value: "300" },
+  { key: "max_webhook_launches_per_minute", value: "5" },
+  { key: "max_webhook_queue_depth", value: "100" },
+  { key: "max_webhook_intent_age_minutes", value: "60" },
+  { key: "max_concurrent_webhook_agents", value: "2" },
+  { key: "public_webhook_base_url", value: "" },
 ];
 
 export function getSetting(

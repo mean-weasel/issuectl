@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { runWebhookMigration } from "./migrations-webhooks.js";
 import { getSchemaVersion } from "./schema.js";
 
 type Migration = {
@@ -332,18 +333,18 @@ const migrations: Migration[] = [
   {
     version: 16,
     up(db) {
-      const { c } = db
-        .prepare(
-          "SELECT COUNT(*) as c FROM sqlite_master WHERE type = 'table' AND name = 'deployments'",
-        )
-        .get() as { c: number };
+      const { c } = db.prepare(
+        "SELECT COUNT(*) as c FROM sqlite_master WHERE type = 'table' AND name = 'deployments'",
+      ).get() as { c: number };
       if (c === 0) return;
 
-      db.exec(`
-        ALTER TABLE deployments ADD COLUMN terminal_backend TEXT NOT NULL DEFAULT 'ttyd'
-          CHECK (terminal_backend IN ('ttyd', 'pty_bridge'));
-      `);
+      db.exec(`ALTER TABLE deployments ADD COLUMN terminal_backend TEXT NOT NULL DEFAULT 'ttyd'
+        CHECK (terminal_backend IN ('ttyd', 'pty_bridge'));`);
     },
+  },
+  {
+    version: 17,
+    up(db) { runWebhookMigration(db); },
   },
 ];
 
@@ -356,9 +357,7 @@ export function runMigrations(db: Database.Database): void {
   const applyAll = db.transaction(() => {
     for (const migration of pending) {
       migration.up(db);
-      db.prepare("UPDATE schema_version SET version = ?").run(
-        migration.version,
-      );
+      db.prepare("UPDATE schema_version SET version = ?").run(migration.version);
     }
   });
 

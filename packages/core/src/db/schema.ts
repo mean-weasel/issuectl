@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -9,6 +9,14 @@ const CREATE_TABLES = `
     name           TEXT NOT NULL,
     local_path     TEXT,
     branch_pattern TEXT,
+    auto_launch_issues INTEGER NOT NULL DEFAULT 0 CHECK (auto_launch_issues IN (0, 1)),
+    auto_review_prs    INTEGER NOT NULL DEFAULT 0 CHECK (auto_review_prs IN (0, 1)),
+    issue_agent        TEXT NOT NULL DEFAULT 'claude' CHECK (issue_agent IN ('claude', 'codex')),
+    review_agent       TEXT NOT NULL DEFAULT 'claude' CHECK (review_agent IN ('claude', 'codex')),
+    webhook_secret     TEXT,
+    webhook_id         INTEGER,
+    review_preamble    TEXT,
+    webhook_payload_mode TEXT NOT NULL DEFAULT 'metadata' CHECK (webhook_payload_mode IN ('metadata', 'raw')),
     created_at     TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(owner, name)
   );
@@ -32,6 +40,8 @@ const CREATE_TABLES = `
                      CHECK (state IN ('pending', 'active')),
     terminal_backend TEXT NOT NULL DEFAULT 'ttyd'
                      CHECK (terminal_backend IN ('ttyd', 'pty_bridge')),
+    triggered_by     TEXT NOT NULL DEFAULT 'manual'
+                     CHECK (triggered_by IN ('manual', 'webhook', 'comment_command')),
     launched_at      TEXT NOT NULL DEFAULT (datetime('now')),
     ended_at         TEXT,
     ttyd_port        INTEGER,
@@ -134,6 +144,55 @@ const CREATE_TABLES = `
     ON diagnostic_events(event, ts);
   CREATE INDEX IF NOT EXISTS idx_diagnostic_events_correlation
     ON diagnostic_events(correlation_id, ts);
+
+  CREATE TABLE IF NOT EXISTS webhook_deliveries (
+    delivery_id    TEXT PRIMARY KEY,
+    repo_id        INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    event_type     TEXT NOT NULL,
+    received_at    INTEGER NOT NULL,
+    retained_until INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS webhook_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    delivery_id   TEXT NOT NULL UNIQUE REFERENCES webhook_deliveries(delivery_id),
+    repo_id       INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    event_type    TEXT NOT NULL,
+    action        TEXT,
+    sender_login  TEXT,
+    target_type   TEXT CHECK (target_type IN ('issue', 'pr') OR target_type IS NULL),
+    target_number INTEGER,
+    payload_json  TEXT,
+    received_at   INTEGER NOT NULL,
+    intent_id     INTEGER REFERENCES webhook_intents(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_webhook_events_target
+    ON webhook_events(repo_id, target_type, target_number);
+
+  CREATE TABLE IF NOT EXISTS webhook_intents (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    repo_id               INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    target_type           TEXT NOT NULL CHECK (target_type IN ('issue', 'pr')),
+    target_number         INTEGER NOT NULL,
+    first_signal_at       INTEGER NOT NULL,
+    last_signal_at        INTEGER NOT NULL,
+    scheduled_at          INTEGER NOT NULL,
+    processing_started_at INTEGER,
+    lease_expires_at      INTEGER,
+    generation            INTEGER NOT NULL DEFAULT 1,
+    desired_head_sha      TEXT,
+    signal_count          INTEGER NOT NULL DEFAULT 1,
+    status                TEXT NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending', 'processing', 'deferred', 'launched', 'skipped_locked', 'skipped_optout', 'expired', 'failed')),
+    resolved_at           INTEGER,
+    deployment_id         INTEGER REFERENCES deployments(id),
+    failure_reason        TEXT
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_intents_active_target
+    ON webhook_intents(repo_id, target_type, target_number)
+    WHERE status IN ('pending', 'processing', 'deferred');
 
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL

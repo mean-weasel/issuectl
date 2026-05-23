@@ -3,6 +3,7 @@ import { initCommand } from "./commands/init.js";
 import { iosSetupCommand } from "./commands/ios.js";
 import { webCommand } from "./commands/web.js";
 import { registerDiagCommands } from "./commands/diag.js";
+import { registerWebhookCommands } from "./commands/webhook.js";
 import {
   repoAddCommand,
   repoRemoveCommand,
@@ -70,5 +71,6 @@ repo
   .action(repoUpdateCommand);
 
 registerDiagCommands(program);
+registerWebhookCommands(program);
 
 program.parse();
