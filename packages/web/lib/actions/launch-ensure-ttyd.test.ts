@@ -151,6 +151,33 @@ describe("ensureTtyd", () => {
     );
   });
 
+  it("deduplicates concurrent respawn attempts for the same deployment", async () => {
+    getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
+    isTtydAlive.mockReturnValue(false);
+    isTmuxSessionAlive.mockReturnValue(true);
+    let resolveRespawn: (value: { pid: number }) => void = () => {};
+    respawnTtyd.mockReturnValue(new Promise((resolve) => {
+      resolveRespawn = resolve;
+    }));
+
+    const first = ensureTtyd(1);
+    const second = ensureTtyd(1);
+    await vi.waitFor(() => expect(respawnTtyd).toHaveBeenCalledTimes(1));
+    resolveRespawn({ pid: 99 });
+
+    await expect(first).resolves.toEqual({
+      port: 7700,
+      terminalToken: expect.any(String),
+      respawned: true,
+    });
+    await expect(second).resolves.toEqual({
+      port: 7700,
+      terminalToken: expect.any(String),
+      respawned: true,
+    });
+    expect(updateTtydInfo).toHaveBeenCalledTimes(1);
+  });
+
   it("returns alive false when both ttyd and tmux are dead", async () => {
     getDeploymentById.mockReturnValue({ ...makeDeployment(42), ttydPort: 7700 });
     isTtydAlive.mockReturnValue(false);

@@ -44,9 +44,15 @@ export function rewriteHtml(html: string, port: number, terminalToken?: string):
         "(()=>{",
         `const token=${JSON.stringify(token)};`,
         `const port=${JSON.stringify(port)};`,
+        "try{",
+        "const current=new URL(window.location.href);",
+        "const hadTerminalToken=current.searchParams.has('terminalToken');",
+        "current.searchParams.delete('terminalToken');",
+        "if(hadTerminalToken)window.history.replaceState(window.history.state,'',current.toString());",
+        "}catch{}",
         "function authUrl(url){",
         "const u=new URL(url,window.location.href);",
-        "if(u.origin===window.location.origin&&u.pathname.startsWith('/api/terminal/'+port+'/')&&!u.searchParams.has('terminalToken'))u.searchParams.set('terminalToken',token);",
+        "if(u.host===window.location.host&&u.pathname.startsWith('/api/terminal/'+port+'/')&&!u.searchParams.has('terminalToken'))u.searchParams.set('terminalToken',token);",
         "return u;",
         "}",
         "const NativeWebSocket=window.WebSocket;",
@@ -87,7 +93,9 @@ export function rewriteHtml(html: string, port: number, terminalToken?: string):
       )
     : rewritten;
   if (!browserApiPatch) return withToken;
-  return withToken.includes("</head>")
-    ? withToken.replace("</head>", `${browserApiPatch}</head>`)
+  return withToken.includes("<head>")
+    ? withToken.replace("<head>", `<head>${browserApiPatch}`)
+    : withToken.includes("</head>")
+      ? withToken.replace("</head>", `${browserApiPatch}</head>`)
     : `${browserApiPatch}${withToken}`;
 }

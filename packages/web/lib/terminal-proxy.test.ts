@@ -91,6 +91,22 @@ describe("rewriteHtml", () => {
     expect(result).toContain("window.WebSocket=AuthWebSocket");
     expect(result).toContain("window.fetch=function");
     expect(result).toContain("XMLHttpRequest.prototype.open=function");
+    expect(result).toContain("u.host===window.location.host");
     expect(result).toContain("abc123");
+  });
+
+  it("strips terminalToken from the visible iframe URL before ttyd scripts run", () => {
+    const result = rewriteHtml(
+      '<html><head><script src="/auth_token.js"></script></head><body></body></html>',
+      7701,
+      "abc123",
+    );
+
+    expect(result).toContain("window.history.replaceState");
+    expect(result).toContain("hadTerminalToken=current.searchParams.has('terminalToken')");
+    expect(result).toContain("current.searchParams.delete('terminalToken')");
+    expect(result.indexOf("window.history.replaceState")).toBeLessThan(
+      result.indexOf('<script src="/api/terminal/7701/auth_token.js?terminalToken=abc123"></script>'),
+    );
   });
 });
