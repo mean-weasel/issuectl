@@ -4,6 +4,26 @@ import { initSchema, getSchemaVersion } from "./schema.js";
 import { runMigrations } from "./migrations.js";
 
 describe("schema invariants — assumptions other code depends on", () => {
+  it("fresh schema includes webhook receiver tables and indexes", () => {
+    const db = createTestDb();
+    const tableNames = (
+      db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all() as { name: string }[]
+    ).map((row) => row.name);
+    const indexNames = (
+      db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index'")
+        .all() as { name: string }[]
+    ).map((row) => row.name);
+
+    expect(tableNames).toContain("webhook_deliveries");
+    expect(tableNames).toContain("webhook_events");
+    expect(tableNames).toContain("webhook_intents");
+    expect(indexNames).toContain("idx_webhook_events_target");
+    expect(indexNames).toContain("idx_webhook_intents_active_target");
+  });
+
   it("deployments has exactly one unique index, named idx_deployments_live", () => {
     // The race-path catch in launch.ts (executeLaunch step 8) translates
     // any SQLITE_CONSTRAINT_UNIQUE thrown by recordDeployment into the
@@ -22,14 +42,12 @@ describe("schema invariants — assumptions other code depends on", () => {
     expect(indexes[0]?.name).toBe("idx_deployments_live");
   });
 
-  it("no other table has a foreign key referencing deployments", () => {
+  it("only webhook_intents has a foreign key referencing deployments", () => {
     // The v8 migration rebuilds `deployments` via CREATE/INSERT/DROP/
-    // RENAME without disabling foreign keys. That works only because
-    // nothing FK-references `deployments` — if some future table does,
-    // the v8 migration is frozen history and won't be updated, so the
-    // new migration would need to run with deferred FK enforcement.
-    // This test fails loudly so the developer notices when adding such
-    // a reference.
+    // RENAME without disabling foreign keys. The webhook intent table is
+    // the only post-v8 table allowed to point back to deployments; if any
+    // future table does too, migration coverage needs to prove old DBs
+    // still survive initSchema -> runMigrations.
     const db = createTestDb();
     const tables = db
       .prepare(
@@ -49,7 +67,7 @@ describe("schema invariants — assumptions other code depends on", () => {
         }
       }
     }
-    expect(offenders).toEqual([]);
+    expect(offenders).toEqual([{ table: "webhook_intents", from: "deployment_id" }]);
   });
 });
 
@@ -134,7 +152,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(16);
+    expect(getSchemaVersion(db)).toBe(17);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -164,7 +182,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(16);
+    expect(getSchemaVersion(db)).toBe(17);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -179,7 +197,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(pkCols).toEqual(["name", "owner"]);
   });
 
-  it("v12 to v16 migration adds deployment agent, default settings, push devices, diagnostics, and terminal backend", () => {
+  it("v12 to v17 migration adds deployment agent, settings, push devices, diagnostics, terminal backend, and webhooks", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -215,12 +233,13 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(16);
+    expect(getSchemaVersion(db)).toBe(17);
     const deployment = db
-      .prepare("SELECT agent, terminal_backend FROM deployments WHERE id = 1")
-      .get() as { agent: string; terminal_backend: string };
+      .prepare("SELECT agent, terminal_backend, triggered_by FROM deployments WHERE id = 1")
+      .get() as { agent: string; terminal_backend: string; triggered_by: string };
     expect(deployment.agent).toBe("claude");
     expect(deployment.terminal_backend).toBe("ttyd");
+    expect(deployment.triggered_by).toBe("manual");
     expect(
       (db.prepare("SELECT value FROM settings WHERE key = 'launch_agent'").get() as { value: string })
         .value,
@@ -241,9 +260,9 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(pushDeviceCols.map((c) => c.name)).toContain("merged_pull_requests");
     const tables = db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'diagnostic_events'",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('diagnostic_events', 'webhook_deliveries', 'webhook_events', 'webhook_intents')",
       )
       .all();
-    expect(tables).toHaveLength(1);
+    expect(tables).toHaveLength(4);
   });
 });
