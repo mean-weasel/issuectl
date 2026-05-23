@@ -72,12 +72,6 @@ export async function handlePtyUpgrade(
   head: Buffer,
   deploymentId: number,
 ): Promise<void> {
-  if (!isPtyBridgeEnabled()) {
-    socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
-    socket.destroy();
-    return;
-  }
-
   const url = new URL(req.url ?? "/", "http://localhost");
   if (!validatePtyTerminalToken(url.searchParams.get("terminalToken"), deploymentId)) {
     recordPtyEvent(deploymentId, "warn", "pty.auth_failed", { status: "unauthorized" });
