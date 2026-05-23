@@ -109,31 +109,43 @@ function handleDashboardRequest(req: IncomingMessage, res: ServerResponse): void
   });
 }
 
+function handleGithubWebhookHandlerError(
+  err: unknown,
+  req: IncomingMessage,
+  res: ServerResponse,
+): void {
+  log.error({
+    err,
+    msg: "github_webhook_handler_error",
+    url: redactSensitiveUrl(req.url, req.headers.host),
+  });
+  if (!res.headersSent) {
+    res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ ok: false, error: "Internal server error" }));
+  }
+}
+
 const server = createServer((req, res) => {
   logRequest(req, res);
 
-  if (!isGithubWebhookRequest(req.url)) {
-    handleDashboardRequest(req, res);
+  try {
+    if (!isGithubWebhookRequest(req.url)) {
+      handleDashboardRequest(req, res);
+      return;
+    }
+  } catch (err) {
+    handleGithubWebhookHandlerError(err, req, res);
     return;
   }
 
-  handleGithubWebhookRequest(getDb(), req, res)
+  Promise.resolve()
+    .then(() => handleGithubWebhookRequest(getDb(), req, res))
     .then((handled) => {
       if (!handled) {
         handleDashboardRequest(req, res);
       }
     })
-    .catch((err) => {
-      log.error({
-        err,
-        msg: "github_webhook_handler_error",
-        url: redactSensitiveUrl(req.url, req.headers.host),
-      });
-      if (!res.headersSent) {
-        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: false, error: "Internal server error" }));
-      }
-    });
+    .catch((err) => handleGithubWebhookHandlerError(err, req, res));
 });
 
 // ---------------------------------------------------------------------------
