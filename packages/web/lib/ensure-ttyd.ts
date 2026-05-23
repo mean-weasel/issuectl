@@ -18,12 +18,32 @@ export type EnsureTtydResult =
   | { port: number; terminalToken: string; respawned?: true; alive?: never; error?: never }
   | { alive: false; error?: string; port?: never };
 
+const ensureTtydInFlight = new Map<number, Promise<EnsureTtydResult>>();
+
 export async function ensureTtydForDeployment(
   deploymentId: number,
 ): Promise<EnsureTtydResult> {
   if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
     return { alive: false, error: "Invalid deployment ID" };
   }
+
+  const pending = ensureTtydInFlight.get(deploymentId);
+  if (pending) {
+    return pending;
+  }
+
+  const promise = runEnsureTtydForDeployment(deploymentId);
+  ensureTtydInFlight.set(deploymentId, promise);
+  try {
+    return await promise;
+  } finally {
+    ensureTtydInFlight.delete(deploymentId);
+  }
+}
+
+async function runEnsureTtydForDeployment(
+  deploymentId: number,
+): Promise<EnsureTtydResult> {
   let db: ReturnType<typeof getDb> | undefined;
   try {
     db = getDb();
