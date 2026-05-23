@@ -23,6 +23,9 @@ export type {
   PushDevicePlatform,
   PushNotificationKind,
   PushNotificationPreferences,
+  WebhookTargetType,
+  WebhookIntentStatus,
+  WebhookPayloadMode,
 } from "./types.js";
 export { SORT_MODES } from "./types.js";
 

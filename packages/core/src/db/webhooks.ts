@@ -146,6 +146,71 @@ function rowToWebhookIntent(row: WebhookIntentRow): WebhookIntent {
   };
 }
 
+function activeStatusPlaceholders(): string {
+  return ACTIVE_INTENT_STATUSES.map(() => "?").join(", ");
+}
+
+function findActiveWebhookIntent(
+  db: Database.Database,
+  input: Pick<
+    MergeWebhookIntentInput,
+    "repoId" | "targetType" | "targetNumber"
+  >,
+): WebhookIntentRow | undefined {
+  return db
+    .prepare(
+      `SELECT * FROM webhook_intents
+       WHERE repo_id = ?
+         AND target_type = ?
+         AND target_number = ?
+         AND status IN (${activeStatusPlaceholders()})
+       ORDER BY id ASC
+       LIMIT 1`,
+    )
+    .get(
+      input.repoId,
+      input.targetType,
+      input.targetNumber,
+      ...ACTIVE_INTENT_STATUSES,
+    ) as WebhookIntentRow | undefined;
+}
+
+function updateActiveWebhookIntent(
+  db: Database.Database,
+  intentId: number,
+  input: MergeWebhookIntentInput,
+): boolean {
+  const result = db
+    .prepare(
+      `UPDATE webhook_intents
+       SET last_signal_at = ?,
+           scheduled_at = ?,
+           generation = generation + 1,
+           desired_head_sha = COALESCE(?, desired_head_sha),
+           signal_count = signal_count + 1
+       WHERE id = ?
+         AND status IN (${activeStatusPlaceholders()})`,
+    )
+    .run(
+      input.signalAt,
+      input.scheduledAt,
+      input.desiredHeadSha ?? null,
+      intentId,
+      ...ACTIVE_INTENT_STATUSES,
+    );
+
+  if (result.changes !== 1) return false;
+
+  if (input.eventId !== undefined && input.eventId !== null) {
+    db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(
+      intentId,
+      input.eventId,
+    );
+  }
+
+  return true;
+}
+
 export function recordWebhookEvent(
   db: Database.Database,
   input: RecordWebhookEventInput,
@@ -195,74 +260,50 @@ export function mergeWebhookIntent(
   input: MergeWebhookIntentInput,
 ): number {
   return db.transaction(() => {
-    const active = db
-      .prepare(
-        `SELECT * FROM webhook_intents
-         WHERE repo_id = ?
-           AND target_type = ?
-           AND target_number = ?
-           AND status IN (${ACTIVE_INTENT_STATUSES.map(() => "?").join(", ")})
-         ORDER BY id ASC
-         LIMIT 1`,
-      )
-      .get(
-        input.repoId,
-        input.targetType,
-        input.targetNumber,
-        ...ACTIVE_INTENT_STATUSES,
-      ) as WebhookIntentRow | undefined;
-
-    if (active) {
-      db.prepare(
-        `UPDATE webhook_intents
-         SET last_signal_at = ?,
-             scheduled_at = ?,
-             generation = generation + 1,
-             desired_head_sha = COALESCE(?, desired_head_sha),
-             signal_count = signal_count + 1
-         WHERE id = ?`,
-      ).run(
-        input.signalAt,
-        input.scheduledAt,
-        input.desiredHeadSha ?? null,
-        active.id,
-      );
-
-      if (input.eventId !== undefined && input.eventId !== null) {
-        db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(
-          active.id,
-          input.eventId,
-        );
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const active = findActiveWebhookIntent(db, input);
+      if (active) {
+        if (updateActiveWebhookIntent(db, active.id, input)) return active.id;
+        continue;
       }
 
+      try {
+        const result = db
+          .prepare(
+            `INSERT INTO webhook_intents
+              (repo_id, target_type, target_number, first_signal_at, last_signal_at, scheduled_at, desired_head_sha, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+          )
+          .run(
+            input.repoId,
+            input.targetType,
+            input.targetNumber,
+            input.signalAt,
+            input.signalAt,
+            input.scheduledAt,
+            input.desiredHeadSha ?? null,
+          );
+        const intentId = Number(result.lastInsertRowid);
+
+        if (input.eventId !== undefined && input.eventId !== null) {
+          db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(
+            intentId,
+            input.eventId,
+          );
+        }
+
+        return intentId;
+      } catch (error) {
+        if (isSqliteConstraint(error)) continue;
+        throw error;
+      }
+    }
+
+    const active = findActiveWebhookIntent(db, input);
+    if (active && updateActiveWebhookIntent(db, active.id, input)) {
       return active.id;
     }
-
-    const result = db
-      .prepare(
-        `INSERT INTO webhook_intents
-          (repo_id, target_type, target_number, first_signal_at, last_signal_at, scheduled_at, desired_head_sha, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      )
-      .run(
-        input.repoId,
-        input.targetType,
-        input.targetNumber,
-        input.signalAt,
-        input.signalAt,
-        input.scheduledAt,
-        input.desiredHeadSha ?? null,
-      );
-    const intentId = Number(result.lastInsertRowid);
-
-    if (input.eventId !== undefined && input.eventId !== null) {
-      db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(
-        intentId,
-        input.eventId,
-      );
-    }
-
-    return intentId;
+    throw new Error("Failed to merge webhook intent after retrying races");
   })();
 }
 
@@ -271,32 +312,25 @@ export function claimDueWebhookIntent(
   now: number,
   leaseMs: number,
 ): WebhookIntent | undefined {
-  return db.transaction(() => {
-    const row = db
-      .prepare(
-        `SELECT * FROM webhook_intents
-         WHERE status IN ('pending', 'deferred')
-           AND scheduled_at <= ?
-         ORDER BY scheduled_at ASC, id ASC
-         LIMIT 1`,
-      )
-      .get(now) as WebhookIntentRow | undefined;
-
-    if (!row) return undefined;
-
-    db.prepare(
+  const row = db
+    .prepare(
       `UPDATE webhook_intents
        SET status = 'processing',
            processing_started_at = ?,
            lease_expires_at = ?
-       WHERE id = ?`,
-    ).run(now, now + leaseMs, row.id);
-
-    const claimed = db
-      .prepare("SELECT * FROM webhook_intents WHERE id = ?")
-      .get(row.id) as WebhookIntentRow;
-    return rowToWebhookIntent(claimed);
-  })();
+       WHERE id = (
+         SELECT id FROM webhook_intents
+         WHERE status IN ('pending', 'deferred')
+           AND scheduled_at <= ?
+         ORDER BY scheduled_at ASC, id ASC
+         LIMIT 1
+       )
+         AND status IN ('pending', 'deferred')
+         AND scheduled_at <= ?
+       RETURNING *`,
+    )
+    .get(now, now + leaseMs, now, now) as WebhookIntentRow | undefined;
+  return row ? rowToWebhookIntent(row) : undefined;
 }
 
 export function recoverExpiredWebhookIntentLeases(

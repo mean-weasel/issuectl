@@ -171,6 +171,56 @@ describe("webhook DB helpers", () => {
     ).toThrow();
   });
 
+  it("retries insert conflicts by merging into the active intent", () => {
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 1_060,
+      desiredHeadSha: "abc",
+    });
+    const originalPrepare = db.prepare.bind(db);
+    let hidActiveIntent = false;
+
+    db.prepare = ((source: string) => {
+      const statement = originalPrepare(source);
+      if (
+        !hidActiveIntent &&
+        source.includes("SELECT * FROM webhook_intents") &&
+        source.includes("status IN")
+      ) {
+        hidActiveIntent = true;
+        const wrapper = Object.create(statement) as Database.Statement;
+        wrapper.get = () => undefined;
+        return wrapper;
+      }
+      return statement;
+    }) as typeof db.prepare;
+
+    try {
+      const mergedIntentId = mergeWebhookIntent(db, {
+        repoId,
+        targetType: "issue",
+        targetNumber: 506,
+        signalAt: 1_020,
+        scheduledAt: 1_080,
+        desiredHeadSha: "def",
+      });
+
+      expect(mergedIntentId).toBe(intentId);
+    } finally {
+      db.prepare = originalPrepare;
+    }
+
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get()).toEqual({
+      count: 1,
+    });
+    expect(
+      db.prepare("SELECT signal_count, desired_head_sha FROM webhook_intents").get(),
+    ).toEqual({ signal_count: 2, desired_head_sha: "def" });
+  });
+
   it("claims and recovers stale processing intents", () => {
     const intentId = mergeWebhookIntent(db, {
       repoId,
@@ -201,6 +251,33 @@ describe("webhook DB helpers", () => {
       .get(intentId);
     expect(recovered).toEqual({
       status: "pending",
+      processing_started_at: null,
+      lease_expires_at: null,
+    });
+  });
+
+  it("does not return stale active rows as claimed", () => {
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 507,
+      signalAt: 1_000,
+      scheduledAt: 1_000,
+    });
+    db.prepare(
+      "UPDATE webhook_intents SET status = 'launched', resolved_at = ? WHERE id = ?",
+    ).run(1_001, intentId);
+
+    expect(claimDueWebhookIntent(db, 1_002, 500)).toBeUndefined();
+
+    expect(
+      db
+        .prepare(
+          "SELECT status, processing_started_at, lease_expires_at FROM webhook_intents WHERE id = ?",
+        )
+        .get(intentId),
+    ).toEqual({
+      status: "launched",
       processing_started_at: null,
       lease_expires_at: null,
     });
