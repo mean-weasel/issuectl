@@ -1,6 +1,14 @@
 import { existsSync } from "node:fs";
 import { confirm, input } from "@inquirer/prompts";
-import { addRepo, removeRepo, listRepos, getRepo, updateRepo } from "@issuectl/core";
+import {
+  addRepo,
+  removeRepo,
+  listRepos,
+  getRepo,
+  updateRepo,
+  updateRepoWebhookSettings,
+} from "@issuectl/core";
+import type { LaunchAgent, WebhookPayloadMode } from "@issuectl/core";
 import * as log from "../utils/logger.js";
 import { requireDb } from "../utils/db.js";
 import { isValidOwnerRepo, parseOwnerRepo } from "../utils/validation.js";
@@ -15,7 +23,7 @@ function requireValidOwnerRepo(value: string): { owner: string; name: string } {
 
 export async function repoAddCommand(
   ownerRepo: string,
-  options: { path?: string },
+  options: RepoCommandOptions,
 ): Promise<void> {
   const { owner, name } = requireValidOwnerRepo(ownerRepo);
   const db = requireDb();
@@ -43,6 +51,7 @@ export async function repoAddCommand(
     name,
     localPath: localPath || undefined,
   });
+  applyWebhookOptions(db, repo.id, options);
   log.success(`Added ${repo.owner}/${repo.name}`);
 }
 
@@ -92,7 +101,7 @@ export function repoListCommand(): void {
 
 export async function repoUpdateCommand(
   ownerRepo: string,
-  options: { path?: string },
+  options: RepoCommandOptions,
 ): Promise<void> {
   const { owner, name } = requireValidOwnerRepo(ownerRepo);
   const db = requireDb();
@@ -103,13 +112,69 @@ export async function repoUpdateCommand(
     process.exit(1);
   }
 
+  let changed = false;
   if (options.path) {
     if (!existsSync(options.path)) {
       log.warn(`Path "${options.path}" does not exist. Saving anyway.`);
     }
     updateRepo(db, repo.id, { localPath: options.path });
     log.success(`Updated ${owner}/${name} path to ${options.path}`);
-  } else {
+    changed = true;
+  }
+  if (applyWebhookOptions(db, repo.id, options)) {
+    log.success(`Updated ${owner}/${name} webhook settings`);
+    changed = true;
+  }
+  if (!changed) {
     log.warn("No updates specified. Use --path to update the local path.");
   }
+}
+
+export function repoShowCommand(ownerRepo: string): void {
+  const { owner, name } = requireValidOwnerRepo(ownerRepo);
+  const db = requireDb();
+  const repo = getRepo(db, owner, name);
+
+  if (!repo) {
+    log.error(`${owner}/${name} is not tracked.`);
+    process.exit(1);
+  }
+
+  console.error(`${repo.owner}/${repo.name}`);
+  console.error(`  path: ${repo.localPath ?? "(no local path)"}`);
+  console.error(`  branch pattern: ${repo.branchPattern ?? "(default)"}`);
+  console.error(`  auto-launch issues: ${repo.autoLaunchIssues}`);
+  console.error(`  auto-review PRs: ${repo.autoReviewPrs}`);
+  console.error(`  issue agent: ${repo.issueAgent}`);
+  console.error(`  review agent: ${repo.reviewAgent}`);
+  console.error(`  payload mode: ${repo.webhookPayloadMode}`);
+}
+
+type RepoCommandOptions = {
+  path?: string;
+  autoLaunchIssues?: boolean;
+  autoReviewPrs?: boolean;
+  issueAgent?: LaunchAgent;
+  reviewAgent?: LaunchAgent;
+  webhookPayloadMode?: WebhookPayloadMode;
+};
+
+function applyWebhookOptions(
+  db: ReturnType<typeof requireDb>,
+  repoId: number,
+  options: RepoCommandOptions,
+): boolean {
+  const updates = {
+    autoLaunchIssues: options.autoLaunchIssues,
+    autoReviewPrs: options.autoReviewPrs,
+    issueAgent: options.issueAgent,
+    reviewAgent: options.reviewAgent,
+    webhookPayloadMode: options.webhookPayloadMode,
+  };
+  const compact = Object.fromEntries(
+    Object.entries(updates).filter(([, value]) => value !== undefined),
+  );
+  if (Object.keys(compact).length === 0) return false;
+  updateRepoWebhookSettings(db, repoId, compact);
+  return true;
 }

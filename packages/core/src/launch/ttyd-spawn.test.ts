@@ -68,6 +68,7 @@ describe("spawnTtyd", () => {
     expect(tmuxCmd).toContain("/tmp/ctx.md");
     expect(tmuxCmd).toContain("claude --dangerously-skip-permissions");
     expect(tmuxCmd).toContain("unset PNPM_SCRIPT_SRC_DIR");
+    expect(tmuxCmd).not.toContain("unset GH_TOKEN");
     expect(tmuxCmd).toContain("< ");
     expect(tmuxCmd).toContain("; exit");
 
@@ -87,6 +88,29 @@ describe("spawnTtyd", () => {
       "tmux", "attach-session", "-t", "issuectl-myrepo-42",
     ]);
     expect(opts).toEqual({ detached: true, stdio: "ignore" });
+    killSpy.mockRestore();
+  });
+
+  it("scrubs ambient GitHub and SSH credentials for untrusted webhook sessions", async () => {
+    spawnSpy.mockReturnValue({ pid: 42, unref: vi.fn(), on: vi.fn() });
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    await spawnTtyd({
+      port: 7700,
+      workspacePath: "/home/user/project",
+      contextFilePath: "/tmp/ctx.md",
+      agentCommand: "claude",
+      sessionName: "issuectl-webhook-42",
+      credentialPolicy: "scrubbed",
+    });
+
+    const tmuxCmd = execFileSyncSpy.mock.calls.find(
+      (c: unknown[]) => c[0] === "tmux" && (c[1] as string[])[0] === "new-session",
+    )![1][8] as string;
+    expect(tmuxCmd).toContain("unset GH_TOKEN GITHUB_TOKEN GITHUB_PAT");
+    expect(tmuxCmd).toContain("unset SSH_AUTH_SOCK GIT_ASKPASS SSH_ASKPASS");
+    expect(tmuxCmd).toContain("export GH_CONFIG_DIR=");
+    expect(tmuxCmd).toContain("mktemp -d");
     killSpy.mockRestore();
   });
 

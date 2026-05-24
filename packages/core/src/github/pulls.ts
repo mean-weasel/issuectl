@@ -13,8 +13,8 @@ function mapPull(raw: unknown): GitHubPull {
     merged: boolean;
     merged_at: string | null;
     user: RawGitHubUser;
-    head: { ref: string };
-    base: { ref: string };
+    head: { ref: string; sha: string; repo: { full_name: string } | null };
+    base: { ref: string; sha: string; repo: { full_name: string } | null };
     additions: number;
     deletions: number;
     changed_files: number;
@@ -33,6 +33,10 @@ function mapPull(raw: unknown): GitHubPull {
     user: mapUser(r.user),
     headRef: r.head.ref,
     baseRef: r.base.ref,
+    headSha: r.head.sha,
+    baseSha: r.base.sha,
+    headRepoFullName: r.head.repo?.full_name ?? "",
+    baseRepoFullName: r.base.repo?.full_name ?? "",
     additions: r.additions ?? 0,
     deletions: r.deletions ?? 0,
     changedFiles: r.changed_files ?? 0,

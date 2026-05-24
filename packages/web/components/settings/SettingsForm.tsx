@@ -24,6 +24,7 @@ type Props = {
   launchAgent: LaunchAgent;
   idleGracePeriod: string;
   idleThreshold: string;
+  publicWebhookBaseUrl: string;
 };
 
 export function SettingsForm({
@@ -34,6 +35,7 @@ export function SettingsForm({
   launchAgent,
   idleGracePeriod,
   idleThreshold,
+  publicWebhookBaseUrl,
 }: Props) {
   const initialValues: FormValues = {
     branch_pattern: branchPattern,
@@ -43,6 +45,7 @@ export function SettingsForm({
     launch_agent: normalizeLaunchAgent(launchAgent),
     idle_grace_period: idleGracePeriod,
     idle_threshold: idleThreshold,
+    public_webhook_base_url: publicWebhookBaseUrl,
   };
   const [values, setValues] = useState<FormValues>(initialValues);
   const [originals, setOriginals] = useState<FormValues>(initialValues);
@@ -183,6 +186,31 @@ export function SettingsForm({
               pattern="[0-9]*"
               enterKeyHint="done"
             />
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionTitle}>Webhooks</div>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="sf-public-webhook-base-url">Public Webhook Base URL</label>
+            <input
+              id="sf-public-webhook-base-url"
+              className={styles.input}
+              value={values.public_webhook_base_url}
+              onChange={(e) => handleChange("public_webhook_base_url", e.target.value)}
+              disabled={isPending}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="url"
+              enterKeyHint="done"
+            />
+            <div className={styles.help}>
+              Used to display copyable GitHub webhook URLs for tracked repos.
+            </div>
           </div>
         </div>
       </section>

@@ -6,11 +6,11 @@ import {
   isTtydAlive,
   isTmuxSessionAlive,
   respawnTtyd,
-  tmuxSessionName,
   updateTtydInfo,
   formatErrorForUser,
   recordDiagnosticEventSafely,
 } from "@issuectl/core";
+import { deploymentSessionName, issueNumberForDiagnostic } from "./deployment-target";
 import { createTerminalToken } from "./terminal-auth";
 import { recordTerminalEventForDeployment } from "./terminal-diagnostics";
 
@@ -63,7 +63,7 @@ async function runEnsureTtydForDeployment(
         level: "error",
         event: "ensure_ttyd.failed",
         source: "web.ensure-ttyd",
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         message: "No terminal process configured",
       });
@@ -81,7 +81,7 @@ async function runEnsureTtydForDeployment(
         level: "info",
         event: "ensure_ttyd.alive",
         source: "web.ensure-ttyd",
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         ttydPort: port,
         ttydPid: deployment.ttydPid,
@@ -98,7 +98,7 @@ async function runEnsureTtydForDeployment(
           level: "error",
           event: "ensure_ttyd.failed",
           source: "web.ensure-ttyd",
-          issueNumber: deployment.issueNumber,
+          issueNumber: issueNumberForDiagnostic(deployment),
           deploymentId,
           ttydPort: port,
           ttydPid: deployment.ttydPid,
@@ -120,14 +120,14 @@ async function runEnsureTtydForDeployment(
         level: "error",
         event: "ensure_ttyd.failed",
         source: "web.ensure-ttyd",
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         message: "Repository not found",
       });
       return { alive: false, error: "Repository not found" };
     }
 
-    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    const sessionName = deploymentSessionName(repo.name, deployment);
     if (!isTmuxSessionAlive(sessionName)) {
       endDeployment(db, deploymentId);
       recordTerminalEventForDeployment(db, deployment, {
@@ -142,7 +142,7 @@ async function runEnsureTtydForDeployment(
         source: "web.ensure-ttyd",
         owner: repo.owner,
         repo: repo.name,
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         sessionName,
         message: "Terminal session has ended",
@@ -159,7 +159,7 @@ async function runEnsureTtydForDeployment(
       source: "web.ensure-ttyd",
       owner: repo.owner,
       repo: repo.name,
-      issueNumber: deployment.issueNumber,
+      issueNumber: issueNumberForDiagnostic(deployment),
       deploymentId,
       sessionName,
       ttydPort: port,
@@ -185,7 +185,7 @@ async function runEnsureTtydForDeployment(
         source: "web.ensure-ttyd",
         owner: repo.owner,
         repo: repo.name,
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         sessionName,
         ttydPort: port,

@@ -3,15 +3,7 @@ import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
 import { addRepo } from "./repos.js";
 import { seedRepo } from "./deployments-test-helpers.js";
-import {
-  recordDeployment,
-  getDeploymentById,
-  getDeploymentsForIssue,
-  getDeploymentsByRepo,
-  updateLinkedPR,
-  endDeployment,
-  setIdleSince,
-} from "./deployments.js";
+import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince } from "./deployments.js";
 
 describe("recordDeployment", () => {
   let db: Database.Database;
@@ -32,29 +24,35 @@ describe("recordDeployment", () => {
     });
 
     expect(dep.id).toBeGreaterThan(0);
-    expect(dep.repoId).toBe(repoId);
-    expect(dep.issueNumber).toBe(42);
-    expect(dep.agent).toBe("claude");
-    expect(dep.branchName).toBe("issue-42-fix-bug");
-    expect(dep.workspaceMode).toBe("existing");
-    expect(dep.workspacePath).toBe("/home/dev/api");
-    expect(dep.linkedPrNumber).toBeNull();
-    expect(dep.endedAt).toBeNull();
+    expect(dep).toMatchObject({
+      repoId, issueNumber: 42, targetType: "issue", targetNumber: 42, agent: "claude", triggeredBy: "manual",
+      branchName: "issue-42-fix-bug", workspaceMode: "existing", workspacePath: "/home/dev/api",
+      linkedPrNumber: null, endedAt: null, terminalReason: null,
+      completionToken: null, completionResultJson: null, notificationSentAt: null,
+    });
     expect(dep.launchedAt).toBeTruthy();
   });
 
-  it("records the selected launch agent", () => {
+  it("records webhook provenance, completion token, and PR target identity without fake issue numbers", () => {
     const dep = recordDeployment(db, {
       repoId,
-      issueNumber: 43,
-      agent: "codex",
-      branchName: "issue-43-fix",
-      workspaceMode: "existing",
+      targetType: "pr",
+      targetNumber: 44,
+      branchName: "pr-44-review",
+      workspaceMode: "worktree",
       workspacePath: "/home/dev/api",
+      triggeredBy: "webhook",
+      completionToken: "token-123",
     });
 
-    expect(dep.agent).toBe("codex");
-    expect(getDeploymentById(db, dep.id)?.agent).toBe("codex");
+    expect(dep.triggeredBy).toBe("webhook");
+    expect(dep.issueNumber).toBeNull();
+    expect(dep.targetType).toBe("pr");
+    expect(dep.targetNumber).toBe(44);
+    expect(dep.completionToken).toBe("token-123");
+    expect(getDeploymentById(db, dep.id)).toEqual(
+      expect.objectContaining({ issueNumber: null, targetType: "pr", targetNumber: 44, triggeredBy: "webhook", completionToken: "token-123" }),
+    );
   });
 
   it("allows re-deploying an issue after the prior deployment has ended", () => {
@@ -68,7 +66,7 @@ describe("recordDeployment", () => {
       workspaceMode: "existing",
       workspacePath: "/a",
     });
-    endDeployment(db, d1.id);
+    endDeployment(db, d1.id, "ended_manual");
 
     const d2 = recordDeployment(db, {
       repoId,
@@ -79,6 +77,7 @@ describe("recordDeployment", () => {
     });
 
     expect(d1.id).not.toBe(d2.id);
+    expect(getDeploymentById(db, d1.id)?.terminalReason).toBe("ended_manual");
   });
 
   it("blocks a second live deployment for the same (repo, issue)", () => {
@@ -97,7 +96,7 @@ describe("recordDeployment", () => {
         workspaceMode: "worktree",
         workspacePath: "/b",
       }),
-    ).toThrow(/UNIQUE constraint failed: deployments\.repo_id, deployments\.issue_number/);
+    ).toThrow(/UNIQUE constraint failed: deployments\.repo_id, deployments\.target_type, deployments\.target_number/);
   });
 
   it("rejects non-existent repoId (FK constraint)", () => {
@@ -137,6 +136,7 @@ describe("getDeploymentById", () => {
   it("returns undefined for non-existent id", () => {
     expect(getDeploymentById(db, 999)).toBeUndefined();
   });
+
 });
 
 describe("getDeploymentsForIssue", () => {
@@ -189,10 +189,11 @@ describe("getDeploymentsForIssue", () => {
     // to satisfy the live-unique index; getDeploymentsForIssue still
     // surfaces ended rows for history.
     db.prepare(
-      `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at)
+       VALUES (?, ?, 'issue', ?, ?, ?, ?, ?, ?)`,
     ).run(
       repo.id,
+      1,
       1,
       "first",
       "existing",
@@ -201,9 +202,9 @@ describe("getDeploymentsForIssue", () => {
       "2025-01-01T12:00:00",
     );
     db.prepare(
-      `INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path, launched_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(repo.id, 1, "second", "existing", "/second", "2025-01-02T00:00:00");
+      `INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, launched_at)
+       VALUES (?, ?, 'issue', ?, ?, ?, ?, ?)`,
+    ).run(repo.id, 1, 1, "second", "existing", "/second", "2025-01-02T00:00:00");
 
     const deps = getDeploymentsForIssue(db, repo.id, 1);
     expect(deps[0].branchName).toBe("second");

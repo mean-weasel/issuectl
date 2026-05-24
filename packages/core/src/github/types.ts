@@ -43,6 +43,10 @@ export type GitHubPull = {
   user: GitHubUser | null;
   headRef: string;
   baseRef: string;
+  headSha?: string;
+  baseSha?: string;
+  headRepoFullName?: string;
+  baseRepoFullName?: string;
   additions: number;
   deletions: number;
   changedFiles: number;

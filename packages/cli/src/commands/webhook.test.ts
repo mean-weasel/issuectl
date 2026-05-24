@@ -2,6 +2,7 @@ import { Command, CommanderError } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getRepoWebhookConfigById,
+  getSetting,
   listRepos,
   listWebhookEvents,
   type Repo,
@@ -16,6 +17,7 @@ vi.mock("@issuectl/core", async (importOriginal) => {
   return {
     ...actual,
     getRepoWebhookConfigById: vi.fn(),
+    getSetting: vi.fn(),
     listRepos: vi.fn(),
     listWebhookEvents: vi.fn(),
   };
@@ -104,6 +106,7 @@ beforeEach(() => {
   vi.mocked(requireDb).mockReset();
   vi.mocked(requireDb).mockReturnValue(mockDb as never);
   vi.mocked(getRepoWebhookConfigById).mockReset();
+  vi.mocked(getSetting).mockReset();
   vi.mocked(listRepos).mockReset();
   vi.mocked(listWebhookEvents).mockReset();
 });
@@ -134,14 +137,33 @@ describe("webhook commands", () => {
         webhookSecret: id === 1 ? "super-secret-webhook-value" : null,
       } satisfies RepoWebhookConfig;
     });
+    vi.mocked(getSetting).mockReturnValue("https://hooks.example.test");
 
     const result = await parseCommand(["webhook", "status"]);
 
     expect(result.stdout).toContain("mean-weasel/issuectl");
     expect(result.stdout).toContain("secret=set");
+    expect(result.stdout).toContain("url=https://hooks.example.test/api/webhook/github/1");
     expect(result.stdout).toContain("mean-weasel/issuectl-test");
     expect(result.stdout).toContain("secret=missing");
     expect(result.stdout).not.toContain("super-secret-webhook-value");
+  });
+
+  it("status can show one tracked repo", async () => {
+    const repos = [
+      makeRepo({ id: 1, owner: "mean-weasel", name: "issuectl" }),
+      makeRepo({ id: 2, owner: "mean-weasel", name: "other" }),
+    ];
+    vi.mocked(listRepos).mockReturnValue(repos);
+    vi.mocked(getRepoWebhookConfigById).mockImplementation((_, id) => ({
+      ...repos.find((repo) => repo.id === id)!,
+      webhookSecret: null,
+    }));
+
+    const result = await parseCommand(["webhook", "status", "mean-weasel/issuectl"]);
+
+    expect(result.stdout).toContain("mean-weasel/issuectl");
+    expect(result.stdout).not.toContain("mean-weasel/other");
   });
 
   it("tail with default limit prints recent webhook events", async () => {
@@ -172,6 +194,26 @@ describe("webhook commands", () => {
     expect(result.stdout).not.toContain("issues");
   });
 
+  it("tail filters by repo and target", async () => {
+    vi.mocked(listRepos).mockReturnValue([
+      makeRepo({ id: 9, owner: "mean-weasel", name: "issuectl" }),
+    ]);
+    vi.mocked(listWebhookEvents).mockReturnValue([
+      makeWebhookEvent({ repoId: 9, targetType: "issue", targetNumber: 506 }),
+    ]);
+
+    await parseCommand([
+      "webhook",
+      "tail",
+      "--repo",
+      "mean-weasel/issuectl",
+      "--target",
+      "issue#506",
+    ]);
+
+    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, 20);
+  });
+
   it.each([
     ["non-numeric", "abc"],
     ["zero", "0"],
@@ -183,6 +225,15 @@ describe("webhook commands", () => {
     expect(result.error).toBeInstanceOf(CommanderError);
     expect(result.stderr).toContain("--limit must be a positive integer.");
     expect(result.stderr).not.toContain("at ");
+    expect(requireDb).not.toHaveBeenCalled();
+    expect(listWebhookEvents).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid tail target before opening the database", async () => {
+    const result = await parseCommand(["webhook", "tail", "--target", "issue/506"]);
+
+    expect(result.error).toBeInstanceOf(CommanderError);
+    expect(result.stderr).toContain("--target must use issue#number or pr#number.");
     expect(requireDb).not.toHaveBeenCalled();
     expect(listWebhookEvents).not.toHaveBeenCalled();
   });

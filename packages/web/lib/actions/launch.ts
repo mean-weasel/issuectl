@@ -10,7 +10,6 @@ import {
   killTmuxSession,
   killTtyd,
   isTmuxSessionAlive,
-  tmuxSessionName,
   withAuthRetry,
   withIdempotency,
   DuplicateInFlightError,
@@ -20,6 +19,7 @@ import {
   type WorkspaceMode,
 } from "@issuectl/core";
 import { VALID_BRANCH_RE, MAX_PREAMBLE } from "@/lib/constants";
+import { deploymentSessionName, getDeploymentTarget } from "@/lib/deployment-target";
 import { revalidateSafely } from "@/lib/revalidate";
 
 type LaunchFormData = {
@@ -187,11 +187,12 @@ export async function endSession(
       return { success: false, error: "Repository not found" };
     }
 
-    if (deployment.repoId !== repoRecord.id || deployment.issueNumber !== issueNumber) {
+    const target = getDeploymentTarget(deployment);
+    if (deployment.repoId !== repoRecord.id || target.targetType !== "issue" || target.targetNumber !== issueNumber) {
       return { success: false, error: "Deployment does not match the specified issue" };
     }
 
-    const sessionName = tmuxSessionName(repo, issueNumber);
+    const sessionName = deploymentSessionName(repo, deployment);
     if (deployment.ttydPid) {
       try {
         killTtyd(deployment.ttydPid, sessionName);
@@ -241,7 +242,7 @@ export async function checkSessionAlive(
       return { alive: false };
     }
 
-    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    const sessionName = deploymentSessionName(repo.name, deployment);
     if (isTmuxSessionAlive(sessionName)) {
       return { alive: true };
     }

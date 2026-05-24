@@ -119,5 +119,5 @@ function compareTimestampDesc(left: string, right: string): number {
 }
 
 function compareDeploymentTie(left: WorkbenchDeployment, right: WorkbenchDeployment): number {
-  return left.issueNumber - right.issueNumber || left.id - right.id;
+  return left.targetNumber - right.targetNumber || left.id - right.id;
 }

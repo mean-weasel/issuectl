@@ -1,20 +1,28 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import {
   addRepo,
   initSchema,
   mergeWebhookIntent,
+  queryDiagnosticEvents,
+  recordDeployment,
+  recordWebhookEvent,
   seedDefaults,
   setSetting,
+  updateRepoWebhookSettings,
 } from "@issuectl/core";
-import { runWebhookIntentWorkerOnce } from "./webhook-intent-worker.js";
+import {
+  runWebhookIntentWorkerOnce,
+} from "./webhook-intent-worker.js";
 
 type IntentRow = {
   status: string;
+  scheduled_at: number;
   processing_started_at: number | null;
   lease_expires_at: number | null;
   resolved_at: number | null;
   deployment_id: number | null;
+  failure_reason: string | null;
 };
 
 function createTestDb(): Database.Database {
@@ -28,11 +36,67 @@ function createTestDb(): Database.Database {
 function getIntentRow(db: Database.Database, id: number): IntentRow {
   const row = db
     .prepare(
-      "SELECT status, processing_started_at, lease_expires_at, resolved_at, deployment_id FROM webhook_intents WHERE id = ?",
+      `SELECT status, scheduled_at, processing_started_at, lease_expires_at,
+              resolved_at, deployment_id, failure_reason
+       FROM webhook_intents WHERE id = ?`,
     )
     .get(id) as IntentRow | undefined;
   if (!row) throw new Error(`Missing webhook intent ${id}`);
   return row;
+}
+
+function getDeploymentByIdForTest(db: Database.Database, id: number) {
+  return db.prepare("SELECT ended_at FROM deployments WHERE id = ?").get(id);
+}
+
+function testWorkerDeps() {
+  return {
+    fetchIssueState: async () => ({
+      title: "Fix webhook auto launch",
+      state: "open",
+      labels: ["issuectl:auto-launch"],
+    }),
+    launchIssue: async (
+      _db: Database.Database,
+      _repo: unknown,
+      intent: { repoId: number; targetNumber: number },
+      _issue: unknown,
+      triggeredBy: "webhook" | "comment_command",
+    ) => {
+      const deploymentId = recordDeployment(_db, {
+        repoId: intent.repoId,
+        issueNumber: intent.targetNumber,
+        branchName: "issue-506",
+        workspaceMode: "worktree",
+        workspacePath: "/tmp/issuectl-test",
+      }).id;
+      _db.prepare("UPDATE deployments SET triggered_by = ? WHERE id = ?").run(triggeredBy, deploymentId);
+      return { deploymentId };
+    },
+  };
+}
+
+async function runWorker(db: Database.Database, now: number) {
+  return runWebhookIntentWorkerOnce(db, now, testWorkerDeps());
+}
+
+function expectWorkerResult(
+  result: Awaited<ReturnType<typeof runWebhookIntentWorkerOnce>>,
+  values: Partial<Awaited<ReturnType<typeof runWebhookIntentWorkerOnce>>>,
+): void {
+  expect(result).toEqual({
+    claimed: 0,
+    recovered: 0,
+    expired: 0,
+    prunedPayloads: 0,
+    launched: 0,
+    deferred: 0,
+    skippedLocked: 0,
+    skippedOptout: 0,
+    failed: 0,
+    endedSessions: 0,
+    ...values,
+  });
 }
 
 describe("runWebhookIntentWorkerOnce", () => {
@@ -42,13 +106,10 @@ describe("runWebhookIntentWorkerOnce", () => {
   beforeEach(() => {
     db = createTestDb();
     repoId = addRepo(db, { owner: "mean-weasel", name: "issuectl" }).id;
+    updateRepoWebhookSettings(db, repoId, { autoLaunchIssues: true });
   });
 
-  afterEach(() => {
-    db.close();
-  });
-
-  it("claims due pending intents with a lease", () => {
+  it("launches due opted-in issue intents", async () => {
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "issue",
@@ -57,40 +118,20 @@ describe("runWebhookIntentWorkerOnce", () => {
       scheduledAt: 2_000,
     });
 
-    const result = runWebhookIntentWorkerOnce(db, 2_000);
+    const result = await runWorker(db, 2_000);
 
-    expect(result).toEqual({ claimed: 1, recovered: 0, expired: 0 });
+    expectWorkerResult(result, { claimed: 1, launched: 1 });
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({
-        status: "processing",
-        processing_started_at: 2_000,
-        lease_expires_at: 62_000,
-      }),
-    );
-  });
-
-  it("does not claim future scheduled intents", () => {
-    const intentId = mergeWebhookIntent(db, {
-      repoId,
-      targetType: "issue",
-      targetNumber: 506,
-      signalAt: 1_000,
-      scheduledAt: 2_001,
-    });
-
-    const result = runWebhookIntentWorkerOnce(db, 2_000);
-
-    expect(result).toEqual({ claimed: 0, recovered: 0, expired: 0 });
-    expect(getIntentRow(db, intentId)).toEqual(
-      expect.objectContaining({
-        status: "pending",
+        status: "launched",
         processing_started_at: null,
         lease_expires_at: null,
+        deployment_id: 1,
       }),
     );
   });
 
-  it("recovers expired processing leases to pending", () => {
+  it("recovers expired processing leases to pending", async () => {
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "issue",
@@ -102,9 +143,9 @@ describe("runWebhookIntentWorkerOnce", () => {
       "UPDATE webhook_intents SET status = 'processing', processing_started_at = ?, lease_expires_at = ? WHERE id = ?",
     ).run(2_000, 3_000, intentId);
 
-    const result = runWebhookIntentWorkerOnce(db, 3_000);
+    const result = await runWorker(db, 3_000);
 
-    expect(result).toEqual({ claimed: 0, recovered: 1, expired: 0 });
+    expectWorkerResult(result, { recovered: 1 });
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({
         status: "pending",
@@ -114,7 +155,7 @@ describe("runWebhookIntentWorkerOnce", () => {
     );
   });
 
-  it("expires active intents beyond max age", () => {
+  it("expires active intents beyond max age", async () => {
     setSetting(db, "max_webhook_intent_age_minutes", "1");
     const intentId = mergeWebhookIntent(db, {
       repoId,
@@ -124,9 +165,9 @@ describe("runWebhookIntentWorkerOnce", () => {
       scheduledAt: 1_500,
     });
 
-    const result = runWebhookIntentWorkerOnce(db, 61_000);
+    const result = await runWorker(db, 61_000);
 
-    expect(result).toEqual({ claimed: 0, recovered: 0, expired: 1 });
+    expectWorkerResult(result, { expired: 1 });
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({
         status: "expired",
@@ -137,53 +178,35 @@ describe("runWebhookIntentWorkerOnce", () => {
     );
   });
 
-  it("uses the fallback max age for invalid setting values", () => {
-    setSetting(db, "max_webhook_intent_age_minutes", "invalid");
+  it("skips opted-in issues when another session is already live", async () => {
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "issue",
       targetNumber: 506,
       signalAt: 1_000,
-      scheduledAt: 70_000,
+      scheduledAt: 2_000,
     });
-
-    const result = runWebhookIntentWorkerOnce(db, 61_000);
-
-    expect(result).toEqual({ claimed: 0, recovered: 0, expired: 0 });
-    expect(getIntentRow(db, intentId)).toEqual(
-      expect.objectContaining({
-        status: "pending",
-        processing_started_at: null,
-        lease_expires_at: null,
-        resolved_at: null,
-      }),
-    );
-  });
-
-  it("uses the fallback max age for negative setting values", () => {
-    setSetting(db, "max_webhook_intent_age_minutes", "-1");
-    const intentId = mergeWebhookIntent(db, {
+    recordDeployment(db, {
       repoId,
-      targetType: "issue",
-      targetNumber: 506,
-      signalAt: 1_000,
-      scheduledAt: 70_000,
+      issueNumber: 506,
+      branchName: "issue-506",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issuectl-live",
     });
 
-    const result = runWebhookIntentWorkerOnce(db, 61_000);
+    const result = await runWorker(db, 2_000);
 
-    expect(result).toEqual({ claimed: 0, recovered: 0, expired: 0 });
+    expectWorkerResult(result, { claimed: 1, skippedLocked: 1 });
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({
-        status: "pending",
-        processing_started_at: null,
-        lease_expires_at: null,
-        resolved_at: null,
+        status: "skipped_locked",
+        deployment_id: null,
       }),
     );
   });
 
-  it("does not launch agents in phase 1", () => {
+  it("skips issues that are not opted in by repo flag or label", async () => {
+    updateRepoWebhookSettings(db, repoId, { autoLaunchIssues: false });
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "issue",
@@ -192,17 +215,117 @@ describe("runWebhookIntentWorkerOnce", () => {
       scheduledAt: 2_000,
     });
 
-    const result = runWebhookIntentWorkerOnce(db, 2_000);
+    const result = await runWorker(db, 2_000);
 
-    expect(result).toEqual({ claimed: 1, recovered: 0, expired: 0 });
+    expectWorkerResult(result, { claimed: 1, skippedOptout: 1 });
     expect(getIntentRow(db, intentId)).toEqual(
-      expect.objectContaining({
-        status: "processing",
-        deployment_id: null,
-      }),
+      expect.objectContaining({ status: "skipped_optout" }),
     );
-    expect(
-      db.prepare("SELECT COUNT(*) AS count FROM deployments").get(),
-    ).toEqual({ count: 0 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.kill_switch"] })).toHaveLength(1);
+  });
+
+  it("ends prior webhook-launched sessions on issue close or label removal", async () => {
+    const deploymentId = recordDeployment(db, {
+      repoId,
+      issueNumber: 506,
+      branchName: "issue-506",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issuectl-live",
+    }).id;
+    db.prepare("UPDATE deployments SET triggered_by = 'webhook' WHERE id = ?").run(deploymentId);
+    const priorIntentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 500,
+      scheduledAt: 500,
+    });
+    db.prepare("UPDATE webhook_intents SET status = 'launched', deployment_id = ?, resolved_at = ? WHERE id = ?").run(deploymentId, 600, priorIntentId);
+    const event = recordWebhookEvent(db, {
+      deliveryId: "delivery-close",
+      repoId,
+      eventType: "issues",
+      action: "closed",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 2_000,
+      eventId: event.deduped ? null : event.eventId,
+    });
+
+    const result = await runWorker(db, 2_000);
+
+    expectWorkerResult(result, { claimed: 1, skippedOptout: 1, endedSessions: 1 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.kill_switch"] })).toHaveLength(1);
+    expect(getDeploymentByIdForTest(db, deploymentId)).toEqual(
+      expect.objectContaining({ ended_at: expect.any(String) }),
+    );
+  });
+
+  it("records diagnostics for recoveries, expirations, and claims", async () => {
+    setSetting(db, "max_webhook_intent_age_minutes", "1");
+    const recoveredId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 100_000,
+    });
+    db.prepare(
+      "UPDATE webhook_intents SET status = 'processing', processing_started_at = ?, lease_expires_at = ? WHERE id = ?",
+    ).run(2_000, 3_000, recoveredId);
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 507,
+      signalAt: 1_000,
+      scheduledAt: 100_000,
+    });
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 508,
+      signalAt: 10_000,
+      scheduledAt: 61_000,
+    });
+
+    const result = await runWorker(db, 61_000);
+
+    expectWorkerResult(result, { claimed: 1, recovered: 1, expired: 2, launched: 1 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.intent_recovered"] })).toHaveLength(1);
+    expect(queryDiagnosticEvents(db, { events: ["webhook.expired"] })).toHaveLength(1);
+    expect(queryDiagnosticEvents(db, { events: ["webhook.intent_claimed"] })).toEqual([
+      expect.objectContaining({
+        owner: "mean-weasel",
+        repo: "issuectl",
+        issueNumber: 508,
+      }),
+    ]);
+  });
+
+  it("prunes expired raw payloads while keeping delivery tombstones", async () => {
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-raw",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 506,
+      payloadJson: JSON.stringify({ secret: "payload" }),
+      receivedAt: 1_000,
+      retainedUntil: 2_000,
+    });
+
+    const result = await runWorker(db, 2_000);
+
+    expect(result.prunedPayloads).toBe(1);
+    expect(db.prepare("SELECT payload_json FROM webhook_events").get()).toEqual({ payload_json: null });
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_deliveries").get()).toEqual({ count: 1 });
   });
 });

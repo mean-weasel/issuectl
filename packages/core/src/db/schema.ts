@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 22;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -29,7 +29,10 @@ const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS deployments (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     repo_id          INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
-    issue_number     INTEGER NOT NULL,
+    issue_number     INTEGER,
+    target_type      TEXT NOT NULL DEFAULT 'issue'
+                     CHECK (target_type IN ('issue', 'pr')),
+    target_number    INTEGER NOT NULL,
     agent            TEXT NOT NULL DEFAULT 'claude'
                      CHECK (agent IN ('claude', 'codex')),
     branch_name      TEXT NOT NULL,
@@ -42,8 +45,15 @@ const CREATE_TABLES = `
                      CHECK (terminal_backend IN ('ttyd', 'pty_bridge')),
     triggered_by     TEXT NOT NULL DEFAULT 'manual'
                      CHECK (triggered_by IN ('manual', 'webhook', 'comment_command')),
+    parent_deployment_id INTEGER REFERENCES deployments(id) ON DELETE SET NULL,
+    webhook_depth    INTEGER NOT NULL DEFAULT 0 CHECK (webhook_depth >= 0),
     launched_at      TEXT NOT NULL DEFAULT (datetime('now')),
     ended_at         TEXT,
+    terminal_reason  TEXT
+                     CHECK (terminal_reason IN ('completed', 'failed', 'ended_manual', 'killed_by_label', 'closed', 'timeout', 'liveness_missing') OR terminal_reason IS NULL),
+    completion_token TEXT,
+    completion_result_json TEXT,
+    notification_sent_at TEXT,
     ttyd_port        INTEGER,
     ttyd_pid         INTEGER,
     idle_since       TEXT
@@ -194,12 +204,51 @@ const CREATE_TABLES = `
     ON webhook_intents(repo_id, target_type, target_number)
     WHERE status IN ('pending', 'processing', 'deferred');
 
+  CREATE TABLE IF NOT EXISTS pr_reviews (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    repo_id             INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    pr_number           INTEGER NOT NULL,
+    deployment_id       INTEGER REFERENCES deployments(id),
+    started_head_sha    TEXT NOT NULL,
+    completed_head_sha  TEXT,
+    review_base_sha     TEXT NOT NULL,
+    reviewed_from_sha   TEXT,
+    reviewed_to_sha     TEXT NOT NULL,
+    head_repo_full_name TEXT NOT NULL,
+    head_ref            TEXT NOT NULL,
+    status              TEXT NOT NULL DEFAULT 'reserved'
+                        CHECK (status IN ('reserved', 'launching', 'in_progress', 'completed', 'failed', 'superseded')),
+    triggered_by        TEXT NOT NULL CHECK (triggered_by IN ('webhook', 'comment_command', 'manual')),
+    result_json         TEXT,
+    started_at          INTEGER NOT NULL,
+    completed_at        INTEGER,
+    UNIQUE(repo_id, pr_number, reviewed_to_sha)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pr_reviews_active
+    ON pr_reviews(repo_id, pr_number)
+    WHERE status IN ('reserved', 'launching', 'in_progress');
+
+  CREATE TABLE IF NOT EXISTS agent_action_budgets (
+    deployment_id INTEGER NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
+    action_type   TEXT NOT NULL
+                  CHECK (action_type IN ('push', 'comment', 'label', 'create_issue', 'create_pr')),
+    limit_count   INTEGER NOT NULL DEFAULT 0 CHECK (limit_count >= 0),
+    used_count    INTEGER NOT NULL DEFAULT 0 CHECK (used_count >= 0 AND used_count <= limit_count),
+    created_at    INTEGER NOT NULL,
+    updated_at    INTEGER NOT NULL,
+    PRIMARY KEY (deployment_id, action_type)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_agent_action_budgets_deployment
+    ON agent_action_budgets(deployment_id);
+
   CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER NOT NULL
   );
 `;
 
-// `idx_deployments_live` is intentionally NOT in CREATE_TABLES. On
+// The live deployment target index is intentionally NOT in CREATE_TABLES. On
 // upgrade DBs that pre-date R1 idempotency, the deployments table may
 // contain duplicate live rows from before the singleflight fix landed;
 // SQLite cannot create a unique index over a table that already
@@ -212,8 +261,8 @@ const CREATE_TABLES = `
 //   - Upgrade installs: the v9 migration runs the dedupe and the
 //     CREATE INDEX in the correct order via runMigrations.
 const CREATE_LIVE_DEPLOYMENT_INDEX = `
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live
-    ON deployments(repo_id, issue_number)
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live_target
+    ON deployments(repo_id, target_type, target_number)
     WHERE ended_at IS NULL;
 `;
 

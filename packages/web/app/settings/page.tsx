@@ -57,6 +57,7 @@ export default async function SettingsPage({
   const launchAgent = normalizeLaunchAgent(settingMap.launch_agent);
   const idleGracePeriod = settingMap.idle_grace_period ?? "300";
   const idleThreshold = settingMap.idle_threshold ?? "300";
+  const publicWebhookBaseUrl = settingMap.public_webhook_base_url ?? "";
 
   return (
     <PullToRefreshWrapper>
@@ -75,6 +76,7 @@ export default async function SettingsPage({
           launchAgent={launchAgent}
           idleGracePeriod={idleGracePeriod}
           idleThreshold={idleThreshold}
+          publicWebhookBaseUrl={publicWebhookBaseUrl}
         />
 
         <section className={styles.section}>

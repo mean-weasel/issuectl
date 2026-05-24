@@ -144,6 +144,9 @@ describe("executeLaunch terminal backend selection", () => {
     expect(verifyTmuxSpy).toHaveBeenCalledTimes(1);
     expect(verifyTtydSpy).not.toHaveBeenCalled();
     expect(spawnPtyBridgeSessionSpy).toHaveBeenCalledTimes(1);
+    expect(spawnPtyBridgeSessionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialPolicy: "ambient" }),
+    );
     expect(spawnTtydSpy).not.toHaveBeenCalled();
 
     const row = db
@@ -172,6 +175,8 @@ describe("executeLaunch terminal backend selection", () => {
       workspaceMode: "existing",
       selectedComments: [],
       selectedFiles: [],
+      triggeredBy: "webhook",
+      completionToken: "completion-48",
       terminalBackend: "pty_bridge",
     }));
 
@@ -179,12 +184,17 @@ describe("executeLaunch terminal backend selection", () => {
     expect(verifyTmuxSpy).toHaveBeenCalledTimes(1);
     expect(verifyTtydSpy).not.toHaveBeenCalled();
     expect(spawnPtyBridgeSessionSpy).toHaveBeenCalledTimes(1);
+    expect(spawnPtyBridgeSessionSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialPolicy: "scrubbed" }),
+    );
     expect(spawnTtydSpy).not.toHaveBeenCalled();
 
     const row = db
-      .prepare("SELECT terminal_backend FROM deployments WHERE repo_id = ? AND issue_number = ?")
-      .get(repo.id, 48) as { terminal_backend: string };
+      .prepare("SELECT terminal_backend, triggered_by, completion_token FROM deployments WHERE repo_id = ? AND issue_number = ?")
+      .get(repo.id, 48) as { terminal_backend: string; triggered_by: string; completion_token: string | null };
     expect(row.terminal_backend).toBe("pty_bridge");
+    expect(row.triggered_by).toBe("webhook");
+    expect(row.completion_token).toBe("completion-48");
     expect(db.prepare("SELECT value FROM settings WHERE key = ?").get("terminal_backend")).toEqual({ value: "ttyd" });
   });
 
@@ -212,6 +222,9 @@ describe("executeLaunch terminal backend selection", () => {
     expect(verifyTtydSpy).toHaveBeenCalledTimes(1);
     expect(verifyTmuxSpy).not.toHaveBeenCalled();
     expect(spawnTtydSpy).toHaveBeenCalledTimes(1);
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialPolicy: "ambient" }),
+    );
     expect(spawnPtyBridgeSessionSpy).not.toHaveBeenCalled();
 
     const row = db

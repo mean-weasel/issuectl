@@ -278,11 +278,12 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
       for (const deployment of item.deployments) {
         db.prepare(
           `INSERT INTO deployments
-           (id, repo_id, issue_number, agent, branch_name, workspace_mode, workspace_path, state, launched_at, ended_at, ttyd_port, ttyd_pid, idle_since, terminal_backend)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, repo_id, issue_number, target_type, target_number, agent, branch_name, workspace_mode, workspace_path, state, launched_at, ended_at, ttyd_port, ttyd_pid, idle_since, terminal_backend)
+           VALUES (?, ?, ?, 'issue', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           deployment.id,
           item.id,
+          deployment.issueNumber,
           deployment.issueNumber,
           deployment.agent,
           deployment.branchName,

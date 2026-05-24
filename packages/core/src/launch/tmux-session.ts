@@ -6,6 +6,8 @@ export interface SpawnPtyBridgeSessionOptions {
   agentCommand: string;
   agentInputMode?: "stdin" | "argument";
   sessionName: string;
+  credentialPolicy?: "ambient" | "scrubbed";
+  extraEnv?: Record<string, string>;
 }
 
 export const TMUX_TIMEOUT_MS = 10_000;
@@ -16,6 +18,11 @@ const TMUX_INITIAL_COLUMNS = 40;
 const TMUX_INITIAL_ROWS = 24;
 const AGENT_ENV_RESET =
   "for name in $(env | awk -F= '/^npm_/ {print $1}'); do unset \"$name\"; done; unset PNPM_SCRIPT_SRC_DIR";
+const AGENT_CREDENTIAL_ENV_RESET = [
+  "unset GH_TOKEN GITHUB_TOKEN GITHUB_PAT",
+  "unset SSH_AUTH_SOCK GIT_ASKPASS SSH_ASKPASS",
+  "export GH_CONFIG_DIR=\"$(mktemp -d ${TMPDIR:-/tmp}/issuectl-gh-empty.XXXXXX)\"",
+].join("; ");
 
 export function createTmuxAgentSession(options: SpawnPtyBridgeSessionOptions): void {
   const {
@@ -24,6 +31,8 @@ export function createTmuxAgentSession(options: SpawnPtyBridgeSessionOptions): v
     agentCommand,
     agentInputMode = "stdin",
     sessionName,
+    credentialPolicy = "ambient",
+    extraEnv = {},
   } = options;
 
   if (!TMUX_SESSION_RE.test(sessionName)) {
@@ -36,8 +45,15 @@ export function createTmuxAgentSession(options: SpawnPtyBridgeSessionOptions): v
     agentInputMode === "argument"
       ? `"$(cat ${shellEscape(contextFilePath)})"`
       : `< ${shellEscape(contextFilePath)}`;
+  const envReset = credentialPolicy === "scrubbed"
+    ? `${AGENT_ENV_RESET}; ${AGENT_CREDENTIAL_ENV_RESET}`
+    : AGENT_ENV_RESET;
+  const envExports = Object.entries(extraEnv)
+    .filter(([key]) => /^[A-Z_][A-Z0-9_]*$/.test(key))
+    .map(([key, value]) => `export ${key}=${shellEscape(value)}`)
+    .join("; ");
   const innerCommand =
-    `${AGENT_ENV_RESET}; cd ${shellEscape(workspacePath)} && ${agentCommand} ${contextInput} ; exit`;
+    `${envReset}; ${envExports}; cd ${shellEscape(workspacePath)} && ${agentCommand} ${contextInput} ; exit`;
 
   execFileSync("tmux", [
     "new-session", "-d",

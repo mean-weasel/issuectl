@@ -6,9 +6,9 @@ import {
   isTmuxSessionAlive,
   isTtydAlive,
   respawnTtyd,
-  tmuxSessionName,
   updateTtydInfo,
 } from "@issuectl/core";
+import { deploymentSessionName, type DeploymentTargetCompat } from "./deployment-target";
 import log from "./logger";
 import { recordTerminalEventForDeployment } from "./terminal-diagnostics";
 
@@ -72,7 +72,7 @@ export async function ensureTtydRunning(port: number): Promise<boolean> {
 
 async function doRespawn(
   port: number,
-  deployment: { id: number; repoId: number; issueNumber: number; ttydPid: number | null },
+  deployment: { id: number; repoId: number; ttydPid: number | null } & DeploymentTargetCompat,
   db: ReturnType<typeof getDb>,
 ): Promise<boolean> {
   const repo = getRepoById(db, deployment.repoId);
@@ -87,7 +87,7 @@ async function doRespawn(
     return false;
   }
 
-  const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+  const sessionName = deploymentSessionName(repo.name, deployment);
   let sessionAlive: boolean;
   try {
     sessionAlive = isTmuxSessionAlive(sessionName);

@@ -5,16 +5,16 @@ import {
   recordDiagnosticEventSafely,
   type DiagnosticLevel,
 } from "@issuectl/core";
+import { issueNumberForDiagnostic, type DeploymentTargetCompat } from "./deployment-target";
 
 type Database = ReturnType<typeof getDb>;
 type RepoRecord = NonNullable<ReturnType<typeof getRepoById>>;
 type TerminalDeployment = {
   id: number;
   repoId: number;
-  issueNumber: number;
   ttydPort?: number | null;
   ttydPid?: number | null;
-};
+} & DeploymentTargetCompat;
 
 type TerminalDiagnosticInput = {
   level: DiagnosticLevel;
@@ -102,7 +102,7 @@ export function recordTerminalEventForDeployment(
     ...input,
     owner: resolvedRepo?.owner,
     repo: resolvedRepo?.name,
-    issueNumber: deployment.issueNumber,
+    issueNumber: issueNumberForDiagnostic(deployment),
     deploymentId: deployment.id,
     ttydPort: deployment.ttydPort ?? undefined,
     ttydPid: deployment.ttydPid ?? undefined,

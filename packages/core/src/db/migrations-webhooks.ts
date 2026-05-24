@@ -86,7 +86,94 @@ export function runWebhookMigration(db: Database.Database): void {
   insert.run("max_webhook_queue_depth", "100");
   insert.run("max_webhook_intent_age_minutes", "60");
   insert.run("max_concurrent_webhook_agents", "2");
+  insert.run("max_webhook_recursion_depth", "1");
   insert.run("public_webhook_base_url", "");
+}
+
+export function runDeploymentTerminalMigration(db: Database.Database): void {
+  if (!hasTable(db, "deployments")) return;
+  db.exec(`
+    ALTER TABLE deployments ADD COLUMN terminal_reason TEXT CHECK (terminal_reason IN ('completed', 'failed', 'ended_manual', 'killed_by_label', 'closed', 'timeout', 'liveness_missing') OR terminal_reason IS NULL);
+    ALTER TABLE deployments ADD COLUMN completion_token TEXT;
+    ALTER TABLE deployments ADD COLUMN completion_result_json TEXT;
+    ALTER TABLE deployments ADD COLUMN notification_sent_at TEXT;
+  `);
+}
+
+export function runDeploymentTargetMigration(db: Database.Database): void {
+  if (!hasTable(db, "deployments")) return;
+  const hasWebhookIntents = hasTable(db, "webhook_intents");
+  if (hasWebhookIntents) {
+    db.exec(`
+      CREATE TEMP TABLE deployment_target_intent_refs AS
+        SELECT id, deployment_id
+        FROM webhook_intents
+        WHERE deployment_id IS NOT NULL;
+      UPDATE webhook_intents
+        SET deployment_id = NULL
+        WHERE deployment_id IS NOT NULL;
+    `);
+  }
+  db.exec(`
+    DROP INDEX IF EXISTS idx_deployments_live;
+    CREATE TABLE deployments_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      repo_id INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+      issue_number INTEGER,
+      target_type TEXT NOT NULL DEFAULT 'issue' CHECK (target_type IN ('issue', 'pr')),
+      target_number INTEGER NOT NULL,
+      agent TEXT NOT NULL DEFAULT 'claude' CHECK (agent IN ('claude', 'codex')),
+      branch_name TEXT NOT NULL,
+      workspace_mode TEXT NOT NULL,
+      workspace_path TEXT NOT NULL,
+      linked_pr_number INTEGER,
+      state TEXT NOT NULL DEFAULT 'active' CHECK (state IN ('pending', 'active')),
+      terminal_backend TEXT NOT NULL DEFAULT 'ttyd' CHECK (terminal_backend IN ('ttyd', 'pty_bridge')),
+      triggered_by TEXT NOT NULL DEFAULT 'manual' CHECK (triggered_by IN ('manual', 'webhook', 'comment_command')),
+      launched_at TEXT NOT NULL DEFAULT (datetime('now')),
+      ended_at TEXT,
+      terminal_reason TEXT CHECK (terminal_reason IN ('completed', 'failed', 'ended_manual', 'killed_by_label', 'closed', 'timeout', 'liveness_missing') OR terminal_reason IS NULL),
+      completion_token TEXT,
+      completion_result_json TEXT,
+      notification_sent_at TEXT,
+      ttyd_port INTEGER,
+      ttyd_pid INTEGER,
+      idle_since TEXT
+    );
+
+    INSERT INTO deployments_new (
+      id, repo_id, issue_number, target_type, target_number, agent,
+      branch_name, workspace_mode, workspace_path, linked_pr_number, state,
+      terminal_backend, triggered_by, launched_at, ended_at, terminal_reason,
+      completion_token, completion_result_json, notification_sent_at, ttyd_port,
+      ttyd_pid, idle_since
+    )
+    SELECT
+      id, repo_id, issue_number, 'issue', issue_number, agent,
+      branch_name, workspace_mode, workspace_path, linked_pr_number, state,
+      terminal_backend, triggered_by, launched_at, ended_at, terminal_reason,
+      completion_token, completion_result_json, notification_sent_at, ttyd_port,
+      ttyd_pid, idle_since
+    FROM deployments;
+
+    DROP TABLE deployments;
+    ALTER TABLE deployments_new RENAME TO deployments;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_deployments_live_target
+      ON deployments(repo_id, target_type, target_number)
+      WHERE ended_at IS NULL;
+  `);
+  if (hasWebhookIntents) {
+    db.exec(`
+      UPDATE webhook_intents
+        SET deployment_id = (
+          SELECT deployment_id
+          FROM deployment_target_intent_refs refs
+          WHERE refs.id = webhook_intents.id
+        )
+        WHERE id IN (SELECT id FROM deployment_target_intent_refs);
+      DROP TABLE deployment_target_intent_refs;
+    `);
+  }
 }
 
 function hasTable(db: Database.Database, name: string): boolean {

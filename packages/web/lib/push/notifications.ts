@@ -1,7 +1,10 @@
 import {
   deletePushDevice,
   getDb,
+  getDeploymentById,
+  getRepoById,
   listPushDevicesForKind,
+  recordDiagnosticEventSafely,
   type PushNotificationKind,
 } from "@issuectl/core";
 import log from "@/lib/logger";
@@ -13,6 +16,25 @@ type PushEvent = {
   body: string;
   url?: string;
   data?: Record<string, unknown>;
+};
+
+type NotificationDeployment = {
+  id: number;
+  repoId: number;
+  issueNumber: number | null;
+  targetType?: "issue" | "pr";
+  targetNumber?: number;
+  triggeredBy?: "manual" | "webhook" | "comment_command";
+  terminalReason?: string | null;
+  completionResultJson?: string | null;
+  endedAt: string | null;
+};
+
+type CompletionResult = {
+  status?: string;
+  summary?: string;
+  finalHeadSha?: string;
+  pushedCommitSha?: string;
 };
 
 export async function notifyDevices(event: PushEvent): Promise<void> {
@@ -110,4 +132,118 @@ export function notifyMergedPullRequest(input: {
     url: `/pulls/${input.owner}/${input.repo}/${input.pullNumber}`,
     data: input,
   });
+}
+
+export function notifyDeploymentTerminalOutcome(input: {
+  deploymentId: number;
+}): boolean {
+  const db = getDb();
+  const deployment = getDeploymentById(db, input.deploymentId);
+  if (!shouldNotifyDeployment(deployment)) return false;
+  const repo = getRepoById(db, deployment.repoId);
+  if (!repo) return false;
+
+  const targetType = deployment.targetType ?? "issue";
+  const targetNumber = deployment.targetNumber ?? deployment.issueNumber;
+  if (!targetNumber) return false;
+  if (!claimDeploymentNotificationSentLocal(db, deployment.id)) return false;
+  recordTerminalNotificationDiagnostic(db, repo, deployment, targetType, targetNumber);
+  const targetLabel = targetType === "pr" ? "PR" : "issue";
+  const outcome = terminalOutcome(deployment);
+  void notifyDevices({
+    kind: "idleTerminals",
+    title: "Session ended",
+    body: `${repo.owner}/${repo.name} ${targetLabel} #${targetNumber}: ${outcome.text}`,
+    url: targetType === "pr"
+      ? `/pulls/${repo.owner}/${repo.name}/${targetNumber}`
+      : `/issues/${repo.owner}/${repo.name}/${targetNumber}`,
+    data: {
+      owner: repo.owner,
+      repo: repo.name,
+      deploymentId: deployment.id,
+      targetType,
+      targetNumber,
+      terminalReason: deployment.terminalReason,
+      completionStatus: outcome.status,
+      finalHeadSha: outcome.result.finalHeadSha,
+      pushedCommitSha: outcome.result.pushedCommitSha,
+      triggeredBy: deployment.triggeredBy,
+    },
+  });
+  return true;
+}
+
+function recordTerminalNotificationDiagnostic(
+  db: ReturnType<typeof getDb>,
+  repo: { owner: string; name: string },
+  deployment: NotificationDeployment,
+  targetType: "issue" | "pr",
+  targetNumber: number,
+): void {
+  recordDiagnosticEventSafely(db, {
+    level: "info",
+    event: "webhook.notification_sent",
+    source: "webhook-notifications",
+    owner: repo.owner,
+    repo: repo.name,
+    issueNumber: targetType === "issue" ? targetNumber : undefined,
+    deploymentId: deployment.id,
+    status: terminalOutcome(deployment).status,
+    data: {
+      targetType,
+      targetNumber,
+      triggeredBy: deployment.triggeredBy,
+      completion: terminalOutcome(deployment).result,
+    },
+  });
+}
+
+function shouldNotifyDeployment(
+  deployment: unknown,
+): deployment is NotificationDeployment {
+  const candidate = deployment as NotificationDeployment | undefined;
+  return Boolean(
+    candidate &&
+      candidate.endedAt !== null &&
+      candidate.triggeredBy !== "manual",
+  );
+}
+
+function claimDeploymentNotificationSentLocal(
+  db: ReturnType<typeof getDb>,
+  deploymentId: number,
+): boolean {
+  const result = db.prepare(
+    "UPDATE deployments SET notification_sent_at = datetime('now') WHERE id = ? AND notification_sent_at IS NULL",
+  ).run(deploymentId);
+  return result.changes > 0;
+}
+
+function terminalOutcome(deployment: NotificationDeployment): {
+  status: string;
+  text: string;
+  result: CompletionResult;
+} {
+  const result = parseCompletionResult(deployment.completionResultJson);
+  const status = result.status ?? deployment.terminalReason ?? "ended";
+  if (status === "pushed_fixes") {
+    return { status, text: `pushed fixes${shortShaText(result.pushedCommitSha)}`, result };
+  }
+  if (status === "no_changes") return { status, text: "no changes", result };
+  if (status === "failed") return { status, text: result.summary ? `failed: ${result.summary}` : "failed", result };
+  return { status, text: result.summary || status, result };
+}
+
+function parseCompletionResult(value: string | null | undefined): CompletionResult {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value) as CompletionResult;
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function shortShaText(value: string | undefined): string {
+  return value ? ` (${value.slice(0, 7)})` : "";
 }

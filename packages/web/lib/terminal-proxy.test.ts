@@ -12,6 +12,8 @@ vi.mock("@issuectl/core", () => ({
   recordDiagnosticEventSafely: mockRecordDiagnosticEventSafely,
   getDeploymentById: vi.fn(),
   getSetting: vi.fn(),
+  tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
+    `issuectl-${repo}-${targetType}-${targetNumber}`,
 }));
 
 import { isValidTerminalPort, rewriteHtml } from "./terminal-proxy.js";

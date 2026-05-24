@@ -9,6 +9,7 @@ import {
   claimDueWebhookIntent,
   getWebhookEventByDelivery,
   listWebhookEvents,
+  pruneExpiredWebhookPayloads,
   recordWebhookEvent,
   recoverExpiredWebhookIntentLeases,
 } from "./webhooks.js";
@@ -88,6 +89,87 @@ describe("webhook DB helpers", () => {
     expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_events").get()).toEqual({
       count: 1,
     });
+  });
+
+  it("filters listed events by repo and target", () => {
+    const otherRepoId = addRepo(db, { owner: "mean-weasel", name: "other" }).id;
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-1",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-2",
+      repoId,
+      eventType: "pull_request",
+      action: "opened",
+      targetType: "pr",
+      targetNumber: 17,
+      receivedAt: 2_000,
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-3",
+      repoId: otherRepoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 3_000,
+    });
+
+    expect(
+      listWebhookEvents(db, {
+        repoId,
+        targetType: "issue",
+        targetNumber: 506,
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        deliveryId: "delivery-1",
+        repoId,
+        targetType: "issue",
+        targetNumber: 506,
+      }),
+    ]);
+  });
+
+  it("prunes expired raw payloads without deleting delivery tombstones", () => {
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-raw",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      payloadJson: JSON.stringify({ sensitive: true }),
+      receivedAt: 1_000,
+      retainedUntil: 2_000,
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-keep",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      payloadJson: JSON.stringify({ keep: true }),
+      receivedAt: 1_000,
+      retainedUntil: 3_000,
+    });
+
+    expect(pruneExpiredWebhookPayloads(db, 2_000)).toBe(1);
+
+    expect(
+      db
+        .prepare("SELECT delivery_id, payload_json FROM webhook_events ORDER BY delivery_id")
+        .all(),
+    ).toEqual([
+      { delivery_id: "delivery-keep", payload_json: JSON.stringify({ keep: true }) },
+      { delivery_id: "delivery-raw", payload_json: null },
+    ]);
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM webhook_deliveries").get(),
+    ).toEqual({ count: 2 });
   });
 
   it("finds an existing event by delivery id and repo", () => {

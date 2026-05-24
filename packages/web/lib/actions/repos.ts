@@ -8,6 +8,7 @@ import {
   addRepo as coreAddRepo,
   removeRepo as coreRemoveRepo,
   updateRepo as coreUpdateRepo,
+  updateRepoWebhookSettings,
   readCachedAccessibleRepos,
   refreshAccessibleRepos,
   getIssues,
@@ -16,6 +17,8 @@ import {
   withAuthRetry,
   formatErrorForUser,
   type AccessibleReposSnapshot,
+  type LaunchAgent,
+  type WebhookPayloadMode,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
 
@@ -180,7 +183,15 @@ export async function refreshGithubReposAction(): Promise<
 
 export async function updateRepo(
   id: number,
-  updates: { localPath?: string; branchPattern?: string },
+  updates: {
+    localPath?: string;
+    branchPattern?: string;
+    autoLaunchIssues?: boolean;
+    autoReviewPrs?: boolean;
+    issueAgent?: LaunchAgent;
+    reviewAgent?: LaunchAgent;
+    webhookPayloadMode?: WebhookPayloadMode;
+  },
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (!id || id <= 0) {
     return { success: false, error: "Invalid repo ID" };
@@ -218,7 +229,23 @@ export async function updateRepo(
 
   try {
     const db = getDb();
-    coreUpdateRepo(db, id, updates);
+    const repoUpdates = {
+      localPath: updates.localPath,
+      branchPattern: updates.branchPattern,
+    };
+    if (Object.values(repoUpdates).some((value) => value !== undefined)) {
+      coreUpdateRepo(db, id, repoUpdates);
+    }
+    const webhookUpdates = {
+      autoLaunchIssues: updates.autoLaunchIssues,
+      autoReviewPrs: updates.autoReviewPrs,
+      issueAgent: updates.issueAgent,
+      reviewAgent: updates.reviewAgent,
+      webhookPayloadMode: updates.webhookPayloadMode,
+    };
+    if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
+      updateRepoWebhookSettings(db, id, webhookUpdates);
+    }
   } catch (err) {
     console.error("[issuectl] Failed to update repo:", errMessage(err));
     return { success: false, error: "Failed to update repository" };

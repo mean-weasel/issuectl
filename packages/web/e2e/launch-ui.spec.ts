@@ -89,13 +89,14 @@ function createTestDb(dbPath: string): void {
 
     const insertDeployment = db.prepare(
       `INSERT INTO deployments
-       (id, repo_id, issue_number, branch_name, workspace_mode, workspace_path, state, agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, state, agent)
+       VALUES (?, ?, ?, 'issue', ?, ?, ?, ?, ?, ?)`,
     );
 
     insertDeployment.run(
       TEST_DEPLOYMENT_ID,
       repo.id,
+      TEST_ISSUE,
       TEST_ISSUE,
       `issue-${TEST_ISSUE}-test`,
       "worktree",
@@ -107,6 +108,7 @@ function createTestDb(dbPath: string): void {
     insertDeployment.run(
       TEST_CODEX_DEPLOYMENT_ID,
       repo.id,
+      TEST_CODEX_ISSUE,
       TEST_CODEX_ISSUE,
       `issue-${TEST_CODEX_ISSUE}-codex-test`,
       "worktree",

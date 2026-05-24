@@ -8,7 +8,6 @@ import {
   endDeployment,
   killTmuxSession,
   killTtyd,
-  tmuxSessionName,
   cleanupStaleContextFiles,
   recordDiagnosticEventSafely,
   removeLabel,
@@ -16,6 +15,8 @@ import {
   clearCacheKey,
   withAuthRetry,
 } from "@issuectl/core";
+import { deploymentSessionName, getDeploymentTarget } from "@/lib/deployment-target";
+import { notifyDeploymentTerminalOutcome } from "@/lib/push/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,8 @@ export async function POST(
       return NextResponse.json({ error: "Repository not found" }, { status: 404 });
     }
 
-    if (deployment.repoId !== repoRecord.id || deployment.issueNumber !== body.issueNumber) {
+    const target = getDeploymentTarget(deployment);
+    if (deployment.repoId !== repoRecord.id || target.targetType !== "issue" || target.targetNumber !== body.issueNumber) {
       return NextResponse.json({ error: "Deployment does not match the specified issue" }, { status: 400 });
     }
 
@@ -72,7 +74,7 @@ export async function POST(
       return NextResponse.json({ success: true });
     }
 
-    const sessionName = tmuxSessionName(body.repo, body.issueNumber);
+    const sessionName = deploymentSessionName(body.repo, deployment);
     if (deployment.ttydPid) {
       try {
         killTtyd(deployment.ttydPid, sessionName);
@@ -93,6 +95,7 @@ export async function POST(
       });
     }
     endDeployment(db, deploymentId);
+    notifyDeploymentTerminalOutcome({ deploymentId });
 
     try {
       await withAuthRetry((octokit) =>

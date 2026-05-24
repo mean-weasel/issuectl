@@ -3,7 +3,7 @@ import { recordDiagnosticEventSafely } from "../db/diagnostics.js";
 import type { LaunchAgent } from "../types.js";
 import type { WorkspaceMode } from "./workspace.js";
 
-type LaunchDiagnosticContext = {
+export type LaunchDiagnosticContext = {
   db: Database.Database;
   correlationId: string;
   owner: string;

@@ -5,8 +5,8 @@ import {
   getRepoById,
   isTmuxSessionAlive,
   recordDiagnosticEventSafely,
-  tmuxSessionName,
 } from "@issuectl/core";
+import { deploymentSessionName, issueNumberForDiagnostic } from "./deployment-target";
 import { ensureTtydForDeployment, type EnsureTtydResult } from "./ensure-ttyd";
 import { createPtyTerminalToken } from "./terminal-auth";
 
@@ -59,14 +59,14 @@ function ensurePtyBridgeTerminal(
         level: "error",
         event: "pty.ensure_failed",
         source: "web.ensure-terminal",
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         message: "Repository not found",
       });
       return { alive: false, backend: "pty_bridge", error: "Repository not found" };
     }
 
-    const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+    const sessionName = deploymentSessionName(repo.name, deployment);
     if (!isTmuxSessionAlive(sessionName)) {
       try {
         endDeployment(db, deploymentId);
@@ -79,7 +79,7 @@ function ensurePtyBridgeTerminal(
         source: "web.ensure-terminal",
         owner: repo.owner,
         repo: repo.name,
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId,
         sessionName,
         message: "Terminal session has ended",
