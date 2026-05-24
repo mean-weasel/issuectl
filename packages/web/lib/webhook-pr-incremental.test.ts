@@ -183,6 +183,39 @@ describe("incremental PR webhook intents", () => {
       }),
     ]);
   });
+
+  it("forces a full PR review when a comment command requests --full", async () => {
+    seedCompletedReview(db, repoId, 50);
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 50,
+      signalAt: 2_000,
+      scheduledAt: 2_000,
+      desiredHeadSha: "head-c",
+      reviewMode: "full",
+    });
+
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, {
+      fetchPullState: async () => ({ ...safePull, headSha: "head-c" }),
+      isAncestor: async () => true,
+      launchPr: async (_db, _repo, _intent, _pull, review) => {
+        expect(review.reviewedFromSha).toBeNull();
+        return { deploymentId: recordTestDeployment(_db, repoId, 50) };
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({ claimed: 1, launched: 1, failed: 0 }));
+    expect(prReviewRows(db)).toEqual([
+      expect.objectContaining({ status: "completed", reviewed_to_sha: "head-b" }),
+      expect.objectContaining({
+        status: "in_progress",
+        deployment_id: 1,
+        reviewed_from_sha: null,
+        reviewed_to_sha: "head-c",
+      }),
+    ]);
+  });
 });
 
 function seedCompletedReview(db: Database.Database, repoId: number, prNumber: number): void {

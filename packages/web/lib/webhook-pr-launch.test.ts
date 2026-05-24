@@ -61,6 +61,7 @@ describe("launchPrFromWebhook", () => {
       expect.objectContaining({
         targetType: "pr",
         targetNumber: 44,
+        agent: "codex",
         reviewedFromSha: "head-b",
         reviewedToSha: "head-c",
       }),
@@ -99,6 +100,8 @@ function intent() {
     leaseExpiresAt: 2,
     generation: 1,
     desiredHeadSha: "head-c",
+    requestedAgent: "codex" as const,
+    reviewMode: null,
     signalCount: 1,
     status: "processing" as const,
     resolvedAt: null,

@@ -69,6 +69,7 @@ describe("spawnTtyd", () => {
     expect(tmuxCmd).toContain("claude --dangerously-skip-permissions");
     expect(tmuxCmd).toContain("unset PNPM_SCRIPT_SRC_DIR");
     expect(tmuxCmd).not.toContain("unset GH_TOKEN");
+    expect(tmuxCmd).not.toContain("; ;");
     expect(tmuxCmd).toContain("< ");
     expect(tmuxCmd).toContain("; exit");
 

@@ -30,6 +30,8 @@ export type MergeWebhookIntentInput = {
   signalAt: number;
   scheduledAt: number;
   desiredHeadSha?: string | null;
+  requestedAgent?: "claude" | "codex" | null;
+  reviewMode?: "auto" | "full" | null;
   eventId?: number | null;
 };
 
@@ -59,6 +61,8 @@ export type WebhookIntent = {
   leaseExpiresAt: number | null;
   generation: number;
   desiredHeadSha: string | null;
+  requestedAgent: "claude" | "codex" | null;
+  reviewMode: "auto" | "full" | null;
   signalCount: number;
   status: WebhookIntentStatus;
   resolvedAt: number | null;
@@ -99,6 +103,8 @@ export type WebhookIntentRow = {
   lease_expires_at: number | null;
   generation: number;
   desired_head_sha: string | null;
+  requested_agent: "claude" | "codex" | null;
+  review_mode: "auto" | "full" | null;
   signal_count: number;
   status: WebhookIntentStatus;
   resolved_at: number | null;
@@ -135,6 +141,8 @@ export function rowToWebhookIntent(row: WebhookIntentRow): WebhookIntent {
     leaseExpiresAt: row.lease_expires_at,
     generation: row.generation,
     desiredHeadSha: row.desired_head_sha,
+    requestedAgent: row.requested_agent,
+    reviewMode: row.review_mode,
     signalCount: row.signal_count,
     status: row.status,
     resolvedAt: row.resolved_at,

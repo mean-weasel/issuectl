@@ -1,5 +1,9 @@
 # Issue #506 Update Draft
 
+Superseded by PR #511, the final issue #506 update, and the follow-up board at
+`docs/goals/issue-506-follow-up-gap-fixes/`. This note is retained as
+historical local draft context and should not be posted as-is.
+
 Local draft only. Do not post until the current diff is reviewed/pushed, or the
 owner explicitly approves posting from local state.
 

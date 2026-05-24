@@ -76,11 +76,17 @@ function updateActiveWebhookIntent(
            scheduled_at = ?,
            generation = generation + 1,
            desired_head_sha = COALESCE(?, desired_head_sha),
+           requested_agent = COALESCE(?, requested_agent),
+           review_mode = COALESCE(?, review_mode),
            signal_count = signal_count + 1
        WHERE id = ?
          AND status IN (${activeStatusPlaceholders()})`,
     )
-    .run(input.signalAt, input.scheduledAt, input.desiredHeadSha ?? null, intentId, ...ACTIVE_INTENT_STATUSES);
+    .run(
+      input.signalAt, input.scheduledAt, input.desiredHeadSha ?? null,
+      input.requestedAgent ?? null, input.reviewMode ?? null, intentId,
+      ...ACTIVE_INTENT_STATUSES,
+    );
 
   if (result.changes !== 1) return false;
 
@@ -167,10 +173,15 @@ function mergeWebhookIntentOnce(
         const result = db
           .prepare(
             `INSERT INTO webhook_intents
-              (repo_id, target_type, target_number, first_signal_at, last_signal_at, scheduled_at, desired_head_sha, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+              (repo_id, target_type, target_number, first_signal_at, last_signal_at,
+               scheduled_at, desired_head_sha, requested_agent, review_mode, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
           )
-          .run(input.repoId, input.targetType, input.targetNumber, input.signalAt, input.signalAt, input.scheduledAt, input.desiredHeadSha ?? null);
+          .run(
+            input.repoId, input.targetType, input.targetNumber,
+            input.signalAt, input.signalAt, input.scheduledAt,
+            input.desiredHeadSha ?? null, input.requestedAgent ?? null, input.reviewMode ?? null,
+          );
         const intentId = Number(result.lastInsertRowid);
 
         if (input.eventId !== undefined && input.eventId !== null) {

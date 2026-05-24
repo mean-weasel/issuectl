@@ -81,7 +81,7 @@ function countActiveWebhookAgents(db: Database.Database): number {
   const row = db.prepare(
     `SELECT COUNT(*) AS count
      FROM deployments
-     WHERE triggered_by = 'webhook'
+     WHERE triggered_by IN ('webhook', 'comment_command')
        AND ended_at IS NULL`,
   ).get() as { count: number };
   return row.count;

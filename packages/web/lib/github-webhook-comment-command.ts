@@ -34,6 +34,9 @@ export type GithubWebhookCommentCommandDeps = {
     commentId: number,
     content: "+1" | "-1" | "eyes",
   ) => Promise<void>;
+  killTmuxSession?: typeof killTmuxSession;
+  killTtyd?: typeof killTtyd;
+  tmuxSessionName?: typeof tmuxSessionName;
 };
 
 export async function handleIssuectlCommentCommand(
@@ -88,7 +91,13 @@ export async function handleIssuectlCommentCommand(
   }
 
   if (commentCommand.action === "end") {
-    const endedSessions = endNonManualTargetSessions(db, repo, commentCommand.targetType, commentCommand.targetNumber);
+    const endedSessions = endNonManualTargetSessions(
+      db,
+      repo,
+      commentCommand.targetType,
+      commentCommand.targetNumber,
+      deps,
+    );
     await emitCommandReaction(repo, payload, "+1", deps);
     writeJson(res, 200, { ok: true, eventId: input.eventId, intentId: null, endedSessions });
     return true;
@@ -101,6 +110,8 @@ export async function handleIssuectlCommentCommand(
       signalAt: Date.now(),
       scheduledAt: Date.now(),
       eventId: input.eventId,
+      requestedAgent: commentCommand.agent,
+      reviewMode: commentCommand.action === "review" && commentCommand.full ? "full" : null,
     });
   await emitCommandReaction(repo, payload, "+1", deps);
   writeJson(res, 200, { ok: true, eventId: input.eventId, intentId });
@@ -201,6 +212,7 @@ function endNonManualTargetSessions(
   repo: Repo,
   targetType: WebhookTargetType,
   targetNumber: number,
+  deps: GithubWebhookCommentCommandDeps,
 ): number {
   const columns = db.prepare("PRAGMA table_info(deployments)").all() as Array<{ name: string }>;
   const hasTargets = columns.some((column) => column.name === "target_type")
@@ -229,11 +241,13 @@ function endNonManualTargetSessions(
      SET ended_at = COALESCE(ended_at, datetime('now'))${terminalReasonSet}
      WHERE id = ? AND ended_at IS NULL`,
   );
-  const sessionName = tmuxSessionName(repo.name, targetNumber);
+  const sessionName = (deps.tmuxSessionName ?? tmuxSessionName)(repo.name, targetNumber, targetType);
+  const endTtyd = deps.killTtyd ?? killTtyd;
+  const endTmuxSession = deps.killTmuxSession ?? killTmuxSession;
   let ended = 0;
   for (const session of sessions) {
-    if (session.ttyd_pid) killTtyd(session.ttyd_pid, sessionName);
-    else if (session.terminal_backend === "pty_bridge") killTmuxSession(sessionName);
+    if (session.ttyd_pid) endTtyd(session.ttyd_pid, sessionName);
+    else if (session.terminal_backend === "pty_bridge") endTmuxSession(sessionName);
     ended += end.run(session.id).changes;
   }
   return ended;

@@ -64,6 +64,8 @@ export function runWebhookMigration(db: Database.Database): void {
       lease_expires_at      INTEGER,
       generation            INTEGER NOT NULL DEFAULT 1,
       desired_head_sha      TEXT,
+      requested_agent       TEXT CHECK (requested_agent IN ('claude', 'codex') OR requested_agent IS NULL),
+      review_mode           TEXT CHECK (review_mode IN ('auto', 'full') OR review_mode IS NULL),
       signal_count          INTEGER NOT NULL DEFAULT 1,
       status                TEXT NOT NULL DEFAULT 'pending'
                             CHECK (status IN ('pending', 'processing', 'deferred', 'launched', 'skipped_locked', 'skipped_optout', 'expired', 'failed')),
@@ -88,6 +90,16 @@ export function runWebhookMigration(db: Database.Database): void {
   insert.run("max_concurrent_webhook_agents", "2");
   insert.run("max_webhook_recursion_depth", "1");
   insert.run("public_webhook_base_url", "");
+}
+
+export function runWebhookIntentOptionsMigration(db: Database.Database): void {
+  if (!hasTable(db, "webhook_intents")) return;
+  if (!hasColumn(db, "webhook_intents", "requested_agent")) {
+    db.exec("ALTER TABLE webhook_intents ADD COLUMN requested_agent TEXT CHECK (requested_agent IN ('claude', 'codex') OR requested_agent IS NULL);");
+  }
+  if (!hasColumn(db, "webhook_intents", "review_mode")) {
+    db.exec("ALTER TABLE webhook_intents ADD COLUMN review_mode TEXT CHECK (review_mode IN ('auto', 'full') OR review_mode IS NULL);");
+  }
 }
 
 export function runDeploymentTerminalMigration(db: Database.Database): void {
@@ -183,4 +195,9 @@ function hasTable(db: Database.Database, name: string): boolean {
     )
     .get(name) as { c: number };
   return row.c > 0;
+}
+
+function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return rows.some((row) => row.name === column);
 }

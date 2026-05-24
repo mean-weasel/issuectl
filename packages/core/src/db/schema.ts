@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 23;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -192,6 +192,8 @@ const CREATE_TABLES = `
     lease_expires_at      INTEGER,
     generation            INTEGER NOT NULL DEFAULT 1,
     desired_head_sha      TEXT,
+    requested_agent       TEXT CHECK (requested_agent IN ('claude', 'codex') OR requested_agent IS NULL),
+    review_mode           TEXT CHECK (review_mode IN ('auto', 'full') OR review_mode IS NULL),
     signal_count          INTEGER NOT NULL DEFAULT 1,
     status                TEXT NOT NULL DEFAULT 'pending'
                           CHECK (status IN ('pending', 'processing', 'deferred', 'launched', 'skipped_locked', 'skipped_optout', 'expired', 'failed')),

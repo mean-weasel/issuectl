@@ -43,13 +43,13 @@ describe("initSchema", () => {
 
   it("sets schema_version to current", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
   });
 });
 
@@ -66,7 +66,7 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
   });
 
   it("migrates v1 schema through v9 and drops claude_aliases", () => {
@@ -82,7 +82,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -106,7 +106,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'issue', 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -149,7 +149,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -180,7 +180,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     const cols = db
       .prepare("PRAGMA table_info(diagnostic_events)")
       .all() as { name: string; pk: number }[];

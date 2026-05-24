@@ -11,9 +11,7 @@ import {
   setSetting,
   updateRepoWebhookSettings,
 } from "@issuectl/core";
-import {
-  runWebhookIntentWorkerOnce,
-} from "./webhook-intent-worker.js";
+import { runWebhookIntentWorkerOnce } from "./webhook-intent-worker.js";
 
 type IntentRow = {
   status: string;
@@ -59,13 +57,14 @@ function testWorkerDeps() {
     launchIssue: async (
       _db: Database.Database,
       _repo: unknown,
-      intent: { repoId: number; targetNumber: number },
+      intent: { repoId: number; targetNumber: number; requestedAgent: "claude" | "codex" | null },
       _issue: unknown,
       triggeredBy: "webhook" | "comment_command",
     ) => {
       const deploymentId = recordDeployment(_db, {
         repoId: intent.repoId,
         issueNumber: intent.targetNumber,
+        agent: intent.requestedAgent ?? "claude",
         branchName: "issue-506",
         workspaceMode: "worktree",
         workspacePath: "/tmp/issuectl-test",
@@ -116,6 +115,7 @@ describe("runWebhookIntentWorkerOnce", () => {
       targetNumber: 506,
       signalAt: 1_000,
       scheduledAt: 2_000,
+      requestedAgent: "codex",
     });
 
     const result = await runWorker(db, 2_000);
@@ -129,6 +129,7 @@ describe("runWebhookIntentWorkerOnce", () => {
         deployment_id: 1,
       }),
     );
+    expect(db.prepare("SELECT agent FROM deployments WHERE id = 1").get()).toEqual({ agent: "codex" });
   });
 
   it("recovers expired processing leases to pending", async () => {

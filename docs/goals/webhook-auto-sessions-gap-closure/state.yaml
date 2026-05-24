@@ -8,7 +8,10 @@ goal:
   slug: "webhook-auto-sessions-gap-closure"
   kind: existing_plan
   tranche: "Close remaining issue #506 gaps after PR #510 through successive safe verified implementation slices."
-  status: active
+  status: superseded
+  superseded_by:
+    goal: "docs/goals/issue-506-follow-up-gap-fixes/goal.md"
+    reason: "PR #511 and later issue #506 follow-up audits superseded this active plan; historical receipts remain unchanged."
   oracle:
     signal: "Issue #506 gap matrix remains current, and every required gap is implemented with focused verification or explicitly blocked/deferred with an approved artifact."
     cadence: "after each Worker package, at each phase boundary, and at final audit"

@@ -158,15 +158,15 @@ describe("agent mutation gateway schema", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     expect(db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agent_action_budgets'",
     ).all()).toHaveLength(1);
   });
 
-  it("sets fresh schema version to 22", () => {
+  it("sets fresh schema version to 23", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
   });
 });

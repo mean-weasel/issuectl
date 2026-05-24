@@ -207,7 +207,10 @@ async function launchIssueFromWebhook(
 ): Promise<{ deploymentId: number }> {
   const branchPattern = repo.branchPattern ?? getSetting(db, "branch_pattern") ?? DEFAULT_BRANCH_PATTERN;
   const options = {
-    owner: repo.owner, repo: repo.name, issueNumber: intent.targetNumber, agent: repo.issueAgent,
+    owner: repo.owner,
+    repo: repo.name,
+    issueNumber: intent.targetNumber,
+    agent: intent.requestedAgent ?? repo.issueAgent,
     branchName: generateBranchName(branchPattern, intent.targetNumber, issue.title),
     workspaceMode: repo.localPath ? "worktree" : "clone", selectedComments: [], selectedFiles: [],
     triggeredBy,

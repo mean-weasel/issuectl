@@ -1,0 +1,559 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Issue 506 Follow-Up Gap Fixes"
+  slug: "issue-506-follow-up-gap-fixes"
+  kind: specific
+  tranche: "Fix every remaining issue #506 gap identified by the three-agent post-merge audit, with regression tests and final verification."
+  status: done
+  oracle:
+    signal: "All audit gaps are either fixed with targeted regression tests or rejected by a concrete evidence receipt; package verification passes; final Judge records full_outcome_complete: true."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Worker receipts with changed files and passing commands, clean git diff checks, package-level typecheck/lint/test evidence, and a final Judge audit mapping every original gap to a fix or evidence-backed non-gap."
+  intake:
+    original_request: "create a detailed plan with $goalbuddy:goal-prep to fix all remaining gaps"
+    interpreted_outcome: "Prepare a GoalBuddy board that drives implementation of all remaining issue #506 follow-up gaps."
+    input_shape: specific
+    audience: "issuectl maintainers and users of webhook-triggered automation"
+    authority: requested
+    proof_type: test
+    completion_proof: "All follow-up gaps are fixed or invalidated with evidence, and relevant local and CI-grade checks pass."
+    likely_misfire: "Treating issue #506 as complete because it merged, while leaving runtime launch, PR session, command flag, or documentation drift bugs unfixed."
+    blind_spots_considered:
+      - "Shell syntax behavior when launch extraEnv is empty."
+      - "PR target tmux naming in comment-command end paths."
+      - "Runaway controls for comment-command sessions."
+      - "Parsed comment-command flags that may not alter launch behavior."
+      - "Agent prompt discoverability for daemon mutation and completion APIs."
+      - "Untrusted issue body/comment serialization."
+      - "Spec and GoalBuddy artifact drift after issue closure."
+    existing_plan_facts:
+      - "Issue #506 is closed and PR #511 is merged to main."
+      - "Three independent agents found the main webhook/PR/mutation/completion/notification/CLI surfaces present."
+      - "The same audit identified seven follow-up gaps: tmux empty-env launch syntax, PR `/issuectl end` tmux cleanup, runaway cap for comment_command sessions, ignored comment flags, thin agent prompt integration, raw issue context serialization, and docs/board drift."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/issue-506-follow-up-gap-fixes/"
+    command: "npx goalbuddy board docs/goals/issue-506-follow-up-gap-fixes"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Fix the high-risk runtime control regressions: empty-env tmux launch syntax, PR-target `/issuectl end` tmux cleanup, and runaway concurrent-agent counting for comment-command sessions."
+    inputs:
+      - "Three-agent audit finding: empty extraEnv may generate invalid shell syntax in tmux launch."
+      - "Three-agent audit finding: `/issuectl end` may compute issue tmux names for PR targets."
+      - "Three-agent audit finding: runaway controls count webhook sessions but not comment_command sessions."
+    constraints:
+      - "Keep changes tightly scoped to launch command construction, comment-command end cleanup, runaway controls, and tests."
+      - "Do not change user-facing command syntax in this task."
+      - "Do not weaken safety gates or skip terminal cleanup."
+    allowed_files:
+      - "packages/core/src/launch/tmux-session.ts"
+      - "packages/core/src/launch/ttyd-spawn.test.ts"
+      - "packages/core/src/launch/launch-terminal-backend.test.ts"
+      - "packages/web/lib/github-webhook-comment-command.ts"
+      - "packages/web/lib/github-webhook-comment-command.test.ts"
+      - "packages/web/lib/webhook-runaway-controls.ts"
+      - "packages/web/lib/webhook-runaway-controls.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- ttyd-spawn launch-terminal-backend"
+      - "pnpm --dir packages/web test -- github-webhook-comment-command webhook-runaway-controls"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Fix requires changes outside allowed_files."
+      - "Existing session naming semantics are ambiguous for PR targets."
+      - "Verification fails twice for the same root cause."
+    expected_output:
+      - "Regression tests proving empty env launches are shell-valid."
+      - "Regression tests proving PR `/issuectl end` kills the PR tmux session name."
+      - "Regression tests proving comment-command sessions count toward concurrent webhook agent limits."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/launch/tmux-session.ts"
+        - "packages/core/src/launch/ttyd-spawn.test.ts"
+        - "packages/web/lib/github-webhook-comment-command.ts"
+        - "packages/web/lib/github-webhook-comment-command.test.ts"
+        - "packages/web/lib/webhook-runaway-controls.ts"
+        - "packages/web/lib/webhook-runaway-controls.test.ts"
+      commands:
+        - command: "pnpm --dir packages/core test -- ttyd-spawn launch-terminal-backend"
+          status: pass
+        - command: "pnpm --dir packages/web test -- github-webhook-comment-command webhook-runaway-controls"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      summary:
+        - "Tmux launch command assembly now omits empty env export segments, preventing empty-extraEnv launches from producing `; ;` shell syntax."
+        - "`/issuectl end` now computes tmux cleanup names with the target type, so PR sessions use the `issuectl-<repo>-pr-<number>` form."
+        - "Webhook runaway concurrent-agent controls now count both `webhook` and `comment_command` active sessions."
+      verification:
+        - command: "pnpm --dir packages/core test -- ttyd-spawn launch-terminal-backend"
+          result: pass
+        - command: "pnpm --dir packages/web test -- github-webhook-comment-command webhook-runaway-controls"
+          result: pass
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "git diff --check"
+          result: pass
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Honor parsed comment-command flags: `--agent` for issue/PR launches and `--full` for PR reviews, with diagnostics and regression tests."
+    inputs:
+      - "Three-agent audit finding: parser captures agent/full but handling appears to merge only generic intents."
+      - "Issue #506 comment-command requirements."
+    constraints:
+      - "Do not redesign comment command syntax."
+      - "Preserve label-bypass behavior for accepted comment commands."
+      - "Ensure flags survive debounce/intent processing without weakening safety gates."
+    allowed_files:
+      - "packages/core/src/db/schema.ts"
+      - "packages/core/src/db/migrations-webhooks.ts"
+      - "packages/core/src/db/migrations.ts"
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "packages/core/src/db/webhook-records.ts"
+      - "packages/core/src/db/agent-mutations.test.ts"
+      - "packages/web/lib/issuectl-comment-command.ts"
+      - "packages/web/lib/issuectl-comment-command.test.ts"
+      - "packages/web/lib/github-webhook-comment-command.ts"
+      - "packages/web/lib/github-webhook-comment-command.test.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-pr-review-state.ts"
+      - "packages/web/lib/webhook-pr-incremental.test.ts"
+      - "packages/web/lib/webhook-pr-launch.ts"
+      - "packages/web/lib/webhook-pr-launch.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- webhooks"
+      - "pnpm --dir packages/web test -- issuectl-comment-command github-webhook-comment-command webhook-intent-worker webhook-pr-intent webhook-pr-incremental webhook-pr-launch"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Need a new broad command/intent architecture instead of preserving flags through existing intent flow."
+      - "Need to change public command syntax."
+      - "Schema migration risk is larger than a focused follow-up and needs Judge review."
+      - "Verification fails twice for the same root cause."
+    expected_output:
+      - "`/issuectl launch --agent codex|claude` selects the requested issue agent."
+      - "`/issuectl review --agent codex|claude` selects the requested review agent."
+      - "`/issuectl review --full` forces full review planning instead of incremental range reuse."
+      - "Tests cover parsed metadata surviving through intent launch."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/db/agent-mutations.test.ts"
+        - "packages/core/src/db/migrations-webhooks.ts"
+        - "packages/core/src/db/migrations.ts"
+        - "packages/core/src/db/schema.ts"
+        - "packages/core/src/db/webhook-records.ts"
+        - "packages/core/src/db/webhooks.test.ts"
+        - "packages/core/src/db/webhooks.ts"
+        - "packages/web/lib/github-webhook-comment-command.ts"
+        - "packages/web/lib/github-webhook-comment-command.test.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-intent-worker.test.ts"
+        - "packages/web/lib/webhook-pr-incremental.test.ts"
+        - "packages/web/lib/webhook-pr-launch.ts"
+        - "packages/web/lib/webhook-pr-launch.test.ts"
+        - "packages/web/lib/webhook-pr-review-state.ts"
+      commands:
+        - command: "pnpm --dir packages/core build"
+          status: pass
+        - command: "pnpm --dir packages/core test -- webhooks"
+          status: pass
+        - command: "pnpm --dir packages/web test -- issuectl-comment-command github-webhook-comment-command webhook-intent-worker webhook-pr-intent webhook-pr-incremental webhook-pr-launch"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      summary:
+        - "Webhook intents now carry nullable `requested_agent` and `review_mode` fields, with a v23 migration for existing databases."
+        - "Comment commands persist `--agent` and `--full` metadata through intent merge/debounce."
+        - "Issue launches and PR review launches use requested agents when present; PR `--full` forces full review planning instead of incremental range reuse."
+        - "The migration registry and schema-version tests were updated because the required DB migration could not be implemented safely in only the original T002 allowed file list."
+      verification:
+        - command: "pnpm --dir packages/core test -- webhooks"
+          result: pass
+        - command: "pnpm --dir packages/web test -- issuectl-comment-command github-webhook-comment-command webhook-intent-worker webhook-pr-intent webhook-pr-incremental webhook-pr-launch"
+          result: pass
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "git diff --check"
+          result: pass
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Integrate daemon mutation/completion instructions into launched agent context and harden issue auto-launch untrusted-content serialization."
+    inputs:
+      - "Three-agent audit finding: mutation/completion APIs exist, but launched agent prompt integration is thin."
+      - "Three-agent audit finding: issue body/comments still appear as raw markdown."
+      - "Issue #506 requires daemon-mediated actions and robust untrusted-content fencing."
+    constraints:
+      - "Do not expose completion tokens in logs, diagnostics, UI, or tests."
+      - "Do not weaken prompt safety wording."
+      - "Prefer reusable structured serialization already used by PR review context when available."
+    allowed_files:
+      - "packages/core/src/launch/context.ts"
+      - "packages/core/src/launch/context.test.ts"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/core/src/preambles/auto-launch-issue.md"
+      - "packages/core/src/preambles/auto-review-pr-full.md"
+      - "packages/core/src/preambles/auto-review-pr-incremental.md"
+      - "packages/core/src/index.ts"
+      - "packages/web/lib/webhook-pr-launch.test.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- context launch-execute-precheck"
+      - "pnpm --dir packages/web test -- webhook-pr-launch webhook-intent-worker"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Need to redesign all launch prompts or preamble architecture."
+      - "Need policy decisions about which actions agents are allowed to perform beyond existing daemon budgets."
+      - "Any test snapshot or diagnostic exposes a completion token."
+      - "Verification fails twice for the same root cause."
+    expected_output:
+      - "Issue launch context serializes untrusted body/comment/label content robustly."
+      - "Agent-facing context or preambles explicitly instruct webhook agents to use daemon-mediated `issuectl agent mutate` and `issuectl agent complete`."
+      - "Tests cover delimiter-injection or instruction-injection content."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/launch/context.ts"
+        - "packages/core/src/launch/context.test.ts"
+      commands:
+        - command: "pnpm --dir packages/core build"
+          status: pass
+        - command: "pnpm --dir packages/core test -- context launch-execute-precheck"
+          status: pass
+        - command: "pnpm --dir packages/web test -- webhook-pr-launch webhook-intent-worker"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      summary:
+        - "Issue launch context now serializes untrusted issue body, comments, and referenced files as JSON instead of raw markdown."
+        - "Issue and PR launch contexts now include agent-facing daemon instructions for `issuectl agent mutate` and `issuectl agent complete`."
+        - "Context tests cover delimiter/instruction-injection strings and verify token values are not printed in generated instructions."
+        - "The planned preamble files do not exist in this checkout, so the trusted instructions were implemented in the generated launch context surface."
+      verification:
+        - command: "pnpm --dir packages/core test -- context launch-execute-precheck"
+          result: pass
+        - command: "pnpm --dir packages/web test -- webhook-pr-launch webhook-intent-worker"
+          result: pass
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "git diff --check"
+          result: pass
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: low
+    objective: "Repair documentation and GoalBuddy artifact drift after the issue #506 completion and follow-up fixes."
+    inputs:
+      - "Three-agent audit finding: webhook spec still says direct pushes are out of scope despite daemon-mediated push support."
+      - "Three-agent audit finding: older GoalBuddy board still says active/not_complete and a draft note is superseded."
+      - "Receipts from T001-T003."
+    constraints:
+      - "Do not rewrite historical receipts in a way that falsifies what happened at the time."
+      - "Mark superseded artifacts clearly instead of deleting useful audit history."
+      - "Keep docs concise and aligned with implemented behavior."
+    allowed_files:
+      - "docs/specs/2026-05-23-webhooks-design.md"
+      - "docs/goals/webhook-auto-sessions-gap-closure/state.yaml"
+      - "docs/goals/webhook-pr-auto-review-gap-closure/notes/t013-issue-506-update-draft.md"
+      - "docs/goals/issue-506-follow-up-gap-fixes/goal.md"
+      - "docs/goals/issue-506-follow-up-gap-fixes/state.yaml"
+      - "docs/goals/issue-506-follow-up-gap-fixes/notes/"
+    verify:
+      - "git diff --check"
+      - "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/issue-506-follow-up-gap-fixes/state.yaml"
+    stop_if:
+      - "Need to alter source behavior instead of docs/control-file drift."
+      - "Need to delete historical receipts."
+      - "GoalBuddy checker rejects the board twice for the same root cause."
+    expected_output:
+      - "Spec wording reflects daemon-mediated direct-push support and current non-goals."
+      - "Superseded draft note is clearly marked superseded by PR #511 and final issue comment."
+      - "Older board drift is reconciled or clearly cross-linked to the continuation board without falsifying history."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/specs/2026-05-23-webhooks-design.md"
+        - "docs/goals/webhook-auto-sessions-gap-closure/state.yaml"
+        - "docs/goals/webhook-pr-auto-review-gap-closure/notes/t013-issue-506-update-draft.md"
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/issue-506-follow-up-gap-fixes/state.yaml"
+          status: pass
+      summary:
+        - "Webhook spec now distinguishes forbidden ambient direct pushes from allowed daemon-mediated `issuectl agent mutate` actions."
+        - "Superseded issue #506 local draft note is marked historical and not postable as-is."
+        - "Older webhook auto-sessions board is marked superseded by the follow-up board while keeping historical receipts unchanged."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Run final integrated verification for the follow-up fixes and prepare the publishable summary."
+    inputs:
+      - "Receipts from T001-T004."
+      - "Current dirty diff."
+    constraints:
+      - "Do not make unrelated code changes."
+      - "If verification fails, create or activate a focused recovery task instead of forcing completion."
+    allowed_files:
+      - "packages/core/src/db/pr-reviews.test.ts"
+      - "packages/core/src/db/schema-deployments.test.ts"
+      - "packages/core/src/db/schema-invariants.test.ts"
+      - "packages/core/src/db/schema-target-migration.test.ts"
+      - "packages/core/src/db/schema.test.ts"
+      - "docs/goals/issue-506-follow-up-gap-fixes/state.yaml"
+      - "docs/goals/issue-506-follow-up-gap-fixes/notes/"
+    verify:
+      - "pnpm --dir packages/core test"
+      - "pnpm --dir packages/web test"
+      - "pnpm --dir packages/cli test"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/cli lint"
+      - "pnpm --dir packages/web build"
+      - "git diff --check"
+    stop_if:
+      - "Any verification command fails."
+      - "Dirty diff includes unrelated files."
+      - "A follow-up bug appears that needs implementation outside this task's allowed_files."
+    expected_output:
+      - "Full verification receipt."
+      - "Concise PR summary/changelog draft."
+      - "Any remaining risk called out explicitly."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/db/pr-reviews.test.ts"
+        - "packages/core/src/db/schema-deployments.test.ts"
+        - "packages/core/src/db/schema-invariants.test.ts"
+        - "packages/core/src/db/schema-target-migration.test.ts"
+        - "packages/core/src/db/schema.test.ts"
+        - "docs/goals/issue-506-follow-up-gap-fixes/state.yaml"
+      commands:
+        - command: "pnpm --dir packages/core test"
+          status: pass
+        - command: "pnpm --dir packages/web test"
+          status: pass
+        - command: "pnpm --dir packages/cli test"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+        - command: "pnpm --dir packages/cli lint"
+          status: pass
+        - command: "pnpm --dir packages/web build"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      summary:
+        - "Broad verification passed across core, web, and cli packages."
+        - "Core broad tests initially exposed stale schema-version assertions from the v23 intent-options migration; those tests now assert the current schema version."
+        - "No remaining local verification failure is known."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether all remaining issue #506 follow-up gaps are fixed and the repo is ready to publish."
+    inputs:
+      - "All done task receipts."
+      - "The original three-agent gap list."
+      - "Last verification from T005."
+      - "Current dirty diff."
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any original gap is unmapped."
+      - "Reject completion if tests are stale or verification is incomplete."
+      - "Reject completion if docs claim behavior that the code does not implement."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap-by-gap mapping."
+      - "Missing evidence."
+      - "Next task if not complete."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Final audit approved completion. All original issue #506 follow-up audit gaps are mapped to implemented fixes or evidence-backed artifact cleanup, and broad local verification passed."
+      gap_mapping:
+        - gap: "Empty `extraEnv` tmux launch syntax could produce an empty shell command segment."
+          outcome: "Fixed in T001 by filtering env setup command parts; regression test asserts no `; ;` segment."
+        - gap: "PR-target `/issuectl end` could kill issue-shaped tmux names."
+          outcome: "Fixed in T001 by computing tmux names with target type; regression test covers PR `pty_bridge` cleanup."
+        - gap: "Runaway concurrent-agent controls counted `webhook` but not `comment_command` sessions."
+          outcome: "Fixed in T001 by counting both trigger sources; regression test covers active comment-command sessions."
+        - gap: "Parsed `/issuectl` flags did not survive intent processing."
+          outcome: "Fixed in T002 with v23 `webhook_intents` command-option fields, merge persistence, and issue/PR launch consumption."
+        - gap: "`/issuectl review --full` did not force full review planning."
+          outcome: "Fixed in T002 by carrying `review_mode='full'` and bypassing incremental range reuse; regression test covers forced full review."
+        - gap: "Agent daemon mutation/completion APIs were thinly integrated into launched context."
+          outcome: "Fixed in T003 by adding generated `issuectl agent mutate` and `issuectl agent complete` instructions to issue and PR contexts."
+        - gap: "Issue body/comments were serialized as raw markdown and could confuse trusted instructions."
+          outcome: "Fixed in T003 by serializing untrusted issue data as JSON; tests cover delimiter/instruction-injection strings."
+        - gap: "Spec and GoalBuddy artifacts drifted after issue closure."
+          outcome: "Fixed in T004 by updating push-scope wording, marking the stale draft superseded, and marking the older board superseded."
+      verification:
+        - command: "pnpm --dir packages/core test"
+          result: pass
+        - command: "pnpm --dir packages/web test"
+          result: pass
+        - command: "pnpm --dir packages/cli test"
+          result: pass
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "pnpm --dir packages/cli lint"
+          result: pass
+        - command: "pnpm --dir packages/web build"
+          result: pass
+        - command: "git diff --check"
+          result: pass
+      residual_risk:
+        - "Web tests import the built core package; `pnpm --dir packages/core build` was run before focused web verification during T002/T003."
+        - "No CI run was monitored in this turn; verification is local."
+
+checks:
+  dirty_fingerprint: "T001 implementation diff plus GoalBuddy receipts"
+  last_verification:
+    result: pass
+    task: T005
+    commands:
+      - "pnpm --dir packages/core test"
+      - "pnpm --dir packages/web test"
+      - "pnpm --dir packages/cli test"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/cli lint"
+      - "pnpm --dir packages/web build"
+      - "git diff --check"
