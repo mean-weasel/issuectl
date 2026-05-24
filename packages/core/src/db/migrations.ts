@@ -349,34 +349,39 @@ const migrations: Migration[] = [
   {
     version: 24,
     up(db) {
-      const table = db.prepare(
-        "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'diagnostic_events'",
-      ).get() as { count: number };
-      if (table.count === 0) return;
-
-      const columns = db.prepare("PRAGMA table_info(diagnostic_events)").all() as Array<{ name: string }>;
-      if (!columns.some((column) => column.name === "target_type")) {
-        db.exec("ALTER TABLE diagnostic_events ADD COLUMN target_type TEXT CHECK (target_type IN ('issue', 'pr') OR target_type IS NULL);");
-      }
-      if (!columns.some((column) => column.name === "target_number")) {
-        db.exec("ALTER TABLE diagnostic_events ADD COLUMN target_number INTEGER;");
-      }
-      db.exec(`
-        UPDATE diagnostic_events
-        SET target_type = 'issue',
-            target_number = issue_number
-        WHERE issue_number IS NOT NULL
-          AND target_type IS NULL
-          AND target_number IS NULL;
-        CREATE INDEX IF NOT EXISTS idx_diagnostic_events_target
-          ON diagnostic_events(owner, repo, target_type, target_number, ts);
-      `);
+      repairDiagnosticTargetColumns(db);
     },
   },
 ];
 
+function repairDiagnosticTargetColumns(db: Database.Database): void {
+  const table = db.prepare(
+    "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'diagnostic_events'",
+  ).get() as { count: number };
+  if (table.count === 0) return;
+
+  const columns = db.prepare("PRAGMA table_info(diagnostic_events)").all() as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === "target_type")) {
+    db.exec("ALTER TABLE diagnostic_events ADD COLUMN target_type TEXT CHECK (target_type IN ('issue', 'pr') OR target_type IS NULL);");
+  }
+  if (!columns.some((column) => column.name === "target_number")) {
+    db.exec("ALTER TABLE diagnostic_events ADD COLUMN target_number INTEGER;");
+  }
+  db.exec(`
+    UPDATE diagnostic_events
+    SET target_type = 'issue',
+        target_number = issue_number
+    WHERE issue_number IS NOT NULL
+      AND target_type IS NULL
+      AND target_number IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_diagnostic_events_target
+      ON diagnostic_events(owner, repo, target_type, target_number, ts);
+  `);
+}
+
 export function runMigrations(db: Database.Database): void {
   const currentVersion = getSchemaVersion(db);
+  repairDiagnosticTargetColumns(db);
 
   const pending = migrations.filter((m) => m.version > currentVersion);
   if (pending.length === 0) return;

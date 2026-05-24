@@ -150,8 +150,6 @@ const CREATE_TABLES = `
     ON diagnostic_events(ts);
   CREATE INDEX IF NOT EXISTS idx_diagnostic_events_issue
     ON diagnostic_events(owner, repo, issue_number, ts);
-  CREATE INDEX IF NOT EXISTS idx_diagnostic_events_target
-    ON diagnostic_events(owner, repo, target_type, target_number, ts);
   CREATE INDEX IF NOT EXISTS idx_diagnostic_events_deployment
     ON diagnostic_events(deployment_id, ts);
   CREATE INDEX IF NOT EXISTS idx_diagnostic_events_event
