@@ -268,6 +268,7 @@ function seedWorkbenchRepos(path: string, repos: FixtureRepo[] = workbenchPayloa
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("branch_pattern", "issue-{number}-{slug}");
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("launch_agent", "codex");
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("terminal_backend", "ttyd");
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("public_webhook_base_url", "https://hooks.example.test");
 
     for (const item of repos) {
       db.prepare(
@@ -2931,13 +2932,27 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
       expect(await route.request().postDataJSON()).toEqual({
         localPath: "/workspace/web",
         branchPattern: "task-{number}",
+        autoLaunchIssues: true,
+        autoReviewPrs: true,
+        issueAgent: "codex",
+        reviewAgent: "claude",
+        webhookPayloadMode: "raw",
       });
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           success: true,
-          repo: { ...repo(4, "web", 0), localPath: "/workspace/web", branchPattern: "task-{number}" },
+          repo: {
+            ...repo(4, "web", 0),
+            localPath: "/workspace/web",
+            branchPattern: "task-{number}",
+            autoLaunchIssues: true,
+            autoReviewPrs: true,
+            issueAgent: "codex",
+            reviewAgent: "claude",
+            webhookPayloadMode: "raw",
+          },
         }),
       });
       return;
@@ -2947,6 +2962,24 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ success: true }),
+    });
+  });
+  await page.route("**/api/v1/repos/mean-weasel/web/webhook", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers().authorization).toBe(`Bearer ${apiToken}`);
+    expect(await route.request().postDataJSON()).toEqual({ action: "create" });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        repo: { ...repo(4, "web", 0), webhookId: 444 },
+        webhook: {
+          id: 444,
+          url: "https://hooks.example.test/api/webhook/github/4",
+          createdBy: "jeremy",
+        },
+      }),
     });
   });
   await page.route("**/api/v1/repos", async (route) => {
@@ -2977,8 +3010,16 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
 
   await page.getByLabel("Local path").fill("/workspace/web");
   await page.getByLabel("Branch pattern").fill("task-{number}");
+  await page.getByLabel("Issue agent").selectOption("codex");
+  await page.getByLabel("Review agent").selectOption("claude");
+  await page.getByLabel("Payload mode").selectOption("raw");
+  await page.getByLabel("Auto-launch issues").check();
+  await page.getByLabel("Auto-review PRs").check();
+  await expect(page.getByLabel("GitHub webhook URL")).toHaveValue("https://hooks.example.test/api/webhook/github/4");
   await page.getByRole("button", { name: "Save repo setup" }).click();
   await expect(page.getByText("Repo setup saved")).toBeVisible();
+  await page.getByRole("button", { name: "Create GitHub webhook" }).click();
+  await expect(page.getByText("Webhook created by jeremy")).toBeVisible();
 
   await page.getByRole("button", { name: "Refresh GitHub repos" }).click();
   await page.getByRole("button", { name: "Remove repository" }).click();
@@ -4368,7 +4409,7 @@ function workbenchPayload() {
     ],
     deployments: [],
     previews: {},
-    settings: {},
+    settings: { public_webhook_base_url: "https://hooks.example.test" },
     health: { ok: true, version: "0.0.0", timestamp: "2026-05-16T16:00:00.000Z", error: null },
     user: { login: "jeremy", error: null },
     generatedAt: "2026-05-16T16:00:00.000Z",
@@ -4381,6 +4422,12 @@ function repo(id: number, name: string, deploymentCount: number): {
   name: string;
   localPath: string | null;
   branchPattern: string | null;
+  autoLaunchIssues: boolean;
+  autoReviewPrs: boolean;
+  issueAgent: "claude" | "codex";
+  reviewAgent: "claude" | "codex";
+  webhookId: number | null;
+  webhookPayloadMode: "metadata" | "raw";
   badgeCount: number;
   deployedCount: number;
   launchAgent: "codex" | null;
@@ -4392,6 +4439,8 @@ function repo(id: number, name: string, deploymentCount: number): {
     id: number;
     repoId: number;
     issueNumber: number;
+    targetType: "issue";
+    targetNumber: number;
     agent: "codex";
     branchName: string;
     workspaceMode: "worktree";
@@ -4408,6 +4457,9 @@ function repo(id: number, name: string, deploymentCount: number): {
     terminalBackend?: "ttyd" | "pty_bridge";
   }>;
   previews: {};
+  recentCompletions: [];
+  webhookEvents: [];
+  prReviews: [];
   issues: FixtureIssue[];
 } {
   return {
@@ -4416,6 +4468,12 @@ function repo(id: number, name: string, deploymentCount: number): {
     name,
     localPath: `/workspace/${name}`,
     branchPattern: null,
+    autoLaunchIssues: false,
+    autoReviewPrs: false,
+    issueAgent: "claude",
+    reviewAgent: "claude",
+    webhookId: null,
+    webhookPayloadMode: "metadata",
     badgeCount: deploymentCount,
     deployedCount: deploymentCount,
     launchAgent: deploymentCount > 0 ? "codex" : null,
@@ -4427,6 +4485,8 @@ function repo(id: number, name: string, deploymentCount: number): {
       id: deploymentId(id, index),
       repoId: id,
       issueNumber: issueNumber(id, index),
+      targetType: "issue",
+      targetNumber: issueNumber(id, index),
       agent: "codex",
       branchName: `issue-${issueNumber(id, index)}`,
       workspaceMode: "worktree",
@@ -4441,6 +4501,9 @@ function repo(id: number, name: string, deploymentCount: number): {
       owner: "mean-weasel",
       repoName: name,
     })),
+    recentCompletions: [],
+    webhookEvents: [],
+    prReviews: [],
     previews: {},
     issues: Array.from({ length: issueCount(id, deploymentCount) }, (_, index) => ({
       number: issueNumber(id, index),

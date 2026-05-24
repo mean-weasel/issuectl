@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -23,7 +24,10 @@ const getDb = vi.hoisted(() => vi.fn());
 const listRepos = vi.hoisted(() => vi.fn());
 const getActiveDeployments = vi.hoisted(() => vi.fn());
 const getIssues = vi.hoisted(() => vi.fn());
+const listPrReviewsForRepo = vi.hoisted(() => vi.fn());
 const listPrioritiesForRepo = vi.hoisted(() => vi.fn());
+const listRecentTerminalDeploymentsByRepo = vi.hoisted(() => vi.fn());
+const listWebhookEvents = vi.hoisted(() => vi.fn());
 const getSettings = vi.hoisted(() => vi.fn());
 const withAuthRetry = vi.hoisted(() => vi.fn());
 const getPulls = vi.hoisted(() => vi.fn());
@@ -37,7 +41,10 @@ vi.mock("@issuectl/core", () => ({
   listRepos: (...args: unknown[]) => listRepos(...args),
   getActiveDeployments: (...args: unknown[]) => getActiveDeployments(...args),
   getIssues: (...args: unknown[]) => getIssues(...args),
+  listPrReviewsForRepo: (...args: unknown[]) => listPrReviewsForRepo(...args),
   listPrioritiesForRepo: (...args: unknown[]) => listPrioritiesForRepo(...args),
+  listRecentTerminalDeploymentsByRepo: (...args: unknown[]) => listRecentTerminalDeploymentsByRepo(...args),
+  listWebhookEvents: (...args: unknown[]) => listWebhookEvents(...args),
   getSettings: (...args: unknown[]) => getSettings(...args),
   withAuthRetry: (...args: unknown[]) => withAuthRetry(...args),
   checkGhAuth: (...args: unknown[]) => checkGhAuth(...args),
@@ -101,7 +108,10 @@ beforeEach(() => {
   listRepos.mockReset();
   getActiveDeployments.mockReset();
   getIssues.mockReset();
+  listPrReviewsForRepo.mockReset();
   listPrioritiesForRepo.mockReset();
+  listRecentTerminalDeploymentsByRepo.mockReset();
+  listWebhookEvents.mockReset();
   getSettings.mockReset();
   getSessionPreviews.mockReset();
   withAuthRetry.mockReset();
@@ -119,8 +129,59 @@ beforeEach(() => {
     { key: "branch_pattern", value: "issue-{number}-{slug}" },
     { key: "launch_agent", value: "codex" },
     { key: "codex_extra_args", value: "--sandbox danger-full-access" },
+    { key: "public_webhook_base_url", value: "https://hooks.example.test" },
     { key: "api_token", value: "secret" },
   ]);
+  listPrReviewsForRepo.mockImplementation((_db, repoId: number) =>
+    repoId === 1
+      ? [{
+        id: 701,
+        repoId: 1,
+        prNumber: 44,
+        deploymentId: 101,
+        startedHeadSha: "head-b",
+        completedHeadSha: "head-b",
+        reviewBaseSha: "base-a",
+        reviewedFromSha: "head-a",
+        reviewedToSha: "head-b",
+        headRepoFullName: "neonwatty/issuectl",
+        headRef: "feature/webhooks",
+        status: "completed",
+        triggeredBy: "webhook",
+        resultJson: JSON.stringify({ status: "no_changes" }),
+        startedAt: 1_779_000_000_000,
+        completedAt: 1_779_000_100_000,
+      }]
+      : [],
+  );
+  listRecentTerminalDeploymentsByRepo.mockImplementation((_db, repoId: number) =>
+    repoId === 1
+      ? [{
+        ...deployment(401, 1, "issuectl", 44, 7781, "active", "2026-05-16T18:00:00.000Z"),
+        targetType: "pr",
+        issueNumber: null,
+        terminalReason: "completed",
+        completionResultJson: JSON.stringify({ status: "completed", summary: "review complete" }),
+      }]
+      : [],
+  );
+  listWebhookEvents.mockImplementation((_db, input: { repoId?: number }) =>
+    input.repoId === 1
+      ? [{
+        id: 801,
+        deliveryId: "delivery-801",
+        repoId: 1,
+        eventType: "pull_request",
+        action: "synchronize",
+        senderLogin: "octocat",
+        targetType: "pr",
+        targetNumber: 44,
+        payloadJson: null,
+        receivedAt: 1_779_000_000_000,
+        intentId: 901,
+      }]
+      : [],
+  );
   listPrioritiesForRepo.mockImplementation((_db, repoId: number) =>
     prioritiesByRepoId.get(repoId) ?? [],
   );
@@ -166,6 +227,28 @@ describe("/api/v1/workbench", () => {
     expect(json.repos[0].badgeCount).toBe(3);
     expect(json.repos[0].issues).toHaveLength(4);
     expect(json.repos[0].deployments).toHaveLength(3);
+    expect(json.repos[0].recentCompletions).toEqual([
+      expect.objectContaining({
+        targetType: "pr",
+        targetNumber: 44,
+        terminalReason: "completed",
+        completionResultJson: expect.stringContaining("review complete"),
+      }),
+    ]);
+    expect(json.repos[0].webhookEvents).toEqual([
+      expect.objectContaining({
+        eventType: "pull_request",
+        targetType: "pr",
+        targetNumber: 44,
+      }),
+    ]);
+    expect(json.repos[0].prReviews).toEqual([
+      expect.objectContaining({
+        prNumber: 44,
+        reviewedFromSha: "head-a",
+        reviewedToSha: "head-b",
+      }),
+    ]);
     expect(json.repos[0].previews["7703"].status).toBe("error");
     expect(json.repos[3].issues).toHaveLength(0);
     expect(json.repos[0].issues[0]).toMatchObject({
@@ -177,6 +260,7 @@ describe("/api/v1/workbench", () => {
       branch_pattern: "issue-{number}-{slug}",
       launch_agent: "codex",
       codex_extra_args: "--sandbox danger-full-access",
+      public_webhook_base_url: "https://hooks.example.test",
     });
     expect(json.settings.api_token).toBeUndefined();
     expect(json.user).toEqual({ login: "jeremy", error: null });
@@ -218,6 +302,13 @@ function repo(id: number, owner: string, name: string) {
     localPath: `/workspace/${name}`,
     branchPattern: null,
     createdAt: "2026-05-16T15:00:00.000Z",
+    autoLaunchIssues: false,
+    autoReviewPrs: false,
+    issueAgent: "claude",
+    reviewAgent: "claude",
+    webhookId: null,
+    reviewPreamble: null,
+    webhookPayloadMode: "metadata",
   };
 }
 

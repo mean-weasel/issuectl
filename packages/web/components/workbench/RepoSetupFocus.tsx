@@ -1,8 +1,9 @@
+/* eslint-disable max-lines */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { WorkbenchRepo } from "./workbench-types";
+import type { WorkbenchRepo, WorkbenchSettings } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
 type GitHubRepo = {
@@ -14,6 +15,7 @@ type GitHubRepo = {
 type Props = {
   repos: WorkbenchRepo[];
   selectedRepo: WorkbenchRepo | null;
+  settings: WorkbenchSettings;
   onRepoUpdated: (repo: WorkbenchRepo) => void;
   onRepoAdded: (repo: WorkbenchRepo) => void;
   onRepoRemoved: (owner: string, name: string) => void;
@@ -22,6 +24,7 @@ type Props = {
 export function RepoSetupFocus({
   repos,
   selectedRepo,
+  settings,
   onRepoUpdated,
   onRepoAdded,
   onRepoRemoved,
@@ -29,6 +32,11 @@ export function RepoSetupFocus({
   const editableRepo = selectedRepo ?? repos[0] ?? null;
   const [localPath, setLocalPath] = useState(editableRepo?.localPath ?? "");
   const [branchPattern, setBranchPattern] = useState(editableRepo?.branchPattern ?? "");
+  const [autoLaunchIssues, setAutoLaunchIssues] = useState(editableRepo?.autoLaunchIssues ?? false);
+  const [autoReviewPrs, setAutoReviewPrs] = useState(editableRepo?.autoReviewPrs ?? false);
+  const [issueAgent, setIssueAgent] = useState(editableRepo?.issueAgent ?? "claude");
+  const [reviewAgent, setReviewAgent] = useState(editableRepo?.reviewAgent ?? "claude");
+  const [webhookPayloadMode, setWebhookPayloadMode] = useState(editableRepo?.webhookPayloadMode ?? "metadata");
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [selectedAddKey, setSelectedAddKey] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -38,7 +46,21 @@ export function RepoSetupFocus({
   useEffect(() => {
     setLocalPath(editableRepo?.localPath ?? "");
     setBranchPattern(editableRepo?.branchPattern ?? "");
-  }, [editableRepo?.id, editableRepo?.localPath, editableRepo?.branchPattern]);
+    setAutoLaunchIssues(editableRepo?.autoLaunchIssues ?? false);
+    setAutoReviewPrs(editableRepo?.autoReviewPrs ?? false);
+    setIssueAgent(editableRepo?.issueAgent ?? "claude");
+    setReviewAgent(editableRepo?.reviewAgent ?? "claude");
+    setWebhookPayloadMode(editableRepo?.webhookPayloadMode ?? "metadata");
+  }, [
+    editableRepo?.id,
+    editableRepo?.localPath,
+    editableRepo?.branchPattern,
+    editableRepo?.autoLaunchIssues,
+    editableRepo?.autoReviewPrs,
+    editableRepo?.issueAgent,
+    editableRepo?.reviewAgent,
+    editableRepo?.webhookPayloadMode,
+  ]);
 
   useEffect(() => {
     void refreshGithubRepos();
@@ -52,6 +74,9 @@ export function RepoSetupFocus({
   const selectedAddRepo = addableRepos.find((repo) => `${repo.owner}/${repo.name}` === selectedAddKey)
     ?? addableRepos[0]
     ?? null;
+  const webhookUrl = editableRepo
+    ? formatWebhookUrl(settings.public_webhook_base_url, editableRepo.id)
+    : null;
 
   async function refreshGithubRepos() {
     setError(null);
@@ -83,6 +108,11 @@ export function RepoSetupFocus({
           body: JSON.stringify({
             localPath: localPath.trim(),
             branchPattern: branchPattern.trim(),
+            autoLaunchIssues,
+            autoReviewPrs,
+            issueAgent,
+            reviewAgent,
+            webhookPayloadMode,
           }),
         },
       );
@@ -140,6 +170,41 @@ export function RepoSetupFocus({
     }
   }
 
+  async function copyWebhookUrl() {
+    if (!webhookUrl) return;
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setStatus("Webhook URL copied");
+    } catch {
+      setError("Unable to copy webhook URL");
+    }
+  }
+
+  async function configureWebhook(action: "create" | "rotate") {
+    if (!editableRepo) return;
+    setError(null);
+    setStatus(null);
+    setBusy(true);
+    try {
+      const body = await requestJson<{ repo: WorkbenchRepo; webhook: { id: number; url: string; createdBy: string } }>(
+        `/api/v1/repos/${editableRepo.owner}/${editableRepo.name}/webhook`,
+        {
+          method: "POST",
+          body: JSON.stringify({ action }),
+        },
+      );
+      onRepoUpdated({ ...editableRepo, ...body.repo });
+      setStatus(`${action === "create" ? "Webhook created" : "Webhook secret rotated"} by ${body.webhook.createdBy}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Unable to ${action} webhook`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const webhookConfigured = editableRepo?.webhookId !== null && editableRepo?.webhookId !== undefined;
+
   return (
     <div className={styles.focusInner}>
       <p className={styles.kicker}>Repo setup</p>
@@ -171,9 +236,95 @@ export function RepoSetupFocus({
               autoComplete="off"
             />
           </label>
+
+          <h2 style={headingStyle}>Webhook automation</h2>
+          <div style={checkboxGridStyle}>
+            <label style={checkboxFieldStyle}>
+              <input
+                type="checkbox"
+                checked={autoLaunchIssues}
+                onChange={(event) => setAutoLaunchIssues(event.target.checked)}
+              />
+              <span>Auto-launch issues</span>
+            </label>
+            <label style={checkboxFieldStyle}>
+              <input
+                type="checkbox"
+                checked={autoReviewPrs}
+                onChange={(event) => setAutoReviewPrs(event.target.checked)}
+              />
+              <span>Auto-review PRs</span>
+            </label>
+          </div>
+          <div style={selectGridStyle}>
+            <label style={fieldStyle}>
+              <span>Issue agent</span>
+              <select
+                value={issueAgent}
+                onChange={(event) => setIssueAgent(event.target.value as typeof issueAgent)}
+                aria-label="Issue agent"
+                style={inputStyle}
+              >
+                <option value="claude">Claude</option>
+                <option value="codex">Codex</option>
+              </select>
+            </label>
+            <label style={fieldStyle}>
+              <span>Review agent</span>
+              <select
+                value={reviewAgent}
+                onChange={(event) => setReviewAgent(event.target.value as typeof reviewAgent)}
+                aria-label="Review agent"
+                style={inputStyle}
+              >
+                <option value="claude">Claude</option>
+                <option value="codex">Codex</option>
+              </select>
+            </label>
+            <label style={fieldStyle}>
+              <span>Payload mode</span>
+              <select
+                value={webhookPayloadMode}
+                onChange={(event) => setWebhookPayloadMode(event.target.value as typeof webhookPayloadMode)}
+                aria-label="Payload mode"
+                style={inputStyle}
+              >
+                <option value="metadata">Metadata</option>
+                <option value="raw">Raw</option>
+              </select>
+            </label>
+          </div>
+          <label style={fieldStyle}>
+            <span>GitHub webhook URL</span>
+            <input
+              value={webhookUrl ?? "Set Public Webhook Base URL in Settings"}
+              aria-label="GitHub webhook URL"
+              style={inputStyle}
+              readOnly
+            />
+          </label>
+          <p style={helperStyle}>
+            {webhookConfigured ? `GitHub webhook id ${editableRepo?.webhookId}` : "No GitHub webhook id stored"}
+          </p>
           <div className={styles.emptyActions}>
             <button type="button" className={styles.primaryButton} onClick={saveRepoSetup} disabled={busy}>
               Save repo setup
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={copyWebhookUrl}
+              disabled={busy || !webhookUrl}
+            >
+              Copy webhook URL
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => configureWebhook(webhookConfigured ? "rotate" : "create")}
+              disabled={busy || !webhookUrl}
+            >
+              {webhookConfigured ? "Rotate webhook secret" : "Create GitHub webhook"}
             </button>
             <button type="button" className={styles.secondaryButton} onClick={removeRepo} disabled={busy}>
               Remove repository
@@ -223,14 +374,29 @@ function normalizeAddedRepo(repo: WorkbenchRepo): WorkbenchRepo {
     badgeCount: repo.badgeCount ?? 0,
     deployedCount: repo.deployedCount ?? 0,
     launchAgent: repo.launchAgent ?? null,
+    autoLaunchIssues: repo.autoLaunchIssues ?? false,
+    autoReviewPrs: repo.autoReviewPrs ?? false,
+    issueAgent: repo.issueAgent ?? "claude",
+    reviewAgent: repo.reviewAgent ?? "claude",
+    webhookId: repo.webhookId ?? null,
+    webhookPayloadMode: repo.webhookPayloadMode ?? "metadata",
     issueError: repo.issueError ?? null,
     issuesFromCache: repo.issuesFromCache ?? false,
     issuesCachedAt: repo.issuesCachedAt ?? null,
     priorities: repo.priorities ?? [],
     deployments: repo.deployments ?? [],
+    recentCompletions: repo.recentCompletions ?? [],
+    webhookEvents: repo.webhookEvents ?? [],
+    prReviews: repo.prReviews ?? [],
     previews: repo.previews ?? {},
     issues: repo.issues ?? [],
   };
+}
+
+function formatWebhookUrl(baseUrl: string | undefined, repoId: number): string | null {
+  const trimmed = baseUrl?.trim();
+  if (!trimmed) return null;
+  return `${trimmed.replace(/\/$/, "")}/api/webhook/github/${repoId}`;
 }
 
 async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
@@ -276,6 +442,32 @@ const fieldStyle = {
   color: "var(--paper-ink-muted)",
   font: "700 10px var(--paper-mono)",
   textTransform: "uppercase",
+} satisfies CSSProperties;
+
+const checkboxGridStyle = {
+  display: "grid",
+  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+} satisfies CSSProperties;
+
+const checkboxFieldStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  color: "var(--paper-ink)",
+  font: "13px var(--paper-serif)",
+} satisfies CSSProperties;
+
+const selectGridStyle = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+} satisfies CSSProperties;
+
+const helperStyle = {
+  margin: 0,
+  color: "var(--paper-ink-muted)",
+  font: "12px var(--paper-serif)",
 } satisfies CSSProperties;
 
 const inputStyle = {

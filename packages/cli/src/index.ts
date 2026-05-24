@@ -9,6 +9,7 @@ import {
   repoAddCommand,
   repoRemoveCommand,
   repoListCommand,
+  repoSetCommand,
   repoUpdateCommand,
   repoShowCommand,
 } from "./commands/repo.js";
@@ -61,6 +62,7 @@ repo
   .option("--issue-agent <agent>", "Agent for issue sessions: claude or codex")
   .option("--review-agent <agent>", "Agent for PR reviews: claude or codex")
   .option("--webhook-payload-mode <mode>", "Webhook payload storage: metadata or raw")
+  .option("--webhook-base-url <url>", "Public webhook base URL")
   .action(repoAddCommand);
 
 repo
@@ -89,7 +91,19 @@ repo
   .option("--issue-agent <agent>", "Agent for issue sessions: claude or codex")
   .option("--review-agent <agent>", "Agent for PR reviews: claude or codex")
   .option("--webhook-payload-mode <mode>", "Webhook payload storage: metadata or raw")
+  .option("--webhook-base-url <url>", "Public webhook base URL")
   .action(repoUpdateCommand);
+
+repo
+  .command("set <owner/repo>")
+  .description("Set tracked repository automation settings")
+  .option("--auto-launch-issues <enabled>", "Enable or disable webhook issue auto-launch: true or false")
+  .option("--auto-review-prs <enabled>", "Enable or disable PR auto-review: true or false")
+  .option("--issue-agent <agent>", "Agent for issue sessions: claude or codex")
+  .option("--review-agent <agent>", "Agent for PR reviews: claude or codex")
+  .option("--webhook-payload-mode <mode>", "Webhook payload storage: metadata or raw")
+  .option("--webhook-base-url <url>", "Public webhook base URL")
+  .action(repoSetCommand);
 
 registerDiagCommands(program);
 registerWebhookCommands(program);

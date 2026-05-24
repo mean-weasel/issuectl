@@ -43,6 +43,7 @@ issuectl webhook create mean-weasel/issuectl
 issuectl webhook rotate mean-weasel/issuectl --yes
 issuectl repo add mean-weasel/issuectl --auto-launch-issues --issue-agent codex
 issuectl repo update mean-weasel/issuectl --auto-review-prs --review-agent claude --webhook-payload-mode metadata
+issuectl repo set mean-weasel/issuectl --auto-launch-issues true --auto-review-prs false --webhook-base-url https://example-tunnel.trycloudflare.com
 issuectl repo show mean-weasel/issuectl
 ```
 
@@ -53,9 +54,15 @@ value. When `public_webhook_base_url` is set, it also prints the derived
 require confirmation unless `--yes` is passed, generate a fresh receiver secret,
 store the GitHub hook id, and do not print the secret.
 
-The dashboard settings page exposes the same repo-level automation flags and
-agent selectors. Raw payload storage should remain `metadata` unless a
-short-lived debugging session requires `raw`.
+The dashboard settings and workbench repo setup surfaces expose the same
+repo-level automation flags, issue/review agent selectors, payload mode, stored
+webhook id status, and copyable webhook URL. Workbench repo setup can create a
+GitHub webhook or rotate its receiver secret using the current `gh`
+authenticated user; the generated secret is stored locally and never returned to
+the browser.
+
+Raw payload storage should remain `metadata` unless a short-lived debugging
+session requires `raw`.
 
 ## Retention
 
@@ -71,6 +78,11 @@ agent, trigger source (`manual`, `webhook`, or comment command), runtime status,
 and terminal reason when one is recorded. This keeps webhook-created sessions
 distinguishable from manual sessions and makes control events such as label
 removal or issue closure visible without opening raw diagnostics.
+
+The repo overview also shows recent webhook events, recent terminal completion
+summaries, and PR review history with the reviewed SHA range. This is the
+dashboard-level audit trail for webhook intake, auto-review runs, and agent
+completion check-ins.
 
 ## Completion Notifications
 
@@ -88,5 +100,10 @@ unless they also end a real deployment row.
 - Direct, ambient-credential agent pushes. Webhook/comment-command agents must
   route GitHub mutations, including allowed PR pushes, through the
   daemon-mediated `issuectl agent mutate` policy gateway.
+- True local commit upload for PR review fixes is not implemented yet. The
+  daemon verifies same-repo, non-default, unprotected PR head state and local
+  workspace branch/SHA/remote metadata, then fails closed with
+  `unsupported_local_push` until a daemon-owned git object upload or git push
+  design is approved.
 - New push platforms or preference schema beyond the existing APNs/iOS device
   registration surface.
