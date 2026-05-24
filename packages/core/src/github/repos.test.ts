@@ -1,18 +1,22 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Octokit } from "@octokit/rest";
-import { listAccessibleRepos } from "./repos.js";
+import { getCollaboratorPermissionLevel, listAccessibleRepos } from "./repos.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockFn = ReturnType<typeof vi.fn<(...args: any[]) => any>>;
 
 function makeOctokit() {
   const listForAuthenticatedUser = vi.fn() as MockFn;
+  const getCollaboratorPermissionLevelSpy = vi.fn() as MockFn;
   const octokit = {
     rest: {
-      repos: { listForAuthenticatedUser },
+      repos: {
+        listForAuthenticatedUser,
+        getCollaboratorPermissionLevel: getCollaboratorPermissionLevelSpy,
+      },
     },
   } as unknown as Octokit;
-  return { octokit, listForAuthenticatedUser };
+  return { octokit, listForAuthenticatedUser, getCollaboratorPermissionLevelSpy };
 }
 
 describe("listAccessibleRepos", () => {
@@ -60,6 +64,29 @@ describe("listAccessibleRepos", () => {
       per_page: 100,
       sort: "pushed",
       affiliation: "owner,collaborator,organization_member",
+    });
+  });
+});
+
+describe("getCollaboratorPermissionLevel", () => {
+  it("returns the collaborator permission from GitHub", async () => {
+    const { octokit, getCollaboratorPermissionLevelSpy } = makeOctokit();
+    getCollaboratorPermissionLevelSpy.mockResolvedValue({
+      data: { permission: "maintain" },
+    });
+
+    await expect(
+      getCollaboratorPermissionLevel(octokit, {
+        owner: "mean-weasel",
+        repo: "issuectl",
+        username: "octocat",
+      }),
+    ).resolves.toBe("maintain");
+
+    expect(getCollaboratorPermissionLevelSpy).toHaveBeenCalledWith({
+      owner: "mean-weasel",
+      repo: "issuectl",
+      username: "octocat",
     });
   });
 });

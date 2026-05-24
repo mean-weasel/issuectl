@@ -24,6 +24,7 @@ const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 const removeLabel = vi.hoisted(() => vi.fn());
 const clearCacheKey = vi.hoisted(() => vi.fn());
 const withAuthRetry = vi.hoisted(() => vi.fn());
+const notifyDeploymentTerminalOutcome = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
@@ -39,6 +40,11 @@ vi.mock("@issuectl/core", () => ({
   LIFECYCLE_LABEL: { inProgress: "issuectl:in-progress" },
   clearCacheKey: (...args: unknown[]) => clearCacheKey(...args),
   withAuthRetry: (...args: unknown[]) => withAuthRetry(...args),
+}));
+
+vi.mock("@/lib/push/notifications", () => ({
+  notifyDeploymentTerminalOutcome: (...args: unknown[]) =>
+    notifyDeploymentTerminalOutcome(...args),
 }));
 
 import { POST } from "./route";
@@ -78,6 +84,7 @@ beforeEach(() => {
   removeLabel.mockReset();
   clearCacheKey.mockReset();
   withAuthRetry.mockReset();
+  notifyDeploymentTerminalOutcome.mockReset();
 
   requireAuth.mockReturnValue(null);
   getDb.mockReturnValue(db);
@@ -100,6 +107,7 @@ describe("POST /api/v1/deployments/[id]/end", () => {
     expect(killTtyd).toHaveBeenCalledWith(444, "issuectl-issuectl-test-repo-137");
     expect(killTmuxSession).not.toHaveBeenCalled();
     expect(endDeployment).toHaveBeenCalledWith(db, 17);
+    expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 17 });
   });
 
   it("kills tmux directly for PTY bridge deployments with no ttyd PID", async () => {

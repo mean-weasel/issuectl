@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
-import { getDb, removeRepo, getRepo, updateRepo, formatErrorForUser } from "@issuectl/core";
+import {
+  getDb,
+  removeRepo,
+  getRepo,
+  updateRepo,
+  updateRepoWebhookSettings,
+  formatErrorForUser,
+} from "@issuectl/core";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +52,11 @@ export async function DELETE(
 type UpdateRepoBody = {
   localPath?: string;
   branchPattern?: string;
+  autoLaunchIssues?: boolean;
+  autoReviewPrs?: boolean;
+  issueAgent?: "claude" | "codex";
+  reviewAgent?: "claude" | "codex";
+  webhookPayloadMode?: "metadata" | "raw";
 };
 
 export async function PATCH(
@@ -85,6 +97,21 @@ export async function PATCH(
       { status: 400 },
     );
   }
+  if (body.autoLaunchIssues !== undefined && typeof body.autoLaunchIssues !== "boolean") {
+    return NextResponse.json({ success: false, error: "autoLaunchIssues must be a boolean" }, { status: 400 });
+  }
+  if (body.autoReviewPrs !== undefined && typeof body.autoReviewPrs !== "boolean") {
+    return NextResponse.json({ success: false, error: "autoReviewPrs must be a boolean" }, { status: 400 });
+  }
+  if (body.issueAgent !== undefined && body.issueAgent !== "claude" && body.issueAgent !== "codex") {
+    return NextResponse.json({ success: false, error: "issueAgent must be claude or codex" }, { status: 400 });
+  }
+  if (body.reviewAgent !== undefined && body.reviewAgent !== "claude" && body.reviewAgent !== "codex") {
+    return NextResponse.json({ success: false, error: "reviewAgent must be claude or codex" }, { status: 400 });
+  }
+  if (body.webhookPayloadMode !== undefined && body.webhookPayloadMode !== "metadata" && body.webhookPayloadMode !== "raw") {
+    return NextResponse.json({ success: false, error: "webhookPayloadMode must be metadata or raw" }, { status: 400 });
+  }
 
   try {
     const db = getDb();
@@ -100,8 +127,18 @@ export async function PATCH(
     if (body.localPath !== undefined) updates.localPath = body.localPath || null;
     if (body.branchPattern !== undefined) updates.branchPattern = body.branchPattern || null;
 
-    const updated = updateRepo(db, repo.id, updates);
-    log.info({ msg: "api_repo_updated", repoId: repo.id, owner, name: repoName, updates });
+    let updated = updateRepo(db, repo.id, updates);
+    const webhookUpdates = {
+      autoLaunchIssues: body.autoLaunchIssues,
+      autoReviewPrs: body.autoReviewPrs,
+      issueAgent: body.issueAgent,
+      reviewAgent: body.reviewAgent,
+      webhookPayloadMode: body.webhookPayloadMode,
+    };
+    if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
+      updated = updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+    }
+    log.info({ msg: "api_repo_updated", repoId: repo.id, owner, name: repoName, updates, webhookUpdates });
     return NextResponse.json({ success: true, repo: updated });
   } catch (err) {
     log.error({ err, msg: "api_repo_update_failed", owner, name: repoName });

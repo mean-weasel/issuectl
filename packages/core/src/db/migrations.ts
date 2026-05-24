@@ -1,11 +1,11 @@
 import type Database from "better-sqlite3";
-import { runWebhookMigration } from "./migrations-webhooks.js";
+import { runAgentActionsMigration } from "./migrations-agent-actions.js";
+import { runPrReviewsMigration } from "./migrations-pr-reviews.js";
+import { runWebhookRunawayMigration } from "./migrations-webhook-runaway.js";
+import { runDeploymentTargetMigration, runDeploymentTerminalMigration, runWebhookMigration } from "./migrations-webhooks.js";
 import { getSchemaVersion } from "./schema.js";
 
-type Migration = {
-  version: number;
-  up: (db: Database.Database) => void;
-};
+type Migration = { version: number; up: (db: Database.Database) => void };
 
 const migrations: Migration[] = [
   {
@@ -333,19 +333,17 @@ const migrations: Migration[] = [
   {
     version: 16,
     up(db) {
-      const { c } = db.prepare(
-        "SELECT COUNT(*) as c FROM sqlite_master WHERE type = 'table' AND name = 'deployments'",
-      ).get() as { c: number };
+      const { c } = db.prepare("SELECT COUNT(*) as c FROM sqlite_master WHERE type = 'table' AND name = 'deployments'").get() as { c: number };
       if (c === 0) return;
-
-      db.exec(`ALTER TABLE deployments ADD COLUMN terminal_backend TEXT NOT NULL DEFAULT 'ttyd'
-        CHECK (terminal_backend IN ('ttyd', 'pty_bridge'));`);
+      db.exec("ALTER TABLE deployments ADD COLUMN terminal_backend TEXT NOT NULL DEFAULT 'ttyd' CHECK (terminal_backend IN ('ttyd', 'pty_bridge'));");
     },
   },
-  {
-    version: 17,
-    up(db) { runWebhookMigration(db); },
-  },
+  { version: 17, up(db) { runWebhookMigration(db); } },
+  { version: 18, up(db) { runDeploymentTerminalMigration(db); } },
+  { version: 19, up(db) { runDeploymentTargetMigration(db); } },
+  { version: 20, up(db) { runPrReviewsMigration(db); } },
+  { version: 21, up(db) { runAgentActionsMigration(db); } },
+  { version: 22, up(db) { runWebhookRunawayMigration(db); } },
 ];
 
 export function runMigrations(db: Database.Database): void {

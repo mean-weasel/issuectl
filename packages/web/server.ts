@@ -8,6 +8,7 @@ import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 import { handlePtyUpgrade, activePtyWsCount } from "./lib/pty-terminal-websocket";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
+import { startWebhookIntentWorker, stopWebhookIntentWorker } from "./lib/webhook-intent-worker";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 const PTY_TERMINAL_WS_RE = /^\/api\/terminal\/pty\/(\d+)\/ws/;
@@ -270,6 +271,11 @@ server.listen(port, () => {
   } catch (err) {
     log.error({ msg: "idle_checker_start_failed", err });
   }
+  try {
+    startWebhookIntentWorker(getDb());
+  } catch (err) {
+    log.error({ msg: "webhook_intent_worker_start_failed", err });
+  }
 });
 
 // Refresh IPs every 30 minutes to handle DHCP/ISP changes.
@@ -299,6 +305,7 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   stopIdleChecker();
+  stopWebhookIntentWorker();
   log.info({ msg: "server_shutdown" });
   server.close(() => {
     log.flush(() => process.exit(0));

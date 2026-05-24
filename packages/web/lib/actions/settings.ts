@@ -15,12 +15,14 @@ const VALID_KEYS: readonly SettingKey[] = [
   "default_repo_id",
   "idle_grace_period",
   "idle_threshold",
+  "public_webhook_base_url",
 ];
 
 const ALLOW_EMPTY = new Set<SettingKey>([
   "claude_extra_args",
   "codex_extra_args",
   "default_repo_id",
+  "public_webhook_base_url",
 ]);
 
 export type UpdateSettingResult = {
@@ -87,6 +89,16 @@ function validateOne(
   }
   if (key === "launch_agent" && trimmed !== "claude" && trimmed !== "codex") {
     return { ok: false, error: "Launch agent must be claude or codex" };
+  }
+  if (key === "public_webhook_base_url" && trimmed !== "") {
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return { ok: false, error: "Webhook base URL must start with http:// or https://" };
+      }
+    } catch {
+      return { ok: false, error: "Webhook base URL must be a valid URL" };
+    }
   }
   if (key === "idle_grace_period" || key === "idle_threshold") {
     const num = Number(trimmed);

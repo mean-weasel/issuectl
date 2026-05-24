@@ -5,15 +5,22 @@ import {
   getActiveDeployments,
   endDeployment,
   isTmuxSessionAlive,
-  tmuxSessionName,
   getSetting,
   setIdleSince,
   clearIdleSince,
   recordDiagnosticEventSafely,
 } from "@issuectl/core";
+import {
+  deploymentSessionName,
+  getDeploymentTarget,
+  issueNumberForDiagnostic,
+} from "./deployment-target";
 import { getRegisteredPorts, getLastPtyOutput } from "./idle-registry";
 import log from "./logger";
-import { notifyIdleTerminal } from "./push/notifications";
+import {
+  notifyDeploymentTerminalOutcome,
+  notifyIdleTerminal,
+} from "./push/notifications";
 
 const DEFAULT_GRACE_SECONDS = 300;
 const DEFAULT_THRESHOLD_SECONDS = 300;
@@ -60,12 +67,13 @@ export function checkIdleDeployments(): void {
 
       if (isIdle && !deployment.idleSince) {
         setIdleSince(db, deployment.id);
+        const target = getDeploymentTarget(deployment);
         const repo = getRepoById(db, deployment.repoId);
-        if (repo) {
+        if (repo && target.targetType === "issue") {
           notifyIdleTerminal({
             owner: repo.owner,
             repo: repo.name,
-            issueNumber: deployment.issueNumber,
+            issueNumber: target.targetNumber,
             deploymentId: deployment.id,
           });
         }
@@ -136,16 +144,18 @@ export function checkDeploymentLiveness(): void {
 
   for (const deployment of deployments) {
     try {
-      const sessionName = tmuxSessionName(deployment.repoName, deployment.issueNumber);
+      const target = getDeploymentTarget(deployment);
+      const sessionName = deploymentSessionName(deployment.repoName, deployment);
       if (!isTmuxSessionAlive(sessionName)) {
         endDeployment(db, deployment.id);
+        notifyDeploymentTerminalOutcome({ deploymentId: deployment.id });
         recordDiagnosticEventSafely(db, {
           level: "warn",
           event: "liveness.tmux_missing",
           source: "web.idle-checker",
           owner: deployment.owner,
           repo: deployment.repoName,
-          issueNumber: deployment.issueNumber,
+          issueNumber: target.targetType === "issue" ? target.targetNumber : undefined,
           deploymentId: deployment.id,
           sessionName,
           message: `tmux session ${sessionName} is gone`,
@@ -153,7 +163,7 @@ export function checkDeploymentLiveness(): void {
         log.info({
           msg: "deployment_session_dead",
           deploymentId: deployment.id,
-          issueNumber: deployment.issueNumber,
+          issueNumber: target.targetType === "issue" ? target.targetNumber : undefined,
           sessionName,
         });
       }
@@ -165,7 +175,7 @@ export function checkDeploymentLiveness(): void {
         source: "web.idle-checker",
         owner: deployment.owner,
         repo: deployment.repoName,
-        issueNumber: deployment.issueNumber,
+        issueNumber: issueNumberForDiagnostic(deployment),
         deploymentId: deployment.id,
         message: err instanceof Error ? err.message : String(err),
       });

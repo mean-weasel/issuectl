@@ -5,6 +5,9 @@ export type {
   SettingKey,
   Deployment,
   DeploymentState,
+  DeploymentTargetType,
+  DeploymentTriggeredBy,
+  DeploymentTerminalReason,
   LaunchAgent,
   TerminalBackend,
   CacheEntry,
@@ -72,24 +75,10 @@ export {
   deletePriority,
   listPrioritiesForRepo,
 } from "./db/priority.js";
-export {
-  recordDeployment,
-  getDeploymentById,
-  getDeploymentsForIssue,
-  getDeploymentsByRepo,
-  hasLiveDeploymentForIssue,
-  getActiveDeploymentByPort,
-  updateLinkedPR,
-  endDeployment,
-  activateDeployment,
-  deletePendingDeployment,
-  cleanupOrphanedDeployments,
-  pruneEndedDeployments,
-  getActiveDeployments,
-  setIdleSince,
-  clearIdleSince,
-} from "./db/deployments.js";
-export type { ActiveDeploymentWithRepo } from "./db/deployments.js";
+export * from "./db/deployments.js";
+export * from "./db/pr-reviews.js";
+export * from "./db/agent-mutations.js";
+export * from "./db/agent-completions.js";
 export {
   getCacheTtl,
   getCached,
@@ -133,12 +122,14 @@ export {
   claimDueWebhookIntent,
   recoverExpiredWebhookIntentLeases,
   expireOldWebhookIntents,
+  pruneExpiredWebhookPayloads,
   listWebhookEvents,
 } from "./db/webhooks.js";
 export type {
   RecordWebhookEventInput,
   RecordWebhookEventResult,
   MergeWebhookIntentInput,
+  ListWebhookEventsInput,
   WebhookEvent,
   WebhookIntent,
 } from "./db/webhooks.js";
@@ -158,6 +149,7 @@ export { getGhToken, checkGhAuth } from "./github/auth.js";
 export { getOctokit, resetOctokit, withAuthRetry } from "./github/client.js";
 export { uploadImageToGitHub, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "./github/uploads.js";
 export type { UploadResult } from "./github/uploads.js";
+export * from "./github/pr-safety.js";
 export {
   classifyGitHubError,
   formatErrorForUser,
@@ -181,6 +173,12 @@ export {
   removeLabel,
 } from "./github/labels.js";
 export { listAccessibleRepos } from "./github/repos.js";
+export {
+  createIssuectlWebhook,
+  rotateIssuectlWebhook,
+  type GitHubWebhookSetupInput,
+  type GitHubWebhookSetupResult,
+} from "./github/webhooks.js";
 
 // Cached data layer (SWR)
 export {
@@ -244,8 +242,10 @@ export {
 } from "./launch/branch.js";
 export {
   assembleContext,
+  assemblePrReviewContext,
   writeContextFile,
   cleanupStaleContextFiles,
+  type PrReviewContext,
 } from "./launch/context.js";
 export { prepareWorkspace } from "./launch/workspace.js";
 export {

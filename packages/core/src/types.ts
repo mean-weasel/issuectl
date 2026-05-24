@@ -36,6 +36,7 @@ export type SettingKey =
   | "max_webhook_queue_depth"
   | "max_webhook_intent_age_minutes"
   | "max_concurrent_webhook_agents"
+  | "max_webhook_recursion_depth"
   | "public_webhook_base_url";
 
 export type Setting = {
@@ -47,8 +48,25 @@ import type { WorkspaceMode } from "./launch/workspace.js";
 import type { GitHubIssue } from "./github/types.js";
 
 export type DeploymentState = "pending" | "active";
+export type DeploymentTargetType = "issue" | "pr";
+export type DeploymentTriggeredBy = "manual" | "webhook" | "comment_command";
+export type DeploymentTerminalReason =
+  | "completed"
+  | "failed"
+  | "ended_manual"
+  | "killed_by_label"
+  | "closed"
+  | "timeout"
+  | "liveness_missing";
 export type LaunchAgent = "claude" | "codex";
 export type TerminalBackend = "ttyd" | "pty_bridge";
+export type PrReviewStatus =
+  | "reserved"
+  | "launching"
+  | "in_progress"
+  | "completed"
+  | "failed"
+  | "superseded";
 
 export type WebhookTargetType = "issue" | "pr";
 
@@ -67,7 +85,9 @@ export type WebhookPayloadMode = "metadata" | "raw";
 export type Deployment = {
   id: number;
   repoId: number;
-  issueNumber: number;
+  issueNumber: number | null;
+  targetType: DeploymentTargetType;
+  targetNumber: number;
   agent: LaunchAgent;
   branchName: string;
   workspaceMode: WorkspaceMode;
@@ -82,11 +102,37 @@ export type Deployment = {
    */
   state: DeploymentState;
   terminalBackend?: TerminalBackend;
+  triggeredBy: DeploymentTriggeredBy;
+  parentDeploymentId: number | null;
+  webhookDepth: number;
   launchedAt: string;
   endedAt: string | null;
+  terminalReason: DeploymentTerminalReason | null;
+  completionToken: string | null;
+  completionResultJson: string | null;
+  notificationSentAt: string | null;
   ttydPort: number | null;
   ttydPid: number | null;
   idleSince: string | null;
+};
+
+export type PrReview = {
+  id: number;
+  repoId: number;
+  prNumber: number;
+  deploymentId: number | null;
+  startedHeadSha: string;
+  completedHeadSha: string | null;
+  reviewBaseSha: string;
+  reviewedFromSha: string | null;
+  reviewedToSha: string;
+  headRepoFullName: string;
+  headRef: string;
+  status: PrReviewStatus;
+  triggeredBy: DeploymentTriggeredBy;
+  resultJson: string | null;
+  startedAt: number;
+  completedAt: number | null;
 };
 
 export type CacheEntry<T = unknown> = {

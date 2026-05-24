@@ -4,6 +4,7 @@ import {
   rowToWebhookEvent,
   rowToWebhookIntent,
   type MergeWebhookIntentInput,
+  type ListWebhookEventsInput,
   type RecordWebhookEventInput,
   type RecordWebhookEventResult,
   type WebhookEvent,
@@ -14,6 +15,7 @@ import {
 
 export type {
   MergeWebhookIntentInput,
+  ListWebhookEventsInput,
   RecordWebhookEventInput,
   RecordWebhookEventResult,
   WebhookEvent,
@@ -45,10 +47,7 @@ function activeStatusPlaceholders(): string {
 
 function findActiveWebhookIntent(
   db: Database.Database,
-  input: Pick<
-    MergeWebhookIntentInput,
-    "repoId" | "targetType" | "targetNumber"
-  >,
+  input: Pick<MergeWebhookIntentInput, "repoId" | "targetType" | "targetNumber">,
 ): WebhookIntentRow | undefined {
   return db
     .prepare(
@@ -60,12 +59,9 @@ function findActiveWebhookIntent(
        ORDER BY id ASC
        LIMIT 1`,
     )
-    .get(
-      input.repoId,
-      input.targetType,
-      input.targetNumber,
-      ...ACTIVE_INTENT_STATUSES,
-    ) as WebhookIntentRow | undefined;
+    .get(input.repoId, input.targetType, input.targetNumber, ...ACTIVE_INTENT_STATUSES) as
+    | WebhookIntentRow
+    | undefined;
 }
 
 function updateActiveWebhookIntent(
@@ -84,21 +80,12 @@ function updateActiveWebhookIntent(
        WHERE id = ?
          AND status IN (${activeStatusPlaceholders()})`,
     )
-    .run(
-      input.signalAt,
-      input.scheduledAt,
-      input.desiredHeadSha ?? null,
-      intentId,
-      ...ACTIVE_INTENT_STATUSES,
-    );
+    .run(input.signalAt, input.scheduledAt, input.desiredHeadSha ?? null, intentId, ...ACTIVE_INTENT_STATUSES);
 
   if (result.changes !== 1) return false;
 
   if (input.eventId !== undefined && input.eventId !== null) {
-    db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(
-      intentId,
-      input.eventId,
-    );
+    db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(intentId, input.eventId);
   }
 
   return true;
@@ -111,29 +98,13 @@ export function recordWebhookEvent(
   const insert = db.transaction(() => {
     db.prepare(
       "INSERT INTO webhook_deliveries (delivery_id, repo_id, event_type, received_at, retained_until) VALUES (?, ?, ?, ?, ?)",
-    ).run(
-      input.deliveryId,
-      input.repoId,
-      input.eventType,
-      input.receivedAt,
-      input.retainedUntil ?? null,
-    );
+    ).run(input.deliveryId, input.repoId, input.eventType, input.receivedAt, input.retainedUntil ?? null);
 
     const result = db
       .prepare(
         "INSERT INTO webhook_events (delivery_id, repo_id, event_type, action, sender_login, target_type, target_number, payload_json, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .run(
-        input.deliveryId,
-        input.repoId,
-        input.eventType,
-        input.action ?? null,
-        input.senderLogin ?? null,
-        input.targetType ?? null,
-        input.targetNumber ?? null,
-        input.payloadJson ?? null,
-        input.receivedAt,
-      );
+      .run(input.deliveryId, input.repoId, input.eventType, input.action ?? null, input.senderLogin ?? null, input.targetType ?? null, input.targetNumber ?? null, input.payloadJson ?? null, input.receivedAt);
 
     return Number(result.lastInsertRowid);
   });
@@ -199,22 +170,11 @@ function mergeWebhookIntentOnce(
               (repo_id, target_type, target_number, first_signal_at, last_signal_at, scheduled_at, desired_head_sha, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
           )
-          .run(
-            input.repoId,
-            input.targetType,
-            input.targetNumber,
-            input.signalAt,
-            input.signalAt,
-            input.scheduledAt,
-            input.desiredHeadSha ?? null,
-          );
+          .run(input.repoId, input.targetType, input.targetNumber, input.signalAt, input.signalAt, input.scheduledAt, input.desiredHeadSha ?? null);
         const intentId = Number(result.lastInsertRowid);
 
         if (input.eventId !== undefined && input.eventId !== null) {
-          db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(
-            intentId,
-            input.eventId,
-          );
+          db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(intentId, input.eventId);
         }
 
         return intentId;
@@ -296,18 +256,58 @@ export function expireOldWebhookIntents(
   return result.changes;
 }
 
+export function pruneExpiredWebhookPayloads(
+  db: Database.Database,
+  now: number,
+): number {
+  const result = db
+    .prepare(
+      `UPDATE webhook_events
+       SET payload_json = NULL
+       WHERE payload_json IS NOT NULL
+         AND delivery_id IN (
+           SELECT delivery_id FROM webhook_deliveries
+           WHERE retained_until IS NOT NULL
+             AND retained_until <= ?
+         )`,
+    )
+    .run(now);
+  return result.changes;
+}
+
 export function listWebhookEvents(
   db: Database.Database,
-  limit = 50,
+  input: number | ListWebhookEventsInput = 50,
 ): WebhookEvent[] {
-  const normalizedLimit = Number.isFinite(limit) ? Math.floor(limit) : 50;
+  const options = typeof input === "number" ? { limit: input } : input;
+  const normalizedLimit = Number.isFinite(options.limit)
+    ? Math.floor(options.limit ?? 50)
+    : 50;
   const boundedLimit = Math.max(1, normalizedLimit);
+  const where: string[] = [];
+  const params: unknown[] = [];
+
+  if (options.repoId !== undefined) {
+    where.push("repo_id = ?");
+    params.push(options.repoId);
+  }
+  if (options.targetType !== undefined) {
+    where.push("target_type = ?");
+    params.push(options.targetType);
+  }
+  if (options.targetNumber !== undefined) {
+    where.push("target_number = ?");
+    params.push(options.targetNumber);
+  }
+
+  params.push(boundedLimit);
   const rows = db
     .prepare(
       `SELECT * FROM webhook_events
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY received_at DESC, id DESC
        LIMIT ?`,
     )
-    .all(boundedLimit) as WebhookEventRow[];
+    .all(...params) as WebhookEventRow[];
   return rows.map(rowToWebhookEvent);
 }

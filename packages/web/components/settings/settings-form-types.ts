@@ -8,6 +8,7 @@ export type FormValues = {
   launch_agent: LaunchAgent;
   idle_grace_period: string;
   idle_threshold: string;
+  public_webhook_base_url: string;
 };
 
 export type ArgsValidation = {

@@ -11,6 +11,10 @@ vi.mock("@issuectl/core", () => ({
   getActiveDeploymentByPort: (...args: unknown[]) => getActiveDeploymentByPort(...args),
   getRepoById: (...args: unknown[]) => getRepoById(...args),
   recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
+  tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
+    targetType === "issue"
+      ? `issuectl-${repo}-${targetNumber}`
+      : `issuectl-${repo}-${targetType}-${targetNumber}`,
 }));
 
 import {

@@ -1,14 +1,15 @@
 import type Database from "better-sqlite3";
 import { getRepo } from "../db/repos.js";
 import { getSetting } from "../db/settings.js";
-import { hasLiveDeploymentForIssue } from "../db/deployments.js";
-import type { Repo } from "../types.js";
+import { hasLiveDeploymentForTarget } from "../db/deployments.js";
+import type { DeploymentTargetType, Repo } from "../types.js";
 import { prepareWorkspace, type WorkspaceMode, type WorkspaceResult } from "./workspace.js";
 
 type LaunchWorkspaceOptions = {
   owner: string;
   repo: string;
-  issueNumber: number;
+  targetType?: DeploymentTargetType;
+  targetNumber: number;
   branchName: string;
   workspaceMode: WorkspaceMode;
   forceResume?: boolean;
@@ -21,9 +22,10 @@ export function expandHome(p: string): string {
   return p;
 }
 
-export function duplicateLaunchError(issueNumber: number): Error {
+export function duplicateLaunchError(targetNumber: number, targetType: DeploymentTargetType = "issue"): Error {
+  const label = targetType === "issue" ? `Issue #${targetNumber}` : `PR #${targetNumber}`;
   return new Error(
-    `Issue #${issueNumber} already has an active deployment. End the existing session before launching again.`,
+    `${label} already has an active deployment. End the existing session before launching again.`,
   );
 }
 
@@ -38,8 +40,9 @@ export async function prepareLaunchWorkspace(
     );
   }
 
-  if (hasLiveDeploymentForIssue(db, repoRecord.id, options.issueNumber)) {
-    throw duplicateLaunchError(options.issueNumber);
+  const targetType = options.targetType ?? "issue";
+  if (hasLiveDeploymentForTarget(db, repoRecord.id, targetType, options.targetNumber)) {
+    throw duplicateLaunchError(options.targetNumber, targetType);
   }
 
   const repoPath = repoRecord.localPath
@@ -65,7 +68,7 @@ export async function prepareLaunchWorkspace(
     owner: options.owner,
     repo: options.repo,
     branchName: options.branchName,
-    issueNumber: options.issueNumber,
+    issueNumber: options.targetNumber,
     worktreeDir,
     forceResume: options.forceResume,
   });

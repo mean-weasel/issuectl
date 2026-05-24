@@ -7,7 +7,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
   it("initSchema on a fresh DB produces the current schema version", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -93,7 +93,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -116,6 +116,8 @@ describe("schema v5 — drafts and issue_metadata", () => {
     const terminalBackendCol = cols.find((c) => c.name === "terminal_backend");
     expect(terminalBackendCol).toBeDefined();
     expect(terminalBackendCol?.dflt_value).toContain("ttyd");
+    expect(cols.find((c) => c.name === "parent_deployment_id")).toBeDefined();
+    expect(cols.find((c) => c.name === "webhook_depth")?.dflt_value).toContain("0");
   });
 });
 
@@ -130,8 +132,8 @@ describe("schema v8 — deployments FK cascade", () => {
       (db.prepare("SELECT id FROM repos WHERE owner='acme'").get() as { id: number }).id,
     );
     db.prepare(
-      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (?, ?, ?, ?, ?)",
-    ).run(repoId, 1, "b", "existing", "/x");
+      "INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path) VALUES (?, ?, 'issue', ?, ?, ?, ?)",
+    ).run(repoId, 1, 1, "b", "existing", "/x");
 
     const before = db
       .prepare("SELECT COUNT(*) as c FROM deployments WHERE repo_id = ?")
@@ -184,7 +186,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -213,13 +215,13 @@ describe("schema v9 — live deployment unique index", () => {
     const db = createTestDb();
     db.prepare("INSERT INTO repos (owner, name) VALUES (?, ?)").run("o", "n");
     db.prepare(
-      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'b1', 'existing', '/x')",
+      "INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'issue', 42, 'b1', 'existing', '/x')",
     ).run();
     db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = 1").run();
     expect(() =>
       db
         .prepare(
-          "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'b2', 'existing', '/y')",
+          "INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path) VALUES (1, 42, 'issue', 42, 'b2', 'existing', '/y')",
         )
         .run(),
     ).not.toThrow();
@@ -267,7 +269,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db

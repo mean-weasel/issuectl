@@ -1,0 +1,1514 @@
+# GoalBuddy v2 state.yaml
+version: 2
+
+goal:
+  title: "Webhook PR Auto-Review Gap Closure"
+  slug: "webhook-pr-auto-review-gap-closure"
+  kind: existing_plan
+  tranche: "Resolve issue #506 gaps left after webhook-auto-sessions-gap-closure: daemon mutation gateway, PR auto-review execution, comment-command lifecycle handlers, notifications, webhook management, and final audit."
+  status: done
+  oracle:
+    signal: "Webhook PR intents can safely launch PR-target review sessions only after daemon-mediated mutation authority, completion check-ins, action budgets, final PR ref safety, diagnostics, and notifications are verified."
+    cadence: "after each Worker package, at each security/launch boundary, and at final audit"
+    final_proof: "Final Judge receipt maps all remaining issue #506 requirements to done/block/defer status, cites passing core/web/cli test/typecheck/lint and git diff --check, and records full_outcome_complete: true only if no required Worker remains."
+  intake:
+    original_request: "make a detailed plan to address these gaps using $goalbuddy:goal-prep"
+    interpreted_outcome: "Prepare a GoalBuddy continuation board that can execute the remaining issue #506 PR auto-review, mutation-security, comment lifecycle, notification, and webhook-management gaps."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and webhook-triggered session users"
+    authority: requested
+    proof_type: test
+    completion_proof: "Every remaining issue #506 gap is implemented with focused verification, or explicitly blocked/deferred with owner decisions and artifacts."
+    likely_misfire: "Enabling PR auto-review launch while agents can still mutate GitHub outside a daemon-enforced gateway or without final PR ref safety."
+    blind_spots_considered:
+      - "Daemon endpoint can become a broad local mutation API if completion tokens and target binding are weak."
+      - "Action budgets need persistence and diagnostics, not prompt text."
+      - "PR review pushes can self-trigger synchronize loops."
+      - "Comment-command launch/review/end should not bypass mutation controls."
+      - "Notification transport should not send duplicates."
+      - "Webhook creation/rotation touches GitHub credentials and should remain explicit."
+    existing_plan_facts:
+      - "Previous board completed receiver hardening, issue auto-launch, target/session substrate, PR reservation, credential scrubbing, parser/auth for comment commands, visibility/docs, notification claim semantics, and full core-suite fixture cleanup."
+      - "Previous final audit recorded full_outcome_complete=false."
+      - "T009D was blocked on owner/security decisions."
+      - "T013 local artifact lists deferred work in docs/goals/webhook-auto-sessions-gap-closure/notes/t013-follow-up-artifacts.md."
+      - "Current known verification passed for core/web/cli tests, typechecks, lints, and git diff --check after T014."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  no_completion_on_weak_proof: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/webhook-pr-auto-review-gap-closure/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/webhook-pr-auto-review-gap-closure"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the remaining issue #506 plan, lock safe default owner/security decisions, and approve the first daemon mutation-gateway Worker slice."
+    inputs:
+      - "docs/goals/webhook-auto-sessions-gap-closure/state.yaml final T999/T009D/T013 receipts"
+      - "docs/goals/webhook-auto-sessions-gap-closure/notes/t013-follow-up-artifacts.md"
+      - "docs/goals/webhook-pr-auto-review-gap-closure/goal.md"
+      - "Issue #506 requirements"
+    constraints:
+      - "Read-only."
+      - "Do not approve PR terminal launch before daemon mutation gateway and completion-token auth are implemented."
+      - "Do not approve broad ambient GitHub mutation authority for non-manual sessions."
+      - "Default to safest v1 policy when owner decisions are absent, but record each default explicitly."
+    expected_output:
+      - "Decision: approved | blocked | needs_more_scout"
+      - "Approved v1 security defaults or exact owner questions"
+      - "First Worker objective"
+      - "allowed_files"
+      - "verify commands"
+      - "stop_if conditions"
+      - "Risks that require a later Judge boundary"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approved the security-first continuation plan and T002 as the first safe Worker slice. Current evidence confirms PR target launch remains guarded, PR webhook intents reserve/defer pending the daemon gateway, no agent mutation/check-in endpoint exists, and issue #506 still requires daemon-enforced mutation controls before PR auto-review execution."
+      approved_v1_defaults:
+        - "Use daemon-only GitHub mutation authority for webhook/comment-command sessions in this tranche; do not introduce a per-session GitHub App token flow."
+        - "Preserve ambient credentials for manual sessions by default."
+        - "When auto_review_prs is disabled, end active webhook-triggered PR review sessions for matching repo targets; do not kill manual sessions."
+        - "Keep fork PR auto-review disabled by default. Fork PRs require manual command or a later owner-approved policy."
+        - "Allow at most one bounded follow-up generation after a daemon-authorized review push; then stop and record diagnostics."
+        - "Label removal does not kill comment-command sessions; only /issuectl end does."
+        - "Keep webhook payload storage metadata-only by default; raw payload mode must use a short documented retention setting."
+      evidence:
+        - "GitHub issue #506 is OPEN and still requires daemon-side action budgets, mutation gates, PR review execution, comment lifecycle handlers, notifications, and diagnostics."
+        - "packages/core/src/launch/launch.ts throws `PR target launches are deferred until the daemon mutation gateway is implemented`."
+        - "packages/web/lib/webhook-pr-intent.ts records `webhook.pr_reserved_pending_gateway` and defers PR intents instead of launching review sessions."
+        - "No packages/web/app/api/v1/agent endpoint exists."
+        - "No packages/cli/src/commands/agent.ts wrapper exists."
+        - "Previous board T999/T009D/T013 receipts explicitly mark daemon mutation gateway, PR auto-review launch, comment lifecycle mutations, notification transport, and webhook management as blocked/deferred."
+      first_worker:
+        id: T002
+        objective: "Implement daemon mutation gateway foundation with persistent authorization/budget state, completion-token target binding, deny-by-default endpoint, diagnostics, and tests; no GitHub mutations yet."
+      required_t002_properties:
+        - "Fail closed for every mutation action until an explicit later Worker adds controlled adapters."
+        - "Bind authorization to deployment id, repo id, target type, target number, triggered_by, and completion token."
+        - "Persist budget/authorization state so retries and process restarts cannot reset mutation limits silently."
+        - "Emit diagnostics for allowed, denied, invalid token, target mismatch, unknown action, and budget exhausted paths."
+        - "Do not enable PR terminal launch or remove the PR launch throw."
+      later_judge_boundaries:
+        - "After T002/T003 before any real GitHub mutation adapter."
+        - "Before PR target terminal launch."
+        - "Before webhook creation/rotation writes against GitHub."
+      verification_expectation:
+        - "Focused core/web tests for schema, gateway auth, diagnostics, deny-by-default behavior."
+        - "core/web typecheck and lint."
+        - "git diff --check."
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement daemon mutation gateway foundation: persistent action budget/session authorization model, completion-token target binding, deny-by-default mutation endpoint, diagnostics, and tests; do not perform GitHub mutations yet."
+    allowed_files:
+      - "packages/core/src/db/**/*.ts"
+      - "packages/core/src/db/agent-mutations.ts"
+      - "packages/core/src/db/agent-mutations.test.ts"
+      - "packages/core/src/db/migrations-agent-actions.ts"
+      - "packages/core/src/db/migrations.ts"
+      - "packages/core/src/db/migrations-webhook-runaway.ts"
+      - "packages/core/src/db/schema.ts"
+      - "packages/core/src/db/schema.test.ts"
+      - "packages/core/src/db/schema-invariants.test.ts"
+      - "packages/core/src/db/schema-deployments.test.ts"
+      - "packages/core/src/db/pr-reviews.test.ts"
+      - "packages/core/src/db/schema-target-migration.test.ts"
+      - "packages/core/src/types.ts"
+      - "packages/core/src/index.ts"
+      - "packages/web/app/api/v1/agent/**/*.ts"
+      - "packages/web/app/api/v1/agent/mutations/route.ts"
+      - "packages/web/app/api/v1/agent/mutations/route.test.ts"
+      - "packages/web/lib/agent/**/*.ts"
+      - "packages/web/lib/agent/mutations.ts"
+      - "packages/web/lib/terminal-diagnostics.ts"
+      - "packages/web/lib/terminal-diagnostics.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- schema migrations diagnostics deployments"
+      - "pnpm --dir packages/web test -- agent terminal-diagnostics"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Need to allow push/comment/label/create mutation before deny-by-default gateway tests pass."
+      - "Need credential material not already available to the local daemon."
+      - "Endpoint cannot bind completion token to repo, target type, target number, and deployment id."
+      - "Schema shape requires changing previously verified issue auto-launch behavior."
+    receipt:
+      result: done
+      summary: "Implemented the daemon mutation gateway foundation without enabling GitHub mutations: schema v21 adds persistent per-deployment action budget rows; core and web evaluators bind requests to deployment id, completion token, repo id, target type/number, and non-manual provenance; `/api/v1/agent/mutations` validates requests and denies all actions by default; denial diagnostics are recorded; PR launch remains guarded."
+      changed_files:
+        - "packages/core/src/db/agent-mutations.ts"
+        - "packages/core/src/db/agent-mutations.test.ts"
+        - "packages/core/src/db/migrations-agent-actions.ts"
+        - "packages/core/src/db/migrations.ts"
+        - "packages/core/src/db/schema.ts"
+        - "packages/core/src/db/schema.test.ts"
+        - "packages/core/src/db/schema-invariants.test.ts"
+        - "packages/core/src/db/schema-deployments.test.ts"
+        - "packages/core/src/db/pr-reviews.test.ts"
+        - "packages/core/src/db/schema-target-migration.test.ts"
+        - "packages/core/src/index.ts"
+        - "packages/web/app/api/v1/agent/mutations/route.ts"
+        - "packages/web/app/api/v1/agent/mutations/route.test.ts"
+        - "packages/web/lib/agent/mutations.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- schema migrations diagnostics deployments agent-mutations"
+        - "PASS pnpm --dir packages/web test -- agent terminal-diagnostics"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- schema migrations diagnostics deployments agent-mutations"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- agent terminal-diagnostics"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "The route uses a web-local evaluator to avoid depending on freshly added core exports during web package typecheck; the matching core helper remains exported for core-side consumers and tests."
+        - "All mutation actions still fail closed with reason action_unimplemented after token and target validation."
+      full_outcome_complete: false
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add completion-token authenticated daemon check-ins and an `issuectl agent` CLI wrapper for agents to request completion and mutation operations without receiving ambient GitHub credentials."
+    allowed_files:
+      - "packages/core/src/db/**/*.ts"
+      - "packages/core/src/db/agent-completions.ts"
+      - "packages/core/src/db/agent-completions.test.ts"
+      - "packages/core/src/launch/**/*.ts"
+      - "packages/core/src/types.ts"
+      - "packages/core/src/index.ts"
+      - "packages/web/app/api/v1/agent/**/*.ts"
+      - "packages/web/app/api/v1/agent/completion/route.ts"
+      - "packages/web/app/api/v1/agent/completion/route.test.ts"
+      - "packages/web/lib/agent/**/*.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/cli/src/commands/agent.ts"
+      - "packages/cli/src/commands/agent.test.ts"
+      - "packages/cli/src/index.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- launch deployments"
+      - "pnpm --dir packages/web test -- agent"
+      - "pnpm --dir packages/cli test -- agent"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/cli lint"
+      - "git diff --check"
+    stop_if:
+      - "CLI wrapper would expose raw tokens in args, logs, diagnostics, or shell history beyond the existing launch environment."
+      - "Check-in protocol cannot be made idempotent."
+      - "Needs PR launch enablement before gateway auth is verified."
+    receipt:
+      result: done
+      summary: "Added completion-token authenticated agent check-ins and CLI wrappers without exposing tokens as command-line flags. Core and web helpers record completion once, end deployments, store structured status/summary JSON, accept exact duplicate retries, and reject invalid/conflicting check-ins. `/api/v1/agent/completion` exposes the local check-in path. `issuectl agent complete` and `issuectl agent mutate` post to the local daemon using `ISSUECTL_AGENT_TOKEN`."
+      changed_files:
+        - "packages/core/src/db/agent-completions.ts"
+        - "packages/core/src/db/agent-completions.test.ts"
+        - "packages/core/src/index.ts"
+        - "packages/web/lib/agent/completion.ts"
+        - "packages/web/app/api/v1/agent/completion/route.ts"
+        - "packages/web/app/api/v1/agent/completion/route.test.ts"
+        - "packages/cli/src/commands/agent.ts"
+        - "packages/cli/src/commands/agent.test.ts"
+        - "packages/cli/src/index.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- launch deployments agent-completions"
+        - "PASS pnpm --dir packages/web test -- agent"
+        - "PASS pnpm --dir packages/cli test -- agent"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/cli typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS pnpm --dir packages/cli lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- launch deployments agent-completions"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- agent"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test -- agent"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "pnpm --dir packages/cli lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "The CLI intentionally reads the completion token from ISSUECTL_AGENT_TOKEN rather than accepting a --token option."
+        - "The mutate command still reaches a fail-closed gateway; no GitHub mutation adapters are implemented yet."
+      full_outcome_complete: false
+
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the daemon gateway/check-in substrate and approve controlled GitHub mutation adapters with action budgets and final PR ref safety."
+    constraints:
+      - "Read-only."
+      - "Reject if T002/T003 verification is missing or stale."
+      - "Reject if any non-manual session can still mutate GitHub with ambient credentials."
+    expected_output:
+      - "Decision: approved | blocked | needs_more_scout"
+      - "Approved mutation actions for v1"
+      - "Budget defaults"
+      - "First controlled-mutation Worker objective"
+      - "allowed_files"
+      - "verify commands"
+      - "stop_if conditions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approved T005 controlled mutation adapters after T002/T003 established a fail-closed gateway, persistent budget state, completion-token binding, and token-via-env CLI wrapper. T005 remains a daemon-only mutation slice and must not enable PR terminal launch."
+      approved_mutation_actions_for_v1:
+        - "comment"
+        - "label"
+        - "create_issue"
+        - "create_pr"
+        - "push"
+      required_t005_properties:
+        - "All mutation execution must be behind completion-token deployment auth and exact repo/target binding."
+        - "Budget consumption must be persistent and fail closed."
+        - "Push must require same-repo PR, non-default branch, expected head ref, expected head SHA, and final PR refetch immediately before the adapter executes."
+        - "Fork PRs remain denied by default."
+        - "Tests must use injected/mocked Octokit or adapter dependencies; no live GitHub writes."
+        - "T005 must not remove the PR launch throw or mark PR intents launched."
+      risks_requiring_later_judge:
+        - "T006 PR terminal launch after controlled adapters are verified."
+        - "Incremental review/self-trigger execution after full-review launch is verified."
+        - "Webhook create/rotate writes against GitHub."
+      evidence:
+        - "T002 receipt: `/api/v1/agent/mutations` exists and denies all actions by default after auth/target validation."
+        - "T003 receipt: `/api/v1/agent/completion` and `issuectl agent` use ISSUECTL_AGENT_TOKEN and idempotent completion check-ins."
+        - "packages/core/src/launch/launch.ts still rejects PR target launches."
+        - "packages/core/src/github/pr-safety.ts already contains same-repo/head-ref safety predicates for reuse."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement controlled same-repo PR mutation adapters through the daemon gateway: final ref verification, push/comment/label budget enforcement, same-repo/non-default/non-protected safety gates, denial diagnostics, and no fork auto-push."
+    allowed_files:
+      - "packages/core/src/github/**/*.ts"
+      - "packages/core/src/db/**/*.ts"
+      - "packages/core/src/db/agent-mutations.ts"
+      - "packages/core/src/db/agent-mutations.test.ts"
+      - "packages/core/src/types.ts"
+      - "packages/web/lib/agent/**/*.ts"
+      - "packages/web/lib/agent/mutation-actions.test.ts"
+      - "packages/web/lib/agent/mutation-adapters.ts"
+      - "packages/web/lib/agent/mutation-budget.ts"
+      - "packages/web/lib/agent/mutation-diagnostics.ts"
+      - "packages/web/lib/agent/mutation-payloads.ts"
+      - "packages/web/lib/agent/mutation-types.ts"
+      - "packages/web/lib/agent/mutations.ts"
+      - "packages/web/lib/agent/mutations.test.ts"
+      - "packages/web/lib/agent/mutation-recursion.test.ts"
+      - "packages/web/app/api/v1/agent/**/*.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- github pr-reviews webhooks deployments"
+      - "pnpm --dir packages/web test -- agent webhook-pr-intent"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "A mutation would be possible without a valid completion token and target binding."
+      - "Fork PR auto-review would be enabled by default."
+      - "Final ref verification cannot be tested without live GitHub credentials."
+      - "Budget exhaustion does not fail closed."
+    receipt:
+      result: done
+      summary: "Implemented controlled daemon mutation adapters for comment, label, create_issue, create_pr, and push. The route now executes through a completion-token authenticated executor with exact deployment/repo/target binding, persistent budget claims, denial diagnostics, and action execution diagnostics. Push performs a final PR refetch through an injected adapter, denies fork PRs, default-branch pushes, protected branches, head-ref mismatches, and stale head SHAs before consuming budget or updating refs. Tests use injected adapters and mocked behavior; no live GitHub writes are required."
+      changed_files:
+        - "packages/core/src/db/agent-mutations.ts"
+        - "packages/core/src/db/agent-mutations.test.ts"
+        - "packages/web/app/api/v1/agent/mutations/route.ts"
+        - "packages/web/app/api/v1/agent/mutations/route.test.ts"
+        - "packages/web/lib/agent/mutation-actions.test.ts"
+        - "packages/web/lib/agent/mutation-adapters.ts"
+        - "packages/web/lib/agent/mutation-budget.ts"
+        - "packages/web/lib/agent/mutation-diagnostics.ts"
+        - "packages/web/lib/agent/mutation-payloads.ts"
+        - "packages/web/lib/agent/mutation-types.ts"
+        - "packages/web/lib/agent/mutations.ts"
+        - "packages/web/lib/agent/mutations.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- github pr-reviews webhooks deployments agent-mutations"
+        - "PASS pnpm --dir packages/web test -- agent webhook-pr-intent"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- github pr-reviews webhooks deployments agent-mutations"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- agent webhook-pr-intent"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "Budget rows default to zero and fail closed until a later launch slice assigns per-deployment limits."
+        - "The web executor keeps PR safety and budget logic web-local because web typecheck resolves @issuectl/core declarations from the built package."
+        - "T005 does not remove the PR launch throw and does not mark PR intents launched."
+      full_outcome_complete: false
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Enable safe PR target terminal launch and full-diff PR auto-review flow for same-repo opted-in PRs, using the daemon gateway for mutations and structured completion for results."
+    allowed_files:
+      - "packages/core/src/launch/**/*.ts"
+      - "packages/core/src/launch/launch.ts"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/launch-labels.ts"
+      - "packages/core/src/launch/launch-activation.ts"
+      - "packages/core/src/launch/launch-diagnostics.ts"
+      - "packages/core/src/launch/launch-workspace-setup.ts"
+      - "packages/core/src/launch/tmux-session.ts"
+      - "packages/core/src/launch/ttyd.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/core/src/github/**/*.ts"
+      - "packages/core/src/db/**/*.ts"
+      - "packages/core/src/types.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/webhook-runaway-controls.ts"
+      - "packages/web/lib/webhook-runaway-controls.test.ts"
+      - "packages/web/lib/webhook-pr-launch.ts"
+      - "packages/web/lib/webhook-pr-launch.test.ts"
+      - "packages/web/lib/webhook-payload-retention.ts"
+      - "packages/web/lib/terminal-*.ts"
+      - "packages/web/app/api/v1/**/*.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- launch context pr-reviews github"
+      - "pnpm --dir packages/web test -- webhook-pr-intent webhook-intent-worker terminal"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "PR launch can bypass T002-T005 daemon gateway controls."
+      - "Issue target launch behavior regresses."
+      - "PR review reservation can wedge in reserved/launching/in_progress after launch failure."
+      - "A PR target uses fake issue numbers."
+    receipt:
+      result: done
+      summary: "Enabled same-repo opted-in PR webhook intents to launch real PR target sessions through the existing terminal pipeline. Core launch now supports target_type='pr' without fake issue numbers, builds full-diff PR review context, skips direct lifecycle label writes for PR launches, injects daemon completion environment variables, records target-bound PR deployments, and seeds bounded daemon mutation budgets. The PR intent worker now reserves, marks launching, launches, marks in_progress with deployment_id, and marks failed on launch errors rather than leaving reservations wedged."
+      changed_files:
+        - "packages/core/src/launch/launch.ts"
+        - "packages/core/src/launch/launch-contexts.ts"
+        - "packages/core/src/launch/launch-labels.ts"
+        - "packages/core/src/launch/launch-activation.ts"
+        - "packages/core/src/launch/launch-diagnostics.ts"
+        - "packages/core/src/launch/launch-workspace-setup.ts"
+        - "packages/core/src/launch/tmux-session.ts"
+        - "packages/core/src/launch/ttyd.ts"
+        - "packages/core/src/launch/launch-execute-precheck.test.ts"
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-pr-intent.test.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-pr-launch.ts"
+        - "packages/web/lib/webhook-payload-retention.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- launch context pr-reviews github"
+        - "PASS pnpm --dir packages/web test -- webhook-pr-intent webhook-intent-worker terminal"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- launch context pr-reviews github"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-intent webhook-intent-worker terminal"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "Web package tests still account for stale @issuectl/core dist declarations by avoiding source-only core types in web assertions."
+        - "PR launch receives ISSUECTL_AGENT_TOKEN, ISSUECTL_DEPLOYMENT_ID, ISSUECTL_REPO_ID, ISSUECTL_TARGET_TYPE, ISSUECTL_TARGET_NUMBER, ISSUECTL_EXPECTED_HEAD_REF, and ISSUECTL_EXPECTED_HEAD_SHA via scrubbed terminal environment."
+        - "T006 does not implement incremental ranges or self-trigger follow-up generation; those remain queued for T007."
+      full_outcome_complete: false
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement incremental PR review execution: reviewed ranges, ancestor checks, force-push superseding, desired-head coalescing during active review, and one bounded self-trigger follow-up generation."
+    allowed_files:
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/pr-reviews.test.ts"
+      - "packages/core/src/github/**/*.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-pr-incremental.test.ts"
+      - "packages/web/lib/webhook-pr-review-state.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- pr-reviews github"
+      - "pnpm --dir packages/web test -- webhook-pr-intent webhook-intent-worker"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Self-trigger follow-ups can become unbounded."
+      - "Force-push detection cannot distinguish superseded ranges."
+      - "Incremental review can skip unreviewed commits."
+    receipt:
+      result: done
+      summary: "Implemented incremental PR review state handling. Completed PR review ranges can now be recorded and queried, active reviews coalesce at most one desired follow-up head in result_json, already-reviewed heads are skipped, ancestor updates launch incremental reviews from the prior completed head, and non-ancestor updates supersede the old completed range before launching a full review. The webhook PR worker uses an injected or GitHub compare-based ancestor check and records diagnostics for coalesced, capped, already-reviewed, and launch paths."
+      changed_files:
+        - "packages/core/src/db/pr-reviews.ts"
+        - "packages/core/src/db/pr-reviews.test.ts"
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-pr-intent.test.ts"
+        - "packages/web/lib/webhook-pr-incremental.test.ts"
+        - "packages/web/lib/webhook-pr-review-state.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- pr-reviews github"
+        - "PASS pnpm --dir packages/web test -- webhook-pr-intent webhook-pr-incremental webhook-intent-worker"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- pr-reviews github"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-intent webhook-pr-incremental webhook-intent-worker"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "Follow-up generation is bounded by storing one desired head/followUpGeneration=1 on the active PR review; later synchronize events are capped until completion handling consumes that desired head in a later slice."
+        - "No schema migration was needed; existing result_json stores coalesced desired-head metadata."
+      full_outcome_complete: false
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Wire comment-command lifecycle handlers for `/issuectl launch|review|end`: create issue/PR intents or end target sessions, enforce actor/target rate limits, and emit reactions/replies through the daemon mutation policy."
+    allowed_files:
+      - "packages/web/lib/github-webhook-comment-command.ts"
+      - "packages/web/lib/github-webhook-comment-command.test.ts"
+      - "packages/web/lib/issuectl-comment-command.ts"
+      - "packages/web/lib/issuectl-comment-command.test.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/webhook-intent-worker-comment-command.test.ts"
+      - "packages/web/lib/webhook-intent-source.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-pr-review-state.ts"
+      - "packages/web/lib/webhook-pr-launch.ts"
+      - "packages/web/lib/agent/**/*.ts"
+      - "packages/web/app/api/v1/agent/**/*.ts"
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- webhooks"
+      - "pnpm --dir packages/web test -- github-webhook-comment-command issuectl-comment-command webhook-intent-worker agent"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Comment commands can bypass daemon mutation controls."
+      - "Label removal kills comment-command sessions without an explicit `/issuectl end`."
+      - "Denied commands can spam comments instead of diagnostics/reactions."
+    receipt:
+      result: done
+      summary: "Wired comment-command lifecycle handling for `/issuectl launch`, `/issuectl review`, and `/issuectl end`. Authorized launch/review commands create issue/PR webhook intents; comment-command intents launch with `triggered_by='comment_command'` and bypass label/auto-review gating without bypassing daemon mutation controls. `/issuectl end` ends only non-manual sessions for the same repo and target, including terminal teardown paths. Actor/target rate limits run before collaborator permission checks and deny by diagnostics/reactions without creating intents or comments."
+      changed_files:
+        - "packages/web/lib/github-webhook-comment-command.ts"
+        - "packages/web/lib/github-webhook-comment-command.test.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-intent-worker.test.ts"
+        - "packages/web/lib/webhook-intent-worker-comment-command.test.ts"
+        - "packages/web/lib/webhook-intent-source.ts"
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-pr-intent.test.ts"
+        - "packages/web/lib/webhook-pr-review-state.ts"
+        - "packages/web/lib/webhook-pr-launch.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- webhooks"
+        - "PASS pnpm --dir packages/web test -- github-webhook-comment-command issuectl-comment-command webhook-intent-worker agent"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- webhooks"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- github-webhook-comment-command issuectl-comment-command webhook-intent-worker agent"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "Command status feedback is implemented as bounded daemon-side reactions (`+1`, `-1`, `eyes`) rather than reply comments, so denied/rate-limited commands cannot create comment spam."
+        - "A focused subagent review found repo scoping, terminal teardown, and pre-permission rate-limit gaps; those were addressed before receipt."
+        - "The worker test coverage was split to keep ESLint `max-lines` enforced as an error."
+      full_outcome_complete: false
+
+  - id: T009
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map existing notification and webhook-management surfaces to choose the smallest safe transport/creation/rotation implementation path."
+    constraints:
+      - "Read-only."
+      - "Do not assume a push notification transport exists; cite exact files or say none found."
+      - "Separate local notification transport from GitHub webhook creation/rotation."
+    expected_output:
+      - "Notification transport options"
+      - "Webhook creation/rotation options"
+      - "Required credentials and user prompts"
+      - "Candidate Worker slices"
+    receipt:
+      result: done
+      summary: "Mapped notification and webhook-management surfaces. APNs push transport and iOS device registration already exist, plus idempotent deployment notification claim helpers, but webhook/session outcome notification wiring is incomplete. GitHub webhook receiver, repo config storage, status display, and settings controls exist; GitHub webhook creation/rotation is not implemented. Recommended smallest safe path is split Workers: first wire existing APNs notifications to terminal webhook/comment/PR review outcomes with idempotent claims, then add explicit CLI-first GitHub webhook create/rotate management using generated secrets and existing repo webhook columns."
+      evidence:
+        - "packages/web/lib/push/apns.ts reads ISSUECTL_APNS_TEAM_ID, ISSUECTL_APNS_KEY_ID, ISSUECTL_APNS_BUNDLE_ID, ISSUECTL_APNS_PRIVATE_KEY and sends APNs HTTP/2 notifications."
+        - "packages/web/lib/push/notifications.ts exposes notifyDevices plus notifyIdleTerminal, notifyNewIssue, and notifyMergedPullRequest helpers."
+        - "packages/core/src/db/push-devices.ts stores and lists enabled iOS push device registrations by notification kind."
+        - "packages/web/app/api/v1/notifications/devices/route.ts registers/disables iOS push devices."
+        - "apple/IssueCTL/Services/NotificationSettingsStore.swift and apple/IssueCTLShared/Services/APIClient.swift sync APNs tokens/preferences to the server."
+        - "packages/core/src/db/deployments.ts has markDeploymentNotificationSent and claimDeploymentNotificationSent with tests in deployments-notifications.test.ts."
+        - "packages/web/lib/webhook-intent-worker.ts processes webhook intents but does not yet publish terminal outcome notifications."
+        - "packages/core/src/db/repos.ts stores webhook_secret and webhook_id through getRepoWebhookConfigById/updateRepoWebhookSettings."
+        - "packages/web/lib/github-webhook-handler.ts verifies /api/webhook/github/:repo_id with stored secret and optional hook id binding."
+        - "packages/cli/src/commands/webhook.ts only implements status/tail and never creates or rotates GitHub webhooks."
+        - "packages/cli/src/commands/repo.ts updates automation flags/agents/payload mode, not webhook secrets or GitHub hook ids."
+      notification_transport_options:
+        - "Use existing APNs/iOS device transport now for terminal outcome notifications."
+        - "Optional later fallback: local/dashboard event log or toast surface if product wants non-push visibility."
+        - "macOS remote notifications are separate; current registration evidence is iOS-focused."
+      webhook_management_options:
+        - "CLI-first create/rotate is the smallest safe path using existing Octokit auth and explicit confirmation."
+        - "Web settings/API management can follow after CLI command semantics are tested."
+        - "Existing repo columns can store generated webhook secret and GitHub hook id."
+      required_credentials_and_prompts:
+        - "Notifications require APNs Team ID, Key ID, Bundle ID/topic, private key env var, iOS notification permission, server API auth, and user-selected notification preferences."
+        - "Webhook management requires public_webhook_base_url, GitHub token with repo webhook admin permission, tracked repo selection, generated secret confirmation, event list selection, and explicit replace/rotate confirmation."
+      candidate_worker_slices:
+        - "Notification Worker: add idempotent terminal outcome notifications for webhook/comment/PR review sessions using existing APNs helpers and deployment notification claims."
+        - "Webhook CLI Worker: add GitHub webhook create/rotate helpers and CLI commands that generate/store secrets, store hook ids, never print stored secrets, and require explicit confirmation."
+        - "Webhook web Worker: expose safe setup/rotation status and controls in settings after CLI behavior is tested."
+        - "Rotation hardening Worker: decide and implement either dual-secret grace or explicit downtime semantics plus ping/rollback diagnostics."
+      ambiguity_for_t010:
+        - "Whether notifications cover only terminal outcomes or also skipped/rate-limited/denied command outcomes."
+        - "Whether rotation must support dual-secret grace or can use explicit downtime semantics."
+        - "Whether GitHub webhook management uses existing Octokit auth, a separate token prompt, or GitHub App credentials."
+        - "Whether CLI-only webhook management is acceptable for the first implementation slice."
+      full_outcome_complete: false
+
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Approve notification transport and webhook management slices based on T009 evidence."
+    constraints:
+      - "Read-only."
+      - "Reject any webhook creation/rotation path that would expose secrets or mutate GitHub without explicit user-controlled credentials."
+    expected_output:
+      - "Decision: approved | blocked | needs_more_scout"
+      - "Notification Worker objective"
+      - "Webhook management Worker objective"
+      - "allowed_files and verification for each"
+      - "stop_if conditions"
+    receipt:
+      result: done
+      decision: approved
+      summary: "Approved split implementation slices. T011 may wire existing APNs/device notification transport to real terminal deployment outcomes using deployment notification claims. T012 is approved only after narrowing to CLI-first GitHub webhook create/rotate with explicit gh-authenticated user confirmation, generated secret storage, mocked tests, and no dashboard/API mutation controls in that slice."
+      rationale: "T009 evidence shows APNs/device registration and deployment notification claims already exist, making notification wiring local and reversible. GitHub webhook creation/rotation is higher risk and must remain CLI-first with explicit user-controlled credentials and secret redaction."
+      parallel_safety:
+        safe: false
+        reason: "Run T011 and T012 sequentially because both may update docs/specs/2026-05-23-webhooks-design.md and T012 needed scope narrowing."
+      approved_t011:
+        objective: "Implement APNs-backed terminal outcome notifications for webhook and comment-command issue/PR deployments using existing push transport and deployment notification claims. Notify only real terminal deployment outcomes in this slice, not skipped/rate-limited/denied commands, and send at most once per deployment."
+        verify:
+          - "pnpm --dir packages/core test -- deployments-notifications deployments"
+          - "pnpm --dir packages/web test -- notifications agent webhook-intent-worker deployments"
+          - "pnpm --dir packages/core typecheck"
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/core lint"
+          - "pnpm --dir packages/web lint"
+          - "git diff --check"
+        stop_if:
+          - "Requires production APNs credentials, live APNs delivery, or external service setup to verify."
+          - "Notification sending cannot be made exactly-once under duplicate completion check-ins or retry paths."
+          - "Implementation needs to notify skipped/rate-limited/denied command outcomes that are not tied to a terminal deployment."
+          - "Implementation needs new Apple client preference/schema changes instead of using the existing v1 notification preference surface."
+          - "Any notification payload would include completion tokens, GitHub tokens, webhook secrets, raw webhook payloads, or other secret material."
+      approved_t012:
+        objective: "Implement CLI-first GitHub webhook create/rotate management using a generated receiver secret, stored webhook id, explicit gh-authenticated user confirmation, mocked Octokit tests, and secret redaction. Do not add dashboard/API create or rotate controls in this slice."
+        verify:
+          - "pnpm --dir packages/core test -- github repos"
+          - "pnpm --dir packages/cli test -- webhook"
+          - "pnpm --dir packages/core typecheck"
+          - "pnpm --dir packages/cli typecheck"
+          - "pnpm --dir packages/web typecheck"
+          - "pnpm --dir packages/core lint"
+          - "pnpm --dir packages/cli lint"
+          - "git diff --check"
+        stop_if:
+          - "Any test would require live GitHub mutation instead of mocked Octokit behavior."
+          - "Create or rotate would run without a tracked repo, configured public_webhook_base_url, gh authenticated user identity, and explicit prompt or --yes confirmation."
+          - "Webhook secret would be printed, logged, written to diagnostics, returned by status, or exposed through API/dashboard responses."
+          - "Implementation needs hidden server-side ambient credentials, GitHub App credentials, or token collection beyond the user-controlled gh CLI credential."
+          - "Implementation needs dashboard/API create or rotate controls before CLI command semantics are tested."
+          - "Product requires zero-downtime dual-secret rotation rather than explicit v1 rotation downtime."
+      full_outcome_complete: false
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement APNs-backed terminal outcome notifications for webhook and comment-command issue/PR deployments using existing push transport and deployment notification claims. Notify only real terminal deployment outcomes in this slice, not skipped/rate-limited/denied commands, and send at most once per deployment."
+    allowed_files:
+      - "packages/core/src/db/deployments.ts"
+      - "packages/core/src/db/deployments-notifications.test.ts"
+      - "packages/core/src/types.ts"
+      - "packages/web/lib/push/notifications.ts"
+      - "packages/web/lib/push/notifications.test.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "packages/web/app/api/v1/agent/completion/route.ts"
+      - "packages/web/app/api/v1/agent/completion/route.test.ts"
+      - "packages/web/app/api/v1/deployments/[id]/end/route.ts"
+      - "packages/web/app/api/v1/deployments/[id]/end/route.test.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/webhook-intent-worker-comment-command.test.ts"
+      - "packages/web/lib/deployment-target.ts"
+      - "packages/web/lib/idle-checker.ts"
+      - "packages/web/lib/idle-checker.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- deployments-notifications deployments"
+      - "pnpm --dir packages/web test -- notifications agent webhook-intent-worker deployments"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Requires production APNs credentials, live APNs delivery, or external service setup to verify."
+      - "Notification sending cannot be made exactly-once under duplicate completion check-ins or retry paths."
+      - "Implementation needs to notify skipped/rate-limited/denied command outcomes that are not tied to a terminal deployment."
+      - "Implementation needs new Apple client preference/schema changes instead of using the existing v1 notification preference surface."
+      - "Any notification payload would include completion tokens, GitHub tokens, webhook secrets, raw webhook payloads, or other secret material."
+    receipt:
+      result: done
+      summary: "Implemented APNs-backed terminal outcome notifications for non-manual webhook/comment-command issue and PR deployments using the existing push transport. Accepted agent completion check-ins, manual end-session route completions, and liveness-ended sessions now call a shared terminal outcome notifier. The notifier filters out manual/active deployments, claims `notification_sent_at` before sending, uses the existing `idleTerminals` push preference kind, and avoids skipped/denied/rate-limited command outcomes."
+      changed_files:
+        - "packages/web/lib/push/notifications.ts"
+        - "packages/web/lib/push/notifications.test.ts"
+        - "packages/web/lib/agent/completion.ts"
+        - "packages/web/lib/agent/completion.test.ts"
+        - "packages/web/app/api/v1/deployments/[id]/end/route.ts"
+        - "packages/web/app/api/v1/deployments/[id]/end/route.test.ts"
+        - "packages/web/lib/idle-checker.ts"
+        - "packages/web/lib/idle-checker.test.ts"
+        - "docs/specs/2026-05-23-webhooks-design.md"
+      verification:
+        - "PASS pnpm --dir packages/core test -- deployments-notifications deployments"
+        - "PASS pnpm --dir packages/web test -- notifications agent webhook-intent-worker deployments idle-checker"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- deployments-notifications deployments"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- notifications agent webhook-intent-worker deployments idle-checker"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "The web notifier uses local SQL for the notification claim and a narrow runtime deployment shape because the web package currently compiles/tests against older @issuectl/core dist types."
+        - "APNs missing credentials remain a skipped delivery path in the existing push sender; T011 tests cover that no device is deleted for skipped APNs configuration."
+        - "No Apple client preference/schema changes were needed."
+      full_outcome_complete: false
+
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement CLI-first GitHub webhook create/rotate management using a generated receiver secret, stored webhook id, explicit gh-authenticated user confirmation, mocked Octokit tests, and secret redaction. Do not add dashboard/API create or rotate controls in this slice."
+    allowed_files:
+      - "packages/core/src/github/webhooks.ts"
+      - "packages/core/src/github/webhooks.test.ts"
+      - "packages/core/src/github/types.ts"
+      - "packages/core/src/db/repos.ts"
+      - "packages/core/src/db/repos.test.ts"
+      - "packages/core/src/index.ts"
+      - "packages/cli/src/commands/webhook.ts"
+      - "packages/cli/src/commands/webhook.test.ts"
+      - "packages/cli/src/commands/webhook-manage.test.ts"
+      - "packages/cli/src/index.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+      - "docs/workflows/*.md"
+    verify:
+      - "pnpm --dir packages/core test -- github repos"
+      - "pnpm --dir packages/cli test -- webhook"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/cli lint"
+      - "git diff --check"
+    stop_if:
+      - "Any test would require live GitHub mutation instead of mocked Octokit behavior."
+      - "Create or rotate would run without a tracked repo, configured public_webhook_base_url, gh authenticated user identity, and explicit prompt or --yes confirmation."
+      - "Webhook secret would be printed, logged, written to diagnostics, returned by status, or exposed through API/dashboard responses."
+      - "Implementation needs hidden server-side ambient credentials, GitHub App credentials, or token collection beyond the user-controlled gh CLI credential."
+      - "Implementation needs dashboard/API create or rotate controls before CLI command semantics are tested."
+      - "Product requires zero-downtime dual-secret rotation rather than explicit v1 rotation downtime."
+    receipt:
+      result: done
+      summary: "Implemented CLI-first GitHub webhook create/rotate management. Core has mocked Octokit helpers for creating/updating the issuectl webhook event set. CLI `issuectl webhook create <owner/repo>` and `issuectl webhook rotate <owner/repo>` require a tracked repo, configured `public_webhook_base_url`, current gh-authenticated user identity, and confirmation unless `--yes` is passed. Commands generate a fresh receiver secret, store only the hook id and secret in repo config, and never print the secret."
+      changed_files:
+        - "packages/core/src/github/webhooks.ts"
+        - "packages/core/src/github/webhooks.test.ts"
+        - "packages/core/src/index.ts"
+        - "packages/cli/src/commands/webhook.ts"
+        - "packages/cli/src/commands/webhook-manage.test.ts"
+        - "docs/specs/2026-05-23-webhooks-design.md"
+      verification:
+        - "PASS pnpm --dir packages/core test -- github repos"
+        - "PASS pnpm --dir packages/cli test -- webhook"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/cli typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/cli lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- github repos"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test -- webhook"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/cli lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "The CLI uses the existing `withAuthRetry` Octokit handle directly because the CLI package compiles against the built @issuectl/core package and should not depend on fresh source-only exports before package build artifacts are refreshed."
+        - "No dashboard/API create or rotate controls were added."
+        - "Rotation uses explicit v1 downtime semantics: one stored receiver secret is replaced after GitHub update succeeds; dual-secret grace remains a future hardening option."
+      full_outcome_complete: false
+
+  - id: T013
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Prepare issue #506 update and follow-up artifacts after implementation slices land."
+    constraints:
+      - "Only post to GitHub when local diff is reviewed/pushed or the user explicitly approves posting from local state."
+      - "Do not claim full issue completion if any required Worker remains blocked or queued."
+    expected_output:
+      - "Issue #506 update draft or posted link"
+      - "Follow-up issue/PR links if created"
+      - "List of remaining blocked/deferred decisions"
+    receipt:
+      result: done
+      summary: "Prepared a local issue #506 update draft and follow-up artifact. No GitHub comment was posted because the board requires explicit approval or reviewed/pushed state before posting from local state."
+      artifacts:
+        - "docs/goals/webhook-pr-auto-review-gap-closure/notes/t013-issue-506-update-draft.md"
+      remaining:
+        - "Run T999 final audit against issue #506 requirements and full local diff."
+        - "After final audit, decide whether to post the issue update from local state or after pushing/reviewing the branch."
+      full_outcome_complete: false
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit: prove whether remaining issue #506 PR auto-review and automation gaps are complete."
+    inputs:
+      - "All receipts in this board"
+      - "Previous webhook-auto-sessions-gap-closure final audit"
+      - "Current dirty diff"
+      - "Issue #506 requirements"
+      - "Last verification"
+    constraints:
+      - "Read-only."
+      - "Reject completion if daemon mutation, PR auto-review launch, comment lifecycle, notifications, or webhook management are only planned."
+      - "Reject completion on stale verification or missing evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix status"
+      - "Verification evidence"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: needs_more_work
+      full_outcome_complete: false
+      summary: "Final audit rejected full completion because two implementable issue #506 gaps remain: active webhook PR sessions are not ended on PR control events/auto_review_prs=false, and completion/notification diagnostics are missing."
+      missing_evidence:
+        - "Focused tests proving PR unlabeled/closed and auto_review_prs=false end active webhook-triggered PR deployments without killing manual/comment-command sessions."
+        - "Implementation and tests for webhook.completed and webhook.notification_sent diagnostics."
+      required_next_task: T014
+
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close final audit residuals: end eligible active webhook PR sessions on PR control events or auto_review_prs=false, and emit completion/notification diagnostics exactly once."
+    allowed_files:
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-pr-incremental.test.ts"
+      - "packages/web/lib/push/notifications.ts"
+      - "packages/web/lib/push/notifications.test.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "packages/web/lib/deployment-target.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+      - "docs/goals/webhook-pr-auto-review-gap-closure/notes/t013-issue-506-update-draft.md"
+    verify:
+      - "pnpm --dir packages/web test -- webhook-pr-intent webhook-pr-incremental notifications agent"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "PR control events would end manual or comment-command sessions."
+      - "Terminal teardown cannot be scoped to the matching PR deployment."
+      - "Notification or completion diagnostics could emit duplicate terminal events under retries."
+    receipt:
+      result: done
+      summary: "Closed final-audit residuals. PR webhook opt-out/control events now end only matching active webhook-triggered PR review deployments, tear down ttyd/tmux, mark the deployment ended with the appropriate terminal reason, supersede the active PR review row, and emit `webhook.pr_session_ended`. Completion check-ins now emit `webhook.completed`, and terminal outcome notification claims emit `webhook.notification_sent` exactly once before APNs dispatch."
+      changed_files:
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-pr-intent.test.ts"
+        - "packages/web/lib/push/notifications.ts"
+        - "packages/web/lib/push/notifications.test.ts"
+        - "packages/web/lib/agent/completion.ts"
+        - "packages/web/lib/agent/completion.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/web test -- webhook-pr-intent webhook-pr-incremental notifications agent"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-intent webhook-pr-incremental notifications agent"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      full_outcome_complete: false
+
+  - id: T015
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after T014 residual closure: prove issue #506 completion or list remaining blocked/deferred work."
+    constraints:
+      - "Read-only."
+      - "Reject completion if T014 residuals are unverified."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix status"
+      - "Verification evidence"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      summary: "Final audit rejected completion on missing focused proof, not a known behavior failure. Existing tests covered PR close ending a webhook session, comment-command preservation on opt-out, `webhook.completed`, and `webhook.notification_sent`, but did not prove auto_review_prs=false ends active webhook PR deployments or that manual PR deployments are preserved."
+      missing_evidence:
+        - "Focused test proving repo autoReviewPrs=false ends an active webhook-triggered PR deployment and supersedes the matching active PR review."
+        - "Focused test proving manual PR deployments are not ended by PR opt-out/control events."
+        - "Optional stronger assertion that unlabeled opt-out ends active webhook-triggered PR deployments."
+      full_outcome_complete: false
+
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add final focused proof for PR opt-out controls: autoReviewPrs=false and unlabeled PR events end only webhook-triggered PR deployments, while manual/comment-command PR sessions are preserved."
+    allowed_files:
+      - "packages/web/lib/webhook-pr-controls.test.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "docs/goals/webhook-pr-auto-review-gap-closure/notes/t013-issue-506-update-draft.md"
+    verify:
+      - "pnpm --dir packages/web test -- webhook-pr-controls webhook-pr-intent"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Tests show autoReviewPrs=false or unlabeled events end manual/comment-command PR sessions."
+      - "Fix requires broad non-test refactor outside PR control-event handling."
+    receipt:
+      result: done
+      summary: "Added final focused proof for PR opt-out controls. Tests now prove autoReviewPrs=false ends active webhook-triggered PR review deployments and supersedes the active review, unlabeled PR opt-out ends webhook PR sessions, and manual PR sessions are preserved under opt-out controls. No implementation changes were required for T016."
+      changed_files:
+        - "packages/web/lib/webhook-pr-controls.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/web test -- webhook-pr-controls webhook-pr-intent"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-controls webhook-pr-intent"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      full_outcome_complete: false
+
+  - id: T017
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after T016 focused proof: prove issue #506 completion or list remaining blocked/deferred work."
+    constraints:
+      - "Read-only."
+      - "Reject completion if T016 focused proof is missing or broad verification is stale."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix status"
+      - "Verification evidence"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      summary: "Final audit rejected completion. T016 focused proof and broad verification are current, but issue #506 still has required gaps not mapped to done receipts: enforceable webhook runaway controls, a payload-capable `issuectl agent mutate` path, and structured completion/notification result content for PR outcomes."
+      evidence:
+        - "Broad verification passed: core tests 60 files/528 tests, web tests 48 files/363 tests, cli tests 6 files/34 tests, core/web/cli typecheck, core/web/cli lint, git diff --check."
+        - "packages/web/lib/webhook-pr-controls.test.ts proves autoReviewPrs=false termination, unlabeled opt-out termination, and manual PR preservation."
+        - "packages/web/lib/webhook-pr-intent.ts scopes PR opt-out termination to `d.triggered_by = 'webhook'`."
+        - "max_webhook_launches_per_minute, max_webhook_queue_depth, and max_concurrent_webhook_agents are present as settings/schema coverage but are not yet enforced by webhook workers."
+        - "packages/cli/src/commands/agent.ts sends mutation requests without payload while web mutation adapters require validated payloads."
+        - "packages/web/lib/agent/completion.ts records only status/summary and packages/web/lib/push/notifications.ts builds terminal notifications from terminalReason instead of structured PR result fields."
+      required_remaining_work:
+        - "Implement and test repo/global webhook runaway controls: launch rate, queue depth, concurrent webhook agents, and recursion/parent-depth limits for agent-created issues/PRs."
+        - "Make `issuectl agent mutate` pass validated action payloads for comment, label, create_issue, create_pr, and push without exposing completion tokens in argv."
+        - "Extend completion results and terminal notification content so PR no_changes, pushed_fixes, failed, and completed outcomes include structured metadata such as final head and pushed commit when available."
+
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Enforce webhook runaway controls required by issue #506: per-repo launch rate, global/concurrent webhook agent caps, queue depth, and bounded recursion/parent-deployment depth for agent-created follow-up work."
+    allowed_files:
+      - "packages/core/src/db/**/*.ts"
+      - "packages/core/src/db/deployments.ts"
+      - "packages/core/src/db/migrations.ts"
+      - "packages/core/src/db/migrations-webhook-runaway.ts"
+      - "packages/core/src/db/migrations-webhooks.ts"
+      - "packages/core/src/db/schema.ts"
+      - "packages/core/src/db/schema.test.ts"
+      - "packages/core/src/db/schema-invariants.test.ts"
+      - "packages/core/src/db/schema-deployments.test.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/db/settings.test.ts"
+      - "packages/core/src/data/unified-list-test-helpers.ts"
+      - "packages/core/src/types.ts"
+      - "packages/core/src/index.ts"
+      - "packages/core/src/launch/**/*.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-runaway-controls.ts"
+      - "packages/web/lib/webhook-runaway-controls.test.ts"
+      - "packages/web/lib/agent/mutation-actions.test.ts"
+      - "packages/web/lib/agent/mutation-recursion.test.ts"
+      - "packages/web/lib/agent/mutations.ts"
+      - "packages/web/lib/agent/mutations.test.ts"
+      - "packages/web/lib/agent/github-actions.ts"
+      - "packages/web/lib/agent/github-actions.test.ts"
+      - "packages/web/lib/terminal-diagnostics.ts"
+      - "packages/web/lib/terminal-diagnostics.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- deployments schema agent-mutations"
+      - "pnpm --dir packages/web test -- webhook-intent-worker webhook-pr-intent agent terminal-diagnostics"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Enforcement would block manual sessions or comment-command sessions outside the explicit webhook-runaway policy."
+      - "Recursion tracking requires broad schema redesign rather than a bounded deployment parent/depth field or equivalent local record."
+      - "Limits cannot be made deterministic enough for focused tests."
+    receipt:
+      result: done
+      summary: "Implemented enforced webhook runaway controls. The webhook worker now applies queue-depth, concurrent-agent, and per-repo launch-rate limits before issue/PR launches; over-limit concurrency and rate defer the claimed intent, while queue overflow fails it with `webhook.runaway_limited` diagnostics. Deployments now carry parent/depth metadata and a `max_webhook_recursion_depth` setting; daemon mutation follow-up actions (`create_issue`, `create_pr`) are denied at the configured depth before budget is consumed."
+      changed_files:
+        - "packages/core/src/db/deployments.ts"
+        - "packages/core/src/db/migrations.ts"
+        - "packages/core/src/db/migrations-webhook-runaway.ts"
+        - "packages/core/src/db/migrations-webhooks.ts"
+        - "packages/core/src/db/schema.ts"
+        - "packages/core/src/db/settings.ts"
+        - "packages/core/src/types.ts"
+        - "packages/core/src/data/unified-list-test-helpers.ts"
+        - "packages/core/src/db/settings.test.ts"
+        - "packages/core/src/db/schema-deployments.test.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-runaway-controls.ts"
+        - "packages/web/lib/webhook-runaway-controls.test.ts"
+        - "packages/web/lib/agent/mutations.ts"
+        - "packages/web/lib/agent/mutations.test.ts"
+        - "packages/web/lib/agent/mutation-actions.test.ts"
+        - "packages/web/lib/agent/mutation-recursion.test.ts"
+        - "packages/web/lib/webhook-intent-worker.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- schema settings deployments agent-mutations"
+        - "PASS pnpm --dir packages/web test -- webhook-intent-worker webhook-runaway-controls agent"
+        - "PASS pnpm --dir packages/core typecheck"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint"
+        - "PASS pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- schema settings deployments agent-mutations"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-intent-worker webhook-runaway-controls agent"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "Web-side code reads the new recursion-depth setting through local SQL because web tests/typecheck can compile against stale built core SettingKey types."
+        - "Runaway limit outcomes are conservative v1 behavior: rate/concurrency defer; queue overflow fails the claimed intent."
+      full_outcome_complete: false
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make `issuectl agent mutate` usable for real daemon-mediated mutations by accepting validated action payloads from file/stdin/flags without exposing completion tokens in argv, and add focused CLI plus route tests."
+    allowed_files:
+      - "packages/cli/src/commands/agent.ts"
+      - "packages/cli/src/commands/agent.test.ts"
+      - "packages/web/app/api/v1/agent/mutations/route.ts"
+      - "packages/web/app/api/v1/agent/mutations/route.test.ts"
+      - "packages/web/lib/agent/mutation-payloads.ts"
+      - "packages/web/lib/agent/mutation-payloads.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/cli test -- agent"
+      - "pnpm --dir packages/web test -- agent"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "The CLI would require passing ISSUECTL_AGENT_TOKEN as a command argument."
+      - "Payload parsing cannot reject malformed JSON before posting."
+      - "Mutation adapters accept unvalidated payload shapes."
+    receipt:
+      result: done
+      summary: "`issuectl agent mutate` now accepts mutation payload JSON inline via `--payload`, from a file via `--payload-file <path>`, and from stdin via `--payload-file -`. Payload JSON is parsed before posting, malformed payloads fail locally, payloads are included in daemon mutation requests, and completion tokens still come only from `ISSUECTL_AGENT_TOKEN`."
+      changed_files:
+        - "packages/cli/src/commands/agent.ts"
+        - "packages/cli/src/commands/agent.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/cli test -- agent"
+        - "PASS pnpm --dir packages/web test -- agent"
+        - "PASS pnpm --dir packages/cli typecheck"
+        - "PASS pnpm --dir packages/cli lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/cli test -- agent"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- agent"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "The existing web mutation route already accepted and forwarded `payload`; T019 focused on making the CLI path usable."
+      full_outcome_complete: false
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Extend agent completion results and terminal notifications so PR automation outcomes use structured result metadata for no_changes, pushed_fixes, failed, and completed states."
+    allowed_files:
+      - "packages/core/src/db/agent-completions.ts"
+      - "packages/core/src/db/agent-completions.test.ts"
+      - "packages/core/src/db/deployments.ts"
+      - "packages/core/src/db/deployments.test.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "packages/web/app/api/v1/agent/completion/route.ts"
+      - "packages/web/app/api/v1/agent/completion/route.test.ts"
+      - "packages/web/lib/push/notifications.ts"
+      - "packages/web/lib/push/notifications.test.ts"
+      - "packages/cli/src/commands/agent.ts"
+      - "packages/cli/src/commands/agent.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- agent-completions deployments"
+      - "pnpm --dir packages/web test -- agent notifications"
+      - "pnpm --dir packages/cli test -- agent"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/cli lint"
+      - "git diff --check"
+    stop_if:
+      - "Structured metadata would require storing secrets or raw patch contents."
+      - "Notification text cannot be made deterministic without broad product copy decisions."
+      - "Completion idempotency would break for duplicate check-ins."
+    receipt:
+      result: done
+      summary: "Extended agent completion and terminal notifications with structured PR outcome metadata. Completion check-ins can now include final head SHA and pushed commit SHA through CLI/API, core/web completion records persist those fields in `completion_result_json`, and terminal notifications/diagnostics derive PR outcome text/status from structured completion data for no_changes, pushed_fixes, failed, and completed states."
+      changed_files:
+        - "packages/core/src/db/agent-completions.ts"
+        - "packages/core/src/db/agent-completions.test.ts"
+        - "packages/web/lib/agent/completion.ts"
+        - "packages/web/lib/agent/completion.test.ts"
+        - "packages/web/app/api/v1/agent/completion/route.ts"
+        - "packages/web/app/api/v1/agent/completion/route.test.ts"
+        - "packages/web/lib/push/notifications.ts"
+        - "packages/web/lib/push/notifications.test.ts"
+        - "packages/cli/src/commands/agent.ts"
+        - "packages/cli/src/commands/agent.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- agent-completions deployments"
+        - "PASS pnpm --dir packages/web test -- agent notifications"
+        - "PASS pnpm --dir packages/cli test -- agent"
+        - "PASS pnpm --dir packages/core typecheck && pnpm --dir packages/web typecheck && pnpm --dir packages/cli typecheck"
+        - "PASS pnpm --dir packages/core lint && pnpm --dir packages/web lint && pnpm --dir packages/cli lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- agent-completions deployments"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- agent notifications"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test -- agent"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck && pnpm --dir packages/web typecheck && pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint && pnpm --dir packages/web lint && pnpm --dir packages/cli lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      full_outcome_complete: false
+
+  - id: T021
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after T018-T020: prove issue #506 completion or list remaining blocked/deferred work."
+    constraints:
+      - "Read-only."
+      - "Reject completion if runaway controls, payload-bearing mutate CLI, or structured PR completion notifications are only planned."
+      - "Reject completion on stale broad verification."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix status"
+      - "Verification evidence"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      summary: "Final audit rejected completion. T018-T020 closed the prior residuals, but production PR review completion and incremental launch wiring still have required gaps: agent completion only ends deployments, production PR launch discards the reserved review range, and coalesced desired heads are not proven to launch after active review completion."
+      evidence:
+        - "packages/web/lib/agent/completion.ts only updates deployments on accepted completion."
+        - "packages/web/lib/webhook-pr-launch.ts receives review but currently discards it."
+        - "packages/core/src/launch/launch-contexts.ts always builds PR contexts as full review with reviewedFromSha null."
+      required_remaining_work:
+        - "Wire agent completion to mark the linked active pr_reviews row completed/failed with completed_head_sha/result_json while preserving idempotency and notifications."
+        - "Pass the reserved review range from launchPrFromWebhook into executeLaunch/buildPrLaunchContext so production PR contexts can be incremental."
+        - "Prove a coalesced desired head schedules a bounded follow-up after active PR review completion."
+
+  - id: T022
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close final PR production-path gaps: launch reserved incremental PR ranges through production context building, complete linked pr_reviews from agent completion, and schedule one coalesced follow-up intent after completion."
+    allowed_files:
+      - "packages/core/src/launch/launch.ts"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/context.test.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/web/lib/webhook-pr-launch.ts"
+      - "packages/web/lib/webhook-pr-launch.test.ts"
+      - "packages/web/lib/webhook-pr-incremental.test.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/core test -- launch context"
+      - "pnpm --dir packages/web test -- webhook-pr-incremental agent"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
+    stop_if:
+      - "Completion cannot identify a unique linked active PR review for the deployment."
+      - "Follow-up scheduling would create unbounded synchronize loops."
+      - "Production PR context cannot retain final ref safety."
+    receipt:
+      result: done
+      summary: "Closed PR production-path gaps. `launchPrFromWebhook` now passes reserved review ranges into `executeLaunch`, and core PR launch context builds incremental contexts with reviewedFromSha/reviewedToSha. Agent completion now completes/fails the linked active `pr_reviews` row, preserves coalesced desired-head metadata in result_json, and schedules exactly one pending PR webhook intent for the coalesced follow-up head."
+      changed_files:
+        - "packages/core/src/launch/launch.ts"
+        - "packages/core/src/launch/launch-contexts.ts"
+        - "packages/core/src/launch/launch-execute-precheck.test.ts"
+        - "packages/web/lib/webhook-pr-launch.ts"
+        - "packages/web/lib/webhook-pr-launch.test.ts"
+        - "packages/web/lib/agent/completion.ts"
+        - "packages/web/lib/agent/completion.test.ts"
+      verification:
+        - "PASS pnpm --dir packages/core test -- launch context"
+        - "PASS pnpm --dir packages/web test -- webhook-pr-incremental webhook-pr-launch agent"
+        - "PASS pnpm --dir packages/core typecheck && pnpm --dir packages/web typecheck"
+        - "PASS pnpm --dir packages/core lint && pnpm --dir packages/web lint"
+        - "PASS git diff --check"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- launch context"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-incremental webhook-pr-launch agent"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck && pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint && pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      notes:
+        - "Completion follow-up scheduling runs only on the first accepted completion because duplicate completions return before mutation."
+        - "The follow-up scheduler reuses an active pending/deferred/processing PR intent when present; otherwise it inserts one pending intent with the coalesced desired head."
+      full_outcome_complete: false
+
+  - id: T023
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after T022: prove issue #506 completion or list remaining blocked/deferred work."
+    constraints:
+      - "Read-only."
+      - "Reject completion if PR production launch/completion/follow-up behavior is only tested through mocks."
+      - "Reject completion on stale broad verification."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix status"
+      - "Verification evidence"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Final audit approved completion. Issue #506 gaps are mapped to implemented production paths and focused tests; T022 closed the final PR production-path blockers, and prior receipts cover gateway, budgets, PR safety, lifecycle, notifications, webhook management, runaway controls, payload mutate, and structured PR outcomes."
+      evidence:
+        - "packages/web/lib/webhook-pr-launch.ts passes reviewedFromSha/reviewedToSha into executeLaunch."
+        - "packages/core/src/launch/launch-contexts.ts builds full or incremental PR contexts from production pull detail."
+        - "packages/web/lib/agent/completion.ts records accepted completion once, completes/fails linked active pr_reviews, preserves desired-head metadata, and schedules one pending follow-up intent."
+        - "packages/web/lib/agent/mutations.ts authenticates target-bound daemon mutations, validates payloads, enforces budgets and recursion depth, and applies final PR ref safety before push."
+        - "packages/web/lib/webhook-runaway-controls.ts enforces queue depth, concurrent webhook agent, and per-repo launch-rate limits before launch."
+        - "packages/cli/src/commands/agent.ts supports completion metadata and payload-capable mutate while reading token only from ISSUECTL_AGENT_TOKEN."
+        - "packages/web/lib/push/notifications.ts claims notification_sent_at once and emits structured PR terminal notification diagnostics/data."
+        - "packages/cli/src/commands/webhook.ts implements CLI-first webhook create/rotate."
+        - "packages/web/lib/github-webhook-comment-command.ts and webhook-intent-worker comment-command tests cover /issuectl launch|review|end lifecycle."
+      verification:
+        - "PASS pnpm --dir packages/core test: 60 files, 529 tests"
+        - "PASS pnpm --dir packages/web test: 51 files, 371 tests"
+        - "PASS pnpm --dir packages/cli test: 6 files, 37 tests"
+        - "PASS pnpm --dir packages/core typecheck && pnpm --dir packages/web typecheck && pnpm --dir packages/cli typecheck"
+        - "PASS pnpm --dir packages/core lint && pnpm --dir packages/web lint && pnpm --dir packages/cli lint"
+        - "PASS git diff --check"
+      missing_evidence: []
+      required_remaining_work: []
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T023
+    commands:
+      - "pnpm --dir packages/core test"
+      - "pnpm --dir packages/web test"
+      - "pnpm --dir packages/cli test"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/cli lint"
+      - "git diff --check"

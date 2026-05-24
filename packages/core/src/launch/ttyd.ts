@@ -21,12 +21,14 @@ export interface SpawnTtydOptions {
   contextFilePath: string;
   agentCommand?: string;
   agentInputMode?: "stdin" | "argument";
+  credentialPolicy?: "ambient" | "scrubbed";
   /** @deprecated Use agentCommand. Kept temporarily for external callers. */
   claudeCommand?: string;
   /** Stable session name for tmux (e.g. "issuectl-167"). Multiple
    *  clients connecting to the same ttyd instance will share the
    *  terminal view via this tmux session. */
   sessionName: string;
+  extraEnv?: Record<string, string>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -40,8 +42,14 @@ const TTYD_TERMINATION_GRACE_MS = 150;
  * and other characters that tmux interprets as session:window.pane
  * delimiters are replaced with underscores.
  */
-export function tmuxSessionName(repo: string, issueNumber: number): string {
-  const raw = `issuectl-${repo}-${issueNumber}`;
+export function tmuxSessionName(
+  repo: string,
+  targetNumber: number,
+  targetType: "issue" | "pr" = "issue",
+): string {
+  const raw = targetType === "issue"
+    ? `issuectl-${repo}-${targetNumber}`
+    : `issuectl-${repo}-${targetType}-${targetNumber}`;
   return raw.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
@@ -260,8 +268,10 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
     contextFilePath,
     agentCommand,
     agentInputMode = "stdin",
+    credentialPolicy = "ambient",
     claudeCommand,
     sessionName,
+    extraEnv,
   } = options;
   const command = agentCommand ?? claudeCommand;
   if (!command) {
@@ -274,6 +284,8 @@ export async function spawnTtyd(options: SpawnTtydOptions): Promise<{ pid: numbe
     agentCommand: command,
     agentInputMode,
     sessionName,
+    credentialPolicy,
+    extraEnv,
   });
 
   // Bind to loopback only — the Next.js custom server proxies
@@ -370,11 +382,11 @@ export async function respawnTtyd(
  * still active.
  */
 export function reconcileOrphanedDeployments(db: Database.Database): void {
-  let rows: { id: number; issue_number: number; owner: string; repo_name: string }[];
+  let rows: { id: number; issue_number: number | null; target_type: "issue" | "pr"; target_number: number; owner: string; repo_name: string }[];
   try {
     rows = db
       .prepare(
-        `SELECT d.id, d.issue_number, r.owner AS owner, r.name AS repo_name
+        `SELECT d.id, d.issue_number, d.target_type, d.target_number, r.owner AS owner, r.name AS repo_name
          FROM deployments d
          JOIN repos r ON r.id = d.repo_id
          WHERE d.ended_at IS NULL
@@ -388,7 +400,7 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
 
   for (const row of rows) {
     try {
-      const sessionName = tmuxSessionName(row.repo_name, row.issue_number);
+      const sessionName = tmuxSessionName(row.repo_name, row.target_number, row.target_type);
       if (!isTmuxSessionAlive(sessionName)) {
         db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
           row.id,
@@ -399,7 +411,7 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
           source: "core.ttyd",
           owner: row.owner,
           repo: row.repo_name,
-          issueNumber: row.issue_number,
+          issueNumber: row.target_type === "issue" ? row.target_number : undefined,
           deploymentId: row.id,
           sessionName,
           message: `tmux session ${sessionName} is gone`,

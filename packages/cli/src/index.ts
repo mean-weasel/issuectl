@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { iosSetupCommand } from "./commands/ios.js";
 import { webCommand } from "./commands/web.js";
+import { registerAgentCommands } from "./commands/agent.js";
 import { registerDiagCommands } from "./commands/diag.js";
 import { registerWebhookCommands } from "./commands/webhook.js";
 import {
@@ -9,6 +10,7 @@ import {
   repoRemoveCommand,
   repoListCommand,
   repoUpdateCommand,
+  repoShowCommand,
 } from "./commands/repo.js";
 
 declare const __APP_VERSION__: string;
@@ -52,6 +54,13 @@ repo
   .command("add <owner/repo>")
   .description("Add a repository to track")
   .option("--path <local-path>", "Local filesystem path to the repo")
+  .option("--auto-launch-issues", "Enable webhook issue auto-launch")
+  .option("--no-auto-launch-issues", "Disable webhook issue auto-launch")
+  .option("--auto-review-prs", "Enable PR auto-review reservation")
+  .option("--no-auto-review-prs", "Disable PR auto-review reservation")
+  .option("--issue-agent <agent>", "Agent for issue sessions: claude or codex")
+  .option("--review-agent <agent>", "Agent for PR reviews: claude or codex")
+  .option("--webhook-payload-mode <mode>", "Webhook payload storage: metadata or raw")
   .action(repoAddCommand);
 
 repo
@@ -65,12 +74,25 @@ repo
   .action(repoListCommand);
 
 repo
+  .command("show <owner/repo>")
+  .description("Show tracked repository settings")
+  .action(repoShowCommand);
+
+repo
   .command("update <owner/repo>")
   .description("Update a tracked repository")
   .option("--path <local-path>", "New local filesystem path")
+  .option("--auto-launch-issues", "Enable webhook issue auto-launch")
+  .option("--no-auto-launch-issues", "Disable webhook issue auto-launch")
+  .option("--auto-review-prs", "Enable PR auto-review reservation")
+  .option("--no-auto-review-prs", "Disable PR auto-review reservation")
+  .option("--issue-agent <agent>", "Agent for issue sessions: claude or codex")
+  .option("--review-agent <agent>", "Agent for PR reviews: claude or codex")
+  .option("--webhook-payload-mode <mode>", "Webhook payload storage: metadata or raw")
   .action(repoUpdateCommand);
 
 registerDiagCommands(program);
 registerWebhookCommands(program);
+registerAgentCommands(program);
 
 program.parse();

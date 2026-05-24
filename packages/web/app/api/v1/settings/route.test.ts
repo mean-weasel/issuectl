@@ -59,6 +59,7 @@ describe("/api/v1/settings", () => {
       { key: "launch_agent", value: "codex" },
       { key: "terminal_backend", value: "pty_bridge" },
       { key: "codex_extra_args", value: "--sandbox danger-full-access" },
+      { key: "public_webhook_base_url", value: "https://hooks.example.test" },
       { key: "api_token", value: "secret" },
     ]);
 
@@ -70,8 +71,22 @@ describe("/api/v1/settings", () => {
       launch_agent: "codex",
       terminal_backend: "pty_bridge",
       codex_extra_args: "--sandbox danger-full-access",
+      public_webhook_base_url: "https://hooks.example.test",
     });
     expect(json.settings.api_token).toBeUndefined();
+  });
+
+  it("PATCH saves public webhook base URL", async () => {
+    const response = await PATCH(
+      makePatchRequest({ public_webhook_base_url: " https://hooks.example.test/ " }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(setSetting).toHaveBeenCalledWith(
+      expect.anything(),
+      "public_webhook_base_url",
+      "https://hooks.example.test/",
+    );
   });
 
   it("PATCH saves launch_agent and codex_extra_args", async () => {

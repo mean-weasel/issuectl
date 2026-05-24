@@ -8,8 +8,8 @@ import {
   getRepoById,
   isTmuxSessionAlive,
   recordDiagnosticEventSafely,
-  tmuxSessionName,
 } from "@issuectl/core";
+import { deploymentSessionName, issueNumberForDiagnostic } from "./deployment-target";
 import log from "./logger";
 import { sanitizePtyData } from "./pty-diagnostics-sanitize";
 import { ensureNodePtySpawnHelperExecutable } from "./node-pty-spawn-helper";
@@ -179,7 +179,7 @@ function loadPtyContext(deploymentId: number):
   }
   const repo = getRepoById(db, deployment.repoId);
   if (!repo) return { ok: false, httpStatus: 404, status: "repo_missing", message: "Repository not found" };
-  const sessionName = tmuxSessionName(repo.name, deployment.issueNumber);
+  const sessionName = deploymentSessionName(repo.name, deployment);
   if (!isTmuxSessionAlive(sessionName)) {
     recordPtyEvent(deploymentId, "warn", "pty.tmux_missing", { sessionName });
     return { ok: false, httpStatus: 410, status: "tmux_missing", message: "tmux session is gone" };
@@ -266,7 +266,7 @@ function recordPtyEvent(
       source: "web.pty-terminal",
       owner: repo?.owner,
       repo: repo?.name,
-      issueNumber: deployment?.issueNumber,
+      issueNumber: deployment ? issueNumberForDiagnostic(deployment) : undefined,
       deploymentId,
       sessionName: input.sessionName,
       status: input.status,

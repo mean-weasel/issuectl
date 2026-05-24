@@ -170,7 +170,7 @@ function sortDeploymentsByRunningState(
   return [...deployments].sort((left, right) =>
     previewRank(left, previews) - previewRank(right, previews)
     || Date.parse(right.launchedAt) - Date.parse(left.launchedAt)
-    || left.issueNumber - right.issueNumber
+    || left.targetNumber - right.targetNumber
     || left.id - right.id,
   );
 }
@@ -194,7 +194,11 @@ function buildWorkbenchRepo(input: {
   issuesCachedAt: string | null;
   issueError: string | null;
 }): WorkbenchRepo {
-  const activeIssueNumbers = new Set(input.repoDeployments.map((deployment) => deployment.issueNumber));
+  const activeIssueNumbers = new Set(
+    input.repoDeployments
+      .filter((deployment) => deployment.targetType === "issue" && deployment.issueNumber !== null)
+      .map((deployment) => deployment.issueNumber as number),
+  );
   const priorityByIssue = new Map(
     input.priorities.map((priority) => [priority.issueNumber, priority.priority]),
   );

@@ -80,6 +80,13 @@ export type WebhookEventRow = {
   intent_id: number | null;
 };
 
+export type ListWebhookEventsInput = {
+  limit?: number;
+  repoId?: number;
+  targetType?: WebhookTargetType;
+  targetNumber?: number;
+};
+
 export type WebhookIntentRow = {
   id: number;
   repo_id: number;

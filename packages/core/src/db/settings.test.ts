@@ -63,7 +63,7 @@ describe("seedDefaults", () => {
   it("inserts all default settings", () => {
     seedDefaults(db);
     const settings = getSettings(db);
-    expect(settings).toHaveLength(16);
+    expect(settings).toHaveLength(17);
 
     const keys = settings.map((s) => s.key);
     expect(keys).toContain("branch_pattern");
@@ -81,6 +81,7 @@ describe("seedDefaults", () => {
     expect(keys).toContain("max_webhook_queue_depth");
     expect(keys).toContain("max_webhook_intent_age_minutes");
     expect(keys).toContain("max_concurrent_webhook_agents");
+    expect(keys).toContain("max_webhook_recursion_depth");
     expect(keys).toContain("public_webhook_base_url");
   });
 
@@ -117,6 +118,7 @@ describe("seedDefaults", () => {
     expect(getSetting(db, "webhook_debounce_seconds")).toBe("60");
     expect(getSetting(db, "webhook_max_debounce_seconds")).toBe("300");
     expect(getSetting(db, "max_webhook_queue_depth")).toBe("100");
+    expect(getSetting(db, "max_webhook_recursion_depth")).toBe("1");
     expect(getSetting(db, "public_webhook_base_url")).toBe("");
   });
 

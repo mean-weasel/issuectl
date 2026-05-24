@@ -18,6 +18,10 @@ const { prepareWorkspaceSpy } = vi.hoisted(() => ({
   })),
 }));
 
+const { assemblePrReviewContextSpy } = vi.hoisted(() => ({
+  assemblePrReviewContextSpy: vi.fn(() => "fake pr context"),
+}));
+
 vi.mock("./workspace.js", () => ({
   prepareWorkspace: prepareWorkspaceSpy,
 }));
@@ -32,8 +36,10 @@ vi.mock("./ttyd.js", () => ({
   verifyTtyd: verifyTtydSpy,
   spawnTtyd: spawnTtydSpy,
   allocatePort: allocatePortSpy,
-  tmuxSessionName: (repo: string, issueNumber: number) =>
-    `issuectl-${repo}-${issueNumber}`,
+  tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
+    targetType === "issue"
+      ? `issuectl-${repo}-${targetNumber}`
+      : `issuectl-${repo}-${targetType}-${targetNumber}`,
 }));
 
 const { reserveTtydPortSpy, updateTtydInfoSpy } = vi.hoisted(() => ({
@@ -73,8 +79,39 @@ vi.mock("../data/issues.js", () => ({
   }),
 }));
 
+vi.mock("../data/pulls.js", () => ({
+  getPullDetail: async () => ({
+    pull: {
+      number: 44,
+      title: "test PR",
+      body: "Please review",
+      state: "open",
+      draft: false,
+      merged: false,
+      user: null,
+      headRef: "feature/webhooks",
+      baseRef: "main",
+      headSha: "head-b",
+      baseSha: "base-a",
+      headRepoFullName: "acme/api",
+      baseRepoFullName: "acme/api",
+      additions: 1,
+      deletions: 0,
+      changedFiles: 1,
+      createdAt: "2026-04-12T00:00:00Z",
+      updatedAt: "2026-04-12T00:00:00Z",
+      mergedAt: null,
+      closedAt: null,
+      htmlUrl: "https://example.invalid/pr/44",
+    },
+    files: [{ filename: "src/app.ts", status: "modified", patch: "@@" }],
+    reviews: [],
+  }),
+}));
+
 vi.mock("./context.js", () => ({
   assembleContext: () => "fake context",
+  assemblePrReviewContext: assemblePrReviewContextSpy,
   writeContextFile: async () => "/tmp/fake-context.md",
 }));
 
@@ -100,10 +137,20 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     verifyTtydSpy.mockClear();
     spawnTtydSpy.mockClear();
     allocatePortSpy.mockClear();
+    assemblePrReviewContextSpy.mockClear();
     reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
     db = createTestDb();
   });
+
+  async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      return await fn();
+    } finally {
+      spy.mockRestore();
+    }
+  }
 
   it("refuses to launch and skips workspace prep when a live deployment already exists", async () => {
     const repo = addRepo(db, {
@@ -155,7 +202,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     });
 
     const preCheckSpy = vi
-      .spyOn(deploymentsModule, "hasLiveDeploymentForIssue")
+      .spyOn(deploymentsModule, "hasLiveDeploymentForTarget")
       .mockReturnValue(false);
 
     try {
@@ -180,5 +227,87 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     }
   });
 
+  it("launches PR target identity without fake issue numbers", async () => {
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    const result = await withConsoleWarnSilenced(() =>
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        targetType: "pr",
+        targetNumber: 44,
+        branchName: "pr-44-review",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+        triggeredBy: "webhook",
+        completionToken: "completion-44",
+      }),
+    );
+
+    expect(result.deploymentId).toBeGreaterThan(0);
+    expect(prepareWorkspaceSpy).toHaveBeenCalledTimes(1);
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentialPolicy: "scrubbed",
+        sessionName: "issuectl-api-pr-44",
+        extraEnv: expect.objectContaining({
+          ISSUECTL_AGENT_TOKEN: "completion-44",
+          ISSUECTL_TARGET_TYPE: "pr",
+          ISSUECTL_TARGET_NUMBER: "44",
+          ISSUECTL_EXPECTED_HEAD_REF: "feature/webhooks",
+          ISSUECTL_EXPECTED_HEAD_SHA: "head-b",
+        }),
+      }),
+    );
+    expect(db.prepare(
+      "SELECT issue_number, target_type, target_number, completion_token FROM deployments",
+    ).get()).toEqual({
+      issue_number: null,
+      target_type: "pr",
+      target_number: 44,
+      completion_token: "completion-44",
+    });
+    expect(db.prepare(
+      "SELECT action_type, limit_count FROM agent_action_budgets ORDER BY action_type",
+    ).all()).toEqual([
+      { action_type: "comment", limit_count: 1 },
+      { action_type: "create_issue", limit_count: 1 },
+      { action_type: "create_pr", limit_count: 1 },
+      { action_type: "label", limit_count: 2 },
+      { action_type: "push", limit_count: 1 },
+    ]);
+  });
+
+  it("passes incremental PR review ranges into the production PR context", async () => {
+    addRepo(db, { owner: "acme", name: "api", localPath: "/tmp/fake" });
+
+    await withConsoleWarnSilenced(() =>
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        targetType: "pr",
+        targetNumber: 44,
+        branchName: "pr-44-review",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+        reviewedFromSha: "head-a",
+        reviewedToSha: "head-b",
+      }),
+    );
+
+    expect(assemblePrReviewContextSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "incremental",
+        reviewedFromSha: "head-a",
+        reviewedToSha: "head-b",
+      }),
+    );
+  });
 
 });

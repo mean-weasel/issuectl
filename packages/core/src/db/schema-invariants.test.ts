@@ -24,11 +24,11 @@ describe("schema invariants — assumptions other code depends on", () => {
     expect(indexNames).toContain("idx_webhook_intents_active_target");
   });
 
-  it("deployments has exactly one unique index, named idx_deployments_live", () => {
+  it("deployments has exactly one unique index, named idx_deployments_live_target", () => {
     // The race-path catch in launch.ts (executeLaunch step 8) translates
     // any SQLITE_CONSTRAINT_UNIQUE thrown by recordDeployment into the
     // friendly duplicate-launch error. That predicate is only correct
-    // because `idx_deployments_live` is the *sole* unique constraint on
+    // because `idx_deployments_live_target` is the *sole* unique constraint on
     // `deployments` — if a future migration adds another, the catch
     // would misfire and translate the wrong constraint. This test fails
     // loudly so the developer is forced to update the catch in lockstep.
@@ -39,7 +39,7 @@ describe("schema invariants — assumptions other code depends on", () => {
       )
       .all() as { name: string; unique: number }[];
     expect(indexes).toHaveLength(1);
-    expect(indexes[0]?.name).toBe("idx_deployments_live");
+    expect(indexes[0]?.name).toBe("idx_deployments_live_target");
   });
 
   it("only webhook_intents has a foreign key referencing deployments", () => {
@@ -67,7 +67,11 @@ describe("schema invariants — assumptions other code depends on", () => {
         }
       }
     }
-    expect(offenders).toEqual([{ table: "webhook_intents", from: "deployment_id" }]);
+    expect(offenders.sort((a, b) => a.table.localeCompare(b.table))).toEqual([
+      { table: "agent_action_budgets", from: "deployment_id" },
+      { table: "pr_reviews", from: "deployment_id" },
+      { table: "webhook_intents", from: "deployment_id" },
+    ]);
   });
 });
 
@@ -152,7 +156,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -164,7 +168,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     const indexes = db
       .prepare(`SELECT name FROM pragma_index_list('deployments') WHERE "unique" = 1`)
       .all() as { name: string }[];
-    expect(indexes.map((i) => i.name)).toContain("idx_deployments_live");
+    expect(indexes.map((i) => i.name)).toContain("idx_deployments_live_target");
 
     warnSpy.mockRestore();
   });
@@ -177,12 +181,12 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     const indexes = db
       .prepare(`SELECT name FROM pragma_index_list('deployments') WHERE "unique" = 1`)
       .all() as { name: string }[];
-    expect(indexes.map((i) => i.name)).toContain("idx_deployments_live");
+    expect(indexes.map((i) => i.name)).toContain("idx_deployments_live_target");
   });
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -197,7 +201,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(pkCols).toEqual(["name", "owner"]);
   });
 
-  it("v12 to v17 migration adds deployment agent, settings, push devices, diagnostics, terminal backend, and webhooks", () => {
+  it("v12 to v19 migration adds deployment agent, settings, push devices, diagnostics, terminal backend, and webhooks", () => {
     const db = createRawTestDb();
     db.exec(`
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -233,13 +237,31 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(17);
+    expect(getSchemaVersion(db)).toBe(22);
     const deployment = db
-      .prepare("SELECT agent, terminal_backend, triggered_by FROM deployments WHERE id = 1")
-      .get() as { agent: string; terminal_backend: string; triggered_by: string };
+      .prepare("SELECT issue_number, target_type, target_number, agent, terminal_backend, triggered_by, terminal_reason, completion_token, completion_result_json, notification_sent_at FROM deployments WHERE id = 1")
+      .get() as {
+        issue_number: number | null;
+        target_type: string;
+        target_number: number;
+        agent: string;
+        terminal_backend: string;
+        triggered_by: string;
+        terminal_reason: string | null;
+        completion_token: string | null;
+        completion_result_json: string | null;
+        notification_sent_at: string | null;
+      };
+    expect(deployment.issue_number).toBe(42);
+    expect(deployment.target_type).toBe("issue");
+    expect(deployment.target_number).toBe(42);
     expect(deployment.agent).toBe("claude");
     expect(deployment.terminal_backend).toBe("ttyd");
     expect(deployment.triggered_by).toBe("manual");
+    expect(deployment.terminal_reason).toBeNull();
+    expect(deployment.completion_token).toBeNull();
+    expect(deployment.completion_result_json).toBeNull();
+    expect(deployment.notification_sent_at).toBeNull();
     expect(
       (db.prepare("SELECT value FROM settings WHERE key = 'launch_agent'").get() as { value: string })
         .value,

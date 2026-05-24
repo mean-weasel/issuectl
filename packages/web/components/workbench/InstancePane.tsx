@@ -121,13 +121,24 @@ function SessionCard({
   const previewText = preview?.lines.join(" ")
     || (deployment.terminalBackend === "pty_bridge" ? "PTY bridge connected" : status);
   const runtimeLabel = deployment.idleSince ? `idle since ${formatTime(deployment.idleSince)}` : "running";
+  const session = deployment as WorkbenchDeployment & {
+    targetType?: "issue" | "pr";
+    targetNumber?: number;
+    triggeredBy?: "manual" | "webhook" | "comment_command";
+    terminalReason?: string | null;
+  };
+  const targetNumber = session.targetNumber ?? session.issueNumber;
+  const targetLabel = session.targetType === "pr" ? `PR #${targetNumber}` : `#${targetNumber}`;
+  const trigger = session.triggeredBy ?? "manual";
+  const triggerLabel = trigger === "comment_command" ? "comment" : trigger;
+  const terminalReason = session.terminalReason ? session.terminalReason.replaceAll("_", " ") : null;
 
   return (
     <article
       className={styles.sessionCard}
       data-selected={selected ? "true" : undefined}
       data-status={status}
-      aria-label={`Session #${deployment.issueNumber}`}
+      aria-label={`Session ${targetLabel}`}
     >
       <button
         type="button"
@@ -135,11 +146,13 @@ function SessionCard({
         onClick={() => onSelectDeployment(deployment.id)}
       >
         <span className={styles.sessionTopline}>
-          <strong>#{deployment.issueNumber}</strong>
+          <strong>{targetLabel}</strong>
           <span className={styles.sessionAgent}>{deployment.agent}</span>
+          <span className={styles.sessionTrigger}>{triggerLabel}</span>
+          {terminalReason && <span className={styles.sessionReason}>{terminalReason}</span>}
           <span className={styles.sessionStatus} data-status-dot={status}>{status}</span>
         </span>
-        <span className={styles.sessionTitle}>{issue?.title ?? "Issue session"}</span>
+        <span className={styles.sessionTitle}>{issue?.title ?? `${targetLabel} session`}</span>
         <span className={styles.sessionMeta}>
           {deployment.branchName} · {runtimeLabel}
         </span>

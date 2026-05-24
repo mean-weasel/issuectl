@@ -89,8 +89,8 @@ export function groupIntoSections(
     // Also used as the "has active deployment" check via .has().
     const idleSinceMap = new Map<number, string | null>(
       deployments
-        .filter((d) => d.endedAt === null)
-        .map((d) => [d.issueNumber, d.idleSince]),
+        .filter((d) => d.endedAt === null && d.targetType === "issue")
+        .map((d) => [d.targetNumber, d.idleSince]),
     );
 
     const priorityMap = new Map<number, Priority>(

@@ -1,5 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type Database from "better-sqlite3";
+import { recordDiagnosticEventSafely } from "@issuectl/core";
+import type { WebhookTargetType } from "@issuectl/core";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -103,4 +106,46 @@ export function getNumberProperty(object: JsonObject, key: string): number | nul
   return typeof value === "number" && Number.isInteger(value) && value > 0
     ? value
     : null;
+}
+
+export function isHookBindingValid(payload: unknown, webhookId: number | null): boolean {
+  if (webhookId === null) return true;
+  const hook = asObject(asObject(payload)?.hook);
+  if (!hook) return true;
+  const hookId = getNumberProperty(hook, "id");
+  return hookId === null || hookId === webhookId;
+}
+
+export function recordWebhookDiagnostic(
+  db: Database.Database,
+  repo: { owner: string; name: string },
+  input: {
+    event: string;
+    deliveryId: string;
+    eventType: string;
+    action: string | null;
+    targetType: WebhookTargetType | null;
+    targetNumber: number | null;
+    eventId?: number;
+    intentId?: number | null;
+  },
+): void {
+  recordDiagnosticEventSafely(db, {
+    level: "info",
+    event: input.event,
+    source: "webhook",
+    correlationId: input.deliveryId,
+    owner: repo.owner,
+    repo: repo.name,
+    issueNumber: input.targetType === "issue" && input.targetNumber !== null ? input.targetNumber : undefined,
+    data: {
+      deliveryId: input.deliveryId,
+      eventType: input.eventType,
+      action: input.action,
+      targetType: input.targetType,
+      targetNumber: input.targetNumber,
+      eventId: input.eventId,
+      intentId: input.intentId,
+    },
+  });
 }

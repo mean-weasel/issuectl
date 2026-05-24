@@ -30,3 +30,19 @@ export async function listAccessibleRepos(
     pushedAt: item.pushed_at ?? null,
   }));
 }
+
+export type CollaboratorPermission =
+  | "admin"
+  | "maintain"
+  | "write"
+  | "triage"
+  | "read"
+  | "none";
+
+export async function getCollaboratorPermissionLevel(
+  octokit: Octokit,
+  input: { owner: string; repo: string; username: string },
+): Promise<CollaboratorPermission> {
+  const { data } = await octokit.rest.repos.getCollaboratorPermissionLevel(input);
+  return data.permission as CollaboratorPermission;
+}

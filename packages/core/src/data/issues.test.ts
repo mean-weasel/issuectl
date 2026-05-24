@@ -223,8 +223,8 @@ describe("getIssueDetail", () => {
     const repo = addRepo(db, { owner: "owner", name: "repo" });
     // Insert a deployment
     db.prepare(
-      "INSERT INTO deployments (repo_id, issue_number, branch_name, workspace_mode, workspace_path) VALUES (?, ?, ?, ?, ?)",
-    ).run(repo.id, 1, "issue-1-fix", "existing", "/tmp/ws");
+      "INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path) VALUES (?, ?, 'issue', ?, ?, ?, ?)",
+    ).run(repo.id, 1, 1, "issue-1-fix", "existing", "/tmp/ws");
 
     githubMocks.getIssue.mockResolvedValue(makeIssue());
     githubMocks.getComments.mockResolvedValue([]);

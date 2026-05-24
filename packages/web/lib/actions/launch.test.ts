@@ -35,8 +35,10 @@ vi.mock("@issuectl/core", () => ({
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
-  tmuxSessionName: (repo: string, issueNumber: number) =>
-    `issuectl-${repo}-${issueNumber}`,
+  tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
+    targetType === "issue"
+      ? `issuectl-${repo}-${targetNumber}`
+      : `issuectl-${repo}-${targetType}-${targetNumber}`,
   isTmuxSessionAlive: (...args: unknown[]) => isTmuxSessionAlive(...args),
   executeLaunch: (...args: unknown[]) => executeLaunch(...args),
   withAuthRetry: (...args: unknown[]) => withAuthRetry(...args),
@@ -59,6 +61,8 @@ function makeDeployment(ttydPid: number | null = 42) {
     id: 1,
     repoId: 1,
     issueNumber: 7,
+    targetType: "issue" as const,
+    targetNumber: 7,
     agent: "claude" as const,
     branchName: "feat/x",
     workspaceMode: "worktree" as const,

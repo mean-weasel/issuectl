@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { tmuxSessionName, type ActiveDeploymentWithRepo } from "@issuectl/core";
+import type { ActiveDeploymentWithRepo } from "@issuectl/core";
+import { deploymentSessionName } from "./deployment-target";
 
 const CAPTURE_HISTORY_LINES = 40;
 const PREVIEW_LINES = 20;
@@ -141,7 +142,7 @@ async function getPreviewForDeployment(
   const port = deployment.ttydPort;
   if (port === null) return null;
 
-  const sessionName = tmuxSessionName(deployment.repoName, deployment.issueNumber);
+  const sessionName = deploymentSessionName(deployment.repoName, deployment);
   const cachedForPort = previewCache.get(port);
   const cached = cachedForPort?.sessionName === sessionName ? cachedForPort : undefined;
 
@@ -203,7 +204,7 @@ export async function getSessionPreviews(
       if (deployment.ttydPort === null) return null;
       return {
         port: deployment.ttydPort,
-        sessionName: tmuxSessionName(deployment.repoName, deployment.issueNumber),
+        sessionName: deploymentSessionName(deployment.repoName, deployment),
       };
     })
     .filter((session): session is { port: number; sessionName: string } => session !== null);

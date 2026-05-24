@@ -129,8 +129,8 @@ describe("reconcileOrphanedDeployments", () => {
         if (sql.includes("SELECT")) {
           return {
             all: vi.fn(() => [
-              { id: 1, issue_number: 10, repo_name: "repoA" },
-              { id: 2, issue_number: 20, owner: "ownerB", repo_name: "repoB" },
+              { id: 1, issue_number: 10, target_type: "issue", target_number: 10, repo_name: "repoA" },
+              { id: 2, issue_number: 20, target_type: "issue", target_number: 20, owner: "ownerB", repo_name: "repoB" },
             ]),
           };
         }
@@ -172,7 +172,7 @@ describe("reconcileOrphanedDeployments", () => {
         if (sql.includes("SELECT")) {
           return {
             all: vi.fn(() => [
-              { id: 1, issue_number: 10, repo_name: "repoA" },
+              { id: 1, issue_number: 10, target_type: "issue", target_number: 10, repo_name: "repoA" },
             ]),
           };
         }
@@ -240,8 +240,8 @@ describe("reconcileOrphanedDeployments", () => {
         if (sql.includes("SELECT")) {
           return {
             all: vi.fn(() => [
-              { id: 1, issue_number: 10, repo_name: "repoA" },
-              { id: 2, issue_number: 20, owner: "ownerB", repo_name: "repoB" },
+              { id: 1, issue_number: 10, target_type: "issue", target_number: 10, repo_name: "repoA" },
+              { id: 2, issue_number: 20, target_type: "issue", target_number: 20, owner: "ownerB", repo_name: "repoB" },
             ]),
           };
         }

@@ -24,6 +24,7 @@ const EDITABLE_KEYS: readonly SettingKey[] = [
   "default_repo_id",
   "idle_grace_period",
   "idle_threshold",
+  "public_webhook_base_url",
 ];
 
 function validateSettingValue(
@@ -44,6 +45,16 @@ function validateSettingValue(
   if (key === "codex_extra_args") {
     const result = validateCodexArgs(trimmed);
     return result.ok ? undefined : result.errors.join(" ");
+  }
+  if (key === "public_webhook_base_url") {
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        return "Webhook base URL must start with http:// or https://";
+      }
+    } catch {
+      return "Webhook base URL must be a valid URL";
+    }
   }
   return undefined;
 }

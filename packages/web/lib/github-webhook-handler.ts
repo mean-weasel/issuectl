@@ -9,6 +9,10 @@ import {
 } from "@issuectl/core";
 import type { WebhookTargetType } from "@issuectl/core";
 import {
+  handleIssuectlCommentCommand,
+  type GithubWebhookCommentCommandDeps,
+} from "./github-webhook-comment-command";
+import {
   asObject,
   getBoundedHeader,
   getNumberProperty,
@@ -16,17 +20,20 @@ import {
   getSenderLogin,
   getSingleHeader,
   getStringProperty,
+  isHookBindingValid,
   parseJson,
   readRawBody,
+  recordWebhookDiagnostic,
   verifySignature,
   writeJson,
-} from "./github-webhook-utils.js";
+} from "./github-webhook-utils";
 
 export const GITHUB_WEBHOOK_PATH_RE = /^\/api\/webhook\/github\/(\d+)$/;
 export const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
 
 const MAX_DELIVERY_ID_LENGTH = 128;
 const MAX_EVENT_TYPE_LENGTH = 100;
+const RAW_PAYLOAD_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const GATING_RELEVANT_EVENTS = new Set([
   "issues:opened",
   "issues:labeled",
@@ -39,6 +46,7 @@ const GATING_RELEVANT_EVENTS = new Set([
   "pull_request:synchronize",
   "pull_request:closed",
 ]);
+export type GithubWebhookHandlerDeps = GithubWebhookCommentCommandDeps;
 
 export function isGithubWebhookRequest(url: string | undefined): boolean {
   return GITHUB_WEBHOOK_PATH_RE.test(
@@ -50,6 +58,7 @@ export async function handleGithubWebhookRequest(
   db: Database.Database,
   req: IncomingMessage,
   res: ServerResponse,
+  deps: GithubWebhookHandlerDeps = {},
 ): Promise<boolean> {
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
   const match = GITHUB_WEBHOOK_PATH_RE.exec(path);
@@ -68,7 +77,11 @@ export async function handleGithubWebhookRequest(
 
   const repoId = Number(match[1]);
   const repo = getRepoWebhookConfigById(db, repoId);
-  if (!repo?.webhookSecret) {
+  if (!repo) {
+    writeJson(res, 404, { ok: false, error: "Repository not found" });
+    return true;
+  }
+  if (!repo.webhookSecret) {
     writeJson(res, 401, { ok: false, error: "Unauthorized" });
     return true;
   }
@@ -112,6 +125,10 @@ export async function handleGithubWebhookRequest(
     writeJson(res, 401, { ok: false, error: "Repository mismatch" });
     return true;
   }
+  if (!isHookBindingValid(payload, repo.webhookId)) {
+    writeJson(res, 401, { ok: false, error: "Hook mismatch" });
+    return true;
+  }
 
   const receivedAt = Date.now();
   const action = getStringProperty(payload, "action");
@@ -128,9 +145,21 @@ export async function handleGithubWebhookRequest(
     payloadJson:
       repo.webhookPayloadMode === "raw" ? body.buffer.toString("utf8") : null,
     receivedAt,
+    retainedUntil:
+      repo.webhookPayloadMode === "raw"
+        ? receivedAt + RAW_PAYLOAD_RETENTION_MS
+        : null,
   });
 
   if (recorded.deduped) {
+    recordWebhookDiagnostic(db, repo, {
+      event: "webhook.deduped",
+      deliveryId,
+      eventType,
+      action,
+      targetType,
+      targetNumber,
+    });
     const intentId = repairDedupedWebhookIntent(db, {
       deliveryId,
       repoId,
@@ -150,6 +179,26 @@ export async function handleGithubWebhookRequest(
   }
 
   let intentId: number | null = null;
+  recordWebhookDiagnostic(db, repo, {
+    event: "webhook.received",
+    deliveryId,
+    eventType,
+    action,
+    targetType,
+    targetNumber,
+    eventId: recorded.eventId,
+  });
+
+  if (await handleIssuectlCommentCommand(db, repo, payload, res, {
+    deliveryId,
+    eventType,
+    action,
+    targetType,
+    targetNumber,
+    eventId: recorded.eventId,
+  }, deps)) {
+    return true;
+  }
   if (
     targetType &&
     targetNumber !== null &&
@@ -165,6 +214,16 @@ export async function handleGithubWebhookRequest(
       scheduledAt: receivedAt + debounceMs,
       desiredHeadSha,
       eventId: recorded.eventId,
+    });
+    recordWebhookDiagnostic(db, repo, {
+      event: "webhook.debouncing",
+      deliveryId,
+      eventType,
+      action,
+      targetType,
+      targetNumber,
+      eventId: recorded.eventId,
+      intentId,
     });
   }
 

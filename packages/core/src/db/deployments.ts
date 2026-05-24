@@ -1,22 +1,15 @@
 import type Database from "better-sqlite3";
-import type { Deployment, DeploymentState, LaunchAgent, TerminalBackend } from "../types.js";
+import type { Deployment, DeploymentState, DeploymentTargetType, DeploymentTerminalReason, DeploymentTriggeredBy, LaunchAgent, TerminalBackend } from "../types.js";
 
 type DeploymentRow = {
-  id: number;
-  repo_id: number;
-  issue_number: number;
-  agent: string;
-  branch_name: string;
-  workspace_mode: string;
-  workspace_path: string;
-  linked_pr_number: number | null;
-  state: string;
-  terminal_backend: string;
-  launched_at: string;
-  ended_at: string | null;
-  ttyd_port: number | null;
-  ttyd_pid: number | null;
-  idle_since: string | null;
+  id: number; repo_id: number; issue_number: number | null; target_type: string; target_number: number; agent: string;
+  branch_name: string; workspace_mode: string; workspace_path: string;
+  linked_pr_number: number | null; state: string; terminal_backend: string;
+  triggered_by: string; launched_at: string; ended_at: string | null;
+  parent_deployment_id: number | null; webhook_depth: number;
+  terminal_reason: string | null; completion_token: string | null;
+  completion_result_json: string | null; notification_sent_at: string | null;
+  ttyd_port: number | null; ttyd_pid: number | null; idle_since: string | null;
 };
 
 function rowToDeployment(row: DeploymentRow): Deployment {
@@ -24,6 +17,8 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     id: row.id,
     repoId: row.repo_id,
     issueNumber: row.issue_number,
+    targetType: (row.target_type as DeploymentTargetType | undefined) ?? "issue",
+    targetNumber: row.target_number,
     agent: (row.agent as LaunchAgent | undefined) ?? "claude",
     branchName: row.branch_name,
     workspaceMode: row.workspace_mode as Deployment["workspaceMode"],
@@ -31,8 +26,15 @@ function rowToDeployment(row: DeploymentRow): Deployment {
     linkedPrNumber: row.linked_pr_number,
     state: (row.state as DeploymentState) ?? "active",
     terminalBackend: (row.terminal_backend as TerminalBackend | undefined) ?? "ttyd",
+    triggeredBy: (row.triggered_by as DeploymentTriggeredBy | undefined) ?? "manual",
+    parentDeploymentId: row.parent_deployment_id,
+    webhookDepth: row.webhook_depth ?? 0,
     launchedAt: row.launched_at,
     endedAt: row.ended_at,
+    terminalReason: row.terminal_reason as DeploymentTerminalReason | null,
+    completionToken: row.completion_token,
+    completionResultJson: row.completion_result_json,
+    notificationSentAt: row.notification_sent_at,
     ttydPort: row.ttyd_port,
     ttydPid: row.ttyd_pid,
     idleSince: row.idle_since,
@@ -43,12 +45,18 @@ export function recordDeployment(
   db: Database.Database,
   deployment: {
     repoId: number;
-    issueNumber: number;
+    issueNumber?: number | null;
+    targetType?: DeploymentTargetType;
+    targetNumber?: number;
     branchName: string;
     workspaceMode: Deployment["workspaceMode"];
     workspacePath: string;
     agent?: LaunchAgent;
     terminalBackend?: TerminalBackend;
+    triggeredBy?: DeploymentTriggeredBy;
+    parentDeploymentId?: number | null;
+    webhookDepth?: number;
+    completionToken?: string | null;
     /**
      * Optional initial state. Defaults to "active" for callers that want
      * the legacy one-shot write. The launch flow passes "pending" so the
@@ -62,21 +70,36 @@ export function recordDeployment(
   const state: DeploymentState = deployment.state ?? "active";
   const agent: LaunchAgent = deployment.agent ?? "claude";
   const terminalBackend: TerminalBackend = deployment.terminalBackend ?? "ttyd";
+  const triggeredBy: DeploymentTriggeredBy = deployment.triggeredBy ?? "manual";
+  const targetType: DeploymentTargetType = deployment.targetType ?? "issue";
+  const targetNumber = deployment.targetNumber ?? deployment.issueNumber;
+  if (targetNumber === undefined || targetNumber === null || !Number.isInteger(targetNumber) || targetNumber <= 0) {
+    throw new Error("Deployment target number is required");
+  }
+  const issueNumber = targetType === "issue" ? (deployment.issueNumber ?? targetNumber) : null;
   const result = db
     .prepare(
       `INSERT INTO deployments (
-        repo_id, issue_number, agent, terminal_backend, branch_name, workspace_mode, workspace_path, state
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        repo_id, issue_number, target_type, target_number, agent, terminal_backend,
+        triggered_by, parent_deployment_id, webhook_depth, branch_name,
+        workspace_mode, workspace_path, state, completion_token
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       deployment.repoId,
-      deployment.issueNumber,
+      issueNumber,
+      targetType,
+      targetNumber,
       agent,
       terminalBackend,
+      triggeredBy,
+      deployment.parentDeploymentId ?? null,
+      deployment.webhookDepth ?? 0,
       deployment.branchName,
       deployment.workspaceMode,
       deployment.workspacePath,
       state,
+      deployment.completionToken ?? null,
     );
 
   const inserted = getDeploymentById(db, Number(result.lastInsertRowid));
@@ -84,21 +107,14 @@ export function recordDeployment(
   return inserted;
 }
 
-export function getDeploymentById(
-  db: Database.Database,
-  id: number,
-): Deployment | undefined {
+export function getDeploymentById(db: Database.Database, id: number): Deployment | undefined {
   const row = db
     .prepare("SELECT * FROM deployments WHERE id = ?")
     .get(id) as DeploymentRow | undefined;
   return row ? rowToDeployment(row) : undefined;
 }
 
-export function getDeploymentsForIssue(
-  db: Database.Database,
-  repoId: number,
-  issueNumber: number,
-): Deployment[] {
+export function getDeploymentsForIssue(db: Database.Database, repoId: number, issueNumber: number): Deployment[] {
   // Filter out "pending" rows — they represent in-flight launches whose
   // terminal hasn't opened yet. UI components, the lifecycle reconciler,
   // and the unified list all call this and should never see a pending
@@ -112,10 +128,7 @@ export function getDeploymentsForIssue(
   return rows.map(rowToDeployment);
 }
 
-export function getDeploymentsByRepo(
-  db: Database.Database,
-  repoId: number,
-): Deployment[] {
+export function getDeploymentsByRepo(db: Database.Database, repoId: number): Deployment[] {
   // See getDeploymentsForIssue — pending rows are excluded from all
   // callers except the launch rollback path.
   const rows = db
@@ -130,11 +143,7 @@ export function getDeploymentsByRepo(
  * "Live" means pending or active (ended rows are excluded) — matches
  * the `idx_deployments_live` partial unique index predicate.
  */
-export function hasLiveDeploymentForIssue(
-  db: Database.Database,
-  repoId: number,
-  issueNumber: number,
-): boolean {
+export function hasLiveDeploymentForIssue(db: Database.Database, repoId: number, issueNumber: number): boolean {
   const row = db
     .prepare(
       "SELECT 1 FROM deployments WHERE repo_id = ? AND issue_number = ? AND ended_at IS NULL LIMIT 1",
@@ -143,15 +152,21 @@ export function hasLiveDeploymentForIssue(
   return row !== undefined;
 }
 
+export function hasLiveDeploymentForTarget(
+  db: Database.Database, repoId: number, targetType: DeploymentTargetType, targetNumber: number,
+): boolean {
+  const row = db.prepare(
+    "SELECT 1 FROM deployments WHERE repo_id = ? AND target_type = ? AND target_number = ? AND ended_at IS NULL LIMIT 1",
+  ).get(repoId, targetType, targetNumber);
+  return row !== undefined;
+}
+
 /**
  * Look up the active (non-ended, non-pending) deployment that owns a
  * given ttyd port. Used by the WebSocket proxy to validate that a port
  * belongs to a real session before forwarding traffic.
  */
-export function getActiveDeploymentByPort(
-  db: Database.Database,
-  port: number,
-): Deployment | undefined {
+export function getActiveDeploymentByPort(db: Database.Database, port: number): Deployment | undefined {
   const row = db
     .prepare(
       "SELECT * FROM deployments WHERE ttyd_port = ? AND state = 'active' AND ended_at IS NULL LIMIT 1",
@@ -160,11 +175,7 @@ export function getActiveDeploymentByPort(
   return row ? rowToDeployment(row) : undefined;
 }
 
-export function updateLinkedPR(
-  db: Database.Database,
-  deploymentId: number,
-  prNumber: number,
-): void {
+export function updateLinkedPR(db: Database.Database, deploymentId: number, prNumber: number): void {
   const result = db
     .prepare("UPDATE deployments SET linked_pr_number = ? WHERE id = ?")
     .run(prNumber, deploymentId);
@@ -175,16 +186,37 @@ export function updateLinkedPR(
   }
 }
 
-export function endDeployment(
-  db: Database.Database,
-  deploymentId: number,
-): void {
+export function endDeployment(db: Database.Database, deploymentId: number, terminalReason?: DeploymentTerminalReason): void {
   const result = db
-    .prepare("UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL WHERE id = ? AND ended_at IS NULL")
-    .run(deploymentId);
+    .prepare("UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL")
+    .run(terminalReason ?? null, deploymentId);
   if (result.changes === 0) {
     throw new Error(`No active deployment found with id ${deploymentId}`);
   }
+}
+
+export function recordDeploymentCompletion(db: Database.Database, deploymentId: number, input: { terminalReason: DeploymentTerminalReason; resultJson?: string | null }): void {
+  const result = db
+    .prepare("UPDATE deployments SET terminal_reason = ?, completion_result_json = ? WHERE id = ?")
+    .run(input.terminalReason, input.resultJson ?? null, deploymentId);
+  if (result.changes === 0) throw new Error(`No deployment found with id ${deploymentId}`);
+}
+
+export function markDeploymentNotificationSent(db: Database.Database, deploymentId: number): void {
+  const result = db
+    .prepare("UPDATE deployments SET notification_sent_at = COALESCE(notification_sent_at, datetime('now')) WHERE id = ?")
+    .run(deploymentId);
+  if (result.changes === 0) throw new Error(`No deployment found with id ${deploymentId}`);
+}
+
+export function claimDeploymentNotificationSent(db: Database.Database, deploymentId: number): boolean {
+  const result = db
+    .prepare("UPDATE deployments SET notification_sent_at = datetime('now') WHERE id = ? AND notification_sent_at IS NULL")
+    .run(deploymentId);
+  if (result.changes > 0) return true;
+  const existing = getDeploymentById(db, deploymentId);
+  if (!existing) throw new Error(`No deployment found with id ${deploymentId}`);
+  return false;
 }
 
 /**
