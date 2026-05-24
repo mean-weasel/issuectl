@@ -48,6 +48,7 @@ export function TerminalFocus({
   const targetType = deployment.targetType ?? "issue";
   const targetNumber = deployment.targetNumber ?? deployment.issueNumber;
   const targetLabel = targetType === "pr" ? `PR #${targetNumber}` : `#${targetNumber}`;
+  const terminalTitle = targetType === "pr" ? `Terminal for PR ${targetNumber}` : `Terminal for issue ${targetNumber}`;
   const issue = targetType === "issue"
     ? repo?.issues.find((item) => item.number === targetNumber)
     : undefined;
@@ -229,7 +230,7 @@ export function TerminalFocus({
       {terminal.status === "ready" && terminal.backend === "pty_bridge" && terminal.wsUrl ? (
         <div className={styles.terminalFrame}>
           <PtyTerminal
-            title={`Terminal for ${targetLabel}`}
+            title={terminalTitle}
             wsUrl={terminal.wsUrl}
             onError={handlePtyError}
             onLifecycle={handlePtyLifecycle}
@@ -238,7 +239,7 @@ export function TerminalFocus({
       ) : terminal.status === "ready" && terminal.src ? (
         <iframe
           className={styles.terminalFrame}
-          title={`Terminal for ${targetLabel}`}
+          title={terminalTitle}
           src={terminal.src}
         />
       ) : terminal.status === "loading" ? (
