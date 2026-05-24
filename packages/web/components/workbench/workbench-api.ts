@@ -118,14 +118,18 @@ export async function checkTerminalProxy(
 }
 
 export async function endDeploymentSession(
-  deployment: Pick<WorkbenchDeployment, "id" | "owner" | "repoName" | "issueNumber">,
+  deployment: Pick<WorkbenchDeployment, "id" | "owner" | "repoName" | "issueNumber" | "targetType" | "targetNumber">,
 ): Promise<{ success: true }> {
+  const targetType = deployment.targetType ?? "issue";
+  const targetNumber = deployment.targetNumber ?? deployment.issueNumber;
   return requestJson<{ success: true }>(`/api/v1/deployments/${deployment.id}/end`, {
     method: "POST",
     body: JSON.stringify({
       owner: deployment.owner,
       repo: deployment.repoName,
-      issueNumber: deployment.issueNumber,
+      issueNumber: targetType === "issue" ? targetNumber : undefined,
+      targetType,
+      targetNumber,
     }),
   });
 }

@@ -6,6 +6,7 @@ import {
   getRepo,
   getDeploymentById,
   endDeployment,
+  markActivePrReviewForDeploymentTerminal,
   killTmuxSession,
   killTtyd,
   cleanupStaleContextFiles,
@@ -23,7 +24,9 @@ export const dynamic = "force-dynamic";
 type EndSessionBody = {
   owner: string;
   repo: string;
-  issueNumber: number;
+  issueNumber?: number;
+  targetType?: "issue" | "pr";
+  targetNumber?: number;
 };
 
 export async function POST(
@@ -49,9 +52,19 @@ export async function POST(
   if (!body.owner || !body.repo) {
     return NextResponse.json({ error: "Invalid repository reference" }, { status: 400 });
   }
-  if (!Number.isInteger(body.issueNumber) || body.issueNumber <= 0) {
-    return NextResponse.json({ error: "Invalid issue number" }, { status: 400 });
+  const requestedTargetType = body.targetType ?? "issue";
+  const requestedTargetNumber = body.targetNumber ?? body.issueNumber;
+  if (requestedTargetType !== "issue" && requestedTargetType !== "pr") {
+    return NextResponse.json({ error: "Invalid target type" }, { status: 400 });
   }
+  if (
+    typeof requestedTargetNumber !== "number" ||
+    !Number.isInteger(requestedTargetNumber) ||
+    requestedTargetNumber <= 0
+  ) {
+    return NextResponse.json({ error: "Invalid target number" }, { status: 400 });
+  }
+  const targetNumber = requestedTargetNumber as number;
 
   try {
     const db = getDb();
@@ -66,8 +79,12 @@ export async function POST(
     }
 
     const target = getDeploymentTarget(deployment);
-    if (deployment.repoId !== repoRecord.id || target.targetType !== "issue" || target.targetNumber !== body.issueNumber) {
-      return NextResponse.json({ error: "Deployment does not match the specified issue" }, { status: 400 });
+    if (
+      deployment.repoId !== repoRecord.id ||
+      target.targetType !== requestedTargetType ||
+      target.targetNumber !== targetNumber
+    ) {
+      return NextResponse.json({ error: "Deployment does not match the specified target" }, { status: 400 });
     }
 
     if (deployment.endedAt !== null) {
@@ -89,37 +106,48 @@ export async function POST(
         source: "web.end-session",
         owner: body.owner,
         repo: body.repo,
-        issueNumber: body.issueNumber,
+        issueNumber: target.targetType === "issue" ? target.targetNumber : undefined,
+        targetType: target.targetType,
+        targetNumber: target.targetNumber,
         deploymentId,
         sessionName,
       });
     }
-    endDeployment(db, deploymentId);
+    endDeployment(db, deploymentId, "ended_manual");
+    if (target.targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, deploymentId, {
+        completedAt: Date.now(),
+        status: "superseded",
+        reason: "ended_manual",
+      });
+    }
     notifyDeploymentTerminalOutcome({ deploymentId });
 
-    try {
-      await withAuthRetry((octokit) =>
-        removeLabel(
-          octokit,
-          body.owner,
-          body.repo,
-          body.issueNumber,
-          LIFECYCLE_LABEL.inProgress,
-        ),
-      );
-      clearCacheKey(db, `issue-detail:${body.owner}/${body.repo}#${body.issueNumber}`);
-      clearCacheKey(db, `issue-header:${body.owner}/${body.repo}#${body.issueNumber}`);
-      clearCacheKey(db, `issue-content:${body.owner}/${body.repo}#${body.issueNumber}`);
-      clearCacheKey(db, `issues:${body.owner}/${body.repo}`);
-    } catch (labelErr) {
-      log.warn({
-        err: labelErr,
-        msg: "in_progress_label_cleanup_failed",
-        deploymentId,
-        owner: body.owner,
-        repo: body.repo,
-        issueNumber: body.issueNumber,
-      });
+    if (target.targetType === "issue") {
+      try {
+        await withAuthRetry((octokit) =>
+          removeLabel(
+            octokit,
+            body.owner,
+            body.repo,
+            target.targetNumber,
+            LIFECYCLE_LABEL.inProgress,
+          ),
+        );
+        clearCacheKey(db, `issue-detail:${body.owner}/${body.repo}#${target.targetNumber}`);
+        clearCacheKey(db, `issue-header:${body.owner}/${body.repo}#${target.targetNumber}`);
+        clearCacheKey(db, `issue-content:${body.owner}/${body.repo}#${target.targetNumber}`);
+        clearCacheKey(db, `issues:${body.owner}/${body.repo}`);
+      } catch (labelErr) {
+        log.warn({
+          err: labelErr,
+          msg: "in_progress_label_cleanup_failed",
+          deploymentId,
+          owner: body.owner,
+          repo: body.repo,
+          issueNumber: target.targetNumber,
+        });
+      }
     }
 
     cleanupStaleContextFiles().catch((cleanupErr) => {

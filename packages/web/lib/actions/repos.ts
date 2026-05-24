@@ -9,6 +9,12 @@ import {
   removeRepo as coreRemoveRepo,
   updateRepo as coreUpdateRepo,
   updateRepoWebhookSettings,
+  getRepoById,
+  getActiveWebhookDeploymentsForRepoTarget,
+  endDeployment,
+  killTtyd,
+  killTmuxSession,
+  tmuxSessionName,
   readCachedAccessibleRepos,
   refreshAccessibleRepos,
   getIssues,
@@ -244,7 +250,9 @@ export async function updateRepo(
       webhookPayloadMode: updates.webhookPayloadMode,
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
+      const previous = getRepoById(db, id);
       updateRepoWebhookSettings(db, id, webhookUpdates);
+      endDisabledAutomationSessions(db, id, previous, webhookUpdates);
     }
   } catch (err) {
     console.error("[issuectl] Failed to update repo:", errMessage(err));
@@ -252,4 +260,34 @@ export async function updateRepo(
   }
   const { stale } = revalidateSafely("/settings");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+function endDisabledAutomationSessions(
+  db: ReturnType<typeof getDb>,
+  repoId: number,
+  previous: { name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean } | undefined,
+  updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+): void {
+  if (!previous) return;
+  if (previous.autoLaunchIssues && updates.autoLaunchIssues === false) {
+    endActiveWebhookDeployments(db, repoId, previous.name, "issue", "killed_by_label");
+  }
+  if (previous.autoReviewPrs && updates.autoReviewPrs === false) {
+    endActiveWebhookDeployments(db, repoId, previous.name, "pr", "killed_by_label");
+  }
+}
+
+function endActiveWebhookDeployments(
+  db: ReturnType<typeof getDb>,
+  repoId: number,
+  repoName: string,
+  targetType: "issue" | "pr",
+  terminalReason: "killed_by_label",
+): void {
+  for (const deployment of getActiveWebhookDeploymentsForRepoTarget(db, repoId, targetType)) {
+    const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
+    if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
+    else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
+    endDeployment(db, deployment.id, terminalReason);
+  }
 }

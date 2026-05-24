@@ -2,6 +2,8 @@ import { mkdir, rm, access } from "node:fs/promises";
 import { join } from "node:path";
 import {
   createOrCheckoutBranch,
+  createOrResetBranchAtRef,
+  fetchRemoteRef,
   isWorkingTreeClean,
   getDefaultBranch,
 } from "./branch.js";
@@ -58,10 +60,17 @@ export async function prepareWorkspace(options: {
   issueNumber: number;
   worktreeDir: string;
   forceResume?: boolean;
+  expectedHeadRef?: string;
+  expectedHeadSha?: string;
 }): Promise<WorkspaceResult> {
   switch (options.mode) {
     case "existing":
-      return prepareExisting(options.repoPath, options.branchName);
+      return prepareExisting(
+        options.repoPath,
+        options.branchName,
+        options.expectedHeadRef,
+        options.expectedHeadSha,
+      );
     case "worktree":
       return prepareWorktree(options);
     case "clone":
@@ -72,6 +81,8 @@ export async function prepareWorkspace(options: {
 async function prepareExisting(
   repoPath: string,
   branchName: string,
+  expectedHeadRef?: string,
+  expectedHeadSha?: string,
 ): Promise<WorkspaceResult> {
   const clean = await isWorkingTreeClean(repoPath);
   if (!clean) {
@@ -93,6 +104,12 @@ async function prepareExisting(
     );
   });
 
+  if (expectedHeadRef && expectedHeadSha) {
+    await fetchRemoteRef(repoPath, "origin", expectedHeadRef);
+    await createOrResetBranchAtRef(repoPath, branchName, expectedHeadSha);
+    return { path: repoPath, mode: "existing", created: false };
+  }
+
   const baseBranch = await getDefaultBranch(repoPath);
   await createOrCheckoutBranch(repoPath, branchName, baseBranch);
 
@@ -106,6 +123,8 @@ async function prepareWorktree(options: {
   issueNumber: number;
   worktreeDir: string;
   forceResume?: boolean;
+  expectedHeadRef?: string;
+  expectedHeadSha?: string;
 }): Promise<WorkspaceResult> {
   const worktreeName = `${options.repo}-issue-${options.issueNumber}`;
   const worktreePath = join(options.worktreeDir, worktreeName);
@@ -130,6 +149,11 @@ async function prepareWorktree(options: {
           `Worktree at ${worktreePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the worktree with \`git worktree remove\`) before launching again.`,
         );
       }
+      if (options.expectedHeadRef && options.expectedHeadSha) {
+        await fetchRemoteRef(worktreePath, "origin", options.expectedHeadRef);
+        await createOrResetBranchAtRef(worktreePath, options.branchName, options.expectedHeadSha);
+        return { path: worktreePath, mode: "worktree", created: false };
+      }
       await createOrCheckoutBranch(worktreePath, options.branchName);
       return { path: worktreePath, mode: "worktree", created: false };
     }
@@ -138,6 +162,19 @@ async function prepareWorktree(options: {
   }
 
   try {
+    if (options.expectedHeadRef && options.expectedHeadSha) {
+      await fetchRemoteRef(options.repoPath, "origin", options.expectedHeadRef);
+      await timedExec(
+        "git",
+        ["worktree", "add", "-B", options.branchName, worktreePath, options.expectedHeadSha],
+        {
+          cwd: options.repoPath,
+          timeoutMs: GIT_WORKTREE_TIMEOUT_MS,
+          step: "git worktree add PR head",
+        },
+      );
+      return { path: worktreePath, mode: "worktree", created: true };
+    }
     await timedExec(
       "git",
       ["worktree", "add", worktreePath, "-b", options.branchName],
@@ -185,6 +222,8 @@ async function prepareClone(options: {
   issueNumber: number;
   worktreeDir: string;
   forceResume?: boolean;
+  expectedHeadRef?: string;
+  expectedHeadSha?: string;
 }): Promise<WorkspaceResult> {
   const cloneName = `${options.repo}-issue-${options.issueNumber}`;
   const clonePath = join(options.worktreeDir, cloneName);
@@ -218,6 +257,11 @@ async function prepareClone(options: {
           (err as Error).message,
         );
       });
+      if (options.expectedHeadRef && options.expectedHeadSha) {
+        await fetchRemoteRef(clonePath, "origin", options.expectedHeadRef);
+        await createOrResetBranchAtRef(clonePath, options.branchName, options.expectedHeadSha);
+        return { path: clonePath, mode: "clone", created: false };
+      }
       await createOrCheckoutBranch(clonePath, options.branchName);
       return { path: clonePath, mode: "clone", created: false };
     }
@@ -230,6 +274,15 @@ async function prepareClone(options: {
       timeoutMs: GIT_CLONE_TIMEOUT_MS,
       step: "git clone",
     });
+    if (options.expectedHeadRef && options.expectedHeadSha) {
+      await fetchRemoteRef(clonePath, "origin", options.expectedHeadRef);
+      await timedExec("git", ["checkout", "-B", options.branchName, options.expectedHeadSha], {
+        cwd: clonePath,
+        timeoutMs: GIT_BRANCH_OP_TIMEOUT_MS,
+        step: "git checkout PR head",
+      });
+      return { path: clonePath, mode: "clone", created: true };
+    }
     await timedExec("git", ["checkout", "-b", options.branchName], {
       cwd: clonePath,
       timeoutMs: GIT_BRANCH_OP_TIMEOUT_MS,

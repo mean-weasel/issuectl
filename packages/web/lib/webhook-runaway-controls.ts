@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import {
   getSetting,
+  countActiveWebhookIntents,
   recordDiagnosticEventSafely,
   type Repo,
   type WebhookIntent,
@@ -66,15 +67,6 @@ function positiveSetting(value: string | undefined, fallback: number): number {
   const parsed = Number(value ?? String(fallback));
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
   return Math.floor(parsed);
-}
-
-function countActiveWebhookIntents(db: Database.Database): number {
-  const row = db.prepare(
-    `SELECT COUNT(*) AS count
-     FROM webhook_intents
-     WHERE status IN ('pending', 'processing', 'deferred')`,
-  ).get() as { count: number };
-  return row.count;
 }
 
 function countActiveWebhookAgents(db: Database.Database): number {
@@ -159,6 +151,8 @@ function recordLimitDiagnostic(
     owner: repo.owner,
     repo: repo.name,
     issueNumber: intent.targetType === "issue" ? intent.targetNumber : undefined,
+    targetType: intent.targetType,
+    targetNumber: intent.targetNumber,
     status: reason,
     message: `Webhook launch blocked by ${reason}`,
     data: {

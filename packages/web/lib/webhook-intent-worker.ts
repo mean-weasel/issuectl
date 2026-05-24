@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import type Database from "better-sqlite3";
 import {
   claimDueWebhookIntent,
@@ -5,14 +6,14 @@ import {
   executeLaunch,
   generateBranchName,
   hasLiveDeploymentForIssue,
-  expireOldWebhookIntents,
+  expireOldWebhookIntentRecords,
   getDeploymentById,
   getRepoById,
   getSetting,
   killTmuxSession,
   killTtyd,
   recordDiagnosticEventSafely,
-  recoverExpiredWebhookIntentLeases,
+  recoverExpiredWebhookIntentLeaseRecords,
   tmuxSessionName,
   withAuthRetry,
 } from "@issuectl/core";
@@ -64,27 +65,19 @@ export async function runWebhookIntentWorkerOnce(
   now = Date.now(),
   deps: WorkerDeps = {},
 ): Promise<WebhookIntentWorkerResult> {
-  const recovered = recoverExpiredWebhookIntentLeases(db, now);
-  if (recovered > 0) {
-    recordDiagnosticEventSafely(db, {
-      level: "warn",
-      event: "webhook.intent_recovered",
-      source: "webhook-worker",
-      data: { count: recovered },
-    });
+  const recoveredRecords = recoverExpiredWebhookIntentLeaseRecords(db, now);
+  for (const recovered of recoveredRecords) {
+    recordRecoveryDiagnostic(db, recovered, "webhook.intent_recovered", "Recovered expired webhook intent lease.");
   }
+  const recovered = recoveredRecords.length;
   const maxAgeMinutes = parseMaxWebhookIntentAgeMinutes(
     getSetting(db, "max_webhook_intent_age_minutes"),
   );
-  const expired = expireOldWebhookIntents(db, now, maxAgeMinutes * 60_000);
-  if (expired > 0) {
-    recordDiagnosticEventSafely(db, {
-      level: "warn",
-      event: "webhook.expired",
-      source: "webhook-worker",
-      data: { count: expired },
-    });
+  const expiredRecords = expireOldWebhookIntentRecords(db, now, maxAgeMinutes * 60_000);
+  for (const expiredIntent of expiredRecords) {
+    recordRecoveryDiagnostic(db, expiredIntent, "webhook.expired", "Expired stale webhook intent.");
   }
+  const expired = expiredRecords.length;
   const prunedPayloads = pruneExpiredWebhookPayloads(db, now);
   const base = { recovered, expired, prunedPayloads };
   const intent = claimDueWebhookIntent(db, now, 60_000);
@@ -102,6 +95,8 @@ export async function runWebhookIntentWorkerOnce(
     owner: repo?.owner,
     repo: repo?.name,
     issueNumber: intent.targetType === "issue" ? intent.targetNumber : undefined,
+    targetType: intent.targetType,
+    targetNumber: intent.targetNumber,
     data: {
       intentId: intent.id,
       targetType: intent.targetType,
@@ -297,6 +292,8 @@ function recordIntentDiagnostic(
     owner: repo.owner,
     repo: repo.name,
     issueNumber: intent.targetType === "issue" ? intent.targetNumber : undefined,
+    targetType: intent.targetType,
+    targetNumber: intent.targetNumber,
     deploymentId,
     message,
     data: {
@@ -304,6 +301,34 @@ function recordIntentDiagnostic(
       targetType: intent.targetType,
       targetNumber: intent.targetNumber,
       generation: intent.generation,
+    },
+  });
+}
+
+function recordRecoveryDiagnostic(
+  db: Database.Database,
+  intent: WebhookIntent,
+  event: "webhook.intent_recovered" | "webhook.expired",
+  message: string,
+): void {
+  const repo = getRepoById(db, intent.repoId);
+  recordDiagnosticEventSafely(db, {
+    level: "warn",
+    event,
+    source: "webhook-worker",
+    owner: repo?.owner,
+    repo: repo?.name,
+    issueNumber: intent.targetType === "issue" ? intent.targetNumber : undefined,
+    targetType: intent.targetType,
+    targetNumber: intent.targetNumber,
+    status: intent.status,
+    message,
+    data: {
+      intentId: intent.id,
+      targetType: intent.targetType,
+      targetNumber: intent.targetNumber,
+      generation: intent.generation,
+      signalCount: intent.signalCount,
     },
   });
 }

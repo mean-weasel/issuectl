@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { beforeEach, describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import {
@@ -299,13 +300,34 @@ describe("runWebhookIntentWorkerOnce", () => {
     const result = await runWorker(db, 61_000);
 
     expectWorkerResult(result, { claimed: 1, recovered: 1, expired: 2, launched: 1 });
-    expect(queryDiagnosticEvents(db, { events: ["webhook.intent_recovered"] })).toHaveLength(1);
-    expect(queryDiagnosticEvents(db, { events: ["webhook.expired"] })).toHaveLength(1);
+    expect(queryDiagnosticEvents(db, { events: ["webhook.intent_recovered"] })).toEqual([
+      expect.objectContaining({
+        owner: "mean-weasel",
+        repo: "issuectl",
+        issueNumber: 506,
+        targetType: "issue",
+        targetNumber: 506,
+      }),
+    ]);
+    expect(queryDiagnosticEvents(db, { events: ["webhook.expired"] })).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        owner: "mean-weasel",
+        repo: "issuectl",
+        issueNumber: 506,
+      }),
+      expect.objectContaining({
+        owner: "mean-weasel",
+        repo: "issuectl",
+        issueNumber: 507,
+      }),
+    ]));
     expect(queryDiagnosticEvents(db, { events: ["webhook.intent_claimed"] })).toEqual([
       expect.objectContaining({
         owner: "mean-weasel",
         repo: "issuectl",
         issueNumber: 508,
+        targetType: "issue",
+        targetNumber: 508,
       }),
     ]);
   });

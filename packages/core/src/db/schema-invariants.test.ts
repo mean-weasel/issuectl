@@ -156,7 +156,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
       runMigrations(db);
     }).not.toThrow();
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
 
     // Verify the dedupe ran and the index now exists.
     const live = db
@@ -186,7 +186,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
   it("v10 migration creates github_accessible_repos with expected columns", () => {
     const db = createTestDb();
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
 
     const cols = db
       .prepare("PRAGMA table_info(github_accessible_repos)")
@@ -237,7 +237,7 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     const deployment = db
       .prepare("SELECT issue_number, target_type, target_number, agent, terminal_backend, triggered_by, terminal_reason, completion_token, completion_result_json, notification_sent_at FROM deployments WHERE id = 1")
       .get() as {

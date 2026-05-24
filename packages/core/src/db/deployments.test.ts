@@ -1,9 +1,10 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
 import { addRepo } from "./repos.js";
 import { seedRepo } from "./deployments-test-helpers.js";
-import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince } from "./deployments.js";
+import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsByRepo, getActiveWebhookDeploymentsForRepoTarget, listRecentTerminalDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince } from "./deployments.js";
 
 describe("recordDeployment", () => {
   let db: Database.Database;
@@ -80,6 +81,29 @@ describe("recordDeployment", () => {
     expect(getDeploymentById(db, d1.id)?.terminalReason).toBe("ended_manual");
   });
 
+  it("lists recent terminal deployments for completion summaries", () => {
+    const first = recordDeployment(db, {
+      repoId,
+      issueNumber: 1,
+      branchName: "issue-1-a",
+      workspaceMode: "existing",
+      workspacePath: "/a",
+    });
+    endDeployment(db, first.id, "completed");
+    const second = recordDeployment(db, {
+      repoId,
+      issueNumber: 2,
+      branchName: "issue-2-a",
+      workspaceMode: "existing",
+      workspacePath: "/a",
+    });
+    endDeployment(db, second.id, "failed");
+
+    expect(listRecentTerminalDeploymentsByRepo(db, repoId, 1)).toEqual([
+      expect.objectContaining({ id: second.id, terminalReason: "failed" }),
+    ]);
+  });
+
   it("blocks a second live deployment for the same (repo, issue)", () => {
     recordDeployment(db, {
       repoId,
@@ -137,6 +161,43 @@ describe("getDeploymentById", () => {
     expect(getDeploymentById(db, 999)).toBeUndefined();
   });
 
+});
+
+describe("getActiveWebhookDeploymentsForRepoTarget", () => {
+  it("returns only active webhook deployments for the requested target type", () => {
+    const db = createTestDb();
+    const repo = seedRepo(db);
+    const issueWebhook = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 506,
+      branchName: "issue-506",
+      workspaceMode: "worktree",
+      workspacePath: "/issue",
+      triggeredBy: "webhook",
+    });
+    recordDeployment(db, {
+      repoId: repo.id,
+      targetType: "pr",
+      targetNumber: 44,
+      branchName: "pr-44",
+      workspaceMode: "worktree",
+      workspacePath: "/pr",
+      triggeredBy: "webhook",
+    });
+    const manual = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 507,
+      branchName: "issue-507",
+      workspaceMode: "worktree",
+      workspacePath: "/manual",
+      triggeredBy: "manual",
+    });
+    endDeployment(db, manual.id);
+
+    expect(getActiveWebhookDeploymentsForRepoTarget(db, repo.id, "issue")).toEqual([
+      expect.objectContaining({ id: issueWebhook.id, targetType: "issue", triggeredBy: "webhook" }),
+    ]);
+  });
 });
 
 describe("getDeploymentsForIssue", () => {

@@ -4,6 +4,7 @@ const getDb = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
 const getRepoById = vi.hoisted(() => vi.fn());
 const endDeployment = vi.hoisted(() => vi.fn());
+const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
 const isTmuxSessionAlive = vi.hoisted(() => vi.fn());
 const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 const ensureTtydForDeployment = vi.hoisted(() => vi.fn());
@@ -14,9 +15,11 @@ vi.mock("@issuectl/core", () => ({
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
   getRepoById: (...args: unknown[]) => getRepoById(...args),
   endDeployment: (...args: unknown[]) => endDeployment(...args),
+  markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
   isTmuxSessionAlive: (...args: unknown[]) => isTmuxSessionAlive(...args),
   recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
-  tmuxSessionName: (repo: string, issueNumber: number) => `issuectl-${repo}-${issueNumber}`,
+  tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
+    targetType === "issue" ? `issuectl-${repo}-${targetNumber}` : `issuectl-${repo}-${targetType}-${targetNumber}`,
 }));
 
 vi.mock("./ensure-ttyd", () => ({
@@ -36,6 +39,7 @@ beforeEach(() => {
   getDeploymentById.mockReset();
   getRepoById.mockReset();
   endDeployment.mockReset();
+  markActivePrReviewForDeploymentTerminal.mockReset();
   isTmuxSessionAlive.mockReset();
   recordDiagnosticEventSafely.mockReset();
   ensureTtydForDeployment.mockReset();
@@ -115,7 +119,7 @@ describe("ensureTerminalForDeployment", () => {
       backend: "pty_bridge",
       error: "Terminal session has ended",
     });
-    expect(endDeployment).toHaveBeenCalledWith(db, 1);
+    expect(endDeployment).toHaveBeenCalledWith(db, 1, "liveness_missing");
     expect(createPtyTerminalToken).not.toHaveBeenCalled();
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(
       db,

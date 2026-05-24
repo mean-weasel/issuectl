@@ -13,6 +13,8 @@ function makeEvent(overrides: Partial<DiagnosticEvent> = {}): DiagnosticEvent {
     owner: null,
     repo: null,
     issueNumber: null,
+    targetType: null,
+    targetNumber: null,
     deploymentId: null,
     sessionName: null,
     ttydPort: null,

@@ -10,6 +10,8 @@ import {
   getActivePrReview,
   getLatestCompletedPrReview,
   getPrReviewById,
+  listPrReviewsForRepo,
+  markActivePrReviewForDeploymentTerminal,
   reservePrReview,
   supersedePrReview,
 } from "./pr-reviews.js";
@@ -106,6 +108,35 @@ describe("pr_reviews", () => {
     );
   });
 
+  it("lists recent PR review history for a repo", () => {
+    reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedFromSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    const latest = reservePrReview(db, {
+      repoId,
+      prNumber: 507,
+      startedHeadSha: "head-c",
+      reviewBaseSha: "base-a",
+      reviewedFromSha: "head-b",
+      reviewedToSha: "head-c",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/dashboard",
+      triggeredBy: "comment_command",
+      startedAt: 2_000,
+    });
+
+    expect(listPrReviewsForRepo(db, repoId, 1)).toEqual([latest]);
+  });
+
   it("stores at most one coalesced desired head for a running review", () => {
     const review = reservePrReview(db, {
       repoId,
@@ -165,6 +196,41 @@ describe("pr_reviews", () => {
         resultJson: JSON.stringify({ reason: "force_push" }),
       }),
     );
+  });
+
+  it("marks the active review for a dead deployment terminal", () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        id, repo_id, issue_number, target_type, target_number, branch_name,
+        workspace_mode, workspace_path
+      ) VALUES (77, ?, NULL, 'pr', 506, 'pr-506', 'existing', '/tmp/repo')`,
+    ).run(repoId);
+    const review = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      deploymentId: 77,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+
+    const updated = markActivePrReviewForDeploymentTerminal(db, 77, {
+      completedAt: 2_000,
+      status: "failed",
+      reason: "liveness_missing",
+    });
+
+    expect(updated).toEqual(expect.objectContaining({
+      id: review.id,
+      status: "failed",
+      completedAt: 2_000,
+      resultJson: JSON.stringify({ reason: "liveness_missing" }),
+    }));
+    expect(getActivePrReview(db, repoId, 506)).toBeUndefined();
   });
 });
 
@@ -226,7 +292,7 @@ describe("pr_reviews migration", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     expect(() =>
       db.prepare(
         `INSERT INTO pr_reviews (

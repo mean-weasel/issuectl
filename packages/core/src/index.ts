@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 export type {
   Repo,
   RepoWebhookConfig,
@@ -29,6 +30,8 @@ export type {
   WebhookTargetType,
   WebhookIntentStatus,
   WebhookPayloadMode,
+  PrReview,
+  PrReviewStatus,
 } from "./types.js";
 export { SORT_MODES } from "./types.js";
 
@@ -113,15 +116,20 @@ export {
   type DiagnosticEventInput,
   type DiagnosticEvent,
   type DiagnosticIssueFilter,
+  type DiagnosticTargetFilter,
   type DiagnosticQuery,
 } from "./db/diagnostics.js";
 export {
   recordWebhookEvent,
   getWebhookEventByDelivery,
   mergeWebhookIntent,
+  hasActiveWebhookIntent,
+  countActiveWebhookIntents,
   claimDueWebhookIntent,
   recoverExpiredWebhookIntentLeases,
+  recoverExpiredWebhookIntentLeaseRecords,
   expireOldWebhookIntents,
+  expireOldWebhookIntentRecords,
   pruneExpiredWebhookPayloads,
   listWebhookEvents,
 } from "./db/webhooks.js";
@@ -237,8 +245,13 @@ export {
 export {
   branchExists,
   createOrCheckoutBranch,
+  createOrResetBranchAtRef,
+  fetchRemoteRef,
+  getCurrentBranch,
   isWorkingTreeClean,
   getDefaultBranch,
+  getHeadSha,
+  getRemoteUrl,
 } from "./launch/branch.js";
 export {
   assembleContext,

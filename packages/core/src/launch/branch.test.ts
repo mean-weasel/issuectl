@@ -16,7 +16,16 @@ vi.mock("node:util", () => ({
 }));
 
 /* Dynamic import so the mock is applied before the module initializes */
-const { branchExists, isWorkingTreeClean, getDefaultBranch } = await import("./branch.js");
+const {
+  branchExists,
+  createOrResetBranchAtRef,
+  fetchRemoteRef,
+  getCurrentBranch,
+  getDefaultBranch,
+  getHeadSha,
+  getRemoteUrl,
+  isWorkingTreeClean,
+} = await import("./branch.js");
 
 beforeEach(() => {
   execFileMock.mockReset();
@@ -89,6 +98,43 @@ describe("branchExists", () => {
     Object.assign(err, { stderr: "fatal: not a git repository" });
     execFileMock.mockRejectedValue(err);
     await expect(branchExists("/notgit", "main")).rejects.toThrow();
+  });
+});
+
+describe("PR head helpers", () => {
+  it("fetches a remote ref", async () => {
+    execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
+
+    await fetchRemoteRef("/repo", "origin", "feature/review");
+
+    expect(execFileMock).toHaveBeenCalledWith(
+      "git",
+      ["fetch", "origin", "feature/review"],
+      { cwd: "/repo", timeout: 30_000 },
+    );
+  });
+
+  it("checks out a local branch at an expected ref", async () => {
+    execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
+
+    await createOrResetBranchAtRef("/repo", "feature/review", "head-a");
+
+    expect(execFileMock).toHaveBeenCalledWith(
+      "git",
+      ["checkout", "-B", "feature/review", "head-a"],
+      { cwd: "/repo", timeout: 10_000 },
+    );
+  });
+
+  it("reads current checkout metadata", async () => {
+    execFileMock
+      .mockResolvedValueOnce({ stdout: "feature/review\n", stderr: "" })
+      .mockResolvedValueOnce({ stdout: "head-a\n", stderr: "" })
+      .mockResolvedValueOnce({ stdout: "git@github.com:acme/api.git\n", stderr: "" });
+
+    await expect(getCurrentBranch("/repo")).resolves.toBe("feature/review");
+    await expect(getHeadSha("/repo")).resolves.toBe("head-a");
+    await expect(getRemoteUrl("/repo")).resolves.toBe("git@github.com:acme/api.git");
   });
 });
 

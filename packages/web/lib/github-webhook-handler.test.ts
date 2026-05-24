@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { createHmac } from "node:crypto";
 import { Readable } from "node:stream";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -10,6 +11,7 @@ import {
   queryDiagnosticEvents,
   recordWebhookEvent,
   seedDefaults,
+  setSetting,
   updateRepoWebhookSettings,
 } from "@issuectl/core";
 import type { Repo } from "@issuectl/core";
@@ -267,6 +269,37 @@ describe("handleGithubWebhookRequest", () => {
     ).toEqual({ count: 0 });
   });
 
+  it("does not repair deduped unrelated issue label removals into kill-switch intents", async () => {
+    const body = JSON.stringify({
+      action: "unlabeled",
+      repository: { full_name: "mean-weasel/issuectl" },
+      issue: { number: 506 },
+      label: { name: "bug" },
+      sender: { login: "octocat" },
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-deduped-unrelated-label",
+      repoId: repo.id,
+      eventType: "issues",
+      action: "unlabeled",
+      senderLogin: "octocat",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+
+    const res = await postWebhook(db, {
+      repoId: repo.id,
+      body,
+      deliveryId: "delivery-deduped-unrelated-label",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(jsonBody(res)).toEqual({ ok: true, deduped: true });
+    expect(listWebhookEvents(db)[0]?.intentId).toBeNull();
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get()).toEqual({ count: 0 });
+  });
+
   it("records metadata-only events by default", async () => {
     const body = JSON.stringify(issuesOpenedPayload());
     const res = await postWebhook(db, { repoId: repo.id, body });
@@ -288,6 +321,8 @@ describe("handleGithubWebhookRequest", () => {
         owner: "mean-weasel",
         repo: "issuectl",
         issueNumber: 506,
+        targetType: "issue",
+        targetNumber: 506,
         correlationId: "delivery-1",
         data: expect.not.objectContaining({
           webhookSecret: expect.anything(),
@@ -330,5 +365,97 @@ describe("handleGithubWebhookRequest", () => {
       status: "pending",
       signal_count: 1,
     });
+  });
+
+  it("does not create kill-switch intents for unrelated issue label removals", async () => {
+    const body = JSON.stringify({
+      action: "unlabeled",
+      repository: { full_name: "mean-weasel/issuectl" },
+      issue: { number: 506 },
+      label: { name: "bug" },
+      sender: { login: "octocat" },
+    });
+
+    const res = await postWebhook(db, {
+      repoId: repo.id,
+      body,
+      deliveryId: "delivery-unrelated-label",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(jsonBody(res)).toEqual({ ok: true, eventId: 1, intentId: null });
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get()).toEqual({ count: 0 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.debouncing"] })).toHaveLength(0);
+  });
+
+  it("creates kill-switch intents when the issue auto-launch label is removed", async () => {
+    const body = JSON.stringify({
+      action: "unlabeled",
+      repository: { full_name: "mean-weasel/issuectl" },
+      issue: { number: 506 },
+      label: { name: "issuectl:auto-launch" },
+      sender: { login: "octocat" },
+    });
+
+    const res = await postWebhook(db, {
+      repoId: repo.id,
+      body,
+      deliveryId: "delivery-auto-label",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(jsonBody(res)).toEqual({ ok: true, eventId: 1, intentId: 1 });
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get()).toEqual({ count: 1 });
+  });
+
+  it("caps webhook debounce at the configured max window", async () => {
+    setSetting(db, "webhook_debounce_seconds", "60");
+    setSetting(db, "webhook_max_debounce_seconds", "90");
+    const first = await postWebhook(db, {
+      repoId: repo.id,
+      body: JSON.stringify(issuesOpenedPayload()),
+      deliveryId: "delivery-debounce-1",
+    });
+    expect(first.statusCode).toBe(200);
+    db.prepare("UPDATE webhook_events SET received_at = ? WHERE id = 1").run(1_000);
+    db.prepare("UPDATE webhook_intents SET first_signal_at = ?, last_signal_at = ?, scheduled_at = ? WHERE id = 1").run(1_000, 1_000, 61_000);
+
+    await postWebhook(db, {
+      repoId: repo.id,
+      body: JSON.stringify(issuesOpenedPayload()),
+      deliveryId: "delivery-debounce-2",
+    });
+
+    expect(
+      db.prepare("SELECT first_signal_at, scheduled_at, signal_count FROM webhook_intents WHERE id = 1").get(),
+    ).toEqual({
+      first_signal_at: 1_000,
+      scheduled_at: 91_000,
+      signal_count: 2,
+    });
+  });
+
+  it("rejects new distinct-target intents at intake when queue depth is full", async () => {
+    setSetting(db, "max_webhook_queue_depth", "1");
+    await postWebhook(db, {
+      repoId: repo.id,
+      body: JSON.stringify(issuesOpenedPayload()),
+      deliveryId: "delivery-queue-1",
+    });
+    const res = await postWebhook(db, {
+      repoId: repo.id,
+      body: JSON.stringify({
+        ...issuesOpenedPayload(),
+        issue: { number: 507 },
+      }),
+      deliveryId: "delivery-queue-2",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(jsonBody(res)).toEqual({ ok: true, eventId: 2, intentId: null });
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_intents").get()).toEqual({ count: 1 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.runaway_limited"] })).toEqual([
+      expect.objectContaining({ issueNumber: 507 }),
+    ]);
   });
 });

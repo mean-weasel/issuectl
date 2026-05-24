@@ -138,6 +138,8 @@ export function recordWebhookDiagnostic(
     owner: repo.owner,
     repo: repo.name,
     issueNumber: input.targetType === "issue" && input.targetNumber !== null ? input.targetNumber : undefined,
+    targetType: input.targetType ?? undefined,
+    targetNumber: input.targetNumber ?? undefined,
     data: {
       deliveryId: input.deliveryId,
       eventType: input.eventType,

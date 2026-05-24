@@ -53,6 +53,34 @@ describe("webhook intent merge helpers", () => {
     });
   });
 
+  it("caps repeated signals at the max debounce window from the first signal", () => {
+    const firstIntentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 61_000,
+      maxDebounceMs: 300_000,
+    });
+    const secondIntentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 290_000,
+      scheduledAt: 350_000,
+      maxDebounceMs: 300_000,
+    });
+
+    expect(secondIntentId).toBe(firstIntentId);
+    expect(
+      db.prepare("SELECT first_signal_at, last_signal_at, scheduled_at FROM webhook_intents WHERE id = ?").get(firstIntentId),
+    ).toEqual({
+      first_signal_at: 1_000,
+      last_signal_at: 290_000,
+      scheduled_at: 301_000,
+    });
+  });
+
   it("allows one active intent per target across pending processing deferred", () => {
     const pendingId = mergeWebhookIntent(db, {
       repoId,

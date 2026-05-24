@@ -39,6 +39,7 @@ export type PullForSafety = {
   user: { login: string; avatarUrl: string } | null;
   headRef: string;
   baseRef: string;
+  defaultBranch?: string;
   headSha?: string;
   baseSha?: string;
   headRepoFullName?: string;
@@ -92,6 +93,18 @@ export type PushInput = {
   expectedHeadSha: string;
 };
 
+export type WorkspaceHeadVerificationInput = {
+  workspacePath: string;
+  expectedHeadRef: string;
+  expectedHeadSha: string;
+  owner: string;
+  repo: string;
+};
+
+export type WorkspaceHeadVerificationResult =
+  | { ok: true }
+  | { ok: false; reason: "unsafe_checkout" };
+
 export type AgentMutationAdapters = {
   comment?: (input: CommentInput) => Promise<void>;
   label?: (input: LabelInput) => Promise<void>;
@@ -107,6 +120,7 @@ export type AgentMutationAdapters = {
     repo: string;
     branch: string;
   }) => Promise<boolean>;
+  verifyWorkspaceHead?: (input: WorkspaceHeadVerificationInput) => Promise<WorkspaceHeadVerificationResult>;
   push?: (input: PushInput) => Promise<void>;
 };
 

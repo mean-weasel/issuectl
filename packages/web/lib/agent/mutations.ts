@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import type Database from "better-sqlite3";
 import { getRepoById } from "@issuectl/core";
 import type { Repo } from "@issuectl/core";
@@ -46,6 +47,7 @@ type DeploymentSession = {
   completionToken: string | null;
   endedAt: string | null;
   webhookDepth: number;
+  workspacePath: string;
 };
 
 type DeploymentSessionRow = {
@@ -57,6 +59,7 @@ type DeploymentSessionRow = {
   completion_token: string | null;
   ended_at: string | null;
   webhook_depth: number | null;
+  workspace_path: string;
 };
 
 type PreparedExecution =
@@ -124,7 +127,7 @@ function getDeploymentSession(
     : "0 AS webhook_depth";
   const row = db.prepare(
     `SELECT repo_id, issue_number, target_type, target_number, triggered_by,
-            completion_token, ended_at, ${depthSelect}
+            completion_token, ended_at, workspace_path, ${depthSelect}
      FROM deployments
      WHERE id = ?`,
   ).get(deploymentId) as DeploymentSessionRow | undefined;
@@ -140,6 +143,7 @@ function getDeploymentSession(
     completionToken: row.completion_token,
     endedAt: row.ended_at,
     webhookDepth: row.webhook_depth ?? 0,
+    workspacePath: row.workspace_path,
   };
 }
 
@@ -262,7 +266,7 @@ async function preparePushExecution(
   if (request.targetType !== "pr") return denyAgentMutation(db, request, "target_mismatch");
   const payload = parsePushPayload(request.payload);
   if (!payload) return denyAgentMutation(db, request, "invalid_payload");
-  if (!adapters.fetchPull || !adapters.isBranchProtected || !adapters.push) {
+  if (!adapters.fetchPull || !adapters.isBranchProtected) {
     return denyAgentMutation(db, request, "action_unimplemented");
   }
 
@@ -273,7 +277,9 @@ async function preparePushExecution(
   });
   const repoFullName = `${repo.owner}/${repo.name}`;
   if (!isSameRepoPull(pull, repoFullName)) return denyAgentMutation(db, request, "unsafe_fork_pr");
-  if (pull.headRef === pull.baseRef) return denyAgentMutation(db, request, "unsafe_default_branch");
+  if (pull.headRef === pull.baseRef || (pull.defaultBranch && pull.headRef === pull.defaultBranch)) {
+    return denyAgentMutation(db, request, "unsafe_default_branch");
+  }
   if (pull.headRef !== payload.expectedHeadRef) {
     return denyAgentMutation(db, request, "head_ref_mismatch");
   }
@@ -283,17 +289,19 @@ async function preparePushExecution(
   if (await adapters.isBranchProtected({ owner: repo.owner, repo: repo.name, branch: pull.headRef })) {
     return denyAgentMutation(db, request, "unsafe_protected_branch");
   }
+  if (!adapters.verifyWorkspaceHead) return denyAgentMutation(db, request, "action_unimplemented");
+  const session = getDeploymentSession(db, request.deploymentId);
+  if (!session) return denyAgentMutation(db, request, "unknown_deployment");
+  const checkout = await adapters.verifyWorkspaceHead({
+    workspacePath: session.workspacePath,
+    expectedHeadRef: payload.expectedHeadRef,
+    expectedHeadSha: payload.expectedHeadSha,
+    owner: repo.owner,
+    repo: repo.name,
+  });
+  if (!checkout.ok) return denyAgentMutation(db, request, checkout.reason);
 
-  return {
-    allowed: true,
-    run: () => adapters.push?.({
-      owner: repo.owner,
-      repo: repo.name,
-      ref: `heads/${pull.headRef}`,
-      sha: payload.newSha,
-      expectedHeadSha: payload.expectedHeadSha,
-    }) ?? Promise.resolve(),
-  };
+  return denyAgentMutation(db, request, "unsupported_local_push");
 }
 
 function isSameRepoPull(pull: PullForSafety, baseRepoFullName: string): boolean {

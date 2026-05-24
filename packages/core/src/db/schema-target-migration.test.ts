@@ -65,7 +65,7 @@ describe("schema v19 — deployment target migration", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     const deployment = db
       .prepare("SELECT issue_number, target_type, target_number FROM deployments WHERE id = 1")
       .get() as { issue_number: number | null; target_type: string; target_number: number };

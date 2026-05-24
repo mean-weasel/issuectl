@@ -12,12 +12,22 @@ vi.mock("@/lib/logger", () => ({
 
 const getDb = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
+const getActiveWebhookDeploymentsForRepoTarget = vi.hoisted(() => vi.fn());
+const endDeployment = vi.hoisted(() => vi.fn());
+const killTtyd = vi.hoisted(() => vi.fn());
+const killTmuxSession = vi.hoisted(() => vi.fn());
+const tmuxSessionName = vi.hoisted(() => vi.fn((repo: string, targetNumber: number, targetType = "issue") => `issuectl-${repo}-${targetType}-${targetNumber}`));
 const updateRepo = vi.hoisted(() => vi.fn());
 const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getRepo: (...args: unknown[]) => getRepo(...args),
+  getActiveWebhookDeploymentsForRepoTarget: (...args: unknown[]) => getActiveWebhookDeploymentsForRepoTarget(...args),
+  endDeployment: (...args: unknown[]) => endDeployment(...args),
+  killTtyd: (...args: unknown[]) => killTtyd(...args),
+  killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
+  tmuxSessionName: (repo: string, targetNumber: number, targetType?: "issue" | "pr") => tmuxSessionName(repo, targetNumber, targetType),
   updateRepo: (...args: unknown[]) => updateRepo(...args),
   updateRepoWebhookSettings: (...args: unknown[]) => updateRepoWebhookSettings(...args),
   removeRepo: vi.fn(),
@@ -59,6 +69,12 @@ beforeEach(() => {
     issueAgent: "codex",
     webhookPayloadMode: "raw",
   });
+  getActiveWebhookDeploymentsForRepoTarget.mockReset();
+  getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([]);
+  endDeployment.mockReset();
+  killTtyd.mockReset();
+  killTmuxSession.mockReset();
+  tmuxSessionName.mockClear();
 });
 
 describe("/api/v1/repos/[owner]/[repo]", () => {
@@ -81,6 +97,27 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
       webhookPayloadMode: "raw",
     });
     expect(json.repo.webhookSecret).toBeUndefined();
+  });
+
+  it("PATCH ends active webhook sessions when automation is disabled", async () => {
+    getRepo.mockReturnValue({
+      ...repo,
+      autoReviewPrs: true,
+    });
+    getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([{
+      id: 22,
+      targetNumber: 44,
+      terminalBackend: "pty_bridge",
+      ttydPid: null,
+    }]);
+
+    const response = await PATCH(request({ autoReviewPrs: false }), {
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
+    expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 22, "killed_by_label");
   });
 
   it("PATCH rejects invalid webhook payload mode", async () => {

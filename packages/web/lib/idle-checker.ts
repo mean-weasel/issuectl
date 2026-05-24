@@ -8,6 +8,7 @@ import {
   getSetting,
   setIdleSince,
   clearIdleSince,
+  markActivePrReviewForDeploymentTerminal,
   recordDiagnosticEventSafely,
 } from "@issuectl/core";
 import {
@@ -147,7 +148,14 @@ export function checkDeploymentLiveness(): void {
       const target = getDeploymentTarget(deployment);
       const sessionName = deploymentSessionName(deployment.repoName, deployment);
       if (!isTmuxSessionAlive(sessionName)) {
-        endDeployment(db, deployment.id);
+        endDeployment(db, deployment.id, "liveness_missing");
+        if (target.targetType === "pr") {
+          markActivePrReviewForDeploymentTerminal(db, deployment.id, {
+            completedAt: Date.now(),
+            status: "failed",
+            reason: "liveness_missing",
+          });
+        }
         notifyDeploymentTerminalOutcome({ deploymentId: deployment.id });
         recordDiagnosticEventSafely(db, {
           level: "warn",
@@ -156,6 +164,8 @@ export function checkDeploymentLiveness(): void {
           owner: deployment.owner,
           repo: deployment.repoName,
           issueNumber: target.targetType === "issue" ? target.targetNumber : undefined,
+          targetType: target.targetType,
+          targetNumber: target.targetNumber,
           deploymentId: deployment.id,
           sessionName,
           message: `tmux session ${sessionName} is gone`,
@@ -176,6 +186,8 @@ export function checkDeploymentLiveness(): void {
         owner: deployment.owner,
         repo: deployment.repoName,
         issueNumber: issueNumberForDiagnostic(deployment),
+        targetType: deployment.targetType ?? "issue",
+        targetNumber: deployment.targetNumber ?? deployment.issueNumber ?? undefined,
         deploymentId: deployment.id,
         message: err instanceof Error ? err.message : String(err),
       });

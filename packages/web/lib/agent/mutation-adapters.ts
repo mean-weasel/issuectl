@@ -2,6 +2,9 @@ import {
   addLabel,
   createIssue,
   createPullComment,
+  getCurrentBranch,
+  getHeadSha,
+  getRemoteUrl,
   removeLabel,
   withAuthRetry,
 } from "@issuectl/core";
@@ -38,12 +41,35 @@ export const defaultAgentMutationAdapters: AgentMutationAdapters = {
     );
     return Boolean(data.protected);
   },
+  verifyWorkspaceHead: async ({ workspacePath, expectedHeadRef, expectedHeadSha, owner, repo }) => {
+    const [branch, sha, remoteUrl] = await Promise.all([
+      getCurrentBranch(workspacePath),
+      getHeadSha(workspacePath),
+      getRemoteUrl(workspacePath, "origin"),
+    ]);
+    if (branch !== expectedHeadRef) return { ok: false, reason: "unsafe_checkout" };
+    if (sha !== expectedHeadSha) return { ok: false, reason: "unsafe_checkout" };
+    if (!remoteMatchesRepo(remoteUrl, owner, repo)) return { ok: false, reason: "unsafe_checkout" };
+    return { ok: true };
+  },
   push: async ({ owner, repo, ref, sha }) => {
     await withAuthRetry((octokit) =>
       octokit.rest.git.updateRef({ owner, repo, ref, sha, force: false }),
     );
   },
 };
+
+function remoteMatchesRepo(remoteUrl: string, owner: string, repo: string): boolean {
+  const expected = `${owner}/${repo}`.toLowerCase();
+  const normalized = remoteUrl
+    .trim()
+    .replace(/\.git$/i, "")
+    .replace(/^git@github\.com:/i, "")
+    .replace(/^https:\/\/github\.com\//i, "")
+    .replace(/^ssh:\/\/git@github\.com\//i, "")
+    .toLowerCase();
+  return normalized === expected;
+}
 
 function mapPullForSafety(raw: unknown): PullForSafety {
   const pull = raw as {
@@ -56,7 +82,7 @@ function mapPullForSafety(raw: unknown): PullForSafety {
     merged_at?: string | null;
     user?: { login: string; avatar_url: string } | null;
     head: { ref: string; sha: string; repo: { full_name: string } | null };
-    base: { ref: string; sha: string; repo: { full_name: string } | null };
+    base: { ref: string; sha: string; repo: { full_name: string; default_branch?: string } | null };
     additions?: number;
     deletions?: number;
     changed_files?: number;
@@ -75,6 +101,7 @@ function mapPullForSafety(raw: unknown): PullForSafety {
     user: pull.user ? { login: pull.user.login, avatarUrl: pull.user.avatar_url } : null,
     headRef: pull.head.ref,
     baseRef: pull.base.ref,
+    defaultBranch: pull.base.repo?.default_branch,
     headSha: pull.head.sha,
     baseSha: pull.base.sha,
     headRepoFullName: pull.head.repo?.full_name ?? "",

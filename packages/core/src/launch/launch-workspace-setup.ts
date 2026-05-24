@@ -13,6 +13,8 @@ type LaunchWorkspaceOptions = {
   branchName: string;
   workspaceMode: WorkspaceMode;
   forceResume?: boolean;
+  expectedHeadRef?: string;
+  expectedHeadSha?: string;
 };
 
 export function expandHome(p: string): string {
@@ -71,6 +73,8 @@ export async function prepareLaunchWorkspace(
     issueNumber: options.targetNumber,
     worktreeDir,
     forceResume: options.forceResume,
+    expectedHeadRef: options.expectedHeadRef,
+    expectedHeadSha: options.expectedHeadSha,
   });
 
   return { repoRecord, workspace };

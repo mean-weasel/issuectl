@@ -1044,6 +1044,7 @@ function FocusContent({
       <RepoSetupFocus
         repos={loadState.data.repos}
         selectedRepo={selectedRepo}
+        settings={loadState.data.settings}
         onRepoUpdated={onRepoUpdated}
         onRepoAdded={onRepoAdded}
         onRepoRemoved={onRepoRemoved}
@@ -1450,7 +1451,12 @@ function workbenchContextLabel({
   if (mode === "pullRequests") return repo ? `${repo.owner}/${repo.name} PRs` : "PRs";
   if (mode === "quickCreate") return repo ? `${repo.owner}/${repo.name} quick create` : "Quick Create";
   if (mode === "settings") return repo ? `${repo.owner}/${repo.name} settings` : "Settings";
-  if (repo && deployment) return `${repo.owner}/${repo.name} #${deployment.issueNumber} terminal`;
+  if (repo && deployment) {
+    const targetLabel = deployment.targetType === "pr"
+      ? `PR #${deployment.targetNumber}`
+      : `#${deployment.targetNumber}`;
+    return `${repo.owner}/${repo.name} ${targetLabel} terminal`;
+  }
   if (repo && issue) return `${repo.owner}/${repo.name} #${issue.number}`;
   if (repo) return `${repo.owner}/${repo.name}`;
   return "Workbench";

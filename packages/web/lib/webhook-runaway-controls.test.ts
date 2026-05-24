@@ -59,7 +59,11 @@ describe("webhook runaway controls", () => {
       expect.objectContaining({ status: "deferred", scheduled_at: 12_000 }),
     );
     expect(queryDiagnosticEvents(db, { events: ["webhook.runaway_limited"] })).toEqual([
-      expect.objectContaining({ status: "concurrent_agents_exceeded" }),
+      expect.objectContaining({
+        status: "concurrent_agents_exceeded",
+        targetType: "issue",
+        targetNumber: 506,
+      }),
     ]);
   });
 

@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import {
   killTmuxSession,
   killTtyd,
+  markActivePrReviewForDeploymentTerminal,
   mergeWebhookIntent,
   tmuxSessionName,
   withAuthRetry,
@@ -249,6 +250,13 @@ function endNonManualTargetSessions(
     if (session.ttyd_pid) endTtyd(session.ttyd_pid, sessionName);
     else if (session.terminal_backend === "pty_bridge") endTmuxSession(sessionName);
     ended += end.run(session.id).changes;
+    if (targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, session.id, {
+        completedAt: Date.now(),
+        status: "superseded",
+        reason: "ended_manual",
+      });
+    }
   }
   return ended;
 }

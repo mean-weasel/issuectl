@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import {
   executeLaunch,
-  generateBranchName,
   withAuthRetry,
 } from "@issuectl/core";
 import type { Repo, WebhookIntent } from "@issuectl/core";
@@ -27,7 +26,7 @@ export const launchPrFromWebhook: LaunchPrReview = async (
     targetType: "pr",
     targetNumber: intent.targetNumber,
     agent: intent.requestedAgent ?? repo.reviewAgent,
-    branchName: generateBranchName("pr-{number}-{slug}", intent.targetNumber, pull.title),
+    branchName: pull.headRef,
     workspaceMode: repo.localPath ? "worktree" : "clone",
     selectedComments: [],
     selectedFiles: [],

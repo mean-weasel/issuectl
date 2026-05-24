@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import type Database from "better-sqlite3";
 import type { Deployment, DeploymentState, DeploymentTargetType, DeploymentTerminalReason, DeploymentTriggeredBy, LaunchAgent, TerminalBackend } from "../types.js";
 
@@ -136,6 +137,41 @@ export function getDeploymentsByRepo(db: Database.Database, repoId: number): Dep
       "SELECT * FROM deployments WHERE repo_id = ? AND state = 'active' ORDER BY launched_at DESC",
     )
     .all(repoId) as DeploymentRow[];
+  return rows.map(rowToDeployment);
+}
+
+export function getActiveWebhookDeploymentsForRepoTarget(
+  db: Database.Database,
+  repoId: number,
+  targetType: DeploymentTargetType,
+): Deployment[] {
+  const rows = db.prepare(
+    `SELECT *
+     FROM deployments
+     WHERE repo_id = ?
+       AND target_type = ?
+       AND triggered_by = 'webhook'
+       AND state = 'active'
+       AND ended_at IS NULL
+     ORDER BY launched_at DESC`,
+  ).all(repoId, targetType) as DeploymentRow[];
+  return rows.map(rowToDeployment);
+}
+
+export function listRecentTerminalDeploymentsByRepo(
+  db: Database.Database,
+  repoId: number,
+  limit = 5,
+): Deployment[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const rows = db.prepare(
+    `SELECT *
+     FROM deployments
+     WHERE repo_id = ?
+       AND ended_at IS NOT NULL
+     ORDER BY ended_at DESC, id DESC
+     LIMIT ?`,
+  ).all(repoId, boundedLimit) as DeploymentRow[];
   return rows.map(rowToDeployment);
 }
 

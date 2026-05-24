@@ -19,6 +19,7 @@ const getSetting = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const coreEndDeployment = vi.hoisted(() => vi.fn());
+const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
 const isTmuxSessionAlive = vi.hoisted(() => vi.fn());
 const executeLaunch = vi.hoisted(() => vi.fn());
@@ -34,6 +35,7 @@ vi.mock("@issuectl/core", () => ({
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   endDeployment: (...args: unknown[]) => coreEndDeployment(...args),
+  markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
   tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
     targetType === "issue"
@@ -98,6 +100,7 @@ beforeEach(() => {
   killTmuxSession.mockReset();
   killTtyd.mockReset();
   coreEndDeployment.mockReset();
+  markActivePrReviewForDeploymentTerminal.mockReset();
   cleanupStaleContextFiles.mockReset();
 
   isTmuxSessionAlive.mockReset();
@@ -189,7 +192,7 @@ describe("endSession", () => {
     const result = await withConsoleWarnSilenced(() => endSession(...ARGS));
 
     expect(killTtyd).toHaveBeenCalledWith(42, "issuectl-repo-7");
-    expect(coreEndDeployment).toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalledWith(expect.anything(), 1, "ended_manual");
     expect(result).toMatchObject({ success: true });
   });
 
@@ -201,7 +204,7 @@ describe("endSession", () => {
     const result = await withConsoleWarnSilenced(() => endSession(...ARGS));
 
     // Kill failure must not prevent the DB update.
-    expect(coreEndDeployment).toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalledWith(expect.anything(), 1, "ended_manual");
     expect(result).toMatchObject({ success: true });
   });
 
@@ -212,7 +215,7 @@ describe("endSession", () => {
 
     expect(killTtyd).not.toHaveBeenCalled();
     expect(killTmuxSession).not.toHaveBeenCalled();
-    expect(coreEndDeployment).toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalledWith(expect.anything(), 1, "ended_manual");
     expect(result).toMatchObject({ success: true });
   });
 
@@ -226,7 +229,7 @@ describe("endSession", () => {
 
     expect(killTtyd).not.toHaveBeenCalled();
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-repo-7");
-    expect(coreEndDeployment).toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalledWith(expect.anything(), 1, "ended_manual");
     expect(result).toMatchObject({ success: true });
   });
 
@@ -251,8 +254,29 @@ describe("endSession", () => {
     expect(coreEndDeployment).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       success: false,
-      error: "Deployment does not match the specified issue",
+      error: "Deployment does not match the specified target",
     });
+  });
+
+  it("ends PR sessions and marks the active review superseded", async () => {
+    getDeploymentById.mockReturnValue({
+      ...makeDeployment(null),
+      issueNumber: null,
+      targetType: "pr",
+      targetNumber: 506,
+      terminalBackend: "pty_bridge",
+    });
+
+    const result = await endSession(1, "owner", "repo", 506, "pr", 506);
+
+    expect(killTmuxSession).toHaveBeenCalledWith("issuectl-repo-pr-506");
+    expect(coreEndDeployment).toHaveBeenCalledWith(expect.anything(), 1, "ended_manual");
+    expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 1, {
+      completedAt: expect.any(Number),
+      status: "superseded",
+      reason: "ended_manual",
+    });
+    expect(result).toMatchObject({ success: true });
   });
 });
 
@@ -272,7 +296,7 @@ describe("checkSessionAlive", () => {
     const result = await withConsoleErrorSilenced(() => checkSessionAlive(1));
 
     expect(result).toEqual({ alive: false });
-    expect(coreEndDeployment).toHaveBeenCalled();
+    expect(coreEndDeployment).toHaveBeenCalledWith(expect.anything(), 1, "liveness_missing");
   });
 
   it("returns not alive when deployment is already ended", async () => {

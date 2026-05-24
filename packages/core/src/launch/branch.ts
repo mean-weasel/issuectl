@@ -57,6 +57,49 @@ export async function createOrCheckoutBranch(
   }
 }
 
+export async function fetchRemoteRef(
+  repoPath: string,
+  remote: string,
+  refName: string,
+): Promise<void> {
+  await execFileAsync("git", ["fetch", remote, refName], { cwd: repoPath, timeout: 30_000 });
+}
+
+export async function createOrResetBranchAtRef(
+  repoPath: string,
+  branchName: string,
+  ref: string,
+): Promise<void> {
+  await execFileAsync("git", ["checkout", "-B", branchName, ref], { cwd: repoPath, timeout: 10_000 });
+}
+
+export async function getCurrentBranch(repoPath: string): Promise<string> {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["branch", "--show-current"],
+    { cwd: repoPath, timeout: 10_000 },
+  );
+  return stdout.trim();
+}
+
+export async function getHeadSha(repoPath: string): Promise<string> {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["rev-parse", "HEAD"],
+    { cwd: repoPath, timeout: 10_000 },
+  );
+  return stdout.trim();
+}
+
+export async function getRemoteUrl(repoPath: string, remote = "origin"): Promise<string> {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["remote", "get-url", remote],
+    { cwd: repoPath, timeout: 10_000 },
+  );
+  return stdout.trim();
+}
+
 export async function isWorkingTreeClean(repoPath: string): Promise<boolean> {
   const { stdout } = await execFileAsync(
     "git",
