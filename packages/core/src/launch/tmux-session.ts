@@ -51,9 +51,9 @@ export function createTmuxAgentSession(options: SpawnPtyBridgeSessionOptions): v
   const envExports = Object.entries(extraEnv)
     .filter(([key]) => /^[A-Z_][A-Z0-9_]*$/.test(key))
     .map(([key, value]) => `export ${key}=${shellEscape(value)}`)
-    .join("; ");
+  const setupCommands = [envReset, ...envExports].filter(Boolean).join("; ");
   const innerCommand =
-    `${envReset}; ${envExports}; cd ${shellEscape(workspacePath)} && ${agentCommand} ${contextInput} ; exit`;
+    `${setupCommands}; cd ${shellEscape(workspacePath)} && ${agentCommand} ${contextInput} ; exit`;
 
   execFileSync("tmux", [
     "new-session", "-d",

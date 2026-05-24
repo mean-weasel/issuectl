@@ -63,6 +63,30 @@ describe("webhook runaway controls", () => {
     ]);
   });
 
+  it("counts active comment-command sessions toward the webhook agent cap", () => {
+    setSetting(db, "max_concurrent_webhook_agents", "1");
+    const activeDeploymentId = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 999,
+      branchName: "issue-999",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issuectl-live",
+    }).id;
+    db.prepare("UPDATE deployments SET triggered_by = 'comment_command' WHERE id = ?").run(activeDeploymentId);
+    const intent = claimIntent(db, 506, 2_000);
+
+    const decision = enforceWebhookRunawayControls(db, repo, intent, 2_000);
+
+    expect(decision).toEqual({
+      allowed: false,
+      outcome: "deferred",
+      reason: "concurrent_agents_exceeded",
+    });
+    expect(getIntentRow(db, intent.id)).toEqual(
+      expect.objectContaining({ status: "deferred", scheduled_at: 12_000 }),
+    );
+  });
+
   it("defers launches when the repo launch-rate cap is reached", () => {
     setSetting(db, "max_webhook_launches_per_minute", "1");
     const launchedId = mergeWebhookIntent(db, {

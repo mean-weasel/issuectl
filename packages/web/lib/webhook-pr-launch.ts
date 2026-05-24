@@ -26,7 +26,7 @@ export const launchPrFromWebhook: LaunchPrReview = async (
     repo: repo.name,
     targetType: "pr",
     targetNumber: intent.targetNumber,
-    agent: repo.reviewAgent,
+    agent: intent.requestedAgent ?? repo.reviewAgent,
     branchName: generateBranchName("pr-{number}-{slug}", intent.targetNumber, pull.title),
     workspaceMode: repo.localPath ? "worktree" : "clone",
     selectedComments: [],

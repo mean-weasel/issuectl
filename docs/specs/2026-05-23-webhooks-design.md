@@ -85,6 +85,8 @@ unless they also end a real deployment row.
 
 ## Out of Scope
 
-- Direct pushes.
+- Direct, ambient-credential agent pushes. Webhook/comment-command agents must
+  route GitHub mutations, including allowed PR pushes, through the
+  daemon-mediated `issuectl agent mutate` policy gateway.
 - New push platforms or preference schema beyond the existing APNs/iOS device
   registration surface.

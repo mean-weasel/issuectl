@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 import { runAgentActionsMigration } from "./migrations-agent-actions.js";
 import { runPrReviewsMigration } from "./migrations-pr-reviews.js";
 import { runWebhookRunawayMigration } from "./migrations-webhook-runaway.js";
-import { runDeploymentTargetMigration, runDeploymentTerminalMigration, runWebhookMigration } from "./migrations-webhooks.js";
+import { runDeploymentTargetMigration, runDeploymentTerminalMigration, runWebhookIntentOptionsMigration, runWebhookMigration } from "./migrations-webhooks.js";
 import { getSchemaVersion } from "./schema.js";
 
 type Migration = { version: number; up: (db: Database.Database) => void };
@@ -344,6 +344,7 @@ const migrations: Migration[] = [
   { version: 20, up(db) { runPrReviewsMigration(db); } },
   { version: 21, up(db) { runAgentActionsMigration(db); } },
   { version: 22, up(db) { runWebhookRunawayMigration(db); } },
+  { version: 23, up(db) { runWebhookIntentOptionsMigration(db); } },
 ];
 
 export function runMigrations(db: Database.Database): void {

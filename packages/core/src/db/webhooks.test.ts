@@ -9,6 +9,7 @@ import {
   claimDueWebhookIntent,
   getWebhookEventByDelivery,
   listWebhookEvents,
+  mergeWebhookIntent,
   pruneExpiredWebhookPayloads,
   recordWebhookEvent,
   recoverExpiredWebhookIntentLeases,
@@ -237,6 +238,33 @@ describe("webhook DB helpers", () => {
     });
   });
 
+  it("preserves requested agent and review mode through merged intents", () => {
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      signalAt: 1_000,
+      scheduledAt: 1_050,
+      requestedAgent: "codex",
+      reviewMode: "full",
+    });
+
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      signalAt: 1_100,
+      scheduledAt: 1_150,
+    });
+
+    const claimed = claimDueWebhookIntent(db, 1_150, 500);
+    expect(claimed).toEqual(expect.objectContaining({
+      id: intentId,
+      requestedAgent: "codex",
+      reviewMode: "full",
+    }));
+  });
+
   it("does not return stale active rows as claimed", () => {
     const intentId = insertPendingIntent(db, repoId, "issue", 507, 1_000, 1_000);
     db.prepare(
@@ -256,6 +284,25 @@ describe("webhook DB helpers", () => {
       processing_started_at: null,
       lease_expires_at: null,
     });
+  });
+
+  it("migrates v22 webhook intents to include command options", () => {
+    const oldDb = createRawTestDb();
+    oldDb.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (22);
+      CREATE TABLE webhook_intents (id INTEGER PRIMARY KEY AUTOINCREMENT);
+    `);
+
+    runMigrations(oldDb);
+
+    const columns = oldDb.prepare("PRAGMA table_info(webhook_intents)").all();
+    expect(columns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "requested_agent" }),
+        expect.objectContaining({ name: "review_mode" }),
+      ]),
+    );
   });
 });
 

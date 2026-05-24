@@ -226,7 +226,7 @@ describe("pr_reviews migration", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     expect(() =>
       db.prepare(
         `INSERT INTO pr_reviews (

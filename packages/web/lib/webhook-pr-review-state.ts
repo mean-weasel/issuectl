@@ -19,12 +19,13 @@ export async function planPrReview(
   const active = getActivePrReview(db, repo.id, intent.targetNumber);
   if (active) return planForActiveReview(db, active, pull);
 
+  const forceFullReview = intent.reviewMode === "full";
   const completed = getLatestCompletedPrReview(db, repo.id, intent.targetNumber);
-  if (completed?.reviewedToSha === pull.headSha) {
+  if (!forceFullReview && completed?.reviewedToSha === pull.headSha) {
     return { action: "skip", event: "webhook.pr_already_reviewed", reason: "PR head was already reviewed." };
   }
   let reviewedFromSha: string | null = null;
-  if (completed) {
+  if (completed && !forceFullReview) {
     const ancestor = await (deps.isAncestor ?? defaultIsAncestor)(repo, completed.reviewedToSha, pull.headSha);
     if (ancestor) reviewedFromSha = completed.completedHeadSha ?? completed.reviewedToSha;
     else supersedePrReview(db, completed.id, now, "force_push");

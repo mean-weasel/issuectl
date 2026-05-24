@@ -7,7 +7,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
   it("initSchema on a fresh DB produces the current schema version", () => {
     const db = createRawTestDb();
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
   });
 
   it("fresh schema includes the drafts table", () => {
@@ -93,7 +93,7 @@ describe("schema v5 — drafts and issue_metadata", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     const drafts = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'drafts'",
@@ -186,7 +186,7 @@ describe("schema v8 — deployments FK cascade", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
 
     // Pre-existing row should have been copied over with its state intact
     const row = db
@@ -269,7 +269,7 @@ describe("schema v9 — live deployment unique index", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(22);
+    expect(getSchemaVersion(db)).toBe(23);
     // Row id=1 (older duplicate) → ended. id=2 (most recent live) → live.
     // id=3 (historic ended) → still ended, untouched.
     const live = db

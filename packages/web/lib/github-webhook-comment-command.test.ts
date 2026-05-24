@@ -88,8 +88,13 @@ describe("issuectl comment command webhooks", () => {
 
     expect(JSON.parse(res.body)).toEqual({ ok: true, eventId: 1, intentId: 1 });
     expect(db.prepare(
-      "SELECT target_type, target_number, status FROM webhook_intents",
-    ).get()).toEqual({ target_type: "issue", target_number: 506, status: "pending" });
+      "SELECT target_type, target_number, status, requested_agent FROM webhook_intents",
+    ).get()).toEqual({
+      target_type: "issue",
+      target_number: 506,
+      status: "pending",
+      requested_agent: "codex",
+    });
     expect(queryDiagnosticEvents(db, { events: ["webhook.comment_command_accepted"] })).toHaveLength(1);
   });
 
@@ -119,8 +124,13 @@ describe("issuectl comment command webhooks", () => {
 
     expect(JSON.parse(res.body)).toEqual({ ok: true, eventId: 1, intentId: 1 });
     expect(db.prepare(
-      "SELECT target_type, target_number, status FROM webhook_intents",
-    ).get()).toEqual({ target_type: "pr", target_number: 44, status: "pending" });
+      "SELECT target_type, target_number, status, review_mode FROM webhook_intents",
+    ).get()).toEqual({
+      target_type: "pr",
+      target_number: 44,
+      status: "pending",
+      review_mode: "full",
+    });
   });
 
   it("ends only non-manual target sessions for authorized end commands", async () => {
@@ -148,6 +158,34 @@ describe("issuectl comment command webhooks", () => {
     expect(db.prepare("SELECT ended_at FROM deployments WHERE issue_number = 506").get()).toEqual({ ended_at: null });
     expect(db.prepare("SELECT ended_at FROM deployments WHERE repo_id = ? AND issue_number = 507").get(repoId)).toEqual({ ended_at: expect.any(String) });
     expect(db.prepare("SELECT ended_at FROM deployments WHERE repo_id = ? AND issue_number = 507").get(otherRepo.id)).toEqual({ ended_at: null });
+  });
+
+  it("uses PR tmux session names when ending PR comment-command sessions", async () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        repo_id, issue_number, target_type, target_number, branch_name, workspace_mode,
+        workspace_path, triggered_by, terminal_backend
+       )
+       VALUES (?, NULL, 'pr', 44, 'pr-44', 'worktree', '/tmp/pr-44', 'comment_command', 'pty_bridge')`,
+    ).run(repoId);
+
+    const killedSessions: string[] = [];
+    const res = createResponse();
+    await handleGithubWebhookRequest(db, createSignedRequest(
+      repoId,
+      issueCommentPayload("/issuectl end", { number: 44, pull_request: {} }),
+    ), res, {
+      getCollaboratorPermission: async () => "write",
+      killTmuxSession: (sessionName) => {
+        killedSessions.push(sessionName);
+      },
+    });
+
+    expect(JSON.parse(res.body)).toEqual({ ok: true, eventId: 1, intentId: null, endedSessions: 1 });
+    expect(killedSessions).toEqual(["issuectl-issuectl-pr-44"]);
+    expect(db.prepare("SELECT ended_at FROM deployments WHERE target_type = 'pr' AND target_number = 44").get()).toEqual({
+      ended_at: expect.any(String),
+    });
   });
 
   it("denies commands from read-only collaborators", async () => {
