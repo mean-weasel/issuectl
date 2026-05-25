@@ -108,6 +108,19 @@ describe("PR webhook intents", () => {
     expect(
       db.prepare("SELECT pr_number, status, deployment_id, reviewed_to_sha FROM pr_reviews").get(),
     ).toEqual({ pr_number: 44, status: "in_progress", deployment_id: 1, reviewed_to_sha: "head-b" });
+    const prTarget = { owner: "mean-weasel", repo: "issuectl", targetType: "pr" as const, targetNumber: 44 };
+    expect(queryDiagnosticEvents(db, {
+      target: prTarget,
+      events: ["webhook.lock_check"],
+    })).toEqual([
+      expect.objectContaining({ issueNumber: null, targetType: "pr", targetNumber: 44, message: "PR has no active review blocking launch." }),
+    ]);
+    expect(queryDiagnosticEvents(db, {
+      target: prTarget,
+      events: ["webhook.launched"],
+    })).toEqual([
+      expect.objectContaining({ issueNumber: null, targetType: "pr", targetNumber: 44, deploymentId: 1 }),
+    ]);
     expect(queryDiagnosticEvents(db, { events: ["webhook.pr_launched"] })).toHaveLength(1);
   });
 

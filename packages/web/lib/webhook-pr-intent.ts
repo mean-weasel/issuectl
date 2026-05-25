@@ -77,6 +77,13 @@ export async function handlePullRequestIntent(
     }
     if (!deps.launchPr) throw new Error("PR launch dependency is not configured");
     const plan = await planPrReview(db, repo, intent, pull, now, deps, triggeredBy);
+    recordPrIntentDiagnostic(
+      db,
+      repo,
+      intent,
+      "webhook.lock_check",
+      plan.action === "skip" ? plan.reason : "PR has no active review blocking launch.",
+    );
     if (plan.action === "skip") {
       markIntentSkippedLocked(db, intent.id, now, plan.reason);
       recordPrIntentDiagnostic(db, repo, intent, plan.event, plan.reason);
@@ -88,6 +95,7 @@ export async function handlePullRequestIntent(
     const launch = await deps.launchPr(db, repo, intent, pull, review);
     markPrReviewInProgress(db, review.id, launch.deploymentId);
     markIntentLaunched(db, intent.id, now, launch.deploymentId);
+    recordPrIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched PR review session.", launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.pr_launched", "Webhook launched PR review session.", launch.deploymentId);
     return result(base, { claimed: 1, launched: 1 });
   } catch (err) {

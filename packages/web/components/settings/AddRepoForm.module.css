@@ -262,19 +262,54 @@
   overflow-wrap: anywhere;
 }
 
-.installList {
+.installPane {
   display: grid;
   gap: 8px;
-  margin: 0;
-  padding-left: 22px;
-  color: var(--paper-ink);
-  font-size: 14px;
-  line-height: 1.4;
 }
 
-.doneItem {
-  color: var(--paper-accent);
-  font-weight: 600;
+.installRow {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 8px 10px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  color: var(--paper-ink);
+  font-size: 13px;
+}
+
+.installRow strong {
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.installDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--paper-line);
+}
+
+.installDot_running {
+  background: var(--paper-accent);
+}
+
+.installDot_done {
+  background: #2f7d4f;
+}
+
+.installDot_warning,
+.installDot_failed {
+  background: var(--paper-brick);
+}
+
+.installDot_skipped {
+  background: var(--paper-ink-muted);
 }
 
 .postAddActions {

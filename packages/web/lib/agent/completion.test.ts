@@ -174,5 +174,17 @@ describe("web agent completion check-ins", () => {
       desired_head_sha: "head-c",
       status: "pending",
     });
+    expect(queryDiagnosticEvents(db, {
+      target: { owner: "mean-weasel", repo: "issuectl", targetType: "pr", targetNumber: 44 },
+      events: ["webhook.completed"],
+    })).toEqual([
+      expect.objectContaining({
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        deploymentId: deployment.id,
+        status: "no_changes",
+      }),
+    ]);
   });
 });

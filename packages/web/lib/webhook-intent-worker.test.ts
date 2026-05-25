@@ -122,6 +122,17 @@ describe("runWebhookIntentWorkerOnce", () => {
     const result = await runWorker(db, 2_000);
 
     expectWorkerResult(result, { claimed: 1, launched: 1 });
+    expect(queryDiagnosticEvents(db, {
+      target: { owner: "mean-weasel", repo: "issuectl", targetType: "issue", targetNumber: 506 },
+      events: ["webhook.lock_check"],
+    })).toEqual([
+      expect.objectContaining({
+        issueNumber: 506,
+        targetType: "issue",
+        targetNumber: 506,
+        message: "Issue has no live session.",
+      }),
+    ]);
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({
         status: "launched",
@@ -199,6 +210,17 @@ describe("runWebhookIntentWorkerOnce", () => {
     const result = await runWorker(db, 2_000);
 
     expectWorkerResult(result, { claimed: 1, skippedLocked: 1 });
+    expect(queryDiagnosticEvents(db, {
+      target: { owner: "mean-weasel", repo: "issuectl", targetType: "issue", targetNumber: 506 },
+      events: ["webhook.lock_check"],
+    })).toEqual([
+      expect.objectContaining({
+        issueNumber: 506,
+        targetType: "issue",
+        targetNumber: 506,
+        message: "Issue already has a live session.",
+      }),
+    ]);
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({
         status: "skipped_locked",

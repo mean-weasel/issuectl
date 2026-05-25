@@ -123,17 +123,21 @@ function recordCompletionDiagnostic(
 ): void {
   const session = getCompletionSession(db, input.deploymentId);
   const repo = session ? getRepoById(db, session.repoId) : undefined;
+  const targetType = session?.targetType;
+  const targetNumber = session?.targetNumber ?? undefined;
   recordDiagnosticEventSafely(db, {
     level,
     event,
     source: "agent.completion",
     owner: repo?.owner,
     repo: repo?.name,
-    issueNumber: session?.issueNumber ?? undefined,
+    issueNumber: targetType === "issue" ? targetNumber : undefined,
+    targetType,
+    targetNumber,
     deploymentId: input.deploymentId,
     status: reason ?? input.status,
     message: reason ? `Agent completion denied: ${reason}` : "Agent completion recorded",
-    data: { status: input.status, reason },
+    data: { status: input.status, reason, targetType, targetNumber },
   });
 }
 
