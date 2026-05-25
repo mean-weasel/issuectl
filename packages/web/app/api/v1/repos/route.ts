@@ -7,6 +7,7 @@ import {
   addRepo,
   getRepo,
   formatErrorForUser,
+  updateRepoWebhookSettings,
   withAuthRetry,
 } from "@issuectl/core";
 
@@ -34,6 +35,11 @@ const OWNER_REPO_RE = /^[a-zA-Z0-9._-]+$/;
 type AddRepoBody = {
   owner: string;
   name: string;
+  autoLaunchIssues?: boolean;
+  autoReviewPrs?: boolean;
+  issueAgent?: "claude" | "codex";
+  reviewAgent?: "claude" | "codex";
+  webhookPayloadMode?: "metadata" | "raw";
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -91,6 +97,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const repo = addRepo(db, { owner: body.owner, name: body.name });
+    const webhookUpdates = {
+      autoLaunchIssues: body.autoLaunchIssues,
+      autoReviewPrs: body.autoReviewPrs,
+      issueAgent: body.issueAgent,
+      reviewAgent: body.reviewAgent,
+      webhookPayloadMode: body.webhookPayloadMode,
+    };
+    if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
+      updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+    }
     log.info({ msg: "api_repo_added", repoId: repo.id, owner: body.owner, name: body.name });
     return NextResponse.json({ success: true, repo });
   } catch (err) {

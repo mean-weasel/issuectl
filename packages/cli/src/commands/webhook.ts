@@ -25,6 +25,15 @@ type WebhookOctokit = {
   };
 };
 
+const ISSUECTL_WEBHOOK_EVENTS = [
+  "issues",
+  "pull_request",
+  "pull_request_review",
+  "pull_request_review_comment",
+  "issue_comment",
+  "push",
+];
+
 function parseLimit(value: string): number {
   const trimmed = value.trim();
   if (!/^[1-9]\d*$/.test(trimmed)) {
@@ -173,7 +182,7 @@ async function createWebhook(
     repo: input.repo,
     name: "web",
     active: true,
-    events: ["issues", "issue_comment", "pull_request", "pull_request_review_comment"],
+    events: ISSUECTL_WEBHOOK_EVENTS,
     config: webhookConfig(input),
   });
   return { id: data.id };
@@ -188,7 +197,7 @@ async function rotateWebhook(
     repo: input.repo,
     hook_id: input.hookId,
     active: true,
-    events: ["issues", "issue_comment", "pull_request", "pull_request_review_comment"],
+    events: ISSUECTL_WEBHOOK_EVENTS,
     config: webhookConfig(input),
   });
   return { id: data.id };

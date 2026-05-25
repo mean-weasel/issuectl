@@ -129,7 +129,15 @@ export async function runWebhookIntentWorkerOnce(
       markIntentTerminal(db, intent.id, "skipped_optout", now, "Issue is not opted in");
       return result(base, { claimed: 1, skippedOptout: 1 });
     }
-    if (hasLiveDeploymentForIssue(db, repo.id, intent.targetNumber)) {
+    const locked = hasLiveDeploymentForIssue(db, repo.id, intent.targetNumber);
+    recordIntentDiagnostic(
+      db,
+      repo,
+      intent,
+      "webhook.lock_check",
+      locked ? "Issue already has a live session." : "Issue has no live session.",
+    );
+    if (locked) {
       recordIntentDiagnostic(db, repo, intent, "webhook.skipped_locked", "Issue already has a live session.");
       markIntentTerminal(db, intent.id, "skipped_locked", now, "Issue already has a live session");
       return result(base, { claimed: 1, skippedLocked: 1 });

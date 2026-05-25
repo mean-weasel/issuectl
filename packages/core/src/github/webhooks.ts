@@ -1,10 +1,12 @@
 import type { Octokit } from "@octokit/rest";
 
-const WEBHOOK_EVENTS = [
+export const ISSUECTL_WEBHOOK_EVENTS = [
   "issues",
   "issue_comment",
   "pull_request",
+  "pull_request_review",
   "pull_request_review_comment",
+  "push",
 ];
 
 export type GitHubWebhookSetupInput = {
@@ -29,7 +31,7 @@ export async function createIssuectlWebhook(
     repo: input.repo,
     name: "web",
     active: true,
-    events: WEBHOOK_EVENTS,
+    events: ISSUECTL_WEBHOOK_EVENTS,
     config: webhookConfig(input),
   });
   return { id: data.id, createdBy };
@@ -45,7 +47,7 @@ export async function rotateIssuectlWebhook(
     repo: input.repo,
     hook_id: input.hookId,
     active: true,
-    events: WEBHOOK_EVENTS,
+    events: ISSUECTL_WEBHOOK_EVENTS,
     config: webhookConfig(input),
   });
   return { id: data.id, createdBy };

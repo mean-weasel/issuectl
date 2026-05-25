@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Octokit } from "@octokit/rest";
 import {
+  ISSUECTL_WEBHOOK_EVENTS,
   createIssuectlWebhook,
   rotateIssuectlWebhook,
 } from "./webhooks.js";
@@ -38,7 +39,7 @@ describe("GitHub webhook management", () => {
       owner: "mean-weasel",
       repo: "issuectl",
       active: true,
-      events: ["issues", "issue_comment", "pull_request", "pull_request_review_comment"],
+      events: ISSUECTL_WEBHOOK_EVENTS,
       config: {
         url: "https://hooks.example.test/api/webhook/github/1",
         content_type: "json",
@@ -61,6 +62,7 @@ describe("GitHub webhook management", () => {
 
     expect(updateWebhook).toHaveBeenCalledWith(expect.objectContaining({
       hook_id: 456,
+      events: ISSUECTL_WEBHOOK_EVENTS,
       config: expect.objectContaining({ secret: "new-secret" }),
     }));
   });

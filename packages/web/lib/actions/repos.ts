@@ -1,15 +1,19 @@
 "use server";
 
+/* eslint-disable max-lines */
+import { randomBytes } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { homedir } from "node:os";
 import {
   getDb,
   addRepo as coreAddRepo,
+  createIssuectlWebhook,
   removeRepo as coreRemoveRepo,
   updateRepo as coreUpdateRepo,
   updateRepoWebhookSettings,
   getRepoById,
+  getSetting,
   getActiveWebhookDeploymentsForRepoTarget,
   endDeployment,
   killTtyd,
@@ -19,6 +23,7 @@ import {
   refreshAccessibleRepos,
   getIssues,
   getPulls,
+  listWebhookEvents,
   listLabels,
   withAuthRetry,
   formatErrorForUser,
@@ -40,10 +45,20 @@ export type AddRepoResult =
   | {
       success: true;
       addedRepo: { id: number; owner: string; name: string };
+      install: AddRepoInstallResult;
       warning?: string;
       cacheStale?: true;
     }
   | { success: false; error: string };
+
+export type AddRepoInstallResult = {
+  webhook: "installed" | "skipped" | "failed";
+  labels: Array<"issuectl:auto-launch" | "issuectl:auto-review">;
+  firstPing: "received" | "timeout" | "skipped";
+  webhookId?: number;
+  url?: string;
+  createdBy?: string;
+};
 
 export type AddRepoOptions = {
   autoLaunchIssues?: boolean;
@@ -51,6 +66,8 @@ export type AddRepoOptions = {
   issueAgent?: LaunchAgent;
   reviewAgent?: LaunchAgent;
   webhookPayloadMode?: WebhookPayloadMode;
+  installWebhook?: boolean;
+  firstPingTimeoutMs?: number;
 };
 
 export async function addRepo(
@@ -79,6 +96,12 @@ export async function addRepo(
   }
 
   let addedRepo: { id: number; owner: string; name: string };
+  let install: AddRepoInstallResult = {
+    webhook: "skipped",
+    labels: [],
+    firstPing: "skipped",
+  };
+  let installWarning: string | undefined;
   try {
     const db = getDb();
     const repo = coreAddRepo(db, { owner, name, localPath });
@@ -92,6 +115,11 @@ export async function addRepo(
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
       updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+    }
+    if (options.installWebhook) {
+      const result = await installRepoAutomation(db, repo.id, owner, name, options);
+      install = result.install;
+      installWarning = result.warning;
     }
   } catch (err) {
     console.error("[issuectl] Failed to add repo:", errMessage(err));
@@ -149,6 +177,7 @@ export async function addRepo(
       return {
         success: true,
         addedRepo,
+        install,
         warning: "Local path does not exist — will prompt to clone on launch",
         ...(stale ? { cacheStale: true as const } : {}),
       };
@@ -158,8 +187,113 @@ export async function addRepo(
   return {
     success: true,
     addedRepo,
+    install,
+    ...(installWarning ? { warning: installWarning } : {}),
     ...(stale ? { cacheStale: true as const } : {}),
   };
+}
+
+async function installRepoAutomation(
+  db: ReturnType<typeof getDb>,
+  repoId: number,
+  owner: string,
+  name: string,
+  options: AddRepoOptions,
+): Promise<{ install: AddRepoInstallResult; warning?: string }> {
+  const labels = automationLabels(options);
+  const baseUrl = getSetting(db, "public_webhook_base_url");
+  if (!baseUrl) {
+    return {
+      install: { webhook: "skipped", labels: [], firstPing: "skipped" },
+      warning: "Webhook install skipped: public webhook base URL is not configured.",
+    };
+  }
+
+  const url = `${baseUrl.replace(/\/$/, "")}/api/webhook/github/${repoId}`;
+  const secret = randomBytes(32).toString("hex");
+  try {
+    const webhook = await withAuthRetry(async (octokit) => {
+      const created = await createIssuectlWebhook(octokit, {
+        owner,
+        repo: name,
+        url,
+        secret,
+      });
+      await Promise.all(labels.map((label) => ensureRepoLabel(octokit, owner, name, label)));
+      return created;
+    });
+    updateRepoWebhookSettings(db, repoId, {
+      webhookId: webhook.id,
+      webhookSecret: secret,
+    });
+    const firstPing = await waitForFirstPing(db, repoId, options.firstPingTimeoutMs ?? 5_000);
+    return {
+      install: {
+        webhook: "installed",
+        labels,
+        firstPing,
+        webhookId: webhook.id,
+        url,
+        createdBy: webhook.createdBy,
+      },
+      ...(firstPing === "timeout" ? { warning: "Webhook installed, but no first delivery arrived before the timeout." } : {}),
+    };
+  } catch (err) {
+    console.error("[issuectl] Webhook install failed:", errMessage(err));
+    return {
+      install: { webhook: "failed", labels: [], firstPing: "skipped", url },
+      warning: `Webhook install failed: ${formatErrorForUser(err)}`,
+    };
+  }
+}
+
+function automationLabels(options: AddRepoOptions): Array<"issuectl:auto-launch" | "issuectl:auto-review"> {
+  return [
+    ...(options.autoLaunchIssues ? ["issuectl:auto-launch" as const] : []),
+    ...(options.autoReviewPrs ? ["issuectl:auto-review" as const] : []),
+  ];
+}
+
+async function ensureRepoLabel(
+  octokit: Parameters<Parameters<typeof withAuthRetry>[0]>[0],
+  owner: string,
+  repo: string,
+  name: "issuectl:auto-launch" | "issuectl:auto-review",
+): Promise<void> {
+  const meta = name === "issuectl:auto-launch"
+    ? { color: "2f81f7", description: "Opt issue into issuectl auto-launch" }
+    : { color: "a371f7", description: "Opt PR into issuectl auto-review" };
+  try {
+    await octokit.rest.issues.getLabel({ owner, repo, name });
+  } catch (err) {
+    if ((err as { status?: number }).status !== 404) throw err;
+    try {
+      await octokit.rest.issues.createLabel({ owner, repo, name, ...meta });
+    } catch (createErr) {
+      if ((createErr as { status?: number }).status !== 422) throw createErr;
+    }
+  }
+}
+
+async function waitForFirstPing(
+  db: ReturnType<typeof getDb>,
+  repoId: number,
+  timeoutMs: number,
+): Promise<"received" | "timeout"> {
+  if (hasPingDelivery(db, repoId)) return "received";
+  if (timeoutMs <= 0) return "timeout";
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 250));
+    if (hasPingDelivery(db, repoId)) return "received";
+  }
+  return "timeout";
+}
+
+function hasPingDelivery(db: ReturnType<typeof getDb>, repoId: number): boolean {
+  return listWebhookEvents(db, 50).some((event) =>
+    event.repoId === repoId && event.eventType === "ping",
+  );
 }
 
 export async function removeRepo(

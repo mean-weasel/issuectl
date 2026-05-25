@@ -27,6 +27,8 @@ type AutomationState = {
   webhookPayloadMode: WebhookPayloadMode;
 };
 
+type InstallState = "idle" | "running" | "done" | "warning" | "skipped" | "failed";
+
 type FormMode =
   | { kind: "picker" }
   | { kind: "selected"; repo: RepoIdentity }
@@ -60,6 +62,12 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
   const [addedRepo, setAddedRepo] = useState<RepoIdentity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [installState, setInstallState] = useState<Record<string, InstallState>>({
+    secret: "idle",
+    webhook: "idle",
+    labels: "idle",
+    ping: "idle",
+  });
   const [isPending, startTransition] = useTransition();
 
   const target = useMemo(() => {
@@ -107,19 +115,32 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
       return;
     }
 
+    setInstallState({
+      secret: "running",
+      webhook: "running",
+      labels: "running",
+      ping: "running",
+    });
     startTransition(async () => {
       const result = await addRepo(
         target.owner,
         target.name,
         localPath.trim() || undefined,
-        automation,
+        { ...automation, installWebhook: true },
       );
       if (!result.success) {
+        setInstallState({ secret: "idle", webhook: "idle", labels: "idle", ping: "idle" });
         setError(result.error);
         return;
       }
       setAddedRepo(result.addedRepo);
       setWarning(result.warning ?? null);
+      setInstallState({
+        secret: result.install.webhook === "skipped" ? "skipped" : "done",
+        webhook: result.install.webhook === "installed" ? "done" : result.install.webhook,
+        labels: result.install.labels.length > 0 ? "done" : "skipped",
+        ping: result.install.firstPing === "received" ? "done" : result.install.firstPing === "timeout" ? "warning" : "skipped",
+      });
       showToast("Repository added", "success");
     });
   }
@@ -330,13 +351,12 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
             </div>
           </div>
 
-          <ol className={styles.installList}>
-            <li className={addedRepo ? styles.doneItem : ""}>
-              Save repository and automation defaults.
-            </li>
-            <li>Install the GitHub webhook from repo settings.</li>
-            <li>Create or confirm automation labels before enabling live traffic.</li>
-          </ol>
+          <div className={styles.installPane} aria-live="polite">
+            <InstallRow label="Generating secret" state={installState.secret} />
+            <InstallRow label="Installing webhook" state={installState.webhook} />
+            <InstallRow label="Creating automation labels" state={installState.labels} />
+            <InstallRow label="Waiting for first delivery" state={installState.ping} />
+          </div>
 
           {addedRepo && (
             <div className={styles.postAddActions}>
@@ -404,6 +424,16 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function InstallRow({ label, state }: { label: string; state: InstallState }) {
+  return (
+    <div className={styles.installRow}>
+      <span className={`${styles.installDot} ${styles[`installDot_${state}`]}`} />
+      <span>{label}</span>
+      <strong>{state === "idle" ? "pending" : state}</strong>
     </div>
   );
 }
