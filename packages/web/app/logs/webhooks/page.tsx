@@ -25,6 +25,8 @@ type SearchParams = {
   q?: string;
 };
 
+type AuditFilter = "all" | "valid" | "invalid" | "replay";
+
 const RESULT_FILTERS: Array<{ label: string; value: WebhookLogResult | "all" }> = [
   { label: "All", value: "all" },
   { label: "Fired", value: "fired" },
@@ -34,6 +36,12 @@ const RESULT_FILTERS: Array<{ label: string; value: WebhookLogResult | "all" }> 
   { label: "Dropped", value: "dropped" },
   { label: "Failed", value: "failed" },
   { label: "Received", value: "received" },
+];
+
+const AUDIT_FILTERS: Array<{ label: string; value: AuditFilter }> = [
+  { label: "Valid", value: "valid" },
+  { label: "Invalid", value: "invalid" },
+  { label: "Replay", value: "replay" },
 ];
 
 const AUDIT_EVENTS = ["webhook.invalid_signature", "webhook.deduped"];
@@ -74,6 +82,7 @@ export default async function WebhookLogsPage({
     params,
     repos,
   );
+  const auditFilter = activeAuditFilter(params.result);
   const metrics = summarize(entries);
   const health = webhookHealth(entries);
 
@@ -102,7 +111,11 @@ export default async function WebhookLogsPage({
           <Metric label="Raw payloads" value={`${metrics.retained} retained`} />
           <Metric label="Stream" value="/api/webhooks/events/stream" />
         </dl>
-        <WebhookLiveTail endpoint="/api/webhooks/events/stream" />
+        <WebhookLiveTail
+          endpoint="/api/webhooks/events/stream"
+          initialEntries={entries.slice(0, 50)}
+          initialCounts={summarizeStreamCounts(entries.slice(0, 50))}
+        />
 
         <form className={styles.toolbar} action="/logs/webhooks">
           <div className={styles.filters} aria-label="Webhook result filters">
@@ -110,10 +123,20 @@ export default async function WebhookLogsPage({
               <Link
                 key={filter.value}
                 className={styles.chip}
-                data-active={activeResult(params.result) === filter.value}
+                data-active={auditFilter === "all" && activeResult(params.result) === filter.value}
                 href={hrefFor(params, {
                   result: filter.value === "all" ? undefined : filter.value,
                 })}
+              >
+                {filter.label}
+              </Link>
+            ))}
+            {AUDIT_FILTERS.map((filter) => (
+              <Link
+                key={filter.value}
+                className={styles.chip}
+                data-active={auditFilter === filter.value}
+                href={hrefForAudit(params, filter.value)}
               >
                 {filter.label}
               </Link>
@@ -329,10 +352,14 @@ function filterAuditEvents(
 ): DiagnosticEvent[] {
   const query = params.q?.trim().toLowerCase();
   const eventQuery = params.event?.trim().toLowerCase();
+  const auditFilter = activeAuditFilter(params.result);
   const selectedRepoId = parsePositiveInt(params.repo);
   const selectedRepo = repos.find((repo) => repo.id === selectedRepoId);
   return events.filter((event) => {
     if (selectedRepo && (event.owner !== selectedRepo.owner || event.repo !== selectedRepo.name)) return false;
+    if (auditFilter === "invalid" && event.event !== "webhook.invalid_signature") return false;
+    if (auditFilter === "replay" && event.event !== "webhook.deduped") return false;
+    if (auditFilter === "valid") return false;
     if (eventQuery && !event.event.toLowerCase().includes(eventQuery)) return false;
     if (!query) return true;
     return [
@@ -357,6 +384,19 @@ function summarize(entries: WebhookLogEntry[]) {
   };
 }
 
+function summarizeStreamCounts(entries: WebhookLogEntry[]): Record<string, number> {
+  return {
+    total: entries.length,
+    fired: entries.filter((entry) => entry.result === "fired").length,
+    debouncing: entries.filter((entry) => entry.result === "debouncing").length,
+    processing: entries.filter((entry) => entry.result === "processing").length,
+    gated: entries.filter((entry) => entry.result === "gated").length,
+    dropped: entries.filter((entry) => entry.result === "dropped").length,
+    failed: entries.filter((entry) => entry.result === "failed").length,
+    received: entries.filter((entry) => entry.result === "received").length,
+  };
+}
+
 function webhookHealth(entries: WebhookLogEntry[]): { label: string; tone: "green" | "amber" | "red" } {
   const last = entries[0]?.receivedAt;
   if (!last) return { label: "No deliveries", tone: "red" };
@@ -370,6 +410,10 @@ function activeResult(value: string | undefined): WebhookLogResult | "all" {
   return RESULT_FILTERS.some((filter) => filter.value === value) ? value as WebhookLogResult : "all";
 }
 
+function activeAuditFilter(value: string | undefined): AuditFilter {
+  return AUDIT_FILTERS.some((filter) => filter.value === value) ? value as AuditFilter : "all";
+}
+
 function hrefFor(params: SearchParams, next: Partial<SearchParams>): string {
   const search = new URLSearchParams();
   const merged = { ...params, ...next };
@@ -377,6 +421,10 @@ function hrefFor(params: SearchParams, next: Partial<SearchParams>): string {
     if (value) search.set(key, value);
   }
   return `/logs/webhooks${search.size > 0 ? `?${search.toString()}` : ""}`;
+}
+
+function hrefForAudit(params: SearchParams, value: AuditFilter): string {
+  return hrefFor(params, { result: value === "all" ? undefined : value, event: undefined });
 }
 
 function parsePositiveInt(value: string | undefined): number | undefined {

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import {
   addRepo,
@@ -75,6 +75,7 @@ describe("PR webhook intents", () => {
   });
 
   it("launches opted-in PR intents through the PR review flow", async () => {
+    const broadcastEventsChanged = vi.fn();
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "pr",
@@ -99,9 +100,11 @@ describe("PR webhook intents", () => {
         }).id;
         return { deploymentId };
       },
+      broadcastEventsChanged,
     });
 
     expect(result).toEqual(expect.objectContaining({ claimed: 1, launched: 1, failed: 0 }));
+    expect(broadcastEventsChanged).toHaveBeenCalledTimes(3);
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({ status: "launched", deployment_id: 1 }),
     );

@@ -98,21 +98,34 @@
 .liveTail {
   min-height: 42px;
   padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   background: var(--paper-surface);
 }
 
-.liveTail > div {
+.liveTail[data-has-pending="true"] {
+  border-color: var(--paper-accent);
+}
+
+.liveTailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.liveTailHeader > div {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.liveActions {
+  justify-content: flex-end;
 }
 
 .liveLabel {
@@ -141,6 +154,38 @@
 
 .liveMeta {
   color: var(--text-secondary);
+  font: 12px var(--paper-mono);
+}
+
+.livePending {
+  margin: 0;
+  color: var(--paper-accent);
+  font: 700 12px var(--paper-mono);
+}
+
+.liveTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.liveTable th,
+.liveTable td {
+  padding: 8px 9px;
+  border-top: 1px solid var(--paper-line-soft);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.liveTable th {
+  color: var(--text-secondary);
+  font: 700 10px var(--paper-mono);
+  text-transform: uppercase;
+}
+
+.liveTable td {
   font: 12px var(--paper-mono);
 }
 
