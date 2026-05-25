@@ -393,4 +393,33 @@ describe("runWebhookIntentWorkerOnce", () => {
     expect(db.prepare("SELECT payload_json FROM webhook_events").get()).toEqual({ payload_json: null });
     expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_deliveries").get()).toEqual({ count: 1 });
   });
+
+  it("prunes webhook event rows older than 30 days while keeping delivery tombstones", async () => {
+    const now = 31 * 24 * 60 * 60 * 1000;
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-old",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-new",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 507,
+      receivedAt: now - 1_000,
+    });
+
+    await runWorker(db, now);
+
+    expect(
+      db.prepare("SELECT delivery_id FROM webhook_events ORDER BY delivery_id").all(),
+    ).toEqual([{ delivery_id: "delivery-new" }]);
+    expect(db.prepare("SELECT COUNT(*) AS count FROM webhook_deliveries").get()).toEqual({ count: 2 });
+  });
 });

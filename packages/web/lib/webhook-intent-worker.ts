@@ -23,7 +23,7 @@ import type { FetchPullState, LaunchPrReview, PullWorkerDeps } from "./webhook-p
 import { getLatestIntentEvent, triggeredByForIntentEvent } from "./webhook-intent-source";
 import type { IntentEventSummary } from "./webhook-intent-source";
 import { launchPrFromWebhook } from "./webhook-pr-launch";
-import { pruneExpiredWebhookPayloads } from "./webhook-payload-retention";
+import { pruneExpiredWebhookData } from "./webhook-payload-retention";
 import { enforceWebhookRunawayControls } from "./webhook-runaway-controls";
 import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
 
@@ -80,9 +80,10 @@ export async function runWebhookIntentWorkerOnce(
     recordRecoveryDiagnostic(db, expiredIntent, "webhook.expired", "Expired stale webhook intent.");
   }
   const expired = expiredRecords.length;
-  const prunedPayloads = pruneExpiredWebhookPayloads(db, now);
+  const retention = pruneExpiredWebhookData(db, now);
+  const prunedPayloads = retention.prunedPayloads;
   const broadcastEventsChanged = deps.broadcastEventsChanged ?? broadcastWebhookEventsChanged;
-  if (recovered > 0 || expired > 0 || prunedPayloads > 0) broadcastEventsChanged();
+  if (recovered > 0 || expired > 0 || prunedPayloads > 0 || retention.prunedEvents > 0) broadcastEventsChanged();
   const base = { recovered, expired, prunedPayloads };
   const intent = claimDueWebhookIntent(db, now, 60_000);
   if (!intent) return result(base);

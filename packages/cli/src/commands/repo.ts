@@ -224,25 +224,25 @@ async function collectRepoAddWebhookOptions(
   const autoLaunchIssues = options.autoLaunchIssues === undefined
     ? await confirm({
         message: "Auto-launch issue sessions from webhooks?",
-        default: true,
+        default: false,
       })
     : normalizeOptionalBoolean(options.autoLaunchIssues, "--auto-launch-issues");
   const autoReviewPrs = options.autoReviewPrs === undefined
     ? await confirm({
         message: "Reserve PRs for automatic review from webhooks?",
-        default: true,
+        default: false,
       })
     : normalizeOptionalBoolean(options.autoReviewPrs, "--auto-review-prs");
   const automationEnabled = autoLaunchIssues || autoReviewPrs;
 
   let issueAgent = normalizeOptionalAgent(options.issueAgent, "--issue-agent");
   if (autoLaunchIssues && issueAgent === undefined) {
-    issueAgent = await promptLaunchAgent("Issue session agent", "codex");
+    issueAgent = await promptLaunchAgent("Issue session agent", "claude");
   }
 
   let reviewAgent = normalizeOptionalAgent(options.reviewAgent, "--review-agent");
   if (autoReviewPrs && reviewAgent === undefined) {
-    reviewAgent = await promptLaunchAgent("PR review agent", "codex");
+    reviewAgent = await promptLaunchAgent("PR review agent", "claude");
   }
 
   let webhookPayloadMode = normalizeOptionalPayloadMode(options.webhookPayloadMode);

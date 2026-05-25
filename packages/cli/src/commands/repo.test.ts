@@ -185,11 +185,11 @@ describe("repo commands", () => {
 
     expect(confirm).toHaveBeenCalledWith({
       message: "Auto-launch issue sessions from webhooks?",
-      default: true,
+      default: false,
     });
     expect(confirm).toHaveBeenCalledWith({
       message: "Reserve PRs for automatic review from webhooks?",
-      default: true,
+      default: false,
     });
     expect(execFileSync).toHaveBeenCalledWith("gh", ["auth", "status", "--show-token-scopes"], {
       encoding: "utf8",
@@ -217,6 +217,65 @@ describe("repo commands", () => {
     expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
       webhookId: 123,
       webhookSecret: expect.any(String),
+    });
+  });
+
+  it("defaults interactive webhook automation to opt-in and skips automation prompts when declined", async () => {
+    vi.mocked(getRepo).mockReturnValue(undefined);
+    vi.mocked(addRepo).mockReturnValue(makeRepo());
+    vi.mocked(confirm)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
+    vi.mocked(input).mockResolvedValueOnce("");
+
+    await repoAddCommand("mean-weasel/issuectl", {});
+
+    expect(confirm).toHaveBeenCalledWith({
+      message: "Auto-launch issue sessions from webhooks?",
+      default: false,
+    });
+    expect(confirm).toHaveBeenCalledWith({
+      message: "Reserve PRs for automatic review from webhooks?",
+      default: false,
+    });
+    expect(input).toHaveBeenCalledTimes(1);
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
+      autoLaunchIssues: false,
+      autoReviewPrs: false,
+    });
+    expect(createIssuectlWebhook).not.toHaveBeenCalled();
+  });
+
+  it("defaults prompted automation agents to claude", async () => {
+    vi.mocked(getRepo).mockReturnValue(undefined);
+    vi.mocked(addRepo).mockReturnValue(makeRepo());
+    vi.mocked(confirm)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
+    vi.mocked(input)
+      .mockResolvedValueOnce("")
+      .mockResolvedValueOnce("")
+      .mockResolvedValueOnce("")
+      .mockResolvedValueOnce("metadata")
+      .mockResolvedValueOnce("");
+
+    await repoAddCommand("mean-weasel/issuectl", {});
+
+    expect(input).toHaveBeenCalledWith(expect.objectContaining({
+      message: "Issue session agent",
+      default: "claude",
+    }));
+    expect(input).toHaveBeenCalledWith(expect.objectContaining({
+      message: "PR review agent",
+      default: "claude",
+    }));
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
+      autoLaunchIssues: true,
+      autoReviewPrs: true,
+      issueAgent: "claude",
+      reviewAgent: "claude",
+      webhookPayloadMode: "metadata",
     });
   });
 

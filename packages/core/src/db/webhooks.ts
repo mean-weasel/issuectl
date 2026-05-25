@@ -31,6 +31,24 @@ export type {
 } from "./webhook-records.js";
 
 const MERGE_TRANSACTION_ATTEMPTS = 3;
+const REPLAYABLE_WEBHOOK_SIGNALS = new Set([
+  "issues:opened",
+  "issues:labeled",
+  "issues:closed",
+  "issues:reopened",
+  "pull_request:opened",
+  "pull_request:labeled",
+  "pull_request:synchronize",
+  "pull_request:closed",
+]);
+
+export type ReplayWebhookDeliveryResult =
+  | { replayed: true; event: WebhookEvent; intent: WebhookIntent }
+  | {
+      replayed: false;
+      reason: "not_found" | "missing_target" | "missing_action" | "not_replayable";
+      event?: WebhookEvent;
+    };
 
 function isSqliteConstraint(error: unknown): boolean {
   return (
@@ -157,6 +175,48 @@ export function getWebhookEventByDelivery(
   return row ? rowToWebhookEvent(row) : undefined;
 }
 
+export function replayWebhookDelivery(
+  db: Database.Database,
+  input: { deliveryId: string; now: number },
+): ReplayWebhookDeliveryResult {
+  const row = db
+    .prepare(
+      `SELECT * FROM webhook_events
+       WHERE delivery_id = ?
+       LIMIT 1`,
+    )
+    .get(input.deliveryId) as WebhookEventRow | undefined;
+  if (!row) return { replayed: false, reason: "not_found" };
+
+  const event = rowToWebhookEvent(row);
+  if (!event.targetType || event.targetNumber === null) {
+    return { replayed: false, reason: "missing_target", event };
+  }
+  if (!event.action) {
+    return { replayed: false, reason: "missing_action", event };
+  }
+  if (!REPLAYABLE_WEBHOOK_SIGNALS.has(`${event.eventType}:${event.action}`)) {
+    return { replayed: false, reason: "not_replayable", event };
+  }
+
+  const intentId = mergeWebhookIntent(db, {
+    repoId: event.repoId,
+    targetType: event.targetType,
+    targetNumber: event.targetNumber,
+    signalAt: input.now,
+    scheduledAt: input.now,
+    desiredHeadSha: desiredHeadShaFromPayload(event.payloadJson),
+    eventId: event.id,
+  });
+  const intentRow = db
+    .prepare("SELECT * FROM webhook_intents WHERE id = ?")
+    .get(intentId) as WebhookIntentRow | undefined;
+  if (!intentRow) {
+    throw new Error(`Replay created webhook intent ${intentId} but could not read it back.`);
+  }
+  return { replayed: true, event, intent: rowToWebhookIntent(intentRow) };
+}
+
 export function mergeWebhookIntent(
   db: Database.Database,
   input: MergeWebhookIntentInput,
@@ -218,6 +278,22 @@ function mergeWebhookIntentOnce(
     }
     throw new Error("Failed to merge webhook intent after retrying races");
   })();
+}
+
+function desiredHeadShaFromPayload(payloadJson: string | null): string | null {
+  if (!payloadJson) return null;
+  try {
+    const payload = JSON.parse(payloadJson) as unknown;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+    const pullRequest = (payload as Record<string, unknown>).pull_request;
+    if (!pullRequest || typeof pullRequest !== "object" || Array.isArray(pullRequest)) return null;
+    const head = (pullRequest as Record<string, unknown>).head;
+    if (!head || typeof head !== "object" || Array.isArray(head)) return null;
+    const sha = (head as Record<string, unknown>).sha;
+    return typeof sha === "string" ? sha : null;
+  } catch {
+    return null;
+  }
 }
 
 export function hasActiveWebhookIntent(
@@ -423,6 +499,28 @@ export function pruneExpiredWebhookPayloads(
          )`,
     )
     .run(now);
+  return result.changes;
+}
+
+export function pruneOldWebhookEvents(
+  db: Database.Database,
+  now: number,
+  maxAgeMs: number,
+): number {
+  const cutoff = now - Math.max(0, Math.floor(maxAgeMs));
+  const result = db
+    .prepare(
+      `DELETE FROM webhook_events
+       WHERE received_at <= ?
+         AND (
+           intent_id IS NULL
+           OR intent_id NOT IN (
+             SELECT id FROM webhook_intents
+             WHERE status IN (${activeStatusPlaceholders()})
+           )
+         )`,
+    )
+    .run(cutoff, ...ACTIVE_INTENT_STATUSES);
   return result.changes;
 }
 

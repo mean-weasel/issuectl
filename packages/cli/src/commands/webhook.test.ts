@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { Command, CommanderError } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -5,9 +6,12 @@ import {
   getSetting,
   listRepos,
   listWebhookEvents,
+  recordDiagnosticEventSafely,
+  replayWebhookDelivery,
   type Repo,
   type RepoWebhookConfig,
   type WebhookEvent,
+  type WebhookIntent,
 } from "@issuectl/core";
 import { requireDb } from "../utils/db.js";
 import { registerWebhookCommands } from "./webhook.js";
@@ -20,6 +24,8 @@ vi.mock("@issuectl/core", async (importOriginal) => {
     getSetting: vi.fn(),
     listRepos: vi.fn(),
     listWebhookEvents: vi.fn(),
+    recordDiagnosticEventSafely: vi.fn(),
+    replayWebhookDelivery: vi.fn(),
   };
 });
 
@@ -61,6 +67,30 @@ function makeWebhookEvent(overrides: Partial<WebhookEvent> = {}): WebhookEvent {
     payloadJson: null,
     receivedAt: 1_000,
     intentId: null,
+    ...overrides,
+  };
+}
+
+function makeWebhookIntent(overrides: Partial<WebhookIntent> = {}): WebhookIntent {
+  return {
+    id: 9,
+    repoId: 1,
+    targetType: "issue",
+    targetNumber: 42,
+    firstSignalAt: 2_000,
+    lastSignalAt: 2_000,
+    scheduledAt: 2_000,
+    processingStartedAt: null,
+    leaseExpiresAt: null,
+    generation: 1,
+    desiredHeadSha: null,
+    requestedAgent: null,
+    reviewMode: null,
+    signalCount: 1,
+    status: "pending",
+    resolvedAt: null,
+    deploymentId: null,
+    failureReason: null,
     ...overrides,
   };
 }
@@ -109,6 +139,8 @@ beforeEach(() => {
   vi.mocked(getSetting).mockReset();
   vi.mocked(listRepos).mockReset();
   vi.mocked(listWebhookEvents).mockReset();
+  vi.mocked(recordDiagnosticEventSafely).mockReset();
+  vi.mocked(replayWebhookDelivery).mockReset();
 });
 
 afterEach(() => {
@@ -251,5 +283,61 @@ describe("webhook commands", () => {
     expect(result.stderr).toContain("--target must use issue#number or pr#number.");
     expect(requireDb).not.toHaveBeenCalled();
     expect(listWebhookEvents).not.toHaveBeenCalled();
+  });
+
+  it("replays a retained webhook delivery", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(2_000);
+    vi.mocked(listRepos).mockReturnValue([
+      makeRepo({ id: 1, owner: "mean-weasel", name: "issuectl" }),
+    ]);
+    vi.mocked(replayWebhookDelivery).mockReturnValue({
+      replayed: true,
+      event: makeWebhookEvent({ deliveryId: "delivery-1" }),
+      intent: makeWebhookIntent({ id: 9, scheduledAt: 2_000 }),
+    });
+
+    const result = await parseCommand(["webhook", "replay", "delivery-1", "--yes"]);
+
+    expect(replayWebhookDelivery).toHaveBeenCalledWith(mockDb, {
+      deliveryId: "delivery-1",
+      now: 2_000,
+    });
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(mockDb, expect.objectContaining({
+      event: "webhook.replayed",
+      source: "cli",
+      correlationId: "delivery-1",
+      owner: "mean-weasel",
+      repo: "issuectl",
+      targetType: "issue",
+      targetNumber: 42,
+    }));
+    expect(result.stdout).toContain("9\tmean-weasel/issuectl\tissue#42\tpending\tscheduled=2000");
+  });
+
+  it("reports why a webhook delivery cannot be replayed", async () => {
+    vi.mocked(replayWebhookDelivery).mockReturnValue({
+      replayed: false,
+      reason: "missing_target",
+      event: makeWebhookEvent({
+        deliveryId: "delivery-1",
+        targetType: null,
+        targetNumber: null,
+      }),
+    });
+    vi.mocked(listRepos).mockReturnValue([
+      makeRepo({ id: 1, owner: "mean-weasel", name: "issuectl" }),
+    ]);
+
+    const result = await parseCommand(["webhook", "replay", "delivery-1", "--yes"]);
+
+    expect(result.error).toBeInstanceOf(CommanderError);
+    expect(result.stderr).toContain("delivery has no issue or PR target metadata");
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(mockDb, expect.objectContaining({
+      event: "webhook.replay_failed",
+      source: "cli",
+      correlationId: "delivery-1",
+      owner: "mean-weasel",
+      repo: "issuectl",
+    }));
   });
 });

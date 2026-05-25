@@ -122,6 +122,7 @@ export {
 export {
   recordWebhookEvent,
   getWebhookEventByDelivery,
+  replayWebhookDelivery,
   mergeWebhookIntent,
   hasActiveWebhookIntent,
   countActiveWebhookIntents,
@@ -134,12 +135,14 @@ export {
   expireOldWebhookIntents,
   expireOldWebhookIntentRecords,
   pruneExpiredWebhookPayloads,
+  pruneOldWebhookEvents,
   listWebhookEvents,
   listWebhookLogEntries,
 } from "./db/webhooks.js";
 export type {
   RecordWebhookEventInput,
   RecordWebhookEventResult,
+  ReplayWebhookDeliveryResult,
   MergeWebhookIntentInput,
   ListWebhookIntentsInput,
   ListWebhookEventsInput,

@@ -39,6 +39,7 @@ type AddRepoBody = {
   autoReviewPrs?: boolean;
   issueAgent?: "claude" | "codex";
   reviewAgent?: "claude" | "codex";
+  reviewPreamble?: string | null;
   webhookPayloadMode?: "metadata" | "raw";
 };
 
@@ -62,6 +63,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   if (!OWNER_REPO_RE.test(body.owner) || !OWNER_REPO_RE.test(body.name)) {
     return NextResponse.json({ error: "Invalid owner/repo format" }, { status: 400 });
+  }
+  if (
+    body.reviewPreamble !== undefined &&
+    body.reviewPreamble !== null &&
+    typeof body.reviewPreamble !== "string"
+  ) {
+    return NextResponse.json({ error: "reviewPreamble must be a string or null" }, { status: 400 });
   }
 
   // Verify the repo exists on GitHub
@@ -102,13 +110,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       autoReviewPrs: body.autoReviewPrs,
       issueAgent: body.issueAgent,
       reviewAgent: body.reviewAgent,
+      reviewPreamble: body.reviewPreamble,
       webhookPayloadMode: body.webhookPayloadMode,
     };
+    let updatedRepo = repo;
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
-      updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+      updatedRepo = updateRepoWebhookSettings(db, repo.id, webhookUpdates);
     }
     log.info({ msg: "api_repo_added", repoId: repo.id, owner: body.owner, name: body.name });
-    return NextResponse.json({ success: true, repo });
+    return NextResponse.json({ success: true, repo: updatedRepo });
   } catch (err) {
     log.error({ err, msg: "api_repo_add_failed" });
     return NextResponse.json(

@@ -51,6 +51,7 @@ beforeEach(() => {
   listRepos.mockReturnValue([repo]);
   addRepo.mockReturnValue(repo);
   updateRepoWebhookSettings.mockReset();
+  updateRepoWebhookSettings.mockReturnValue(repo);
   withAuthRetry.mockClear();
 });
 
@@ -71,6 +72,7 @@ describe("/api/v1/repos", () => {
       autoReviewPrs: true,
       issueAgent: "codex",
       reviewAgent: "claude",
+      reviewPreamble: "Use the repo-specific review voice.",
       webhookPayloadMode: "raw",
     }));
     const json = await response.json();
@@ -82,7 +84,39 @@ describe("/api/v1/repos", () => {
       autoReviewPrs: true,
       issueAgent: "codex",
       reviewAgent: "claude",
+      reviewPreamble: "Use the repo-specific review voice.",
       webhookPayloadMode: "raw",
     });
+  });
+
+  it("POST accepts a null review preamble", async () => {
+    const response = await POST(request({
+      owner: "mean-weasel",
+      name: "issuectl",
+      reviewPreamble: null,
+    }));
+
+    expect(response.status).toBe(200);
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(expect.anything(), 1, {
+      autoLaunchIssues: undefined,
+      autoReviewPrs: undefined,
+      issueAgent: undefined,
+      reviewAgent: undefined,
+      reviewPreamble: null,
+      webhookPayloadMode: undefined,
+    });
+  });
+
+  it("POST rejects non-string review preambles", async () => {
+    const response = await POST(request({
+      owner: "mean-weasel",
+      name: "issuectl",
+      reviewPreamble: 123,
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("reviewPreamble must be a string or null");
+    expect(updateRepoWebhookSettings).not.toHaveBeenCalled();
   });
 });

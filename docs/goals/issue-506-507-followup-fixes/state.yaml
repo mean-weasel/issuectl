@@ -1,0 +1,598 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Issue 506/507 Follow-Up Fixes"
+  slug: "issue-506-507-followup-fixes"
+  kind: existing_plan
+  tranche: "Close the four audited follow-up gaps for issuectl webhook automation, with focused tests and final audit proof."
+  status: done
+  oracle:
+    signal: "Source inspection plus focused core/web/cli tests prove the four named gaps are implemented or explicitly rejected with rationale."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Final Judge/PM receipt maps each gap to code paths, tests, and verification results, with full_outcome_complete: true."
+  intake:
+    original_request: "make a detailed plan to fix all using goalbuddy:goal-prep"
+    interpreted_outcome: "Prepare a GoalBuddy board that can execute fixes for all remaining issue 506/507 audit gaps."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and webhook automation operators"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused core/web/cli tests pass and final audit confirms all four gaps are closed or intentionally deferred."
+    likely_misfire: "Passing existing tests or making superficial command additions without proving the four audit gaps are actually closed."
+    blind_spots_considered:
+      - "Replay must preserve security/gating semantics and not undermine delivery tombstones."
+      - "Retention must prune old event rows without deleting replay-protection tombstones unless explicitly decided."
+      - "CLI prompt/default behavior may need product-decision validation because the code may intentionally differ from the original issue text."
+      - "REST reviewPreamble parity may be optional if no API client needs it; Judge must decide before Worker edits."
+    existing_plan_facts:
+      - "Gap 1: missing issuectl webhook replay <delivery_id> operator command."
+      - "Gap 2: CLI repo add prompts/defaults differ from issue 507 onboarding text."
+      - "Gap 3: raw payload pruning exists, but webhook_events row retention pruning was not found."
+      - "Gap 4: Server Actions support reviewPreamble, but REST repo add/update endpoints do not."
+      - "Focused pre-board verification passed: core 39 tests, web 59 tests, cli 30 tests."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/issue-506-507-followup-fixes/"
+    command: "npx goalbuddy board docs/goals/issue-506-507-followup-fixes"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the four-gap plan, decide exact product semantics, and approve the first safe Worker slice."
+    inputs:
+      - "docs/goals/issue-506-507-followup-fixes/goal.md"
+      - "Current repo state"
+      - "Audit findings summarized in goal.intake.existing_plan_facts"
+      - "Issue 506/507 product requirements as already summarized in the charter"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Treat source files and tests as evidence; do not rely only on prior chat."
+      - "If a gap is intentionally out of scope, record why and adjust or block the corresponding Worker task."
+    expected_output:
+      - "Decision for each gap: implement | already covered | intentionally defer | needs owner input."
+      - "Exact first Worker objective."
+      - "allowed_files for the first Worker."
+      - "verify commands for the first Worker."
+      - "stop_if conditions for the first Worker."
+      - "Any board task edits needed before implementation."
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      decision: "approved"
+      decision_by_gap:
+        gap_1_webhook_replay: "implement: no issuectl webhook replay command exists, and core has enough retained webhook metadata to safely re-enqueue eligible issue/pr events without deleting delivery tombstones."
+        gap_2_cli_onboarding: "implement after T010: current CLI defaults/prompts still need explicit alignment with the accepted #507 operator onboarding decision."
+        gap_3_event_retention: "implement after onboarding: raw payload pruning exists, but webhook_events row retention pruning is not present; preserve webhook_deliveries tombstones."
+        gap_4_rest_review_preamble: "implement after retention: Server Actions already support reviewPreamble, so REST add/update parity is in scope unless later tests expose a compatibility blocker."
+      first_worker:
+        task: T010
+        objective: "Implement issuectl webhook replay <delivery_id> as a vertical CLI/core slice."
+        allowed_files:
+          - "packages/cli/src/commands/webhook.ts"
+          - "packages/cli/src/commands/webhook.test.ts"
+          - "packages/core/src/db/webhooks.ts"
+          - "packages/core/src/db/webhooks.test.ts"
+          - "packages/core/src/index.ts"
+          - "packages/core/src/types.ts"
+          - "packages/core/src/db/diagnostics.ts"
+        verify:
+          - "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts"
+          - "pnpm --dir packages/cli test -- --run src/commands/webhook.test.ts"
+          - "pnpm --dir packages/cli typecheck"
+        stop_if:
+          - "Replay needs network refetch/signature semantics beyond retained local metadata."
+          - "A schema change or file outside allowed_files is needed."
+          - "Focused verification fails twice for unrelated reasons."
+      board_edits: "Activated T010 with no scope changes."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the CLI webhook replay vertical slice."
+    inputs:
+      - "T001 receipt"
+      - "packages/cli/src/commands/webhook.ts"
+      - "packages/cli/src/commands/webhook.test.ts"
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "packages/core/src/db/diagnostics.ts"
+    constraints:
+      - "Preserve webhook_deliveries replay tombstones."
+      - "Replay must not bypass target/repo semantics silently."
+      - "Record diagnostics for operator replay attempts and outcomes."
+      - "Prefer structured DB helper(s) over ad hoc SQL in CLI command code."
+    allowed_files:
+      - "packages/cli/src/commands/webhook.ts"
+      - "packages/cli/src/commands/webhook.test.ts"
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "packages/core/src/index.ts"
+      - "packages/core/src/types.ts"
+      - "packages/core/src/db/diagnostics.ts"
+    verify:
+      - "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts"
+      - "pnpm --dir packages/cli test -- --run src/commands/webhook.test.ts"
+      - "pnpm --dir packages/cli typecheck"
+    stop_if:
+      - "Replay semantics require network refetch or webhook signature decisions not covered by existing requirements."
+      - "Need schema changes outside allowed_files."
+      - "Verification fails twice for unrelated reasons."
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      summary:
+        - "Added core replayWebhookDelivery helper that looks up retained webhook event metadata by delivery_id, validates target/action replayability, preserves webhook_deliveries tombstones, and re-enqueues an immediate webhook_intent."
+        - "Added issuectl webhook replay <delivery-id> --yes CLI command with operator diagnostics for success and failure."
+        - "Covered successful replay, ineligible missing-target replay, CLI success output, and CLI failure diagnostics."
+      changed_files:
+        - "packages/core/src/db/webhooks.ts"
+        - "packages/core/src/db/webhooks.test.ts"
+        - "packages/core/src/index.ts"
+        - "packages/cli/src/commands/webhook.ts"
+        - "packages/cli/src/commands/webhook.test.ts"
+      commands:
+        - command: "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/cli test -- --run src/commands/webhook.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/core build"
+          status: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+      verification:
+        - command: "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts"
+          result: pass
+          evidence: "1 file passed, 13 tests passed."
+        - command: "pnpm --dir packages/cli test -- --run src/commands/webhook.test.ts"
+          result: pass
+          evidence: "1 file passed, 12 tests passed."
+        - command: "pnpm --dir packages/core build"
+          result: pass
+          evidence: "Refreshed local core dist declarations required by CLI package-boundary typecheck."
+        - command: "pnpm --dir packages/cli typecheck"
+          result: pass
+          evidence: "tsc --noEmit exited 0 after core declarations were rebuilt."
+      notes:
+        - "Replay intentionally excludes pull_request:unlabeled and issues:unlabeled from metadata-only replay because retained metadata does not prove which label changed."
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Align CLI repo onboarding prompts/defaults with the validated #507 product decision."
+    inputs:
+      - "T001 receipt"
+      - "packages/cli/src/commands/repo.ts"
+      - "packages/cli/src/commands/repo.test.ts"
+      - "Issue 507 onboarding text summarized in goal.md"
+    constraints:
+      - "If Judge decides current defaults are intentional, block this task with rationale instead of editing."
+      - "Keep preflight warnings non-fatal unless Judge explicitly chooses fail-fast."
+      - "Update tests to lock whichever prompt/default behavior Judge approves."
+    allowed_files:
+      - "packages/cli/src/commands/repo.ts"
+      - "packages/cli/src/commands/repo.test.ts"
+      - "packages/cli/src/index.ts"
+    verify:
+      - "pnpm --dir packages/cli test -- --run src/commands/repo.test.ts"
+      - "pnpm --dir packages/cli typecheck"
+    stop_if:
+      - "Product default is ambiguous after T001."
+      - "Implementing fail-fast preflight would require broader UX/CLI policy changes."
+      - "Verification fails twice for unrelated reasons."
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      summary:
+        - "Aligned interactive repo add automation prompts with #507 by using opt-in defaults for issue auto-launch and PR auto-review."
+        - "Changed prompted issue and PR automation agent defaults from codex to claude while preserving explicit flag behavior."
+        - "Added regression coverage for declined automation and default Claude agent prompts."
+      changed_files:
+        - "packages/cli/src/commands/repo.ts"
+        - "packages/cli/src/commands/repo.test.ts"
+      commands:
+        - command: "pnpm --dir packages/cli test -- --run src/commands/repo.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+      verification:
+        - command: "pnpm --dir packages/cli test -- --run src/commands/repo.test.ts"
+          result: pass
+          evidence: "1 file passed, 13 tests passed."
+        - command: "pnpm --dir packages/cli typecheck"
+          result: pass
+          evidence: "tsc --noEmit exited 0."
+
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement webhook event row retention pruning while preserving replay-protection delivery tombstones."
+    inputs:
+      - "T001 receipt"
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/web/lib/webhook-payload-retention.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+    constraints:
+      - "Do not delete webhook_deliveries tombstones unless Judge explicitly approves."
+      - "Default retention should match #507 if still accepted: 30 days for webhook_events."
+      - "Keep metadata needed by logs/diagnostics coherent after pruning."
+      - "Avoid deleting rows referenced by active intents unless a safe policy is implemented and tested."
+    allowed_files:
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/db/schema.ts"
+      - "packages/core/src/db/migrations.ts"
+      - "packages/core/src/types.ts"
+      - "packages/core/src/index.ts"
+      - "packages/web/lib/webhook-payload-retention.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts src/db/schema-invariants.test.ts"
+      - "pnpm --dir packages/web test -- --run lib/webhook-intent-worker.test.ts"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Retention needs a config-file system outside DB settings."
+      - "Pruning would break webhook log UI expectations without broader UI changes."
+      - "Need files outside allowed_files."
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      summary:
+        - "Added core pruneOldWebhookEvents helper for age-based webhook_events row pruning while preserving webhook_deliveries replay tombstones."
+        - "Kept event rows attached to active intents so live debounce/processing lineage remains available."
+        - "Wired the web worker retention pass to prune webhook_events older than 30 days and broadcast live-tail updates when event rows are removed."
+      changed_files:
+        - "packages/core/src/db/webhooks.ts"
+        - "packages/core/src/db/webhooks.test.ts"
+        - "packages/core/src/index.ts"
+        - "packages/web/lib/webhook-payload-retention.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-intent-worker.test.ts"
+      commands:
+        - command: "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts src/db/schema-invariants.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/core build"
+          status: pass
+        - command: "pnpm --dir packages/web test -- --run lib/webhook-intent-worker.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+      verification:
+        - command: "pnpm --dir packages/core test -- --run src/db/webhooks.test.ts src/db/schema-invariants.test.ts"
+          result: pass
+          evidence: "2 files passed, 22 tests passed."
+        - command: "pnpm --dir packages/core build"
+          result: pass
+          evidence: "Refreshed local core dist export for web package-boundary tests/typecheck."
+        - command: "pnpm --dir packages/web test -- --run lib/webhook-intent-worker.test.ts"
+          result: pass
+          evidence: "1 file passed, 10 tests passed."
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+          evidence: "tsc --noEmit exited 0."
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+          evidence: "tsc --noEmit exited 0."
+
+  - id: T040
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add REST API parity for repo reviewPreamble when Judge confirms it is in scope."
+    inputs:
+      - "T001 receipt"
+      - "packages/web/app/api/v1/repos/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+      - "packages/web/app/api/v1/repos/route.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "packages/core/src/db/repos.ts"
+    constraints:
+      - "If Judge decides API parity is optional/out of scope, block this task with rationale."
+      - "Validate reviewPreamble as string or null."
+      - "Preserve existing REST auth and error style."
+      - "Do not change Server Action behavior unless tests reveal a shared helper is necessary."
+    allowed_files:
+      - "packages/web/app/api/v1/repos/route.ts"
+      - "packages/web/app/api/v1/repos/route.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- --run app/api/v1/repos/route.test.ts app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "API schema/Apple-client compatibility requires a larger contract decision."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for unrelated reasons."
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      summary:
+        - "Added REST add/update support for reviewPreamble with string/null validation."
+        - "Passed reviewPreamble through updateRepoWebhookSettings for both POST /api/v1/repos and PATCH /api/v1/repos/[owner]/[repo]."
+        - "Added route tests for string pass-through, null reset, and invalid type rejection."
+      changed_files:
+        - "packages/web/app/api/v1/repos/route.ts"
+        - "packages/web/app/api/v1/repos/route.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      commands:
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web test -- --run app/api/v1/repos/route.test.ts 'app/api/v1/repos/[owner]/[repo]/route.test.ts'"
+          status: pass
+      verification:
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+          evidence: "tsc --noEmit exited 0."
+        - command: "pnpm --dir packages/web test -- --run app/api/v1/repos/route.test.ts 'app/api/v1/repos/[owner]/[repo]/route.test.ts'"
+          result: pass
+          evidence: "2 files passed, 9 tests passed."
+
+  - id: T050
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the implemented packages for integration risks before broad verification."
+    inputs:
+      - "Receipts from T010, T020, T030, and T040 or their blocked/deferred rationales."
+      - "Current dirty diff"
+      - "Focused test outputs"
+    constraints:
+      - "Read-only."
+      - "Do not require perfection beyond the four-gap goal."
+      - "Call out missing tests, stale docs/help output, or behavior conflicts."
+    expected_output:
+      - "approved | needs_fix"
+      - "Findings with file paths"
+      - "Whether a follow-up Worker task is required before final audit"
+      - "Recommended broad verification commands"
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      decision: approved
+      findings: []
+      summary: "Integration review approved the four implemented slices. Diff is scoped to the planned CLI/core/web files, focused tests cover each behavior, git diff --check is clean, and no follow-up Worker fix is required before broad verification."
+      recommended_broad_verification:
+        - "pnpm --dir packages/core test"
+        - "pnpm --dir packages/cli test"
+        - "pnpm --dir packages/web test"
+        - "pnpm --dir packages/core typecheck"
+        - "pnpm --dir packages/cli typecheck"
+        - "pnpm --dir packages/web typecheck"
+
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Address any concrete integration findings from T050."
+    inputs:
+      - "T050 receipt"
+      - "Current dirty diff"
+    constraints:
+      - "Only execute if T050 records needs_fix."
+      - "PM must populate allowed_files and verify from T050 before activation."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "T050 did not approve a bounded fix."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for unrelated reasons."
+    receipt:
+      result: not_needed
+      summary: "Not activated because T050 approved the integration review with no concrete findings requiring a fix Worker."
+      next_task: T090
+
+  - id: T090
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run final verification commands and prepare the audit evidence."
+    inputs:
+      - "All Worker receipts"
+      - "T050/T060 receipts"
+    constraints:
+      - "Do not implement new behavior in this task."
+      - "If verification fails, record the failure and activate an appropriate recovery task."
+    expected_output:
+      - "Verification command list with pass/fail."
+      - "Dirty diff summary."
+      - "Gap-to-evidence matrix for final Judge."
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      summary: "Broad PM verification passed after the four implementation slices and integration review."
+      commands:
+        - command: "pnpm --dir packages/core test"
+          status: pass
+          evidence: "60 files passed, 552 tests passed."
+        - command: "pnpm --dir packages/cli test"
+          status: pass
+          evidence: "7 files passed, 55 tests passed."
+        - command: "pnpm --dir packages/web test"
+          status: pass
+          evidence: "58 files passed, 425 tests passed; expected test logger output exercised a handled failure path."
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+          evidence: "tsc --noEmit exited 0."
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+          evidence: "tsc --noEmit exited 0."
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+          evidence: "tsc --noEmit exited 0."
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+          evidence: "eslint src/ exited 0."
+        - command: "pnpm --dir packages/cli lint"
+          status: pass
+          evidence: "eslint src/ exited 0 after adding existing-pattern max-lines annotations to expanded webhook command/test files."
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+          evidence: "eslint app/ components/ lib/ exited 0."
+        - command: "git diff --check"
+          status: pass
+          evidence: "No whitespace errors."
+      dirty_diff_summary:
+        - "14 tracked files modified across CLI, core, and web."
+        - "GoalBuddy files remain untracked under docs/goals/issue-506-507-followup-fixes/."
+      gap_to_evidence:
+        webhook_replay: "packages/core/src/db/webhooks.ts, packages/cli/src/commands/webhook.ts, tests in core/cli."
+        cli_onboarding: "packages/cli/src/commands/repo.ts and repo.test.ts."
+        event_retention: "packages/core/src/db/webhooks.ts, packages/web/lib/webhook-payload-retention.ts, packages/web/lib/webhook-intent-worker.ts, tests in core/web."
+        rest_review_preamble: "packages/web/app/api/v1/repos routes and route tests."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether all issue 506/507 follow-up gaps are closed."
+    inputs:
+      - "All done task receipts"
+      - "T090 verification evidence"
+      - "Current dirty diff"
+      - "Goal oracle"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any required Worker task is queued, active, or missing a receipt."
+      - "Reject completion if any of the four gaps lacks code evidence or an explicit defer/block rationale."
+      - "Reject completion if focused verification is stale or failing."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap-to-evidence mapping"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      completed_at: "2026-05-25T00:00:00-07:00"
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Final audit approved completion. All four issue 506/507 follow-up gaps are mapped to code evidence and passing verification. T060 was not needed because T050 found no integration defects."
+      gap_mapping:
+        - gap: "Missing issuectl webhook replay <delivery_id> operator command."
+          outcome: "Fixed by T010."
+          code:
+            - "packages/core/src/db/webhooks.ts"
+            - "packages/cli/src/commands/webhook.ts"
+          tests:
+            - "packages/core/src/db/webhooks.test.ts"
+            - "packages/cli/src/commands/webhook.test.ts"
+        - gap: "CLI repo add onboarding prompts/defaults differed from #507 text."
+          outcome: "Fixed by T020."
+          code:
+            - "packages/cli/src/commands/repo.ts"
+          tests:
+            - "packages/cli/src/commands/repo.test.ts"
+        - gap: "Webhook_events row retention pruning was missing."
+          outcome: "Fixed by T030."
+          code:
+            - "packages/core/src/db/webhooks.ts"
+            - "packages/web/lib/webhook-payload-retention.ts"
+            - "packages/web/lib/webhook-intent-worker.ts"
+          tests:
+            - "packages/core/src/db/webhooks.test.ts"
+            - "packages/web/lib/webhook-intent-worker.test.ts"
+        - gap: "REST repo add/update API did not accept reviewPreamble."
+          outcome: "Fixed by T040."
+          code:
+            - "packages/web/app/api/v1/repos/route.ts"
+            - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+          tests:
+            - "packages/web/app/api/v1/repos/route.test.ts"
+            - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      verification:
+        - command: "pnpm --dir packages/core test"
+          result: pass
+        - command: "pnpm --dir packages/cli test"
+          result: pass
+        - command: "pnpm --dir packages/web test"
+          result: pass
+        - command: "pnpm --dir packages/core typecheck"
+          result: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          result: pass
+        - command: "pnpm --dir packages/web typecheck"
+          result: pass
+        - command: "pnpm --dir packages/core lint"
+          result: pass
+        - command: "pnpm --dir packages/cli lint"
+          result: pass
+        - command: "pnpm --dir packages/web lint"
+          result: pass
+        - command: "git diff --check"
+          result: pass
+      residual_risk:
+        - "Core dist was rebuilt locally so CLI/web package-boundary checks saw new core exports; generated dist files are not tracked in git status."
+        - "No commit, push, or PR was created because the user did not request one."
+
+checks:
+  dirty_fingerprint: "14 tracked source/test files modified plus GoalBuddy receipts"
+  last_verification:
+    result: pass
+    task: T090
+    commands:
+      - "pnpm --dir packages/core test"
+      - "pnpm --dir packages/cli test"
+      - "pnpm --dir packages/web test"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/cli lint"
+      - "pnpm --dir packages/web lint"
+      - "git diff --check"
