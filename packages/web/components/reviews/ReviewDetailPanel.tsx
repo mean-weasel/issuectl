@@ -145,6 +145,14 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
               <dt>Terminal</dt>
               <dd>{data.deployment?.terminalReason ? labelize(data.deployment.terminalReason) : "not recorded"}</dd>
             </div>
+            <div>
+              <dt>Trigger event</dt>
+              <dd>{data.metadata.triggerEvent?.event ?? "not recorded"}</dd>
+            </div>
+            <div>
+              <dt>Review preamble</dt>
+              <dd>{data.metadata.currentReviewPreamble ?? "default"}</dd>
+            </div>
           </dl>
         </section>
 
@@ -152,6 +160,7 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
           <h2>Links</h2>
           <div className={styles.links}>
             <a href={data.links.githubPr}>GitHub PR</a>
+            {data.links.githubReview && <a href={data.links.githubReview}>GitHub review</a>}
             <a href={data.links.githubReviewFiles}>Review files</a>
             <Link href={data.links.workbench}>Workbench</Link>
             <Link href={data.links.webhookLogs}>Webhook logs</Link>

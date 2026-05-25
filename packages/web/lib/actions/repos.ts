@@ -15,6 +15,7 @@ import {
   getRepoById,
   getSetting,
   getActiveWebhookDeploymentsForRepoTarget,
+  markActivePrReviewForDeploymentTerminal,
   endDeployment,
   killTtyd,
   killTmuxSession,
@@ -309,8 +310,8 @@ export async function removeRepo(
     const db = getDb();
     const repo = getRepoById(db, id);
     if (!repo) return { success: false, error: "Repository not found" };
-    endActiveWebhookDeployments(db, id, repo.name, "issue", "killed_by_label");
-    endActiveWebhookDeployments(db, id, repo.name, "pr", "killed_by_label");
+    const endedIssueSessionIds = endActiveWebhookDeployments(db, id, repo.name, "issue", "killed_by_label");
+    const endedPrSessionIds = endActiveWebhookDeployments(db, id, repo.name, "pr", "killed_by_label");
     await deleteRepoWebhook(repo).catch((err) => {
       console.warn("[issuectl] Failed to delete repo webhook:", errMessage(err));
       recordDiagnosticEventSafely(db, {
@@ -331,7 +332,7 @@ export async function removeRepo(
       owner: repo.owner,
       repo: repo.name,
       message: "Repository removed from issuectl",
-      data: { repoId: id, hookId: repo.webhookId },
+      data: { repoId: id, hookId: repo.webhookId, affectedSessionIds: [...endedIssueSessionIds, ...endedPrSessionIds] },
     });
   } catch (err) {
     console.error("[issuectl] Failed to remove repo:", errMessage(err));
@@ -440,8 +441,8 @@ export async function updateRepo(
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
       const previous = getRepoById(db, id);
       updateRepoWebhookSettings(db, id, webhookUpdates);
-      endDisabledAutomationSessions(db, id, previous, webhookUpdates);
-      recordRepoSettingsDiagnostics(db, id, previous, webhookUpdates);
+      const endedSessionIds = endDisabledAutomationSessions(db, id, previous, webhookUpdates);
+      recordRepoSettingsDiagnostics(db, id, previous, webhookUpdates, endedSessionIds);
     }
   } catch (err) {
     console.error("[issuectl] Failed to update repo:", errMessage(err));
@@ -584,6 +585,7 @@ function recordRepoSettingsDiagnostics(
   repoId: number,
   previous: { owner: string; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean } | undefined,
   updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+  affectedSessionIds: { issue: number[]; pr: number[] } = { issue: [], pr: [] },
 ): void {
   if (!previous) return;
   if (updates.autoLaunchIssues !== undefined && updates.autoLaunchIssues !== previous.autoLaunchIssues) {
@@ -594,7 +596,7 @@ function recordRepoSettingsDiagnostics(
       owner: previous.owner,
       repo: previous.name,
       message: updates.autoLaunchIssues ? "Issue auto-launch enabled" : "Issue auto-launch disabled",
-      data: { repoId, targetType: "issue" },
+      data: { repoId, targetType: "issue", affectedSessionIds: affectedSessionIds.issue },
     });
   }
   if (updates.autoReviewPrs !== undefined && updates.autoReviewPrs !== previous.autoReviewPrs) {
@@ -605,7 +607,7 @@ function recordRepoSettingsDiagnostics(
       owner: previous.owner,
       repo: previous.name,
       message: updates.autoReviewPrs ? "PR auto-review enabled" : "PR auto-review disabled",
-      data: { repoId, targetType: "pr" },
+      data: { repoId, targetType: "pr", affectedSessionIds: affectedSessionIds.pr },
     });
   }
 }
@@ -615,14 +617,16 @@ function endDisabledAutomationSessions(
   repoId: number,
   previous: { name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean } | undefined,
   updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
-): void {
-  if (!previous) return;
+): { issue: number[]; pr: number[] } {
+  const ended = { issue: [] as number[], pr: [] as number[] };
+  if (!previous) return ended;
   if (previous.autoLaunchIssues && updates.autoLaunchIssues === false) {
-    endActiveWebhookDeployments(db, repoId, previous.name, "issue", "killed_by_label");
+    ended.issue = endActiveWebhookDeployments(db, repoId, previous.name, "issue", "killed_by_label");
   }
   if (previous.autoReviewPrs && updates.autoReviewPrs === false) {
-    endActiveWebhookDeployments(db, repoId, previous.name, "pr", "killed_by_label");
+    ended.pr = endActiveWebhookDeployments(db, repoId, previous.name, "pr", "killed_by_label");
   }
+  return ended;
 }
 
 function endActiveWebhookDeployments(
@@ -631,11 +635,21 @@ function endActiveWebhookDeployments(
   repoName: string,
   targetType: "issue" | "pr",
   terminalReason: "killed_by_label",
-): void {
+): number[] {
+  const endedSessionIds: number[] = [];
   for (const deployment of getActiveWebhookDeploymentsForRepoTarget(db, repoId, targetType)) {
     const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
     if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
     else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
     endDeployment(db, deployment.id, terminalReason);
+    if (targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, deployment.id, {
+        completedAt: Date.now(),
+        status: "superseded",
+        reason: terminalReason,
+      });
+    }
+    endedSessionIds.push(deployment.id);
   }
+  return endedSessionIds;
 }

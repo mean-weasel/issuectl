@@ -331,7 +331,7 @@ export function RepoSettingsPanel({
           <a className={styles.secondaryButton} href={`/sessions?repo=${encodeURIComponent(repoPath)}`}>
             View repo sessions
           </a>
-          <a className={styles.secondaryButton} href={`/logs/webhooks?repo=${encodeURIComponent(repoPath)}`}>
+          <a className={styles.secondaryButton} href={`/logs/webhooks?repo=${repo.id}`}>
             View webhook events
           </a>
         </div>
@@ -375,7 +375,7 @@ function RecentDeliveries({ repo, deliveries }: { repo: Repo; deliveries: Webhoo
         {deliveries.slice(0, 10).map((event) => (
           <a
             key={event.id}
-            href={`/logs/webhooks?repo=${encodeURIComponent(`${repo.owner}/${repo.name}`)}&delivery=${encodeURIComponent(event.deliveryId)}`}
+            href={`/logs/webhooks?repo=${repo.id}&delivery=${encodeURIComponent(event.deliveryId)}`}
           >
             <span>{event.eventType}{event.action ? `.${event.action}` : ""}</span>
             <code>{event.deliveryId}</code>

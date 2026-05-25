@@ -13,6 +13,7 @@ vi.mock("@/lib/logger", () => ({
 const getDb = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getActiveWebhookDeploymentsForRepoTarget = vi.hoisted(() => vi.fn());
+const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
 const endDeployment = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
@@ -25,6 +26,7 @@ vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getRepo: (...args: unknown[]) => getRepo(...args),
   getActiveWebhookDeploymentsForRepoTarget: (...args: unknown[]) => getActiveWebhookDeploymentsForRepoTarget(...args),
+  markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
   endDeployment: (...args: unknown[]) => endDeployment(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
@@ -73,6 +75,7 @@ beforeEach(() => {
   });
   getActiveWebhookDeploymentsForRepoTarget.mockReset();
   getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([]);
+  markActivePrReviewForDeploymentTerminal.mockReset();
   endDeployment.mockReset();
   killTtyd.mockReset();
   killTmuxSession.mockReset();
@@ -126,6 +129,17 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
     expect(response.status).toBe(200);
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
     expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 22, "killed_by_label");
+    expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 22, {
+      completedAt: expect.any(Number),
+      status: "superseded",
+      reason: "killed_by_label",
+    });
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.automation_disabled",
+      data: expect.objectContaining({
+        affectedSessionIds: expect.objectContaining({ pr: [22] }),
+      }),
+    }));
   });
 
   it("PATCH rejects invalid webhook payload mode", async () => {

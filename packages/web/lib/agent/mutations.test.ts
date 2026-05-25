@@ -280,7 +280,7 @@ describe("executeAgentMutationRequest", () => {
     expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
   });
 
-  it("denies push after same-repo, non-default, unprotected, final-head and checkout verification until local upload exists", async () => {
+  it("pushes the new local head after same-repo, non-default, unprotected, final-head and checkout verification", async () => {
     const push = vi.fn().mockResolvedValue(undefined);
     const verifyWorkspaceHead = vi.fn().mockResolvedValue({ ok: true });
     setBudget(db, deploymentId, "push", 1);
@@ -304,15 +304,46 @@ describe("executeAgentMutationRequest", () => {
       push,
     });
 
-    expect(result).toEqual({ allowed: false, reason: "unsupported_local_push" });
+    expect(result).toEqual({ allowed: true });
     expect(verifyWorkspaceHead).toHaveBeenCalledWith({
       workspacePath: "/tmp/issuectl-pr-44",
       expectedHeadRef: "feature/review",
-      expectedHeadSha: "head-a",
+      expectedHeadSha: "head-b",
       owner: "acme",
       repo: "api",
     });
-    expect(push).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith({
+      owner: "acme",
+      repo: "api",
+      ref: "heads/feature/review",
+      sha: "head-b",
+      expectedHeadSha: "head-a",
+    });
+    expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 1 });
+  });
+
+  it("denies push when the push adapter is not configured", async () => {
+    setBudget(db, deploymentId, "push", 1);
+
+    const result = await executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-44",
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      actionType: "push",
+      payload: {
+        expectedHeadRef: "feature/review",
+        expectedHeadSha: "head-a",
+        newSha: "head-b",
+      },
+    }, {
+      fetchPull: async () => pull(),
+      isBranchProtected: async () => false,
+      verifyWorkspaceHead: async () => ({ ok: true }),
+    });
+
+    expect(result).toEqual({ allowed: false, reason: "action_unimplemented" });
     expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
   });
 

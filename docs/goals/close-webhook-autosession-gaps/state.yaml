@@ -1,0 +1,394 @@
+version: 2
+
+goal:
+  title: "Close Webhook Auto-Session Gaps"
+  slug: "close-webhook-autosession-gaps"
+  kind: existing_plan
+  tranche: "Close the verified #506/#507 correctness gaps through successive safe, verified local slices; keep CLI repo add full install as non-blocking polish."
+  status: done
+  oracle:
+    signal: "Targeted tests and final audit prove every blocking gap is fixed or explicitly classified as accepted follow-up."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "A final Judge/PM receipt maps G1-G5/F1 to code changes, verification commands, and any accepted follow-up decisions with full_outcome_complete: true."
+  intake:
+    original_request: "make a detailed plan with GoalBuddy to close these gaps"
+    interpreted_outcome: "Close the remaining verified #506/#507 implementation gaps with bounded fixes, verification, and final audit."
+    input_shape: existing_plan
+    audience: "issuectl maintainer/operator"
+    authority: approved
+    proof_type: test
+    completion_proof: "Final audit receipt maps every required gap to fixed code and passing verification, with accepted CLI installer polish recorded as non-blocking follow-up."
+    likely_misfire: "Fixing only UI/tests while PR fix-push or PR review lock cleanup remains behaviorally incomplete."
+    blind_spots_considered:
+      - "Direct PR fix-push may require a product/security decision instead of straightforward implementation."
+      - "Review detail may not currently persist every requested link-out, so unsupported metadata may need follow-up classification."
+      - "Shared automation-disable helpers span web actions, REST API, and CLI paths."
+    existing_plan_facts:
+      - "G1: daemon-mediated PR push path validates safety but returns unsupported_local_push."
+      - "G2: automation disable/remove paths can leave linked pr_reviews active."
+      - "G3: repo settings webhook log links pass owner/name and delivery params the log page does not honor."
+      - "G4: repo.automation_disabled diagnostics omit affected session IDs."
+      - "G5: review detail lacks some specified metadata/link-outs."
+      - "F1: CLI repo add full webhook install is accepted as non-blocking polish/follow-up."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/close-webhook-autosession-gaps/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/close-webhook-autosession-gaps"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Validate the audited gap list against current repo state and convert it into executable Worker slices."
+    inputs:
+      - "docs/goals/close-webhook-autosession-gaps/goal.md"
+      - "Known audit findings from the three sub-agents in conversation"
+      - "Current repo checkout"
+    constraints:
+      - "Read implementation only as needed to confirm current file locations and write scopes."
+      - "Do not perform product edits during this PM task."
+      - "Keep CLI repo add full installer as follow-up unless new evidence shows it blocks a required oracle."
+    expected_output:
+      - "Receipt confirming the gap list and any corrected file scopes."
+      - "Updated Worker tasks with allowed_files, verify, and stop_if if file scopes need adjustment."
+      - "Next active task selected."
+    receipt:
+      result: done
+      summary: "Confirmed the audited gaps against current repo state. T010 and T030 overlap on the same automation-disable helper, so the first Worker slice should fix stale PR review locks and affected-session diagnostics together across web, REST, and CLI. CLI repo add full installer remains non-blocking polish."
+      evidence:
+        - "packages/web/lib/actions/repos.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+        - "packages/cli/src/commands/repo.ts"
+        - "packages/core/src/db/pr-reviews.ts"
+        - "packages/web/lib/agent/mutations.ts"
+      next_active_task: T010
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Fix stale PR review locks and record affected session IDs when repo automation is disabled or a repo is removed."
+    allowed_files:
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/pr-reviews.test.ts"
+      - "packages/core/src/db/deployments.ts"
+      - "packages/core/src/db/deployments.test.ts"
+      - "packages/web/lib/actions/repos.ts"
+      - "packages/web/lib/actions/repos.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "packages/cli/src/commands/repo.ts"
+      - "packages/cli/src/commands/repo.test.ts"
+    verify:
+      - "pnpm --dir packages/core test src/db/pr-reviews.test.ts"
+      - "pnpm --dir packages/web test lib/actions/repos.test.ts app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "pnpm --dir packages/cli test src/commands/repo.test.ts"
+    stop_if:
+      - "Needs a schema change not listed in allowed_files."
+      - "Finds that remove-repo behavior spans additional unlisted packages."
+      - "Verification fails twice for different root causes."
+      - "Fix conflicts with T030; include affected-session diagnostics here and leave T030 for audit/cleanup."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/actions/repos.ts"
+        - "packages/web/lib/actions/repos.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+        - "packages/cli/src/commands/repo.ts"
+        - "packages/cli/src/commands/repo.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/core test src/db/pr-reviews.test.ts src/db/deployments.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web test lib/actions/repos.test.ts 'app/api/v1/repos/[owner]/[repo]/route.test.ts'"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test src/commands/repo.test.ts"
+          status: pass
+      summary: "Automation disable/remove paths now collect affected webhook deployment IDs, terminalize linked PR reviews as superseded for PR sessions, and include affectedSessionIds in diagnostics across web actions, REST, and CLI."
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Fix webhook log repo and delivery prefilter links from repo settings."
+    allowed_files:
+      - "packages/web/components/repos/RepoSettingsPanel.tsx"
+      - "packages/web/app/logs/webhooks/page.tsx"
+      - "packages/web/app/logs/webhooks/page.module.css"
+      - "packages/web/lib/webhook-events-stream.ts"
+      - "packages/web/lib/webhook-events-stream.test.ts"
+      - "packages/web/lib/actions/repos.test.ts"
+    verify:
+      - "pnpm --dir packages/web test lib/review-detail-data.test.ts"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Filtering requires a new persistent query API outside allowed files."
+      - "Delivery highlighting requires browser verification before code can be trusted."
+      - "Verification fails twice for different root causes."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/components/repos/RepoSettingsPanel.tsx"
+        - "packages/web/app/logs/webhooks/page.tsx"
+      commands:
+        - cmd: "pnpm --dir packages/web test lib/webhook-events-stream.test.ts lib/actions/repos.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      summary: "Repo settings webhook links now pass the numeric repo id expected by /logs/webhooks, and the log page honors a delivery query param for event rows and audit diagnostics."
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Record affected session IDs in repo.automation_disabled diagnostics."
+    allowed_files:
+      - "packages/web/lib/actions/repos.ts"
+      - "packages/web/lib/actions/repos.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "packages/cli/src/commands/repo.ts"
+      - "packages/cli/src/commands/repo.test.ts"
+    verify:
+      - "pnpm --dir packages/web test lib/actions/repos.test.ts app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "pnpm --dir packages/cli test src/commands/repo.test.ts"
+    stop_if:
+      - "Diagnostic payload shape is shared with external API consumers and needs a product decision."
+      - "The fix conflicts with T010's shared helper; merge into T010 instead of duplicating logic."
+      - "Verification fails twice for different root causes."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/actions/repos.ts"
+        - "packages/web/lib/actions/repos.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+        - "packages/cli/src/commands/repo.ts"
+        - "packages/cli/src/commands/repo.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web test lib/actions/repos.test.ts 'app/api/v1/repos/[owner]/[repo]/route.test.ts'"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test src/commands/repo.test.ts"
+          status: pass
+      summary: "Merged into T010 because affected-session diagnostics used the same automation-disable helper and verification surface."
+      covered_by: T010
+  - id: T040
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide the minimal correct scope for review-detail metadata/link-outs."
+    inputs:
+      - "Issue #507 review-detail requirements"
+      - "Current persisted review/deployment/webhook data"
+      - "Existing ReviewDetailPanel and data loader"
+    constraints:
+      - "Read-only."
+      - "Do not require rendering GitHub review comments inside issuectl."
+      - "Prefer implementing fields that are already persisted; record unsupported fields as follow-up only with evidence."
+    expected_output:
+      - "Decision: implement now | split follow-up | no-op with rationale."
+      - "If implement now: exact Worker objective, allowed_files, verify, and stop_if."
+      - "If follow-up: concise issue text or board receipt content."
+    receipt:
+      result: done
+      decision: "implement supported fields now; record missing persistence as follow-up evidence"
+      full_outcome_complete: false
+      rationale: "Current data supports current repo review preamble, trigger diagnostics, webhook-log link, and optional posted review URL when present in result/completion JSON. It does not persist an immutable preamble-used snapshot or guaranteed GitHub review URL for every run."
+      worker_task: T041
+  - id: T041
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Expose supported review-detail metadata and optional posted GitHub review link."
+    allowed_files:
+      - "packages/web/lib/review-detail-data.ts"
+      - "packages/web/lib/review-detail-data.test.ts"
+      - "packages/web/components/reviews/ReviewDetailPanel.tsx"
+      - "packages/web/components/reviews/ReviewDetailPanel.module.css"
+    verify:
+      - "pnpm --dir packages/web test lib/review-detail-data.test.ts"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Requires schema changes to persist immutable preamble-used or posted review URL."
+      - "Requires rendering GitHub review comments inside issuectl."
+      - "Verification fails twice for different root causes."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/review-detail-data.ts"
+        - "packages/web/lib/review-detail-data.test.ts"
+        - "packages/web/components/reviews/ReviewDetailPanel.tsx"
+      commands:
+        - cmd: "pnpm --dir packages/web test lib/review-detail-data.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      summary: "Review detail now exposes current repo review preamble, the relevant trigger diagnostic, and an optional GitHub review link when review/completion result JSON carries one. Immutable preamble-used and guaranteed posted-review URL still require persisted fields and are not fabricated."
+  - id: T050
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide whether daemon-mediated PR fix-push is safe and bounded enough for this tranche."
+    inputs:
+      - "Issue #506 direct-push requirements"
+      - "Current agent mutation gateway"
+      - "Current PR safety checks and tests"
+    constraints:
+      - "Read-only."
+      - "Do not approve broad ambient git/GitHub credentials."
+      - "If implementation requires product/security choices, mark the Worker blocked and produce an explicit follow-up decision request."
+    expected_output:
+      - "Decision: implement bounded push path now | block for product/security decision | narrow spec with operator approval."
+      - "If implement now: exact Worker objective, allowed_files, verify, and stop_if."
+      - "If blocked: exact missing decision and safest local work that can still proceed."
+    receipt:
+      result: done
+      decision: "approved"
+      full_outcome_complete: false
+      rationale: "The gateway already authenticates by deployment token, rejects manual sessions, checks same-repo/non-default/unprotected PR heads, validates current PR head SHA, verifies local checkout branch/remote/head, and enforces action budgets. The safe missing slice is to verify the workspace head equals payload.newSha and call the existing push adapter with refs/heads/<expectedHeadRef>."
+      worker_task: T060
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement daemon-mediated PR fix-push only if T050 approves a bounded write scope."
+    allowed_files:
+      - "packages/web/lib/agent/mutations.ts"
+      - "packages/web/lib/agent/mutations.test.ts"
+      - "packages/web/lib/agent/mutation-types.ts"
+      - "packages/web/lib/agent/mutation-adapters.ts"
+    verify:
+      - "pnpm --dir packages/web test lib/agent/mutations.test.ts"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "T050 has not approved exact allowed_files and verification."
+      - "Implementation needs credentials, network mutation, or destructive git operations during tests."
+      - "Safety gates cannot be enforced without changing the product decision."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/agent/mutations.ts"
+        - "packages/web/lib/agent/mutations.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web test lib/agent/mutations.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      summary: "Bounded PR fix-push now verifies the PR still points at the expected old head, confirms the local workspace branch/remotes are safe and already at the requested new head, then performs a non-force refs/heads/<expectedHeadRef> update through the existing push adapter. Missing push adapter still fails closed before budget is consumed."
+  - id: T900
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Record the accepted CLI repo add installer follow-up without treating it as a blocking gap."
+    inputs:
+      - "User decision to follow Codex recommendation on #5"
+    constraints:
+      - "Do not implement the CLI full installer in this tranche."
+      - "If creating an external GitHub issue is desired, ask the operator first unless already explicitly approved."
+    expected_output:
+      - "Board receipt noting the follow-up/polish classification."
+      - "Optional queued follow-up issue/PR task only if operator approves."
+    receipt:
+      result: done
+      classification: "accepted_follow_up"
+      full_outcome_complete: false
+      summary: "CLI `repo add` full webhook installation remains useful polish, but is not a blocking correctness gap for #506/#507 because existing CLI automation disable/remove paths are fixed and verified. No external GitHub issue was created in this tranche."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the #506/#507 gap-closure tranche is complete."
+    inputs:
+      - "All completed task receipts"
+      - "Final git diff/status"
+      - "Final verification command outputs"
+      - "docs/goals/close-webhook-autosession-gaps/goal.md"
+    constraints:
+      - "Read-only."
+      - "Do not mark complete if any blocking gap remains unimplemented, unverified, or undecided."
+      - "CLI repo add installer follow-up must be explicitly classified as non-blocking."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap-by-gap mapping to receipts and verification."
+      - "Missing evidence and next task if not complete."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      gap_mapping:
+        G1: "T050 approved a bounded daemon-mediated PR fix-push; T060 implemented and verified non-force ref updates after final PR-head and local workspace-head safety checks."
+        G2: "T010 terminalizes linked active PR reviews as superseded when automation disable/remove ends PR sessions."
+        G3: "T020 fixes repo settings webhook-log links to use numeric repo id and delivery filtering honored by /logs/webhooks."
+        G4: "T010/T030 include affectedSessionIds in repo.automation_disabled diagnostics across web action, REST API, and CLI paths."
+        G5: "T040/T041 expose currently persisted review-detail metadata/link-outs and explicitly classify unsupported immutable preamble snapshot / guaranteed posted-review URL as persistence follow-up."
+        F1: "T900 records CLI repo add full webhook installer as accepted non-blocking polish/follow-up."
+      commands:
+        - cmd: "pnpm --dir packages/core test"
+          status: pass
+        - cmd: "pnpm --dir packages/web test"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "pnpm --dir packages/cli lint"
+          status: pass
+        - cmd: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/close-webhook-autosession-gaps/state.yaml"
+          status: pass
+      summary: "All blocking #506/#507 correctness gaps are implemented or explicitly accepted as follow-up, and the final package tests, typechecks, lints, and GoalBuddy state validation pass."
+
+checks:
+  dirty_fingerprint: "T010 changes present; not final"
+  last_verification:
+    result: pass
+    task: T060
+    commands:
+      - "pnpm --dir packages/web test lib/agent/mutations.test.ts"
+      - "pnpm --dir packages/web typecheck"

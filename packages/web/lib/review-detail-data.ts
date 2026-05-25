@@ -33,6 +33,10 @@ export type ReviewDetailData = {
   diagnostics: DiagnosticEvent[];
   result: Record<string, unknown>;
   deploymentResult: Record<string, unknown>;
+  metadata: {
+    currentReviewPreamble: string | null;
+    triggerEvent: DiagnosticEvent | null;
+  };
   banners: ReviewBanner[];
   actions: {
     canRetry: boolean;
@@ -41,6 +45,7 @@ export type ReviewDetailData = {
   };
   links: {
     githubPr: string;
+    githubReview: string | null;
     githubReviewFiles: string;
     workbench: string;
     repoSettings: string;
@@ -89,6 +94,7 @@ export function buildReviewDetailData(input: {
     label: lineageLabel(item),
   }));
   const activeReview = lineage.find((item) => ACTIVE_REVIEW_STATUSES.has(item.status));
+  const triggerEvent = triggerDiagnostic(input.diagnostics ?? []);
   return {
     initialized: true,
     review: input.review,
@@ -98,13 +104,17 @@ export function buildReviewDetailData(input: {
     diagnostics: input.diagnostics ?? [],
     result,
     deploymentResult,
+    metadata: {
+      currentReviewPreamble: input.repo.reviewPreamble,
+      triggerEvent,
+    },
     banners: deriveBanners(input.review, result, deploymentResult),
     actions: {
       canRetry: !activeReview,
       canFullRerun: !activeReview,
       disabledReason: activeReview ? `Run #${activeReview.id} is still ${labelize(activeReview.status)}.` : null,
     },
-    links: reviewLinks(input.repo, input.review),
+    links: reviewLinks(input.repo, input.review, result, deploymentResult),
   };
 }
 
@@ -170,10 +180,16 @@ function deriveBanners(
   return banners;
 }
 
-function reviewLinks(repo: Repo, review: PrReview): ReviewDetailData["links"] {
+function reviewLinks(
+  repo: Repo,
+  review: PrReview,
+  result: Record<string, unknown>,
+  deploymentResult: Record<string, unknown>,
+): ReviewDetailData["links"] {
   const fullName = `${repo.owner}/${repo.name}`;
   return {
     githubPr: `https://github.com/${fullName}/pull/${review.prNumber}`,
+    githubReview: reviewUrl(result) ?? reviewUrl(deploymentResult),
     githubReviewFiles: `https://github.com/${fullName}/pull/${review.prNumber}/files`,
     workbench: `/workbench?repo=${encodeURIComponent(fullName)}`,
     repoSettings: `/repos/${repo.owner}/${repo.name}/settings`,
@@ -181,6 +197,23 @@ function reviewLinks(repo: Repo, review: PrReview): ReviewDetailData["links"] {
     webhookLogs: `/logs/webhooks?q=${encodeURIComponent(`${fullName}#${review.prNumber}`)}`,
     diagnosticsCli: `pnpm --dir packages/cli exec issuectl diag show --pr ${fullName}#${review.prNumber}`,
   };
+}
+
+function triggerDiagnostic(events: DiagnosticEvent[]): DiagnosticEvent | null {
+  return events.find((event) =>
+    event.event === "webhook.pr_launched" ||
+    event.event === "webhook.launched" ||
+    event.event === "pr_review.retry" ||
+    event.event === "pr_review.manual_rerun"
+  ) ?? events[0] ?? null;
+}
+
+function reviewUrl(value: Record<string, unknown>): string | null {
+  return stringValue(value.githubReviewUrl)
+    ?? stringValue(value.reviewUrl)
+    ?? stringValue(value.reviewHtmlUrl)
+    ?? stringValue(value.postedReviewUrl)
+    ?? null;
 }
 
 function lineageLabel(review: PrReview): string {
