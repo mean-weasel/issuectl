@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import {
   addRepo,
@@ -76,8 +76,12 @@ function testWorkerDeps() {
   };
 }
 
-async function runWorker(db: Database.Database, now: number) {
-  return runWebhookIntentWorkerOnce(db, now, testWorkerDeps());
+async function runWorker(
+  db: Database.Database,
+  now: number,
+  deps: Partial<Parameters<typeof runWebhookIntentWorkerOnce>[2]> = {},
+) {
+  return runWebhookIntentWorkerOnce(db, now, { ...testWorkerDeps(), ...deps });
 }
 
 function expectWorkerResult(
@@ -142,6 +146,22 @@ describe("runWebhookIntentWorkerOnce", () => {
       }),
     );
     expect(db.prepare("SELECT agent FROM deployments WHERE id = 1").get()).toEqual({ agent: "codex" });
+  });
+
+  it("broadcasts live-tail updates when issue intent state changes", async () => {
+    const broadcastEventsChanged = vi.fn();
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 2_000,
+    });
+
+    const result = await runWorker(db, 2_000, { broadcastEventsChanged });
+
+    expectWorkerResult(result, { claimed: 1, launched: 1 });
+    expect(broadcastEventsChanged).toHaveBeenCalledTimes(2);
   });
 
   it("recovers expired processing leases to pending", async () => {

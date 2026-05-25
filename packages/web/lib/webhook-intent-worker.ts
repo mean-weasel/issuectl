@@ -25,6 +25,7 @@ import type { IntentEventSummary } from "./webhook-intent-source";
 import { launchPrFromWebhook } from "./webhook-pr-launch";
 import { pruneExpiredWebhookPayloads } from "./webhook-payload-retention";
 import { enforceWebhookRunawayControls } from "./webhook-runaway-controls";
+import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
 
 export type WebhookIntentWorkerResult = {
   claimed: number; recovered: number; expired: number; prunedPayloads: number;
@@ -50,6 +51,7 @@ type WorkerDeps = {
   ) => Promise<{ deploymentId: number }>;
   launchPr?: LaunchPrReview;
   isAncestor?: PullWorkerDeps["isAncestor"];
+  broadcastEventsChanged?: () => void;
 };
 
 function parseMaxWebhookIntentAgeMinutes(value: string | undefined): number {
@@ -79,13 +81,17 @@ export async function runWebhookIntentWorkerOnce(
   }
   const expired = expiredRecords.length;
   const prunedPayloads = pruneExpiredWebhookPayloads(db, now);
+  const broadcastEventsChanged = deps.broadcastEventsChanged ?? broadcastWebhookEventsChanged;
+  if (recovered > 0 || expired > 0 || prunedPayloads > 0) broadcastEventsChanged();
   const base = { recovered, expired, prunedPayloads };
   const intent = claimDueWebhookIntent(db, now, 60_000);
   if (!intent) return result(base);
+  broadcastEventsChanged();
 
   const repo = getRepoById(db, intent.repoId);
   if (!repo) {
     markIntentTerminal(db, intent.id, "failed", now, "Repository not found");
+    broadcastEventsChanged();
     return result(base, { claimed: 1, failed: 1 });
   }
   recordDiagnosticEventSafely(db, {
@@ -108,10 +114,14 @@ export async function runWebhookIntentWorkerOnce(
 
   if (intent.targetType === "pr") {
     const control = enforceWebhookRunawayControls(db, repo, intent, now);
-    if (!control.allowed) return result(base, { claimed: 1, [control.outcome]: 1 });
+    if (!control.allowed) {
+      broadcastEventsChanged();
+      return result(base, { claimed: 1, [control.outcome]: 1 });
+    }
     return handlePullRequestIntent(db, repo, intent, now, base, {
       ...deps,
       launchPr: deps.launchPr ?? launchPrFromWebhook,
+      broadcastEventsChanged,
     });
   }
   try {
@@ -122,11 +132,13 @@ export async function runWebhookIntentWorkerOnce(
       const endedSessions = endWebhookSessionForTarget(db, repo, intent, terminalReasonForControl(event));
       recordIntentDiagnostic(db, repo, intent, "webhook.kill_switch", endedSessions > 0 ? "Ended webhook-launched session." : "No webhook-launched session to end.");
       markIntentTerminal(db, intent.id, "skipped_optout", now, "Control event or repo auto-launch disabled");
+      broadcastEventsChanged();
       return result(base, { claimed: 1, skippedOptout: 1, endedSessions });
     }
     if (triggeredBy === "webhook" && !isIssueGatedIn(repo, issue)) {
       recordIntentDiagnostic(db, repo, intent, "webhook.skipped_optout", "Issue is not opted in for auto-launch.");
       markIntentTerminal(db, intent.id, "skipped_optout", now, "Issue is not opted in");
+      broadcastEventsChanged();
       return result(base, { claimed: 1, skippedOptout: 1 });
     }
     const locked = hasLiveDeploymentForIssue(db, repo.id, intent.targetNumber);
@@ -140,19 +152,25 @@ export async function runWebhookIntentWorkerOnce(
     if (locked) {
       recordIntentDiagnostic(db, repo, intent, "webhook.skipped_locked", "Issue already has a live session.");
       markIntentTerminal(db, intent.id, "skipped_locked", now, "Issue already has a live session");
+      broadcastEventsChanged();
       return result(base, { claimed: 1, skippedLocked: 1 });
     }
     const control = enforceWebhookRunawayControls(db, repo, intent, now);
-    if (!control.allowed) return result(base, { claimed: 1, [control.outcome]: 1 });
+    if (!control.allowed) {
+      broadcastEventsChanged();
+      return result(base, { claimed: 1, [control.outcome]: 1 });
+    }
 
     const launch = await (deps.launchIssue ?? launchIssueFromWebhook)(db, repo, intent, issue, triggeredBy);
     markIntentTerminal(db, intent.id, "launched", now, null, launch.deploymentId);
     recordIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched issue session.", launch.deploymentId);
+    broadcastEventsChanged();
     return result(base, { claimed: 1, launched: 1 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     markIntentTerminal(db, intent.id, "failed", now, message);
     recordIntentDiagnostic(db, repo, intent, "webhook.launch_failed", message);
+    broadcastEventsChanged();
     return result(base, { claimed: 1, failed: 1 });
   }
 }

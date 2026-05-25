@@ -233,6 +233,7 @@ export async function handleGithubWebhookRequest(
         targetNumber,
         eventId: recorded.eventId,
       });
+      broadcastWebhookEventsChanged();
       writeJson(res, 200, { ok: true, eventId: recorded.eventId, intentId: null });
       return true;
     }
@@ -256,6 +257,7 @@ export async function handleGithubWebhookRequest(
       eventId: recorded.eventId,
       intentId,
     });
+    broadcastWebhookEventsChanged();
   }
 
   writeJson(res, 200, { ok: true, eventId: recorded.eventId, intentId });

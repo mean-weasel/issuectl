@@ -11,6 +11,7 @@ import type { Repo, WebhookIntent } from "@issuectl/core";
 import type { WebhookIntentWorkerResult } from "./webhook-intent-worker";
 import { getLatestIntentEvent, triggeredByForIntentEvent } from "./webhook-intent-source";
 import { planPrReview } from "./webhook-pr-review-state";
+import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
 
 export type PullState = {
   title: string;
@@ -49,6 +50,7 @@ export type PullWorkerDeps = {
   fetchPullState?: FetchPullState;
   launchPr?: LaunchPrReview;
   isAncestor?: (repo: Repo, baseSha: string, headSha: string) => Promise<boolean>;
+  broadcastEventsChanged?: () => void;
 };
 
 export async function handlePullRequestIntent(
@@ -60,6 +62,7 @@ export async function handlePullRequestIntent(
   deps: PullWorkerDeps,
 ): Promise<WebhookIntentWorkerResult> {
   let review: PrReviewRecord | undefined;
+  const broadcastEventsChanged = deps.broadcastEventsChanged ?? broadcastWebhookEventsChanged;
   try {
     const pull = await (deps.fetchPullState ?? fetchPullState)(repo, intent.targetNumber);
     const event = getLatestIntentEvent(db, intent.id);
@@ -68,11 +71,13 @@ export async function handlePullRequestIntent(
       const endedSessions = endWebhookPrSessionForTarget(db, repo, intent, now, terminalReasonForPrOptOut(repo, pull, event));
       recordPrIntentDiagnostic(db, repo, intent, "webhook.skipped_optout", endedSessions > 0 ? "Ended webhook-launched PR review session." : "PR is not opted in for auto-review.");
       markIntentTerminal(db, intent.id, now, "PR is not opted in");
+      broadcastEventsChanged();
       return result(base, { claimed: 1, skippedOptout: 1, endedSessions });
     }
     if (!isSafePullForReservation(pull, intent.desiredHeadSha)) {
       recordPrIntentDiagnostic(db, repo, intent, "webhook.skipped_unsafe_pr", "PR failed auto-review safety gates.");
       markIntentTerminal(db, intent.id, now, "PR failed safety gates");
+      broadcastEventsChanged();
       return result(base, { claimed: 1, skippedOptout: 1 });
     }
     if (!deps.launchPr) throw new Error("PR launch dependency is not configured");
@@ -87,22 +92,26 @@ export async function handlePullRequestIntent(
     if (plan.action === "skip") {
       markIntentSkippedLocked(db, intent.id, now, plan.reason);
       recordPrIntentDiagnostic(db, repo, intent, plan.event, plan.reason);
+      broadcastEventsChanged();
       return result(base, { claimed: 1, skippedLocked: 1 });
     }
     review = plan.review;
     markPrReviewLaunching(db, review.id);
+    broadcastEventsChanged();
     review = { ...review, status: "launching" };
     const launch = await deps.launchPr(db, repo, intent, pull, review);
     markPrReviewInProgress(db, review.id, launch.deploymentId);
     markIntentLaunched(db, intent.id, now, launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched PR review session.", launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.pr_launched", "Webhook launched PR review session.", launch.deploymentId);
+    broadcastEventsChanged();
     return result(base, { claimed: 1, launched: 1 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (review) markPrReviewFailed(db, review.id, now, message);
     markIntentFailed(db, intent.id, now, message);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.launch_failed", message);
+    broadcastEventsChanged();
     return result(base, { claimed: 1, failed: 1 });
   }
 }

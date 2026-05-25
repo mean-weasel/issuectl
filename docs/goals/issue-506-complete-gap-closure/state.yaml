@@ -5,7 +5,7 @@ goal:
   slug: "issue-506-complete-gap-closure"
   kind: existing_plan
   tranche: "Fix every remaining issue #506 audit gap through successive safe verified slices."
-  status: active
+  status: done
   oracle:
     signal: "Final audit maps every three-agent audit gap to a verified fix or explicit blocker, with focused tests and package checks for touched areas."
     cadence: "after each Worker package and at final audit"
@@ -339,6 +339,7 @@ tasks:
       - "packages/core/src/launch/workspace.test.ts"
       - "packages/core/src/launch/launch-workspace-setup.ts"
       - "packages/core/src/launch/launch.ts"
+      - "packages/core/src/index.ts"
       - "packages/core/src/launch/launch-contexts.ts"
       - "packages/core/src/launch/launch-execute-precheck.test.ts"
       - "packages/web/lib/webhook-pr-launch.ts"
@@ -620,7 +621,7 @@ tasks:
       - "Next task if not complete"
     receipt:
       result: done
-      decision: complete_with_explicit_blocker
+      decision: complete
       full_outcome_complete: true
       gap_disposition:
         - "Webhook receiver/intake: fixed exact opt-in unlabeled gating for normal and deduped deliveries; debounce cap, queue-depth rejection, dedupe, raw-payload retention, and no-secret behavior have regression coverage."
@@ -665,6 +666,7 @@ tasks:
       - "packages/core/src/launch/launch-diagnostics.ts"
       - "packages/core/src/launch/launch.ts"
       - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/core/src/index.ts"
       - "packages/web/lib/github-webhook-handler.ts"
       - "packages/web/lib/github-webhook-handler.test.ts"
       - "packages/web/lib/github-webhook-utils.ts"
@@ -672,6 +674,8 @@ tasks:
       - "packages/web/lib/webhook-intent-worker.test.ts"
       - "packages/web/lib/webhook-runaway-controls.ts"
       - "packages/web/lib/webhook-runaway-controls.test.ts"
+      - "packages/web/lib/agent/mutation-adapters.ts"
+      - "packages/web/lib/agent/mutation-types.ts"
       - "packages/web/lib/agent/mutations.ts"
       - "packages/web/lib/agent/mutations.test.ts"
       - "packages/web/components/workbench/WorkbenchShell.tsx"
