@@ -168,6 +168,8 @@ function SessionGroups({ groups }: { groups: SessionTargetGroup[] }) {
                   <Chip tone="accent" title={triggerTitle(session.triggeredBy)}>{triggerLabel(session.triggeredBy)}</Chip>
                   {session.terminalReason && <Chip tone="warn">{labelize(session.terminalReason)}</Chip>}
                   {session.linkedPrNumber && <Chip tone="neutral">PR #{session.linkedPrNumber}</Chip>}
+                  {session.parentDeploymentId && <Chip tone="neutral">parent #{session.parentDeploymentId}</Chip>}
+                  {session.childDeploymentCount > 0 && <Chip tone="accent">{session.childDeploymentCount} child</Chip>}
                   {session.webhookDepth > 0 && <Chip tone="neutral">depth {session.webhookDepth}</Chip>}
                 </div>
                 <div className={styles.rowLinks}>
@@ -210,7 +212,13 @@ function ReviewGroups({ groups }: { groups: ReviewPrGroup[] }) {
           </header>
           <div className={styles.timeline}>
             {group.runs.map((run) => (
-              <div key={run.id} className={styles.reviewRun}>
+              <Link
+                key={run.id}
+                className={styles.reviewRun}
+                data-status={run.status}
+                href={run.detailHref}
+                aria-label={`Open PR #${run.prNumber} review run #${run.id}`}
+              >
                 <div className={styles.runRail} aria-hidden="true" />
                 <div className={styles.rowMain}>
                   <span className={styles.rowTitle}>Run #{run.id}</span>
@@ -218,16 +226,18 @@ function ReviewGroups({ groups }: { groups: ReviewPrGroup[] }) {
                     {formatUnix(run.startedAt)} - {run.headRepoFullName}:{run.headRef}
                   </span>
                   <span className={styles.preview}>
-                    {shortSha(run.reviewedFromSha) ?? "base"} to {shortSha(run.reviewedToSha)}
+                    {run.rangeLabel}
+                    {run.summary ? ` - ${run.summary}` : ""}
                     {run.deployment ? ` - session ${run.deployment.id}` : ""}
                   </span>
                 </div>
                 <div className={styles.chips}>
                   <Chip tone={reviewTone(run.status)}>{labelize(run.status)}</Chip>
                   <Chip tone="accent" title={triggerTitle(run.triggeredBy)}>{triggerLabel(run.triggeredBy)}</Chip>
+                  {run.findingCount !== null && <Chip tone={run.findingCount > 0 ? "warn" : "good"}>{run.findingCount} findings</Chip>}
                   {run.completedAt && <Chip tone="neutral">done {formatUnix(run.completedAt)}</Chip>}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </article>
@@ -276,10 +286,6 @@ function reviewTone(status: string): string {
 
 function labelize(value: string): string {
   return value.replaceAll("_", " ");
-}
-
-function shortSha(value: string | null): string | null {
-  return value ? value.slice(0, 7) : null;
 }
 
 function formatUnix(value: number): string {

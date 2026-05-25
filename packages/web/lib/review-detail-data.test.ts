@@ -39,7 +39,11 @@ describe("review-detail-data", () => {
       expect.objectContaining({ tone: "info", title: "Follow-up requested" }),
     ]);
     expect(data.links.githubPr).toBe("https://github.com/mean-weasel/issuectl/pull/44");
+    expect(data.links.githubReviewFiles).toBe("https://github.com/mean-weasel/issuectl/pull/44/files");
     expect(data.links.sessions).toContain("tab=reviews");
+    expect(data.links.webhookLogs).toContain("q=mean-weasel%2Fissuectl%2344");
+    expect(data.links.diagnosticsCli).toBe("pnpm --dir packages/cli exec issuectl diag show --pr mean-weasel/issuectl#44");
+    expect(data.actions.canRetry).toBe(true);
     expect(data.diagnostics).toHaveLength(1);
   });
 
@@ -80,6 +84,23 @@ describe("review-detail-data", () => {
     });
     expect(full.intent.reviewMode).toBe("full");
     expect(full.diagnosticEvent).toBe("pr_review.manual_rerun");
+  });
+
+  it("disables retry actions while any run for the PR is in flight", () => {
+    const data = buildReviewDetailData({
+      repo,
+      review: review({ id: 2, status: "failed" }),
+      lineage: [
+        review({ id: 3, status: "in_progress", completedAt: null }),
+        review({ id: 2, status: "failed" }),
+      ],
+    });
+
+    expect(data.actions).toEqual({
+      canRetry: false,
+      canFullRerun: false,
+      disabledReason: "Run #3 is still in progress.",
+    });
   });
 });
 

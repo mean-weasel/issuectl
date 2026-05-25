@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   dbExists,
+  getActiveWebhookDeploymentsForRepoTarget,
   getActiveDeployments,
   getDb,
   getRepo,
@@ -43,10 +44,15 @@ export default async function RepoSettingsPage({
     ? `${publicWebhookBaseUrl.replace(/\/$/, "")}/api/webhook/github/${repo.id}`
     : null;
   const activeSessions = getActiveDeployments(db).filter((deployment) => deployment.repoId === repo.id).length;
+  const activeIssueSessions = getActiveWebhookDeploymentsForRepoTarget(db, repo.id, "issue").length;
+  const activePrSessions = getActiveWebhookDeploymentsForRepoTarget(db, repo.id, "pr").length;
+  const recentDeliveries = listWebhookEvents(db, { repoId: repo.id, limit: 10 });
   const activity = {
     activeSessions,
+    activeIssueSessions,
+    activePrSessions,
     recentCompletions: listRecentTerminalDeploymentsByRepo(db, repo.id, 25).length,
-    webhookEvents: listWebhookEvents(db, { repoId: repo.id, limit: 25 }).length,
+    webhookEvents: recentDeliveries.length,
     prReviews: listPrReviewsForRepo(db, repo.id, 25).length,
   };
 
@@ -58,6 +64,7 @@ export default async function RepoSettingsPage({
           repo={repo}
           webhookUrl={webhookUrl}
           activity={activity}
+          recentDeliveries={recentDeliveries}
           settingsHref="/settings/repos"
         />
       </main>

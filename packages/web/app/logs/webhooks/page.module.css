@@ -279,6 +279,57 @@
   border-bottom: 1px solid var(--paper-line);
 }
 
+.auditPanel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.auditHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.auditHeader h2 {
+  margin: 0 0 4px;
+  font-family: var(--paper-serif);
+  font-size: 20px;
+}
+
+.auditList {
+  display: grid;
+  gap: 8px;
+}
+
+.auditItem {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-line-soft);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.auditItem strong {
+  text-transform: uppercase;
+  font: 700 11px var(--paper-mono);
+}
+
+.auditItem span,
+.auditItem code {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.auditItem code {
+  overflow-x: auto;
+}
+
 .details {
   margin-top: 8px;
 }

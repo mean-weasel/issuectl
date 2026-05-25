@@ -23,6 +23,20 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
             <Chip tone="accent">{triggerLabel(data.review.triggeredBy)}</Chip>
             <Chip tone="neutral">{data.review.headRef}</Chip>
           </div>
+          <dl className={styles.summaryFacts}>
+            <div>
+              <dt>Trigger</dt>
+              <dd>{triggerDescription(data.review.triggeredBy)}</dd>
+            </div>
+            <div>
+              <dt>Range</dt>
+              <dd>{data.review.reviewedFromSha ? `${shortSha(data.review.reviewedFromSha)}..${shortSha(data.review.reviewedToSha)}` : `full ${shortSha(data.review.reviewedToSha)}`}</dd>
+            </div>
+            <div>
+              <dt>Result</dt>
+              <dd>{resultSummary(data.result)}</dd>
+            </div>
+          </dl>
         </header>
 
         {data.banners.length > 0 && (
@@ -51,6 +65,7 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
                     <Chip tone={statusTone(run.status)}>{labelize(run.status)}</Chip>
                   </div>
                   <p>{run.label}</p>
+                  {stringValue(run.result.reason) && <p>Reason: {stringValue(run.result.reason)}</p>}
                   <dl className={styles.facts}>
                     <div>
                       <dt>Started</dt>
@@ -96,13 +111,14 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
       <aside className={styles.railPanel}>
         <section className={styles.card}>
           <h2>Actions</h2>
+          {data.actions.disabledReason && <p className={styles.muted}>{data.actions.disabledReason}</p>}
           <form action={retryAction}>
             <input type="hidden" name="reviewId" value={data.review.id} />
-            <button type="submit">Retry review</button>
+            <button type="submit" disabled={!data.actions.canRetry}>Retry review</button>
           </form>
           <form action={fullRerunAction}>
             <input type="hidden" name="reviewId" value={data.review.id} />
-            <button type="submit">Full rerun</button>
+            <button type="submit" disabled={!data.actions.canFullRerun}>Full rerun</button>
           </form>
         </section>
 
@@ -136,7 +152,9 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
           <h2>Links</h2>
           <div className={styles.links}>
             <a href={data.links.githubPr}>GitHub PR</a>
+            <a href={data.links.githubReviewFiles}>Review files</a>
             <Link href={data.links.workbench}>Workbench</Link>
+            <Link href={data.links.webhookLogs}>Webhook logs</Link>
             <Link href={data.links.sessions}>Sessions list</Link>
             <Link href={data.links.repoSettings}>Repo settings</Link>
           </div>
@@ -166,8 +184,23 @@ function triggerLabel(trigger: string): string {
   return trigger === "comment_command" ? "comment" : trigger;
 }
 
+function triggerDescription(trigger: string): string {
+  if (trigger === "comment_command") return "Requested from an issuectl comment command";
+  if (trigger === "webhook") return "Started by GitHub webhook automation";
+  return "Started manually";
+}
+
 function labelize(value: string): string {
   return value.replaceAll("_", " ");
+}
+
+function resultSummary(result: Record<string, unknown>): string {
+  const summary = result.summary ?? result.reason ?? result.error ?? result.status;
+  return typeof summary === "string" && summary.length > 0 ? summary : "not recorded";
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function shortSha(value: string): string {

@@ -19,12 +19,14 @@ import {
   killTtyd,
   killTmuxSession,
   tmuxSessionName,
+  recordDiagnosticEventSafely,
   readCachedAccessibleRepos,
   refreshAccessibleRepos,
   getIssues,
   getPulls,
   listWebhookEvents,
   listLabels,
+  rotateIssuectlWebhook,
   withAuthRetry,
   formatErrorForUser,
   type AccessibleReposSnapshot,
@@ -305,7 +307,32 @@ export async function removeRepo(
 
   try {
     const db = getDb();
+    const repo = getRepoById(db, id);
+    if (!repo) return { success: false, error: "Repository not found" };
+    endActiveWebhookDeployments(db, id, repo.name, "issue", "killed_by_label");
+    endActiveWebhookDeployments(db, id, repo.name, "pr", "killed_by_label");
+    await deleteRepoWebhook(repo).catch((err) => {
+      console.warn("[issuectl] Failed to delete repo webhook:", errMessage(err));
+      recordDiagnosticEventSafely(db, {
+        level: "warn",
+        event: "repo.webhook_delete_failed",
+        source: "web",
+        owner: repo.owner,
+        repo: repo.name,
+        message: formatErrorForUser(err),
+        data: { repoId: id, hookId: repo.webhookId },
+      });
+    });
     coreRemoveRepo(db, id);
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: "repo.removed",
+      source: "web",
+      owner: repo.owner,
+      repo: repo.name,
+      message: "Repository removed from issuectl",
+      data: { repoId: id, hookId: repo.webhookId },
+    });
   } catch (err) {
     console.error("[issuectl] Failed to remove repo:", errMessage(err));
     return { success: false, error: "Failed to remove repository" };
@@ -355,6 +382,7 @@ export async function updateRepo(
     autoReviewPrs?: boolean;
     issueAgent?: LaunchAgent;
     reviewAgent?: LaunchAgent;
+    reviewPreamble?: string | null;
     webhookPayloadMode?: WebhookPayloadMode;
   },
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
@@ -406,12 +434,14 @@ export async function updateRepo(
       autoReviewPrs: updates.autoReviewPrs,
       issueAgent: updates.issueAgent,
       reviewAgent: updates.reviewAgent,
+      reviewPreamble: updates.reviewPreamble,
       webhookPayloadMode: updates.webhookPayloadMode,
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
       const previous = getRepoById(db, id);
       updateRepoWebhookSettings(db, id, webhookUpdates);
       endDisabledAutomationSessions(db, id, previous, webhookUpdates);
+      recordRepoSettingsDiagnostics(db, id, previous, webhookUpdates);
     }
   } catch (err) {
     console.error("[issuectl] Failed to update repo:", errMessage(err));
@@ -419,6 +449,165 @@ export async function updateRepo(
   }
   const { stale } = revalidateSafely("/settings");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}
+
+export async function configureRepoWebhook(
+  id: number,
+  action: "rotate" | "reinstall",
+): Promise<{
+  success: true;
+  webhook: { id: number; url: string; createdBy: string };
+} | { success: false; error: string }> {
+  try {
+    const db = getDb();
+    const repo = getRepoById(db, id);
+    if (!repo) return { success: false, error: "Repository not found" };
+    const url = repoWebhookUrl(db, id);
+    const secret = randomBytes(32).toString("hex");
+    const webhook = await withAuthRetry(async (octokit) => {
+      if (repo.webhookId) {
+        try {
+          return await rotateIssuectlWebhook(octokit, {
+            owner: repo.owner,
+            repo: repo.name,
+            hookId: repo.webhookId,
+            url,
+            secret,
+          });
+        } catch (err) {
+          if (action !== "reinstall" || (err as { status?: number }).status !== 404) throw err;
+        }
+      }
+      return createIssuectlWebhook(octokit, {
+        owner: repo.owner,
+        repo: repo.name,
+        url,
+        secret,
+      });
+    });
+    updateRepoWebhookSettings(db, id, {
+      webhookId: webhook.id,
+      webhookSecret: secret,
+    });
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: action === "rotate" ? "repo.webhook_secret_rotated" : "repo.webhook_reinstalled",
+      source: "web",
+      owner: repo.owner,
+      repo: repo.name,
+      message: action === "rotate" ? "Repository webhook secret rotated" : "Repository webhook reinstalled",
+      data: { repoId: id, hookId: webhook.id, url },
+    });
+    return { success: true, webhook: { id: webhook.id, url, createdBy: webhook.createdBy } };
+  } catch (err) {
+    return { success: false, error: formatErrorForUser(err) };
+  }
+}
+
+export async function recreateRepoLabels(
+  id: number,
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const db = getDb();
+    const repo = getRepoById(db, id);
+    if (!repo) return { success: false, error: "Repository not found" };
+    await withAuthRetry(async (octokit) => {
+      await Promise.all([
+        ensureRepoLabel(octokit, repo.owner, repo.name, "issuectl:auto-launch"),
+        ensureRepoLabel(octokit, repo.owner, repo.name, "issuectl:auto-review"),
+      ]);
+    });
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: "repo.label_recreated",
+      source: "web",
+      owner: repo.owner,
+      repo: repo.name,
+      message: "Repository automation labels recreated",
+      data: { repoId: id },
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: formatErrorForUser(err) };
+  }
+}
+
+export async function resendLastPing(
+  id: number,
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const db = getDb();
+    const repo = getRepoById(db, id);
+    if (!repo) return { success: false, error: "Repository not found" };
+    if (!repo.webhookId) return { success: false, error: "No webhook id is stored for this repo" };
+    await withAuthRetry((octokit) =>
+      octokit.rest.repos.pingWebhook({
+        owner: repo.owner,
+        repo: repo.name,
+        hook_id: repo.webhookId ?? 0,
+      }),
+    );
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: "repo.webhook_ping_sent",
+      source: "web",
+      owner: repo.owner,
+      repo: repo.name,
+      message: "Repository webhook ping resent",
+      data: { repoId: id, hookId: repo.webhookId },
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: formatErrorForUser(err) };
+  }
+}
+
+function repoWebhookUrl(db: ReturnType<typeof getDb>, repoId: number): string {
+  const baseUrl = getSetting(db, "public_webhook_base_url");
+  if (!baseUrl) throw new Error("public_webhook_base_url is not configured.");
+  return `${baseUrl.replace(/\/$/, "")}/api/webhook/github/${repoId}`;
+}
+
+async function deleteRepoWebhook(repo: { owner: string; name: string; webhookId: number | null }): Promise<void> {
+  if (!repo.webhookId) return;
+  await withAuthRetry((octokit) =>
+    octokit.rest.repos.deleteWebhook({
+      owner: repo.owner,
+      repo: repo.name,
+      hook_id: repo.webhookId ?? 0,
+    }),
+  );
+}
+
+function recordRepoSettingsDiagnostics(
+  db: ReturnType<typeof getDb>,
+  repoId: number,
+  previous: { owner: string; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean } | undefined,
+  updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+): void {
+  if (!previous) return;
+  if (updates.autoLaunchIssues !== undefined && updates.autoLaunchIssues !== previous.autoLaunchIssues) {
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: updates.autoLaunchIssues ? "repo.automation_enabled" : "repo.automation_disabled",
+      source: "web",
+      owner: previous.owner,
+      repo: previous.name,
+      message: updates.autoLaunchIssues ? "Issue auto-launch enabled" : "Issue auto-launch disabled",
+      data: { repoId, targetType: "issue" },
+    });
+  }
+  if (updates.autoReviewPrs !== undefined && updates.autoReviewPrs !== previous.autoReviewPrs) {
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: updates.autoReviewPrs ? "repo.automation_enabled" : "repo.automation_disabled",
+      source: "web",
+      owner: previous.owner,
+      repo: previous.name,
+      message: updates.autoReviewPrs ? "PR auto-review enabled" : "PR auto-review disabled",
+      data: { repoId, targetType: "pr" },
+    });
+  }
 }
 
 function endDisabledAutomationSessions(

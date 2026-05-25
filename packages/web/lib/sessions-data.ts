@@ -47,6 +47,7 @@ export type SessionListItem = {
   linkedPrNumber: number | null;
   triggeredBy: DeploymentTriggeredBy;
   parentDeploymentId: number | null;
+  childDeploymentCount: number;
   webhookDepth: number;
   terminalReason: string | null;
   launchedAt: string;
@@ -70,6 +71,11 @@ export type ReviewRunItem = PrReview & {
   owner: string;
   repoName: string;
   deployment: SessionListItem | null;
+  result: Record<string, unknown>;
+  summary: string | null;
+  findingCount: number | null;
+  rangeLabel: string;
+  detailHref: string;
 };
 
 export type ReviewPrGroup = {
@@ -161,10 +167,14 @@ export function normalizeSessionsFilters(input: Record<string, string | string[]
 }
 
 export function buildSessionsOverview(input: BuildInput): SessionsOverviewData {
-  const sessions = input.repos.flatMap((repo) => [
+  const rawSessions = input.repos.flatMap((repo) => [
     ...input.activeDeployments.filter((deployment) => deployment.repoId === repo.id),
     ...(input.recentDeploymentsByRepo.get(repo.id) ?? []),
-  ].map((deployment) => sessionFromDeployment(repo, deployment, input.previews)));
+  ].map((deployment) => ({ repo, deployment })));
+  const childCounts = deploymentChildCounts(rawSessions.map((item) => item.deployment));
+  const sessions = rawSessions.map(({ repo, deployment }) =>
+    sessionFromDeployment(repo, deployment, input.previews, childCounts),
+  );
   const filteredSessions = sessions.filter((session) => sessionMatchesFilters(session, input.filters));
   const reviews = input.repos.flatMap((repo) =>
     (input.reviewsByRepo.get(repo.id) ?? []).map((review) =>
@@ -203,6 +213,7 @@ function sessionFromDeployment(
   repo: Repo,
   deployment: Deployment | ActiveDeploymentWithRepo,
   previews: Record<string, SessionPreview>,
+  childCounts: Map<number, number>,
 ): SessionListItem {
   const preview = deployment.ttydPort === null ? null : previews[String(deployment.ttydPort)] ?? null;
   return {
@@ -222,6 +233,7 @@ function sessionFromDeployment(
     linkedPrNumber: deployment.linkedPrNumber,
     triggeredBy: deployment.triggeredBy,
     parentDeploymentId: deployment.parentDeploymentId,
+    childDeploymentCount: childCounts.get(deployment.id) ?? 0,
     webhookDepth: deployment.webhookDepth,
     terminalReason: deployment.terminalReason,
     launchedAt: deployment.launchedAt,
@@ -233,12 +245,18 @@ function sessionFromDeployment(
 }
 
 function reviewFromRun(repo: Repo, review: PrReview, deployment: SessionListItem | null): ReviewRunItem {
+  const result = parseJsonObject(review.resultJson);
   return {
     ...review,
     repoFullName: repoFullName(repo),
     owner: repo.owner,
     repoName: repo.name,
     deployment,
+    result,
+    summary: stringValue(result.summary) ?? stringValue(result.reason) ?? stringValue(result.error) ?? null,
+    findingCount: numberValue(result.findingCount) ?? arrayLength(result.findings) ?? arrayLength(result.comments),
+    rangeLabel: reviewRangeLabel(review),
+    detailHref: `/reviews/${review.id}`,
   };
 }
 
@@ -338,6 +356,48 @@ function targetLabel(targetType: DeploymentTargetType, targetNumber: number): st
 
 function repoFullName(repo: Repo): string {
   return `${repo.owner}/${repo.name}`;
+}
+
+function deploymentChildCounts(deployments: Array<Deployment | ActiveDeploymentWithRepo>): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const deployment of deployments) {
+    if (deployment.parentDeploymentId === null) continue;
+    counts.set(deployment.parentDeploymentId, (counts.get(deployment.parentDeploymentId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function reviewRangeLabel(review: PrReview): string {
+  if (review.reviewedFromSha) return `${shortSha(review.reviewedFromSha)}..${shortSha(review.reviewedToSha)}`;
+  return `full ${shortSha(review.reviewedToSha)}`;
+}
+
+function shortSha(value: string): string {
+  return value.slice(0, 7);
+}
+
+function parseJsonObject(value: string | null): Record<string, unknown> {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function arrayLength(value: unknown): number | null {
+  return Array.isArray(value) ? value.length : null;
 }
 
 function searchable(parts: string[]): string {

@@ -178,6 +178,20 @@
 
 .reviewRun {
   grid-template-columns: 18px minmax(220px, 1fr) auto;
+  color: inherit;
+  text-decoration: none;
+}
+
+.reviewRun:hover {
+  background: color-mix(in srgb, var(--paper-accent-soft) 38%, transparent);
+}
+
+.reviewRun[data-status="superseded"] {
+  background: color-mix(in srgb, #f1e0ae 28%, transparent);
+}
+
+.reviewRun[data-status="failed"] {
+  background: color-mix(in srgb, #f0d4cc 26%, transparent);
 }
 
 .runRail {

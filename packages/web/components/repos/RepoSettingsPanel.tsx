@@ -1,12 +1,21 @@
+/* eslint-disable max-lines */
 "use client";
 
 import { useState, useTransition } from "react";
-import type { LaunchAgent, Repo, WebhookPayloadMode } from "@issuectl/core";
-import { removeRepo, updateRepo } from "@/lib/actions/repos";
+import type { LaunchAgent, Repo, WebhookEvent, WebhookPayloadMode } from "@issuectl/core";
+import {
+  configureRepoWebhook,
+  recreateRepoLabels,
+  removeRepo,
+  resendLastPing,
+  updateRepo,
+} from "@/lib/actions/repos";
 import styles from "./RepoSettingsPanel.module.css";
 
 export type RepoSettingsActivity = {
   activeSessions: number;
+  activeIssueSessions: number;
+  activePrSessions: number;
   recentCompletions: number;
   webhookEvents: number;
   prReviews: number;
@@ -16,6 +25,7 @@ export type RepoSettingsPanelProps = {
   repo: Repo;
   webhookUrl: string | null;
   activity: RepoSettingsActivity;
+  recentDeliveries: WebhookEvent[];
   settingsHref?: string;
 };
 
@@ -24,18 +34,13 @@ type LabelHealth = {
   message: string;
 };
 
-type WebhookResult = {
-  success: true;
-  repo: Repo;
-  webhook: { id: number; url: string; createdBy: string };
-} | { success: false; error: string };
-
 const REQUIRED_LABELS = ["issuectl:auto-launch", "issuectl:auto-review"];
 
 export function RepoSettingsPanel({
   repo,
   webhookUrl,
   activity,
+  recentDeliveries,
   settingsHref,
 }: RepoSettingsPanelProps) {
   const [localPath, setLocalPath] = useState(repo.localPath ?? "");
@@ -44,6 +49,7 @@ export function RepoSettingsPanel({
   const [autoReviewPrs, setAutoReviewPrs] = useState(repo.autoReviewPrs);
   const [issueAgent, setIssueAgent] = useState<LaunchAgent>(repo.issueAgent);
   const [reviewAgent, setReviewAgent] = useState<LaunchAgent>(repo.reviewAgent);
+  const [reviewPreamble, setReviewPreamble] = useState(repo.reviewPreamble ?? "");
   const [webhookPayloadMode, setWebhookPayloadMode] = useState<WebhookPayloadMode>(repo.webhookPayloadMode);
   const [webhookId, setWebhookId] = useState(repo.webhookId);
   const [labelHealth, setLabelHealth] = useState<LabelHealth>({
@@ -69,6 +75,7 @@ export function RepoSettingsPanel({
         autoReviewPrs,
         issueAgent,
         reviewAgent,
+        reviewPreamble: reviewPreamble.trim() || null,
         webhookPayloadMode,
       });
       if (!result.success) {
@@ -80,7 +87,7 @@ export function RepoSettingsPanel({
   }
 
   function removeTrackedRepo() {
-    const confirmed = window.confirm(`Remove ${repoPath}? Active webhook sessions may be ended.`);
+    const confirmed = window.confirm(`Remove ${repoPath}? ${activity.activeSessions} active sessions may be ended and the GitHub webhook will be deleted best-effort.`);
     if (!confirmed) return;
     setMessage(null);
     setError(null);
@@ -94,26 +101,35 @@ export function RepoSettingsPanel({
     });
   }
 
-  async function configureWebhook(action: "create" | "rotate") {
+  function setIssueAutomation(enabled: boolean) {
+    if (!enabled && autoLaunchIssues && activity.activeIssueSessions > 0) {
+      const ok = window.confirm(`This will end ${activity.activeIssueSessions} active auto-sessions for issues. Continue?`);
+      if (!ok) return;
+    }
+    setAutoLaunchIssues(enabled);
+  }
+
+  function setPrAutomation(enabled: boolean) {
+    if (!enabled && autoReviewPrs && activity.activePrSessions > 0) {
+      const ok = window.confirm(`This will end ${activity.activePrSessions} active auto-sessions for PR reviews. Continue?`);
+      if (!ok) return;
+    }
+    setAutoReviewPrs(enabled);
+  }
+
+  function runWebhookAction(action: "rotate" | "reinstall") {
     setMessage(null);
     setError(null);
-    try {
-      const response = await fetch(`/api/v1/repos/${repo.owner}/${repo.name}/webhook`, {
-        method: "POST",
-        headers: requestHeaders(),
-        body: JSON.stringify({ action }),
-      });
-      const body = await response.json().catch(() => undefined) as WebhookResult | undefined;
-      if (!response.ok || !body || body.success !== true) {
-        const failure = body as { error?: string } | undefined;
-        throw new Error(failure?.error ?? `Webhook request failed with ${response.status}`);
+    startTransition(async () => {
+      const result = await configureRepoWebhook(repo.id, action);
+      if (!result.success) {
+        setError(result.error);
+        return;
       }
-      setWebhookId(body.webhook.id);
-      const successMessage = `${action === "create" ? "Webhook installed" : "Webhook secret rotated"} by ${body.webhook.createdBy}`;
+      setWebhookId(result.webhook.id);
+      const successMessage = `${action === "reinstall" ? "Webhook reinstalled" : "Webhook secret rotated"} by ${result.webhook.createdBy}`;
       setMessage(activity.webhookEvents === 0 ? `${successMessage}. Waiting for first delivery.` : successMessage);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Webhook request failed");
-    }
+    });
   }
 
   async function checkLabels() {
@@ -142,25 +158,31 @@ export function RepoSettingsPanel({
     }
   }
 
-  async function recreateLabels() {
+  function recreateLabelsWithAction() {
     setLabelHealth({ status: "checking", message: "Recreating labels" });
     setError(null);
-    try {
-      const response = await fetch(`/api/v1/repos/${repo.owner}/${repo.name}/labels`, {
-        method: "POST",
-        headers: requestHeaders(),
-        body: JSON.stringify({ action: "recreate" }),
-      });
-      const body = await response.json().catch(() => undefined) as { success?: boolean; error?: string } | undefined;
-      if (!response.ok || !body?.success) throw new Error(body?.error ?? "Label recreate failed");
+    startTransition(async () => {
+      const result = await recreateRepoLabels(repo.id);
+      if (!result.success) {
+        setLabelHealth({ status: "error", message: result.error });
+        return;
+      }
       setLabelHealth({ status: "healthy", message: "Required labels recreated" });
       setMessage("Label health restored");
-    } catch (err) {
-      setLabelHealth({
-        status: "error",
-        message: err instanceof Error ? err.message : "Label recreate failed",
-      });
-    }
+    });
+  }
+
+  function resendPing() {
+    setMessage(null);
+    setError(null);
+    startTransition(async () => {
+      const result = await resendLastPing(repo.id);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setMessage("Webhook ping sent");
+    });
   }
 
   return (
@@ -205,11 +227,11 @@ export function RepoSettingsPanel({
         </div>
         <div className={styles.toggleGrid}>
           <label>
-            <input type="checkbox" checked={autoLaunchIssues} onChange={(event) => setAutoLaunchIssues(event.target.checked)} />
+            <input type="checkbox" checked={autoLaunchIssues} onChange={(event) => setIssueAutomation(event.target.checked)} />
             <span>Auto-launch labeled issues</span>
           </label>
           <label>
-            <input type="checkbox" checked={autoReviewPrs} onChange={(event) => setAutoReviewPrs(event.target.checked)} />
+            <input type="checkbox" checked={autoReviewPrs} onChange={(event) => setPrAutomation(event.target.checked)} />
             <span>Auto-review labeled PRs</span>
           </label>
         </div>
@@ -236,12 +258,27 @@ export function RepoSettingsPanel({
             </select>
           </label>
         </div>
+        <label>
+          <span>Review preamble</span>
+          <textarea
+            value={reviewPreamble}
+            onChange={(event) => setReviewPreamble(event.target.value)}
+            placeholder="Optional instructions added to PR review sessions for this repo."
+            rows={4}
+          />
+        </label>
+        {reviewPreamble !== (repo.reviewPreamble ?? "") && (
+          <button type="button" className={styles.secondaryButton} onClick={() => setReviewPreamble(repo.reviewPreamble ?? "")}>
+            Reset preamble
+          </button>
+        )}
       </section>
 
       <section className={styles.section} aria-label="Webhook">
         <div>
           <h2>Webhook</h2>
           <p>{webhookConfigured ? `GitHub hook ${webhookId} is stored locally.` : "No GitHub webhook id is stored locally."}</p>
+          <p>Last delivery: {recentDeliveries[0] ? formatWebhookAge(recentDeliveries[0].receivedAt) : "none yet"} · 7-day success: tracked in the webhook log</p>
         </div>
         {waitingForFirstPing && (
           <div className={styles.warningPill} role="status">
@@ -256,10 +293,17 @@ export function RepoSettingsPanel({
           <button type="button" className={styles.secondaryButton} disabled={!webhookUrl} onClick={() => void copyWebhookUrl(webhookUrl)}>
             Copy URL
           </button>
-          <button type="button" className={styles.secondaryButton} disabled={!webhookUrl} onClick={() => void configureWebhook(webhookConfigured ? "rotate" : "create")}>
-            {webhookConfigured ? "Rotate secret" : "Install webhook"}
+          <button type="button" className={styles.secondaryButton} disabled={!webhookUrl || isPending} onClick={() => runWebhookAction("reinstall")}>
+            Reinstall webhook
+          </button>
+          <button type="button" className={styles.secondaryButton} disabled={!webhookConfigured || isPending} onClick={() => runWebhookAction("rotate")}>
+            Rotate secret
+          </button>
+          <button type="button" className={styles.secondaryButton} disabled={!webhookConfigured || isPending} onClick={resendPing}>
+            Re-send last ping
           </button>
         </div>
+        <RecentDeliveries repo={repo} deliveries={recentDeliveries} />
       </section>
 
       <section className={styles.section} aria-label="Label health">
@@ -272,9 +316,24 @@ export function RepoSettingsPanel({
           <button type="button" className={styles.secondaryButton} onClick={() => void checkLabels()}>
             Check labels
           </button>
-          <button type="button" className={styles.secondaryButton} onClick={() => void recreateLabels()}>
+          <button type="button" className={styles.secondaryButton} onClick={recreateLabelsWithAction}>
             Recreate labels
           </button>
+        </div>
+      </section>
+
+      <section className={styles.section} aria-label="Activity links">
+        <div>
+          <h2>Activity</h2>
+          <p>Jump to the operational views for this repository.</p>
+        </div>
+        <div className={styles.actionRow}>
+          <a className={styles.secondaryButton} href={`/sessions?repo=${encodeURIComponent(repoPath)}`}>
+            View repo sessions
+          </a>
+          <a className={styles.secondaryButton} href={`/logs/webhooks?repo=${encodeURIComponent(repoPath)}`}>
+            View webhook events
+          </a>
         </div>
       </section>
 
@@ -306,6 +365,35 @@ function Metric({ label, value }: { label: string; value: number }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function RecentDeliveries({ repo, deliveries }: { repo: Repo; deliveries: WebhookEvent[] }) {
+  return (
+    <details className={styles.deliveryDetails}>
+      <summary>Show recent deliveries</summary>
+      <div className={styles.deliveryTable}>
+        {deliveries.slice(0, 10).map((event) => (
+          <a
+            key={event.id}
+            href={`/logs/webhooks?repo=${encodeURIComponent(`${repo.owner}/${repo.name}`)}&delivery=${encodeURIComponent(event.deliveryId)}`}
+          >
+            <span>{event.eventType}{event.action ? `.${event.action}` : ""}</span>
+            <code>{event.deliveryId}</code>
+            <span>{formatWebhookAge(event.receivedAt)}</span>
+          </a>
+        ))}
+        {deliveries.length === 0 && <span className={styles.deliveryEmpty}>No deliveries recorded yet.</span>}
+      </div>
+    </details>
+  );
+}
+
+function formatWebhookAge(receivedAt: number): string {
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - receivedAt) / 1000));
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+  return `${Math.floor(diffSeconds / 86400)}d ago`;
 }
 
 async function copyWebhookUrl(value: string | null): Promise<void> {

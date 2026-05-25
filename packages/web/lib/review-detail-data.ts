@@ -34,11 +34,18 @@ export type ReviewDetailData = {
   result: Record<string, unknown>;
   deploymentResult: Record<string, unknown>;
   banners: ReviewBanner[];
+  actions: {
+    canRetry: boolean;
+    canFullRerun: boolean;
+    disabledReason: string | null;
+  };
   links: {
     githubPr: string;
+    githubReviewFiles: string;
     workbench: string;
     repoSettings: string;
     sessions: string;
+    webhookLogs: string;
     diagnosticsCli: string;
   };
 };
@@ -81,6 +88,7 @@ export function buildReviewDetailData(input: {
     result: parseJsonObject(item.resultJson),
     label: lineageLabel(item),
   }));
+  const activeReview = lineage.find((item) => ACTIVE_REVIEW_STATUSES.has(item.status));
   return {
     initialized: true,
     review: input.review,
@@ -91,6 +99,11 @@ export function buildReviewDetailData(input: {
     result,
     deploymentResult,
     banners: deriveBanners(input.review, result, deploymentResult),
+    actions: {
+      canRetry: !activeReview,
+      canFullRerun: !activeReview,
+      disabledReason: activeReview ? `Run #${activeReview.id} is still ${labelize(activeReview.status)}.` : null,
+    },
     links: reviewLinks(input.repo, input.review),
   };
 }
@@ -161,10 +174,12 @@ function reviewLinks(repo: Repo, review: PrReview): ReviewDetailData["links"] {
   const fullName = `${repo.owner}/${repo.name}`;
   return {
     githubPr: `https://github.com/${fullName}/pull/${review.prNumber}`,
+    githubReviewFiles: `https://github.com/${fullName}/pull/${review.prNumber}/files`,
     workbench: `/workbench?repo=${encodeURIComponent(fullName)}`,
     repoSettings: `/repos/${repo.owner}/${repo.name}/settings`,
     sessions: `/sessions?tab=reviews&repo=${encodeURIComponent(fullName)}&q=${encodeURIComponent(`PR #${review.prNumber}`)}`,
-    diagnosticsCli: `pnpm --dir packages/cli exec issuectl diag show --issue ${fullName}#${review.prNumber}`,
+    webhookLogs: `/logs/webhooks?q=${encodeURIComponent(`${fullName}#${review.prNumber}`)}`,
+    diagnosticsCli: `pnpm --dir packages/cli exec issuectl diag show --pr ${fullName}#${review.prNumber}`,
   };
 }
 
@@ -192,3 +207,9 @@ function parseJsonObject(value: string | null): Record<string, unknown> {
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
+
+function labelize(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
+const ACTIVE_REVIEW_STATUSES = new Set(["reserved", "launching", "in_progress"]);

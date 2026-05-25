@@ -97,6 +97,14 @@ export async function handleGithubWebhookRequest(
     !signature ||
     !verifySignature(body.buffer, repo.webhookSecret, signature)
   ) {
+    recordWebhookDiagnostic(db, repo, {
+      event: "webhook.invalid_signature",
+      deliveryId: getBoundedHeader(req, "x-github-delivery", MAX_DELIVERY_ID_LENGTH) ?? "unknown",
+      eventType: getBoundedHeader(req, "x-github-event", MAX_EVENT_TYPE_LENGTH) ?? "unknown",
+      action: null,
+      targetType: null,
+      targetNumber: null,
+    });
     writeJson(res, 401, { ok: false, error: "Unauthorized" });
     return true;
   }

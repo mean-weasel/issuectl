@@ -10,6 +10,7 @@ type StreamMessage = {
   payload?: {
     generatedAt?: string;
     entries?: unknown[];
+    counts?: Record<string, number>;
     error?: string;
   };
 };
@@ -19,6 +20,7 @@ export function WebhookLiveTail({ endpoint }: { endpoint: string }) {
   const [state, setState] = useState<StreamState>("connecting");
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [visibleEvents, setVisibleEvents] = useState(0);
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const reconnectRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -54,6 +56,9 @@ export function WebhookLiveTail({ endpoint }: { endpoint: string }) {
         if (Array.isArray(message?.payload?.entries)) {
           setVisibleEvents(message.payload.entries.length);
         }
+        if (isCounts(message?.payload?.counts)) {
+          setCounts(message.payload.counts);
+        }
       });
       socket.addEventListener("close", () => {
         if (cancelled) return;
@@ -82,7 +87,9 @@ export function WebhookLiveTail({ endpoint }: { endpoint: string }) {
       <div>
         <span className={styles.liveLabel} data-state={state}>{state}</span>
         <span className={styles.liveMeta}>
-          {lastUpdate ? `Updated ${new Date(lastUpdate).toLocaleTimeString()}` : `${visibleEvents} visible events`}
+          {lastUpdate
+            ? `Updated ${new Date(lastUpdate).toLocaleTimeString()} · ${liveSummary(counts, visibleEvents)}`
+            : liveSummary(counts, visibleEvents)}
         </span>
       </div>
       <button className={styles.secondaryButton} type="button" onClick={() => setPaused((value) => !value)}>
@@ -104,4 +111,13 @@ function parseStreamMessage(value: unknown): StreamMessage | null {
 function readApiToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem("issuectl.apiToken");
+}
+
+function isCounts(value: unknown): value is Record<string, number> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function liveSummary(counts: Record<string, number> | null, visibleEvents: number): string {
+  if (!counts) return `${visibleEvents} visible events`;
+  return `${counts.total ?? visibleEvents} visible · ${counts.fired ?? 0} fired · ${counts.debouncing ?? 0} debouncing · ${counts.failed ?? 0} failed`;
 }
