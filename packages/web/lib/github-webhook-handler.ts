@@ -30,6 +30,7 @@ import {
   verifySignature,
   writeJson,
 } from "./github-webhook-utils";
+import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
 
 export const GITHUB_WEBHOOK_PATH_RE = /^\/api\/webhook\/github\/(\d+)$/;
 export const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
@@ -176,6 +177,7 @@ export async function handleGithubWebhookRequest(
       payload,
     });
     if (intentId !== null) {
+      broadcastWebhookEventsChanged();
       writeJson(res, 200, { ok: true, deduped: true, intentId });
       return true;
     }
@@ -194,6 +196,7 @@ export async function handleGithubWebhookRequest(
     targetNumber,
     eventId: recorded.eventId,
   });
+  broadcastWebhookEventsChanged();
 
   if (await handleIssuectlCommentCommand(db, repo, payload, res, {
     deliveryId,

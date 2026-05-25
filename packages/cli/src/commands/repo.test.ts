@@ -1,4 +1,6 @@
+/* eslint-disable max-lines */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { confirm, input } from "@inquirer/prompts";
 import {
   addRepo,
   endDeployment,
@@ -12,12 +14,18 @@ import {
   updateRepoWebhookSettings,
   type Repo,
 } from "@issuectl/core";
+import { execFileSync } from "node:child_process";
 import { requireDb } from "../utils/db.js";
 import { repoAddCommand, repoSetCommand, repoShowCommand, repoUpdateCommand } from "./repo.js";
 
 vi.mock("@inquirer/prompts", () => ({
   confirm: vi.fn(),
   input: vi.fn(async () => ""),
+}));
+
+vi.mock("node:child_process", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:child_process")>()),
+  execFileSync: vi.fn(),
 }));
 
 vi.mock("@issuectl/core", async (importOriginal) => {
@@ -64,6 +72,11 @@ function makeRepo(overrides: Partial<Repo> = {}): Repo {
 
 beforeEach(() => {
   vi.mocked(requireDb).mockReturnValue(mockDb as never);
+  vi.mocked(confirm).mockReset();
+  vi.mocked(input).mockReset();
+  vi.mocked(input).mockResolvedValue("");
+  vi.mocked(execFileSync).mockReset();
+  vi.mocked(execFileSync).mockReturnValue("Token scopes: repo, admin:repo_hook");
   vi.mocked(addRepo).mockReset();
   vi.mocked(getRepo).mockReset();
   vi.mocked(getActiveWebhookDeploymentsForRepoTarget).mockReset();
@@ -107,6 +120,47 @@ describe("repo commands", () => {
       autoReviewPrs: true,
       issueAgent: "codex",
       reviewAgent: "claude",
+      webhookPayloadMode: "raw",
+    });
+  });
+
+  it("prompts for repo automation during add and runs local preflight", async () => {
+    vi.mocked(getRepo).mockReturnValue(undefined);
+    vi.mocked(addRepo).mockReturnValue(makeRepo());
+    vi.mocked(confirm)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    vi.mocked(input)
+      .mockResolvedValueOnce("~/Desktop/issuectl")
+      .mockResolvedValueOnce("claude")
+      .mockResolvedValueOnce("raw")
+      .mockResolvedValueOnce("https://hooks.example.test/");
+
+    await repoAddCommand("mean-weasel/issuectl", {});
+
+    expect(confirm).toHaveBeenCalledWith({
+      message: "Auto-launch issue sessions from webhooks?",
+      default: true,
+    });
+    expect(confirm).toHaveBeenCalledWith({
+      message: "Reserve PRs for automatic review from webhooks?",
+      default: true,
+    });
+    expect(execFileSync).toHaveBeenCalledWith("gh", ["auth", "status", "--show-token-scopes"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    expect(execFileSync).toHaveBeenCalledWith("cloudflared", ["--version"], { stdio: "ignore" });
+    expect(addRepo).toHaveBeenCalledWith(mockDb, {
+      owner: "mean-weasel",
+      name: "issuectl",
+      localPath: "~/Desktop/issuectl",
+    });
+    expect(setSetting).toHaveBeenCalledWith(mockDb, "public_webhook_base_url", "https://hooks.example.test");
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
+      autoLaunchIssues: true,
+      autoReviewPrs: false,
+      issueAgent: "claude",
       webhookPayloadMode: "raw",
     });
   });

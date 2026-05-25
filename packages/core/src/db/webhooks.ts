@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 import {
   ACTIVE_INTENT_STATUSES,
   rowToWebhookEvent,
+  rowToWebhookLogEntry,
   rowToWebhookIntent,
   type MergeWebhookIntentInput,
   type ListWebhookEventsInput,
@@ -11,6 +12,8 @@ import {
   type WebhookEvent,
   type WebhookEventRow,
   type WebhookIntent,
+  type WebhookLogEntry,
+  type WebhookLogEntryRow,
   type WebhookIntentRow,
 } from "./webhook-records.js";
 
@@ -21,6 +24,8 @@ export type {
   RecordWebhookEventResult,
   WebhookEvent,
   WebhookIntent,
+  WebhookLogEntry,
+  WebhookLogResult,
 } from "./webhook-records.js";
 
 const MERGE_TRANSACTION_ATTEMPTS = 3;
@@ -364,4 +369,62 @@ export function listWebhookEvents(
     )
     .all(...params) as WebhookEventRow[];
   return rows.map(rowToWebhookEvent);
+}
+
+export function listWebhookLogEntries(
+  db: Database.Database,
+  input: number | ListWebhookEventsInput = 50,
+): WebhookLogEntry[] {
+  const options = typeof input === "number" ? { limit: input } : input;
+  const normalizedLimit = Number.isFinite(options.limit)
+    ? Math.floor(options.limit ?? 50)
+    : 50;
+  const boundedLimit = Math.max(1, normalizedLimit);
+  const where: string[] = [];
+  const params: unknown[] = [];
+
+  if (options.repoId !== undefined) {
+    where.push("e.repo_id = ?");
+    params.push(options.repoId);
+  }
+  if (options.targetType !== undefined) {
+    where.push("e.target_type = ?");
+    params.push(options.targetType);
+  }
+  if (options.targetNumber !== undefined) {
+    where.push("e.target_number = ?");
+    params.push(options.targetNumber);
+  }
+
+  params.push(boundedLimit);
+  const rows = db
+    .prepare(
+      `SELECT
+         e.*,
+         i.id AS intent_id_joined,
+         i.repo_id AS intent_repo_id,
+         i.target_type AS intent_target_type,
+         i.target_number AS intent_target_number,
+         i.first_signal_at,
+         i.last_signal_at,
+         i.scheduled_at,
+         i.processing_started_at,
+         i.lease_expires_at,
+         i.generation,
+         i.desired_head_sha,
+         i.requested_agent,
+         i.review_mode,
+         i.signal_count,
+         i.status AS intent_status,
+         i.resolved_at,
+         i.deployment_id,
+         i.failure_reason
+       FROM webhook_events e
+       LEFT JOIN webhook_intents i ON i.id = e.intent_id
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+       ORDER BY e.received_at DESC, e.id DESC
+       LIMIT ?`,
+    )
+    .all(...params) as WebhookLogEntryRow[];
+  return rows.map(rowToWebhookLogEntry);
 }

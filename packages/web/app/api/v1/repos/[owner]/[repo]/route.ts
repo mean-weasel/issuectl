@@ -9,6 +9,7 @@ import {
   endDeployment,
   killTtyd,
   killTmuxSession,
+  recordDiagnosticEventSafely,
   tmuxSessionName,
   updateRepo,
   updateRepoWebhookSettings,
@@ -43,6 +44,15 @@ export async function DELETE(
     }
 
     removeRepo(db, repo.id);
+    recordDiagnosticEventSafely(db, {
+      level: "warn",
+      event: "repo.removed",
+      source: "web",
+      owner,
+      repo: repoName,
+      message: "Repository removed from local tracking",
+      data: { repoId: repo.id },
+    });
     log.info({ msg: "api_repo_removed", repoId: repo.id, owner, name: repoName });
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -143,6 +153,7 @@ export async function PATCH(
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
       updated = updateRepoWebhookSettings(db, repo.id, webhookUpdates);
       endDisabledAutomationSessions(db, repo, webhookUpdates);
+      recordAutomationDiagnostics(db, repo, webhookUpdates);
     }
     log.info({ msg: "api_repo_updated", repoId: repo.id, owner, name: repoName, updates, webhookUpdates });
     return NextResponse.json({ success: true, repo: updated });
@@ -152,6 +163,35 @@ export async function PATCH(
       { success: false, error: formatErrorForUser(err) },
       { status: 500 },
     );
+  }
+}
+
+function recordAutomationDiagnostics(
+  db: ReturnType<typeof getDb>,
+  repo: { id: number; owner: string; name: string },
+  updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+): void {
+  if (updates.autoLaunchIssues === true || updates.autoReviewPrs === true) {
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: "repo.automation_enabled",
+      source: "web",
+      owner: repo.owner,
+      repo: repo.name,
+      message: "Repository webhook automation enabled",
+      data: { repoId: repo.id, autoLaunchIssues: updates.autoLaunchIssues, autoReviewPrs: updates.autoReviewPrs },
+    });
+  }
+  if (updates.autoLaunchIssues === false || updates.autoReviewPrs === false) {
+    recordDiagnosticEventSafely(db, {
+      level: "warn",
+      event: "repo.automation_disabled",
+      source: "web",
+      owner: repo.owner,
+      repo: repo.name,
+      message: "Repository webhook automation disabled",
+      data: { repoId: repo.id, autoLaunchIssues: updates.autoLaunchIssues, autoReviewPrs: updates.autoReviewPrs },
+    });
   }
 }
 

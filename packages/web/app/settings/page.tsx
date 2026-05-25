@@ -65,6 +65,11 @@ export default async function SettingsPage({
       <div className={styles.content}>
         <section className={styles.section}>
           <div className={styles.sectionTitle}>Tracked Repositories</div>
+          <div className={styles.quickLinks}>
+            <Link href="/settings/repos">Repo settings</Link>
+            <Link href="/sessions">Sessions and reviews</Link>
+            <Link href="/workbench">Workbench</Link>
+          </div>
           <TrackedRepos repos={repos} />
         </section>
 

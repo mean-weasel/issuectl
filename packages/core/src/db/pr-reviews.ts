@@ -90,6 +90,22 @@ export function listPrReviewsForRepo(
   return rows.map(rowToPrReview);
 }
 
+export function listPrReviewsForPull(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+  limit = 24,
+): PrReview[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const rows = db.prepare(
+    `SELECT * FROM pr_reviews
+     WHERE repo_id = ? AND pr_number = ?
+     ORDER BY started_at DESC, id DESC
+     LIMIT ?`,
+  ).all(repoId, prNumber, boundedLimit) as PrReviewRow[];
+  return rows.map(rowToPrReview);
+}
+
 export function completePrReview(
   db: Database.Database,
   reviewId: number,

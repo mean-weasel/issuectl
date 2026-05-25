@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import { createRawTestDb } from "./test-helpers.js";
@@ -5,9 +6,11 @@ import { initSchema } from "./schema.js";
 import { runMigrations } from "./migrations.js";
 import { seedDefaults } from "./settings.js";
 import { addRepo } from "./repos.js";
+import { recordDeployment } from "./deployments.js";
 import {
   claimDueWebhookIntent,
   getWebhookEventByDelivery,
+  listWebhookLogEntries,
   listWebhookEvents,
   mergeWebhookIntent,
   pruneExpiredWebhookPayloads,
@@ -134,6 +137,96 @@ describe("webhook DB helpers", () => {
         repoId,
         targetType: "issue",
         targetNumber: 506,
+      }),
+    ]);
+  });
+
+  it("lists webhook log entries with intent chain and result state", () => {
+    const firedEvent = recordWebhookEvent(db, {
+      deliveryId: "delivery-fired",
+      repoId,
+      eventType: "issues",
+      action: "labeled",
+      senderLogin: "octocat",
+      targetType: "issue",
+      targetNumber: 507,
+      receivedAt: 1_000,
+    });
+    const firedIntentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 507,
+      signalAt: 1_000,
+      scheduledAt: 1_060,
+      eventId: firedEvent.eventId,
+      requestedAgent: "codex",
+    });
+    const deployment = recordDeployment(db, {
+      repoId,
+      issueNumber: 507,
+      branchName: "issue-507",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issue-507",
+      agent: "codex",
+      triggeredBy: "webhook",
+    });
+    db.prepare(
+      `UPDATE webhook_intents
+       SET status = 'launched',
+           resolved_at = ?,
+           deployment_id = ?
+       WHERE id = ?`,
+    ).run(1_070, deployment.id, firedIntentId);
+
+    const droppedEvent = recordWebhookEvent(db, {
+      deliveryId: "delivery-dropped",
+      repoId,
+      eventType: "pull_request",
+      action: "synchronize",
+      senderLogin: "hubot",
+      targetType: "pr",
+      targetNumber: 42,
+      receivedAt: 2_000,
+    });
+    const droppedIntentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 42,
+      signalAt: 2_000,
+      scheduledAt: 2_060,
+      eventId: droppedEvent.eventId,
+      reviewMode: "auto",
+    });
+    db.prepare(
+      `UPDATE webhook_intents
+       SET status = 'skipped_optout',
+           resolved_at = ?,
+           failure_reason = ?
+       WHERE id = ?`,
+    ).run(2_010, "gated: label missing", droppedIntentId);
+
+    expect(listWebhookLogEntries(db, { repoId })).toEqual([
+      expect.objectContaining({
+        deliveryId: "delivery-dropped",
+        result: "gated",
+        resultDetail: "gated: label missing",
+        intent: expect.objectContaining({
+          id: droppedIntentId,
+          status: "skipped_optout",
+          reviewMode: "auto",
+        }),
+        actionId: null,
+      }),
+      expect.objectContaining({
+        deliveryId: "delivery-fired",
+        result: "fired",
+        resultDetail: `deployment ${deployment.id}`,
+        intent: expect.objectContaining({
+          id: firedIntentId,
+          status: "launched",
+          requestedAgent: "codex",
+        }),
+        actionId: `dep_${deployment.id}`,
       }),
     ]);
   });

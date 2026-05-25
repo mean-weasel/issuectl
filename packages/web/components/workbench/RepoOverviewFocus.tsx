@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { previewForDeployment } from "./workbench-selectors";
 import type { WorkbenchDeployment, WorkbenchHealth, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
@@ -71,6 +72,12 @@ export function RepoOverviewFocus({
       )}
 
       <div className={styles.overviewActions}>
+        <Link
+          className={styles.secondaryButton}
+          href={`/repos/${repo.owner}/${repo.name}/settings`}
+        >
+          Repo settings
+        </Link>
         <button
           type="button"
           className={styles.primaryButton}

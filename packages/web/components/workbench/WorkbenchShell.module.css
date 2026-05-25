@@ -1586,9 +1586,12 @@
 }
 
 .secondaryButton {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--paper-line);
   background: rgba(255, 255, 255, 0.22);
   color: var(--paper-ink);
+  text-decoration: none;
 }
 
 .primaryButton:disabled {

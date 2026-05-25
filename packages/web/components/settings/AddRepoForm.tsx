@@ -1,7 +1,9 @@
+/* eslint-disable max-lines */
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { LaunchAgent, WebhookPayloadMode } from "@issuectl/core";
 import { addRepo } from "@/lib/actions/repos";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -15,13 +17,28 @@ type Props = {
 
 type RepoIdentity = { owner: string; name: string };
 
-// Discriminated state instead of `mode` + `selected` nullable pair.
-// `mode: "selected" && selected === null` was representable before; now it
-// isn't — the "selected" variant carries its repo inline.
+type WizardStep = "identify" | "automation" | "install";
+
+type AutomationState = {
+  autoLaunchIssues: boolean;
+  autoReviewPrs: boolean;
+  issueAgent: LaunchAgent;
+  reviewAgent: LaunchAgent;
+  webhookPayloadMode: WebhookPayloadMode;
+};
+
 type FormMode =
   | { kind: "picker" }
   | { kind: "selected"; repo: RepoIdentity }
   | { kind: "manual"; input: string };
+
+const DEFAULT_AUTOMATION: AutomationState = {
+  autoLaunchIssues: true,
+  autoReviewPrs: true,
+  issueAgent: "codex",
+  reviewAgent: "codex",
+  webhookPayloadMode: "metadata",
+};
 
 function parseManual(input: string): RepoIdentity | null {
   const parts = input.trim().split("/");
@@ -29,34 +46,64 @@ function parseManual(input: string): RepoIdentity | null {
   return { owner: parts[0], name: parts[1] };
 }
 
+function repoKey(repo: RepoIdentity): string {
+  return `${repo.owner}/${repo.name}`;
+}
+
 export function AddRepoForm({ onClose, trackedSet }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
+  const [step, setStep] = useState<WizardStep>("identify");
   const [formMode, setFormMode] = useState<FormMode>({ kind: "picker" });
   const [localPath, setLocalPath] = useState("");
+  const [automation, setAutomation] = useState<AutomationState>(DEFAULT_AUTOMATION);
+  const [addedRepo, setAddedRepo] = useState<RepoIdentity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  const target = useMemo(() => {
+    if (formMode.kind === "manual") return parseManual(formMode.input);
+    if (formMode.kind === "selected") return formMode.repo;
+    return null;
+  }, [formMode]);
+
+  const settingsHref = target
+    ? `/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.name)}/settings`
+    : "/settings/repos";
+  const dashboardHref = target
+    ? `/?repo=${encodeURIComponent(repoKey(target))}`
+    : "/";
+
+  function updateAutomation(updates: Partial<AutomationState>) {
+    setAutomation((current) => ({ ...current, ...updates }));
+  }
+
+  function handleNext() {
+    setError(null);
+    if (step === "identify") {
+      if (!target) {
+        setError("Format: owner/repo (e.g., mean-weasel/seatify)");
+        return;
+      }
+      if (trackedSet.has(repoKey(target))) {
+        setError(`${repoKey(target)} is already tracked`);
+        return;
+      }
+      setStep("automation");
+      return;
+    }
+    if (step === "automation") {
+      setStep("install");
+    }
+  }
 
   function handleSubmit() {
     setError(null);
     setWarning(null);
-
-    const target =
-      formMode.kind === "manual"
-        ? parseManual(formMode.input)
-        : formMode.kind === "selected"
-          ? formMode.repo
-          : null;
     if (!target) {
       setError("Format: owner/repo (e.g., mean-weasel/seatify)");
+      setStep("identify");
       return;
     }
 
@@ -65,112 +112,253 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
         target.owner,
         target.name,
         localPath.trim() || undefined,
+        automation,
       );
       if (!result.success) {
         setError(result.error);
         return;
       }
-      const { addedRepo } = result;
-      const repoHref = `/?repo=${encodeURIComponent(`${addedRepo.owner}/${addedRepo.name}`)}`;
-      if (result.warning) {
-        setWarning(result.warning);
-        timerRef.current = setTimeout(() => {
-          onClose();
-          router.push(repoHref);
-        }, 2000);
-      } else {
-        showToast("Repository added", "success");
-        onClose();
-        router.push(repoHref);
-      }
+      setAddedRepo(result.addedRepo);
+      setWarning(result.warning ?? null);
+      showToast("Repository added", "success");
     });
   }
 
-  const canSubmit =
+  const canAdvanceIdentify =
     !isPending &&
     (formMode.kind === "manual"
       ? formMode.input.trim().length > 0
       : formMode.kind === "selected");
+  const canSubmit = !isPending && step === "install" && Boolean(target) && !addedRepo;
 
   return (
     <div className={styles.form}>
-      <div className={styles.row}>
-        <div className={styles.field}>
-          <div className={styles.label}>Repository</div>
+      <div className={styles.steps} aria-label="Add repository progress">
+        {(["identify", "automation", "install"] as const).map((item, index) => (
+          <button
+            key={item}
+            type="button"
+            className={`${styles.step} ${step === item ? styles.stepActive : ""}`}
+            onClick={() => setStep(item)}
+            disabled={isPending || (item !== "identify" && !target)}
+            aria-current={step === item ? "step" : undefined}
+          >
+            <span className={styles.stepIndex}>{index + 1}</span>
+            <span className={styles.stepLabel}>
+              {item === "identify" ? "Identify" : item === "automation" ? "Automation" : "Install"}
+            </span>
+          </button>
+        ))}
+      </div>
 
-          {formMode.kind === "picker" && (
-            <RepoPicker
-              trackedSet={trackedSet}
-              disabled={isPending}
-              onSelect={(owner, name) =>
-                setFormMode({ kind: "selected", repo: { owner, name } })
-              }
-              onManualEntry={() => setFormMode({ kind: "manual", input: "" })}
-            />
-          )}
+      {step === "identify" && (
+        <div className={styles.panel}>
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <div className={styles.label}>Repository</div>
 
-          {formMode.kind === "selected" && (
-            <div className={styles.selected}>
-              <span className={styles.selectedDot} />
-              <span className={styles.selectedName}>
-                {formMode.repo.owner}/{formMode.repo.name}
-              </span>
-              <button
-                type="button"
-                className={styles.selectedChange}
-                onClick={() => setFormMode({ kind: "picker" })}
-                disabled={isPending}
-              >
-                change
-              </button>
+              {formMode.kind === "picker" && (
+                <RepoPicker
+                  trackedSet={trackedSet}
+                  disabled={isPending}
+                  onSelect={(owner, name) =>
+                    setFormMode({ kind: "selected", repo: { owner, name } })
+                  }
+                  onManualEntry={() => setFormMode({ kind: "manual", input: "" })}
+                />
+              )}
+
+              {formMode.kind === "selected" && (
+                <div className={styles.selected}>
+                  <span className={styles.selectedDot} />
+                  <span className={styles.selectedName}>
+                    {formMode.repo.owner}/{formMode.repo.name}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.selectedChange}
+                    onClick={() => setFormMode({ kind: "picker" })}
+                    disabled={isPending}
+                  >
+                    change
+                  </button>
+                </div>
+              )}
+
+              {formMode.kind === "manual" && (
+                <div className={styles.manual}>
+                  <input
+                    className={styles.input}
+                    value={formMode.input}
+                    onChange={(event) =>
+                      setFormMode({ kind: "manual", input: event.target.value })
+                    }
+                    placeholder="owner/repo (e.g., mean-weasel/seatify)"
+                    disabled={isPending}
+                    autoFocus
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="done"
+                  />
+                  <button
+                    type="button"
+                    className={styles.backLink}
+                    onClick={() => setFormMode({ kind: "picker" })}
+                    disabled={isPending}
+                  >
+                    back to picker
+                  </button>
+                </div>
+              )}
             </div>
-          )}
 
-          {formMode.kind === "manual" && (
-            <div className={styles.manual}>
+            <div className={styles.field}>
+              <div className={styles.label}>Local Path</div>
               <input
                 className={styles.input}
-                value={formMode.input}
-                onChange={(e) =>
-                  setFormMode({ kind: "manual", input: e.target.value })
-                }
-                placeholder="owner/repo (e.g., mean-weasel/seatify)"
+                value={localPath}
+                onChange={(event) => setLocalPath(event.target.value)}
+                placeholder="~/Desktop/my-repo"
                 disabled={isPending}
-                autoFocus
                 autoComplete="off"
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
-                enterKeyHint="done"
               />
-              <button
-                type="button"
-                className={styles.backLink}
-                onClick={() => setFormMode({ kind: "picker" })}
+              <div className={styles.pathHint}>Optional. Leave blank to prompt on launch.</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "automation" && (
+        <div className={styles.panel}>
+          <div className={styles.automationGrid}>
+            <label className={styles.toggleRow}>
+              <input
+                type="checkbox"
+                checked={automation.autoLaunchIssues}
+                onChange={(event) =>
+                  updateAutomation({ autoLaunchIssues: event.target.checked })
+                }
+                disabled={isPending}
+              />
+              <span>
+                <strong>Issue sessions</strong>
+                <small>Launch a session when labeled issues arrive.</small>
+              </span>
+            </label>
+            <label className={styles.toggleRow}>
+              <input
+                type="checkbox"
+                checked={automation.autoReviewPrs}
+                onChange={(event) =>
+                  updateAutomation({ autoReviewPrs: event.target.checked })
+                }
+                disabled={isPending}
+              />
+              <span>
+                <strong>PR reviews</strong>
+                <small>Reserve opened PRs for review sessions.</small>
+              </span>
+            </label>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.field}>
+              <div className={styles.label}>Issue Agent</div>
+              <select
+                className={styles.input}
+                value={automation.issueAgent}
+                onChange={(event) =>
+                  updateAutomation({ issueAgent: event.target.value as LaunchAgent })
+                }
+                disabled={isPending || !automation.autoLaunchIssues}
+              >
+                <option value="codex">Codex</option>
+                <option value="claude">Claude</option>
+              </select>
+            </label>
+            <label className={styles.field}>
+              <div className={styles.label}>Review Agent</div>
+              <select
+                className={styles.input}
+                value={automation.reviewAgent}
+                onChange={(event) =>
+                  updateAutomation({ reviewAgent: event.target.value as LaunchAgent })
+                }
+                disabled={isPending || !automation.autoReviewPrs}
+              >
+                <option value="codex">Codex</option>
+                <option value="claude">Claude</option>
+              </select>
+            </label>
+            <label className={styles.field}>
+              <div className={styles.label}>Payload</div>
+              <select
+                className={styles.input}
+                value={automation.webhookPayloadMode}
+                onChange={(event) =>
+                  updateAutomation({ webhookPayloadMode: event.target.value as WebhookPayloadMode })
+                }
                 disabled={isPending}
               >
-                &larr; back to picker
-              </button>
+                <option value="metadata">Metadata</option>
+                <option value="raw">Raw</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {step === "install" && (
+        <div className={styles.panel}>
+          <div className={styles.summary}>
+            <div>
+              <div className={styles.label}>Repository</div>
+              <strong>{target ? repoKey(target) : "Select a repository"}</strong>
+            </div>
+            <div>
+              <div className={styles.label}>Automation</div>
+              <span>
+                {automation.autoLaunchIssues ? "Issues on" : "Issues off"} ·{" "}
+                {automation.autoReviewPrs ? "PRs on" : "PRs off"} ·{" "}
+                {automation.webhookPayloadMode}
+              </span>
+            </div>
+          </div>
+
+          <ol className={styles.installList}>
+            <li className={addedRepo ? styles.doneItem : ""}>
+              Save repository and automation defaults.
+            </li>
+            <li>Install the GitHub webhook from repo settings.</li>
+            <li>Create or confirm automation labels before enabling live traffic.</li>
+          </ol>
+
+          {addedRepo && (
+            <div className={styles.postAddActions}>
+              <Button
+                variant="primary"
+                onClick={() => router.push(settingsHref)}
+              >
+                Open repo settings
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  onClose();
+                  router.push(dashboardHref);
+                }}
+              >
+                Open dashboard
+              </Button>
             </div>
           )}
         </div>
-
-        <div className={styles.field}>
-          <div className={styles.label}>Local Path (optional)</div>
-          <input
-            className={styles.input}
-            value={localPath}
-            onChange={(e) => setLocalPath(e.target.value)}
-            placeholder="~/Desktop/my-repo"
-            disabled={isPending}
-            autoComplete="off"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <div className={styles.pathHint}>Leave blank to prompt on launch</div>
-        </div>
-      </div>
+      )}
 
       {error && (
         <span className={styles.error} role="alert">
@@ -183,18 +371,39 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
         </span>
       )}
 
-      <div className={styles.actions}>
-        <Button variant="ghost" onClick={onClose} disabled={isPending}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {isPending ? "Adding..." : "Add Repo"}
-        </Button>
-      </div>
+      {!addedRepo && (
+        <div className={styles.actions}>
+          <Button variant="ghost" onClick={onClose} disabled={isPending}>
+            Cancel
+          </Button>
+          {step !== "identify" && (
+            <Button
+              variant="ghost"
+              onClick={() => setStep(step === "install" ? "automation" : "identify")}
+              disabled={isPending}
+            >
+              Back
+            </Button>
+          )}
+          {step === "install" ? (
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+            >
+              {isPending ? "Adding..." : "Add repo"}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={handleNext}
+              disabled={step === "identify" ? !canAdvanceIdentify : isPending}
+            >
+              Next
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

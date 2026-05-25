@@ -15,6 +15,7 @@ const getDb = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getRepoWebhookConfigById = vi.hoisted(() => vi.fn());
 const getSetting = vi.hoisted(() => vi.fn());
+const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 const rotateIssuectlWebhook = vi.hoisted(() => vi.fn());
 const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
 const withAuthRetry = vi.hoisted(() => vi.fn((fn: (octokit: unknown) => unknown) => fn({})));
@@ -26,6 +27,7 @@ vi.mock("@issuectl/core", () => ({
   getRepo: (...args: unknown[]) => getRepo(...args),
   getRepoWebhookConfigById: (...args: unknown[]) => getRepoWebhookConfigById(...args),
   getSetting: (...args: unknown[]) => getSetting(...args),
+  recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
   rotateIssuectlWebhook: (...args: unknown[]) => rotateIssuectlWebhook(...args),
   updateRepoWebhookSettings: (...args: unknown[]) => updateRepoWebhookSettings(...args),
   withAuthRetry: (fn: (octokit: unknown) => unknown) => withAuthRetry(fn),
@@ -57,6 +59,7 @@ beforeEach(() => {
   createIssuectlWebhook.mockResolvedValue({ id: 123, createdBy: "jeremy" });
   rotateIssuectlWebhook.mockReset();
   rotateIssuectlWebhook.mockResolvedValue({ id: 456, createdBy: "jeremy" });
+  recordDiagnosticEventSafely.mockReset();
   updateRepoWebhookSettings.mockReset();
   updateRepoWebhookSettings.mockReturnValue({ ...repo, webhookId: 123 });
   withAuthRetry.mockClear();
@@ -85,6 +88,20 @@ describe("/api/v1/repos/[owner]/[repo]/webhook", () => {
       url: "https://hooks.example.test/api/webhook/github/1",
       createdBy: "jeremy",
     });
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.webhook_reinstalled",
+      owner: "mean-weasel",
+      repo: "issuectl",
+    }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "webhook.url_reconciled",
+      owner: "mean-weasel",
+      repo: "issuectl",
+      data: expect.objectContaining({
+        hookId: 123,
+        url: "https://hooks.example.test/api/webhook/github/1",
+      }),
+    }));
     expect(JSON.stringify(json)).not.toContain("webhookSecret");
   });
 
@@ -106,6 +123,13 @@ describe("/api/v1/repos/[owner]/[repo]/webhook", () => {
       webhookId: 456,
       webhookSecret: expect.any(String),
     });
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.webhook_secret_rotated",
+    }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "webhook.url_reconciled",
+      data: expect.objectContaining({ hookId: 456 }),
+    }));
   });
 
   it("rejects rotate when no webhook id is stored", async () => {

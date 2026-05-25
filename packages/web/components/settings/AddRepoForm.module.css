@@ -9,6 +9,72 @@
   margin-bottom: 8px;
 }
 
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  color: var(--paper-ink-muted);
+  font-family: var(--paper-serif);
+  cursor: pointer;
+}
+
+.step:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.stepActive {
+  color: var(--paper-ink);
+  border-color: var(--paper-accent);
+  background: var(--paper-bg);
+}
+
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--paper-line);
+  color: var(--paper-ink);
+  font-size: 12px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.stepActive .stepIndex {
+  background: var(--paper-accent);
+  color: var(--paper-bg);
+}
+
+.stepLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .row {
   display: flex;
   flex-direction: column;
@@ -137,6 +203,91 @@
   margin-top: 4px;
 }
 
+.automationGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  cursor: pointer;
+}
+
+.toggleRow input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--paper-accent);
+}
+
+.toggleRow span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.toggleRow strong {
+  color: var(--paper-ink);
+  font-size: 14px;
+}
+
+.toggleRow small {
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.summary {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+}
+
+.summary strong,
+.summary span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.installList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--paper-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.doneItem {
+  color: var(--paper-accent);
+  font-weight: 600;
+}
+
+.postAddActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.postAddActions > * {
+  width: 100%;
+  min-height: 44px;
+}
+
 /* Darker warm yellow (#d9a54d on cream fails WCAG AA at 1.89:1). */
 .warning {
   font-size: 13px;
@@ -150,12 +301,29 @@
     align-items: flex-start;
   }
 
+  .automationGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .actions {
     flex-direction: row;
     justify-content: flex-end;
   }
 
   .actions > * {
+    width: auto;
+  }
+
+  .postAddActions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .postAddActions > * {
     width: auto;
   }
 }

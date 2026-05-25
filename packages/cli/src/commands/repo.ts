@@ -1,4 +1,6 @@
+/* eslint-disable max-lines */
 import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { confirm, input } from "@inquirer/prompts";
 import {
   addRepo,
@@ -52,13 +54,15 @@ export async function repoAddCommand(
     log.warn(`Path "${localPath}" does not exist. Saving anyway.`);
   }
 
+  const webhookOptions = await collectRepoAddWebhookOptions(options);
   const repo = addRepo(db, {
     owner,
     name,
     localPath: localPath || undefined,
   });
-  applyWebhookOptions(db, repo, options);
+  applyWebhookOptions(db, repo, webhookOptions);
   log.success(`Added ${repo.owner}/${repo.name}`);
+  printRepoAddNextSteps(repo.owner, repo.name, webhookOptions);
 }
 
 export async function repoRemoveCommand(ownerRepo: string): Promise<void> {
@@ -181,6 +185,152 @@ type RepoSetCommandOptions = {
   webhookPayloadMode?: string;
   webhookBaseUrl?: string;
 };
+
+async function collectRepoAddWebhookOptions(
+  options: RepoCommandOptions,
+): Promise<RepoCommandOptions> {
+  const autoLaunchIssues = options.autoLaunchIssues === undefined
+    ? await confirm({
+        message: "Auto-launch issue sessions from webhooks?",
+        default: true,
+      })
+    : normalizeOptionalBoolean(options.autoLaunchIssues, "--auto-launch-issues");
+  const autoReviewPrs = options.autoReviewPrs === undefined
+    ? await confirm({
+        message: "Reserve PRs for automatic review from webhooks?",
+        default: true,
+      })
+    : normalizeOptionalBoolean(options.autoReviewPrs, "--auto-review-prs");
+  const automationEnabled = autoLaunchIssues || autoReviewPrs;
+
+  let issueAgent = normalizeOptionalAgent(options.issueAgent, "--issue-agent");
+  if (autoLaunchIssues && issueAgent === undefined) {
+    issueAgent = await promptLaunchAgent("Issue session agent", "codex");
+  }
+
+  let reviewAgent = normalizeOptionalAgent(options.reviewAgent, "--review-agent");
+  if (autoReviewPrs && reviewAgent === undefined) {
+    reviewAgent = await promptLaunchAgent("PR review agent", "codex");
+  }
+
+  let webhookPayloadMode = normalizeOptionalPayloadMode(options.webhookPayloadMode);
+  if (automationEnabled && webhookPayloadMode === undefined) {
+    webhookPayloadMode = await promptWebhookPayloadMode();
+  }
+
+  let webhookBaseUrl = options.webhookBaseUrl;
+  if (automationEnabled && webhookBaseUrl === undefined) {
+    const value = await input({
+      message: "Public webhook base URL (optional, e.g. https://hooks.example.com):",
+      default: "",
+      validate: (candidate) => {
+        if (!candidate.trim()) return true;
+        try {
+          normalizeWebhookBaseUrl(candidate);
+          return true;
+        } catch (err) {
+          return err instanceof Error ? err.message : "Invalid URL";
+        }
+      },
+    });
+    webhookBaseUrl = value.trim() || undefined;
+  }
+
+  if (automationEnabled) {
+    runRepoAddPreflight(webhookBaseUrl);
+  }
+
+  return {
+    ...options,
+    autoLaunchIssues,
+    autoReviewPrs,
+    issueAgent,
+    reviewAgent,
+    webhookPayloadMode,
+    webhookBaseUrl,
+  };
+}
+
+async function promptLaunchAgent(
+  message: string,
+  defaultValue: LaunchAgent,
+): Promise<LaunchAgent> {
+  const value = await input({
+    message,
+    default: defaultValue,
+    validate: (candidate) =>
+      candidate === "claude" || candidate === "codex"
+        ? true
+        : "Use claude or codex.",
+  });
+  return normalizeOptionalAgent(value || defaultValue, "--agent") ?? defaultValue;
+}
+
+async function promptWebhookPayloadMode(): Promise<WebhookPayloadMode> {
+  const value = await input({
+    message: "Webhook payload storage mode",
+    default: "metadata",
+    validate: (candidate) =>
+      candidate === "metadata" || candidate === "raw"
+        ? true
+        : "Use metadata or raw.",
+  });
+  return normalizeOptionalPayloadMode(value || "metadata") ?? "metadata";
+}
+
+function runRepoAddPreflight(webhookBaseUrl?: string): void {
+  const ghScopes = getGhAuthScopes();
+  if (ghScopes === "missing") {
+    log.warn("GitHub CLI auth check unavailable. Run `gh auth status --show-token-scopes` and confirm repo hook access before installing the webhook.");
+  } else if (!hasRepoHookScope(ghScopes)) {
+    log.warn("GitHub CLI token may be missing repo hook scope. Re-auth with `gh auth refresh -s admin:repo_hook` before webhook install.");
+  }
+
+  if (!commandWorks("cloudflared", ["--version"])) {
+    log.warn("cloudflared was not found. Install it or provide a public --webhook-base-url before installing GitHub webhooks.");
+  }
+
+  if (!webhookBaseUrl) {
+    log.info("After you have a public webhook URL, run `issuectl webhook create owner/repo` or finish setup from repo settings.");
+  }
+}
+
+function getGhAuthScopes(): string | "missing" {
+  try {
+    return String(execFileSync("gh", ["auth", "status", "--show-token-scopes"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }));
+  } catch {
+    return "missing";
+  }
+}
+
+function hasRepoHookScope(output: string): boolean {
+  return /\badmin:repo_hook\b/.test(output) || /\brepo\b/.test(output);
+}
+
+function commandWorks(command: string, args: string[]): boolean {
+  try {
+    execFileSync(command, args, { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function printRepoAddNextSteps(
+  owner: string,
+  name: string,
+  options: RepoCommandOptions,
+): void {
+  const issueAutomation = normalizeOptionalBoolean(options.autoLaunchIssues, "--auto-launch-issues");
+  const reviewAutomation = normalizeOptionalBoolean(options.autoReviewPrs, "--auto-review-prs");
+  if (!issueAutomation && !reviewAutomation) return;
+
+  log.info(`Webhook settings saved for ${owner}/${name}.`);
+  log.info(`Open repo settings or run \`issuectl webhook create ${owner}/${name}\` to finish GitHub installation.`);
+}
 
 function applyWebhookOptions(
   db: ReturnType<typeof requireDb>,

@@ -39,16 +39,25 @@ function errMessage(err: unknown): unknown {
 export type AddRepoResult =
   | {
       success: true;
-      addedRepo: { owner: string; name: string };
+      addedRepo: { id: number; owner: string; name: string };
       warning?: string;
       cacheStale?: true;
     }
   | { success: false; error: string };
 
+export type AddRepoOptions = {
+  autoLaunchIssues?: boolean;
+  autoReviewPrs?: boolean;
+  issueAgent?: LaunchAgent;
+  reviewAgent?: LaunchAgent;
+  webhookPayloadMode?: WebhookPayloadMode;
+};
+
 export async function addRepo(
   owner: string,
   name: string,
   localPath?: string,
+  options: AddRepoOptions = {},
 ): Promise<AddRepoResult> {
   if (!owner || !name) {
     return { success: false, error: "Owner and repo name are required" };
@@ -69,9 +78,21 @@ export async function addRepo(
     };
   }
 
+  let addedRepo: { id: number; owner: string; name: string };
   try {
     const db = getDb();
-    coreAddRepo(db, { owner, name, localPath });
+    const repo = coreAddRepo(db, { owner, name, localPath });
+    addedRepo = { id: repo.id, owner: repo.owner, name: repo.name };
+    const webhookUpdates = {
+      autoLaunchIssues: options.autoLaunchIssues,
+      autoReviewPrs: options.autoReviewPrs,
+      issueAgent: options.issueAgent,
+      reviewAgent: options.reviewAgent,
+      webhookPayloadMode: options.webhookPayloadMode,
+    };
+    if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
+      updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+    }
   } catch (err) {
     console.error("[issuectl] Failed to add repo:", errMessage(err));
     const msg =
@@ -115,8 +136,12 @@ export async function addRepo(
     );
   });
 
-  const { stale } = revalidateSafely("/settings", "/");
-  const addedRepo = { owner, name };
+  const { stale } = revalidateSafely(
+    "/settings",
+    "/settings/repos",
+    `/repos/${owner}/${name}/settings`,
+    "/",
+  );
 
   if (localPath) {
     const exists = await stat(expandHome(localPath)).catch(() => null);

@@ -1,8 +1,9 @@
 import { confirm, input } from "@inquirer/prompts";
-import { dbExists, getDb, closeDb, seedDefaults, addRepo, generateApiToken } from "@issuectl/core";
+import { dbExists, getDb, closeDb, seedDefaults, generateApiToken } from "@issuectl/core";
 import * as log from "../utils/logger.js";
 import { requireAuth } from "../utils/auth.js";
 import { validateOwnerRepo, parseOwnerRepo } from "../utils/validation.js";
+import { repoAddCommand } from "./repo.js";
 
 export async function initCommand(): Promise<void> {
   log.banner();
@@ -60,22 +61,16 @@ export async function initCommand(): Promise<void> {
       validate: validateOwnerRepo,
     });
 
-    const { owner, name } = parseOwnerRepo(ownerRepo);
+    const { name } = parseOwnerRepo(ownerRepo);
 
     const localPath = await input({
       message: "Local path (optional, press Enter to skip):",
       default: `~/Desktop/${name}`,
     });
 
-    const repo = addRepo(db, {
-      owner,
-      name,
-      localPath: localPath || undefined,
-    });
-
-    log.success(`Added ${repo.owner}/${repo.name}`);
-    if (repo.localPath) {
-      log.info(`Local path: ${repo.localPath}`);
+    await repoAddCommand(ownerRepo, { path: localPath || undefined });
+    if (localPath) {
+      log.info(`Local path: ${localPath}`);
     }
   }
 

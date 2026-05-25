@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { beforeEach, describe, expect, it } from "vitest";
 import type Database from "better-sqlite3";
 import { createRawTestDb, createTestDb } from "./test-helpers.js";
@@ -10,6 +11,7 @@ import {
   getActivePrReview,
   getLatestCompletedPrReview,
   getPrReviewById,
+  listPrReviewsForPull,
   listPrReviewsForRepo,
   markActivePrReviewForDeploymentTerminal,
   reservePrReview,
@@ -135,6 +137,46 @@ describe("pr_reviews", () => {
     });
 
     expect(listPrReviewsForRepo(db, repoId, 1)).toEqual([latest]);
+  });
+
+  it("lists PR review lineage for one pull request", () => {
+    const first = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    const latest = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-c",
+      reviewBaseSha: "base-a",
+      reviewedFromSha: "head-b",
+      reviewedToSha: "head-c",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "comment_command",
+      startedAt: 2_000,
+    });
+    reservePrReview(db, {
+      repoId,
+      prNumber: 507,
+      startedHeadSha: "other-head",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "other-head",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/other",
+      triggeredBy: "webhook",
+      startedAt: 3_000,
+    });
+
+    expect(listPrReviewsForPull(db, repoId, 506)).toEqual([latest, first]);
+    expect(listPrReviewsForPull(db, repoId, 506, 1)).toEqual([latest]);
   });
 
   it("stores at most one coalesced desired head for a running review", () => {
