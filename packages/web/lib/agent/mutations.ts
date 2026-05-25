@@ -266,7 +266,7 @@ async function preparePushExecution(
   if (request.targetType !== "pr") return denyAgentMutation(db, request, "target_mismatch");
   const payload = parsePushPayload(request.payload);
   if (!payload) return denyAgentMutation(db, request, "invalid_payload");
-  if (!adapters.fetchPull || !adapters.isBranchProtected) {
+  if (!adapters.fetchPull || !adapters.isBranchProtected || !adapters.push) {
     return denyAgentMutation(db, request, "action_unimplemented");
   }
 
@@ -295,13 +295,22 @@ async function preparePushExecution(
   const checkout = await adapters.verifyWorkspaceHead({
     workspacePath: session.workspacePath,
     expectedHeadRef: payload.expectedHeadRef,
-    expectedHeadSha: payload.expectedHeadSha,
+    expectedHeadSha: payload.newSha,
     owner: repo.owner,
     repo: repo.name,
   });
   if (!checkout.ok) return denyAgentMutation(db, request, checkout.reason);
 
-  return denyAgentMutation(db, request, "unsupported_local_push");
+  return {
+    allowed: true,
+    run: () => adapters.push?.({
+      owner: repo.owner,
+      repo: repo.name,
+      ref: `heads/${payload.expectedHeadRef}`,
+      sha: payload.newSha,
+      expectedHeadSha: payload.expectedHeadSha,
+    }) ?? Promise.resolve(),
+  };
 }
 
 function isSameRepoPull(pull: PullForSafety, baseRepoFullName: string): boolean {

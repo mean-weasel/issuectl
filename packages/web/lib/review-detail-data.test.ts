@@ -24,7 +24,11 @@ describe("review-detail-data", () => {
       id: 2,
       reviewedFromSha: "bbbbbbb2222222",
       reviewedToSha: "ccccccc3333333",
-      resultJson: JSON.stringify({ desiredHeadSha: "ddddddd4444444", followUpGeneration: 1 }),
+      resultJson: JSON.stringify({
+        desiredHeadSha: "ddddddd4444444",
+        followUpGeneration: 1,
+        githubReviewUrl: "https://github.com/mean-weasel/issuectl/pull/44#pullrequestreview-1",
+      }),
     });
     const data = buildReviewDetailData({
       repo,
@@ -39,12 +43,17 @@ describe("review-detail-data", () => {
       expect.objectContaining({ tone: "info", title: "Follow-up requested" }),
     ]);
     expect(data.links.githubPr).toBe("https://github.com/mean-weasel/issuectl/pull/44");
+    expect(data.links.githubReview).toBe("https://github.com/mean-weasel/issuectl/pull/44#pullrequestreview-1");
     expect(data.links.githubReviewFiles).toBe("https://github.com/mean-weasel/issuectl/pull/44/files");
     expect(data.links.sessions).toContain("tab=reviews");
     expect(data.links.webhookLogs).toContain("q=mean-weasel%2Fissuectl%2344");
     expect(data.links.diagnosticsCli).toBe("pnpm --dir packages/cli exec issuectl diag show --pr mean-weasel/issuectl#44");
     expect(data.actions.canRetry).toBe(true);
     expect(data.diagnostics).toHaveLength(1);
+    expect(data.metadata).toEqual({
+      currentReviewPreamble: null,
+      triggerEvent: expect.objectContaining({ event: "webhook.pr_launched" }),
+    });
   });
 
   it("shows failed and superseded banners from status and result json", () => {

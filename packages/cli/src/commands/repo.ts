@@ -8,9 +8,11 @@ import {
   listRepos,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
+  markActivePrReviewForDeploymentTerminal,
   endDeployment,
   killTtyd,
   killTmuxSession,
+  recordDiagnosticEventSafely,
   setSetting,
   tmuxSessionName,
   updateRepo,
@@ -85,7 +87,18 @@ export async function repoRemoveCommand(ownerRepo: string): Promise<void> {
     return;
   }
 
+  const endedIssueSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
+  const endedPrSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
   removeRepo(db, repo.id);
+  recordDiagnosticEventSafely(db, {
+    level: "info",
+    event: "repo.removed",
+    source: "cli",
+    owner,
+    repo: name,
+    message: "Repository removed from issuectl",
+    data: { repoId: repo.id, affectedSessionIds: [...endedIssueSessionIds, ...endedPrSessionIds] },
+  });
   log.success(`Removed ${owner}/${name}`);
 }
 
@@ -355,7 +368,8 @@ function applyWebhookOptions(
   }
   if (Object.keys(compact).length === 0) return options.webhookBaseUrl !== undefined;
   updateRepoWebhookSettings(db, repo.id, compact);
-  endDisabledAutomationSessions(db, repo, updates);
+  const endedSessionIds = endDisabledAutomationSessions(db, repo, updates);
+  recordAutomationDiagnostics(db, repo, updates, endedSessionIds);
   return true;
 }
 
@@ -405,15 +419,17 @@ function normalizeWebhookBaseUrl(value: string): string {
 
 function endDisabledAutomationSessions(
   db: ReturnType<typeof requireDb>,
-  repo: { id: number; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean },
+  repo: { id: number; owner?: string; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean },
   updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
-): void {
+): { issue: number[]; pr: number[] } {
+  const ended = { issue: [] as number[], pr: [] as number[] };
   if (repo.autoLaunchIssues && updates.autoLaunchIssues === false) {
-    endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
+    ended.issue = endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
   }
   if (repo.autoReviewPrs && updates.autoReviewPrs === false) {
-    endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
+    ended.pr = endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
   }
+  return ended;
 }
 
 function endActiveWebhookDeployments(
@@ -421,11 +437,51 @@ function endActiveWebhookDeployments(
   repoId: number,
   repoName: string,
   targetType: "issue" | "pr",
-): void {
+): number[] {
+  const endedSessionIds: number[] = [];
   for (const deployment of getActiveWebhookDeploymentsForRepoTarget(db, repoId, targetType)) {
     const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
     if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
     else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
     endDeployment(db, deployment.id, "killed_by_label");
+    if (targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, deployment.id, {
+        completedAt: Date.now(),
+        status: "superseded",
+        reason: "killed_by_label",
+      });
+    }
+    endedSessionIds.push(deployment.id);
+  }
+  return endedSessionIds;
+}
+
+function recordAutomationDiagnostics(
+  db: ReturnType<typeof requireDb>,
+  repo: { id: number; owner?: string; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean },
+  updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+  affectedSessionIds: { issue: number[]; pr: number[] },
+): void {
+  if (updates.autoLaunchIssues !== undefined && updates.autoLaunchIssues !== repo.autoLaunchIssues) {
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: updates.autoLaunchIssues ? "repo.automation_enabled" : "repo.automation_disabled",
+      source: "cli",
+      owner: repo.owner,
+      repo: repo.name,
+      message: updates.autoLaunchIssues ? "Issue auto-launch enabled" : "Issue auto-launch disabled",
+      data: { repoId: repo.id, targetType: "issue", affectedSessionIds: affectedSessionIds.issue },
+    });
+  }
+  if (updates.autoReviewPrs !== undefined && updates.autoReviewPrs !== repo.autoReviewPrs) {
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: updates.autoReviewPrs ? "repo.automation_enabled" : "repo.automation_disabled",
+      source: "cli",
+      owner: repo.owner,
+      repo: repo.name,
+      message: updates.autoReviewPrs ? "PR auto-review enabled" : "PR auto-review disabled",
+      data: { repoId: repo.id, targetType: "pr", affectedSessionIds: affectedSessionIds.pr },
+    });
   }
 }

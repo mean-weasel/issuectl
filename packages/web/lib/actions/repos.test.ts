@@ -10,6 +10,7 @@ const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
 const getRepoById = vi.hoisted(() => vi.fn());
 const getSetting = vi.hoisted(() => vi.fn());
 const getActiveWebhookDeploymentsForRepoTarget = vi.hoisted(() => vi.fn());
+const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
 const endDeployment = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
@@ -25,6 +26,7 @@ vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getRepoById: (...args: unknown[]) => getRepoById(...args),
   getActiveWebhookDeploymentsForRepoTarget: (...args: unknown[]) => getActiveWebhookDeploymentsForRepoTarget(...args),
+  markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
   endDeployment: (...args: unknown[]) => endDeployment(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
@@ -93,6 +95,7 @@ beforeEach(() => {
   getRepoById.mockReturnValue({ id: 1, owner: "mean-weasel", name: "issuectl", webhookId: null, autoLaunchIssues: false, autoReviewPrs: false });
   getActiveWebhookDeploymentsForRepoTarget.mockReset();
   getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([]);
+  markActivePrReviewForDeploymentTerminal.mockReset();
   endDeployment.mockReset();
   killTtyd.mockReset();
   killTmuxSession.mockReset();
@@ -215,31 +218,51 @@ describe("updateRepo action", () => {
     }));
   });
 
-  it("ends webhook sessions when repo automation is disabled", async () => {
+  it("ends webhook sessions and records affected ids when repo automation is disabled", async () => {
     getRepoById.mockReturnValue({
       id: 1,
       owner: "mean-weasel",
       name: "issuectl",
       autoLaunchIssues: true,
-      autoReviewPrs: false,
+      autoReviewPrs: true,
     });
-    getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([{
-      id: 12,
-      targetNumber: 506,
-      terminalBackend: "ttyd",
-      ttydPid: 123,
-    }]);
+    getActiveWebhookDeploymentsForRepoTarget
+      .mockReturnValueOnce([{
+        id: 12,
+        targetNumber: 506,
+        terminalBackend: "ttyd",
+        ttydPid: 123,
+      }])
+      .mockReturnValueOnce([{
+        id: 44,
+        targetNumber: 44,
+        terminalBackend: "pty_bridge",
+        ttydPid: null,
+      }]);
 
-    const result = await updateRepo(1, { autoLaunchIssues: false });
+    const result = await updateRepo(1, { autoLaunchIssues: false, autoReviewPrs: false });
 
     expect(result).toEqual({ success: true });
     expect(killTtyd).toHaveBeenCalledWith(123, "issuectl-issuectl-issue-506");
+    expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
     expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 12, "killed_by_label");
+    expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 44, "killed_by_label");
+    expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 44, {
+      completedAt: expect.any(Number),
+      status: "superseded",
+      reason: "killed_by_label",
+    });
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       event: "repo.automation_disabled",
       owner: "mean-weasel",
       repo: "issuectl",
-      data: expect.objectContaining({ targetType: "issue" }),
+      data: expect.objectContaining({ targetType: "issue", affectedSessionIds: [12] }),
+    }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.automation_disabled",
+      owner: "mean-weasel",
+      repo: "issuectl",
+      data: expect.objectContaining({ targetType: "pr", affectedSessionIds: [44] }),
     }));
   });
 
@@ -340,10 +363,16 @@ describe("updateRepo action", () => {
     });
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
     expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 44, "killed_by_label");
+    expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 44, {
+      completedAt: expect.any(Number),
+      status: "superseded",
+      reason: "killed_by_label",
+    });
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       event: "repo.removed",
       owner: "mean-weasel",
       repo: "issuectl",
+      data: expect.objectContaining({ affectedSessionIds: [44] }),
     }));
   });
 });

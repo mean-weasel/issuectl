@@ -20,6 +20,7 @@ export const metadata = { title: "Webhook logs - issuectl" };
 
 type SearchParams = {
   repo?: string;
+  delivery?: string;
   result?: string;
   event?: string;
   q?: string;
@@ -168,6 +169,7 @@ export default async function WebhookLogsPage({
             <button className={styles.button} type="submit">Apply</button>
           </div>
           {params.result && <input type="hidden" name="result" value={params.result} />}
+          {params.delivery && <input type="hidden" name="delivery" value={params.delivery} />}
         </form>
 
         {entries.length === 0 ? (
@@ -325,7 +327,9 @@ function filterEntries(
   const result = activeResult(params.result);
   const query = params.q?.trim().toLowerCase();
   const eventQuery = params.event?.trim().toLowerCase();
+  const deliveryQuery = params.delivery?.trim();
   return entries.filter((entry) => {
+    if (deliveryQuery && entry.deliveryId !== deliveryQuery) return false;
     if (result !== "all" && entry.result !== result) return false;
     const eventText = `${entry.eventType} ${entry.action ?? ""}`.toLowerCase();
     if (eventQuery && !eventText.includes(eventQuery)) return false;
@@ -352,6 +356,7 @@ function filterAuditEvents(
 ): DiagnosticEvent[] {
   const query = params.q?.trim().toLowerCase();
   const eventQuery = params.event?.trim().toLowerCase();
+  const deliveryQuery = params.delivery?.trim().toLowerCase();
   const auditFilter = activeAuditFilter(params.result);
   const selectedRepoId = parsePositiveInt(params.repo);
   const selectedRepo = repos.find((repo) => repo.id === selectedRepoId);
@@ -361,6 +366,7 @@ function filterAuditEvents(
     if (auditFilter === "replay" && event.event !== "webhook.deduped") return false;
     if (auditFilter === "valid") return false;
     if (eventQuery && !event.event.toLowerCase().includes(eventQuery)) return false;
+    if (deliveryQuery && event.correlationId?.toLowerCase() !== deliveryQuery) return false;
     if (!query) return true;
     return [
       event.event,

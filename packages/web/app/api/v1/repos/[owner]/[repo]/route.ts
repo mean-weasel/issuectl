@@ -6,6 +6,7 @@ import {
   removeRepo,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
+  markActivePrReviewForDeploymentTerminal,
   endDeployment,
   killTtyd,
   killTmuxSession,
@@ -43,6 +44,8 @@ export async function DELETE(
       );
     }
 
+    const endedIssueSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
+    const endedPrSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
     removeRepo(db, repo.id);
     recordDiagnosticEventSafely(db, {
       level: "warn",
@@ -51,7 +54,7 @@ export async function DELETE(
       owner,
       repo: repoName,
       message: "Repository removed from local tracking",
-      data: { repoId: repo.id },
+      data: { repoId: repo.id, affectedSessionIds: [...endedIssueSessionIds, ...endedPrSessionIds] },
     });
     log.info({ msg: "api_repo_removed", repoId: repo.id, owner, name: repoName });
     return NextResponse.json({ success: true });
@@ -152,8 +155,8 @@ export async function PATCH(
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
       updated = updateRepoWebhookSettings(db, repo.id, webhookUpdates);
-      endDisabledAutomationSessions(db, repo, webhookUpdates);
-      recordAutomationDiagnostics(db, repo, webhookUpdates);
+      const endedSessionIds = endDisabledAutomationSessions(db, repo, webhookUpdates);
+      recordAutomationDiagnostics(db, repo, webhookUpdates, endedSessionIds);
     }
     log.info({ msg: "api_repo_updated", repoId: repo.id, owner, name: repoName, updates, webhookUpdates });
     return NextResponse.json({ success: true, repo: updated });
@@ -170,6 +173,7 @@ function recordAutomationDiagnostics(
   db: ReturnType<typeof getDb>,
   repo: { id: number; owner: string; name: string },
   updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+  affectedSessionIds: { issue: number[]; pr: number[] } = { issue: [], pr: [] },
 ): void {
   if (updates.autoLaunchIssues === true || updates.autoReviewPrs === true) {
     recordDiagnosticEventSafely(db, {
@@ -179,7 +183,7 @@ function recordAutomationDiagnostics(
       owner: repo.owner,
       repo: repo.name,
       message: "Repository webhook automation enabled",
-      data: { repoId: repo.id, autoLaunchIssues: updates.autoLaunchIssues, autoReviewPrs: updates.autoReviewPrs },
+      data: { repoId: repo.id, autoLaunchIssues: updates.autoLaunchIssues, autoReviewPrs: updates.autoReviewPrs, affectedSessionIds },
     });
   }
   if (updates.autoLaunchIssues === false || updates.autoReviewPrs === false) {
@@ -190,7 +194,7 @@ function recordAutomationDiagnostics(
       owner: repo.owner,
       repo: repo.name,
       message: "Repository webhook automation disabled",
-      data: { repoId: repo.id, autoLaunchIssues: updates.autoLaunchIssues, autoReviewPrs: updates.autoReviewPrs },
+      data: { repoId: repo.id, autoLaunchIssues: updates.autoLaunchIssues, autoReviewPrs: updates.autoReviewPrs, affectedSessionIds },
     });
   }
 }
@@ -199,13 +203,15 @@ function endDisabledAutomationSessions(
   db: ReturnType<typeof getDb>,
   repo: { id: number; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean },
   updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
-): void {
+): { issue: number[]; pr: number[] } {
+  const ended = { issue: [] as number[], pr: [] as number[] };
   if (repo.autoLaunchIssues && updates.autoLaunchIssues === false) {
-    endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
+    ended.issue = endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
   }
   if (repo.autoReviewPrs && updates.autoReviewPrs === false) {
-    endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
+    ended.pr = endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
   }
+  return ended;
 }
 
 function endActiveWebhookDeployments(
@@ -213,11 +219,21 @@ function endActiveWebhookDeployments(
   repoId: number,
   repoName: string,
   targetType: "issue" | "pr",
-): void {
+): number[] {
+  const endedSessionIds: number[] = [];
   for (const deployment of getActiveWebhookDeploymentsForRepoTarget(db, repoId, targetType)) {
     const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
     if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
     else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
     endDeployment(db, deployment.id, "killed_by_label");
+    if (targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, deployment.id, {
+        completedAt: Date.now(),
+        status: "superseded",
+        reason: "killed_by_label",
+      });
+    }
+    endedSessionIds.push(deployment.id);
   }
+  return endedSessionIds;
 }

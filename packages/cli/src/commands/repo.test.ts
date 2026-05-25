@@ -6,8 +6,10 @@ import {
   endDeployment,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
+  markActivePrReviewForDeploymentTerminal,
   killTmuxSession,
   killTtyd,
+  recordDiagnosticEventSafely,
   setSetting,
   tmuxSessionName,
   updateRepo,
@@ -35,9 +37,11 @@ vi.mock("@issuectl/core", async (importOriginal) => {
     addRepo: vi.fn(),
     getRepo: vi.fn(),
     getActiveWebhookDeploymentsForRepoTarget: vi.fn(),
+    markActivePrReviewForDeploymentTerminal: vi.fn(),
     endDeployment: vi.fn(),
     killTmuxSession: vi.fn(),
     killTtyd: vi.fn(),
+    recordDiagnosticEventSafely: vi.fn(),
     setSetting: vi.fn(),
     tmuxSessionName: vi.fn((repo: string, targetNumber: number, targetType = "issue") => `issuectl-${repo}-${targetType}-${targetNumber}`),
     updateRepo: vi.fn(),
@@ -81,9 +85,11 @@ beforeEach(() => {
   vi.mocked(getRepo).mockReset();
   vi.mocked(getActiveWebhookDeploymentsForRepoTarget).mockReset();
   vi.mocked(getActiveWebhookDeploymentsForRepoTarget).mockReturnValue([]);
+  vi.mocked(markActivePrReviewForDeploymentTerminal).mockReset();
   vi.mocked(endDeployment).mockReset();
   vi.mocked(killTmuxSession).mockReset();
   vi.mocked(killTtyd).mockReset();
+  vi.mocked(recordDiagnosticEventSafely).mockReset();
   vi.mocked(setSetting).mockReset();
   vi.mocked(tmuxSessionName).mockClear();
   vi.mocked(updateRepo).mockReset();
@@ -304,6 +310,21 @@ describe("repo commands", () => {
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
     expect(endDeployment).toHaveBeenCalledWith(mockDb, 10, "killed_by_label");
     expect(endDeployment).toHaveBeenCalledWith(mockDb, 11, "killed_by_label");
+    expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(mockDb, 11, {
+      completedAt: expect.any(Number),
+      status: "superseded",
+      reason: "killed_by_label",
+    });
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(mockDb, expect.objectContaining({
+      event: "repo.automation_disabled",
+      source: "cli",
+      data: expect.objectContaining({ targetType: "issue", affectedSessionIds: [10] }),
+    }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(mockDb, expect.objectContaining({
+      event: "repo.automation_disabled",
+      source: "cli",
+      data: expect.objectContaining({ targetType: "pr", affectedSessionIds: [11] }),
+    }));
   });
 
   it("shows webhook configuration without secrets", () => {
