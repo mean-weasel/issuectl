@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { beforeEach, describe, expect, it } from "vitest";
 import type Database from "better-sqlite3";
 import { createRawTestDb, createTestDb } from "./test-helpers.js";
