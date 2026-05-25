@@ -74,17 +74,17 @@ function tokenFromRequest(req: IncomingMessage): string | null {
 }
 
 export function broadcastWebhookEventsChanged(): void {
-  const payload = readSnapshotPayload();
+  const payload = readWebhookEventsStreamSnapshot();
   for (const ws of clients) {
     safeSend(ws, "webhook_events_changed", payload);
   }
 }
 
 function sendSnapshot(ws: WebSocket): void {
-  safeSend(ws, "webhook_events_snapshot", readSnapshotPayload());
+  safeSend(ws, "webhook_events_snapshot", readWebhookEventsStreamSnapshot());
 }
 
-function readSnapshotPayload(): unknown {
+export function readWebhookEventsStreamSnapshot(): unknown {
   try {
     const entries = listWebhookLogEntries(getDb(), { limit: 50 });
     return {

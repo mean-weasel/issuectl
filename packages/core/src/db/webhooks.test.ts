@@ -9,7 +9,10 @@ import { addRepo } from "./repos.js";
 import { recordDeployment } from "./deployments.js";
 import {
   claimDueWebhookIntent,
+  dropWebhookIntent,
+  fireWebhookIntent,
   getWebhookEventByDelivery,
+  listWebhookIntents,
   listWebhookLogEntries,
   listWebhookEvents,
   mergeWebhookIntent,
@@ -228,6 +231,47 @@ describe("webhook DB helpers", () => {
         }),
         actionId: `dep_${deployment.id}`,
       }),
+    ]);
+  });
+
+  it("lists, fires, and drops operator-managed webhook intents", () => {
+    const pendingId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 10_000,
+    });
+    const deferredId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      signalAt: 2_000,
+      scheduledAt: 20_000,
+      reviewMode: "auto",
+    });
+    db.prepare("UPDATE webhook_intents SET status = 'deferred' WHERE id = ?").run(deferredId);
+
+    expect(listWebhookIntents(db, { status: "active", repoId })).toEqual([
+      expect.objectContaining({ id: pendingId, targetType: "issue", targetNumber: 506 }),
+      expect.objectContaining({ id: deferredId, targetType: "pr", targetNumber: 44 }),
+    ]);
+
+    expect(fireWebhookIntent(db, deferredId, 3_000)).toEqual(expect.objectContaining({
+      id: deferredId,
+      status: "pending",
+      scheduledAt: 3_000,
+      processingStartedAt: null,
+      leaseExpiresAt: null,
+    }));
+    expect(dropWebhookIntent(db, pendingId, 4_000, "operator_dropped")).toEqual(expect.objectContaining({
+      id: pendingId,
+      status: "expired",
+      resolvedAt: 4_000,
+      failureReason: "operator_dropped",
+    }));
+    expect(listWebhookIntents(db, { status: "terminal" })).toEqual([
+      expect.objectContaining({ id: pendingId, status: "expired" }),
     ]);
   });
 

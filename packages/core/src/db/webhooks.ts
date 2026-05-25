@@ -6,6 +6,7 @@ import {
   rowToWebhookLogEntry,
   rowToWebhookIntent,
   type MergeWebhookIntentInput,
+  type ListWebhookIntentsInput,
   type ListWebhookEventsInput,
   type RecordWebhookEventInput,
   type RecordWebhookEventResult,
@@ -19,6 +20,7 @@ import {
 
 export type {
   MergeWebhookIntentInput,
+  ListWebhookIntentsInput,
   ListWebhookEventsInput,
   RecordWebhookEventInput,
   RecordWebhookEventResult,
@@ -232,6 +234,96 @@ export function countActiveWebhookIntents(db: Database.Database): number {
      WHERE status IN (${activeStatusPlaceholders()})`,
   ).get(...ACTIVE_INTENT_STATUSES) as { count: number };
   return row.count;
+}
+
+export function listWebhookIntents(
+  db: Database.Database,
+  input: number | ListWebhookIntentsInput = 50,
+): WebhookIntent[] {
+  const options = typeof input === "number" ? { limit: input } : input;
+  const normalizedLimit = Number.isFinite(options.limit)
+    ? Math.floor(options.limit ?? 50)
+    : 50;
+  const boundedLimit = Math.max(1, normalizedLimit);
+  const where: string[] = [];
+  const params: unknown[] = [];
+
+  if (options.repoId !== undefined) {
+    where.push("repo_id = ?");
+    params.push(options.repoId);
+  }
+  if (options.targetType !== undefined) {
+    where.push("target_type = ?");
+    params.push(options.targetType);
+  }
+  if (options.targetNumber !== undefined) {
+    where.push("target_number = ?");
+    params.push(options.targetNumber);
+  }
+  if (options.status === "active") {
+    where.push(`status IN (${activeStatusPlaceholders()})`);
+    params.push(...ACTIVE_INTENT_STATUSES);
+  } else if (options.status === "terminal") {
+    where.push(`status NOT IN (${activeStatusPlaceholders()})`);
+    params.push(...ACTIVE_INTENT_STATUSES);
+  } else if (options.status !== undefined) {
+    where.push("status = ?");
+    params.push(options.status);
+  }
+
+  params.push(boundedLimit);
+  const rows = db
+    .prepare(
+      `SELECT * FROM webhook_intents
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+       ORDER BY scheduled_at ASC, id ASC
+       LIMIT ?`,
+    )
+    .all(...params) as WebhookIntentRow[];
+  return rows.map(rowToWebhookIntent);
+}
+
+export function fireWebhookIntent(
+  db: Database.Database,
+  id: number,
+  now: number,
+): WebhookIntent | undefined {
+  const row = db
+    .prepare(
+      `UPDATE webhook_intents
+       SET status = 'pending',
+           scheduled_at = ?,
+           processing_started_at = NULL,
+           lease_expires_at = NULL,
+           failure_reason = NULL
+       WHERE id = ?
+         AND status IN ('pending', 'deferred')
+       RETURNING *`,
+    )
+    .get(now, id) as WebhookIntentRow | undefined;
+  return row ? rowToWebhookIntent(row) : undefined;
+}
+
+export function dropWebhookIntent(
+  db: Database.Database,
+  id: number,
+  now: number,
+  reason = "operator_dropped",
+): WebhookIntent | undefined {
+  const row = db
+    .prepare(
+      `UPDATE webhook_intents
+       SET status = 'expired',
+           resolved_at = ?,
+           processing_started_at = NULL,
+           lease_expires_at = NULL,
+           failure_reason = ?
+       WHERE id = ?
+         AND status IN (${activeStatusPlaceholders()})
+       RETURNING *`,
+    )
+    .get(now, reason, id, ...ACTIVE_INTENT_STATUSES) as WebhookIntentRow | undefined;
+  return row ? rowToWebhookIntent(row) : undefined;
 }
 
 export function claimDueWebhookIntent(

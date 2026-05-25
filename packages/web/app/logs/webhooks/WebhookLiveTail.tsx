@@ -80,8 +80,8 @@ export function WebhookLiveTail({
           setVisibleEvents(message.payload.entries.length);
           if (pausedRef.current) {
             setState("paused");
-            setPendingEntries((current) => mergeEntries(message.payload?.entries ?? [], current));
-          } else {
+              setPendingEntries((current) => mergeWebhookStreamEntries(message.payload?.entries ?? [], current));
+            } else {
             setEntries(message.payload.entries);
             setPendingEntries([]);
           }
@@ -116,7 +116,7 @@ export function WebhookLiveTail({
   }, [paused]);
 
   function mergePending() {
-    setEntries((current) => mergeEntries(pendingEntries, current));
+    setEntries((current) => mergeWebhookStreamEntries(pendingEntries, current));
     setPendingEntries([]);
     setPaused(false);
   }
@@ -192,7 +192,7 @@ function isCounts(value: unknown): value is Record<string, number> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function mergeEntries(next: StreamEntry[], current: StreamEntry[]): StreamEntry[] {
+export function mergeWebhookStreamEntries(next: StreamEntry[], current: StreamEntry[]): StreamEntry[] {
   const merged = new Map<string, StreamEntry>();
   for (const entry of [...next, ...current]) {
     merged.set(entryKey(entry), entry);

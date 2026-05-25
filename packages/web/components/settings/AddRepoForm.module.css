@@ -112,6 +112,11 @@
   border-color: var(--paper-accent);
 }
 
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
 .manual {
   display: flex;
   flex-direction: column;

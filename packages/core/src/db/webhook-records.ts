@@ -108,6 +108,14 @@ export type ListWebhookEventsInput = {
   targetNumber?: number;
 };
 
+export type ListWebhookIntentsInput = {
+  limit?: number;
+  repoId?: number;
+  targetType?: WebhookTargetType;
+  targetNumber?: number;
+  status?: WebhookIntentStatus | "active" | "terminal";
+};
+
 export type WebhookIntentRow = {
   id: number;
   repo_id: number;

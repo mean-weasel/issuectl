@@ -53,7 +53,7 @@ vi.mock("@/lib/revalidate", () => ({
   revalidateSafely: () => ({ stale: false }),
 }));
 
-import { addRepo, configureRepoWebhook, recreateRepoLabels, removeRepo, resendLastPing, updateRepo } from "./repos.js";
+import { addRepo, configureRepoWebhook, recreateRepoLabels, removeRepo, resendLastPing, updateRepo, verifyRepoAccess } from "./repos.js";
 
 beforeEach(() => {
   getDb.mockReturnValue({});
@@ -110,6 +110,7 @@ describe("updateRepo action", () => {
       autoReviewPrs: true,
       issueAgent: "codex",
       reviewAgent: "claude",
+      reviewPreamble: "Focus on webhook safety.",
       webhookPayloadMode: "raw",
     });
 
@@ -128,7 +129,26 @@ describe("updateRepo action", () => {
       autoReviewPrs: true,
       issueAgent: "codex",
       reviewAgent: "claude",
+      reviewPreamble: "Focus on webhook safety.",
       webhookPayloadMode: "raw",
+    });
+  });
+
+  it("verifies GitHub repo access before the onboarding automation step", async () => {
+    const result = await verifyRepoAccess("mean-weasel", "issuectl");
+
+    expect(result).toEqual({ success: true });
+    expect(withAuthRetry).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it("returns remediation copy when repo verification fails", async () => {
+    withAuthRetry.mockRejectedValueOnce(new Error("not found"));
+
+    const result = await verifyRepoAccess("mean-weasel", "private-repo");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Cannot verify mean-weasel/private-repo: not found. If this is a private repo, run gh auth refresh -s repo -s admin:repo_hook.",
     });
   });
 

@@ -1,15 +1,19 @@
 /* eslint-disable max-lines */
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { confirm, input } from "@inquirer/prompts";
 import {
   addRepo,
+  createIssuectlWebhook,
   removeRepo,
   listRepos,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
+  listWebhookEvents,
   markActivePrReviewForDeploymentTerminal,
   endDeployment,
+  formatErrorForUser,
   killTtyd,
   killTmuxSession,
   recordDiagnosticEventSafely,
@@ -17,6 +21,7 @@ import {
   tmuxSessionName,
   updateRepo,
   updateRepoWebhookSettings,
+  withAuthRetry,
 } from "@issuectl/core";
 import type { LaunchAgent, WebhookPayloadMode } from "@issuectl/core";
 import * as log from "../utils/logger.js";
@@ -63,6 +68,7 @@ export async function repoAddCommand(
     localPath: localPath || undefined,
   });
   applyWebhookOptions(db, repo, webhookOptions);
+  await installRepoWebhookIfReady(db, repo, webhookOptions);
   log.success(`Added ${repo.owner}/${repo.name}`);
   printRepoAddNextSteps(repo.owner, repo.name, webhookOptions);
 }
@@ -89,6 +95,7 @@ export async function repoRemoveCommand(ownerRepo: string): Promise<void> {
 
   const endedIssueSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
   const endedPrSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
+  await deleteStoredRepoWebhook(db, repo);
   removeRepo(db, repo.id);
   recordDiagnosticEventSafely(db, {
     level: "info",
@@ -97,7 +104,7 @@ export async function repoRemoveCommand(ownerRepo: string): Promise<void> {
     owner,
     repo: name,
     message: "Repository removed from issuectl",
-    data: { repoId: repo.id, affectedSessionIds: [...endedIssueSessionIds, ...endedPrSessionIds] },
+    data: { repoId: repo.id, hookId: repo.webhookId, affectedSessionIds: [...endedIssueSessionIds, ...endedPrSessionIds] },
   });
   log.success(`Removed ${owner}/${name}`);
 }
@@ -188,6 +195,18 @@ type RepoCommandOptions = {
   reviewAgent?: LaunchAgent | string;
   webhookPayloadMode?: WebhookPayloadMode | string;
   webhookBaseUrl?: string;
+};
+
+type RepoSetupOctokit = {
+  rest: {
+    issues: {
+      getLabel(input: { owner: string; repo: string; name: string }): Promise<unknown>;
+      createLabel(input: { owner: string; repo: string; name: string; color: string; description: string }): Promise<unknown>;
+    };
+    repos: {
+      deleteWebhook(input: { owner: string; repo: string; hook_id: number }): Promise<unknown>;
+    };
+  };
 };
 
 type RepoSetCommandOptions = {
@@ -342,7 +361,119 @@ function printRepoAddNextSteps(
   if (!issueAutomation && !reviewAutomation) return;
 
   log.info(`Webhook settings saved for ${owner}/${name}.`);
-  log.info(`Open repo settings or run \`issuectl webhook create ${owner}/${name}\` to finish GitHub installation.`);
+  if (!options.webhookBaseUrl) {
+    log.info(`Open repo settings or run \`issuectl webhook create ${owner}/${name}\` to finish GitHub installation.`);
+  }
+}
+
+async function installRepoWebhookIfReady(
+  db: ReturnType<typeof requireDb>,
+  repo: { id: number; owner: string; name: string },
+  options: RepoCommandOptions,
+): Promise<void> {
+  const labels = automationLabels(options);
+  if (labels.length === 0 || !options.webhookBaseUrl) return;
+
+  const url = `${normalizeWebhookBaseUrl(options.webhookBaseUrl)}/api/webhook/github/${repo.id}`;
+  const secret = randomBytes(32).toString("hex");
+  try {
+    const created = await withAuthRetry(async (octokit) => {
+      const webhook = await createIssuectlWebhook(octokit, {
+        owner: repo.owner,
+        repo: repo.name,
+        url,
+        secret,
+      });
+      await Promise.all(labels.map((label) =>
+        ensureRepoLabel(octokit as RepoSetupOctokit, repo.owner, repo.name, label),
+      ));
+      return webhook;
+    });
+    updateRepoWebhookSettings(db, repo.id, {
+      webhookId: created.id,
+      webhookSecret: secret,
+    });
+    const firstPing = await waitForFirstPing(db, repo.id, 5_000);
+    if (firstPing === "timeout") {
+      log.warn("Webhook installed, but no first delivery arrived before the timeout.");
+    }
+    log.success(`Installed GitHub webhook ${created.id} for ${repo.owner}/${repo.name}`);
+  } catch (err) {
+    log.warn(`Webhook install failed: ${formatErrorForUser(err)}`);
+  }
+}
+
+function automationLabels(options: RepoCommandOptions): Array<"issuectl:auto-launch" | "issuectl:auto-review"> {
+  return [
+    ...(normalizeOptionalBoolean(options.autoLaunchIssues, "--auto-launch-issues") ? ["issuectl:auto-launch" as const] : []),
+    ...(normalizeOptionalBoolean(options.autoReviewPrs, "--auto-review-prs") ? ["issuectl:auto-review" as const] : []),
+  ];
+}
+
+async function ensureRepoLabel(
+  octokit: RepoSetupOctokit,
+  owner: string,
+  repo: string,
+  name: "issuectl:auto-launch" | "issuectl:auto-review",
+): Promise<void> {
+  const meta = name === "issuectl:auto-launch"
+    ? { color: "2f81f7", description: "Opt issue into issuectl auto-launch" }
+    : { color: "a371f7", description: "Opt PR into issuectl auto-review" };
+  try {
+    await octokit.rest.issues.getLabel({ owner, repo, name });
+  } catch (err) {
+    if ((err as { status?: number }).status !== 404) throw err;
+    try {
+      await octokit.rest.issues.createLabel({ owner, repo, name, ...meta });
+    } catch (createErr) {
+      if ((createErr as { status?: number }).status !== 422) throw createErr;
+    }
+  }
+}
+
+async function waitForFirstPing(
+  db: ReturnType<typeof requireDb>,
+  repoId: number,
+  timeoutMs: number,
+): Promise<"received" | "timeout"> {
+  if (hasPingDelivery(db, repoId)) return "received";
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 250));
+    if (hasPingDelivery(db, repoId)) return "received";
+  }
+  return "timeout";
+}
+
+function hasPingDelivery(db: ReturnType<typeof requireDb>, repoId: number): boolean {
+  return listWebhookEvents(db, { limit: 50, repoId }).some((event) => event.eventType === "ping");
+}
+
+async function deleteStoredRepoWebhook(
+  db: ReturnType<typeof requireDb>,
+  repo: { id: number; owner: string; name: string; webhookId: number | null },
+): Promise<void> {
+  if (!repo.webhookId) return;
+  try {
+    await withAuthRetry((octokit) =>
+      (octokit as RepoSetupOctokit).rest.repos.deleteWebhook({
+        owner: repo.owner,
+        repo: repo.name,
+        hook_id: repo.webhookId ?? 0,
+      }),
+    );
+  } catch (err) {
+    log.warn(`Failed to delete GitHub webhook ${repo.webhookId}: ${formatErrorForUser(err)}`);
+    recordDiagnosticEventSafely(db, {
+      level: "warn",
+      event: "repo.webhook_delete_failed",
+      source: "cli",
+      owner: repo.owner,
+      repo: repo.name,
+      message: formatErrorForUser(err),
+      data: { repoId: repo.id, hookId: repo.webhookId },
+    });
+  }
 }
 
 function applyWebhookOptions(

@@ -12,6 +12,7 @@ import {
   type WebhookTargetType,
 } from "@issuectl/core";
 import { requireDb } from "../utils/db.js";
+import { registerWebhookIntentCommands } from "./webhook-intents.js";
 
 type WebhookOctokit = {
   rest: {
@@ -237,18 +238,11 @@ export function registerWebhookCommands(program: Command): void {
       const repoId = parseCommandInput(command, () =>
         findRepoId(listRepos(db), opts.repo),
       );
-      const events = listWebhookEvents(db, limit).filter((event) => {
-        if (repoId !== undefined && event.repoId !== repoId) return false;
-        if (target?.targetType && event.targetType !== target.targetType) {
-          return false;
-        }
-        if (
-          target?.targetNumber !== undefined &&
-          event.targetNumber !== target.targetNumber
-        ) {
-          return false;
-        }
-        return true;
+      const events = listWebhookEvents(db, {
+        limit,
+        repoId,
+        targetType: target?.targetType,
+        targetNumber: target?.targetNumber,
       });
 
       for (const event of events) {
@@ -290,6 +284,8 @@ export function registerWebhookCommands(program: Command): void {
         );
       }
     });
+
+  registerWebhookIntentCommands(webhook);
 
   webhook
     .command("create <repo>")
