@@ -171,6 +171,20 @@
   text-transform: uppercase;
 }
 
+.warningPill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #d6a33f;
+  border-radius: var(--paper-radius-sm);
+  color: #5d4100;
+  background: #fff2c9;
+  font: 700 11px var(--paper-mono);
+  text-transform: uppercase;
+}
+
 .statusPill[data-state="healthy"] {
   color: #14351f;
   background: #dff3df;

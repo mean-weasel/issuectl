@@ -56,6 +56,7 @@ export function RepoSettingsPanel({
 
   const repoPath = `${repo.owner}/${repo.name}`;
   const webhookConfigured = webhookId !== null && webhookId !== undefined;
+  const waitingForFirstPing = webhookConfigured && activity.webhookEvents === 0;
 
   function saveSettings() {
     setMessage(null);
@@ -108,7 +109,8 @@ export function RepoSettingsPanel({
         throw new Error(failure?.error ?? `Webhook request failed with ${response.status}`);
       }
       setWebhookId(body.webhook.id);
-      setMessage(`${action === "create" ? "Webhook installed" : "Webhook secret rotated"} by ${body.webhook.createdBy}`);
+      const successMessage = `${action === "create" ? "Webhook installed" : "Webhook secret rotated"} by ${body.webhook.createdBy}`;
+      setMessage(activity.webhookEvents === 0 ? `${successMessage}. Waiting for first delivery.` : successMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Webhook request failed");
     }
@@ -241,6 +243,11 @@ export function RepoSettingsPanel({
           <h2>Webhook</h2>
           <p>{webhookConfigured ? `GitHub hook ${webhookId} is stored locally.` : "No GitHub webhook id is stored locally."}</p>
         </div>
+        {waitingForFirstPing && (
+          <div className={styles.warningPill} role="status">
+            Waiting for first GitHub delivery
+          </div>
+        )}
         <label>
           <span>Receiver URL</span>
           <input value={webhookUrl ?? "Set Public Webhook Base URL first"} readOnly />

@@ -71,6 +71,15 @@ export async function POST(
       message: action === "create" ? "Repository webhook installed" : "Repository webhook secret rotated",
       data: { repoId: repo.id, hookId: result.id, url },
     });
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: "webhook.url_reconciled",
+      source: "web",
+      owner,
+      repo: repoName,
+      message: "Repository webhook URL reconciled",
+      data: { repoId: repo.id, hookId: result.id, url },
+    });
 
     log.info({
       msg: "api_repo_webhook_configured",

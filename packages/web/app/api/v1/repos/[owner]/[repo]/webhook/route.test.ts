@@ -93,6 +93,15 @@ describe("/api/v1/repos/[owner]/[repo]/webhook", () => {
       owner: "mean-weasel",
       repo: "issuectl",
     }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "webhook.url_reconciled",
+      owner: "mean-weasel",
+      repo: "issuectl",
+      data: expect.objectContaining({
+        hookId: 123,
+        url: "https://hooks.example.test/api/webhook/github/1",
+      }),
+    }));
     expect(JSON.stringify(json)).not.toContain("webhookSecret");
   });
 
@@ -116,6 +125,10 @@ describe("/api/v1/repos/[owner]/[repo]/webhook", () => {
     });
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       event: "repo.webhook_secret_rotated",
+    }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "webhook.url_reconciled",
+      data: expect.objectContaining({ hookId: 456 }),
     }));
   });
 
