@@ -39,6 +39,9 @@ https://example-tunnel.trycloudflare.com/api/webhook/github/<repo_id>
 issuectl webhook status
 issuectl webhook tail --limit 20
 issuectl webhook tail --repo mean-weasel/issuectl --target issue#506
+issuectl webhook intents --repo mean-weasel/issuectl --status active
+issuectl webhook intent fire 42 --yes
+issuectl webhook intent drop 42 --reason operator_dropped --yes
 issuectl webhook create mean-weasel/issuectl
 issuectl webhook rotate mean-weasel/issuectl --yes
 issuectl repo add mean-weasel/issuectl --auto-launch-issues --issue-agent codex
@@ -53,6 +56,11 @@ value. When `public_webhook_base_url` is set, it also prints the derived
 `webhook create` and `webhook rotate` use the current `gh` authenticated user,
 require confirmation unless `--yes` is passed, generate a fresh receiver secret,
 store the GitHub hook id, and do not print the secret.
+`webhook intents` lists the persisted debounce/launch queue. `webhook intent
+fire` schedules a pending or deferred intent immediately, and `webhook intent
+drop` expires an active intent with an operator reason. `webhook replay` remains
+deferred until raw payload retention and replay-count lineage have a durable
+schema and safety design; metadata-only deliveries cannot be replayed safely.
 
 The dashboard settings and workbench repo setup surfaces expose the same
 repo-level automation flags, issue/review agent selectors, payload mode, stored

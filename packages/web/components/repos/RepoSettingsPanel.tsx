@@ -118,6 +118,10 @@ export function RepoSettingsPanel({
   }
 
   function runWebhookAction(action: "rotate" | "reinstall") {
+    if (action === "rotate") {
+      const ok = window.confirm("Rotate this webhook secret? Existing in-flight GitHub deliveries signed with the old secret may fail.");
+      if (!ok) return;
+    }
     setMessage(null);
     setError(null);
     startTransition(async () => {
@@ -238,14 +242,22 @@ export function RepoSettingsPanel({
         <div className={styles.formGrid}>
           <label>
             <span>Issue agent</span>
-            <select value={issueAgent} onChange={(event) => setIssueAgent(event.target.value as LaunchAgent)}>
+            <select
+              value={issueAgent}
+              onChange={(event) => setIssueAgent(event.target.value as LaunchAgent)}
+              disabled={!autoLaunchIssues || isPending}
+            >
               <option value="claude">Claude</option>
               <option value="codex">Codex</option>
             </select>
           </label>
           <label>
             <span>Review agent</span>
-            <select value={reviewAgent} onChange={(event) => setReviewAgent(event.target.value as LaunchAgent)}>
+            <select
+              value={reviewAgent}
+              onChange={(event) => setReviewAgent(event.target.value as LaunchAgent)}
+              disabled={!autoReviewPrs || isPending}
+            >
               <option value="claude">Claude</option>
               <option value="codex">Codex</option>
             </select>

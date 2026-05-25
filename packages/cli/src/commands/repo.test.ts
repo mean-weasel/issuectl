@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { confirm, input } from "@inquirer/prompts";
 import {
   addRepo,
+  createIssuectlWebhook,
   endDeployment,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
+  listWebhookEvents,
   markActivePrReviewForDeploymentTerminal,
+  removeRepo,
   killTmuxSession,
   killTtyd,
   recordDiagnosticEventSafely,
@@ -14,11 +17,12 @@ import {
   tmuxSessionName,
   updateRepo,
   updateRepoWebhookSettings,
+  withAuthRetry,
   type Repo,
 } from "@issuectl/core";
 import { execFileSync } from "node:child_process";
 import { requireDb } from "../utils/db.js";
-import { repoAddCommand, repoSetCommand, repoShowCommand, repoUpdateCommand } from "./repo.js";
+import { repoAddCommand, repoRemoveCommand, repoSetCommand, repoShowCommand, repoUpdateCommand } from "./repo.js";
 
 vi.mock("@inquirer/prompts", () => ({
   confirm: vi.fn(),
@@ -35,8 +39,11 @@ vi.mock("@issuectl/core", async (importOriginal) => {
   return {
     ...actual,
     addRepo: vi.fn(),
+    createIssuectlWebhook: vi.fn(),
+    removeRepo: vi.fn(),
     getRepo: vi.fn(),
     getActiveWebhookDeploymentsForRepoTarget: vi.fn(),
+    listWebhookEvents: vi.fn(),
     markActivePrReviewForDeploymentTerminal: vi.fn(),
     endDeployment: vi.fn(),
     killTmuxSession: vi.fn(),
@@ -46,6 +53,7 @@ vi.mock("@issuectl/core", async (importOriginal) => {
     tmuxSessionName: vi.fn((repo: string, targetNumber: number, targetType = "issue") => `issuectl-${repo}-${targetType}-${targetNumber}`),
     updateRepo: vi.fn(),
     updateRepoWebhookSettings: vi.fn(),
+    withAuthRetry: vi.fn(),
   };
 });
 
@@ -82,9 +90,25 @@ beforeEach(() => {
   vi.mocked(execFileSync).mockReset();
   vi.mocked(execFileSync).mockReturnValue("Token scopes: repo, admin:repo_hook");
   vi.mocked(addRepo).mockReset();
+  vi.mocked(createIssuectlWebhook).mockReset();
+  vi.mocked(createIssuectlWebhook).mockResolvedValue({ id: 123, createdBy: "octocat" });
   vi.mocked(getRepo).mockReset();
   vi.mocked(getActiveWebhookDeploymentsForRepoTarget).mockReset();
   vi.mocked(getActiveWebhookDeploymentsForRepoTarget).mockReturnValue([]);
+  vi.mocked(listWebhookEvents).mockReset();
+  vi.mocked(listWebhookEvents).mockReturnValue([{
+    id: 1,
+    deliveryId: "ping-1",
+    repoId: 1,
+    eventType: "ping",
+    action: null,
+    senderLogin: null,
+    targetType: null,
+    targetNumber: null,
+    payloadJson: null,
+    receivedAt: 1,
+    intentId: null,
+  }]);
   vi.mocked(markActivePrReviewForDeploymentTerminal).mockReset();
   vi.mocked(endDeployment).mockReset();
   vi.mocked(killTmuxSession).mockReset();
@@ -94,6 +118,20 @@ beforeEach(() => {
   vi.mocked(tmuxSessionName).mockClear();
   vi.mocked(updateRepo).mockReset();
   vi.mocked(updateRepoWebhookSettings).mockReset();
+  vi.mocked(withAuthRetry).mockReset();
+  vi.mocked(withAuthRetry).mockImplementation(async (fn: (octokit: never) => unknown) =>
+    fn({
+      rest: {
+        issues: {
+          getLabel: vi.fn(async () => ({ data: {} })),
+          createLabel: vi.fn(async () => ({ data: {} })),
+        },
+        repos: {
+          deleteWebhook: vi.fn(async () => ({ data: {} })),
+        },
+      },
+    } as never),
+  );
 });
 
 describe("repo commands", () => {
@@ -128,6 +166,7 @@ describe("repo commands", () => {
       reviewAgent: "claude",
       webhookPayloadMode: "raw",
     });
+    expect(createIssuectlWebhook).not.toHaveBeenCalled();
   });
 
   it("prompts for repo automation during add and runs local preflight", async () => {
@@ -168,6 +207,16 @@ describe("repo commands", () => {
       autoReviewPrs: false,
       issueAgent: "claude",
       webhookPayloadMode: "raw",
+    });
+    expect(createIssuectlWebhook).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      owner: "mean-weasel",
+      repo: "issuectl",
+      url: "https://hooks.example.test/api/webhook/github/1",
+      secret: expect.any(String),
+    }));
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
+      webhookId: 123,
+      webhookSecret: expect.any(String),
     });
   });
 
@@ -349,5 +398,36 @@ describe("repo commands", () => {
     expect(stderr).toContain("payload mode: raw");
     expect(stderr).not.toContain("secret");
     spy.mockRestore();
+  });
+
+  it("best-effort deletes stored GitHub webhook during remove", async () => {
+    const deleteWebhook = vi.fn(async () => ({ data: {} }));
+    vi.mocked(getRepo).mockReturnValue(makeRepo({ webhookId: 789 }));
+    vi.mocked(confirm).mockResolvedValue(true);
+    vi.mocked(withAuthRetry).mockImplementation(async (fn: (octokit: never) => unknown) =>
+      fn({
+        rest: {
+          issues: {
+            getLabel: vi.fn(),
+            createLabel: vi.fn(),
+          },
+          repos: { deleteWebhook },
+        },
+      } as never),
+    );
+
+    await repoRemoveCommand("mean-weasel/issuectl");
+
+    expect(deleteWebhook).toHaveBeenCalledWith({
+      owner: "mean-weasel",
+      repo: "issuectl",
+      hook_id: 789,
+    });
+    expect(removeRepo).toHaveBeenCalledWith(mockDb, 1);
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(mockDb, expect.objectContaining({
+      event: "repo.removed",
+      source: "cli",
+      data: expect.objectContaining({ hookId: 789 }),
+    }));
   });
 });

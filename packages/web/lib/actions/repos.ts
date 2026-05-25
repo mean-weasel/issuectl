@@ -68,10 +68,36 @@ export type AddRepoOptions = {
   autoReviewPrs?: boolean;
   issueAgent?: LaunchAgent;
   reviewAgent?: LaunchAgent;
+  reviewPreamble?: string | null;
   webhookPayloadMode?: WebhookPayloadMode;
   installWebhook?: boolean;
   firstPingTimeoutMs?: number;
 };
+
+export async function verifyRepoAccess(
+  owner: string,
+  name: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  if (!owner || !name) {
+    return { success: false, error: "Owner and repo name are required" };
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(owner) || !/^[a-zA-Z0-9._-]+$/.test(name)) {
+    return { success: false, error: "Invalid owner/repo format" };
+  }
+
+  try {
+    await withAuthRetry((octokit) =>
+      octokit.rest.repos.get({ owner, repo: name }),
+    );
+    return { success: true };
+  } catch (err) {
+    console.error("[issuectl] Failed to verify repo from GitHub:", errMessage(err));
+    return {
+      success: false,
+      error: `Cannot verify ${owner}/${name}: ${formatErrorForUser(err)}. If this is a private repo, run gh auth refresh -s repo -s admin:repo_hook.`,
+    };
+  }
+}
 
 export async function addRepo(
   owner: string,
@@ -114,6 +140,7 @@ export async function addRepo(
       autoReviewPrs: options.autoReviewPrs,
       issueAgent: options.issueAgent,
       reviewAgent: options.reviewAgent,
+      reviewPreamble: options.reviewPreamble,
       webhookPayloadMode: options.webhookPayloadMode,
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {

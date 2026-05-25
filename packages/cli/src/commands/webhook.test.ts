@@ -171,7 +171,12 @@ describe("webhook commands", () => {
 
     await parseCommand(["webhook", "tail"]);
 
-    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, 20);
+    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, {
+      limit: 20,
+      repoId: undefined,
+      targetType: undefined,
+      targetNumber: undefined,
+    });
   });
 
   it("tail with limit 1 prints the newest webhook event", async () => {
@@ -189,7 +194,12 @@ describe("webhook commands", () => {
 
     const result = await parseCommand(["webhook", "tail", "--limit", "1"]);
 
-    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, 1);
+    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, {
+      limit: 1,
+      repoId: undefined,
+      targetType: undefined,
+      targetNumber: undefined,
+    });
     expect(result.stdout).toContain("2\tpull_request\tsynchronize\tpr#17");
     expect(result.stdout).not.toContain("issues");
   });
@@ -211,7 +221,12 @@ describe("webhook commands", () => {
       "issue#506",
     ]);
 
-    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, 20);
+    expect(listWebhookEvents).toHaveBeenCalledWith(mockDb, {
+      limit: 20,
+      repoId: 9,
+      targetType: "issue",
+      targetNumber: 506,
+    });
   });
 
   it.each([

@@ -4,7 +4,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { LaunchAgent, WebhookPayloadMode } from "@issuectl/core";
-import { addRepo } from "@/lib/actions/repos";
+import { addRepo, verifyRepoAccess } from "@/lib/actions/repos";
 import { Button } from "@/components/paper";
 import { useToast } from "@/components/ui/ToastProvider";
 import { RepoPicker } from "./RepoPicker";
@@ -24,6 +24,7 @@ type AutomationState = {
   autoReviewPrs: boolean;
   issueAgent: LaunchAgent;
   reviewAgent: LaunchAgent;
+  reviewPreamble: string;
   webhookPayloadMode: WebhookPayloadMode;
 };
 
@@ -39,6 +40,7 @@ const DEFAULT_AUTOMATION: AutomationState = {
   autoReviewPrs: true,
   issueAgent: "codex",
   reviewAgent: "codex",
+  reviewPreamble: "",
   webhookPayloadMode: "metadata",
 };
 
@@ -98,7 +100,14 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
         setError(`${repoKey(target)} is already tracked`);
         return;
       }
-      setStep("automation");
+      startTransition(async () => {
+        const result = await verifyRepoAccess(target.owner, target.name);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setStep("automation");
+      });
       return;
     }
     if (step === "automation") {
@@ -122,11 +131,16 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
       ping: "running",
     });
     startTransition(async () => {
+      const reviewPreamble = automation.reviewPreamble.trim();
       const result = await addRepo(
         target.owner,
         target.name,
         localPath.trim() || undefined,
-        { ...automation, installWebhook: true },
+        {
+          ...automation,
+          reviewPreamble: reviewPreamble || null,
+          installWebhook: true,
+        },
       );
       if (!result.success) {
         setInstallState({ secret: "idle", webhook: "idle", labels: "idle", ping: "idle" });
@@ -331,6 +345,22 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
               </select>
             </label>
           </div>
+
+          {automation.autoReviewPrs && (
+            <label className={styles.field}>
+              <div className={styles.label}>Review Preamble</div>
+              <textarea
+                className={`${styles.input} ${styles.textarea}`}
+                value={automation.reviewPreamble}
+                onChange={(event) =>
+                  updateAutomation({ reviewPreamble: event.target.value })
+                }
+                placeholder="Optional instructions added to PR review sessions for this repo."
+                disabled={isPending}
+                rows={4}
+              />
+            </label>
+          )}
         </div>
       )}
 
@@ -414,13 +444,13 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
               {isPending ? "Adding..." : "Add repo"}
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              onClick={handleNext}
-              disabled={step === "identify" ? !canAdvanceIdentify : isPending}
-            >
-              Next
-            </Button>
+	            <Button
+	              variant="primary"
+	              onClick={handleNext}
+	              disabled={step === "identify" ? !canAdvanceIdentify : isPending}
+	            >
+	              {step === "identify" ? (isPending ? "Verifying..." : "Verify") : "Next"}
+	            </Button>
           )}
         </div>
       )}
