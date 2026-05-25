@@ -17,7 +17,7 @@ import { startWebhookIntentWorker, stopWebhookIntentWorker } from "./lib/webhook
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 const PTY_TERMINAL_WS_RE = /^\/api\/terminal\/pty\/(\d+)\/ws/;
-const SENSITIVE_QUERY_PARAMS = new Set(["terminalToken"]);
+const SENSITIVE_QUERY_PARAMS = new Set(["terminalToken", "apiToken"]);
 
 const dev = process.argv.includes("--dev");
 const port = Number(process.env.PORT ?? 3847);
@@ -79,7 +79,7 @@ function redactSensitiveUrl(rawUrl: string | undefined, host: string | undefined
     }
     return redacted ? `${parsed.pathname}${parsed.search}` : rawUrl;
   } catch {
-    return rawUrl.replace(/([?&]terminalToken=)[^&]*/g, "$1[redacted]");
+    return rawUrl.replace(/([?&](?:terminalToken|apiToken)=)[^&]*/g, "$1[redacted]");
   }
 }
 

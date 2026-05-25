@@ -2,6 +2,7 @@ import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
 import { getDb, listWebhookLogEntries } from "@issuectl/core";
+import { validateApiToken } from "./api-auth";
 import log from "./logger";
 
 const WEBHOOK_EVENTS_STREAM_PATH = "/api/webhooks/events/stream";
@@ -23,6 +24,12 @@ export function formatWebhookStreamEvent(type: string, payload: unknown): string
   return JSON.stringify({ type, payload });
 }
 
+export function isWebhookEventsStreamAuthorized(req: IncomingMessage): boolean {
+  const token = tokenFromRequest(req);
+  if (!token) return false;
+  return validateApiToken(new Headers({ Authorization: `Bearer ${token}` }));
+}
+
 export function activeWebhookEventsStreamCount(): number {
   return clients.size;
 }
@@ -32,6 +39,13 @@ export async function handleWebhookEventsStreamUpgrade(
   socket: Duplex,
   head: Buffer,
 ): Promise<void> {
+  if (!isWebhookEventsStreamAuthorized(req)) {
+    log.warn({ msg: "webhook_events_stream_auth_failed" });
+    socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
+    socket.destroy();
+    return;
+  }
+
   await new Promise<void>((resolve) => {
     wss.handleUpgrade(req, socket, head, (ws) => {
       clients.add(ws);
@@ -44,6 +58,19 @@ export async function handleWebhookEventsStreamUpgrade(
       resolve();
     });
   });
+}
+
+function tokenFromRequest(req: IncomingMessage): string | null {
+  const auth = req.headers.authorization;
+  if (typeof auth === "string" && auth.startsWith("Bearer ")) {
+    return auth.slice(7);
+  }
+  try {
+    const url = new URL(req.url ?? "/", "http://localhost");
+    return url.searchParams.get("apiToken");
+  } catch {
+    return null;
+  }
 }
 
 export function broadcastWebhookEventsChanged(): void {

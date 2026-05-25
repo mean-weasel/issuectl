@@ -32,9 +32,16 @@ export function WebhookLiveTail({ endpoint }: { endpoint: string }) {
 
     function connect() {
       if (cancelled) return;
+      const apiToken = readApiToken();
+      if (!apiToken) {
+        setState("offline");
+        return;
+      }
       setState((current) => current === "offline" ? "reconnecting" : "connecting");
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      socket = new WebSocket(`${protocol}//${window.location.host}${endpoint}`);
+      const url = new URL(`${protocol}//${window.location.host}${endpoint}`);
+      url.searchParams.set("apiToken", apiToken);
+      socket = new WebSocket(url);
 
       socket.addEventListener("open", () => {
         if (!cancelled) setState("live");
@@ -92,4 +99,9 @@ function parseStreamMessage(value: unknown): StreamMessage | null {
   } catch {
     return null;
   }
+}
+
+function readApiToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("issuectl.apiToken");
 }

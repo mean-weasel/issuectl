@@ -116,6 +116,14 @@ export default async function WebhookLogsPage({
               placeholder="delivery, correlation, owner/repo#507"
               aria-label="Search webhook logs"
             />
+            <input
+              className={styles.input}
+              type="search"
+              name="event"
+              defaultValue={params.event ?? ""}
+              placeholder="issues, pull_request, labeled"
+              aria-label="Filter by event"
+            />
             <select className={styles.select} name="repo" defaultValue={selectedRepo?.id ?? ""} aria-label="Filter by repo">
               <option value="">All repos</option>
               {repos.map((repo) => (
@@ -250,8 +258,11 @@ function filterEntries(
 ): WebhookLogEntry[] {
   const result = activeResult(params.result);
   const query = params.q?.trim().toLowerCase();
+  const eventQuery = params.event?.trim().toLowerCase();
   return entries.filter((entry) => {
     if (result !== "all" && entry.result !== result) return false;
+    const eventText = `${entry.eventType} ${entry.action ?? ""}`.toLowerCase();
+    if (eventQuery && !eventText.includes(eventQuery)) return false;
     if (!query) return true;
     const repo = repos.find((item) => item.id === entry.repoId);
     const haystack = [
@@ -328,17 +339,18 @@ function formatAge(value: number): string {
 
 function diagnosticsCommand(entry: WebhookLogEntry, repo: Repo | undefined): string {
   if (entry.targetType && entry.targetNumber && repo) {
-    return `pnpm --dir packages/cli exec issuectl diag show --issue ${repo.owner}/${repo.name}#${entry.targetNumber}`;
+    const targetFlag = entry.targetType === "pr" ? "--pr" : "--issue";
+    return `pnpm --dir packages/cli exec issuectl diag show ${targetFlag} ${repo.owner}/${repo.name}#${entry.targetNumber}`;
   }
   return "pnpm --dir packages/cli exec issuectl webhook tail --limit 20";
 }
 
 function cliHint(entry: WebhookLogEntry): string {
-  if (entry.result === "debouncing" && entry.intent) {
-    return `issuectl webhook intent fire int_${entry.intent.id}`;
+  if (entry.targetType && entry.targetNumber) {
+    return `issuectl webhook tail --target ${entry.targetType}/${entry.targetNumber} --limit 20`;
   }
   if (entry.result === "dropped" || entry.result === "failed") {
-    return `issuectl webhook replay ${entry.deliveryId}`;
+    return "issuectl diag list --event webhook.runaway_limited webhook.launch_failed --limit 50";
   }
   return "issuectl webhook tail";
 }
