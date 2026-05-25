@@ -6,6 +6,11 @@ import log, { logPath } from "./lib/logger";
 import { handleGithubWebhookRequest, isGithubWebhookRequest } from "./lib/github-webhook-handler";
 import { handleUpgrade, activeWsCount } from "./lib/terminal-proxy";
 import { handlePtyUpgrade, activePtyWsCount } from "./lib/pty-terminal-websocket";
+import {
+  activeWebhookEventsStreamCount,
+  handleWebhookEventsStreamUpgrade,
+  isWebhookEventsStreamRequest,
+} from "./lib/webhook-events-stream";
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
 import { startWebhookIntentWorker, stopWebhookIntentWorker } from "./lib/webhook-intent-worker";
@@ -189,6 +194,18 @@ interceptUpgradeRegistrations("addListener");
 // Our terminal handler runs first (prepend). It marks the socket so
 // any later upgrade listeners (Next.js HMR, etc.) are no-ops.
 server.prependListener("upgrade", (req: IncomingMessage, socket: Duplex & { [HANDLED]?: boolean }, head: Buffer) => {
+  if (isWebhookEventsStreamRequest(req.url)) {
+    socket[HANDLED] = true;
+    handleWebhookEventsStreamUpgrade(req, socket, head).catch((err) => {
+      log.error({ err, msg: "webhook_events_stream_upgrade_failed" });
+      if (!socket.destroyed) {
+        socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+        socket.destroy();
+      }
+    });
+    return;
+  }
+
   const ptyMatch = req.url?.match(PTY_TERMINAL_WS_RE);
   if (ptyMatch) {
     const deploymentId = Number(ptyMatch[1]);
@@ -232,6 +249,7 @@ function heartbeat(): void {
     rssMB: Math.round(mem.rss / 1024 / 1024),
     activeWs: activeWsCount(),
     activePtyWs: activePtyWsCount(),
+    activeWebhookEventsWs: activeWebhookEventsStreamCount(),
   });
 }
 

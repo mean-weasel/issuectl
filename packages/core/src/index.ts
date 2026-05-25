@@ -132,6 +132,7 @@ export {
   expireOldWebhookIntentRecords,
   pruneExpiredWebhookPayloads,
   listWebhookEvents,
+  listWebhookLogEntries,
 } from "./db/webhooks.js";
 export type {
   RecordWebhookEventInput,
@@ -140,6 +141,8 @@ export type {
   ListWebhookEventsInput,
   WebhookEvent,
   WebhookIntent,
+  WebhookLogEntry,
+  WebhookLogResult,
 } from "./db/webhooks.js";
 // GitHub client
 export type {

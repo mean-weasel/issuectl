@@ -71,6 +71,22 @@ export type WebhookIntent = {
   failureReason: string | null;
 };
 
+export type WebhookLogResult =
+  | "fired"
+  | "debouncing"
+  | "processing"
+  | "gated"
+  | "dropped"
+  | "failed"
+  | "received";
+
+export type WebhookLogEntry = WebhookEvent & {
+  intent: WebhookIntent | null;
+  result: WebhookLogResult;
+  resultDetail: string | null;
+  actionId: string | null;
+};
+
 export type WebhookEventRow = {
   id: number;
   delivery_id: string;
@@ -113,6 +129,27 @@ export type WebhookIntentRow = {
   failure_reason: string | null;
 };
 
+export type WebhookLogEntryRow = WebhookEventRow & {
+  intent_id_joined: number | null;
+  intent_repo_id: number | null;
+  intent_target_type: WebhookTargetType | null;
+  intent_target_number: number | null;
+  first_signal_at: number | null;
+  last_signal_at: number | null;
+  scheduled_at: number | null;
+  processing_started_at: number | null;
+  lease_expires_at: number | null;
+  generation: number | null;
+  desired_head_sha: string | null;
+  requested_agent: "claude" | "codex" | null;
+  review_mode: "auto" | "full" | null;
+  signal_count: number | null;
+  intent_status: WebhookIntentStatus | null;
+  resolved_at: number | null;
+  deployment_id: number | null;
+  failure_reason: string | null;
+};
+
 export function rowToWebhookEvent(row: WebhookEventRow): WebhookEvent {
   return {
     id: row.id,
@@ -150,4 +187,60 @@ export function rowToWebhookIntent(row: WebhookIntentRow): WebhookIntent {
     deploymentId: row.deployment_id,
     failureReason: row.failure_reason,
   };
+}
+
+export function rowToWebhookLogEntry(row: WebhookLogEntryRow): WebhookLogEntry {
+  const event = rowToWebhookEvent(row);
+  const intent = row.intent_id_joined === null
+    ? null
+    : rowToWebhookIntent({
+      id: row.intent_id_joined,
+      repo_id: row.intent_repo_id ?? row.repo_id,
+      target_type: row.intent_target_type ?? (row.target_type ?? "issue"),
+      target_number: row.intent_target_number ?? (row.target_number ?? 0),
+      first_signal_at: row.first_signal_at ?? row.received_at,
+      last_signal_at: row.last_signal_at ?? row.received_at,
+      scheduled_at: row.scheduled_at ?? row.received_at,
+      processing_started_at: row.processing_started_at,
+      lease_expires_at: row.lease_expires_at,
+      generation: row.generation ?? 1,
+      desired_head_sha: row.desired_head_sha,
+      requested_agent: row.requested_agent,
+      review_mode: row.review_mode,
+      signal_count: row.signal_count ?? 1,
+      status: row.intent_status ?? "pending",
+      resolved_at: row.resolved_at,
+      deployment_id: row.deployment_id,
+      failure_reason: row.failure_reason,
+    });
+  const result = resultForIntent(intent);
+  return {
+    ...event,
+    intent,
+    result,
+    resultDetail: resultDetailForIntent(intent, result),
+    actionId: intent?.deploymentId ? `dep_${intent.deploymentId}` : null,
+  };
+}
+
+function resultForIntent(intent: WebhookIntent | null): WebhookLogResult {
+  if (!intent) return "received";
+  if (intent.status === "launched") return "fired";
+  if (intent.status === "pending" || intent.status === "deferred") return "debouncing";
+  if (intent.status === "processing") return "processing";
+  if (intent.status === "failed") return "failed";
+  if (intent.status === "skipped_locked" || intent.status === "skipped_optout") return "gated";
+  if (intent.status === "expired") return "dropped";
+  return "received";
+}
+
+function resultDetailForIntent(
+  intent: WebhookIntent | null,
+  result: WebhookLogResult,
+): string | null {
+  if (!intent) return null;
+  if (intent.failureReason) return intent.failureReason;
+  if (intent.deploymentId) return `deployment ${intent.deploymentId}`;
+  if (result === "debouncing") return `scheduled ${intent.scheduledAt}`;
+  return intent.status;
 }
