@@ -16,6 +16,7 @@ const getActiveWebhookDeploymentsForRepoTarget = vi.hoisted(() => vi.fn());
 const endDeployment = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
+const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 const tmuxSessionName = vi.hoisted(() => vi.fn((repo: string, targetNumber: number, targetType = "issue") => `issuectl-${repo}-${targetType}-${targetNumber}`));
 const updateRepo = vi.hoisted(() => vi.fn());
 const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
@@ -27,6 +28,7 @@ vi.mock("@issuectl/core", () => ({
   endDeployment: (...args: unknown[]) => endDeployment(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
+  recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
   tmuxSessionName: (repo: string, targetNumber: number, targetType?: "issue" | "pr") => tmuxSessionName(repo, targetNumber, targetType),
   updateRepo: (...args: unknown[]) => updateRepo(...args),
   updateRepoWebhookSettings: (...args: unknown[]) => updateRepoWebhookSettings(...args),
@@ -74,6 +76,7 @@ beforeEach(() => {
   endDeployment.mockReset();
   killTtyd.mockReset();
   killTmuxSession.mockReset();
+  recordDiagnosticEventSafely.mockReset();
   tmuxSessionName.mockClear();
 });
 
@@ -97,6 +100,11 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
       webhookPayloadMode: "raw",
     });
     expect(json.repo.webhookSecret).toBeUndefined();
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.automation_enabled",
+      owner: "mean-weasel",
+      repo: "issuectl",
+    }));
   });
 
   it("PATCH ends active webhook sessions when automation is disabled", async () => {

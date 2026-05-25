@@ -9,6 +9,7 @@ import {
   getRepo,
   getRepoWebhookConfigById,
   getSetting,
+  recordDiagnosticEventSafely,
   rotateIssuectlWebhook,
   updateRepoWebhookSettings,
   withAuthRetry,
@@ -60,6 +61,15 @@ export async function POST(
     const updated = updateRepoWebhookSettings(db, repo.id, {
       webhookId: result.id,
       webhookSecret: secret,
+    });
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: action === "create" ? "repo.webhook_reinstalled" : "repo.webhook_secret_rotated",
+      source: "web",
+      owner,
+      repo: repoName,
+      message: action === "create" ? "Repository webhook installed" : "Repository webhook secret rotated",
+      data: { repoId: repo.id, hookId: result.id, url },
     });
 
     log.info({

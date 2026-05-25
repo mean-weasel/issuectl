@@ -1,0 +1,15 @@
+.shell {
+  padding: 20px 32px 36px;
+  max-width: 1040px;
+}
+
+.empty {
+  padding: 24px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 16px;
+  }
+}

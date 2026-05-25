@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { WorkbenchRepo, WorkbenchSettings } from "./workbench-types";
@@ -212,6 +213,13 @@ export function RepoSetupFocus({
       <p className={styles.muted}>
         Configure local checkout defaults and add accessible GitHub repositories to the workbench.
       </p>
+      {editableRepo && (
+        <p className={styles.muted}>
+          <Link href={`/repos/${editableRepo.owner}/${editableRepo.name}/settings`}>
+            Open full repo settings
+          </Link>
+        </p>
+      )}
 
       {editableRepo && (
         <section aria-label="Repository settings" style={sectionStyle}>

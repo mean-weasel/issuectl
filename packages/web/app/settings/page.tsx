@@ -64,7 +64,10 @@ export default async function SettingsPage({
       <PageHeader title="Settings" breadcrumb={<Link href={returnHref}>← dashboard</Link>} />
       <div className={styles.content}>
         <section className={styles.section}>
-          <div className={styles.sectionTitle}>Tracked Repositories</div>
+          <div className={styles.sectionTitle}>
+            Tracked Repositories
+            <Link className={styles.sectionLink} href="/settings/repos">Repo settings</Link>
+          </div>
           <TrackedRepos repos={repos} />
         </section>
 

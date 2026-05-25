@@ -17,6 +17,18 @@
   justify-content: space-between;
 }
 
+.sectionLink {
+  min-height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  color: var(--text-primary);
+  font: 700 11px var(--paper-mono);
+  text-decoration: none;
+}
+
 .sectionSkeleton {
   height: 40px;
   background: var(--paper-bg);
