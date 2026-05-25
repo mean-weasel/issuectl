@@ -110,7 +110,8 @@
 }
 
 .section input:not([type="checkbox"]),
-.section select {
+.section select,
+.section textarea {
   min-height: 38px;
   padding: 0 10px;
   border: 1px solid var(--paper-line);
@@ -118,6 +119,12 @@
   background: rgba(255, 255, 255, 0.28);
   color: var(--text-primary);
   font: 13px var(--paper-serif);
+}
+
+.section textarea {
+  min-height: 96px;
+  padding: 10px;
+  resize: vertical;
 }
 
 .actionRow {
@@ -183,6 +190,50 @@
   background: #fff2c9;
   font: 700 11px var(--paper-mono);
   text-transform: uppercase;
+}
+
+.deliveryDetails {
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.deliveryDetails summary {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  cursor: pointer;
+  font: 700 12px var(--paper-mono);
+}
+
+.deliveryTable {
+  display: grid;
+  border-top: 1px solid var(--paper-line);
+}
+
+.deliveryTable a,
+.deliveryEmpty {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(96px, 160px) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+}
+
+.deliveryTable a:first-child {
+  border-top: 0;
+}
+
+.deliveryTable code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusPill[data-state="healthy"] {

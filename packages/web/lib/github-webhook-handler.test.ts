@@ -142,6 +142,13 @@ describe("handleGithubWebhookRequest", () => {
     });
     expect(res.statusCode).toBe(401);
     expect(jsonBody(res)).toEqual({ ok: false, error: "Unauthorized" });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.invalid_signature"] })).toEqual([
+      expect.objectContaining({
+        owner: "mean-weasel",
+        repo: "issuectl",
+        correlationId: "delivery-1",
+      }),
+    ]);
   });
 
   it("rejects oversized bodies with 413", async () => {

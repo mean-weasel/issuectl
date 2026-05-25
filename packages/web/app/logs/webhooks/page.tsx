@@ -5,6 +5,8 @@ import {
   getDb,
   listRepos,
   listWebhookLogEntries,
+  queryDiagnosticEvents,
+  type DiagnosticEvent,
   type Repo,
   type WebhookLogEntry,
   type WebhookLogResult,
@@ -27,10 +29,14 @@ const RESULT_FILTERS: Array<{ label: string; value: WebhookLogResult | "all" }> 
   { label: "All", value: "all" },
   { label: "Fired", value: "fired" },
   { label: "Debouncing", value: "debouncing" },
+  { label: "Processing", value: "processing" },
   { label: "Gated", value: "gated" },
   { label: "Dropped", value: "dropped" },
   { label: "Failed", value: "failed" },
+  { label: "Received", value: "received" },
 ];
+
+const AUDIT_EVENTS = ["webhook.invalid_signature", "webhook.deduped"];
 
 export default async function WebhookLogsPage({
   searchParams,
@@ -63,6 +69,11 @@ export default async function WebhookLogsPage({
     params,
     repos,
   );
+  const auditEvents = filterAuditEvents(
+    queryDiagnosticEvents(db, { events: AUDIT_EVENTS, limit: 30 }),
+    params,
+    repos,
+  );
   const metrics = summarize(entries);
   const health = webhookHealth(entries);
 
@@ -87,6 +98,7 @@ export default async function WebhookLogsPage({
           <Metric label="Today" value={`${metrics.today} deliveries`} />
           <Metric label="Actions" value={`${metrics.fired} fired`} />
           <Metric label="Dropped" value={`${metrics.dropped + metrics.gated} gated/drop`} />
+          <Metric label="Audit" value={`${auditEvents.length} invalid/replay`} />
           <Metric label="Raw payloads" value={`${metrics.retained} retained`} />
           <Metric label="Stream" value="/api/webhooks/events/stream" />
         </dl>
@@ -143,6 +155,7 @@ export default async function WebhookLogsPage({
         ) : (
           <WebhookTable entries={entries} repos={repos} />
         )}
+        <WebhookAuditPanel events={auditEvents} />
       </main>
     </>
   );
@@ -178,6 +191,36 @@ function WebhookTable({ entries, repos }: { entries: WebhookLogEntry[]; repos: R
           ))}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+function WebhookAuditPanel({ events }: { events: DiagnosticEvent[] }) {
+  return (
+    <section className={styles.auditPanel} aria-label="Webhook invalid and replay audit">
+      <div className={styles.auditHeader}>
+        <div>
+          <h2>Invalid and replay audit</h2>
+          <p className={styles.muted}>Metadata-only diagnostics for rejected signatures and duplicate deliveries.</p>
+        </div>
+        <div className={styles.filters}>
+          <Link className={styles.chip} href="/logs/webhooks?event=webhook.invalid_signature">Invalid</Link>
+          <Link className={styles.chip} href="/logs/webhooks?event=webhook.deduped">Replay</Link>
+        </div>
+      </div>
+      {events.length === 0 ? (
+        <p className={styles.muted}>No invalid signature or replay diagnostics match these filters.</p>
+      ) : (
+        <div className={styles.auditList}>
+          {events.map((event) => (
+            <article key={event.id} className={styles.auditItem}>
+              <strong>{event.event === "webhook.deduped" ? "replayed delivery" : "invalid signature"}</strong>
+              <span>{event.owner}/{event.repo} · {event.correlationId ?? "unknown delivery"} · {formatAge(event.timestamp)}</span>
+              <code>{auditCliHint(event)}</code>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -279,6 +322,29 @@ function filterEntries(
   });
 }
 
+function filterAuditEvents(
+  events: DiagnosticEvent[],
+  params: SearchParams,
+  repos: Repo[],
+): DiagnosticEvent[] {
+  const query = params.q?.trim().toLowerCase();
+  const eventQuery = params.event?.trim().toLowerCase();
+  const selectedRepoId = parsePositiveInt(params.repo);
+  const selectedRepo = repos.find((repo) => repo.id === selectedRepoId);
+  return events.filter((event) => {
+    if (selectedRepo && (event.owner !== selectedRepo.owner || event.repo !== selectedRepo.name)) return false;
+    if (eventQuery && !event.event.toLowerCase().includes(eventQuery)) return false;
+    if (!query) return true;
+    return [
+      event.event,
+      event.correlationId,
+      event.owner && event.repo ? `${event.owner}/${event.repo}` : null,
+      event.targetNumber ? `${event.owner}/${event.repo}#${event.targetNumber}` : null,
+      event.message,
+    ].filter(Boolean).join(" ").toLowerCase().includes(query);
+  });
+}
+
 function summarize(entries: WebhookLogEntry[]) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -347,12 +413,23 @@ function diagnosticsCommand(entry: WebhookLogEntry, repo: Repo | undefined): str
 
 function cliHint(entry: WebhookLogEntry): string {
   if (entry.targetType && entry.targetNumber) {
-    return `issuectl webhook tail --target ${entry.targetType}/${entry.targetNumber} --limit 20`;
+    return `issuectl webhook tail --target ${entry.targetType}#${entry.targetNumber} --limit 20`;
   }
   if (entry.result === "dropped" || entry.result === "failed") {
     return "issuectl diag list --event webhook.runaway_limited webhook.launch_failed --limit 50";
   }
   return "issuectl webhook tail";
+}
+
+function auditCliHint(event: DiagnosticEvent): string {
+  if (event.targetType && event.targetNumber && event.owner && event.repo) {
+    const targetFlag = event.targetType === "pr" ? "--pr" : "--issue";
+    return `pnpm --dir packages/cli exec issuectl diag show ${targetFlag} ${event.owner}/${event.repo}#${event.targetNumber}`;
+  }
+  if (event.correlationId) {
+    return `pnpm --dir packages/cli exec issuectl diag list --correlation ${event.correlationId}`;
+  }
+  return `pnpm --dir packages/cli exec issuectl diag list --event ${event.event}`;
 }
 
 function formatPayload(payload: string): string {

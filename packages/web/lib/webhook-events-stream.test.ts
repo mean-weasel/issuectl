@@ -4,6 +4,7 @@ import {
   formatWebhookStreamEvent,
   isWebhookEventsStreamAuthorized,
   isWebhookEventsStreamRequest,
+  summarizeWebhookStreamEntries,
 } from "./webhook-events-stream";
 
 vi.mock("./api-auth", () => ({
@@ -37,6 +38,26 @@ describe("webhook events stream helpers", () => {
     expect(isWebhookEventsStreamAuthorized(makeRequest("/api/webhooks/events/stream", "Bearer valid-token"))).toBe(true);
     expect(isWebhookEventsStreamAuthorized(makeRequest("/api/webhooks/events/stream"))).toBe(false);
     expect(isWebhookEventsStreamAuthorized(makeRequest("/api/webhooks/events/stream?apiToken=wrong-token"))).toBe(false);
+  });
+
+  it("summarizes stream snapshots by webhook result", () => {
+    expect(summarizeWebhookStreamEntries([
+      { result: "fired" },
+      { result: "debouncing" },
+      { result: "debouncing" },
+      { result: "failed" },
+      { result: "unknown" },
+      {},
+    ])).toEqual({
+      total: 6,
+      fired: 1,
+      debouncing: 2,
+      processing: 0,
+      gated: 0,
+      dropped: 0,
+      failed: 1,
+      received: 0,
+    });
   });
 });
 

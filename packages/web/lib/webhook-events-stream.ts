@@ -86,18 +86,40 @@ function sendSnapshot(ws: WebSocket): void {
 
 function readSnapshotPayload(): unknown {
   try {
+    const entries = listWebhookLogEntries(getDb(), { limit: 50 });
     return {
       generatedAt: new Date().toISOString(),
-      entries: listWebhookLogEntries(getDb(), { limit: 50 }),
+      entries,
+      counts: summarizeWebhookStreamEntries(entries),
     };
   } catch (err) {
     log.warn({ err, msg: "webhook_events_stream_snapshot_failed" });
     return {
       generatedAt: new Date().toISOString(),
       entries: [],
+      counts: summarizeWebhookStreamEntries([]),
       error: "Webhook event stream snapshot failed",
     };
   }
+}
+
+export function summarizeWebhookStreamEntries(
+  entries: Array<{ result?: string | null }>,
+): Record<string, number> {
+  const counts: Record<string, number> = {
+    total: entries.length,
+    fired: 0,
+    debouncing: 0,
+    processing: 0,
+    gated: 0,
+    dropped: 0,
+    failed: 0,
+    received: 0,
+  };
+  for (const entry of entries) {
+    if (entry.result && entry.result in counts) counts[entry.result] += 1;
+  }
+  return counts;
 }
 
 function safeSend(ws: WebSocket, type: string, payload: unknown): boolean {
