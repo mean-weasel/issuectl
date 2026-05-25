@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const SCHEMA_VERSION = 23;
+const SCHEMA_VERSION = 24;
 
 const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS repos (
@@ -135,6 +135,8 @@ const CREATE_TABLES = `
     owner          TEXT,
     repo           TEXT,
     issue_number   INTEGER,
+    target_type    TEXT CHECK (target_type IN ('issue', 'pr') OR target_type IS NULL),
+    target_number  INTEGER,
     deployment_id  INTEGER,
     session_name   TEXT,
     ttyd_port      INTEGER,

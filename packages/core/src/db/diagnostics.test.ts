@@ -27,6 +27,8 @@ describe("diagnostic events", () => {
       owner: "mean-weasel",
       repo: "issuectl-test-repo",
       issueNumber: 152,
+      targetType: "issue",
+      targetNumber: 152,
       deploymentId: 100,
       correlationId: "launch-abc",
       message: "Launch requested",
@@ -58,6 +60,37 @@ describe("diagnostic events", () => {
     expect(rows[0]?.data).toEqual({
       branchName: "issue-152-test",
       agent: "codex",
+    });
+  });
+
+  it("records and filters PR target diagnostics", () => {
+    recordDiagnosticEvent(db, {
+      level: "warn",
+      event: "liveness.tmux_missing",
+      source: "web.idle-checker",
+      owner: "mean-weasel",
+      repo: "issuectl-test-repo",
+      targetType: "pr",
+      targetNumber: 506,
+      deploymentId: 200,
+    });
+
+    const rows = queryDiagnosticEvents(db, {
+      target: {
+        owner: "mean-weasel",
+        repo: "issuectl-test-repo",
+        targetType: "pr",
+        targetNumber: 506,
+      },
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      event: "liveness.tmux_missing",
+      issueNumber: null,
+      targetType: "pr",
+      targetNumber: 506,
+      deploymentId: 200,
     });
   });
 

@@ -17,6 +17,7 @@ const getDb = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getDeploymentById = vi.hoisted(() => vi.fn());
 const endDeployment = vi.hoisted(() => vi.fn());
+const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const cleanupStaleContextFiles = vi.hoisted(() => vi.fn());
@@ -31,9 +32,11 @@ vi.mock("@issuectl/core", () => ({
   getRepo: (...args: unknown[]) => getRepo(...args),
   getDeploymentById: (...args: unknown[]) => getDeploymentById(...args),
   endDeployment: (...args: unknown[]) => endDeployment(...args),
+  markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
-  tmuxSessionName: (repo: string, issueNumber: number) => `issuectl-${repo}-${issueNumber}`,
+  tmuxSessionName: (repo: string, targetNumber: number, targetType = "issue") =>
+    targetType === "issue" ? `issuectl-${repo}-${targetNumber}` : `issuectl-${repo}-${targetType}-${targetNumber}`,
   cleanupStaleContextFiles: (...args: unknown[]) => cleanupStaleContextFiles(...args),
   recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
   removeLabel: (...args: unknown[]) => removeLabel(...args),
@@ -64,6 +67,8 @@ function deployment(overrides: Record<string, unknown> = {}) {
     id: 17,
     repoId: 3,
     issueNumber: 137,
+    targetType: "issue",
+    targetNumber: 137,
     ttydPid: 444,
     endedAt: null,
     terminalBackend: "ttyd",
@@ -77,6 +82,7 @@ beforeEach(() => {
   getRepo.mockReset();
   getDeploymentById.mockReset();
   endDeployment.mockReset();
+  markActivePrReviewForDeploymentTerminal.mockReset();
   killTmuxSession.mockReset();
   killTtyd.mockReset();
   cleanupStaleContextFiles.mockReset();
@@ -106,7 +112,7 @@ describe("POST /api/v1/deployments/[id]/end", () => {
     expect(await response.json()).toEqual({ success: true });
     expect(killTtyd).toHaveBeenCalledWith(444, "issuectl-issuectl-test-repo-137");
     expect(killTmuxSession).not.toHaveBeenCalled();
-    expect(endDeployment).toHaveBeenCalledWith(db, 17);
+    expect(endDeployment).toHaveBeenCalledWith(db, 17, "ended_manual");
     expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 17 });
   });
 
@@ -139,7 +145,35 @@ describe("POST /api/v1/deployments/[id]/end", () => {
         sessionName: "issuectl-issuectl-test-repo-137",
       }),
     );
-    expect(endDeployment).toHaveBeenCalledWith(db, 17);
+    expect(endDeployment).toHaveBeenCalledWith(db, 17, "ended_manual");
+  });
+
+  it("ends PR deployments without issue label cleanup and marks active review superseded", async () => {
+    getDeploymentById.mockReturnValue(deployment({
+      issueNumber: null,
+      targetType: "pr",
+      targetNumber: 506,
+      ttydPid: null,
+      terminalBackend: "pty_bridge",
+    }));
+
+    const response = await POST(makeRequest({
+      owner: "mean-weasel",
+      repo: "issuectl-test-repo",
+      targetType: "pr",
+      targetNumber: 506,
+    }), { params });
+
+    expect(response.status).toBe(200);
+    expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-test-repo-pr-506");
+    expect(endDeployment).toHaveBeenCalledWith(db, 17, "ended_manual");
+    expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(db, 17, {
+      completedAt: expect.any(Number),
+      status: "superseded",
+      reason: "ended_manual",
+    });
+    expect(removeLabel).not.toHaveBeenCalled();
+    expect(clearCacheKey).not.toHaveBeenCalled();
   });
 
   it("returns auth denials before touching the database", async () => {

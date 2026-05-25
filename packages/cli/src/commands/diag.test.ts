@@ -1,9 +1,11 @@
+/* eslint-disable max-lines */
 import { Command, CommanderError } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   formatDiagnosticEvent,
   parseDurationMs,
   parseIssueRef,
+  parsePrRef,
   registerDiagCommands,
 } from "./diag.js";
 import type { DiagnosticEvent } from "@issuectl/core";
@@ -39,6 +41,8 @@ function makeEvent(overrides: Partial<DiagnosticEvent> = {}): DiagnosticEvent {
     owner: null,
     repo: null,
     issueNumber: null,
+    targetType: null,
+    targetNumber: null,
     deploymentId: null,
     sessionName: null,
     ttydPort: null,
@@ -130,6 +134,15 @@ describe("diag command helpers", () => {
     });
   });
 
+  it("parses PR references as target filters", () => {
+    expect(parsePrRef("mean-weasel/issuectl-test-repo#506")).toEqual({
+      owner: "mean-weasel",
+      repo: "issuectl-test-repo",
+      targetType: "pr",
+      targetNumber: 506,
+    });
+  });
+
   it("formats diagnostic events for human-readable output", () => {
     const event: DiagnosticEvent = {
       id: 1,
@@ -141,6 +154,8 @@ describe("diag command helpers", () => {
       owner: "mean-weasel",
       repo: "issuectl-test-repo",
       issueNumber: 152,
+      targetType: "issue",
+      targetNumber: 152,
       deploymentId: 100,
       sessionName: null,
       ttydPort: null,
@@ -158,6 +173,17 @@ describe("diag command helpers", () => {
     expect(line).toContain("Deployment not found or already ended");
   });
 
+  it("formats PR target diagnostic events for human-readable output", () => {
+    const line = formatDiagnosticEvent(makeEvent({
+      owner: "mean-weasel",
+      repo: "issuectl-test-repo",
+      targetType: "pr",
+      targetNumber: 506,
+    }));
+
+    expect(line).toContain("mean-weasel/issuectl-test-repo PR #506");
+  });
+
 });
 
 describe("diag commands", () => {
@@ -169,6 +195,8 @@ describe("diag commands", () => {
       "tail",
       "--issue",
       "mean-weasel/issuectl-test-repo#152",
+      "--pr",
+      "mean-weasel/issuectl-test-repo#506",
       "--deployment",
       "100",
       "--event",
@@ -190,6 +218,12 @@ describe("diag commands", () => {
         owner: "mean-weasel",
         repo: "issuectl-test-repo",
         issueNumber: 152,
+      },
+      target: {
+        owner: "mean-weasel",
+        repo: "issuectl-test-repo",
+        targetType: "pr",
+        targetNumber: 506,
       },
       deploymentId: 100,
       correlationId: "launch-abc",
@@ -221,6 +255,29 @@ describe("diag commands", () => {
       },
     });
     expect(JSON.parse(result.stdout)).toEqual(events);
+  });
+
+  it("show can filter by PR target", async () => {
+    vi.mocked(getDiagnosticTimeline).mockReturnValue([]);
+
+    await parseCommand([
+      "diag",
+      "show",
+      "--pr",
+      "mean-weasel/issuectl-test-repo#506",
+      "--limit",
+      "5",
+    ]);
+
+    expect(getDiagnosticTimeline).toHaveBeenCalledWith(mockDb, {
+      limit: 5,
+      target: {
+        owner: "mean-weasel",
+        repo: "issuectl-test-repo",
+        targetType: "pr",
+        targetNumber: 506,
+      },
+    });
   });
 
   it("summary prints backend-grouped counts", async () => {

@@ -5,6 +5,7 @@ import { executeLaunch } from "./launch.js";
 import { createTestDb } from "../db/test-helpers.js";
 import { addRepo } from "../db/repos.js";
 import { recordDeployment } from "../db/deployments.js";
+import { queryDiagnosticEvents } from "../db/diagnostics.js";
 import * as deploymentsModule from "../db/deployments.js";
 
 // Stub every module side-effect outside the pre-check's reach so the
@@ -281,6 +282,18 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       { action_type: "label", limit_count: 2 },
       { action_type: "push", limit_count: 1 },
     ]);
+    expect(queryDiagnosticEvents(db, {
+      target: { owner: "acme", repo: "api", targetType: "pr", targetNumber: 44 },
+    })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: "launch.requested",
+          issueNumber: null,
+          targetType: "pr",
+          targetNumber: 44,
+        }),
+      ]),
+    );
   });
 
   it("passes incremental PR review ranges into the production PR context", async () => {

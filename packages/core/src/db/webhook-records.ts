@@ -29,6 +29,7 @@ export type MergeWebhookIntentInput = {
   targetNumber: number;
   signalAt: number;
   scheduledAt: number;
+  maxDebounceMs?: number | null;
   desiredHeadSha?: string | null;
   requestedAgent?: "claude" | "codex" | null;
   reviewMode?: "auto" | "full" | null;

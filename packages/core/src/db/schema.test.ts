@@ -43,13 +43,13 @@ describe("initSchema", () => {
 
   it("sets schema_version to current", () => {
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
   });
 
   it("is idempotent — calling twice does not error or change version", () => {
     initSchema(db);
     initSchema(db);
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
   });
 });
 
@@ -66,7 +66,7 @@ describe("runMigrations", () => {
     const db = createRawTestDb();
     initSchema(db);
     runMigrations(db);
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
   });
 
   it("migrates v1 schema through v9 and drops claude_aliases", () => {
@@ -82,7 +82,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -106,7 +106,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     db.prepare("INSERT INTO deployments (repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, launched_at, ended_at) VALUES (1, 1, 'issue', 1, 'b', 'existing', '/x', '2025-01-01', NULL)").run();
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
@@ -149,7 +149,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'claude_aliases'")
       .all();
@@ -180,7 +180,7 @@ describe("runMigrations", () => {
 
     runMigrations(db);
 
-    expect(getSchemaVersion(db)).toBe(23);
+    expect(getSchemaVersion(db)).toBe(24);
     const cols = db
       .prepare("PRAGMA table_info(diagnostic_events)")
       .all() as { name: string; pk: number }[];
@@ -201,6 +201,8 @@ describe("runMigrations", () => {
       "status",
       "message",
       "data_json",
+      "target_type",
+      "target_number",
     ]);
     expect(cols.find((c) => c.name === "id")?.pk).toBe(1);
 
@@ -212,7 +214,49 @@ describe("runMigrations", () => {
       "idx_diagnostic_events_deployment",
       "idx_diagnostic_events_event",
       "idx_diagnostic_events_issue",
+      "idx_diagnostic_events_target",
       "idx_diagnostic_events_ts",
     ]);
+  });
+
+  it("repairs v24 diagnostic_events tables missing target columns", () => {
+    const db = createRawTestDb();
+    db.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (24);
+      CREATE TABLE diagnostic_events (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts             INTEGER NOT NULL,
+        level          TEXT NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error')),
+        event          TEXT NOT NULL,
+        source         TEXT NOT NULL,
+        correlation_id TEXT,
+        owner          TEXT,
+        repo           TEXT,
+        issue_number   INTEGER,
+        deployment_id  INTEGER,
+        session_name   TEXT,
+        ttyd_port      INTEGER,
+        ttyd_pid       INTEGER,
+        status         TEXT,
+        message        TEXT,
+        data_json      TEXT
+      );
+      INSERT INTO diagnostic_events (ts, level, event, source, owner, repo, issue_number)
+        VALUES (1, 'info', 'launch.requested', 'test', 'mean-weasel', 'issuectl', 506);
+    `);
+
+    initSchema(db);
+    runMigrations(db);
+
+    expect(getSchemaVersion(db)).toBe(24);
+    const row = db
+      .prepare("SELECT target_type, target_number FROM diagnostic_events WHERE id = 1")
+      .get() as { target_type: string | null; target_number: number | null };
+    expect(row).toEqual({ target_type: "issue", target_number: 506 });
+    const indexes = db
+      .prepare("SELECT name FROM pragma_index_list('diagnostic_events') ORDER BY name")
+      .all() as { name: string }[];
+    expect(indexes.map((i) => i.name)).toContain("idx_diagnostic_events_target");
   });
 });

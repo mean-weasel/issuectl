@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { recordDiagnosticEventSafely } from "../db/diagnostics.js";
-import type { LaunchAgent } from "../types.js";
+import type { DeploymentTargetType, LaunchAgent } from "../types.js";
 import type { WorkspaceMode } from "./workspace.js";
 
 export type LaunchDiagnosticContext = {
@@ -8,7 +8,9 @@ export type LaunchDiagnosticContext = {
   correlationId: string;
   owner: string;
   repo: string;
-  issueNumber: number;
+  targetType: DeploymentTargetType;
+  targetNumber: number;
+  issueNumber?: number;
 };
 
 export function createLaunchCorrelationId(): string {
@@ -136,6 +138,8 @@ function baseEvent(ctx: LaunchDiagnosticContext) {
     owner: ctx.owner,
     repo: ctx.repo,
     issueNumber: ctx.issueNumber,
+    targetType: ctx.targetType,
+    targetNumber: ctx.targetNumber,
   };
 }
 

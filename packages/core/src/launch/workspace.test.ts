@@ -11,6 +11,8 @@ const { execFileMock, accessMock, mkdirMock, rmMock, branchMocks } = vi.hoisted(
   const rmMock = vi.fn();
   const branchMocks = {
     createOrCheckoutBranch: vi.fn(),
+    createOrResetBranchAtRef: vi.fn(),
+    fetchRemoteRef: vi.fn(),
     isWorkingTreeClean: vi.fn(),
     getDefaultBranch: vi.fn(),
   };
@@ -29,6 +31,8 @@ vi.mock("node:fs/promises", () => ({
 
 vi.mock("./branch.js", () => ({
   createOrCheckoutBranch: branchMocks.createOrCheckoutBranch,
+  createOrResetBranchAtRef: branchMocks.createOrResetBranchAtRef,
+  fetchRemoteRef: branchMocks.fetchRemoteRef,
   isWorkingTreeClean: branchMocks.isWorkingTreeClean,
   getDefaultBranch: branchMocks.getDefaultBranch,
 }));
@@ -41,6 +45,8 @@ beforeEach(() => {
   mkdirMock.mockResolvedValue(undefined);
   rmMock.mockResolvedValue(undefined);
   branchMocks.createOrCheckoutBranch.mockReset().mockResolvedValue(undefined);
+  branchMocks.createOrResetBranchAtRef.mockReset().mockResolvedValue(undefined);
+  branchMocks.fetchRemoteRef.mockReset().mockResolvedValue(undefined);
   branchMocks.isWorkingTreeClean.mockReset().mockResolvedValue(true);
   branchMocks.getDefaultBranch.mockReset().mockResolvedValue("origin/main");
 });
@@ -72,6 +78,23 @@ describe("prepareWorkspace — existing mode", () => {
     );
   });
 
+  it("checks out the exact PR head when expected head metadata is provided", async () => {
+    execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
+
+    const result = await prepareWorkspace({
+      ...BASE_OPTIONS,
+      mode: "existing",
+      branchName: "feature/review",
+      expectedHeadRef: "feature/review",
+      expectedHeadSha: "head-a",
+    });
+
+    expect(result.path).toBe("/repos/myrepo");
+    expect(branchMocks.fetchRemoteRef).toHaveBeenCalledWith("/repos/myrepo", "origin", "feature/review");
+    expect(branchMocks.createOrResetBranchAtRef).toHaveBeenCalledWith("/repos/myrepo", "feature/review", "head-a");
+    expect(branchMocks.createOrCheckoutBranch).not.toHaveBeenCalled();
+  });
+
   it("throws when working tree is dirty", async () => {
     branchMocks.isWorkingTreeClean.mockResolvedValue(false);
     await expect(
@@ -101,6 +124,27 @@ describe("prepareWorkspace — worktree mode", () => {
     expect(result.mode).toBe("worktree");
     expect(result.created).toBe(true);
     expect(mkdirMock).toHaveBeenCalledWith("/tmp/worktrees", { recursive: true });
+  });
+
+  it("creates a PR worktree at the expected head SHA", async () => {
+    accessMock.mockRejectedValue(new Error("ENOENT"));
+    execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
+
+    const result = await prepareWorkspace({
+      ...BASE_OPTIONS,
+      mode: "worktree",
+      branchName: "feature/review",
+      expectedHeadRef: "feature/review",
+      expectedHeadSha: "head-a",
+    });
+
+    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
+    expect(branchMocks.fetchRemoteRef).toHaveBeenCalledWith("/repos/myrepo", "origin", "feature/review");
+    expect(execFileMock).toHaveBeenCalledWith(
+      "git",
+      ["worktree", "add", "-B", "feature/review", "/tmp/worktrees/myrepo-issue-1", "head-a"],
+      expect.objectContaining({ cwd: "/repos/myrepo" }),
+    );
   });
 
   it("reuses existing worktree directory if it is a git repo", async () => {
@@ -170,6 +214,27 @@ describe("prepareWorkspace — clone mode", () => {
     expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
     expect(result.mode).toBe("clone");
     expect(result.created).toBe(true);
+  });
+
+  it("checks out cloned PR workspace at the expected head SHA", async () => {
+    accessMock.mockRejectedValue(new Error("ENOENT"));
+    execFileMock.mockResolvedValue({ stdout: "", stderr: "" });
+
+    const result = await prepareWorkspace({
+      ...BASE_OPTIONS,
+      mode: "clone",
+      branchName: "feature/review",
+      expectedHeadRef: "feature/review",
+      expectedHeadSha: "head-a",
+    });
+
+    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
+    expect(branchMocks.fetchRemoteRef).toHaveBeenCalledWith("/tmp/worktrees/myrepo-issue-1", "origin", "feature/review");
+    expect(execFileMock).toHaveBeenCalledWith(
+      "git",
+      ["checkout", "-B", "feature/review", "head-a"],
+      expect.objectContaining({ cwd: "/tmp/worktrees/myrepo-issue-1" }),
+    );
   });
 
   it("propagates clone errors after cleanup", async () => {

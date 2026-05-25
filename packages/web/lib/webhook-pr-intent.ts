@@ -245,6 +245,8 @@ function recordPrIntentDiagnostic(db: Database.Database, repo: Repo, intent: Web
     source: "webhook-worker",
     owner: repo.owner,
     repo: repo.name,
+    targetType: "pr",
+    targetNumber: intent.targetNumber,
     deploymentId,
     message,
     data: {

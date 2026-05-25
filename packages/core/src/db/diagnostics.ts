@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import type { DeploymentTargetType } from "../types.js";
 
 export type DiagnosticLevel = "debug" | "info" | "warn" | "error";
 
@@ -11,6 +12,8 @@ export type DiagnosticEventInput = {
   owner?: string;
   repo?: string;
   issueNumber?: number;
+  targetType?: DeploymentTargetType;
+  targetNumber?: number;
   deploymentId?: number;
   sessionName?: string;
   ttydPort?: number;
@@ -30,6 +33,8 @@ export type DiagnosticEvent = {
   owner: string | null;
   repo: string | null;
   issueNumber: number | null;
+  targetType: DeploymentTargetType | null;
+  targetNumber: number | null;
   deploymentId: number | null;
   sessionName: string | null;
   ttydPort: number | null;
@@ -45,10 +50,18 @@ export type DiagnosticIssueFilter = {
   issueNumber: number;
 };
 
+export type DiagnosticTargetFilter = {
+  owner: string;
+  repo: string;
+  targetType: DeploymentTargetType;
+  targetNumber: number;
+};
+
 export type DiagnosticQuery = {
   since?: number;
   until?: number;
   issue?: DiagnosticIssueFilter;
+  target?: DiagnosticTargetFilter;
   deploymentId?: number;
   correlationId?: string;
   events?: string[];
@@ -66,6 +79,8 @@ type DiagnosticEventRow = {
   owner: string | null;
   repo: string | null;
   issue_number: number | null;
+  target_type: string | null;
+  target_number: number | null;
   deployment_id: number | null;
   session_name: string | null;
   ttyd_port: number | null;
@@ -82,13 +97,15 @@ export function recordDiagnosticEvent(
   db: Database.Database,
   input: DiagnosticEventInput,
 ): number {
+  const targetType = input.targetType ?? (input.issueNumber !== undefined ? "issue" : undefined);
+  const targetNumber = input.targetNumber ?? (targetType === "issue" ? input.issueNumber : undefined);
   const result = db
     .prepare(
       `INSERT INTO diagnostic_events (
         ts, level, event, source, correlation_id, owner, repo, issue_number,
-        deployment_id, session_name, ttyd_port, ttyd_pid, status, message,
-        data_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        target_type, target_number, deployment_id, session_name, ttyd_port,
+        ttyd_pid, status, message, data_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.timestamp ?? Date.now(),
@@ -99,6 +116,8 @@ export function recordDiagnosticEvent(
       input.owner ?? null,
       input.repo ?? null,
       input.issueNumber ?? null,
+      targetType ?? null,
+      targetNumber ?? null,
       input.deploymentId ?? null,
       input.sessionName ?? null,
       input.ttydPort ?? null,
@@ -156,8 +175,17 @@ function selectDiagnosticEvents(
     params.push(query.until);
   }
   if (query.issue) {
-    where.push("owner = ?", "repo = ?", "issue_number = ?");
+    where.push(
+      "owner = ?",
+      "repo = ?",
+      "(issue_number = ? OR (target_type = 'issue' AND target_number = ?))",
+    );
     params.push(query.issue.owner, query.issue.repo, query.issue.issueNumber);
+    params.push(query.issue.issueNumber);
+  }
+  if (query.target) {
+    where.push("owner = ?", "repo = ?", "target_type = ?", "target_number = ?");
+    params.push(query.target.owner, query.target.repo, query.target.targetType, query.target.targetNumber);
   }
   if (query.deploymentId !== undefined) {
     where.push("deployment_id = ?");
@@ -212,6 +240,8 @@ function rowToDiagnosticEvent(row: DiagnosticEventRow): DiagnosticEvent {
     owner: row.owner,
     repo: row.repo,
     issueNumber: row.issue_number,
+    targetType: row.target_type as DeploymentTargetType | null,
+    targetNumber: row.target_number,
     deploymentId: row.deployment_id,
     sessionName: row.session_name,
     ttydPort: row.ttyd_port,

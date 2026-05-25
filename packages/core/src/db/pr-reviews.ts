@@ -75,6 +75,21 @@ export function getLatestCompletedPrReview(
   return row ? rowToPrReview(row) : undefined;
 }
 
+export function listPrReviewsForRepo(
+  db: Database.Database,
+  repoId: number,
+  limit = 8,
+): PrReview[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const rows = db.prepare(
+    `SELECT * FROM pr_reviews
+     WHERE repo_id = ?
+     ORDER BY started_at DESC, id DESC
+     LIMIT ?`,
+  ).all(repoId, boundedLimit) as PrReviewRow[];
+  return rows.map(rowToPrReview);
+}
+
 export function completePrReview(
   db: Database.Database,
   reviewId: number,
@@ -103,6 +118,30 @@ export function supersedePrReview(
          result_json = ?
      WHERE id = ?`,
   ).run(completedAt, JSON.stringify({ reason }), reviewId);
+}
+
+export function markActivePrReviewForDeploymentTerminal(
+  db: Database.Database,
+  deploymentId: number,
+  input: { completedAt: number; status: Extract<PrReviewStatus, "failed" | "superseded">; reason: string },
+): PrReview | undefined {
+  const row = db.prepare(
+    `SELECT * FROM pr_reviews
+     WHERE deployment_id = ?
+       AND status IN ('reserved', 'launching', 'in_progress')
+     ORDER BY started_at DESC, id DESC
+     LIMIT 1`,
+  ).get(deploymentId) as PrReviewRow | undefined;
+  if (!row) return undefined;
+
+  db.prepare(
+    `UPDATE pr_reviews
+     SET status = ?,
+         completed_at = ?,
+         result_json = ?
+     WHERE id = ?`,
+  ).run(input.status, input.completedAt, JSON.stringify({ reason: input.reason }), row.id);
+  return getPrReviewById(db, row.id);
 }
 
 export function coalescePrReviewDesiredHead(

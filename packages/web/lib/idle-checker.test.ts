@@ -295,7 +295,7 @@ describe("checkDeploymentLiveness", () => {
 
     checkDeploymentLiveness();
 
-    expect(mockEndDeployment).toHaveBeenCalledWith(fakeDb, 3);
+    expect(mockEndDeployment).toHaveBeenCalledWith(fakeDb, 3, "liveness_missing");
     expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 3 });
     expect(mockRecordDiagnosticEvent).toHaveBeenCalledWith(
       fakeDb,

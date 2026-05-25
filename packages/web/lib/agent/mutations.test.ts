@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import {
@@ -225,6 +226,33 @@ describe("executeAgentMutationRequest", () => {
     expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
   });
 
+  it("denies same-repo pushes when the PR head is the repository default branch", async () => {
+    const push = vi.fn().mockResolvedValue(undefined);
+    setBudget(db, deploymentId, "push", 1);
+
+    const result = await executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-44",
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      actionType: "push",
+      payload: {
+        expectedHeadRef: "main",
+        expectedHeadSha: "head-a",
+        newSha: "head-b",
+      },
+    }, {
+      fetchPull: async () => pull({ headRef: "main", baseRef: "develop", defaultBranch: "main" }),
+      isBranchProtected: async () => false,
+      push,
+    });
+
+    expect(result).toEqual({ allowed: false, reason: "unsafe_default_branch" });
+    expect(push).not.toHaveBeenCalled();
+    expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
+  });
+
   it("denies protected branch pushes", async () => {
     const push = vi.fn().mockResolvedValue(undefined);
     setBudget(db, deploymentId, "push", 1);
@@ -252,7 +280,43 @@ describe("executeAgentMutationRequest", () => {
     expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
   });
 
-  it("pushes only after same-repo, non-default, unprotected, final-head verification", async () => {
+  it("denies push after same-repo, non-default, unprotected, final-head and checkout verification until local upload exists", async () => {
+    const push = vi.fn().mockResolvedValue(undefined);
+    const verifyWorkspaceHead = vi.fn().mockResolvedValue({ ok: true });
+    setBudget(db, deploymentId, "push", 1);
+
+    const result = await executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-44",
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      actionType: "push",
+      payload: {
+        expectedHeadRef: "feature/review",
+        expectedHeadSha: "head-a",
+        newSha: "head-b",
+      },
+    }, {
+      fetchPull: async () => pull(),
+      isBranchProtected: async () => false,
+      verifyWorkspaceHead,
+      push,
+    });
+
+    expect(result).toEqual({ allowed: false, reason: "unsupported_local_push" });
+    expect(verifyWorkspaceHead).toHaveBeenCalledWith({
+      workspacePath: "/tmp/issuectl-pr-44",
+      expectedHeadRef: "feature/review",
+      expectedHeadSha: "head-a",
+      owner: "acme",
+      repo: "api",
+    });
+    expect(push).not.toHaveBeenCalled();
+    expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
+  });
+
+  it("denies push when local checkout does not match the expected PR head", async () => {
     const push = vi.fn().mockResolvedValue(undefined);
     setBudget(db, deploymentId, "push", 1);
 
@@ -271,17 +335,12 @@ describe("executeAgentMutationRequest", () => {
     }, {
       fetchPull: async () => pull(),
       isBranchProtected: async () => false,
+      verifyWorkspaceHead: async () => ({ ok: false, reason: "unsafe_checkout" }),
       push,
     });
 
-    expect(result).toEqual({ allowed: true });
-    expect(push).toHaveBeenCalledWith({
-      owner: "acme",
-      repo: "api",
-      ref: "heads/feature/review",
-      sha: "head-b",
-      expectedHeadSha: "head-a",
-    });
-    expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 1 });
+    expect(result).toEqual({ allowed: false, reason: "unsafe_checkout" });
+    expect(push).not.toHaveBeenCalled();
+    expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 0 });
   });
 });

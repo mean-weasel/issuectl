@@ -1,9 +1,12 @@
+/* eslint-disable max-lines */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type Database from "better-sqlite3";
 import {
+  countActiveWebhookIntents,
   getWebhookEventByDelivery,
   getRepoWebhookConfigById,
   getSetting,
+  hasActiveWebhookIntent,
   mergeWebhookIntent,
   recordWebhookEvent,
 } from "@issuectl/core";
@@ -34,6 +37,8 @@ export const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
 const MAX_DELIVERY_ID_LENGTH = 128;
 const MAX_EVENT_TYPE_LENGTH = 100;
 const RAW_PAYLOAD_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const ISSUE_AUTO_LAUNCH_LABEL = "issuectl:auto-launch";
+const PR_AUTO_REVIEW_LABEL = "issuectl:auto-review";
 const GATING_RELEVANT_EVENTS = new Set([
   "issues:opened",
   "issues:labeled",
@@ -168,6 +173,7 @@ export async function handleGithubWebhookRequest(
       targetType,
       targetNumber,
       desiredHeadSha,
+      payload,
     });
     if (intentId !== null) {
       writeJson(res, 200, { ok: true, deduped: true, intentId });
@@ -203,15 +209,29 @@ export async function handleGithubWebhookRequest(
     targetType &&
     targetNumber !== null &&
     action &&
-    GATING_RELEVANT_EVENTS.has(`${eventType}:${action}`)
+    isGatingRelevantEvent(eventType, action, payload)
   ) {
-    const debounceMs = getWebhookDebounceMs(db);
+    const { debounceMs, maxDebounceMs } = getWebhookDebounceSettings(db);
+    if (isQueueDepthExceeded(db, { repoId, targetType, targetNumber })) {
+      recordWebhookDiagnostic(db, repo, {
+        event: "webhook.runaway_limited",
+        deliveryId,
+        eventType,
+        action,
+        targetType,
+        targetNumber,
+        eventId: recorded.eventId,
+      });
+      writeJson(res, 200, { ok: true, eventId: recorded.eventId, intentId: null });
+      return true;
+    }
     intentId = mergeWebhookIntent(db, {
       repoId,
       targetType,
       targetNumber,
       signalAt: receivedAt,
       scheduledAt: receivedAt + debounceMs,
+      maxDebounceMs,
       desiredHeadSha,
       eventId: recorded.eventId,
     });
@@ -241,6 +261,7 @@ function repairDedupedWebhookIntent(
     targetType: WebhookTargetType | null;
     targetNumber: number | null;
     desiredHeadSha: string | null;
+    payload: unknown;
   },
 ): number | null {
   const event = getWebhookEventByDelivery(db, {
@@ -252,36 +273,65 @@ function repairDedupedWebhookIntent(
     !event.targetType ||
     event.targetNumber === null ||
     !event.action ||
-    !GATING_RELEVANT_EVENTS.has(`${event.eventType}:${event.action}`)
+    input.eventType !== event.eventType ||
+    input.action !== event.action ||
+    input.targetType !== event.targetType ||
+    input.targetNumber !== event.targetNumber ||
+    !isGatingRelevantEvent(event.eventType, event.action, input.payload)
   ) {
     return null;
   }
 
-  const debounceMs = getWebhookDebounceMs(db);
+  const { debounceMs, maxDebounceMs } = getWebhookDebounceSettings(db);
   return mergeWebhookIntent(db, {
     repoId: event.repoId,
     targetType: event.targetType,
     targetNumber: event.targetNumber,
     signalAt: event.receivedAt,
     scheduledAt: event.receivedAt + debounceMs,
-    desiredHeadSha:
-      input.eventType === event.eventType &&
-      input.action === event.action &&
-      input.targetType === event.targetType &&
-      input.targetNumber === event.targetNumber
-        ? input.desiredHeadSha
-        : null,
+    maxDebounceMs,
+    desiredHeadSha: input.desiredHeadSha,
     eventId: event.id,
   });
 }
 
-function getWebhookDebounceMs(db: Database.Database): number {
+function getWebhookDebounceSettings(db: Database.Database): { debounceMs: number; maxDebounceMs: number } {
   const debounceSeconds = Number(
     getSetting(db, "webhook_debounce_seconds") ?? "60",
   );
-  return Number.isFinite(debounceSeconds)
+  const maxDebounceSeconds = Number(
+    getSetting(db, "webhook_max_debounce_seconds") ?? "300",
+  );
+  const debounceMs = Number.isFinite(debounceSeconds)
     ? Math.max(0, debounceSeconds) * 1000
     : 60_000;
+  const maxDebounceMs = Number.isFinite(maxDebounceSeconds)
+    ? Math.max(0, maxDebounceSeconds) * 1000
+    : 300_000;
+  return { debounceMs, maxDebounceMs };
+}
+
+function isQueueDepthExceeded(
+  db: Database.Database,
+  target: { repoId: number; targetType: WebhookTargetType; targetNumber: number },
+): boolean {
+  if (hasActiveWebhookIntent(db, target)) return false;
+  const maxQueueDepth = Number(getSetting(db, "max_webhook_queue_depth") ?? "100");
+  const boundedMax = Number.isFinite(maxQueueDepth) ? Math.max(0, Math.floor(maxQueueDepth)) : 100;
+  return countActiveWebhookIntents(db) >= boundedMax;
+}
+
+function isGatingRelevantEvent(eventType: string, action: string, payload: unknown): boolean {
+  if (!GATING_RELEVANT_EVENTS.has(`${eventType}:${action}`)) return false;
+  if (action !== "unlabeled") return true;
+  const label = getWebhookLabelName(payload);
+  if (eventType === "issues") return label === ISSUE_AUTO_LAUNCH_LABEL;
+  if (eventType === "pull_request") return label === PR_AUTO_REVIEW_LABEL;
+  return true;
+}
+
+function getWebhookLabelName(payload: unknown): string | null {
+  return getStringProperty(asObject(asObject(payload)?.label), "name");
 }
 
 export function classifyWebhookTarget(payload: unknown): {

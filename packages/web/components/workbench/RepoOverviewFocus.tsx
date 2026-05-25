@@ -114,6 +114,72 @@ export function RepoOverviewFocus({
         </section>
       )}
 
+      {repo.recentCompletions.length > 0 && (
+        <section className={styles.overviewSessionShortcuts} aria-label="Recent session completions">
+          <h2>Recent completions</h2>
+          <div className={styles.overviewShortcutList}>
+            {repo.recentCompletions.map((deployment) => {
+              const targetLabel = deployment.targetType === "pr" ? `PR #${deployment.targetNumber}` : `#${deployment.targetNumber}`;
+              const result = parseCompletionResult(deployment.completionResultJson);
+              return (
+                <article key={deployment.id} className={styles.overviewShortcutCard} aria-label={`Completed session ${targetLabel}`}>
+                  <div>
+                    <strong>{targetLabel}</strong>
+                    <span>{deployment.terminalReason?.replaceAll("_", " ") ?? "ended"}</span>
+                    <span>{deployment.triggeredBy}</span>
+                  </div>
+                  <h3>{result.summary || `${targetLabel} session`}</h3>
+                  <p>{deployment.branchName} - {formatDateTime(deployment.endedAt)}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {repo.prReviews.length > 0 && (
+        <section className={styles.overviewIssueShortcuts} aria-label="PR review history">
+          <h2>PR review history</h2>
+          <div className={styles.overviewShortcutList}>
+            {repo.prReviews.map((review) => (
+              <article key={review.id} className={styles.overviewShortcutCard} aria-label={`PR review #${review.prNumber}`}>
+                <div>
+                  <strong>PR #{review.prNumber}</strong>
+                  <span>{review.status}</span>
+                  <span>{review.triggeredBy === "comment_command" ? "comment" : review.triggeredBy}</span>
+                </div>
+                <h3>{shortSha(review.reviewedFromSha ?? review.reviewBaseSha)} to {shortSha(review.reviewedToSha)}</h3>
+                <p>{review.headRepoFullName}:{review.headRef}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {repo.webhookEvents.length > 0 && (
+        <section className={styles.overviewIssueShortcuts} aria-label="Recent webhook events">
+          <h2>Webhook events</h2>
+          <div className={styles.overviewShortcutList}>
+            {repo.webhookEvents.map((event) => {
+              const target = event.targetType && event.targetNumber
+                ? `${event.targetType === "pr" ? "PR" : "issue"} #${event.targetNumber}`
+                : "repo";
+              return (
+                <article key={event.id} className={styles.overviewShortcutCard} aria-label={`Webhook event ${event.deliveryId}`}>
+                  <div>
+                    <strong>{event.eventType}</strong>
+                    <span>{event.action ?? "received"}</span>
+                    <span>{target}</span>
+                  </div>
+                  <h3>{event.senderLogin ?? "GitHub"}</h3>
+                  <p>{formatUnixMs(event.receivedAt)}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {repo.issues.length > 0 && (
         <section className={styles.overviewIssueShortcuts} aria-label="Compact repo issues">
           <h2>Repo issues</h2>
@@ -150,22 +216,52 @@ function OverviewSessionCard({
   repo: WorkbenchRepo;
   onSelectDeployment: (deploymentId: number) => void;
 }) {
-  const issue = repo.issues.find((item) => item.number === deployment.issueNumber);
+  const issue = deployment.targetType === "issue"
+    ? repo.issues.find((item) => item.number === deployment.targetNumber)
+    : undefined;
   const preview = previewForDeployment(deployment, repo.previews);
   const status = preview?.status ?? "running";
   const runtimeLabel = deployment.idleSince ? "idle" : "running";
+  const targetLabel = deployment.targetType === "pr" ? `PR #${deployment.targetNumber}` : `#${deployment.targetNumber}`;
   return (
-    <article className={styles.overviewShortcutCard} aria-label={`Session #${deployment.issueNumber}`}>
+    <article className={styles.overviewShortcutCard} aria-label={`Session ${targetLabel}`}>
       <div>
-        <strong>#{deployment.issueNumber}</strong>
+        <strong>{targetLabel}</strong>
         <span>{deployment.agent}</span>
         <span>{status}</span>
       </div>
-      <h3>{issue?.title ?? "Issue session"}</h3>
+      <h3>{issue?.title ?? `${targetLabel} session`}</h3>
       <p>{deployment.branchName} - {runtimeLabel}</p>
       <button type="button" onClick={() => onSelectDeployment(deployment.id)}>
         Open terminal
       </button>
     </article>
   );
+}
+
+function parseCompletionResult(value: string | null): { summary?: string } {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    const summary = (parsed as { summary?: unknown }).summary;
+    return typeof summary === "string" ? { summary } : {};
+  } catch {
+    return {};
+  }
+}
+
+function shortSha(value: string): string {
+  return value.slice(0, 7);
+}
+
+function formatUnixMs(value: number): string {
+  return new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "ended";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], { dateStyle: "short", timeStyle: "short" });
 }

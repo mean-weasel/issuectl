@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { Command } from "commander";
 import {
   getDiagnosticTimeline,
@@ -6,12 +7,14 @@ import {
   type DiagnosticIssueFilter,
   type DiagnosticLevel,
   type DiagnosticQuery,
+  type DiagnosticTargetFilter,
 } from "@issuectl/core";
 import { summarizeBackends, type BackendSummary } from "./diag-summary.js";
 import { requireDb } from "../utils/db.js";
 
 type CommonOptions = {
   issue?: string;
+  pr?: string;
   deployment?: string;
   event?: string[];
   level?: string[];
@@ -32,6 +35,7 @@ type ListOptions = CommonOptions & {
 type ShowOptions = {
   deployment?: string;
   issue?: string;
+  pr?: string;
   correlation?: string;
   limit?: string;
   json?: boolean;
@@ -40,6 +44,7 @@ type ShowOptions = {
 type SummaryOptions = {
   since?: string;
   issue?: string;
+  pr?: string;
   limit?: string;
   json?: boolean;
 };
@@ -58,6 +63,7 @@ export function registerDiagCommands(program: Command): void {
     .description("Show recent diagnostics events")
     .option("--since <duration>", "Relative duration to query, e.g. 15m, 2h, 1d", "15m")
     .option("--issue <owner/repo#number>", "Filter by issue")
+    .option("--pr <owner/repo#number>", "Filter by pull request")
     .option("--deployment <id>", "Filter by deployment id")
     .option("--event <name...>", "Filter by event name")
     .option("--level <level...>", "Filter by level: debug, info, warn, error")
@@ -79,6 +85,7 @@ export function registerDiagCommands(program: Command): void {
     .option("--since <duration>", "Relative duration to query, e.g. 15m, 2h, 1d")
     .option("--until <iso>", "Upper bound ISO timestamp")
     .option("--issue <owner/repo#number>", "Filter by issue")
+    .option("--pr <owner/repo#number>", "Filter by pull request")
     .option("--deployment <id>", "Filter by deployment id")
     .option("--event <name...>", "Filter by event name")
     .option("--level <level...>", "Filter by level: debug, info, warn, error")
@@ -100,6 +107,7 @@ export function registerDiagCommands(program: Command): void {
     .description("Show a chronological diagnostics timeline")
     .option("--deployment <id>", "Filter by deployment id")
     .option("--issue <owner/repo#number>", "Filter by issue")
+    .option("--pr <owner/repo#number>", "Filter by pull request")
     .option("--correlation <id>", "Filter by correlation id")
     .option("--limit <count>", "Maximum rows to return", "200")
     .option("--json", "Print JSON")
@@ -113,6 +121,7 @@ export function registerDiagCommands(program: Command): void {
     .description("Summarize diagnostics by terminal backend")
     .option("--since <duration>", "Relative duration to query, e.g. 15m, 2h, 1d", "1d")
     .option("--issue <owner/repo#number>", "Filter by issue")
+    .option("--pr <owner/repo#number>", "Filter by pull request")
     .option("--limit <count>", "Maximum rows to summarize", "1000")
     .option("--json", "Print JSON")
     .action((options: SummaryOptions, command: Command) => {
@@ -152,6 +161,16 @@ export function parseIssueRef(value: string): DiagnosticIssueFilter {
   };
 }
 
+export function parsePrRef(value: string): DiagnosticTargetFilter {
+  const ref = parseIssueRef(value);
+  return {
+    owner: ref.owner,
+    repo: ref.repo,
+    targetType: "pr",
+    targetNumber: ref.issueNumber,
+  };
+}
+
 export function formatDiagnosticEvent(event: DiagnosticEvent): string {
   const parts = [
     new Date(event.timestamp).toISOString(),
@@ -161,8 +180,8 @@ export function formatDiagnosticEvent(event: DiagnosticEvent): string {
   ];
 
   if (event.deploymentId !== null) parts.push(`deployment=${event.deploymentId}`);
-  const issue = formatIssueRef(event);
-  if (issue) parts.push(issue);
+  const target = formatTargetRef(event);
+  if (target) parts.push(target);
   if (event.correlationId) parts.push(`correlation=${event.correlationId}`);
   if (event.status) parts.push(`status=${event.status}`);
   if (event.message) parts.push(`- ${event.message}`);
@@ -180,6 +199,7 @@ function buildQuery(
   };
 
   if (options.issue) query.issue = parseIssueRef(options.issue);
+  if (options.pr) query.target = parsePrRef(options.pr);
   if (options.deployment) {
     query.deploymentId = parsePositiveInteger(options.deployment, "--deployment");
   }
@@ -273,6 +293,17 @@ function parseCommandInput<T>(command: Command, parse: () => T): T {
 function formatIssueRef(event: DiagnosticEvent): string | null {
   if (!event.owner || !event.repo || event.issueNumber === null) return null;
   return `${event.owner}/${event.repo}#${event.issueNumber}`;
+}
+
+function formatTargetRef(event: DiagnosticEvent): string | null {
+  if (!event.owner || !event.repo) return null;
+  if (event.targetType === "pr" && event.targetNumber !== null) {
+    return `${event.owner}/${event.repo} PR #${event.targetNumber}`;
+  }
+  if (event.targetType === "issue" && event.targetNumber !== null) {
+    return `${event.owner}/${event.repo}#${event.targetNumber}`;
+  }
+  return formatIssueRef(event);
 }
 
 function printEvents(events: DiagnosticEvent[], json: boolean): void {

@@ -115,12 +115,6 @@ function SessionCard({
   onReconnect: (deployment: WorkbenchDeployment) => void;
   onEnd: (deployment: WorkbenchDeployment) => void;
 }) {
-  const issue = repo.issues.find((item) => item.number === deployment.issueNumber);
-  const preview = previewForDeployment(deployment, repo.previews);
-  const status = preview?.status ?? (deployment.terminalBackend === "pty_bridge" ? "active" : "unavailable");
-  const previewText = preview?.lines.join(" ")
-    || (deployment.terminalBackend === "pty_bridge" ? "PTY bridge connected" : status);
-  const runtimeLabel = deployment.idleSince ? `idle since ${formatTime(deployment.idleSince)}` : "running";
   const session = deployment as WorkbenchDeployment & {
     targetType?: "issue" | "pr";
     targetNumber?: number;
@@ -129,6 +123,12 @@ function SessionCard({
   };
   const targetNumber = session.targetNumber ?? session.issueNumber;
   const targetLabel = session.targetType === "pr" ? `PR #${targetNumber}` : `#${targetNumber}`;
+  const issue = session.targetType === "pr" ? undefined : repo.issues.find((item) => item.number === targetNumber);
+  const preview = previewForDeployment(deployment, repo.previews);
+  const status = preview?.status ?? (deployment.terminalBackend === "pty_bridge" ? "active" : "unavailable");
+  const previewText = preview?.lines.join(" ")
+    || (deployment.terminalBackend === "pty_bridge" ? "PTY bridge connected" : status);
+  const runtimeLabel = deployment.idleSince ? `idle since ${formatTime(deployment.idleSince)}` : "running";
   const trigger = session.triggeredBy ?? "manual";
   const triggerLabel = trigger === "comment_command" ? "comment" : trigger;
   const terminalReason = session.terminalReason ? session.terminalReason.replaceAll("_", " ") : null;

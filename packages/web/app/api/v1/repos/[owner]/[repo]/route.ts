@@ -5,6 +5,11 @@ import {
   getDb,
   removeRepo,
   getRepo,
+  getActiveWebhookDeploymentsForRepoTarget,
+  endDeployment,
+  killTtyd,
+  killTmuxSession,
+  tmuxSessionName,
   updateRepo,
   updateRepoWebhookSettings,
   formatErrorForUser,
@@ -137,6 +142,7 @@ export async function PATCH(
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
       updated = updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+      endDisabledAutomationSessions(db, repo, webhookUpdates);
     }
     log.info({ msg: "api_repo_updated", repoId: repo.id, owner, name: repoName, updates, webhookUpdates });
     return NextResponse.json({ success: true, repo: updated });
@@ -146,5 +152,32 @@ export async function PATCH(
       { success: false, error: formatErrorForUser(err) },
       { status: 500 },
     );
+  }
+}
+
+function endDisabledAutomationSessions(
+  db: ReturnType<typeof getDb>,
+  repo: { id: number; name: string; autoLaunchIssues: boolean; autoReviewPrs: boolean },
+  updates: { autoLaunchIssues?: boolean; autoReviewPrs?: boolean },
+): void {
+  if (repo.autoLaunchIssues && updates.autoLaunchIssues === false) {
+    endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
+  }
+  if (repo.autoReviewPrs && updates.autoReviewPrs === false) {
+    endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
+  }
+}
+
+function endActiveWebhookDeployments(
+  db: ReturnType<typeof getDb>,
+  repoId: number,
+  repoName: string,
+  targetType: "issue" | "pr",
+): void {
+  for (const deployment of getActiveWebhookDeploymentsForRepoTarget(db, repoId, targetType)) {
+    const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
+    if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
+    else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
+    endDeployment(db, deployment.id, "killed_by_label");
   }
 }

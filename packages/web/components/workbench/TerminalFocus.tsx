@@ -45,8 +45,14 @@ export function TerminalFocus({
   onBackToOverview,
   onDeploymentStale,
 }: Props) {
-  const issue = repo?.issues.find((item) => item.number === deployment.issueNumber);
-  const title = issue?.title ?? "Issue session";
+  const targetType = deployment.targetType ?? "issue";
+  const targetNumber = deployment.targetNumber ?? deployment.issueNumber;
+  const targetLabel = targetType === "pr" ? `PR #${targetNumber}` : `#${targetNumber}`;
+  const terminalTitle = targetType === "pr" ? `Terminal for PR ${targetNumber}` : `Terminal for issue ${targetNumber}`;
+  const issue = targetType === "issue"
+    ? repo?.issues.find((item) => item.number === targetNumber)
+    : undefined;
+  const title = issue?.title ?? (targetType === "pr" ? "PR review session" : "Issue session");
   const [terminal, setTerminal] = useState<TerminalState>({
     status: deployment.ttydPort || deployment.terminalBackend === "pty_bridge" ? "loading" : "error",
     port: deployment.ttydPort,
@@ -201,7 +207,7 @@ export function TerminalFocus({
       <header className={styles.terminalHeader}>
         <div>
           <p className={styles.kicker}>Terminal</p>
-          <h1>#{deployment.issueNumber} {title}</h1>
+          <h1>{targetLabel} {title}</h1>
         </div>
         <div className={styles.terminalMeta}>
           <span>{repo ? `${repo.owner}/${repo.name}` : `${deployment.owner}/${deployment.repoName}`}</span>
@@ -224,7 +230,7 @@ export function TerminalFocus({
       {terminal.status === "ready" && terminal.backend === "pty_bridge" && terminal.wsUrl ? (
         <div className={styles.terminalFrame}>
           <PtyTerminal
-            title={`Terminal for issue ${deployment.issueNumber}`}
+            title={terminalTitle}
             wsUrl={terminal.wsUrl}
             onError={handlePtyError}
             onLifecycle={handlePtyLifecycle}
@@ -233,7 +239,7 @@ export function TerminalFocus({
       ) : terminal.status === "ready" && terminal.src ? (
         <iframe
           className={styles.terminalFrame}
-          title={`Terminal for issue ${deployment.issueNumber}`}
+          title={terminalTitle}
           src={terminal.src}
         />
       ) : terminal.status === "loading" ? (

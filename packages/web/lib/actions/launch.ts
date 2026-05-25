@@ -7,6 +7,7 @@ import {
   getDeploymentById,
   executeLaunch,
   endDeployment as coreEndDeployment,
+  markActivePrReviewForDeploymentTerminal,
   killTmuxSession,
   killTtyd,
   isTmuxSessionAlive,
@@ -164,6 +165,8 @@ export async function endSession(
   owner: string,
   repo: string,
   issueNumber: number,
+  targetType: "issue" | "pr" = "issue",
+  targetNumber: number = issueNumber,
 ): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
   if (!Number.isInteger(deploymentId) || deploymentId <= 0) {
     return { success: false, error: "Invalid deployment ID" };
@@ -171,8 +174,11 @@ export async function endSession(
   if (!owner || !repo) {
     return { success: false, error: "Invalid repository reference" };
   }
-  if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
-    return { success: false, error: "Invalid issue number" };
+  if (targetType !== "issue" && targetType !== "pr") {
+    return { success: false, error: "Invalid target type" };
+  }
+  if (!Number.isInteger(targetNumber) || targetNumber <= 0) {
+    return { success: false, error: "Invalid target number" };
   }
 
   try {
@@ -188,8 +194,8 @@ export async function endSession(
     }
 
     const target = getDeploymentTarget(deployment);
-    if (deployment.repoId !== repoRecord.id || target.targetType !== "issue" || target.targetNumber !== issueNumber) {
-      return { success: false, error: "Deployment does not match the specified issue" };
+    if (deployment.repoId !== repoRecord.id || target.targetType !== targetType || target.targetNumber !== targetNumber) {
+      return { success: false, error: "Deployment does not match the specified target" };
     }
 
     const sessionName = deploymentSessionName(repo, deployment);
@@ -206,7 +212,14 @@ export async function endSession(
     } else if ((deployment as { terminalBackend?: string }).terminalBackend === "pty_bridge") {
       killTmuxSession(sessionName);
     }
-    coreEndDeployment(db, deploymentId);
+    coreEndDeployment(db, deploymentId, "ended_manual");
+    if (target.targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, deploymentId, {
+        completedAt: Date.now(),
+        status: "superseded",
+        reason: "ended_manual",
+      });
+    }
 
     // Best-effort cleanup of stale context temp files
     cleanupStaleContextFiles().catch((err) => {
@@ -216,11 +229,13 @@ export async function endSession(
     console.error("[issuectl] Failed to end session:", err);
     return { success: false, error: formatErrorForUser(err) };
   }
-  const { stale } = revalidateSafely(
-    `/issues/${owner}/${repo}/${issueNumber}`,
-    `/launch/${owner}/${repo}/${issueNumber}`,
-    "/",
-  );
+  const { stale } = targetType === "issue"
+    ? revalidateSafely(
+      `/issues/${owner}/${repo}/${targetNumber}`,
+      `/launch/${owner}/${repo}/${targetNumber}`,
+      "/",
+    )
+    : revalidateSafely("/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
@@ -248,7 +263,15 @@ export async function checkSessionAlive(
     }
 
     // Tmux session is gone — the work is truly done. End the deployment.
-    coreEndDeployment(db, deploymentId);
+    coreEndDeployment(db, deploymentId, "liveness_missing");
+    const target = getDeploymentTarget(deployment);
+    if (target.targetType === "pr") {
+      markActivePrReviewForDeploymentTerminal(db, deploymentId, {
+        completedAt: Date.now(),
+        status: "failed",
+        reason: "liveness_missing",
+      });
+    }
     return { alive: false };
   } catch (err) {
     console.error("[issuectl] Session health check failed:", err);

@@ -3,8 +3,11 @@ import type {
   Deployment,
   IssuePriority,
   LaunchAgent,
+  PrReview,
   Priority,
   SettingKey,
+  WebhookEvent,
+  WebhookPayloadMode,
 } from "@issuectl/core";
 import type { SessionPreview } from "@/lib/session-previews";
 
@@ -44,12 +47,27 @@ export type WorkbenchIssueSummary = {
   authorLogin: string | null;
 };
 
+export type WorkbenchWebhookEvent = Pick<
+  WebhookEvent,
+  "id" | "deliveryId" | "eventType" | "action" | "senderLogin" | "targetType" | "targetNumber" | "receivedAt" | "intentId"
+>;
+
+export type WorkbenchPrReview = PrReview;
+
+export type WorkbenchSessionCompletion = Deployment;
+
 export type WorkbenchRepo = {
   id: number;
   owner: string;
   name: string;
   localPath: string | null;
   branchPattern: string | null;
+  autoLaunchIssues: boolean;
+  autoReviewPrs: boolean;
+  issueAgent: LaunchAgent;
+  reviewAgent: LaunchAgent;
+  webhookId: number | null;
+  webhookPayloadMode: WebhookPayloadMode;
   badgeCount: number;
   deployedCount: number;
   launchAgent: LaunchAgent | null;
@@ -59,6 +77,9 @@ export type WorkbenchRepo = {
   issuesCachedAt: string | null;
   priorities: IssuePriority[];
   deployments: WorkbenchDeployment[];
+  recentCompletions: WorkbenchSessionCompletion[];
+  webhookEvents: WorkbenchWebhookEvent[];
+  prReviews: WorkbenchPrReview[];
   previews: Record<string, WorkbenchPreview>;
   issues: WorkbenchIssueSummary[];
 };

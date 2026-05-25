@@ -17,8 +17,11 @@ import {
   getDb,
   getIssues,
   getSettings,
+  listPrReviewsForRepo,
   listPrioritiesForRepo,
+  listRecentTerminalDeploymentsByRepo,
   listRepos,
+  listWebhookEvents,
   mapLimit,
   withAuthRetry,
   type ActiveDeploymentWithRepo,
@@ -39,6 +42,7 @@ const WORKBENCH_SETTING_KEYS: readonly Exclude<SettingKey, "api_token">[] = [
   "default_repo_id",
   "idle_grace_period",
   "idle_threshold",
+  "public_webhook_base_url",
 ];
 
 const PREVIEW_STATUS_RANK: Record<WorkbenchPreview["status"], number> = {
@@ -124,6 +128,9 @@ async function readWorkbenchRepos(
       previews,
     );
     const priorities = listPrioritiesForRepo(db, repo.id);
+    const recentCompletions = listRecentTerminalDeploymentsByRepo(db, repo.id, 5);
+    const webhookEvents = listWebhookEvents(db, { repoId: repo.id, limit: 8 });
+    const prReviews = listPrReviewsForRepo(db, repo.id, 8);
     const repoPreviews = previewsForDeployments(repoDeployments, previews);
 
     try {
@@ -134,6 +141,9 @@ async function readWorkbenchRepos(
         repo,
         terminalBackendDefault: terminalBackendDefault(settings),
         repoDeployments,
+        recentCompletions,
+        webhookEvents,
+        prReviews,
         priorities,
         repoPreviews,
         issues: issuesResult.issues,
@@ -152,6 +162,9 @@ async function readWorkbenchRepos(
         repo,
         terminalBackendDefault: terminalBackendDefault(settings),
         repoDeployments,
+        recentCompletions,
+        webhookEvents,
+        prReviews,
         priorities,
         repoPreviews,
         issues: [],
@@ -187,6 +200,9 @@ function buildWorkbenchRepo(input: {
   repo: Repo;
   terminalBackendDefault: WorkbenchRepo["terminalBackendDefault"];
   repoDeployments: ActiveDeploymentWithRepo[];
+  recentCompletions: WorkbenchRepo["recentCompletions"];
+  webhookEvents: WorkbenchRepo["webhookEvents"];
+  prReviews: WorkbenchRepo["prReviews"];
   priorities: IssuePriority[];
   repoPreviews: Record<string, WorkbenchPreview>;
   issues: GitHubIssue[];
@@ -208,6 +224,12 @@ function buildWorkbenchRepo(input: {
     name: input.repo.name,
     localPath: input.repo.localPath,
     branchPattern: input.repo.branchPattern,
+    autoLaunchIssues: input.repo.autoLaunchIssues,
+    autoReviewPrs: input.repo.autoReviewPrs,
+    issueAgent: input.repo.issueAgent,
+    reviewAgent: input.repo.reviewAgent,
+    webhookId: input.repo.webhookId,
+    webhookPayloadMode: input.repo.webhookPayloadMode,
     badgeCount: input.repoDeployments.length,
     deployedCount: input.repoDeployments.length,
     launchAgent: input.repoDeployments[0]?.agent ?? null,
@@ -217,6 +239,9 @@ function buildWorkbenchRepo(input: {
     issuesCachedAt: input.issuesCachedAt,
     priorities: input.priorities,
     deployments: input.repoDeployments,
+    recentCompletions: input.recentCompletions,
+    webhookEvents: input.webhookEvents,
+    prReviews: input.prReviews,
     previews: input.repoPreviews,
     issues: input.issues.map((issue) =>
       summarizeIssue(issue, priorityByIssue.get(issue.number) ?? "normal", activeIssueNumbers),

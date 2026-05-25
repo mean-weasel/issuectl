@@ -95,7 +95,9 @@ export async function executeLaunch(
     correlationId,
     owner: options.owner,
     repo: options.repo,
-    issueNumber: targetNumber,
+    targetType,
+    targetNumber,
+    issueNumber,
   };
   recordLaunchRequested(diagnosticContext, {
     agent: options.agent,
@@ -127,6 +129,8 @@ export async function executeLaunch(
     ...options,
     targetType,
     targetNumber,
+    expectedHeadRef,
+    expectedHeadSha,
   });
   recordWorkspacePrepared(diagnosticContext, workspace.path);
 
@@ -279,6 +283,11 @@ export async function executeLaunch(
 }
 
 export { generateBranchName } from "./branch.js";
+export {
+  getCurrentBranch,
+  getHeadSha,
+  getRemoteUrl,
+} from "./branch.js";
 export { type WorkspaceMode, type WorkspaceResult } from "./workspace.js";
 export { type LaunchContext } from "./context.js";
 export { buildClaudeCommand, buildLaunchAgentCommand } from "./launch-agent-command.js";

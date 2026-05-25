@@ -4,9 +4,10 @@ import {
   getDeploymentById,
   getRepoById,
   isTmuxSessionAlive,
+  markActivePrReviewForDeploymentTerminal,
   recordDiagnosticEventSafely,
 } from "@issuectl/core";
-import { deploymentSessionName, issueNumberForDiagnostic } from "./deployment-target";
+import { deploymentSessionName, getDeploymentTarget, issueNumberForDiagnostic } from "./deployment-target";
 import { ensureTtydForDeployment, type EnsureTtydResult } from "./ensure-ttyd";
 import { createPtyTerminalToken } from "./terminal-auth";
 
@@ -67,9 +68,17 @@ function ensurePtyBridgeTerminal(
     }
 
     const sessionName = deploymentSessionName(repo.name, deployment);
+    const target = getDeploymentTarget(deployment);
     if (!isTmuxSessionAlive(sessionName)) {
       try {
-        endDeployment(db, deploymentId);
+        endDeployment(db, deploymentId, "liveness_missing");
+        if (target.targetType === "pr") {
+          markActivePrReviewForDeploymentTerminal(db, deploymentId, {
+            completedAt: Date.now(),
+            status: "failed",
+            reason: "liveness_missing",
+          });
+        }
       } catch {
         // The UI still needs a stale-session response if another request already ended the row.
       }
@@ -80,6 +89,8 @@ function ensurePtyBridgeTerminal(
         owner: repo.owner,
         repo: repo.name,
         issueNumber: issueNumberForDiagnostic(deployment),
+        targetType: target.targetType,
+        targetNumber: target.targetNumber,
         deploymentId,
         sessionName,
         message: "Terminal session has ended",

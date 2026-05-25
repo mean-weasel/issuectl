@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import type Database from "better-sqlite3";
 import {
   ACTIVE_INTENT_STATUSES,
@@ -66,9 +67,10 @@ function findActiveWebhookIntent(
 
 function updateActiveWebhookIntent(
   db: Database.Database,
-  intentId: number,
+  active: WebhookIntentRow,
   input: MergeWebhookIntentInput,
 ): boolean {
+  const scheduledAt = boundedScheduledAt(input, active.first_signal_at);
   const result = db
     .prepare(
       `UPDATE webhook_intents
@@ -83,18 +85,26 @@ function updateActiveWebhookIntent(
          AND status IN (${activeStatusPlaceholders()})`,
     )
     .run(
-      input.signalAt, input.scheduledAt, input.desiredHeadSha ?? null,
-      input.requestedAgent ?? null, input.reviewMode ?? null, intentId,
+      input.signalAt, scheduledAt, input.desiredHeadSha ?? null,
+      input.requestedAgent ?? null, input.reviewMode ?? null, active.id,
       ...ACTIVE_INTENT_STATUSES,
     );
 
   if (result.changes !== 1) return false;
 
   if (input.eventId !== undefined && input.eventId !== null) {
-    db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(intentId, input.eventId);
+    db.prepare("UPDATE webhook_events SET intent_id = ? WHERE id = ?").run(active.id, input.eventId);
   }
 
   return true;
+}
+
+function boundedScheduledAt(input: MergeWebhookIntentInput, firstSignalAt: number): number {
+  if (input.maxDebounceMs === undefined || input.maxDebounceMs === null) {
+    return input.scheduledAt;
+  }
+  const maxDebounceMs = Math.max(0, Math.floor(input.maxDebounceMs));
+  return Math.min(input.scheduledAt, firstSignalAt + maxDebounceMs);
 }
 
 export function recordWebhookEvent(
@@ -163,11 +173,11 @@ function mergeWebhookIntentOnce(
 ): number {
   return db.transaction(() => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const active = findActiveWebhookIntent(db, input);
-      if (active) {
-        if (updateActiveWebhookIntent(db, active.id, input)) return active.id;
-        continue;
-      }
+	      const active = findActiveWebhookIntent(db, input);
+	      if (active) {
+	        if (updateActiveWebhookIntent(db, active, input)) return active.id;
+	        continue;
+	      }
 
       try {
         const result = db
@@ -176,12 +186,12 @@ function mergeWebhookIntentOnce(
               (repo_id, target_type, target_number, first_signal_at, last_signal_at,
                scheduled_at, desired_head_sha, requested_agent, review_mode, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-          )
-          .run(
-            input.repoId, input.targetType, input.targetNumber,
-            input.signalAt, input.signalAt, input.scheduledAt,
-            input.desiredHeadSha ?? null, input.requestedAgent ?? null, input.reviewMode ?? null,
-          );
+	          )
+	          .run(
+	            input.repoId, input.targetType, input.targetNumber,
+	            input.signalAt, input.signalAt, boundedScheduledAt(input, input.signalAt),
+	            input.desiredHeadSha ?? null, input.requestedAgent ?? null, input.reviewMode ?? null,
+	          );
         const intentId = Number(result.lastInsertRowid);
 
         if (input.eventId !== undefined && input.eventId !== null) {
@@ -196,11 +206,27 @@ function mergeWebhookIntentOnce(
     }
 
     const active = findActiveWebhookIntent(db, input);
-    if (active && updateActiveWebhookIntent(db, active.id, input)) {
+    if (active && updateActiveWebhookIntent(db, active, input)) {
       return active.id;
     }
     throw new Error("Failed to merge webhook intent after retrying races");
   })();
+}
+
+export function hasActiveWebhookIntent(
+  db: Database.Database,
+  input: Pick<MergeWebhookIntentInput, "repoId" | "targetType" | "targetNumber">,
+): boolean {
+  return findActiveWebhookIntent(db, input) !== undefined;
+}
+
+export function countActiveWebhookIntents(db: Database.Database): number {
+  const row = db.prepare(
+    `SELECT COUNT(*) AS count
+     FROM webhook_intents
+     WHERE status IN (${activeStatusPlaceholders()})`,
+  ).get(...ACTIVE_INTENT_STATUSES) as { count: number };
+  return row.count;
 }
 
 export function claimDueWebhookIntent(
@@ -233,7 +259,14 @@ export function recoverExpiredWebhookIntentLeases(
   db: Database.Database,
   now: number,
 ): number {
-  const result = db
+  return recoverExpiredWebhookIntentLeaseRecords(db, now).length;
+}
+
+export function recoverExpiredWebhookIntentLeaseRecords(
+  db: Database.Database,
+  now: number,
+): WebhookIntent[] {
+  const rows = db
     .prepare(
       `UPDATE webhook_intents
        SET status = 'pending',
@@ -241,10 +274,11 @@ export function recoverExpiredWebhookIntentLeases(
            lease_expires_at = NULL
        WHERE status = 'processing'
          AND lease_expires_at IS NOT NULL
-         AND lease_expires_at <= ?`,
+         AND lease_expires_at <= ?
+       RETURNING *`,
     )
-    .run(now);
-  return result.changes;
+    .all(now) as WebhookIntentRow[];
+  return rows.map(rowToWebhookIntent);
 }
 
 export function expireOldWebhookIntents(
@@ -252,8 +286,16 @@ export function expireOldWebhookIntents(
   now: number,
   maxAgeMs: number,
 ): number {
+  return expireOldWebhookIntentRecords(db, now, maxAgeMs).length;
+}
+
+export function expireOldWebhookIntentRecords(
+  db: Database.Database,
+  now: number,
+  maxAgeMs: number,
+): WebhookIntent[] {
   const cutoff = now - maxAgeMs;
-  const result = db
+  const rows = db
     .prepare(
       `UPDATE webhook_intents
        SET status = 'expired',
@@ -261,10 +303,11 @@ export function expireOldWebhookIntents(
            processing_started_at = NULL,
            lease_expires_at = NULL
        WHERE status IN (${ACTIVE_INTENT_STATUSES.map(() => "?").join(", ")})
-         AND first_signal_at <= ?`,
+         AND first_signal_at <= ?
+       RETURNING *`,
     )
-    .run(now, ...ACTIVE_INTENT_STATUSES, cutoff);
-  return result.changes;
+    .all(now, ...ACTIVE_INTENT_STATUSES, cutoff) as WebhookIntentRow[];
+  return rows.map(rowToWebhookIntent);
 }
 
 export function pruneExpiredWebhookPayloads(
