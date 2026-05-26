@@ -113,6 +113,45 @@ describe("web agent completion check-ins", () => {
     });
   });
 
+  it("persists richer completion metadata in the existing result json column", () => {
+    const deployment = recordDeployment(db, {
+      repoId,
+      issueNumber: 506,
+      branchName: "issue-506",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issue-506",
+    });
+    db.prepare(
+      "UPDATE deployments SET completion_token = 'token-506', triggered_by = 'webhook' WHERE id = ?",
+    ).run(deployment.id);
+
+    expect(recordAgentCompletionCheckIn(db, {
+      deploymentId: deployment.id,
+      completionToken: "token-506",
+      status: "failed",
+      summary: "partial run failed",
+      pushedCommits: ["fix-a", "fix-b"],
+      changedFileCount: 4,
+      fixedFindingCount: 2,
+      errorMessage: "tests failed",
+    })).toEqual({ accepted: true, duplicate: false });
+
+    expect(
+      db.prepare("SELECT terminal_reason, completion_result_json FROM deployments WHERE id = ?").get(deployment.id),
+    ).toEqual({
+      terminal_reason: "failed",
+      completion_result_json: JSON.stringify({
+        status: "failed",
+        summary: "partial run failed",
+        pushedCommits: ["fix-a", "fix-b"],
+        changedFileCount: 4,
+        fixedFindingCount: 2,
+        errorMessage: "tests failed",
+        error: "tests failed",
+      }),
+    });
+  });
+
   it("completes linked PR reviews and schedules one coalesced follow-up", () => {
     const deployment = recordDeployment(db, {
       repoId,

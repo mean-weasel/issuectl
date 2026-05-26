@@ -81,13 +81,14 @@ describe("incremental PR webhook intents", () => {
   });
 
   it("coalesces one desired head while a review is already active", async () => {
+    const deploymentId = recordTestDeployment(db, repoId, 47);
     db.prepare(
       `INSERT INTO pr_reviews (
         repo_id, pr_number, deployment_id, started_head_sha, review_base_sha,
         reviewed_to_sha, head_repo_full_name, head_ref, status, triggered_by, started_at
-      ) VALUES (?, 47, NULL, 'head-b', 'base-a', 'head-b', 'mean-weasel/issuectl',
+      ) VALUES (?, 47, ?, 'head-b', 'base-a', 'head-b', 'mean-weasel/issuectl',
         'feature/webhooks', 'in_progress', 'webhook', 1000)`,
-    ).run(repoId);
+    ).run(repoId, deploymentId);
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "pr",
@@ -256,7 +257,8 @@ function seedCompletedReview(
 function recordTestDeployment(db: Database.Database, repoId: number, targetNumber: number): number {
   return recordDeployment(db, {
     repoId,
-    issueNumber: targetNumber,
+    targetType: "pr",
+    targetNumber,
     branchName: `pr-${targetNumber}-review`,
     workspaceMode: "worktree",
     workspacePath: `/tmp/pr-${targetNumber}`,

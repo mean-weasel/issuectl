@@ -221,6 +221,15 @@ function webhookConfig(input: { url: string; secret: string }) {
   };
 }
 
+function registerWebhookRotateCommand(command: Command): Command {
+  return command
+    .description("Rotate the stored GitHub webhook secret for a tracked repo")
+    .option("--yes", "Skip confirmation prompt")
+    .action((repoRef: string, opts: { yes?: boolean }, actionCommand: Command) =>
+      configureWebhook(actionCommand, repoRef, { yes: opts.yes, rotate: true }),
+    );
+}
+
 export function registerWebhookCommands(program: Command): void {
   const webhook = program
     .command("webhook")
@@ -356,13 +365,12 @@ export function registerWebhookCommands(program: Command): void {
       configureWebhook(command, repoRef, { yes: opts.yes, rotate: false }),
     );
 
-  webhook
-    .command("rotate <repo>")
-    .description("Rotate the stored GitHub webhook secret for a tracked repo")
-    .option("--yes", "Skip confirmation prompt")
-    .action((repoRef: string, opts: { yes?: boolean }, command: Command) =>
-      configureWebhook(command, repoRef, { yes: opts.yes, rotate: true }),
-    );
+  registerWebhookRotateCommand(webhook.command("rotate <repo>"));
+
+  const secret = webhook
+    .command("secret")
+    .description("Manage GitHub webhook secrets");
+  registerWebhookRotateCommand(secret.command("rotate <repo>"));
 }
 
 function formatReplayFailure(reason: "not_found" | "missing_target" | "missing_action" | "not_replayable"): string {

@@ -15,7 +15,9 @@ import {
   listPrReviewsForPull,
   listPrReviewsForRepo,
   markActivePrReviewForDeploymentTerminal,
+  markPrReviewDeploymentStarted,
   reservePrReview,
+  recoverOrphanedActivePrReviews,
   supersedePrReview,
 } from "./pr-reviews.js";
 
@@ -314,6 +316,106 @@ describe("pr_reviews", () => {
       resultJson: JSON.stringify({ reason: "timeout" }),
     }));
     expect(getActivePrReview(db, repoId, 506)).toBeUndefined();
+  });
+
+  it("links a launching review only to an active deployment for the same PR target", () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        id, repo_id, issue_number, target_type, target_number, branch_name,
+        workspace_mode, workspace_path
+      ) VALUES (79, ?, NULL, 'pr', 506, 'pr-506', 'existing', '/tmp/repo')`,
+    ).run(repoId);
+    const review = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    db.prepare("UPDATE pr_reviews SET status = 'launching' WHERE id = ?").run(review.id);
+
+    expect(markPrReviewDeploymentStarted(db, review.id, 79)).toEqual(expect.objectContaining({
+      id: review.id,
+      status: "in_progress",
+      deploymentId: 79,
+    }));
+  });
+
+  it("refuses to link a review to a deployment for a different target", () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        id, repo_id, issue_number, target_type, target_number, branch_name,
+        workspace_mode, workspace_path
+      ) VALUES (80, ?, 506, 'issue', 506, 'issue-506', 'existing', '/tmp/repo')`,
+    ).run(repoId);
+    const review = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    db.prepare("UPDATE pr_reviews SET status = 'launching' WHERE id = ?").run(review.id);
+
+    expect(markPrReviewDeploymentStarted(db, review.id, 80)).toBeUndefined();
+    expect(getPrReviewById(db, review.id)).toEqual(expect.objectContaining({
+      status: "launching",
+      deploymentId: null,
+    }));
+  });
+
+  it("recovers orphaned active review rows without a live deployment", () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        id, repo_id, issue_number, target_type, target_number, branch_name,
+        workspace_mode, workspace_path, ended_at
+      ) VALUES (81, ?, NULL, 'pr', 507, 'pr-507', 'existing', '/tmp/repo', datetime('now'))`,
+    ).run(repoId);
+    const reserved = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    const endedDeployment = reservePrReview(db, {
+      repoId,
+      prNumber: 507,
+      deploymentId: 81,
+      startedHeadSha: "head-c",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-c",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 2_000,
+    });
+
+    const recovered = recoverOrphanedActivePrReviews(db, 3_000);
+
+    expect(recovered.map((review) => review.id)).toEqual([reserved.id, endedDeployment.id]);
+    expect(getPrReviewById(db, reserved.id)).toEqual(expect.objectContaining({
+      status: "failed",
+      completedAt: 3_000,
+      resultJson: JSON.stringify({ reason: "orphaned_before_deployment" }),
+    }));
+    expect(getPrReviewById(db, endedDeployment.id)).toEqual(expect.objectContaining({
+      status: "superseded",
+      completedAt: 3_000,
+      resultJson: JSON.stringify({ reason: "orphaned_deployment_terminal" }),
+    }));
   });
 });
 

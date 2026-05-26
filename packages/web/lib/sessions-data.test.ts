@@ -55,7 +55,8 @@ describe("sessions-data", () => {
     expect(data.summary.endedSessions).toBe(1);
     expect(data.sessionGroups).toHaveLength(1);
     expect(data.sessionGroups[0].targetLabel).toBe("Issue #507");
-    expect(data.sessionGroups[0].sessions).toHaveLength(2);
+    expect(data.sessionGroups[0].matchingSessionCount).toBe(2);
+    expect(data.sessionGroups[0].sessions).toHaveLength(3);
     expect(data.sessionGroups[0].sessions.find((session) => session.id === 10)?.childDeploymentCount).toBe(1);
     expect(data.sessionGroups[0].sessions.find((session) => session.id === 11)?.parentDeploymentId).toBe(10);
     expect(data.sessionGroups[0].sessions.find((session) => session.id === 10)?.preview?.lines).toEqual(["running tests"]);
@@ -87,10 +88,12 @@ describe("sessions-data", () => {
     expect(data.summary.activeReviewRuns).toBe(1);
     expect(data.reviewGroups).toHaveLength(1);
     expect(data.reviewGroups[0].prNumber).toBe(44);
-    expect(data.reviewGroups[0].runs).toHaveLength(1);
+    expect(data.reviewGroups[0].matchingRunCount).toBe(1);
+    expect(data.reviewGroups[0].runs).toHaveLength(2);
     expect(data.reviewGroups[0].runs[0].deployment?.id).toBe(20);
     expect(data.reviewGroups[0].runs[0].detailHref).toBe("/reviews/3");
     expect(data.reviewGroups[0].runs[0].rangeLabel).toBe("2222222..3333333");
+    expect(data.reviewGroups[0].runs[0].provenanceLabel).toBe("comment command · session #20");
   });
 
   it("derives review summaries and finding counts for navigable rows", () => {
@@ -120,6 +123,42 @@ describe("sessions-data", () => {
       rangeLabel: "full 3333333",
       summary: "clean pass",
       findingCount: 0,
+      elapsedLabel: "0m",
+    }));
+  });
+
+  it("derives finding counts from rich completion metadata", () => {
+    const data = buildSessionsOverview({
+      repos: [repo],
+      activeDeployments: [],
+      recentDeploymentsByRepo: new Map(),
+      reviewsByRepo: new Map([
+        [repo.id, [
+          review({
+            id: 8,
+            prNumber: 44,
+            deploymentId: null,
+            status: "completed",
+            startedAt: 1_764_000_000_000,
+            resultJson: JSON.stringify({
+              summary: "fixed findings",
+              fixedFindingCount: 3,
+              changedFileCount: 5,
+              pushedCommits: ["fix-a", "fix-b"],
+            }),
+          }),
+        ]],
+      ]),
+      previews: {},
+      filters: normalizeSessionsFilters({ tab: "reviews" }),
+    });
+
+    expect(data.reviewGroups[0].runs[0]).toEqual(expect.objectContaining({
+      findingCount: 3,
+      result: expect.objectContaining({
+        changedFileCount: 5,
+        pushedCommits: ["fix-a", "fix-b"],
+      }),
     }));
   });
 });

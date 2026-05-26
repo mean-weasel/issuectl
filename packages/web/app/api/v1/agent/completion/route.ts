@@ -15,6 +15,10 @@ type Body = {
   summary?: unknown;
   finalHeadSha?: unknown;
   pushedCommitSha?: unknown;
+  pushedCommits?: unknown;
+  changedFileCount?: unknown;
+  fixedFindingCount?: unknown;
+  errorMessage?: unknown;
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -40,6 +44,10 @@ function parseBody(body: Body): AgentCompletionInput {
     summary: stringValue(body.summary, "summary"),
     ...(optionalString(body.finalHeadSha, "finalHeadSha")),
     ...(optionalString(body.pushedCommitSha, "pushedCommitSha")),
+    ...(optionalStringArray(body.pushedCommits, "pushedCommits")),
+    ...(optionalNonNegativeInteger(body.changedFileCount, "changedFileCount")),
+    ...(optionalNonNegativeInteger(body.fixedFindingCount, "fixedFindingCount")),
+    ...(optionalString(body.errorMessage, "errorMessage")),
   };
 }
 
@@ -57,10 +65,32 @@ function stringValue(value: unknown, name: string): string {
   return value;
 }
 
-function optionalString(value: unknown, name: "finalHeadSha" | "pushedCommitSha"): Partial<AgentCompletionInput> {
+function optionalString(
+  value: unknown,
+  name: "finalHeadSha" | "pushedCommitSha" | "errorMessage",
+): Partial<AgentCompletionInput> {
   if (value === undefined) return {};
   if (typeof value !== "string" || value.length === 0) {
     throw new Error(`${name} must be a non-empty string`);
+  }
+  return { [name]: value };
+}
+
+function optionalStringArray(value: unknown, name: "pushedCommits"): Partial<AgentCompletionInput> {
+  if (value === undefined) return {};
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) {
+    throw new Error(`${name} must be an array of non-empty strings`);
+  }
+  return { [name]: value };
+}
+
+function optionalNonNegativeInteger(
+  value: unknown,
+  name: "changedFileCount" | "fixedFindingCount",
+): Partial<AgentCompletionInput> {
+  if (value === undefined) return {};
+  if (!Number.isInteger(value) || typeof value !== "number" || value < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
   }
   return { [name]: value };
 }

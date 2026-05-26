@@ -148,6 +148,9 @@ function SessionGroups({ groups }: { groups: SessionTargetGroup[] }) {
             <div>
               <p>{group.repoFullName}</p>
               <h2>{group.targetLabel}</h2>
+              <span className={styles.rowMeta}>
+                {group.matchingSessionCount ?? group.sessions.length} matched · {group.sessions.length} total sibling sessions
+              </span>
             </div>
             <Link className={styles.linkButton} href={`/workbench?repo=${encodeURIComponent(group.repoFullName)}`}>
               Workbench
@@ -159,13 +162,14 @@ function SessionGroups({ groups }: { groups: SessionTargetGroup[] }) {
                 <div className={styles.rowMain}>
                   <span className={styles.rowTitle}>{session.branchName}</span>
                   <span className={styles.rowMeta}>
-                    {session.agent} - {session.workspaceMode} - launched {formatDateTime(session.launchedAt)}
+                    {session.agent} - {session.workspaceMode} - launched {formatDateTime(session.launchedAt)}{session.elapsedLabel ? ` - ${session.elapsedLabel}` : ""}
                   </span>
                   <span className={styles.preview}>{session.preview?.lines.join(" ") || session.workspacePath}</span>
                 </div>
                 <div className={styles.chips}>
                   <Chip tone={session.endedAt ? "neutral" : "good"}>{session.endedAt ? "ended" : "active"}</Chip>
                   <Chip tone="accent" title={triggerTitle(session.triggeredBy)}>{triggerLabel(session.triggeredBy)}</Chip>
+                  {session.provenanceLabel && <Chip tone="neutral">{session.provenanceLabel}</Chip>}
                   {session.terminalReason && <Chip tone="warn">{labelize(session.terminalReason)}</Chip>}
                   {session.linkedPrNumber && <Chip tone="neutral">PR #{session.linkedPrNumber}</Chip>}
                   {session.parentDeploymentId && <Chip tone="neutral">parent #{session.parentDeploymentId}</Chip>}
@@ -219,7 +223,10 @@ function ReviewGroups({ groups }: { groups: ReviewPrGroup[] }) {
               GitHub PR
             </a>
           </header>
-          <div className={styles.timeline}>
+          <details className={styles.timeline} open={(group.matchingRunCount ?? group.runs.length) === group.runs.length || group.runs.length <= 2}>
+            <summary>
+              {group.matchingRunCount ?? group.runs.length} matched · {group.runs.length} total sibling review runs
+            </summary>
             {group.runs.map((run) => (
               <Link
                 key={run.id}
@@ -232,23 +239,23 @@ function ReviewGroups({ groups }: { groups: ReviewPrGroup[] }) {
                 <div className={styles.rowMain}>
                   <span className={styles.rowTitle}>Run #{run.id}</span>
                   <span className={styles.rowMeta}>
-                    {formatUnix(run.startedAt)} - {run.headRepoFullName}:{run.headRef}
+                    {formatUnixMs(run.startedAt)} - {run.headRepoFullName}:{run.headRef}{run.elapsedLabel ? ` - ${run.elapsedLabel}` : ""}
                   </span>
                   <span className={styles.preview}>
                     {run.rangeLabel}
                     {run.summary ? ` - ${run.summary}` : ""}
-                    {run.deployment ? ` - session ${run.deployment.id}` : ""}
+                    {run.provenanceLabel ? ` - ${run.provenanceLabel}` : ""}
                   </span>
                 </div>
                 <div className={styles.chips}>
                   <Chip tone={reviewTone(run.status)}>{labelize(run.status)}</Chip>
                   <Chip tone="accent" title={triggerTitle(run.triggeredBy)}>{triggerLabel(run.triggeredBy)}</Chip>
                   {run.findingCount !== null && <Chip tone={run.findingCount > 0 ? "warn" : "good"}>{run.findingCount} findings</Chip>}
-                  {run.completedAt && <Chip tone="neutral">done {formatUnix(run.completedAt)}</Chip>}
+                  {run.completedAt && <Chip tone="neutral">done {formatUnixMs(run.completedAt)}</Chip>}
                 </div>
               </Link>
             ))}
-          </div>
+          </details>
         </article>
       ))}
     </section>
@@ -297,8 +304,8 @@ function labelize(value: string): string {
   return value.replaceAll("_", " ");
 }
 
-function formatUnix(value: number): string {
-  return new Date(value * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+function formatUnixMs(value: number): string {
+  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatDateTime(value: string): string {

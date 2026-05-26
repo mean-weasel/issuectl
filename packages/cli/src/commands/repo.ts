@@ -12,7 +12,6 @@ import {
   getActiveWebhookDeploymentsForRepoTarget,
   listWebhookEvents,
   markActivePrReviewForDeploymentTerminal,
-  endDeployment,
   formatErrorForUser,
   killTtyd,
   killTmuxSession,
@@ -34,6 +33,20 @@ function requireValidOwnerRepo(value: string): { owner: string; name: string } {
     process.exit(1);
   }
   return parseOwnerRepo(value);
+}
+
+function transitionDeploymentTerminal(
+  db: ReturnType<typeof requireDb>,
+  deploymentId: number,
+  terminalReason: "killed_by_label",
+): { changed: boolean } {
+  const result = db.prepare(
+    "UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL",
+  ).run(terminalReason, deploymentId);
+  if (result.changes > 0) return { changed: true };
+  const row = db.prepare("SELECT 1 FROM deployments WHERE id = ?").get(deploymentId);
+  if (!row) throw new Error(`No deployment found with id ${deploymentId}`);
+  return { changed: false };
 }
 
 export async function repoAddCommand(
@@ -189,6 +202,7 @@ export function repoShowCommand(ownerRepo: string): void {
 
 type RepoCommandOptions = {
   path?: string;
+  webhook?: boolean | string;
   autoLaunchIssues?: boolean | string;
   autoReviewPrs?: boolean | string;
   issueAgent?: LaunchAgent | string;
@@ -221,19 +235,26 @@ type RepoSetCommandOptions = {
 async function collectRepoAddWebhookOptions(
   options: RepoCommandOptions,
 ): Promise<RepoCommandOptions> {
+  const webhook = normalizeOptionalBoolean(options.webhook, "--webhook");
+  const shouldPromptForAutomation = webhook !== false;
   const autoLaunchIssues = options.autoLaunchIssues === undefined
-    ? await confirm({
+    ? shouldPromptForAutomation
+      ? await confirm({
         message: "Auto-launch issue sessions from webhooks?",
         default: false,
       })
+      : false
     : normalizeOptionalBoolean(options.autoLaunchIssues, "--auto-launch-issues");
   const autoReviewPrs = options.autoReviewPrs === undefined
-    ? await confirm({
+    ? shouldPromptForAutomation
+      ? await confirm({
         message: "Reserve PRs for automatic review from webhooks?",
         default: false,
       })
+      : false
     : normalizeOptionalBoolean(options.autoReviewPrs, "--auto-review-prs");
   const automationEnabled = autoLaunchIssues || autoReviewPrs;
+  const shouldConfigureWebhook = webhook !== false && (webhook === true || automationEnabled);
 
   let issueAgent = normalizeOptionalAgent(options.issueAgent, "--issue-agent");
   if (autoLaunchIssues && issueAgent === undefined) {
@@ -251,7 +272,7 @@ async function collectRepoAddWebhookOptions(
   }
 
   let webhookBaseUrl = options.webhookBaseUrl;
-  if (automationEnabled && webhookBaseUrl === undefined) {
+  if (shouldConfigureWebhook && webhookBaseUrl === undefined) {
     const value = await input({
       message: "Public webhook base URL (optional, e.g. https://hooks.example.com):",
       default: "",
@@ -268,12 +289,13 @@ async function collectRepoAddWebhookOptions(
     webhookBaseUrl = value.trim() || undefined;
   }
 
-  if (automationEnabled) {
+  if (shouldConfigureWebhook) {
     runRepoAddPreflight(webhookBaseUrl);
   }
 
   return {
     ...options,
+    webhook,
     autoLaunchIssues,
     autoReviewPrs,
     issueAgent,
@@ -358,7 +380,8 @@ function printRepoAddNextSteps(
 ): void {
   const issueAutomation = normalizeOptionalBoolean(options.autoLaunchIssues, "--auto-launch-issues");
   const reviewAutomation = normalizeOptionalBoolean(options.autoReviewPrs, "--auto-review-prs");
-  if (!issueAutomation && !reviewAutomation) return;
+  const webhookSetup = normalizeOptionalBoolean(options.webhook, "--webhook");
+  if (!issueAutomation && !reviewAutomation && webhookSetup !== true) return;
 
   log.info(`Webhook settings saved for ${owner}/${name}.`);
   if (!options.webhookBaseUrl) {
@@ -371,8 +394,11 @@ async function installRepoWebhookIfReady(
   repo: { id: number; owner: string; name: string },
   options: RepoCommandOptions,
 ): Promise<void> {
+  const webhookSetup = normalizeOptionalBoolean(options.webhook, "--webhook");
+  if (webhookSetup === false) return;
   const labels = automationLabels(options);
-  if (labels.length === 0 || !options.webhookBaseUrl) return;
+  if (labels.length === 0 && webhookSetup !== true) return;
+  if (!options.webhookBaseUrl) return;
 
   const url = `${normalizeWebhookBaseUrl(options.webhookBaseUrl)}/api/webhook/github/${repo.id}`;
   const secret = randomBytes(32).toString("hex");
@@ -574,7 +600,8 @@ function endActiveWebhookDeployments(
     const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
     if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
     else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
-    endDeployment(db, deployment.id, "killed_by_label");
+    const transition = transitionDeploymentTerminal(db, deployment.id, "killed_by_label");
+    if (!transition.changed) continue;
     if (targetType === "pr") {
       markActivePrReviewForDeploymentTerminal(db, deployment.id, {
         completedAt: Date.now(),

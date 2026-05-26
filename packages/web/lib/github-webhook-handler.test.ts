@@ -344,6 +344,9 @@ describe("handleGithubWebhookRequest", () => {
 
   it("stores raw payloads with a retention tombstone when raw mode is enabled", async () => {
     updateRepoWebhookSettings(db, repo.id, { webhookPayloadMode: "raw" });
+    db
+      .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run("webhook_raw_payload_retention_days", "3");
     const body = JSON.stringify(issuesOpenedPayload());
     await postWebhook(db, { repoId: repo.id, body });
 
@@ -353,7 +356,7 @@ describe("handleGithubWebhookRequest", () => {
       .get("delivery-1") as { retained_until: number | null };
 
     expect(event?.payloadJson).toBe(body);
-    expect(delivery.retained_until).toBeGreaterThan(event?.receivedAt ?? 0);
+    expect(delivery.retained_until).toBe((event?.receivedAt ?? 0) + 3 * 24 * 60 * 60 * 1000);
   });
 
   it("creates an intent for issues opened", async () => {

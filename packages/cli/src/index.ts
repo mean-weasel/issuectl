@@ -55,6 +55,8 @@ repo
   .command("add <owner/repo>")
   .description("Add a repository to track")
   .option("--path <local-path>", "Local filesystem path to the repo")
+  .option("--webhook", "Install GitHub webhook setup")
+  .option("--no-webhook", "Skip GitHub webhook setup")
   .option("--auto-launch-issues", "Enable webhook issue auto-launch")
   .option("--no-auto-launch-issues", "Disable webhook issue auto-launch")
   .option("--auto-review-prs", "Enable PR auto-review reservation")
@@ -105,6 +107,8 @@ repo
   .option("--webhook-base-url <url>", "Public webhook base URL")
   .action(repoSetCommand);
 
+// Owner-decision/deferred CLI scope: `issue create --auto-launch` and
+// `pr create --auto-review` need dedicated GitHub issue/PR command modules.
 registerDiagCommands(program);
 registerWebhookCommands(program);
 registerAgentCommands(program);

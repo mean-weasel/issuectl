@@ -102,8 +102,8 @@ export function seedAgentActionBudgets(
     return;
   }
   if (targetType !== "pr") return;
-  setAgentActionBudget(db, deploymentId, "create_issue", 1);
-  setAgentActionBudget(db, deploymentId, "create_pr", 1);
+  setAgentActionBudget(db, deploymentId, "create_issue", 0);
+  setAgentActionBudget(db, deploymentId, "create_pr", 0);
   setAgentActionBudget(db, deploymentId, "push", 1);
 }
 

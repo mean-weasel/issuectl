@@ -40,6 +40,10 @@ describe("/api/v1/agent/completion", () => {
       summary: "fixed two findings",
       finalHeadSha: "head-b",
       pushedCommitSha: "fix-b",
+      pushedCommits: ["fix-a", "fix-b"],
+      changedFileCount: 3,
+      fixedFindingCount: 2,
+      errorMessage: "non-blocking warning",
     }));
     const json = await response.json();
 
@@ -52,7 +56,26 @@ describe("/api/v1/agent/completion", () => {
       summary: "fixed two findings",
       finalHeadSha: "head-b",
       pushedCommitSha: "fix-b",
+      pushedCommits: ["fix-a", "fix-b"],
+      changedFileCount: 3,
+      fixedFindingCount: 2,
+      errorMessage: "non-blocking warning",
     });
+  });
+
+  it("rejects malformed rich metadata", async () => {
+    const response = await POST(request({
+      deploymentId: 12,
+      completionToken: "token-12",
+      status: "completed",
+      summary: "done",
+      pushedCommits: ["fix-a", ""],
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toMatch(/pushedCommits/);
+    expect(recordAgentCompletionCheckIn).not.toHaveBeenCalled();
   });
 
   it("rejects malformed completion statuses", async () => {

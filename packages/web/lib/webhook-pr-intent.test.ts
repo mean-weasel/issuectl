@@ -13,6 +13,11 @@ import {
 } from "@issuectl/core";
 import { runWebhookIntentWorkerOnce } from "./webhook-intent-worker.js";
 
+const notifyDeploymentTerminalOutcome = vi.hoisted(() => vi.fn());
+vi.mock("./push/notifications", () => ({
+  notifyDeploymentTerminalOutcome: (...args: unknown[]) => notifyDeploymentTerminalOutcome(...args),
+}));
+
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
@@ -67,6 +72,7 @@ describe("PR webhook intents", () => {
   let repoId: number;
 
   beforeEach(() => {
+    notifyDeploymentTerminalOutcome.mockReset();
     db = createTestDb();
     repoId = addRepo(db, { owner: "mean-weasel", name: "issuectl" }).id;
     updateRepoWebhookSettings(db, repoId, { autoReviewPrs: true });
@@ -95,7 +101,8 @@ describe("PR webhook intents", () => {
         expect(review.status).toBe("launching");
         const deploymentId = recordDeployment(_db, {
           repoId,
-          issueNumber: 44,
+          targetType: "pr",
+          targetNumber: 44,
           branchName: "pr-44-review",
           workspaceMode: "worktree",
           workspacePath: "/tmp/pr-44",
@@ -186,7 +193,8 @@ describe("PR webhook intents", () => {
   it("ends active webhook PR review sessions on PR close", async () => {
     const deploymentId = recordDeployment(db, {
       repoId,
-      issueNumber: 44,
+      targetType: "pr",
+      targetNumber: 44,
       branchName: "pr-44-review",
       workspaceMode: "worktree",
       workspacePath: "/tmp/pr-44",
@@ -231,7 +239,8 @@ describe("PR webhook intents", () => {
   it("does not end comment-command PR sessions on webhook opt-out", async () => {
     const deploymentId = recordDeployment(db, {
       repoId,
-      issueNumber: 48,
+      targetType: "pr",
+      targetNumber: 48,
       branchName: "pr-48-review",
       workspaceMode: "worktree",
       workspacePath: "/tmp/pr-48",
@@ -298,7 +307,8 @@ describe("PR webhook intents", () => {
       launchPr: async (_db) => {
         const deploymentId = recordDeployment(_db, {
           repoId,
-          issueNumber: 47,
+          targetType: "pr",
+          targetNumber: 47,
           branchName: "pr-47-review",
           workspaceMode: "worktree",
           workspacePath: "/tmp/pr-47",
@@ -346,7 +356,8 @@ describe("PR webhook intents", () => {
       launchPr: async (_db) => {
         const deploymentId = recordDeployment(_db, {
           repoId,
-          issueNumber: 50,
+          targetType: "pr",
+          targetNumber: 50,
           branchName: "pr-50-review",
           workspaceMode: "worktree",
           workspacePath: "/tmp/pr-50",

@@ -3,11 +3,9 @@ import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
 import {
   getDb,
-  removeRepo,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
   markActivePrReviewForDeploymentTerminal,
-  endDeployment,
   killTtyd,
   killTmuxSession,
   recordDiagnosticEventSafely,
@@ -16,8 +14,24 @@ import {
   updateRepoWebhookSettings,
   formatErrorForUser,
 } from "@issuectl/core";
+import { notifyDeploymentTerminalOutcome } from "@/lib/push/notifications";
+import { removeRepo as removeRepoAction } from "@/lib/actions/repos";
 
 export const dynamic = "force-dynamic";
+
+function transitionDeploymentTerminal(
+  db: ReturnType<typeof getDb>,
+  deploymentId: number,
+  terminalReason: "killed_by_label",
+): { changed: boolean } {
+  const result = db.prepare(
+    "UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL",
+  ).run(terminalReason, deploymentId);
+  if (result.changes > 0) return { changed: true };
+  const row = db.prepare("SELECT 1 FROM deployments WHERE id = ?").get(deploymentId);
+  if (!row) throw new Error(`No deployment found with id ${deploymentId}`);
+  return { changed: false };
+}
 
 export async function DELETE(
   request: NextRequest,
@@ -44,20 +58,15 @@ export async function DELETE(
       );
     }
 
-    const endedIssueSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "issue");
-    const endedPrSessionIds = endActiveWebhookDeployments(db, repo.id, repo.name, "pr");
-    removeRepo(db, repo.id);
-    recordDiagnosticEventSafely(db, {
-      level: "warn",
-      event: "repo.removed",
-      source: "web",
-      owner,
-      repo: repoName,
-      message: "Repository removed from local tracking",
-      data: { repoId: repo.id, affectedSessionIds: [...endedIssueSessionIds, ...endedPrSessionIds] },
-    });
+    const result = await removeRepoAction(repo.id);
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error ?? "Failed to remove repository" },
+        { status: 500 },
+      );
+    }
     log.info({ msg: "api_repo_removed", repoId: repo.id, owner, name: repoName });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, ...(result.cacheStale ? { cacheStale: true as const } : {}) });
   } catch (err) {
     log.error({ err, msg: "api_repo_remove_failed", owner, name: repoName });
     return NextResponse.json(
@@ -234,7 +243,8 @@ function endActiveWebhookDeployments(
     const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
     if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
     else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
-    endDeployment(db, deployment.id, "killed_by_label");
+    const transition = transitionDeploymentTerminal(db, deployment.id, "killed_by_label");
+    if (!transition.changed) continue;
     if (targetType === "pr") {
       markActivePrReviewForDeploymentTerminal(db, deployment.id, {
         completedAt: Date.now(),
@@ -242,6 +252,7 @@ function endActiveWebhookDeployments(
         reason: "killed_by_label",
       });
     }
+    notifyDeploymentTerminalOutcome({ deploymentId: deployment.id });
     endedSessionIds.push(deployment.id);
   }
   return endedSessionIds;

@@ -18,6 +18,10 @@ export type AgentCompletionInput = {
   summary: string;
   finalHeadSha?: string;
   pushedCommitSha?: string;
+  pushedCommits?: string[];
+  changedFileCount?: number;
+  fixedFindingCount?: number;
+  errorMessage?: string;
 };
 
 export type AgentCompletionResult =
@@ -141,12 +145,16 @@ function recordCompletionDiagnostic(
   });
 }
 
-function completionResult(input: AgentCompletionInput): Record<string, string> {
+function completionResult(input: AgentCompletionInput): Record<string, unknown> {
   return {
     status: input.status,
     summary: input.summary,
     ...(input.finalHeadSha ? { finalHeadSha: input.finalHeadSha } : {}),
     ...(input.pushedCommitSha ? { pushedCommitSha: input.pushedCommitSha } : {}),
+    ...(input.pushedCommits ? { pushedCommits: input.pushedCommits } : {}),
+    ...(input.changedFileCount !== undefined ? { changedFileCount: input.changedFileCount } : {}),
+    ...(input.fixedFindingCount !== undefined ? { fixedFindingCount: input.fixedFindingCount } : {}),
+    ...(input.errorMessage ? { errorMessage: input.errorMessage, error: input.errorMessage } : {}),
   };
 }
 
@@ -166,7 +174,7 @@ function markLinkedPrReviewCompleted(
   if (!row) return;
   const previous = parseResult(row.result_json);
   const current = parseResult(resultJson);
-  const completedHeadSha = input.finalHeadSha ?? input.pushedCommitSha ?? row.reviewed_to_sha;
+  const completedHeadSha = input.finalHeadSha ?? input.pushedCommitSha ?? input.pushedCommits?.at(-1) ?? row.reviewed_to_sha;
   db.prepare(
     `UPDATE pr_reviews
      SET status = ?,

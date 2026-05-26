@@ -168,6 +168,67 @@ export function markActivePrReviewForDeploymentTerminal(
   return getPrReviewById(db, review.id);
 }
 
+export function markPrReviewDeploymentStarted(
+  db: Database.Database,
+  reviewId: number,
+  deploymentId: number,
+): PrReview | undefined {
+  const result = db.prepare(
+    `UPDATE pr_reviews
+     SET status = 'in_progress',
+         deployment_id = ?
+     WHERE id = ?
+       AND status IN ('reserved', 'launching')
+       AND EXISTS (
+         SELECT 1
+         FROM deployments d
+         WHERE d.id = ?
+           AND d.repo_id = pr_reviews.repo_id
+           AND d.target_type = 'pr'
+           AND d.target_number = pr_reviews.pr_number
+           AND d.state = 'active'
+           AND d.ended_at IS NULL
+       )`,
+  ).run(deploymentId, reviewId, deploymentId);
+  return result.changes > 0 ? getPrReviewById(db, reviewId) : undefined;
+}
+
+export function recoverOrphanedActivePrReviews(
+  db: Database.Database,
+  completedAt: number,
+): PrReview[] {
+  const rows = db.prepare(
+    `SELECT r.*
+     FROM pr_reviews r
+     LEFT JOIN deployments d ON d.id = r.deployment_id
+     WHERE r.status IN ('reserved', 'launching', 'in_progress')
+       AND (
+         r.deployment_id IS NULL
+         OR d.id IS NULL
+         OR d.state != 'active'
+         OR d.ended_at IS NOT NULL
+       )
+     ORDER BY r.started_at ASC, r.id ASC`,
+  ).all() as PrReviewRow[];
+  const recovered: PrReview[] = [];
+  const update = db.prepare(
+    `UPDATE pr_reviews
+     SET status = ?,
+         completed_at = ?,
+         result_json = ?
+     WHERE id = ?
+       AND status IN ('reserved', 'launching', 'in_progress')`,
+  );
+  for (const row of rows) {
+    const status: Extract<PrReviewStatus, "failed" | "superseded"> = row.deployment_id === null ? "failed" : "superseded";
+    const reason = row.deployment_id === null ? "orphaned_before_deployment" : "orphaned_deployment_terminal";
+    update.run(status, completedAt, JSON.stringify({ reason }), row.id);
+    const review = getPrReviewById(db, row.id);
+    if (review) recovered.push(review);
+  }
+  return recovered;
+}
+
 export function coalescePrReviewDesiredHead(
   db: Database.Database,
   reviewId: number,

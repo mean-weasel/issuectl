@@ -11,10 +11,11 @@ const getRepoById = vi.hoisted(() => vi.fn());
 const getSetting = vi.hoisted(() => vi.fn());
 const getActiveWebhookDeploymentsForRepoTarget = vi.hoisted(() => vi.fn());
 const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
-const endDeployment = vi.hoisted(() => vi.fn());
+const transitionRun = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
 const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
+const notifyDeploymentTerminalOutcome = vi.hoisted(() => vi.fn());
 const tmuxSessionName = vi.hoisted(() => vi.fn((repo: string, targetNumber: number, targetType = "issue") => `issuectl-${repo}-${targetType}-${targetNumber}`));
 const withAuthRetry = vi.hoisted(() => vi.fn());
 const getIssues = vi.hoisted(() => vi.fn());
@@ -27,7 +28,6 @@ vi.mock("@issuectl/core", () => ({
   getRepoById: (...args: unknown[]) => getRepoById(...args),
   getActiveWebhookDeploymentsForRepoTarget: (...args: unknown[]) => getActiveWebhookDeploymentsForRepoTarget(...args),
   markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
-  endDeployment: (...args: unknown[]) => endDeployment(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
   recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
@@ -49,6 +49,10 @@ vi.mock("@issuectl/core", () => ({
   formatErrorForUser: (err: unknown) => err instanceof Error ? err.message : String(err),
 }));
 
+vi.mock("@/lib/push/notifications", () => ({
+  notifyDeploymentTerminalOutcome: (...args: unknown[]) => notifyDeploymentTerminalOutcome(...args),
+}));
+
 vi.mock("@/lib/revalidate", () => ({
   revalidateSafely: () => ({ stale: false }),
 }));
@@ -56,7 +60,7 @@ vi.mock("@/lib/revalidate", () => ({
 import { addRepo, configureRepoWebhook, recreateRepoLabels, removeRepo, resendLastPing, updateRepo, verifyRepoAccess } from "./repos.js";
 
 beforeEach(() => {
-  getDb.mockReturnValue({});
+  getDb.mockReturnValue({ prepare: vi.fn(() => ({ run: transitionRun })) });
   withAuthRetry.mockReset();
   withAuthRetry.mockImplementation(async (fn: (octokit: unknown) => unknown) =>
     fn({
@@ -96,11 +100,13 @@ beforeEach(() => {
   getActiveWebhookDeploymentsForRepoTarget.mockReset();
   getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([]);
   markActivePrReviewForDeploymentTerminal.mockReset();
-  endDeployment.mockReset();
+  transitionRun.mockReset();
+  transitionRun.mockReturnValue({ changes: 1 });
   killTtyd.mockReset();
   killTmuxSession.mockReset();
   tmuxSessionName.mockClear();
   recordDiagnosticEventSafely.mockReset();
+  notifyDeploymentTerminalOutcome.mockReset();
 });
 
 describe("updateRepo action", () => {
@@ -265,13 +271,15 @@ describe("updateRepo action", () => {
     expect(result).toEqual({ success: true });
     expect(killTtyd).toHaveBeenCalledWith(123, "issuectl-issuectl-issue-506");
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
-    expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 12, "killed_by_label");
-    expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 44, "killed_by_label");
+    expect(transitionRun).toHaveBeenCalledWith("killed_by_label", 12);
+    expect(transitionRun).toHaveBeenCalledWith("killed_by_label", 44);
     expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 44, {
       completedAt: expect.any(Number),
       status: "superseded",
       reason: "killed_by_label",
     });
+    expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 12 });
+    expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 44 });
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       event: "repo.automation_disabled",
       owner: "mean-weasel",
@@ -382,12 +390,13 @@ describe("updateRepo action", () => {
       hook_id: 789,
     });
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
-    expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 44, "killed_by_label");
+    expect(transitionRun).toHaveBeenCalledWith("killed_by_label", 44);
     expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 44, {
       completedAt: expect.any(Number),
       status: "superseded",
       reason: "killed_by_label",
     });
+    expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 44 });
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       event: "repo.removed",
       owner: "mean-weasel",

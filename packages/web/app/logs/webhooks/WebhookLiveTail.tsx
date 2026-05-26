@@ -16,6 +16,8 @@ type StreamEntry = {
   resultDetail?: string | null;
   receivedAt?: number;
   intent?: { id?: number; status?: string; signalCount?: number } | null;
+  payloadRetained?: boolean;
+  payloadSize?: number | null;
 };
 
 type StreamMessage = {
@@ -156,6 +158,7 @@ export function WebhookLiveTail({
               <th>Event</th>
               <th>Target</th>
               <th>Result</th>
+              <th>Metadata</th>
             </tr>
           </thead>
           <tbody>
@@ -165,6 +168,7 @@ export function WebhookLiveTail({
                 <td>{entry.eventType ?? "webhook"}{entry.action ? `.${entry.action}` : ""}</td>
                 <td>{streamTarget(entry)}</td>
                 <td><span className={styles.result} data-result={entry.result ?? "received"}>{entry.result ?? "received"}</span></td>
+                <td>{streamMetadata(entry)}</td>
               </tr>
             ))}
           </tbody>
@@ -172,6 +176,14 @@ export function WebhookLiveTail({
       )}
     </div>
   );
+}
+
+function streamMetadata(entry: StreamEntry): string {
+  const parts = [];
+  if (entry.intent?.id) parts.push(`int_${entry.intent.id}`);
+  if (entry.intent?.status) parts.push(entry.intent.status);
+  if (entry.payloadRetained) parts.push(entry.payloadSize ? `${entry.payloadSize}B redacted` : "payload redacted");
+  return parts.length > 0 ? parts.join(" · ") : "-";
 }
 
 function parseStreamMessage(value: unknown): StreamMessage | null {

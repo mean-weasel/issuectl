@@ -1,6 +1,6 @@
+/* eslint-disable max-lines */
 import type Database from "better-sqlite3";
 import {
-  endDeployment,
   killTmuxSession,
   killTtyd,
   recordDiagnosticEventSafely,
@@ -12,6 +12,7 @@ import type { WebhookIntentWorkerResult } from "./webhook-intent-worker";
 import { getLatestIntentEvent, triggeredByForIntentEvent } from "./webhook-intent-source";
 import { planPrReview } from "./webhook-pr-review-state";
 import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
+import { notifyDeploymentTerminalOutcome } from "./push/notifications";
 
 export type PullState = {
   title: string;
@@ -107,7 +108,12 @@ export async function handlePullRequestIntent(
     broadcastEventsChanged();
     review = { ...review, status: "launching" };
     const launch = await deps.launchPr(db, repo, intent, pull, review);
-    markPrReviewInProgress(db, review.id, launch.deploymentId);
+    const linkedReview = markPrReviewDeploymentStarted(db, review.id, launch.deploymentId);
+    if (!linkedReview) {
+      transitionDeploymentTerminal(db, launch.deploymentId, "failed");
+      notifyDeploymentTerminalOutcome({ deploymentId: launch.deploymentId });
+      throw new Error("PR review deployment could not be linked after launch");
+    }
     markIntentLaunched(db, intent.id, now, launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched PR review session.", launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.pr_launched", "Webhook launched PR review session.", launch.deploymentId);
@@ -165,16 +171,70 @@ function endWebhookPrSessionForTarget(
   ) => string)(repo.name, intent.targetNumber, "pr");
   if (row.ttyd_pid) killTtyd(row.ttyd_pid, sessionName);
   else if (row.terminal_backend === "pty_bridge") killTmuxSession(sessionName);
-  (endDeployment as (
-    db: Database.Database,
-    deploymentId: number,
-    reason?: "closed" | "killed_by_label" | "ended_manual",
-  ) => void)(db, row.deployment_id, terminalReason);
-  db.prepare(
-    "UPDATE pr_reviews SET status = 'superseded', completed_at = ?, result_json = ? WHERE id = ?",
-  ).run(now, JSON.stringify({ reason: terminalReason }), row.review_id);
+  const transition = transitionDeploymentTerminal(db, row.deployment_id, terminalReason);
+  if (!transition.changed) return 0;
+  markActivePrReviewForDeploymentTerminal(db, row.deployment_id, {
+    completedAt: now,
+    status: "superseded",
+    reason: terminalReason,
+  });
+  notifyDeploymentTerminalOutcome({ deploymentId: row.deployment_id });
   recordPrIntentDiagnostic(db, repo, intent, "webhook.pr_session_ended", "Ended webhook PR review session.", row.deployment_id);
   return 1;
+}
+
+function transitionDeploymentTerminal(
+  db: Database.Database,
+  deploymentId: number,
+  terminalReason: "closed" | "killed_by_label" | "ended_manual" | "failed",
+): { changed: boolean } {
+  const result = db.prepare(
+    "UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL",
+  ).run(terminalReason, deploymentId);
+  if (result.changes > 0) return { changed: true };
+  const row = db.prepare("SELECT 1 FROM deployments WHERE id = ?").get(deploymentId);
+  if (!row) throw new Error(`No deployment found with id ${deploymentId}`);
+  return { changed: false };
+}
+
+function markPrReviewDeploymentStarted(
+  db: Database.Database,
+  reviewId: number,
+  deploymentId: number,
+): boolean {
+  const result = db.prepare(
+    `UPDATE pr_reviews
+     SET status = 'in_progress',
+         deployment_id = ?
+     WHERE id = ?
+       AND status IN ('reserved', 'launching')
+       AND EXISTS (
+         SELECT 1
+         FROM deployments d
+         WHERE d.id = ?
+           AND d.repo_id = pr_reviews.repo_id
+           AND d.target_type = 'pr'
+           AND d.target_number = pr_reviews.pr_number
+           AND d.state = 'active'
+           AND d.ended_at IS NULL
+       )`,
+  ).run(deploymentId, reviewId, deploymentId);
+  return result.changes > 0;
+}
+
+function markActivePrReviewForDeploymentTerminal(
+  db: Database.Database,
+  deploymentId: number,
+  input: { completedAt: number; status: "failed" | "superseded"; reason: string },
+): void {
+  db.prepare(
+    `UPDATE pr_reviews
+     SET status = ?,
+         completed_at = ?,
+         result_json = ?
+     WHERE deployment_id = ?
+       AND status IN ('reserved', 'launching', 'in_progress')`,
+  ).run(input.status, input.completedAt, JSON.stringify({ reason: input.reason }), deploymentId);
 }
 
 async function fetchPullState(repo: Repo, prNumber: number): Promise<PullState> {
@@ -227,12 +287,6 @@ function isSafeWebhookPullForReservation(pull: PullState, desiredHeadSha: string
 
 function markPrReviewLaunching(db: Database.Database, reviewId: number): void {
   db.prepare("UPDATE pr_reviews SET status = 'launching' WHERE id = ?").run(reviewId);
-}
-
-function markPrReviewInProgress(db: Database.Database, reviewId: number, deploymentId: number): void {
-  db.prepare(
-    "UPDATE pr_reviews SET status = 'in_progress', deployment_id = ? WHERE id = ?",
-  ).run(deploymentId, reviewId);
 }
 
 function markPrReviewFailed(db: Database.Database, reviewId: number, now: number, message: string): void {

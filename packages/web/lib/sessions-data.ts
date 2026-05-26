@@ -55,6 +55,8 @@ export type SessionListItem = {
   ttydPort: number | null;
   idleSince: string | null;
   preview: SessionPreview | null;
+  provenanceLabel?: string;
+  elapsedLabel?: string;
 };
 
 export type SessionTargetGroup = {
@@ -64,6 +66,7 @@ export type SessionTargetGroup = {
   targetNumber: number;
   targetLabel: string;
   sessions: SessionListItem[];
+  matchingSessionCount?: number;
 };
 
 export type ReviewRunItem = PrReview & {
@@ -76,6 +79,8 @@ export type ReviewRunItem = PrReview & {
   findingCount: number | null;
   rangeLabel: string;
   detailHref: string;
+  provenanceLabel?: string;
+  elapsedLabel?: string;
 };
 
 export type ReviewPrGroup = {
@@ -85,6 +90,7 @@ export type ReviewPrGroup = {
   repoName: string;
   prNumber: number;
   runs: ReviewRunItem[];
+  matchingRunCount?: number;
 };
 
 export type SessionsOverviewData = {
@@ -175,20 +181,18 @@ export function buildSessionsOverview(input: BuildInput): SessionsOverviewData {
   const sessions = rawSessions.map(({ repo, deployment }) =>
     sessionFromDeployment(repo, deployment, input.previews, childCounts),
   );
-  const filteredSessions = sessions.filter((session) => sessionMatchesFilters(session, input.filters));
   const reviews = input.repos.flatMap((repo) =>
     (input.reviewsByRepo.get(repo.id) ?? []).map((review) =>
       reviewFromRun(repo, review, sessions.find((session) => session.id === review.deploymentId) ?? null),
     ),
   );
-  const filteredReviews = reviews.filter((review) => reviewMatchesFilters(review, input.filters));
 
   return {
     initialized: true,
     filters: input.filters,
     repos: input.repos.map((repo) => ({ id: repo.id, fullName: repoFullName(repo) })),
-    sessionGroups: groupSessions(filteredSessions),
-    reviewGroups: groupReviews(filteredReviews),
+    sessionGroups: groupSessions(sessions, input.filters),
+    reviewGroups: groupReviews(reviews, input.filters),
     summary: {
       activeSessions: sessions.filter((session) => !session.endedAt).length,
       endedSessions: sessions.filter((session) => session.endedAt).length,
@@ -241,6 +245,8 @@ function sessionFromDeployment(
     ttydPort: deployment.ttydPort,
     idleSince: deployment.idleSince,
     preview,
+    provenanceLabel: sessionProvenance(deployment),
+    elapsedLabel: elapsedLabel(Date.parse(deployment.launchedAt), deployment.endedAt ? Date.parse(deployment.endedAt) : Date.now()),
   };
 }
 
@@ -254,13 +260,18 @@ function reviewFromRun(repo: Repo, review: PrReview, deployment: SessionListItem
     deployment,
     result,
     summary: stringValue(result.summary) ?? stringValue(result.reason) ?? stringValue(result.error) ?? null,
-    findingCount: numberValue(result.findingCount) ?? arrayLength(result.findings) ?? arrayLength(result.comments),
+    findingCount: numberValue(result.findingCount)
+      ?? numberValue(result.fixedFindingCount)
+      ?? arrayLength(result.findings)
+      ?? arrayLength(result.comments),
     rangeLabel: reviewRangeLabel(review),
     detailHref: `/reviews/${review.id}`,
+    provenanceLabel: reviewProvenance(review, deployment),
+    elapsedLabel: elapsedLabel(review.startedAt, review.completedAt ?? Date.now()),
   };
 }
 
-function groupSessions(sessions: SessionListItem[]): SessionTargetGroup[] {
+function groupSessions(sessions: SessionListItem[], filters: SessionsFilters): SessionTargetGroup[] {
   const groups = new Map<string, SessionTargetGroup>();
   for (const session of sessions) {
     const key = `${session.repoId}:${session.targetType}:${session.targetNumber}`;
@@ -271,6 +282,7 @@ function groupSessions(sessions: SessionListItem[]): SessionTargetGroup[] {
       targetNumber: session.targetNumber,
       targetLabel: session.targetLabel,
       sessions: [],
+      matchingSessionCount: 0,
     };
     group.sessions.push(session);
     groups.set(key, group);
@@ -279,11 +291,13 @@ function groupSessions(sessions: SessionListItem[]): SessionTargetGroup[] {
     .map((group) => ({
       ...group,
       sessions: [...group.sessions].sort(compareSessions),
+      matchingSessionCount: group.sessions.filter((session) => sessionMatchesFilters(session, filters)).length,
     }))
+    .filter((group) => group.matchingSessionCount > 0)
     .sort((left, right) => compareSessions(left.sessions[0], right.sessions[0]));
 }
 
-function groupReviews(reviews: ReviewRunItem[]): ReviewPrGroup[] {
+function groupReviews(reviews: ReviewRunItem[], filters: SessionsFilters): ReviewPrGroup[] {
   const groups = new Map<string, ReviewPrGroup>();
   for (const review of reviews) {
     const key = `${review.repoId}:${review.prNumber}`;
@@ -294,6 +308,7 @@ function groupReviews(reviews: ReviewRunItem[]): ReviewPrGroup[] {
       repoName: review.repoName,
       prNumber: review.prNumber,
       runs: [],
+      matchingRunCount: 0,
     };
     group.runs.push(review);
     groups.set(key, group);
@@ -302,7 +317,9 @@ function groupReviews(reviews: ReviewRunItem[]): ReviewPrGroup[] {
     .map((group) => ({
       ...group,
       runs: [...group.runs].sort((left, right) => right.startedAt - left.startedAt || right.id - left.id),
+      matchingRunCount: group.runs.filter((review) => reviewMatchesFilters(review, filters)).length,
     }))
+    .filter((group) => group.matchingRunCount > 0)
     .sort((left, right) => right.runs[0].startedAt - left.runs[0].startedAt || right.runs[0].id - left.runs[0].id);
 }
 
@@ -318,6 +335,7 @@ function sessionMatchesFilters(session: SessionListItem, filters: SessionsFilter
     session.branchName,
     session.agent,
     session.triggeredBy,
+    session.provenanceLabel ?? "",
     session.terminalReason ?? "",
     session.preview?.lines.join(" ") ?? "",
   ]).includes(filters.q.toLowerCase());
@@ -333,6 +351,7 @@ function reviewMatchesFilters(review: ReviewRunItem, filters: SessionsFilters): 
     `PR #${review.prNumber}`,
     review.status,
     review.triggeredBy,
+    review.provenanceLabel ?? "",
     review.headRepoFullName,
     review.headRef,
     review.reviewedFromSha ?? "",
@@ -370,6 +389,26 @@ function deploymentChildCounts(deployments: Array<Deployment | ActiveDeploymentW
 function reviewRangeLabel(review: PrReview): string {
   if (review.reviewedFromSha) return `${shortSha(review.reviewedFromSha)}..${shortSha(review.reviewedToSha)}`;
   return `full ${shortSha(review.reviewedToSha)}`;
+}
+
+function sessionProvenance(deployment: Deployment | ActiveDeploymentWithRepo): string {
+  const trigger = deployment.triggeredBy === "comment_command" ? "comment command" : deployment.triggeredBy;
+  const lineage = deployment.parentDeploymentId ? `child of session #${deployment.parentDeploymentId}` : "root session";
+  return `${trigger} · ${lineage}`;
+}
+
+function reviewProvenance(review: PrReview, deployment: SessionListItem | null): string {
+  const trigger = review.triggeredBy === "comment_command" ? "comment command" : review.triggeredBy;
+  const session = deployment ? `session #${deployment.id}` : "no linked session";
+  return `${trigger} · ${session}`;
+}
+
+function elapsedLabel(startMs: number, endMs: number): string {
+  const minutes = Math.max(0, Math.round((endMs - startMs) / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
 }
 
 function shortSha(value: string): string {

@@ -283,8 +283,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       "SELECT action_type, limit_count FROM agent_action_budgets ORDER BY action_type",
     ).all()).toEqual([
       { action_type: "comment", limit_count: 1 },
-      { action_type: "create_issue", limit_count: 1 },
-      { action_type: "create_pr", limit_count: 1 },
+      { action_type: "create_issue", limit_count: 0 },
+      { action_type: "create_pr", limit_count: 0 },
       { action_type: "label", limit_count: 2 },
       { action_type: "push", limit_count: 1 },
     ]);

@@ -87,6 +87,8 @@ export function runWebhookMigration(db: Database.Database): void {
   insert.run("max_webhook_launches_per_minute", "5");
   insert.run("max_webhook_queue_depth", "100");
   insert.run("max_webhook_intent_age_minutes", "60");
+  insert.run("webhook_raw_payload_retention_days", "7");
+  insert.run("webhook_event_retention_days", "30");
   insert.run("max_concurrent_webhook_agents", "2");
   insert.run("max_webhook_recursion_depth", "1");
   insert.run("public_webhook_base_url", "");

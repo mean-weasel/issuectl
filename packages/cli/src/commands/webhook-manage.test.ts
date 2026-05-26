@@ -126,6 +126,25 @@ describe("webhook management commands", () => {
     expect(result.stdout).not.toContain("old-secret");
   });
 
+  it("rotates an existing stored webhook id through webhook secret rotate alias", async () => {
+    vi.mocked(getRepoWebhookConfigById).mockReturnValue({
+      ...repo,
+      webhookId: 456,
+      webhookSecret: "old-secret",
+    } as never);
+
+    const result = await parseCommand(["webhook", "secret", "rotate", "mean-weasel/issuectl", "--yes"]);
+
+    expect(result.error).toBeUndefined();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(updateWebhook).toHaveBeenCalledWith(expect.objectContaining({ hook_id: 456 }));
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(db, 7, {
+      webhookId: 456,
+      webhookSecret: expect.any(String),
+    });
+    expect(result.stdout).not.toContain("old-secret");
+  });
+
   it("rejects create when public webhook base URL is missing", async () => {
     vi.mocked(getSetting).mockReturnValue(undefined);
 

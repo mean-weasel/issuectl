@@ -36,6 +36,10 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
               <dt>Result</dt>
               <dd>{resultSummary(data.result)}</dd>
             </div>
+            <div>
+              <dt>Provenance</dt>
+              <dd>{reviewProvenance(data.review.triggeredBy, data.deployment?.id ?? null)}</dd>
+            </div>
           </dl>
         </header>
 
@@ -65,15 +69,16 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
                     <Chip tone={statusTone(run.status)}>{labelize(run.status)}</Chip>
                   </div>
                   <p>{run.label}</p>
+                  <p>{reviewProvenance(run.triggeredBy, run.deploymentId)}</p>
                   {stringValue(run.result.reason) && <p>Reason: {stringValue(run.result.reason)}</p>}
                   <dl className={styles.facts}>
                     <div>
                       <dt>Started</dt>
-                      <dd>{formatUnix(run.startedAt)}</dd>
+                      <dd>{formatUnixMs(run.startedAt)}</dd>
                     </div>
                     <div>
                       <dt>Completed</dt>
-                      <dd>{run.completedAt ? formatUnix(run.completedAt) : "not complete"}</dd>
+                      <dd>{run.completedAt ? formatUnixMs(run.completedAt) : "not complete"}</dd>
                     </div>
                     <div>
                       <dt>Head</dt>
@@ -142,6 +147,14 @@ export function ReviewDetailPanel({ data, retryAction, fullRerunAction }: Props)
               <dd>{data.deployment ? `#${data.deployment.id}` : "none linked"}</dd>
             </div>
             <div>
+              <dt>Session branch</dt>
+              <dd>{data.deployment?.branchName ?? "not linked"}</dd>
+            </div>
+            <div>
+              <dt>Workspace</dt>
+              <dd>{data.deployment ? `${data.deployment.workspaceMode} · ${data.deployment.workspacePath}` : "not linked"}</dd>
+            </div>
+            <div>
               <dt>Terminal</dt>
               <dd>{data.deployment?.terminalReason ? labelize(data.deployment.terminalReason) : "not recorded"}</dd>
             </div>
@@ -199,6 +212,11 @@ function triggerDescription(trigger: string): string {
   return "Started manually";
 }
 
+function reviewProvenance(trigger: string, deploymentId: number | null): string {
+  const triggerText = trigger === "comment_command" ? "comment command" : trigger;
+  return deploymentId ? `${triggerText} through session #${deploymentId}` : `${triggerText} with no linked session`;
+}
+
 function labelize(value: string): string {
   return value.replaceAll("_", " ");
 }
@@ -218,4 +236,8 @@ function shortSha(value: string): string {
 
 function formatUnix(value: number): string {
   return new Date(value * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatUnixMs(value: number): string {
+  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }

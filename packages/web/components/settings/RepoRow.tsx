@@ -124,7 +124,7 @@ export function RepoRow({ repo, color }: Props) {
               onChange={(e) => setWebhookPayloadMode(e.target.value as typeof webhookPayloadMode)}
             >
               <option value="metadata">Metadata</option>
-              <option value="raw">Raw</option>
+              <option value="raw">Raw, dashboard redacted</option>
             </select>
           </label>
         </div>
@@ -171,6 +171,12 @@ export function RepoRow({ repo, color }: Props) {
   }
 
   const hasPath = !!repo.localPath;
+  const webhookState = repo.webhookId ? "webhook configured" : "webhook missing";
+  const automationState = [
+    repo.autoLaunchIssues ? "issues on" : "issues off",
+    repo.autoReviewPrs ? "PR reviews on" : "PR reviews off",
+  ].join(" · ");
+  const payloadState = repo.webhookPayloadMode === "raw" ? "payloads retained, dashboard redacted" : "metadata-only payloads";
 
   return (
     <div className={hasPath ? styles.row : styles.rowNoPath}>
@@ -185,7 +191,7 @@ export function RepoRow({ repo, color }: Props) {
         {repo.localPath ?? "no local path \u2014 will prompt to clone"}
       </span>
       <span className={styles.webhookStatus}>
-        issues {repo.autoLaunchIssues ? "on" : "off"} · PRs {repo.autoReviewPrs ? "on" : "off"} · {repo.issueAgent}/{repo.reviewAgent} · {repo.webhookPayloadMode}
+        {webhookState} · {automationState} · agents {repo.issueAgent}/{repo.reviewAgent} · {payloadState}
       </span>
       <div className={styles.actions}>
         <Button

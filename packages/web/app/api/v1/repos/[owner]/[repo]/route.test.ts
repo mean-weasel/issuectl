@@ -14,31 +14,39 @@ const getDb = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getActiveWebhookDeploymentsForRepoTarget = vi.hoisted(() => vi.fn());
 const markActivePrReviewForDeploymentTerminal = vi.hoisted(() => vi.fn());
-const endDeployment = vi.hoisted(() => vi.fn());
+const transitionRun = vi.hoisted(() => vi.fn());
 const killTtyd = vi.hoisted(() => vi.fn());
 const killTmuxSession = vi.hoisted(() => vi.fn());
 const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
+const notifyDeploymentTerminalOutcome = vi.hoisted(() => vi.fn());
 const tmuxSessionName = vi.hoisted(() => vi.fn((repo: string, targetNumber: number, targetType = "issue") => `issuectl-${repo}-${targetType}-${targetNumber}`));
 const updateRepo = vi.hoisted(() => vi.fn());
 const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
+const removeRepoAction = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
   getRepo: (...args: unknown[]) => getRepo(...args),
   getActiveWebhookDeploymentsForRepoTarget: (...args: unknown[]) => getActiveWebhookDeploymentsForRepoTarget(...args),
   markActivePrReviewForDeploymentTerminal: (...args: unknown[]) => markActivePrReviewForDeploymentTerminal(...args),
-  endDeployment: (...args: unknown[]) => endDeployment(...args),
   killTtyd: (...args: unknown[]) => killTtyd(...args),
   killTmuxSession: (...args: unknown[]) => killTmuxSession(...args),
   recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
   tmuxSessionName: (repo: string, targetNumber: number, targetType?: "issue" | "pr") => tmuxSessionName(repo, targetNumber, targetType),
   updateRepo: (...args: unknown[]) => updateRepo(...args),
   updateRepoWebhookSettings: (...args: unknown[]) => updateRepoWebhookSettings(...args),
-  removeRepo: vi.fn(),
   formatErrorForUser: (err: unknown) => err instanceof Error ? err.message : String(err),
 }));
 
-import { PATCH } from "./route";
+vi.mock("@/lib/push/notifications", () => ({
+  notifyDeploymentTerminalOutcome: (...args: unknown[]) => notifyDeploymentTerminalOutcome(...args),
+}));
+
+vi.mock("@/lib/actions/repos", () => ({
+  removeRepo: (...args: unknown[]) => removeRepoAction(...args),
+}));
+
+import { DELETE, PATCH } from "./route";
 
 const repo = {
   id: 1,
@@ -62,7 +70,7 @@ function request(body: unknown): NextRequest {
 
 beforeEach(() => {
   requireAuth.mockReturnValue(null);
-  getDb.mockReturnValue({});
+  getDb.mockReturnValue({ prepare: vi.fn(() => ({ run: transitionRun })) });
   getRepo.mockReturnValue(repo);
   updateRepo.mockReset();
   updateRepo.mockReturnValue(repo);
@@ -77,14 +85,42 @@ beforeEach(() => {
   getActiveWebhookDeploymentsForRepoTarget.mockReset();
   getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([]);
   markActivePrReviewForDeploymentTerminal.mockReset();
-  endDeployment.mockReset();
+  transitionRun.mockReset();
+  transitionRun.mockReturnValue({ changes: 1 });
   killTtyd.mockReset();
   killTmuxSession.mockReset();
   recordDiagnosticEventSafely.mockReset();
+  notifyDeploymentTerminalOutcome.mockReset();
   tmuxSessionName.mockClear();
+  removeRepoAction.mockReset();
+  removeRepoAction.mockResolvedValue({ success: true });
 });
 
 describe("/api/v1/repos/[owner]/[repo]", () => {
+  it("DELETE uses the shared repo removal workflow", async () => {
+    const response = await DELETE(new NextRequest("http://localhost/api/v1/repos/mean-weasel/issuectl", {
+      method: "DELETE",
+    }), { params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }) });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ success: true });
+    expect(removeRepoAction).toHaveBeenCalledWith(1);
+  });
+
+  it("DELETE preserves the local repo 404 before removal", async () => {
+    getRepo.mockReturnValue(undefined);
+
+    const response = await DELETE(new NextRequest("http://localhost/api/v1/repos/mean-weasel/missing", {
+      method: "DELETE",
+    }), { params: Promise.resolve({ owner: "mean-weasel", repo: "missing" }) });
+    const json = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(json).toEqual({ success: false, error: "Repository not found" });
+    expect(removeRepoAction).not.toHaveBeenCalled();
+  });
+
   it("PATCH updates webhook automation settings without exposing secrets", async () => {
     const response = await PATCH(request({
       autoLaunchIssues: true,
@@ -131,12 +167,13 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
 
     expect(response.status).toBe(200);
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
-    expect(endDeployment).toHaveBeenCalledWith(expect.anything(), 22, "killed_by_label");
+    expect(transitionRun).toHaveBeenCalledWith("killed_by_label", 22);
     expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(expect.anything(), 22, {
       completedAt: expect.any(Number),
       status: "superseded",
       reason: "killed_by_label",
     });
+    expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 22 });
     expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       event: "repo.automation_disabled",
       data: expect.objectContaining({

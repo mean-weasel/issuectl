@@ -12,6 +12,8 @@ import {
   type WebhookLogResult,
 } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { webhookStreamEntry } from "@/lib/webhook-events-stream";
+import { redactWebhookPayload } from "@/lib/webhook-payload-redaction";
 import { WebhookLiveTail } from "./WebhookLiveTail";
 import styles from "./page.module.css";
 
@@ -114,7 +116,7 @@ export default async function WebhookLogsPage({
         </dl>
         <WebhookLiveTail
           endpoint="/api/webhooks/events/stream"
-          initialEntries={entries.slice(0, 50)}
+          initialEntries={entries.slice(0, 50).map(webhookStreamEntry)}
           initialCounts={summarizeStreamCounts(entries.slice(0, 50))}
         />
 
@@ -285,8 +287,15 @@ function WebhookRow({ entry, repo }: { entry: WebhookLogEntry; repo: Repo | unde
               <DetailBlock title="Chain">
                 <span className={styles.code}>Target: {target}</span>
                 <span className={styles.code}>Intent: {entry.intent ? `int_${entry.intent.id}` : "none"}</span>
+                <span className={styles.code}>Action: {entry.actionId ?? "none"}</span>
                 <span className={styles.code}>Result: {entry.resultDetail ?? entry.result}</span>
                 <span className={styles.code}>CLI hint: {cliHint(entry)}</span>
+              </DetailBlock>
+              <DetailBlock title="Metadata">
+                <span className={styles.code}>Repo id: {entry.repoId}</span>
+                <span className={styles.code}>Delivery age: {formatAge(entry.receivedAt)}</span>
+                <span className={styles.code}>Payload retained: {entry.payloadJson ? `${entry.payloadJson.length} bytes, redacted below` : "no"}</span>
+                <span className={styles.code}>Correlation: {entry.deliveryId}</span>
               </DetailBlock>
               <DetailBlock title="Diagnostics">
                 <span className={styles.code}>{command}</span>
@@ -294,7 +303,7 @@ function WebhookRow({ entry, repo }: { entry: WebhookLogEntry; repo: Repo | unde
               <DetailBlock title="Raw payload">
                 {entry.payloadJson ? (
                   entry.payloadJson.length > 100_000 ? (
-                    <span className={styles.code}>payload: {entry.payloadJson.length} bytes; use CLI export for full payload</span>
+                    <span className={styles.code}>payload: {entry.payloadJson.length} bytes; dashboard preview redacted</span>
                   ) : (
                     <pre className={styles.payload}>{formatPayload(entry.payloadJson)}</pre>
                   )
@@ -487,9 +496,5 @@ function auditCliHint(event: DiagnosticEvent): string {
 }
 
 function formatPayload(payload: string): string {
-  try {
-    return JSON.stringify(JSON.parse(payload), null, 2);
-  } catch {
-    return payload;
-  }
+  return redactWebhookPayload(payload);
 }

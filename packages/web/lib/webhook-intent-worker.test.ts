@@ -14,6 +14,11 @@ import {
 } from "@issuectl/core";
 import { runWebhookIntentWorkerOnce } from "./webhook-intent-worker.js";
 
+const notifyDeploymentTerminalOutcome = vi.hoisted(() => vi.fn());
+vi.mock("./push/notifications", () => ({
+  notifyDeploymentTerminalOutcome: (...args: unknown[]) => notifyDeploymentTerminalOutcome(...args),
+}));
+
 type IntentRow = {
   status: string;
   scheduled_at: number;
@@ -108,6 +113,7 @@ describe("runWebhookIntentWorkerOnce", () => {
   let repoId: number;
 
   beforeEach(() => {
+    notifyDeploymentTerminalOutcome.mockReset();
     db = createTestDb();
     repoId = addRepo(db, { owner: "mean-weasel", name: "issuectl" }).id;
     updateRepoWebhookSettings(db, repoId, { autoLaunchIssues: true });
@@ -195,6 +201,34 @@ describe("runWebhookIntentWorkerOnce", () => {
         lease_expires_at: null,
       }),
     );
+  });
+
+  it("recovers orphaned active PR review rows before claiming new work", async () => {
+    db.prepare(
+      `INSERT INTO pr_reviews (
+        repo_id, pr_number, started_head_sha, review_base_sha, reviewed_to_sha,
+        head_repo_full_name, head_ref, status, triggered_by, started_at
+      ) VALUES (?, 44, 'head-b', 'base-a', 'head-b', 'mean-weasel/issuectl',
+        'feature/webhooks', 'launching', 'webhook', 1000)`,
+    ).run(repoId);
+
+    const result = await runWorker(db, 3_000);
+
+    expectWorkerResult(result, { recovered: 0 });
+    expect(db.prepare("SELECT status, completed_at, result_json FROM pr_reviews").get()).toEqual({
+      status: "failed",
+      completed_at: 3_000,
+      result_json: JSON.stringify({ reason: "orphaned_before_deployment" }),
+    });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.pr_review_recovered"] })).toEqual([
+      expect.objectContaining({
+        owner: "mean-weasel",
+        repo: "issuectl",
+        targetType: "pr",
+        targetNumber: 44,
+        status: "failed",
+      }),
+    ]);
   });
 
   it("expires active intents beyond max age", async () => {

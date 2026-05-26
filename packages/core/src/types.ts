@@ -35,6 +35,8 @@ export type SettingKey =
   | "max_webhook_launches_per_minute"
   | "max_webhook_queue_depth"
   | "max_webhook_intent_age_minutes"
+  | "webhook_raw_payload_retention_days"
+  | "webhook_event_retention_days"
   | "max_concurrent_webhook_agents"
   | "max_webhook_recursion_depth"
   | "review_hard_timeout_minutes"
