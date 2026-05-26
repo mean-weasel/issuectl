@@ -43,8 +43,13 @@ export async function buildPrLaunchContext(
   options: LaunchOptions,
   prNumber: number,
 ): Promise<{ contextString: string; expectedHeadRef: string; expectedHeadSha: string }> {
+  const requestedReviewRange =
+    options.reviewedFromSha && options.reviewedToSha
+      ? { fromSha: options.reviewedFromSha, toSha: options.reviewedToSha }
+      : undefined;
   const detail = await getPullDetail(db, octokit, options.owner, options.repo, prNumber, {
     forceRefresh: true,
+    fileRange: requestedReviewRange,
   });
   const pull = detail.pull;
   if (!pull.headSha) throw new Error(`PR #${prNumber} is missing head SHA`);

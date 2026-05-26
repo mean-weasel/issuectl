@@ -442,6 +442,7 @@ describe("executeAgentMutationRequest", () => {
       ref: "heads/feature/review",
       sha: "head-b",
       expectedHeadSha: "head-a",
+      workspacePath: "/tmp/issuectl-pr-44",
     });
     expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 1, used_count: 1 });
   });

@@ -63,10 +63,11 @@ operators can use any public tunnel provider and finish installation with
 `issuectl webhook create` or repo settings.
 `webhook intents` lists the persisted debounce/launch queue. `webhook intent
 fire` schedules a pending or deferred intent immediately, and `webhook intent
-drop` expires an active intent with an operator reason. `webhook replay` remains
-unimplemented in v1: webhook replay remains deferred until raw payload retention
-and replay-count lineage have a durable schema and safety design; metadata-only
-deliveries cannot be replayed safely.
+drop` expires an active intent with an operator reason. `webhook replay` can
+replay retained, target-bearing, replayable deliveries into immediate intents
+and records replay diagnostics. Metadata-only pruned deliveries still cannot be
+replayed safely, and richer replay-count lineage remains a later schema/UX
+extension.
 
 Webhook issue/comment-command sessions use bounded daemon mutation budgets:
 comment actions are limited to one, label actions are limited to two, and
@@ -140,10 +141,9 @@ unless they also end a real deployment row.
 - Direct, ambient-credential agent pushes. Webhook/comment-command agents must
   route GitHub mutations, including allowed PR pushes, through the
   daemon-mediated `issuectl agent mutate` policy gateway.
-- True local commit upload for PR review fixes is not implemented yet. The
-  daemon verifies same-repo, non-default, unprotected PR head state and local
-  workspace branch/SHA/remote metadata, then fails closed with
-  `unsupported_local_push` until a daemon-owned git object upload or git push
-  design is approved.
+- Agent-owned PR pushes that bypass daemon mediation. The daemon verifies
+  same-repo, non-default, unprotected PR head state, local workspace
+  branch/SHA/remote metadata, expected-head ancestry, performs the local
+  `git push`, and verifies the remote ref resolves to the pushed commit.
 - New push platforms or preference schema beyond the existing APNs/iOS device
   registration surface.

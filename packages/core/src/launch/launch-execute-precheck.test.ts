@@ -24,6 +24,36 @@ const { assemblePrReviewContextSpy } = vi.hoisted(() => ({
   assemblePrReviewContextSpy: vi.fn(() => "fake pr context"),
 }));
 
+const { getPullDetailSpy } = vi.hoisted(() => ({
+  getPullDetailSpy: vi.fn(async () => ({
+    pull: {
+      number: 44,
+      title: "test PR",
+      body: "Please review",
+      state: "open",
+      draft: false,
+      merged: false,
+      user: null,
+      headRef: "feature/webhooks",
+      baseRef: "main",
+      headSha: "head-b",
+      baseSha: "base-a",
+      headRepoFullName: "acme/api",
+      baseRepoFullName: "acme/api",
+      additions: 1,
+      deletions: 0,
+      changedFiles: 1,
+      createdAt: "2026-04-12T00:00:00Z",
+      updatedAt: "2026-04-12T00:00:00Z",
+      mergedAt: null,
+      closedAt: null,
+      htmlUrl: "https://example.invalid/pr/44",
+    },
+    files: [{ filename: "src/app.ts", status: "modified", patch: "@@" }],
+    reviews: [],
+  })),
+}));
+
 vi.mock("./workspace.js", () => ({
   prepareWorkspace: prepareWorkspaceSpy,
 }));
@@ -82,33 +112,7 @@ vi.mock("../data/issues.js", () => ({
 }));
 
 vi.mock("../data/pulls.js", () => ({
-  getPullDetail: async () => ({
-    pull: {
-      number: 44,
-      title: "test PR",
-      body: "Please review",
-      state: "open",
-      draft: false,
-      merged: false,
-      user: null,
-      headRef: "feature/webhooks",
-      baseRef: "main",
-      headSha: "head-b",
-      baseSha: "base-a",
-      headRepoFullName: "acme/api",
-      baseRepoFullName: "acme/api",
-      additions: 1,
-      deletions: 0,
-      changedFiles: 1,
-      createdAt: "2026-04-12T00:00:00Z",
-      updatedAt: "2026-04-12T00:00:00Z",
-      mergedAt: null,
-      closedAt: null,
-      htmlUrl: "https://example.invalid/pr/44",
-    },
-    files: [{ filename: "src/app.ts", status: "modified", patch: "@@" }],
-    reviews: [],
-  }),
+  getPullDetail: getPullDetailSpy,
 }));
 
 vi.mock("./context.js", () => ({
@@ -140,6 +144,7 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     spawnTtydSpy.mockClear();
     allocatePortSpy.mockClear();
     assemblePrReviewContextSpy.mockClear();
+    getPullDetailSpy.mockClear();
     reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
     db = createTestDb();
@@ -401,6 +406,17 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
         reviewedFromSha: "head-a",
         reviewedToSha: "head-b",
       }),
+    );
+    expect(getPullDetailSpy).toHaveBeenCalledWith(
+      db,
+      expect.anything(),
+      "acme",
+      "api",
+      44,
+      {
+        forceRefresh: true,
+        fileRange: { fromSha: "head-a", toSha: "head-b" },
+      },
     );
   });
 

@@ -91,6 +91,7 @@ export type PushInput = {
   ref: string;
   sha: string;
   expectedHeadSha: string;
+  workspacePath: string;
 };
 
 export type WorkspaceHeadVerificationInput = {

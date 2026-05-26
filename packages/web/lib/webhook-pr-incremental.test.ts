@@ -153,6 +153,13 @@ describe("incremental PR webhook intents", () => {
   });
 
   it("supersedes the completed range and launches a full review after force push", async () => {
+    seedCompletedReview(db, repoId, 49, {
+      startedHeadSha: "head-a",
+      completedHeadSha: "head-a",
+      reviewedToSha: "head-a",
+      startedAt: 500,
+      completedAt: 750,
+    });
     seedCompletedReview(db, repoId, 49);
     mergeWebhookIntent(db, {
       repoId,
@@ -174,6 +181,7 @@ describe("incremental PR webhook intents", () => {
 
     expect(result).toEqual(expect.objectContaining({ claimed: 1, launched: 1, failed: 0 }));
     expect(prReviewRows(db)).toEqual([
+      expect.objectContaining({ status: "superseded", reviewed_to_sha: "head-a" }),
       expect.objectContaining({ status: "superseded", reviewed_to_sha: "head-b" }),
       expect.objectContaining({
         status: "in_progress",
@@ -218,15 +226,31 @@ describe("incremental PR webhook intents", () => {
   });
 });
 
-function seedCompletedReview(db: Database.Database, repoId: number, prNumber: number): void {
+function seedCompletedReview(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+  options: {
+    startedHeadSha?: string;
+    completedHeadSha?: string;
+    reviewedToSha?: string;
+    startedAt?: number;
+    completedAt?: number;
+  } = {},
+): void {
+  const startedHeadSha = options.startedHeadSha ?? "head-b";
+  const completedHeadSha = options.completedHeadSha ?? "head-b";
+  const reviewedToSha = options.reviewedToSha ?? "head-b";
+  const startedAt = options.startedAt ?? 1_000;
+  const completedAt = options.completedAt ?? 1_500;
   db.prepare(
     `INSERT INTO pr_reviews (
       repo_id, pr_number, deployment_id, started_head_sha, completed_head_sha,
       review_base_sha, reviewed_to_sha, head_repo_full_name, head_ref, status,
       triggered_by, started_at, completed_at, result_json
-    ) VALUES (?, ?, NULL, 'head-b', 'head-b', 'base-a', 'head-b',
-      'mean-weasel/issuectl', 'feature/webhooks', 'completed', 'webhook', 1000, 1500, '{}')`,
-  ).run(repoId, prNumber);
+    ) VALUES (?, ?, NULL, ?, ?, 'base-a', ?,
+      'mean-weasel/issuectl', 'feature/webhooks', 'completed', 'webhook', ?, ?, '{}')`,
+  ).run(repoId, prNumber, startedHeadSha, completedHeadSha, reviewedToSha, startedAt, completedAt);
 }
 
 function recordTestDeployment(db: Database.Database, repoId: number, targetNumber: number): number {

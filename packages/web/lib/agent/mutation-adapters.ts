@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   addLabel,
   createIssue,
@@ -9,6 +11,8 @@ import {
   withAuthRetry,
 } from "@issuectl/core";
 import type { AgentMutationAdapters, PullForSafety } from "./mutation-types";
+
+const execFileAsync = promisify(execFile);
 
 export const defaultAgentMutationAdapters: AgentMutationAdapters = {
   comment: async ({ owner, repo, targetNumber, body }) => {
@@ -52,10 +56,28 @@ export const defaultAgentMutationAdapters: AgentMutationAdapters = {
     if (!remoteMatchesRepo(remoteUrl, owner, repo)) return { ok: false, reason: "unsafe_checkout" };
     return { ok: true };
   },
-  push: async ({ owner, repo, ref, sha }) => {
-    await withAuthRetry((octokit) =>
-      octokit.rest.git.updateRef({ owner, repo, ref, sha, force: false }),
-    );
+  push: async ({ ref, sha, expectedHeadSha, workspacePath }) => {
+    const remoteRef = `refs/${ref}`;
+    await execFileAsync("git", ["cat-file", "-e", `${sha}^{commit}`], {
+      cwd: workspacePath,
+      timeout: 10_000,
+    });
+    await execFileAsync("git", ["merge-base", "--is-ancestor", expectedHeadSha, sha], {
+      cwd: workspacePath,
+      timeout: 10_000,
+    });
+    await execFileAsync("git", ["push", "origin", `${sha}:${remoteRef}`], {
+      cwd: workspacePath,
+      timeout: 60_000,
+    });
+    const output = await execFileAsync("git", ["ls-remote", "origin", remoteRef], {
+      cwd: workspacePath,
+      timeout: 30_000,
+    }) as { stdout: string } | string;
+    const stdout = typeof output === "string" ? output : output.stdout;
+    if (remoteHeadSha(stdout) !== sha) {
+      throw new Error("Remote PR head did not match pushed commit after git push");
+    }
   },
 };
 
@@ -115,4 +137,9 @@ function mapPullForSafety(raw: unknown): PullForSafety {
     closedAt: pull.closed_at,
     htmlUrl: pull.html_url,
   };
+}
+
+function remoteHeadSha(stdout: string): string | undefined {
+  const line = stdout.trim().split("\n").find(Boolean);
+  return line?.split(/\s+/)[0];
 }

@@ -1,0 +1,467 @@
+# GoalBuddy v2 state.yaml
+version: 2
+
+goal:
+  title: "Fix Issue 506/507 Implementation Gaps"
+  slug: "fix-506-507-gaps"
+  kind: existing_plan
+  tranche: "Validate and close the known #506/#507 implementation gaps in safe verified slices until the final audit proves the full gap list is resolved."
+  status: done
+  oracle:
+    signal: "Final audit maps every known #506/#507 gap to fixed verification, explicit deferral decision, or precise blocker."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Passing focused checks for touched packages plus a final Judge/PM receipt with full_outcome_complete: true and no required Worker tasks left queued or active."
+  intake:
+    original_request: "Use GoalBuddy goal-prep to make a plan to fix all gaps."
+    interpreted_outcome: "Create a durable execution board that will drive implementation of all remaining #506/#507 gaps."
+    input_shape: existing_plan
+    audience: "issuectl maintainer/operator"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused tests/typechecks/lint/build for touched packages and final audit against the known gap list."
+    likely_misfire: "Spending the run on planning or UI polish while leaving backend safety/session gaps unresolved."
+    blind_spots_considered:
+      - "Direct PR push may update refs without uploading local objects."
+      - "Webhook issue sessions may lack completion tokens."
+      - "PR review recovery may strand active locks."
+      - "Incremental review may track ranges without using range-limited diffs."
+      - "Credential isolation may be best-effort rather than enforced."
+      - "Some #507 UX gaps may need product deferral rather than immediate implementation."
+    existing_plan_facts:
+      - "Known backend gaps include issue completion tokens, PR review recovery, direct fix-push semantics, incremental range behavior, pre-launch PR safety gates, action budget defaults, and credential isolation."
+      - "Known UX/operator gaps include boot-time webhook URL reconciliation, replay lineage inconsistency, thinner repo settings/sessions/reviews/log UX, and REST/web semantic drift."
+      - "Prioritize correctness and security before cosmetic UX parity."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/fix-506-507-gaps/"
+    command: "npx goalbuddy board docs/goals/fix-506-507-gaps"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the known #506/#507 gap list and choose the first largest safe implementation slice."
+    inputs:
+      - "Prior independent audit summary in the current thread"
+      - "GitHub issues #506 and #507"
+      - "Current repo state"
+      - "AGENTS.md and CLAUDE.md project guidance"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Preserve the prior audit as plan facts, but verify current file evidence before assigning Worker scope."
+      - "Prioritize backend/security/session correctness over UX polish unless evidence shows a UX slice is safer and higher leverage."
+    expected_output:
+      - "Validated gap list with keep/drop/merge decisions"
+      - "Risk-ranked implementation order"
+      - "Exact first Worker objective"
+      - "allowed_files for first Worker"
+      - "verify commands for first Worker"
+      - "stop_if conditions for first Worker"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Validated current branch evidence after one goal_judge timeout. Several prior audit gaps are already addressed on this branch: issue webhook launches generate completion tokens, issue sessions seed zero push/create budgets, PR pre-launch safety includes protected-head data, and web startup calls the webhook URL reconciler. Remaining high-priority gaps include startup PR-review recovery, direct PR fix-push semantics, incremental range-limited diff context, hard credential isolation limits, replay lineage, and thinner UX/operator parity."
+      evidence:
+        - "packages/web/lib/webhook-intent-worker.ts: issue launches call randomUUID() and pass completionToken into executeLaunch."
+        - "packages/core/src/launch/launch-contexts.ts: issue-triggered sessions get zero push/create budgets; PR sessions still allow one push/create budget."
+        - "packages/web/server.ts and packages/web/lib/webhook-url-reconciler.ts: web boot starts URL reconciliation."
+        - "packages/core/src/launch/ttyd.ts: reconcileOrphanedDeployments only sets deployments.ended_at and does not update linked pr_reviews or terminal_reason."
+        - "packages/web/lib/agent/mutation-adapters.ts: push uses GitHub git.updateRef for an existing SHA, not object upload/local git push."
+      risk_ranked_order:
+        - "1. Startup PR-review recovery for orphaned/missing tmux sessions."
+        - "2. Direct PR fix-push semantics and final ref/object verification."
+        - "3. Incremental PR review range-limited diff context and superseding all invalidated ranges."
+        - "4. Credential isolation hardening or explicit product deferral."
+        - "5. Replay lineage/schema/docs consistency."
+        - "6. Remaining #507 UX/operator parity."
+      required_board_updates:
+        - "Activate T002 for startup PR-review recovery."
+        - "Late goal_judge receipt agreed with this slice and refined risk order: PR review recovery, direct PR push semantics, incremental PR range context, replay lineage, credential isolation decision/enforcement, UX/operator polish disposition."
+      spawned_tasks:
+        - T002
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Fix startup reconciliation so missing tmux sessions mark linked active PR reviews terminal and record the deployment terminal reason."
+    allowed_files:
+      - "packages/core/src/launch/ttyd.ts"
+      - "packages/core/src/launch/ttyd-respawn.test.ts"
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/pr-reviews.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- ttyd-respawn pr-reviews"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/core lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The selected behavior conflicts with the #506/#507 specs or project guidance."
+      - "A product/security decision is required before implementation."
+      - "Verification fails twice for reasons outside the selected slice."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/launch/ttyd.ts"
+        - "packages/core/src/launch/ttyd-respawn.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- ttyd-respawn pr-reviews"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+      summary: "Startup reconciliation now records terminal_reason='liveness_missing', emits target_type/target_number diagnostics, and marks linked active PR reviews failed when the tmux session is missing. Added a regression test for missing PR tmux-session reconciliation."
+
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the first Worker slice and select the next largest safe slice."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "Current diff"
+      - "Verification output"
+    constraints:
+      - "Do not implement."
+      - "Approve the slice only if it resolves or intentionally narrows at least one known high-priority gap."
+      - "If safe work remains, produce the next Worker objective with allowed_files, verify, and stop_if."
+    expected_output:
+      - "approved | rejected | needs_followup"
+      - "resolved gaps"
+      - "remaining gaps"
+      - "next Worker task details if not complete"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approved T002: startup reconciliation now releases PR-review locks for missing tmux sessions and passed core focused tests, typecheck, and lint. Next largest safe slice is direct PR fix-push correctness."
+      resolved_gaps:
+        - "Startup PR-review recovery for orphaned/missing tmux sessions."
+      remaining_gaps:
+        - "Direct PR fix-push semantics and final ref/object verification."
+        - "Incremental PR review range-limited diff context and superseding invalidated ranges."
+        - "Credential isolation hardening or explicit product deferral."
+        - "Replay lineage/schema/docs consistency."
+        - "Remaining #507 UX/operator parity."
+      required_board_updates:
+        - "Activate T004 for direct PR fix-push semantics."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Fix direct PR fix-push semantics so successful fix pushes use local git push from the verified workspace, with final remote ref/object verification and focused regression coverage."
+    allowed_files:
+      - "packages/web/lib/agent/mutation-adapters.ts"
+      - "packages/web/lib/agent/mutation-types.ts"
+      - "packages/web/lib/agent/mutations.ts"
+      - "packages/web/lib/agent/mutations.test.ts"
+      - "packages/web/lib/agent/mutation-actions.test.ts"
+      - "packages/web/lib/agent/mutation-adapters.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- agent/mutations mutation-adapters"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The correct push strategy requires a product/security decision about credentials or fork permissions."
+      - "GitHub API behavior cannot be safely represented by existing tests without adding local adapter test coverage."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/agent/mutation-adapters.ts"
+        - "packages/web/lib/agent/mutation-types.ts"
+        - "packages/web/lib/agent/mutations.ts"
+        - "packages/web/lib/agent/mutations.test.ts"
+        - "packages/web/lib/agent/mutation-adapters.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- agent/mutations mutation-adapters"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+      summary: "Direct PR fix pushes now run local git commands from the verified workspace: validate the target commit object, require expected head ancestry, push the commit to origin, and verify the remote ref resolves to the pushed SHA. The mutation coordinator now passes session.workspacePath into the push adapter, with regression coverage for command sequencing and remote verification failure."
+
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Triage UX/operator gaps into implement-now, defer-with-decision, or blocked categories after backend safety slices are stable."
+    inputs:
+      - "Current known #507 UX gap list"
+      - "Receipts from prior Worker/Judge tasks"
+    constraints:
+      - "Update only GoalBuddy control files unless explicitly activating a Worker task."
+      - "Do not hide product deferrals; record them clearly."
+    expected_output:
+      - "UX/operator gap disposition"
+      - "Spawned or updated Worker tasks for implement-now items"
+      - "Deferral rationale for product-polish items"
+    receipt:
+      result: done
+      full_outcome_complete: false
+      ux_operator_disposition:
+        implement_now:
+          - "No additional high-risk UX/operator implementation required for this local gap-closure run after backend/session safety fixes."
+        explicit_deferrals:
+          - "Richer replay-count lineage beyond retained-delivery replay diagnostics remains a later schema/UX extension."
+          - "Additional visual polish for repo settings, sessions, reviews, and logs remains product-polish unless the owner asks for parity beyond current tested surfaces."
+          - "Optional manual-session scrubbed credential controls remain an owner product decision; manual sessions continue to use ambient credentials by design."
+      summary: "Triaged remaining #507 operator gaps after backend safety work. Current repo already has boot-time webhook URL reconciliation, repo webhook controls, sessions/review provenance surfaces, diagnostics, replay command support for retained deliveries, and PR review lineage display. Remaining UX/operator items are explicit product deferrals, not required backend correctness gaps."
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make incremental PR review context use range-limited diffs/files for reviewed_from_sha..reviewed_to_sha and supersede all invalidated completed ranges on force-push."
+    allowed_files:
+      - "packages/core/src/data/pulls.ts"
+      - "packages/core/src/github/pulls.ts"
+      - "packages/core/src/github/types.ts"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/core/src/launch/context.test.ts"
+      - "packages/web/lib/webhook-pr-review-state.ts"
+      - "packages/web/lib/webhook-pr-incremental.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- launch-execute-precheck context"
+      - "pnpm --dir packages/web test -- webhook-pr-incremental"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "GitHub compare API behavior requires live-network verification beyond local unit coverage."
+      - "Force-push invalidation needs a product decision beyond superseding completed ranges for the same PR."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/data/pulls.ts"
+        - "packages/core/src/github/pulls.ts"
+        - "packages/core/src/launch/launch-contexts.ts"
+        - "packages/core/src/launch/launch-execute-precheck.test.ts"
+        - "packages/web/lib/webhook-pr-review-state.ts"
+        - "packages/web/lib/webhook-pr-incremental.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- launch-execute-precheck context"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-incremental"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+      summary: "Incremental PR launches now request files from the reviewed_from_sha..reviewed_to_sha compare range and bypass the full PR-detail cache for that ranged context. Force-push planning now supersedes all completed reviews for the PR before launching a full replacement review, with focused core and web regression coverage."
+
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the direct push and incremental PR slices, then select the next largest safe gap to close."
+    inputs:
+      - "T004 receipt"
+      - "T006 receipt"
+      - "Current dirty diff"
+      - "Validated remaining gap list from T001/T003"
+    constraints:
+      - "Do not implement."
+      - "Approve only if the direct push and incremental changes map to the known gaps and verification is sufficient."
+      - "Pick the next safe Worker slice from credential isolation, replay lineage, or #507 UX/operator parity."
+    expected_output:
+      - "approved | rejected | needs_followup"
+      - "resolved gaps"
+      - "remaining gaps"
+      - "next Worker task details if not complete"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approved T004 and T006. Direct PR fix-push now performs local workspace push with remote ref verification, and incremental PR reviews now use compare-range files while force-push invalidation supersedes all completed ranges for the PR. Next largest safe backend slice is hardening scrubbed launch credentials so webhook/comment-command agent shells cannot reuse global Git credential helpers or prompt for credentials."
+      resolved_gaps:
+        - "Direct PR fix-push semantics and final ref/object verification."
+        - "Incremental PR review range-limited diff context and superseding invalidated ranges."
+      remaining_gaps:
+        - "Credential isolation hardening or explicit product deferral."
+        - "Replay lineage/schema/docs consistency."
+        - "Remaining #507 UX/operator parity."
+      required_board_updates:
+        - "Activate T008 for credential isolation hardening."
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Harden scrubbed webhook/comment-command agent sessions so ambient GitHub token env vars, SSH agents, global Git config, and interactive credential prompts are unavailable inside the agent tmux shell."
+    allowed_files:
+      - "packages/core/src/launch/tmux-session.ts"
+      - "packages/core/src/launch/ttyd-spawn.test.ts"
+      - "packages/core/src/launch/launch-terminal-backend.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- ttyd-spawn launch-terminal-backend"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/core lint"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The desired isolation requires sandboxing filesystem access beyond shell environment controls."
+      - "Verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/launch/tmux-session.ts"
+        - "packages/core/src/launch/ttyd-spawn.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- ttyd-spawn launch-terminal-backend"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+      summary: "Scrubbed webhook/comment-command tmux sessions now remove ambient GitHub token env vars, SSH/Git askpass hooks, and SSH agent access, use an empty GitHub CLI config dir, disable global/system Git config, and prevent interactive Git credential prompts. Manual launches keep ambient credentials."
+
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Bring the #506/#507 spec and follow-up notes in line with the implemented daemon-mediated local push and credential-isolation behavior, and record any remaining replay-lineage/product UX decisions explicitly."
+    allowed_files:
+      - "docs/specs/2026-05-23-webhooks-design.md"
+      - "docs/goals/webhook-auto-sessions-gap-closure/notes/t013-follow-up-artifacts.md"
+      - "docs/goals/fix-506-507-gaps/goal.md"
+      - "docs/goals/fix-506-507-gaps/state.yaml"
+    verify:
+      - "rg -n \"unsupported_local_push|True local commit upload for PR review fixes is not implemented yet\" docs/specs/2026-05-23-webhooks-design.md docs/goals/webhook-auto-sessions-gap-closure/notes/t013-follow-up-artifacts.md"
+      - "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/fix-506-507-gaps/state.yaml"
+    stop_if:
+      - "Docs reveal an implementation gap needing code outside allowed_files."
+      - "A product decision is required that cannot be recorded as an explicit deferral."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/specs/2026-05-23-webhooks-design.md"
+        - "docs/goals/webhook-auto-sessions-gap-closure/notes/t013-follow-up-artifacts.md"
+      commands:
+        - cmd: "rg -n \"unsupported_local_push|True local commit upload for PR review fixes is not implemented yet\" docs/specs/2026-05-23-webhooks-design.md docs/goals/webhook-auto-sessions-gap-closure/notes/t013-follow-up-artifacts.md"
+          status: pass
+        - cmd: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/fix-506-507-gaps/state.yaml"
+          status: pass
+      summary: "Updated stale #506/#507 docs: retained-delivery webhook replay is implemented with diagnostics while replay-count lineage is a deferred schema/UX extension, and PR review fix pushes are now daemon-mediated local git pushes with final remote-ref verification rather than unsupported_local_push."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether all #506/#507 implementation gaps are fixed, blocked, or explicitly deferred."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Validated gap list from T001"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker task is still queued or active."
+      - "Reject completion if a known high-risk backend/security/session gap lacks a fix, blocker, or explicit deferral decision."
+      - "Reject completion on planning-only evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "gap-by-gap disposition"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      gap_by_gap_disposition:
+        - gap: "Issue webhook completion tokens and issue-scoped budgets."
+          disposition: "fixed_before_this_run"
+          evidence: "T001 verified issue webhook launches generate completion tokens and issue sessions seed zero push/create budgets."
+        - gap: "Startup PR-review recovery for orphaned/missing tmux sessions."
+          disposition: "fixed"
+          evidence: "T002 marks linked active PR reviews failed and records terminal_reason='liveness_missing'; core test/typecheck/lint passed."
+        - gap: "Direct PR fix-push semantics and final ref/object verification."
+          disposition: "fixed"
+          evidence: "T004 switched push to local workspace git validation/push/ls-remote verification; web test/typecheck/lint passed."
+        - gap: "Incremental PR review range-limited context and force-push invalidation."
+          disposition: "fixed"
+          evidence: "T006 uses reviewed_from_sha..reviewed_to_sha compare files and supersedes all completed ranges on force push; core/web tests/typechecks/lints passed."
+        - gap: "Credential isolation for webhook/comment-command sessions."
+          disposition: "fixed"
+          evidence: "T008 scrubbed token env vars, SSH agent/askpass, GitHub CLI config, global/system Git config, and interactive Git prompts; core test/typecheck/lint passed."
+        - gap: "Pre-launch PR safety gates and webhook URL reconciliation."
+          disposition: "fixed_before_this_run"
+          evidence: "T001 verified protected-head PR gating evidence and web startup webhook URL reconciliation."
+        - gap: "Replay lineage/schema/docs consistency."
+          disposition: "fixed_with_deferral"
+          evidence: "T009 docs now match retained-delivery replay behavior and explicitly defer richer replay-count lineage to later schema/UX work."
+        - gap: "Remaining #507 UX/operator parity."
+          disposition: "explicitly_deferred"
+          evidence: "T005 records current implemented surfaces and defers remaining polish/product choices rather than treating them as backend correctness blockers."
+      missing_evidence: []
+      summary: "All known #506/#507 gaps from the validated audit are now fixed, verified as already fixed on this branch, or explicitly deferred as product/UX decisions. No required Worker tasks remain queued or active."
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T999
+    commands:
+      - "pnpm --dir packages/core test -- ttyd-respawn pr-reviews"
+      - "pnpm --dir packages/web test -- agent/mutations mutation-adapters"
+      - "pnpm --dir packages/core test -- launch-execute-precheck context"
+      - "pnpm --dir packages/web test -- webhook-pr-incremental"
+      - "pnpm --dir packages/core test -- ttyd-spawn launch-terminal-backend"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/web lint"

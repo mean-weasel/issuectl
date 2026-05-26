@@ -112,6 +112,8 @@ describe("spawnTtyd", () => {
     expect(tmuxCmd).toContain("unset SSH_AUTH_SOCK GIT_ASKPASS SSH_ASKPASS");
     expect(tmuxCmd).toContain("export GH_CONFIG_DIR=");
     expect(tmuxCmd).toContain("mktemp -d");
+    expect(tmuxCmd).toContain("export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1");
+    expect(tmuxCmd).toContain("export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never");
     killSpy.mockRestore();
   });
 

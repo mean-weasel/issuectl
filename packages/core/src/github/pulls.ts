@@ -159,6 +159,28 @@ export async function listPullFiles(
   }));
 }
 
+export async function listPullFilesForRange(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  fromSha: string,
+  toSha: string,
+): Promise<GitHubPullFile[]> {
+  const { data } = await octokit.rest.repos.compareCommitsWithBasehead({
+    owner,
+    repo,
+    basehead: `${fromSha}...${toSha}`,
+    per_page: 100,
+  });
+  return (data.files ?? []).map((f) => ({
+    filename: f.filename,
+    status: f.status as GitHubPullFile["status"],
+    additions: f.additions,
+    deletions: f.deletions,
+    patch: f.patch,
+  }));
+}
+
 export async function findLinkedPRs(
   octokit: Octokit,
   owner: string,
