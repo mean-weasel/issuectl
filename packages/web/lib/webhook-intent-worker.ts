@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import {
   claimDueWebhookIntent,
@@ -48,6 +49,7 @@ type WorkerDeps = {
     intent: WebhookIntent,
     issue: IssueState,
     triggeredBy: "webhook" | "comment_command",
+    completionToken: string,
   ) => Promise<{ deploymentId: number }>;
   launchPr?: LaunchPrReview;
   isAncestor?: PullWorkerDeps["isAncestor"];
@@ -162,7 +164,15 @@ export async function runWebhookIntentWorkerOnce(
       return result(base, { claimed: 1, [control.outcome]: 1 });
     }
 
-    const launch = await (deps.launchIssue ?? launchIssueFromWebhook)(db, repo, intent, issue, triggeredBy);
+    const completionToken = randomUUID();
+    const launch = await (deps.launchIssue ?? launchIssueFromWebhook)(
+      db,
+      repo,
+      intent,
+      issue,
+      triggeredBy,
+      completionToken,
+    );
     markIntentTerminal(db, intent.id, "launched", now, null, launch.deploymentId);
     recordIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched issue session.", launch.deploymentId);
     broadcastEventsChanged();
@@ -226,6 +236,7 @@ async function launchIssueFromWebhook(
   intent: WebhookIntent,
   issue: IssueState,
   triggeredBy: "webhook" | "comment_command",
+  completionToken: string,
 ): Promise<{ deploymentId: number }> {
   const branchPattern = repo.branchPattern ?? getSetting(db, "branch_pattern") ?? DEFAULT_BRANCH_PATTERN;
   const options = {
@@ -236,8 +247,9 @@ async function launchIssueFromWebhook(
     branchName: generateBranchName(branchPattern, intent.targetNumber, issue.title),
     workspaceMode: repo.localPath ? "worktree" : "clone", selectedComments: [], selectedFiles: [],
     triggeredBy,
+    completionToken,
     correlationId: `webhook-intent:${intent.id}`,
-  } as Parameters<typeof executeLaunch>[2] & { triggeredBy: "webhook" };
+  } as Parameters<typeof executeLaunch>[2];
   return withAuthRetry((octokit) => executeLaunch(db, octokit, options));
 }
 

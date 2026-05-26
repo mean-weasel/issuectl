@@ -28,7 +28,7 @@ export async function planPrReview(
   if (completed && !forceFullReview) {
     const ancestor = await (deps.isAncestor ?? defaultIsAncestor)(repo, completed.reviewedToSha, pull.headSha);
     if (ancestor) reviewedFromSha = completed.completedHeadSha ?? completed.reviewedToSha;
-    else supersedePrReview(db, completed.id, now, "force_push");
+    else supersedeCompletedPrReviews(db, repo.id, intent.targetNumber, now, "force_push");
   }
 
   return {
@@ -124,9 +124,18 @@ function coalesceDesiredHead(db: Database.Database, reviewId: number, pull: Pull
   return true;
 }
 
-function supersedePrReview(db: Database.Database, reviewId: number, now: number, reason: string): void {
-  db.prepare("UPDATE pr_reviews SET status = 'superseded', completed_at = ?, result_json = ? WHERE id = ?")
-    .run(now, JSON.stringify({ reason }), reviewId);
+function supersedeCompletedPrReviews(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+  now: number,
+  reason: string,
+): void {
+  db.prepare(
+    `UPDATE pr_reviews
+     SET status = 'superseded', completed_at = ?, result_json = ?
+     WHERE repo_id = ? AND pr_number = ? AND status = 'completed'`,
+  ).run(now, JSON.stringify({ reason }), repoId, prNumber);
 }
 
 function parseResultJson(value: string | null): Record<string, unknown> {

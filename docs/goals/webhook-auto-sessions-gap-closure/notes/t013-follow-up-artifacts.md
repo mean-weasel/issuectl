@@ -24,8 +24,8 @@ implementation also includes:
 - PR-aware diagnostics, CLI `diag --pr`, manual end/liveness/reconcile PR review
   terminal handling, and PR target labels in the workbench.
 - PR review launch workspaces checked out to the expected PR head ref/SHA and
-  fail-closed daemon mutation handling with `unsupported_local_push` until true
-  local commit upload is designed.
+  daemon-mediated fix pushes that verify the local commit, expected-head
+  ancestry, and final remote PR ref.
 - `issuectl repo set <owner/repo>` with validated automation flags, agents,
   payload mode, and public webhook base URL.
 - Workbench repo setup controls for webhook automation settings, webhook URL
@@ -41,9 +41,11 @@ implementation also includes:
   storage and idempotent notification timestamps.
 - Generalized deployment target identity with `target_type` and `target_number`.
 - PR review read/reservation foundation, PR safety predicates, PR context
-  assembly, terminal launch, incremental review execution, and fail-closed
-  mutation behavior.
-- Defensive credential scrubbing for webhook/comment-command terminal spawns.
+  assembly, terminal launch, incremental range-limited review execution, and
+  force-push superseding of invalidated completed ranges.
+- Defensive credential scrubbing for webhook/comment-command terminal spawns,
+  including token env vars, SSH agent access, global/system Git config, and
+  interactive Git credential prompts.
 - Comment command parsing and authorization foundation.
 - CLI/API/dashboard/docs visibility for repo webhook flags, agents, payload mode,
   public webhook URL, retention docs, and session provenance badges.
@@ -51,24 +53,23 @@ implementation also includes:
 
 ## Blocked Or Deliberately Deferred
 
-The remaining known blocker is true daemon-mediated local commit upload for PR
-review fixes. The current code verifies PR and workspace safety and then denies
-push with `unsupported_local_push`; this is intentional until a daemon-owned git
-object upload or git push credential model is designed and approved.
+The earlier true-local-push blocker is closed by daemon-mediated local `git
+push` with remote ref verification. Remaining known deferrals are product/UX
+scope: richer replay-count lineage beyond retained-delivery replay diagnostics,
+additional visual polish for operator screens, and optional manual-session
+credential-policy controls.
 
 ## Owner Decisions Still Needed
 
-- Use daemon-only mutation authority for local commit upload, or introduce
-  per-session GitHub App installation tokens?
 - Should manual sessions keep ambient credentials permanently, or should users be
   able to opt into scrubbed manual sessions?
-- What exact default budgets should apply if true local commit upload is added
-  later?
 - Should fork PR auto-review remain rejected by default in v1?
 - Should self-trigger fallback remain exactly one bounded follow-up generation
-  per review before stopping if local commit upload is enabled?
+  per review before stopping?
 - What raw payload retention duration should be the default when raw storage is
   enabled?
+- Should replay-count lineage get a first-class schema column, or remain
+  diagnostic-only for v1?
 - Should label removal kill comment-command sessions, or should only
   `/issuectl end` terminate them?
 
@@ -82,12 +83,10 @@ configuration visibility, dashboard webhook controls, webhook event log, PR
 review range display, completion summaries, retention docs, session provenance
 badges, and idempotent notification-claim parts of #506.
 
-Still intentionally blocked before PR review push automation:
-true daemon-mediated local commit upload. Current behavior verifies PR/workspace
-safety and fails closed with `unsupported_local_push`.
+PR review push automation is daemon-mediated: it verifies PR/workspace safety,
+pushes the verified local commit, and checks the final remote ref.
 
-Owner decisions still needed: daemon-only vs GitHub App credential isolation for
-local commit upload, manual-session credential policy, upload-time action
-budgets, fork PR policy, self-trigger fallback, raw payload retention duration,
-and comment-command kill-switch semantics.
+Owner decisions still needed: manual-session credential policy, fork PR policy,
+self-trigger fallback, raw payload retention duration, first-class replay-count
+lineage, and comment-command kill-switch semantics.
 ```

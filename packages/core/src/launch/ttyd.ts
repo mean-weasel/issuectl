@@ -402,9 +402,22 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
     try {
       const sessionName = tmuxSessionName(row.repo_name, row.target_number, row.target_type);
       if (!isTmuxSessionAlive(sessionName)) {
-        db.prepare("UPDATE deployments SET ended_at = datetime('now') WHERE id = ?").run(
-          row.id,
-        );
+        db.prepare(
+          `UPDATE deployments
+           SET ended_at = datetime('now'),
+               terminal_reason = COALESCE(terminal_reason, 'liveness_missing')
+           WHERE id = ?`,
+        ).run(row.id);
+        if (row.target_type === "pr") {
+          db.prepare(
+            `UPDATE pr_reviews
+             SET status = 'failed',
+                 completed_at = ?,
+                 result_json = ?
+             WHERE deployment_id = ?
+               AND status IN ('reserved', 'launching', 'in_progress')`,
+          ).run(Date.now(), JSON.stringify({ reason: "liveness_missing" }), row.id);
+        }
         recordDiagnosticEventSafely(db, {
           level: "warn",
           event: "reconcile.tmux_missing",
@@ -412,6 +425,8 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
           owner: row.owner,
           repo: row.repo_name,
           issueNumber: row.target_type === "issue" ? row.target_number : undefined,
+          targetType: row.target_type,
+          targetNumber: row.target_number,
           deploymentId: row.id,
           sessionName,
           message: `tmux session ${sessionName} is gone`,

@@ -114,6 +114,7 @@ describe("runWebhookIntentWorkerOnce", () => {
   });
 
   it("launches due opted-in issue intents", async () => {
+    const launchIssue = vi.fn(testWorkerDeps().launchIssue);
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "issue",
@@ -123,9 +124,17 @@ describe("runWebhookIntentWorkerOnce", () => {
       requestedAgent: "codex",
     });
 
-    const result = await runWorker(db, 2_000);
+    const result = await runWorker(db, 2_000, { launchIssue });
 
     expectWorkerResult(result, { claimed: 1, launched: 1 });
+    expect(launchIssue).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ id: repoId }),
+      expect.objectContaining({ id: intentId }),
+      expect.objectContaining({ title: "Fix webhook auto launch" }),
+      "webhook",
+      expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
     expect(queryDiagnosticEvents(db, {
       target: { owner: "mean-weasel", repo: "issuectl", targetType: "issue", targetNumber: 506 },
       events: ["webhook.lock_check"],

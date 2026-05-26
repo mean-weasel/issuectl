@@ -1,0 +1,707 @@
+version: 2
+
+goal:
+  title: "Issue 506/507 Gap Fixes"
+  slug: issue-506-507-gap-fixes
+  kind: existing_plan
+  tranche: "Complete all safe local fixes and documentation corrections for the audited #506/#507 gaps, with tests proving behavior."
+  status: done
+  oracle:
+    signal: "Targeted verification plus final Judge mapping of every audited gap to fixed, deferred, invalid, or still open."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "All required gap tasks are fixed, blocked with owner-worthy rationale, or invalidated, and final Judge audit reports full_outcome_complete: true."
+  intake:
+    original_request: "use goalbuddy:goal-prep to comprehensively plan fixes to these gaps"
+    interpreted_outcome: "Fix or explicitly resolve every remaining gap from the three-agent #506/#507 audit with focused verification and a final audit."
+    input_shape: existing_plan
+    audience: "issuectl maintainer/operator"
+    authority: requested
+    proof_type: test
+    completion_proof: "All audited gaps are fixed, explicitly deferred with repo-native documentation, or invalidated by source evidence; focused tests/typechecks pass; final Judge approves full completion."
+    likely_misfire: "Updating docs or polishing UI while leaving lifecycle and safety gaps unresolved."
+    blind_spots_considered:
+      - "Some audited gaps may be intentional product decisions rather than bugs; Judge must separate fix work from explicit deferral."
+      - "Boot-time webhook URL reconciliation may need live GitHub credentials; keep implementation locally testable with adapters/mocks."
+      - "Issue-session mutation budgets may have product/security implications if issue agents are expected to create PRs/issues."
+    existing_plan_facts:
+      - "Three independent read-only agents audited issues #506 and #507 before this board."
+      - "Core receiver/session/mutation/review/log surfaces are mostly implemented."
+      - "Remaining high-confidence gaps include protected-branch launch gating, review timeout/recovery, boot URL reconciliation, and stale docs."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/issue-506-507-gap-fixes/"
+    command: "npx goalbuddy board docs/goals/issue-506-507-gap-fixes"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the audited gap list and choose the safest first implementation slice."
+    inputs:
+      - "docs/goals/issue-506-507-gap-fixes/goal.md"
+      - "Prior three-agent audit summary from the conversation"
+      - "GitHub issues #506 and #507"
+    constraints:
+      - "Read-only."
+      - "Do not rediscover the entire implemented feature set."
+      - "Focus on whether each candidate gap is required, optional, invalid, or needs a product decision."
+    expected_output:
+      - "Gap matrix: required_fix | explicit_deferral | invalid | needs_scout"
+      - "Decision on first Worker slice"
+      - "allowed_files for first Worker"
+      - "verify commands for first Worker"
+      - "stop_if conditions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Validated the audited #506/#507 gap list and selected protected-branch PR launch gating as the first safe Worker slice."
+      evidence:
+        - "Issue #506 requires PR auto-review safety gates before launch, including non-protected heads unless explicitly enabled."
+        - "Docs/goals charter lists the candidate gaps and requires focused verification plus final Judge audit."
+        - "Review timeout/recovery, issue completion token/budgets, boot URL reconciliation, CLI preflight, stale docs, and UX fidelity remain for later tasks."
+      required_board_updates:
+        - "protected-branch PR launch gating=required_fix"
+        - "review hard timeout/recovery=needs_scout"
+        - "boot-time webhook URL reconciliation=required_fix or explicit_deferral after feasibility"
+        - "issue completion token=required_fix"
+        - "issue mutation budgets=needs_scout/product_decision"
+        - "CLI preflight warn-vs-fail-fast=needs_scout/product_decision"
+        - "stale docs=required_fix after behavior tasks"
+        - "lighter #507 UX details=needs_scout via T009"
+
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement the first safety/lifecycle fix selected by Judge."
+    allowed_files: []
+    verify: []
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Judge has not provided a concrete first slice."
+      - "The behavior requires a live GitHub credential or tunnel and cannot be mocked locally."
+      - "Focused verification fails twice with different root causes."
+    receipt:
+      result: blocked
+      summary: "Superseded by Judge selection of concrete Worker T007; keep this placeholder inactive rather than duplicating the same write scope."
+      replacement_task: T007
+
+  - id: T003
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map review hard-timeout and stale PR review recovery requirements to existing worker/liveness code and tests."
+    inputs:
+      - "Issue #506 recovery and settings requirements"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/types.ts"
+    constraints:
+      - "Read-only."
+      - "Return only evidence and recommended bounded fix shape."
+    expected_output:
+      - "Whether hard timeout is truly missing"
+      - "Exact files/functions likely needing edits"
+      - "Focused tests to add or update"
+      - "Risks and stop conditions"
+    receipt:
+      result: done
+      summary: "Hard timeout for active PR reviews is missing. Existing code expires pre-launch webhook intents and handles liveness/completion/control terminal paths, but does not age out a live deployment/pr_review that exceeds a review runtime cap."
+      evidence:
+        - "packages/web/lib/webhook-intent-worker.ts expires max_webhook_intent_age_minutes only before launch."
+        - "packages/core/src/db/settings.ts and packages/core/src/types.ts have no review timeout setting key/default."
+        - "packages/web/lib/idle-checker.ts handles liveness_missing but has no max-age timeout branch."
+        - "packages/core/src/db/pr-reviews.ts has markActivePrReviewForDeploymentTerminal, a likely reuse point for timeout terminalization."
+      facts:
+        - "Likely edit files include settings/types, idle-checker, idle-checker tests, settings tests, and possibly pr-reviews tests."
+        - "Focused tests should prove old active PR deployments are ended with terminal_reason=timeout and linked PR reviews are failed, while below-threshold and issue deployments are untouched."
+      ambiguity_requiring_judge:
+        - "Timeout duration/default and whether 0 disables timeout."
+        - "Scope: webhook PR reviews only, all PR reviews, or all deployments."
+        - "PR review terminal status on timeout."
+        - "Precedence when both timeout and tmux_missing apply."
+        - "Whether timeout only unblocks future intents or also enqueues recovery."
+
+  - id: T014
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Resolve PR review hard-timeout semantics and update the T004 Worker contract."
+    inputs:
+      - "T003 receipt"
+      - "Issue #506 timeout/recovery requirements"
+      - "packages/web/lib/idle-checker.ts"
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/types.ts"
+    constraints:
+      - "Read-only."
+      - "Choose the smallest semantics that satisfy #506 without broad launch/session redesign."
+      - "Prefer local, mockable verification."
+    expected_output:
+      - "Decision on timeout default, disabled semantics, scope, terminal status, liveness precedence, and recovery action."
+      - "Updated T004 allowed_files"
+      - "Updated T004 verify commands"
+      - "Updated T004 stop_if conditions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approved a bounded PR review hard-timeout slice: active PR review deployments older than review_hard_timeout_minutes should be ended as timeout, with linked active PR reviews marked failed."
+      semantics:
+        timeout_setting_key: "review_hard_timeout_minutes"
+        default_minutes: 30
+        disabled_when: "0"
+        invalid_values: "missing, negative, or non-numeric values use default 30"
+        scope: "Only active deployments whose target_type is pr and whose linked pr_review is reserved, launching, or in_progress."
+        terminal_reason: "timeout"
+        pr_review_status: "failed"
+        pr_review_result_reason: "timeout"
+        liveness_precedence: "tmux_missing wins over timeout in the same liveness pass"
+        recovery_action: "Terminal recovery only: release locks via terminalizing the active review and send normal deployment terminal notification; do not enqueue or auto-launch a follow-up in this slice."
+      updated_worker: T004
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add bounded PR review hard-timeout behavior: default 30 minutes, 0 disables, invalid values fall back to default, tmux_missing wins, timed-out PR deployments end with terminal_reason=timeout and linked active PR reviews fail with reason=timeout."
+    allowed_files:
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/db/settings.test.ts"
+      - "packages/core/src/types.ts"
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/pr-reviews.test.ts"
+      - "packages/web/lib/idle-checker.ts"
+      - "packages/web/lib/idle-checker.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- --run src/db/settings.test.ts src/db/pr-reviews.test.ts"
+      - "pnpm --dir packages/web test -- --run lib/idle-checker.test.ts"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "git diff --check"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Implementing timeout requires launch/session redesign, new startup recovery architecture, or webhook intent requeue semantics."
+      - "Cannot implement with local mocks for Date.now, getActiveDeployments, getSetting, isTmuxSessionAlive, endDeployment, markActivePrReviewForDeploymentTerminal."
+      - "Product decision needed to auto-relaunch/enqueue follow-up after timeout."
+      - "Timeout implementation would change issue deployment idle/liveness behavior."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/db/settings.ts"
+        - "packages/core/src/db/settings.test.ts"
+        - "packages/core/src/types.ts"
+        - "packages/core/src/db/pr-reviews.ts"
+        - "packages/core/src/db/pr-reviews.test.ts"
+        - "packages/web/lib/idle-checker.ts"
+        - "packages/web/lib/idle-checker.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- --run src/db/settings.test.ts src/db/pr-reviews.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- --run lib/idle-checker.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Added review_hard_timeout_minutes default/type support and PR-only liveness hard timeout. Old PR deployments are timed out only when a linked active PR review exists; timeout 0 disables, invalid values use the 30-minute default, tmux_missing keeps precedence, linked reviews fail with reason=timeout, and issue deployments are untouched."
+      remaining_blockers: []
+
+  - id: T005
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map issue-session completion-token and mutation-budget behavior against #506 security and completion requirements."
+    constraints:
+      - "Read-only."
+      - "Determine whether issue webhook sessions need completion tokens, budgets, both, or an explicit documented deferral."
+    expected_output:
+      - "Evidence for current issue launch token/env behavior"
+      - "Evidence for current issue mutation budget behavior"
+      - "Recommended fix or deferral"
+      - "Minimal tests required"
+    receipt:
+      result: done
+      summary: "Issue webhook sessions launch without completion tokens, so they cannot use agent completion or daemon mutation endpoints. PR webhook sessions get tokens and budgets. Completion tokens should be fixed for issue webhook sessions; issue mutation budgets require a Judge decision because docs describe daemon-mediated mutations broadly while code currently budgets PR sessions only."
+      evidence:
+        - "packages/web/lib/webhook-intent-worker.ts builds issue webhook launch options without completionToken."
+        - "packages/web/lib/webhook-pr-launch.ts builds PR webhook launch options with completionToken: randomUUID()."
+        - "packages/core/src/launch/launch.ts persists options.completionToken and passes it to buildAgentEnvironment."
+        - "packages/core/src/launch/launch-contexts.ts returns no ISSUECTL_AGENT_TOKEN env when completionToken is absent."
+        - "packages/core/src/launch/launch-contexts.ts seeds budgets only when targetType is pr and triggeredBy is webhook/comment_command."
+        - "packages/web/lib/agent/completion.ts denies completion check-ins when deployment has no completionToken or token mismatches."
+        - "packages/web/lib/agent/mutations.ts denies mutations for missing/invalid token, target mismatch, ended deployment, or manual sessions."
+        - "docs/specs/2026-05-23-webhooks-design.md says webhook/comment-command agents must route GitHub mutations through daemon-mediated issuectl agent mutate."
+      facts:
+        - "Current issue webhook sessions do not receive ISSUECTL_AGENT_TOKEN or related daemon-control env."
+        - "Manual issue launches having no completion token appears intentional."
+        - "Recommended fixed part: generate a completionToken for issue webhook/comment-command launches and pass it to executeLaunch."
+        - "Recommended decision point: choose whether issue webhook sessions get only completion check-ins or bounded non-push daemon mutations."
+      contradictions:
+        - "Docs describe webhook/comment-command daemon-mediated mutations generally, but code only enables PR webhook sessions for token-backed completion/mutations."
+        - "Completion notification requirements include webhook issue sessions, but those sessions cannot self-report completion today."
+      ambiguity_requiring_judge:
+        - "Should webhook issue sessions be allowed daemon-mediated mutations at all, or only completion check-ins?"
+        - "If issue-session mutations are allowed, what exact limits apply for comment, label, create_issue, create_pr, and push?"
+
+  - id: T015
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Resolve issue webhook completion-token and mutation-budget semantics and update the T006 Worker contract."
+    inputs:
+      - "T005 receipt"
+      - "Issue #506 security/completion requirements"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/mutations.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    constraints:
+      - "Read-only."
+      - "Prefer the smallest secure semantics satisfying #506."
+      - "Do not weaken PR review mutation budgets or manual-session denial."
+      - "Keep verification local and mockable."
+    expected_output:
+      - "Decision on whether issue webhook/comment-command sessions get completion tokens."
+      - "Decision on whether issue sessions get mutation budgets, and exact per-action limits if yes."
+      - "Updated T006 allowed_files"
+      - "Updated T006 verify commands"
+      - "Updated T006 stop_if conditions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Approved bounded issue-session controls: webhook/comment-command issue sessions need completion tokens, and get daemon mutation budgets for comment=1 and label=2 only. create_issue/create_pr/push stay disallowed for issue sessions; PR budgets and manual-session denial stay unchanged."
+      evidence:
+        - "T005 showed issue webhook sessions currently lack completionToken, ISSUECTL_AGENT_TOKEN env, and mutation budgets."
+        - "Issue #506 requires per-deployment random completion tokens and daemon-enforced mutation budgets/check-in gates for webhook-triggered agents."
+        - "packages/core/src/launch/launch-contexts.ts currently budgets PR webhook/comment_command sessions only."
+        - "packages/web/lib/agent/mutations.ts already denies missing/invalid tokens, target mismatch, ended deployments, and manual sessions."
+      semantics:
+        issue_completion_tokens: "Required for target_type=issue when triggered_by is webhook or comment_command; manual issue launches stay without completion tokens."
+        issue_mutation_budgets:
+          scope: "target_type=issue and triggered_by in webhook/comment_command"
+          comment: 1
+          label: 2
+          create_issue: 0
+          create_pr: 0
+          push: 0
+        pr_mutation_budgets: "Leave existing PR review budgets unchanged: comment=1, label=2, create_issue=1, create_pr=1, push=1."
+        manual_sessions: "Keep manual-session mutation denial unchanged."
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Wire completion tokens and bounded daemon mutation budgets for webhook/comment-command issue sessions: comment=1, label=2, create_issue=0, create_pr=0, push=0; preserve PR budgets and manual-session denial."
+    allowed_files:
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/webhook-intent-worker-comment-command.test.ts"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "packages/web/lib/agent/mutations.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- --run src/launch/launch-execute-precheck.test.ts"
+      - "pnpm --dir packages/web test -- --run lib/webhook-intent-worker.test.ts lib/webhook-intent-worker-comment-command.test.ts lib/agent/completion.test.ts lib/agent/mutations.test.ts"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "git diff --check"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Completion token propagation requires broad launch API redesign instead of passing a randomUUID completionToken through existing executeLaunch options."
+      - "Implementation would change PR review mutation budgets, weaken manual-session denial, or grant ambient GitHub credentials to webhook/comment_command sessions."
+      - "Issue mutation semantics require product approval beyond comment=1, label=2, create_issue=0, create_pr=0, push=0."
+      - "Implementation requires live GitHub credentials, a tunnel, APNs, or other non-local verification."
+      - "Focused tests prove issue webhook/comment-command sessions are already tokenized and explicitly budgeted under the approved limits."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-intent-worker.test.ts"
+        - "packages/web/lib/webhook-intent-worker-comment-command.test.ts"
+        - "packages/core/src/launch/launch-contexts.ts"
+        - "packages/core/src/launch/launch-execute-precheck.test.ts"
+        - "packages/web/lib/agent/mutations.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- --run src/launch/launch-execute-precheck.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- --run lib/webhook-intent-worker.test.ts lib/webhook-intent-worker-comment-command.test.ts lib/agent/completion.test.ts lib/agent/mutations.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Wired random completion tokens into webhook/comment-command issue launches through existing executeLaunch options. Seeded issue webhook/comment-command daemon budgets as comment=1, label=2, create_issue=0, create_pr=0, push=0, preserving PR budgets and manual-session denial."
+      remaining_blockers: []
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add launch-time protected-branch gating for automatic PR review if confirmed required."
+    allowed_files:
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-pr-launch.ts"
+      - "packages/web/lib/webhook-pr-launch.test.ts"
+      - "packages/core/src/github/pr-safety.ts"
+      - "packages/core/src/github/pr-safety.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- --run lib/webhook-pr-intent.test.ts lib/webhook-pr-launch.test.ts"
+      - "pnpm --dir packages/core test -- --run src/github/pr-safety.test.ts"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core typecheck"
+      - "git diff --check"
+    stop_if:
+      - "Protected-branch lookup requires a live GitHub API call in a place without injectable/mocked dependencies."
+      - "Manual comment-command review semantics differ from automatic webhook semantics and need Judge decision."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-pr-intent.test.ts"
+        - "packages/web/lib/webhook-pr-launch.test.ts"
+        - "packages/core/src/github/pr-safety.ts"
+        - "packages/core/src/github/pr-safety.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- --run lib/webhook-pr-intent.test.ts lib/webhook-pr-launch.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/core test -- --run src/github/pr-safety.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Added launch-time protected-branch gating for automatic webhook PR review before reservation/launch, with injectable pull-state branch protection data and tests proving protected webhook PRs are skipped while comment-command behavior remains allowed."
+      remaining_blockers: []
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement or explicitly defer boot-time webhook URL drift reconciliation."
+    allowed_files:
+      - "packages/web/server.ts"
+      - "packages/web/lib/webhook-url-reconciler.ts"
+      - "packages/web/lib/webhook-url-reconciler.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/route.test.ts"
+      - "packages/core/src/github/webhooks.ts"
+      - "packages/core/src/github/webhooks.test.ts"
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "pnpm --dir packages/web test -- --run lib/webhook-url-reconciler.test.ts app/api/v1/repos/[owner]/[repo]/webhook/route.test.ts"
+      - "pnpm --dir packages/core test -- --run src/github/webhooks.test.ts"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core typecheck"
+      - "git diff --check"
+    stop_if:
+      - "Reconciliation requires live tunnel or GitHub access without an injectable adapter."
+      - "Server startup side effects risk blocking dashboard boot."
+      - "The product decision is to keep reconciliation manual/API-only."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/server.ts"
+        - "packages/web/lib/webhook-url-reconciler.ts"
+        - "packages/web/lib/webhook-url-reconciler.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/route.test.ts"
+        - "docs/specs/2026-05-23-webhooks-design.md"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- --run lib/webhook-url-reconciler.test.ts 'app/api/v1/repos/[owner]/[repo]/webhook/route.test.ts'"
+          status: pass
+        - cmd: "pnpm --dir packages/core test -- --run src/github/webhooks.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Implemented non-blocking boot-time webhook URL reconciliation after dashboard listen. The reconciler derives URLs from public_webhook_base_url, updates only repos with stored hook ids through an injectable adapter, records diagnostics for drift/failures, reuses the URL builder in the manual webhook route, and documents the behavior."
+      remaining_blockers: []
+
+  - id: T009
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide which #507 UX fidelity gaps are required for this tranche."
+    constraints:
+      - "Read-only."
+      - "Prefer implementation only for UX gaps that materially affect operator debugging or acceptance."
+      - "Cosmetic icon fidelity alone should not displace lifecycle correctness."
+    expected_output:
+      - "required UX fixes, if any"
+      - "explicit deferrals, if any"
+      - "allowed_files and verification for a single UX Worker if needed"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Require one targeted #507 UX fix: sessions rows need a direct action to open the exact active terminal session because that materially affects operator debugging. Defer cosmetic trigger icon fidelity; no webhook-log expansion work is required because rows already expose expandable operational detail."
+      evidence:
+        - "packages/web/components/sessions/SessionsReviewList.tsx has only group Workbench plus GitHub/repo settings links, lacking a per-session exact terminal action."
+        - "packages/web/components/workbench/WorkbenchShell.tsx already supports /workbench?deployment=<id>."
+        - "packages/web/components/sessions/SessionsReviewList.tsx already shows status, trigger, terminal reason, PR/parent/child/depth chips."
+        - "packages/web/app/logs/webhooks/page.tsx already renders expandable webhook details with headers, chain, diagnostics command, and raw payload handling."
+      deferrals:
+        - "Defer trigger icon/chip visual fidelity beyond clear text chips and title labels."
+        - "Defer webhook log expansion changes because the current log already has expandable operational detail."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add a per-session direct action on active session rows that opens the exact terminal via /workbench?deployment=<deployment_id>; do not redesign the sessions page or change lifecycle behavior."
+    allowed_files:
+      - "packages/web/components/sessions/SessionsReviewList.tsx"
+      - "packages/web/components/sessions/SessionsReviewList.module.css"
+      - "packages/web/components/sessions/SessionsReviewList.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- --run components/sessions/SessionsReviewList.test.tsx lib/sessions-data.test.ts"
+      - "pnpm --dir packages/web typecheck"
+      - "git diff --check"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The fix expands into broad sessions/workbench redesign instead of a direct row action."
+      - "The link cannot use existing /workbench?deployment=<id> selection without changing Workbench routing."
+      - "A local component/static-render test cannot cover the link and browser verification would require unrelated harness work."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/components/sessions/SessionsReviewList.tsx"
+        - "packages/web/components/sessions/SessionsReviewList.module.css"
+        - "packages/web/components/sessions/SessionsReviewList.test.ts"
+      commands:
+        - cmd: "pnpm --dir packages/web test -- --run components/sessions/SessionsReviewList.test.ts lib/sessions-data.test.ts"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Added a direct Terminal link for active session rows that opens /workbench?deployment=<deployment_id>, styled as the primary row action. Added a static render test proving active rows get the exact deployment link and ended rows do not."
+      remaining_blockers: []
+
+  - id: T011
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Decide whether CLI onboarding preflight warning-vs-fail-fast behavior is a required #507 fix or accepted divergence."
+    constraints:
+      - "Read-only."
+      - "Consider existing CLI tests, local-only tool availability, and user experience."
+    expected_output:
+      - "required_fix | accepted_divergence | needs_owner_decision"
+      - "If required_fix: Worker allowed_files, verify, stop_if"
+      - "If accepted_divergence: exact docs update needed"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      classification: accepted_divergence
+      summary: "Accepted CLI onboarding preflight warning-vs-fail-fast as intentional. Repo automation settings can be saved while local gh/cloudflared checks or GitHub webhook install remain incomplete; tunnel tooling is provider-flexible, so fail-fast would harm onboarding."
+      evidence:
+        - "packages/cli/src/commands/repo.ts runs preflight only when automation is enabled, warns on missing gh/scope/cloudflared, and still returns options."
+        - "packages/cli/src/commands/repo.ts installs webhooks only when labels and webhookBaseUrl exist, then catches install failures as warnings."
+        - "packages/cli/src/commands/repo.test.ts covers preflight proceeding when tools are mocked and skipping when automation is declined."
+        - "docs/specs/2026-05-23-webhooks-design.md documents cloudflared, ngrok, and tailscale as tunnel options."
+      required_docs_update: "Document that repo add preflight is advisory and preserves saved automation settings when local tooling or first ping is unavailable."
+
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Document accepted CLI onboarding preflight behavior: repo add performs advisory local checks and preserves saved automation settings rather than failing when gh/cloudflared/scope/first-ping checks are unavailable."
+    allowed_files:
+      - "docs/specs/2026-05-23-webhooks-design.md"
+    verify:
+      - "rg -n \"advisory local preflight|Missing `gh`|first-ping timeout\" docs/specs/2026-05-23-webhooks-design.md"
+      - "git diff --check"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Docs would imply fail-fast behavior or require cloudflared as the only tunnel provider."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/specs/2026-05-23-webhooks-design.md"
+      commands:
+        - cmd: "rg -n 'advisory local preflight|Missing `gh`|first-ping timeout' docs/specs/2026-05-23-webhooks-design.md"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Documented accepted CLI onboarding preflight behavior: repo add warns for unavailable local tooling, scope, cloudflared, or first-ping checks and preserves saved automation settings so operators can finish setup with any tunnel provider."
+      remaining_blockers: []
+
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Update stale #506/#507 webhook docs after behavioral fixes and decisions are complete."
+    allowed_files:
+      - "docs/specs/2026-05-23-webhooks-design.md"
+      - "docs/goals/issue-506-507-gap-fixes/notes"
+    verify:
+      - "rg -n \"webhook replay remains deferred|True local commit upload|unsupported_local_push|fails closed\" docs/specs/2026-05-23-webhooks-design.md"
+      - "git diff --check"
+    stop_if:
+      - "Docs would need to describe behavior not yet implemented or explicitly deferred."
+      - "A previous Worker changed behavior and tests are still failing."
+    receipt:
+      result: done
+      changed_files:
+        - "docs/specs/2026-05-23-webhooks-design.md"
+      commands:
+        - cmd: "rg -n \"webhook replay remains deferred|True local commit upload|unsupported_local_push|fails closed|comment actions are limited to one|label actions are limited to two\" docs/specs/2026-05-23-webhooks-design.md"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Updated webhook docs for completed #506/#507 decisions: issue/comment-command mutation budgets, protected-branch PR launch fail-closed gating, PR review hard timeout semantics, startup URL reconciliation, advisory CLI preflight, and explicit replay/local-push deferrals."
+      remaining_blockers: []
+
+  - id: T998
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Run the focused verification bundle for all changed packages and record results."
+    constraints:
+      - "Only run commands relevant to touched packages plus git diff --check."
+      - "If verification is too slow or blocked, record the exact command and failure reason."
+    expected_output:
+      - "Verification receipt with commands and pass/fail status"
+      - "Any residual risk"
+    receipt:
+      result: done
+      commands:
+        - cmd: "pnpm --dir packages/core test -- --run src/db/settings.test.ts src/db/pr-reviews.test.ts src/github/pr-safety.test.ts src/launch/launch-execute-precheck.test.ts src/github/webhooks.test.ts"
+          status: pass
+          summary: "5 files, 38 tests passed"
+        - cmd: "pnpm --dir packages/web test -- --run lib/webhook-pr-intent.test.ts lib/webhook-pr-launch.test.ts lib/idle-checker.test.ts lib/webhook-intent-worker.test.ts lib/webhook-intent-worker-comment-command.test.ts lib/agent/completion.test.ts lib/agent/mutations.test.ts lib/webhook-url-reconciler.test.ts 'app/api/v1/repos/[owner]/[repo]/webhook/route.test.ts' components/sessions/SessionsReviewList.test.ts lib/sessions-data.test.ts"
+          status: pass
+          summary: "11 files, 59 tests passed"
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "rg -n \"webhook replay remains deferred|True local commit upload|unsupported_local_push|fails closed|comment actions are limited to one|label actions are limited to two\" docs/specs/2026-05-23-webhooks-design.md"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      residual_risk:
+        - "No live GitHub/tunnel/APNs integration verification was run; all behavior was verified through local unit/component tests and injectable adapters."
+      summary: "Focused verification for all changed core/web/docs surfaces passed."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit: prove whether the #506/#507 gap-fix tranche is complete."
+    inputs:
+      - "All task receipts"
+      - "Current git diff"
+      - "Focused verification results"
+      - "docs/goals/issue-506-507-gap-fixes/goal.md"
+    constraints:
+      - "Read-only."
+      - "Do not call complete if any required Worker task is queued, active, or missing verification."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix: fixed | deferred | invalid | still open"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "All audited #506/#507 gaps are mapped to fixed, documented deferral, or invalid/no-op by receipts and current diff. Required Worker tasks T004/T006/T007/T008/T010/T012/T013 are done with verification. T998 records focused core/web tests, typechecks, docs check, and git diff check passing. No queued/active required Worker remains; T002 is explicitly superseded by T007."
+      gap_matrix:
+        protected_branch_pr_launch_gating: fixed
+        pr_review_hard_timeout: fixed
+        boot_webhook_url_reconciliation: fixed
+        issue_completion_tokens: fixed
+        issue_mutation_budgets: fixed
+        cli_preflight_fail_fast: "documented accepted divergence"
+        stale_replay_docs: "fixed with explicit deferral"
+        local_push_docs: "fixed with explicit deferral"
+        sessions_exact_terminal_action: fixed
+        trigger_icon_fidelity: "deferred"
+        webhook_log_expansion: "invalid/no change required"
+      evidence:
+        - "Current diff contains the expected core/web/docs changes plus new reconciler and sessions component tests."
+        - "T998 verification passed: core focused tests 38/38, web focused tests 59/59, core typecheck, web typecheck, docs rg consistency check, and git diff --check."
+        - "No CLI files were touched, so CLI typecheck was not required by the goal charter."
+      blocked_tasks: []
+      missing_evidence: []
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T998
+    commands:
+      - "pnpm --dir packages/core test -- --run src/db/settings.test.ts src/db/pr-reviews.test.ts src/github/pr-safety.test.ts src/launch/launch-execute-precheck.test.ts src/github/webhooks.test.ts"
+      - "pnpm --dir packages/web test -- --run lib/webhook-pr-intent.test.ts lib/webhook-pr-launch.test.ts lib/idle-checker.test.ts lib/webhook-intent-worker.test.ts lib/webhook-intent-worker-comment-command.test.ts lib/agent/completion.test.ts lib/agent/mutations.test.ts lib/webhook-url-reconciler.test.ts 'app/api/v1/repos/[owner]/[repo]/webhook/route.test.ts' components/sessions/SessionsReviewList.test.ts lib/sessions-data.test.ts"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+      - "git diff --check"

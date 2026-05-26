@@ -22,6 +22,8 @@ const AGENT_CREDENTIAL_ENV_RESET = [
   "unset GH_TOKEN GITHUB_TOKEN GITHUB_PAT",
   "unset SSH_AUTH_SOCK GIT_ASKPASS SSH_ASKPASS",
   "export GH_CONFIG_DIR=\"$(mktemp -d ${TMPDIR:-/tmp}/issuectl-gh-empty.XXXXXX)\"",
+  "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1",
+  "export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never",
 ].join("; ");
 
 export function createTmuxAgentSession(options: SpawnPtyBridgeSessionOptions): void {

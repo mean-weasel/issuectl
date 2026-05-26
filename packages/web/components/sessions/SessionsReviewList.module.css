@@ -236,6 +236,10 @@
   font: 600 var(--paper-fs-sm) var(--paper-mono);
 }
 
+.rowLinks .primaryRowLink {
+  color: var(--paper-ink);
+}
+
 .chip {
   min-height: 24px;
   display: inline-flex;

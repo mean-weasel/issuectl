@@ -1,7 +1,7 @@
 import type { Octokit } from "@octokit/rest";
 import type Database from "better-sqlite3";
 import type { GitHubPull, GitHubCheck, GitHubIssue, GitHubPullFile, GitHubPullReview } from "../github/types.js";
-import { listPulls, getPull, getPullChecks, listPullFiles, listReviews, getChecksRollupForRef, type ChecksRollupStatus } from "../github/pulls.js";
+import { listPulls, getPull, getPullChecks, listPullFiles, listPullFilesForRange, listReviews, getChecksRollupForRef, type ChecksRollupStatus } from "../github/pulls.js";
 import { getIssue } from "../github/issues.js";
 import { getCacheTtl, getCached, setCached, isFresh } from "../db/cache.js";
 
@@ -126,11 +126,14 @@ async function fetchPullDetail(
   owner: string,
   repo: string,
   number: number,
+  options?: { fileRange?: PullFileRange },
 ): Promise<CachedPullDetail> {
   const [pull, checks, files, reviews] = await Promise.all([
     getPull(octokit, owner, repo, number),
     getPullChecks(octokit, owner, repo, `pull/${number}/head`),
-    listPullFiles(octokit, owner, repo, number),
+    options?.fileRange
+      ? listPullFilesForRange(octokit, owner, repo, options.fileRange.fromSha, options.fileRange.toSha)
+      : listPullFiles(octokit, owner, repo, number),
     listReviews(octokit, owner, repo, number),
   ]);
 
@@ -161,14 +164,26 @@ type CachedPullDetail = {
   reviews: GitHubPullReview[];
 };
 
+type PullFileRange = {
+  fromSha: string;
+  toSha: string;
+};
+
 export async function getPullDetail(
   db: Database.Database,
   octokit: Octokit,
   owner: string,
   repo: string,
   number: number,
-  options?: { forceRefresh?: boolean },
+  options?: { forceRefresh?: boolean; fileRange?: PullFileRange },
 ): Promise<CachedPullDetail & { fromCache: boolean; cachedAt: Date | null }> {
+  if (options?.fileRange) {
+    const data = await fetchPullDetail(octokit, owner, repo, number, {
+      fileRange: options.fileRange,
+    });
+    return { ...data, fromCache: false, cachedAt: new Date() };
+  }
+
   const cacheKey = `pull-detail:${owner}/${repo}#${number}`;
   const ttl = getCacheTtl(db);
 

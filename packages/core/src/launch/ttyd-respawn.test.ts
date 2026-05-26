@@ -155,6 +155,8 @@ describe("reconcileOrphanedDeployments", () => {
         owner: "ownerB",
         repo: "repoB",
         issueNumber: 20,
+        targetType: "issue",
+        targetNumber: 20,
         deploymentId: 2,
         sessionName: "issuectl-repoB-20",
       }),
@@ -183,6 +185,58 @@ describe("reconcileOrphanedDeployments", () => {
     reconcileOrphanedDeployments(db);
 
     expect(runSpy).not.toHaveBeenCalled();
+  });
+
+  it("marks linked active PR reviews failed when reconciling a missing PR tmux session", () => {
+    execFileSyncSpy.mockImplementation(() => {
+      throw Object.assign(new Error("session not found"), { status: 1 });
+    });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const deploymentRunSpy = vi.fn();
+    const reviewRunSpy = vi.fn();
+    const prepareSpy = vi.fn((sql: string) => {
+      if (sql.includes("SELECT")) {
+        return {
+          all: vi.fn(() => [
+            {
+              id: 7,
+              issue_number: null,
+              target_type: "pr",
+              target_number: 44,
+              owner: "mean-weasel",
+              repo_name: "issuectl",
+            },
+          ]),
+        };
+      }
+      if (sql.includes("UPDATE pr_reviews")) {
+        return { run: reviewRunSpy };
+      }
+      return { run: deploymentRunSpy };
+    });
+    const db = { prepare: prepareSpy } as unknown as Database.Database;
+
+    reconcileOrphanedDeployments(db);
+
+    expect(deploymentRunSpy).toHaveBeenCalledWith(7);
+    expect(reviewRunSpy).toHaveBeenCalledWith(
+      expect.any(Number),
+      JSON.stringify({ reason: "liveness_missing" }),
+      7,
+    );
+    expect(recordDiagnosticEventSpy).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        event: "reconcile.tmux_missing",
+        targetType: "pr",
+        targetNumber: 44,
+        deploymentId: 7,
+        sessionName: "issuectl-issuectl-pr-44",
+      }),
+    );
+
+    warnSpy.mockRestore();
   });
 
   it("queries spawned ttyd and pty bridge deployments only", () => {

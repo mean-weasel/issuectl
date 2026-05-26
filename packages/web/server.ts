@@ -14,6 +14,7 @@ import {
 import { refreshNetworkInfo, getPublicIp, getLanIp, getLanRedirectUrl } from "./lib/network-info.js";
 import { startIdleChecker, stopIdleChecker } from "./lib/idle-checker";
 import { startWebhookIntentWorker, stopWebhookIntentWorker } from "./lib/webhook-intent-worker";
+import { startWebhookUrlReconciler } from "./lib/webhook-url-reconciler";
 
 const TERMINAL_WS_RE = /^\/api\/terminal\/(\d+)\/ws/;
 const PTY_TERMINAL_WS_RE = /^\/api\/terminal\/pty\/(\d+)\/ws/;
@@ -293,6 +294,11 @@ server.listen(port, () => {
     startWebhookIntentWorker(getDb());
   } catch (err) {
     log.error({ msg: "webhook_intent_worker_start_failed", err });
+  }
+  try {
+    startWebhookUrlReconciler(getDb());
+  } catch (err) {
+    log.error({ msg: "webhook_url_reconciler_start_failed", err });
   }
 });
 

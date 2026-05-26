@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import log from "@/lib/logger";
+import { buildWebhookUrl } from "@/lib/webhook-url-reconciler";
 import {
   createIssuectlWebhook,
   formatErrorForUser,
@@ -117,5 +118,5 @@ async function readBody(request: NextRequest): Promise<WebhookActionBody | NextR
 function webhookUrl(db: ReturnType<typeof getDb>, repoId: number): string {
   const baseUrl = getSetting(db, "public_webhook_base_url");
   if (!baseUrl) throw new Error("public_webhook_base_url is not configured.");
-  return `${baseUrl.replace(/\/$/, "")}/api/webhook/github/${repoId}`;
+  return buildWebhookUrl(baseUrl, repoId);
 }

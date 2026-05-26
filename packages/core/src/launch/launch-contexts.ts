@@ -43,8 +43,13 @@ export async function buildPrLaunchContext(
   options: LaunchOptions,
   prNumber: number,
 ): Promise<{ contextString: string; expectedHeadRef: string; expectedHeadSha: string }> {
+  const requestedReviewRange =
+    options.reviewedFromSha && options.reviewedToSha
+      ? { fromSha: options.reviewedFromSha, toSha: options.reviewedToSha }
+      : undefined;
   const detail = await getPullDetail(db, octokit, options.owner, options.repo, prNumber, {
     forceRefresh: true,
+    fileRange: requestedReviewRange,
   });
   const pull = detail.pull;
   if (!pull.headSha) throw new Error(`PR #${prNumber} is missing head SHA`);
@@ -87,10 +92,16 @@ export function seedAgentActionBudgets(
   targetType: DeploymentTargetType,
   triggeredBy: DeploymentTriggeredBy | undefined,
 ): void {
-  if (targetType !== "pr") return;
   if (triggeredBy !== "webhook" && triggeredBy !== "comment_command") return;
   setAgentActionBudget(db, deploymentId, "comment", 1);
   setAgentActionBudget(db, deploymentId, "label", 2);
+  if (targetType === "issue") {
+    setAgentActionBudget(db, deploymentId, "create_issue", 0);
+    setAgentActionBudget(db, deploymentId, "create_pr", 0);
+    setAgentActionBudget(db, deploymentId, "push", 0);
+    return;
+  }
+  if (targetType !== "pr") return;
   setAgentActionBudget(db, deploymentId, "create_issue", 1);
   setAgentActionBudget(db, deploymentId, "create_pr", 1);
   setAgentActionBudget(db, deploymentId, "push", 1);

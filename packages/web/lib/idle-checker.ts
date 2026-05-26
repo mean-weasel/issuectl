@@ -25,6 +25,8 @@ import {
 
 const DEFAULT_GRACE_SECONDS = 300;
 const DEFAULT_THRESHOLD_SECONDS = 300;
+const DEFAULT_REVIEW_HARD_TIMEOUT_MINUTES = 30;
+const REVIEW_HARD_TIMEOUT_SETTING = "review_hard_timeout_minutes";
 const CHECK_INTERVAL_MS = 60_000;
 
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -100,10 +102,10 @@ export function checkIdleDeployments(): void {
 
 function parseSetting(
   db: Parameters<typeof getSetting>[0],
-  key: Parameters<typeof getSetting>[1],
+  key: string,
   defaultValue: number,
 ): number {
-  const raw = getSetting(db, key);
+  const raw = getSetting(db, key as Parameters<typeof getSetting>[1]);
   if (raw === undefined) return defaultValue;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 0) {
@@ -143,6 +145,13 @@ export function checkDeploymentLiveness(): void {
     return;
   }
 
+  const reviewHardTimeoutMinutes = parseSetting(
+    db,
+    REVIEW_HARD_TIMEOUT_SETTING,
+    DEFAULT_REVIEW_HARD_TIMEOUT_MINUTES,
+  );
+  const now = Date.now();
+
   for (const deployment of deployments) {
     try {
       const target = getDeploymentTarget(deployment);
@@ -176,6 +185,48 @@ export function checkDeploymentLiveness(): void {
           issueNumber: target.targetType === "issue" ? target.targetNumber : undefined,
           sessionName,
         });
+        continue;
+      }
+
+      if (target.targetType === "pr" && reviewHardTimeoutMinutes > 0) {
+        const launchedAtMs = new Date(deployment.launchedAt).getTime();
+        if (!Number.isFinite(launchedAtMs)) {
+          log.warn({
+            msg: "review_timeout_invalid_launch_date",
+            deploymentId: deployment.id,
+            launchedAt: deployment.launchedAt,
+          });
+          continue;
+        }
+
+        if (now - launchedAtMs > reviewHardTimeoutMinutes * 60_000) {
+          const terminalReview = markActivePrReviewForDeploymentTerminal(db, deployment.id, {
+            completedAt: now,
+            status: "failed",
+            reason: "timeout",
+          });
+          if (!terminalReview) continue;
+
+          endDeployment(db, deployment.id, "timeout");
+          notifyDeploymentTerminalOutcome({ deploymentId: deployment.id });
+          recordDiagnosticEventSafely(db, {
+            level: "warn",
+            event: "review.timeout",
+            source: "web.idle-checker",
+            owner: deployment.owner,
+            repo: deployment.repoName,
+            targetType: target.targetType,
+            targetNumber: target.targetNumber,
+            deploymentId: deployment.id,
+            message: `PR review deployment exceeded ${reviewHardTimeoutMinutes} minute timeout`,
+          });
+          log.info({
+            msg: "review_timeout",
+            deploymentId: deployment.id,
+            targetNumber: target.targetNumber,
+            timeoutMinutes: reviewHardTimeoutMinutes,
+          });
+        }
       }
     } catch (err) {
       log.error({ msg: "liveness_check_error", deploymentId: deployment.id, err });

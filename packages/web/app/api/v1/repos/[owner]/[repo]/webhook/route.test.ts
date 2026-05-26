@@ -15,6 +15,7 @@ const getDb = vi.hoisted(() => vi.fn());
 const getRepo = vi.hoisted(() => vi.fn());
 const getRepoWebhookConfigById = vi.hoisted(() => vi.fn());
 const getSetting = vi.hoisted(() => vi.fn());
+const listRepos = vi.hoisted(() => vi.fn());
 const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 const rotateIssuectlWebhook = vi.hoisted(() => vi.fn());
 const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
@@ -27,6 +28,7 @@ vi.mock("@issuectl/core", () => ({
   getRepo: (...args: unknown[]) => getRepo(...args),
   getRepoWebhookConfigById: (...args: unknown[]) => getRepoWebhookConfigById(...args),
   getSetting: (...args: unknown[]) => getSetting(...args),
+  listRepos: (...args: unknown[]) => listRepos(...args),
   recordDiagnosticEventSafely: (...args: unknown[]) => recordDiagnosticEventSafely(...args),
   rotateIssuectlWebhook: (...args: unknown[]) => rotateIssuectlWebhook(...args),
   updateRepoWebhookSettings: (...args: unknown[]) => updateRepoWebhookSettings(...args),

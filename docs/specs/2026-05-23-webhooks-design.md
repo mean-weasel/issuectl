@@ -56,11 +56,24 @@ value. When `public_webhook_base_url` is set, it also prints the derived
 `webhook create` and `webhook rotate` use the current `gh` authenticated user,
 require confirmation unless `--yes` is passed, generate a fresh receiver secret,
 store the GitHub hook id, and do not print the secret.
+`repo add` performs advisory local preflight checks when webhook automation is
+enabled. Missing `gh`, missing hook scope, missing `cloudflared`, or first-ping
+timeout warn and preserve saved repo automation settings rather than failing;
+operators can use any public tunnel provider and finish installation with
+`issuectl webhook create` or repo settings.
 `webhook intents` lists the persisted debounce/launch queue. `webhook intent
 fire` schedules a pending or deferred intent immediately, and `webhook intent
-drop` expires an active intent with an operator reason. `webhook replay` remains
-deferred until raw payload retention and replay-count lineage have a durable
-schema and safety design; metadata-only deliveries cannot be replayed safely.
+drop` expires an active intent with an operator reason. `webhook replay` can
+replay retained, target-bearing, replayable deliveries into immediate intents
+and records replay diagnostics. Metadata-only pruned deliveries still cannot be
+replayed safely, and richer replay-count lineage remains a later schema/UX
+extension.
+
+Webhook issue/comment-command sessions use bounded daemon mutation budgets:
+comment actions are limited to one, label actions are limited to two, and
+`create_issue`, `create_pr`, and `push` actions have zero budget for issue
+sessions in v1. The daemon-mediated mutation gateway enforces these budgets
+before any GitHub write.
 
 The dashboard settings and workbench repo setup surfaces expose the same
 repo-level automation flags, issue/review agent selectors, payload mode, stored
@@ -68,6 +81,15 @@ webhook id status, and copyable webhook URL. Workbench repo setup can create a
 GitHub webhook or rotate its receiver secret using the current `gh`
 authenticated user; the generated secret is stored locally and never returned to
 the browser.
+
+On dashboard startup, `issuectl web` also performs a non-blocking webhook URL
+reconciliation pass after the HTTP server is listening. The pass uses the
+configured `public_webhook_base_url` and each repo's stored GitHub webhook id to
+compare the remote hook URL with the derived `/api/webhook/github/<repo_id>`
+receiver URL. Drifted URLs are patched in GitHub without rotating the stored
+secret. Missing base URL, repos without stored hook ids, and per-repo GitHub
+errors do not block dashboard boot; failures are logged and recorded as
+diagnostics for manual follow-up.
 
 Raw payload storage should remain `metadata` unless a short-lived debugging
 session requires `raw`.
@@ -87,10 +109,21 @@ and terminal reason when one is recorded. This keeps webhook-created sessions
 distinguishable from manual sessions and makes control events such as label
 removal or issue closure visible without opening raw diagnostics.
 
+Automatic PR review launch fails closed unless the PR head is same-repo,
+non-default, and unprotected. Protected branch heads are denied before launch so
+webhook review automation cannot mutate protected refs by default.
+
 The repo overview also shows recent webhook events, recent terminal completion
 summaries, and PR review history with the reviewed SHA range. This is the
 dashboard-level audit trail for webhook intake, auto-review runs, and agent
 completion check-ins.
+
+Active webhook PR reviews have a hard runtime cap controlled by
+`review_hard_timeout_minutes`. The default is 30 minutes, `0` disables the cap,
+and invalid values fall back to the default. When the cap is exceeded, the
+deployment ends with terminal reason `timeout` and the linked active PR review
+is marked failed with result reason `timeout`; missing tmux liveness still wins
+when both conditions are detected in the same pass.
 
 ## Completion Notifications
 
@@ -108,10 +141,9 @@ unless they also end a real deployment row.
 - Direct, ambient-credential agent pushes. Webhook/comment-command agents must
   route GitHub mutations, including allowed PR pushes, through the
   daemon-mediated `issuectl agent mutate` policy gateway.
-- True local commit upload for PR review fixes is not implemented yet. The
-  daemon verifies same-repo, non-default, unprotected PR head state and local
-  workspace branch/SHA/remote metadata, then fails closed with
-  `unsupported_local_push` until a daemon-owned git object upload or git push
-  design is approved.
+- Agent-owned PR pushes that bypass daemon mediation. The daemon verifies
+  same-repo, non-default, unprotected PR head state, local workspace
+  branch/SHA/remote metadata, expected-head ancestry, performs the local
+  `git push`, and verifies the remote ref resolves to the pushed commit.
 - New push platforms or preference schema beyond the existing APNs/iOS device
   registration surface.

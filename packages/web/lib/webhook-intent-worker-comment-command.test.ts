@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import {
   addRepo,
@@ -69,6 +69,8 @@ describe("comment-command webhook intents", () => {
   });
 
   it("launches issue intents without the auto-launch label", async () => {
+    const deps = testWorkerDeps();
+    const launchIssue = vi.fn(deps.launchIssue);
     const event = recordWebhookEvent(db, {
       deliveryId: "delivery-command",
       repoId,
@@ -88,9 +90,17 @@ describe("comment-command webhook intents", () => {
       eventId: event.deduped ? null : event.eventId,
     });
 
-    const result = await runWebhookIntentWorkerOnce(db, 2_000, testWorkerDeps());
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, { ...deps, launchIssue });
 
     expect(result).toEqual(expect.objectContaining({ claimed: 1, launched: 1 }));
+    expect(launchIssue).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ id: repoId }),
+      expect.objectContaining({ id: intentId }),
+      expect.objectContaining({ title: "Manual command launch" }),
+      "comment_command",
+      expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
     expect(getIntentStatus(db, intentId)).toEqual({ status: "launched" });
     expect(
       db.prepare("SELECT triggered_by FROM deployments WHERE id = 1").get(),

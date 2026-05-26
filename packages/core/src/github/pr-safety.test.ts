@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { GitHubPull } from "./types.js";
 import {
   headRefMatches,
+  isSafeAutoReviewPrHead,
   isForkPr,
   isNonDefaultBranch,
   isSameRepoPr,
@@ -53,5 +54,20 @@ describe("PR auto-review safety predicates", () => {
     expect(headRefMatches(pull(), { headRef: "feature/webhooks", headSha: "abc123" })).toBe(true);
     expect(headRefMatches(pull(), { headRef: "feature/webhooks", headSha: "moved" })).toBe(false);
     expect(headRefMatches(pull(), { headRef: "renamed", headSha: "abc123" })).toBe(false);
+  });
+
+  it("combines auto-review launch safety gates for same-repo unprotected heads", () => {
+    const options = {
+      baseRepoFullName: "mean-weasel/issuectl",
+      defaultBranch: "main",
+      desiredHeadSha: "abc123",
+      headProtected: false,
+    };
+
+    expect(isSafeAutoReviewPrHead(pull(), options)).toBe(true);
+    expect(isSafeAutoReviewPrHead(pull({ headRepoFullName: "fork/issuectl" }), options)).toBe(false);
+    expect(isSafeAutoReviewPrHead(pull({ headRef: "main" }), options)).toBe(false);
+    expect(isSafeAutoReviewPrHead(pull(), { ...options, headProtected: true })).toBe(false);
+    expect(isSafeAutoReviewPrHead(pull({ headSha: "moved" }), options)).toBe(false);
   });
 });

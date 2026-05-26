@@ -309,6 +309,7 @@ async function preparePushExecution(
       ref: `heads/${payload.expectedHeadRef}`,
       sha: payload.newSha,
       expectedHeadSha: payload.expectedHeadSha,
+      workspacePath: session.workspacePath,
     }) ?? Promise.resolve(),
   };
 }
