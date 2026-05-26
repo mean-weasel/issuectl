@@ -298,7 +298,7 @@ export function RepoSetupFocus({
                 style={inputStyle}
               >
                 <option value="metadata">Metadata</option>
-                <option value="raw">Raw</option>
+                <option value="raw">Raw, dashboard redacted</option>
               </select>
             </label>
           </div>

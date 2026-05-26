@@ -341,7 +341,7 @@ export function AddRepoForm({ onClose, trackedSet }: Props) {
                 disabled={isPending}
               >
                 <option value="metadata">Metadata</option>
-                <option value="raw">Raw</option>
+                <option value="raw">Raw, dashboard redacted</option>
               </select>
             </label>
           </div>

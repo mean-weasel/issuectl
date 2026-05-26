@@ -37,7 +37,8 @@ export const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
 
 const MAX_DELIVERY_ID_LENGTH = 128;
 const MAX_EVENT_TYPE_LENGTH = 100;
-const RAW_PAYLOAD_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_RAW_PAYLOAD_RETENTION_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const ISSUE_AUTO_LAUNCH_LABEL = "issuectl:auto-launch";
 const PR_AUTO_REVIEW_LABEL = "issuectl:auto-review";
 const GATING_RELEVANT_EVENTS = new Set([
@@ -161,7 +162,7 @@ export async function handleGithubWebhookRequest(
     receivedAt,
     retainedUntil:
       repo.webhookPayloadMode === "raw"
-        ? receivedAt + RAW_PAYLOAD_RETENTION_MS
+        ? receivedAt + getRawPayloadRetentionMs(db)
         : null,
   });
 
@@ -322,6 +323,27 @@ function getWebhookDebounceSettings(db: Database.Database): { debounceMs: number
     ? Math.max(0, maxDebounceSeconds) * 1000
     : 300_000;
   return { debounceMs, maxDebounceMs };
+}
+
+function getRawPayloadRetentionMs(db: Database.Database): number {
+  return getRetentionDaysSetting(
+    db,
+    "webhook_raw_payload_retention_days",
+    DEFAULT_RAW_PAYLOAD_RETENTION_DAYS,
+  ) * DAY_MS;
+}
+
+function getRetentionDaysSetting(
+  db: Database.Database,
+  key: string,
+  fallbackDays: number,
+): number {
+  const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
+    | { value: string }
+    | undefined;
+  const parsed = Number(row?.value ?? String(fallbackDays));
+  if (!Number.isFinite(parsed) || parsed < 0) return fallbackDays;
+  return parsed;
 }
 
 function isQueueDepthExceeded(

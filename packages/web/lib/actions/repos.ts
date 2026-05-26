@@ -16,7 +16,6 @@ import {
   getSetting,
   getActiveWebhookDeploymentsForRepoTarget,
   markActivePrReviewForDeploymentTerminal,
-  endDeployment,
   killTtyd,
   killTmuxSession,
   tmuxSessionName,
@@ -35,9 +34,24 @@ import {
   type WebhookPayloadMode,
 } from "@issuectl/core";
 import { revalidateSafely } from "@/lib/revalidate";
+import { notifyDeploymentTerminalOutcome } from "@/lib/push/notifications";
 
 function expandHome(p: string): string {
   return p.startsWith("~") ? p.replace("~", homedir()) : p;
+}
+
+function transitionDeploymentTerminal(
+  db: ReturnType<typeof getDb>,
+  deploymentId: number,
+  terminalReason: "killed_by_label",
+): { changed: boolean } {
+  const result = db.prepare(
+    "UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL",
+  ).run(terminalReason, deploymentId);
+  if (result.changes > 0) return { changed: true };
+  const row = db.prepare("SELECT 1 FROM deployments WHERE id = ?").get(deploymentId);
+  if (!row) throw new Error(`No deployment found with id ${deploymentId}`);
+  return { changed: false };
 }
 
 function errMessage(err: unknown): unknown {
@@ -668,7 +682,8 @@ function endActiveWebhookDeployments(
     const sessionName = tmuxSessionName(repoName, deployment.targetNumber, targetType);
     if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
     else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
-    endDeployment(db, deployment.id, terminalReason);
+    const transition = transitionDeploymentTerminal(db, deployment.id, terminalReason);
+    if (!transition.changed) continue;
     if (targetType === "pr") {
       markActivePrReviewForDeploymentTerminal(db, deployment.id, {
         completedAt: Date.now(),
@@ -676,6 +691,7 @@ function endActiveWebhookDeployments(
         reason: terminalReason,
       });
     }
+    notifyDeploymentTerminalOutcome({ deploymentId: deployment.id });
     endedSessionIds.push(deployment.id);
   }
   return endedSessionIds;

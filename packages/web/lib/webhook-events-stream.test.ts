@@ -10,6 +10,7 @@ import {
   isWebhookEventsStreamRequest,
   readWebhookEventsStreamSnapshot,
   summarizeWebhookStreamEntries,
+  webhookStreamEntry,
 } from "./webhook-events-stream";
 
 const getDb = vi.hoisted(() => vi.fn(() => ({})));
@@ -117,18 +118,56 @@ describe("webhook events stream helpers", () => {
 
   it("builds stream snapshots from webhook log entries", () => {
     listWebhookLogEntries.mockReturnValue([
-      { id: 1, deliveryId: "delivery-1", result: "debouncing" },
-      { id: 2, deliveryId: "delivery-2", result: "fired" },
+      { id: 1, deliveryId: "delivery-1", result: "debouncing", payloadJson: "{\"body\":\"private\"}" },
+      { id: 2, deliveryId: "delivery-2", result: "fired", payloadJson: null },
     ]);
 
     expect(readWebhookEventsStreamSnapshot()).toMatchObject({
       entries: [
-        { id: 1, deliveryId: "delivery-1", result: "debouncing" },
-        { id: 2, deliveryId: "delivery-2", result: "fired" },
+        { id: 1, deliveryId: "delivery-1", result: "debouncing", payloadRetained: true, payloadSize: 18 },
+        { id: 2, deliveryId: "delivery-2", result: "fired", payloadRetained: false, payloadSize: null },
       ],
       counts: { total: 2, fired: 1, debouncing: 1 },
     });
+    expect(JSON.stringify(readWebhookEventsStreamSnapshot())).not.toContain("private");
     expect(listWebhookLogEntries).toHaveBeenCalledWith({}, { limit: 50 });
+  });
+
+  it("removes raw payload JSON from stream entries while preserving metadata", () => {
+    expect(webhookStreamEntry({
+      id: 1,
+      repoId: 2,
+      deliveryId: "delivery-1",
+      eventType: "issues",
+      action: "labeled",
+      targetType: "issue",
+      targetNumber: 506,
+      senderLogin: "octocat",
+      payloadJson: "{\"comment\":{\"body\":\"private\"}}",
+      receivedAt: 1,
+      intentId: null,
+      result: "received",
+      resultDetail: null,
+      actionId: null,
+      intent: null,
+    })).toEqual({
+      id: 1,
+      repoId: 2,
+      deliveryId: "delivery-1",
+      eventType: "issues",
+      action: "labeled",
+      targetType: "issue",
+      targetNumber: 506,
+      senderLogin: "octocat",
+      intentId: null,
+      receivedAt: 1,
+      result: "received",
+      resultDetail: null,
+      actionId: null,
+      intent: null,
+      payloadRetained: true,
+      payloadSize: 30,
+    });
   });
 
   it("returns an empty snapshot payload when the DB read fails", () => {
@@ -162,7 +201,7 @@ describe("webhook events stream helpers", () => {
 
     broadcastWebhookEventsChanged();
 
-    expect(ws?.send).toHaveBeenCalledWith(expect.stringContaining("webhook_events_changed"));
+    expect(ws?.send).toHaveBeenCalledWith(expect.stringContaining("webhook_events_snapshot_updated"));
 
     ws?.handlers.get("close")?.();
 

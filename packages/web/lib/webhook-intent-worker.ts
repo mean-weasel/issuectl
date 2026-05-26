@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import {
   claimDueWebhookIntent,
-  endDeployment,
   executeLaunch,
   generateBranchName,
   hasLiveDeploymentForIssue,
@@ -27,6 +26,7 @@ import { launchPrFromWebhook } from "./webhook-pr-launch";
 import { pruneExpiredWebhookData } from "./webhook-payload-retention";
 import { enforceWebhookRunawayControls } from "./webhook-runaway-controls";
 import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
+import { notifyDeploymentTerminalOutcome } from "./push/notifications";
 
 export type WebhookIntentWorkerResult = {
   claimed: number; recovered: number; expired: number; prunedPayloads: number;
@@ -69,6 +69,10 @@ export async function runWebhookIntentWorkerOnce(
   now = Date.now(),
   deps: WorkerDeps = {},
 ): Promise<WebhookIntentWorkerResult> {
+  const recoveredPrReviews = recoverOrphanedActivePrReviews(db, now);
+  for (const review of recoveredPrReviews) {
+    recordPrReviewRecoveryDiagnostic(db, review);
+  }
   const recoveredRecords = recoverExpiredWebhookIntentLeaseRecords(db, now);
   for (const recovered of recoveredRecords) {
     recordRecoveryDiagnostic(db, recovered, "webhook.intent_recovered", "Recovered expired webhook intent lease.");
@@ -85,7 +89,7 @@ export async function runWebhookIntentWorkerOnce(
   const retention = pruneExpiredWebhookData(db, now);
   const prunedPayloads = retention.prunedPayloads;
   const broadcastEventsChanged = deps.broadcastEventsChanged ?? broadcastWebhookEventsChanged;
-  if (recovered > 0 || expired > 0 || prunedPayloads > 0 || retention.prunedEvents > 0) broadcastEventsChanged();
+  if (recoveredPrReviews.length > 0 || recovered > 0 || expired > 0 || prunedPayloads > 0 || retention.prunedEvents > 0) broadcastEventsChanged();
   const base = { recovered, expired, prunedPayloads };
   const intent = claimDueWebhookIntent(db, now, 60_000);
   if (!intent) return result(base);
@@ -312,8 +316,66 @@ function endWebhookSessionForTarget(
   const sessionName = tmuxSessionName(repo.name, intent.targetNumber);
   if (deployment.ttydPid) killTtyd(deployment.ttydPid, sessionName);
   else if (deployment.terminalBackend === "pty_bridge") killTmuxSession(sessionName);
-  (endDeployment as (db: Database.Database, deploymentId: number, terminalReason?: string) => void)(db, deployment.id, terminalReason);
+  const transition = transitionDeploymentTerminal(db, deployment.id, terminalReason);
+  if (!transition.changed) return 0;
+  notifyDeploymentTerminalOutcome({ deploymentId: deployment.id });
   return 1;
+}
+
+function transitionDeploymentTerminal(
+  db: Database.Database,
+  deploymentId: number,
+  terminalReason: "closed" | "killed_by_label",
+): { changed: boolean } {
+  const result = db.prepare(
+    "UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL",
+  ).run(terminalReason, deploymentId);
+  if (result.changes > 0) return { changed: true };
+  const row = db.prepare("SELECT 1 FROM deployments WHERE id = ?").get(deploymentId);
+  if (!row) throw new Error(`No deployment found with id ${deploymentId}`);
+  return { changed: false };
+}
+
+function recoverOrphanedActivePrReviews(
+  db: Database.Database,
+  completedAt: number,
+): Array<{ id: number; repoId: number; prNumber: number; deploymentId: number | null; status: string; resultJson: string | null }> {
+  const rows = db.prepare(
+    `SELECT r.id, r.repo_id, r.pr_number, r.deployment_id
+     FROM pr_reviews r
+     LEFT JOIN deployments d ON d.id = r.deployment_id
+     WHERE r.status IN ('reserved', 'launching', 'in_progress')
+       AND (
+         r.deployment_id IS NULL
+         OR d.id IS NULL
+         OR d.state != 'active'
+         OR d.ended_at IS NOT NULL
+       )
+     ORDER BY r.started_at ASC, r.id ASC`,
+  ).all() as Array<{ id: number; repo_id: number; pr_number: number; deployment_id: number | null }>;
+  const recovered = [];
+  const update = db.prepare(
+    `UPDATE pr_reviews
+     SET status = ?,
+         completed_at = ?,
+         result_json = ?
+     WHERE id = ?
+       AND status IN ('reserved', 'launching', 'in_progress')`,
+  );
+  for (const row of rows) {
+    const status = row.deployment_id === null ? "failed" : "superseded";
+    const reason = row.deployment_id === null ? "orphaned_before_deployment" : "orphaned_deployment_terminal";
+    update.run(status, completedAt, JSON.stringify({ reason }), row.id);
+    recovered.push({
+      id: row.id,
+      repoId: row.repo_id,
+      prNumber: row.pr_number,
+      deploymentId: row.deployment_id,
+      status,
+      resultJson: JSON.stringify({ reason }),
+    });
+  }
+  return recovered;
 }
 
 function recordIntentDiagnostic(
@@ -370,6 +432,38 @@ function recordRecoveryDiagnostic(
       signalCount: intent.signalCount,
     },
   });
+}
+
+function recordPrReviewRecoveryDiagnostic(
+  db: Database.Database,
+  review: { repoId: number; prNumber: number; deploymentId: number | null; status: string; resultJson: string | null },
+): void {
+  const repo = getRepoById(db, review.repoId);
+  recordDiagnosticEventSafely(db, {
+    level: "warn",
+    event: "webhook.pr_review_recovered",
+    source: "webhook-worker",
+    owner: repo?.owner,
+    repo: repo?.name,
+    targetType: "pr",
+    targetNumber: review.prNumber,
+    deploymentId: review.deploymentId ?? undefined,
+    status: review.status,
+    message: "Recovered orphaned PR review lifecycle row.",
+    data: {
+      reviewId: (review as { id?: number }).id,
+      result: parseRecoveryResult(review.resultJson),
+    },
+  });
+}
+
+function parseRecoveryResult(value: string | null): unknown {
+  if (!value) return {};
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return {};
+  }
 }
 
 export function stopWebhookIntentWorker(): void {

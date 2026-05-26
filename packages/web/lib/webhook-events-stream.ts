@@ -1,7 +1,7 @@
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
-import { getDb, listWebhookLogEntries } from "@issuectl/core";
+import { getDb, listWebhookLogEntries, type WebhookLogEntry } from "@issuectl/core";
 import { validateApiToken } from "./api-auth";
 import log from "./logger";
 
@@ -76,7 +76,7 @@ function tokenFromRequest(req: IncomingMessage): string | null {
 export function broadcastWebhookEventsChanged(): void {
   const payload = readWebhookEventsStreamSnapshot();
   for (const ws of clients) {
-    safeSend(ws, "webhook_events_changed", payload);
+    safeSend(ws, "webhook_events_snapshot_updated", payload);
   }
 }
 
@@ -89,7 +89,7 @@ export function readWebhookEventsStreamSnapshot(): unknown {
     const entries = listWebhookLogEntries(getDb(), { limit: 50 });
     return {
       generatedAt: new Date().toISOString(),
-      entries,
+      entries: entries.map(webhookStreamEntry),
       counts: summarizeWebhookStreamEntries(entries),
     };
   } catch (err) {
@@ -101,6 +101,20 @@ export function readWebhookEventsStreamSnapshot(): unknown {
       error: "Webhook event stream snapshot failed",
     };
   }
+}
+
+export type WebhookStreamEntry = Omit<WebhookLogEntry, "payloadJson"> & {
+  payloadRetained: boolean;
+  payloadSize: number | null;
+};
+
+export function webhookStreamEntry(entry: WebhookLogEntry): WebhookStreamEntry {
+  const { payloadJson: _payloadJson, ...safeEntry } = entry;
+  return {
+    ...safeEntry,
+    payloadRetained: typeof entry.payloadJson === "string" && entry.payloadJson.length > 0,
+    payloadSize: entry.payloadJson?.length ?? null,
+  };
 }
 
 export function summarizeWebhookStreamEntries(

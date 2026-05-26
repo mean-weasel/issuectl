@@ -1,4 +1,5 @@
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Repo, WebhookLogEntry } from "@issuectl/core";
 
@@ -90,6 +91,16 @@ beforeEach(() => {
 describe("operator route rendering", () => {
   it("renders webhook logs with live-tail props from filtered route data", async () => {
     const { default: WebhookLogsPage } = await import("./logs/webhooks/page");
+    core.listWebhookLogEntries.mockReturnValue([
+      webhookEntry({
+        payloadJson: JSON.stringify({
+          action: "created",
+          issue: { number: 507, body: "private body text" },
+          comment: { body: "private comment text" },
+          token: "ghp_1234567890abcdef",
+        }),
+      }),
+    ]);
 
     const tree = await WebhookLogsPage({
       searchParams: Promise.resolve({ repo: "1" }),
@@ -105,6 +116,11 @@ describe("operator route rendering", () => {
       initialEntries: [expect.objectContaining({ deliveryId: "delivery-1" })],
       initialCounts: expect.objectContaining({ fired: 1, total: 1 }),
     });
+    const renderedText = renderToStaticMarkup(tree);
+    expect(renderedText).toContain("[redacted]");
+    expect(renderedText).not.toContain("private body text");
+    expect(renderedText).not.toContain("private comment text");
+    expect(renderedText).not.toContain("ghp_1234567890abcdef");
   });
 
   it("renders sessions overview with normalized filters and built data", async () => {

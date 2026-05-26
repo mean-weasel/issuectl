@@ -1,0 +1,724 @@
+version: 2
+
+goal:
+  title: "Issue 506/507 Gap Closure Plan"
+  slug: "issue-506-507-gap-closure-plan"
+  kind: existing_plan
+  tranche: "Validate the three-agent gap audit, implement successive safe verified slices, and finish only when issues #506/#507 are fully satisfied or deviations are owner-approved."
+  status: done
+  oracle:
+    signal: "A refreshed #506/#507 gap matrix, with every gap fixed, owner-approved as deferred/deviated, or proven not applicable, plus targeted verification passing."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Final Judge/PM audit maps receipts and verification to #506/#507 and records full_outcome_complete: true."
+  intake:
+    original_request: "make a detailed plan to fix with goalbuddy:goal-prep"
+    interpreted_outcome: "Prepare a GoalBuddy board that can drive implementation of all remaining issue #506/#507 gaps to verified completion."
+    input_shape: existing_plan
+    audience: issuectl maintainers/operators
+    authority: requested
+    proof_type: review
+    completion_proof: "Final audit confirms all required #506/#507 behavior is implemented or explicitly owner-approved as deferred, with focused tests passing."
+    likely_misfire: "Implementing visible UI polish or confirming existing coverage while missing lifecycle/security/privacy gaps that the specs treat as invariants."
+    blind_spots_considered:
+      - "Spec tension: #506 says users supply tunnels, while #507 asks onboarding to resolve/start cloudflared."
+      - "Crash recovery and transaction safety may need schema/data migration care."
+      - "Webhook raw payload UI can expose private issue/comment data."
+      - "Passing unit tests may not prove live-tail, route, notification, or UX parity."
+      - "CLI/API command names may intentionally diverge, but deviations need explicit owner approval."
+      - "Credential isolation is partially implemented and may require a policy decision if file-system credentials are in scope."
+    existing_plan_facts:
+      - "Agent A found backend coverage is broad but flagged kill-switch notifications, PR review recovery, PR launch transition safety, file-based credential inheritance, default child budgets, completion result shape, CLI additions, and diagnostic naming."
+      - "Agent B found UX routes exist but flagged cloudflared onboarding, settings health/detail gaps, partial threading, missing session detail triggered-by block, review detail gaps, webhook log/live-tail gaps, retention configurability, and incomplete diagnostics for settings mutations."
+      - "Agent C found cross-cutting coverage is broad but flagged PR review timestamp units, raw payload redaction, hard-coded retention, API/web parity, API removal parity, webhook log search ambiguity, and softer CLI onboarding."
+      - "The board was created assuming branch codex/issue-506-507-gap-fixes, but T001 current-state evidence found this checkout on main."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/issue-506-507-gap-closure-plan/"
+    command: "npx goalbuddy board docs/goals/issue-506-507-gap-closure-plan"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: medium
+    objective: "Refresh the #506/#507 gap matrix against current code and classify each audit finding as true gap, already fixed, acceptable deviation needing owner approval, or duplicate."
+    inputs:
+      - "GitHub issue #506 canonical body and comments"
+      - "GitHub issue #507 canonical body and comments"
+      - "Three-agent audit summary from the prior Codex turn"
+      - "Current repo code on branch codex/issue-506-507-gap-fixes"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Prefer exact file-path evidence and line refs."
+      - "Group duplicates across agents."
+      - "Separate security/lifecycle blockers from UX polish."
+    expected_output:
+      - "Deduplicated gap matrix with priority P0/P1/P2."
+      - "For each gap: issue source (#506/#507), evidence path, proposed fix slice, verification command."
+      - "List of findings that appear to be acceptable spec deviations but need owner approval."
+      - "Recommended first Worker slice."
+    receipt:
+      result: done
+      summary: "Scout plus PM validation refreshed the #506/#507 gap matrix. Current checkout is main, not the assumed codex branch. Broad webhook/session/mutation coverage exists, but lifecycle recovery, kill-switch notifications, raw payload redaction, timestamp units, child-action budgets, completion metadata, API/CLI parity, retention configurability, and UX details remain."
+      note: "notes/T001-gap-matrix.md"
+      evidence:
+        - "packages/web/lib/webhook-pr-intent.ts:105"
+        - "packages/web/lib/webhook-intent-worker.ts:304"
+        - "packages/web/app/logs/webhooks/page.tsx:294"
+        - "packages/web/components/reviews/ReviewDetailPanel.tsx:219"
+        - "packages/core/src/launch/launch-contexts.ts:105"
+      contradictions:
+        - "Goal intake expected codex/issue-506-507-gap-fixes, but `git status --short --branch` reported main."
+      ambiguity_requiring_judge:
+        - "Decide whether to continue on main or switch/rebase to codex/issue-506-507-gap-fixes before Worker work."
+        - "Classify #506/#507 tunnel onboarding conflict: user-supplied tunnel vs managed cloudflared quick tunnel."
+        - "Confirm whether raw payload mode may ever display full payload in dashboard or must always redact by default."
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the refreshed gap matrix and choose the largest safe first Worker slice."
+    inputs:
+      - "T001 receipt"
+      - "docs/goals/issue-506-507-gap-closure-plan/notes/T001-gap-matrix.md"
+      - "Goal oracle"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only."
+      - "Do not implement."
+      - "Prefer security/lifecycle/data correctness before UX polish."
+      - "Choose one coherent vertical slice with bounded allowed_files and verification."
+    expected_output:
+      - "Decision: approved | revise_matrix | blocked."
+      - "Exact Worker objective for T003."
+      - "allowed_files for T003."
+      - "verify commands for T003."
+      - "stop_if conditions for T003."
+      - "Any owner decisions required before later slices."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Judge approved the T001 matrix despite the branch mismatch and selected lifecycle correctness as the first Worker package: PR review launch/recovery plus terminal-ending notification consistency."
+      rationale: "This is the largest coherent safe slice because it addresses P0/P1 lifecycle and data correctness before UX polish, with bounded files and focused tests."
+      evidence:
+        - "`git status --short --branch` reported `## main...origin/main`."
+        - "`git status --porcelain=v1` reported only GoalBuddy control-file dirt."
+        - "T001 P0 findings identify unsafe PR review launch/recovery transitions in `packages/web/lib/webhook-pr-intent.ts` and missing startup recovery in `packages/web/lib/webhook-intent-worker.ts`."
+        - "T001 P1 finding identifies inconsistent terminal notifications across webhook worker, PR worker, repo disable, API, and CLI paths."
+      owner_decisions_for_later:
+        - "Continue work on `main` versus switch/create `codex/issue-506-507-gap-fixes`."
+        - "Tunnel onboarding policy: user-supplied tunnel only versus managed `cloudflared`."
+        - "Whether dashboard may ever expose full raw webhook payloads or must always redact by default."
+        - "Whether `/api/webhooks/github` alias is required."
+        - "Whether label-removal should kill comment-command sessions."
+        - "Whether CLI command/name deviations are acceptable."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make webhook/comment-command terminal-ending and PR review lifecycle transitions recovery-safe and notification-consistent: recover orphaned `reserved`/`launching`/`in_progress` PR review rows, safely link activated deployments to reviews, end affected deployments through an idempotent terminal-transition path, and emit terminal notifications/diagnostics exactly once."
+    allowed_files:
+      - "packages/core/src/db/pr-reviews.ts"
+      - "packages/core/src/db/pr-reviews.test.ts"
+      - "packages/core/src/db/deployments.ts"
+      - "packages/core/src/db/deployments.test.ts"
+      - "packages/web/lib/webhook-pr-intent.ts"
+      - "packages/web/lib/webhook-pr-intent.test.ts"
+      - "packages/web/lib/webhook-intent-worker.ts"
+      - "packages/web/lib/webhook-intent-worker.test.ts"
+      - "packages/web/lib/actions/repos.ts"
+      - "packages/web/lib/actions/repos.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "packages/web/lib/push/notifications.ts"
+      - "packages/web/lib/push/notifications.test.ts"
+      - "packages/cli/src/commands/repo.ts"
+      - "packages/cli/src/commands/repo.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- pr-reviews deployments"
+      - "pnpm --dir packages/web test -- webhook-pr-intent webhook-intent-worker actions/repos notifications completion api/v1/repos"
+      - "pnpm --dir packages/cli test -- repo"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Recovery requires schema migration not listed above."
+      - "Behavior choice would terminate sessions beyond webhook/comment-command/repo-disable scope."
+      - "Notification semantics could duplicate or suppress existing completion notifications."
+      - "Branch/worktree differs from current `main` plus GoalBuddy-only dirt."
+      - "Focused verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/db/pr-reviews.ts"
+        - "packages/core/src/db/pr-reviews.test.ts"
+        - "packages/core/src/db/deployments.ts"
+        - "packages/core/src/db/deployments.test.ts"
+        - "packages/web/lib/webhook-pr-intent.ts"
+        - "packages/web/lib/webhook-pr-intent.test.ts"
+        - "packages/web/lib/webhook-intent-worker.ts"
+        - "packages/web/lib/webhook-intent-worker.test.ts"
+        - "packages/web/lib/actions/repos.ts"
+        - "packages/web/lib/actions/repos.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+        - "packages/cli/src/commands/repo.ts"
+        - "packages/cli/src/commands/repo.test.ts"
+      summary: "Implemented PR review lifecycle recovery and notification-consistent terminal transitions. PR reviews now link only to active PR deployments, failed links terminate the launched deployment and notify once, worker startup recovers orphaned active PR review rows with diagnostics, and webhook/repo-disable paths notify after idempotent terminal transitions."
+      commands:
+        - cmd: "pnpm --dir packages/core test -- pr-reviews deployments"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-pr-intent webhook-intent-worker actions/repos notifications completion api/v1/repos"
+          status: pass
+        - cmd: "pnpm --dir packages/cli test -- repo"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      remaining_blockers:
+        - "Generated `packages/core/dist` exports were not updated because T003 allowed only source/test files; web/CLI keep local transition helpers until a build/package-surface slice can update dist or move the helper into an exported source service."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the next privacy/configuration gap package: prevent raw webhook payloads from rendering unredacted in the dashboard by default, add reusable redaction for common secret/token/body/comment fields, and make raw payload/event retention durations configurable instead of hard-coded while preserving delivery tombstones."
+    allowed_files:
+      - "packages/core/src/types.ts"
+      - "packages/core/src/db/settings.ts"
+      - "packages/core/src/db/settings.test.ts"
+      - "packages/core/src/db/migrations-webhooks.ts"
+      - "packages/core/src/db/schema-invariants.test.ts"
+      - "packages/core/src/db/webhooks.ts"
+      - "packages/core/src/db/webhooks.test.ts"
+      - "packages/web/lib/github-webhook-handler.ts"
+      - "packages/web/lib/github-webhook-handler.test.ts"
+      - "packages/web/lib/webhook-payload-retention.ts"
+      - "packages/web/lib/webhook-payload-retention.test.ts"
+      - "packages/web/lib/webhook-payload-redaction.ts"
+      - "packages/web/lib/webhook-payload-redaction.test.ts"
+      - "packages/web/app/logs/webhooks/page.tsx"
+      - "packages/web/app/route-rendering.test.ts"
+      - "packages/web/components/repos/RepoSettingsPanel.tsx"
+      - "packages/web/components/settings/RepoRow.tsx"
+      - "packages/web/components/settings/AddRepoForm.tsx"
+      - "packages/web/components/workbench/RepoSetupFocus.tsx"
+    verify:
+      - "pnpm --dir packages/core test -- webhooks settings schema-invariants"
+      - "pnpm --dir packages/web test -- github-webhook-handler webhook-payload-retention webhook-payload-redaction route-rendering"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Retention configurability requires schema migration files outside allowed_files."
+      - "Owner decision is needed on whether any dashboard path may expose full raw payloads."
+      - "Redaction would break webhook intent extraction from retained payloads."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/types.ts"
+        - "packages/core/src/db/settings.ts"
+        - "packages/core/src/db/settings.test.ts"
+        - "packages/core/src/db/migrations-webhooks.ts"
+        - "packages/web/lib/github-webhook-handler.ts"
+        - "packages/web/lib/github-webhook-handler.test.ts"
+        - "packages/web/lib/webhook-payload-retention.ts"
+        - "packages/web/lib/webhook-payload-retention.test.ts"
+        - "packages/web/lib/webhook-payload-redaction.ts"
+        - "packages/web/lib/webhook-payload-redaction.test.ts"
+        - "packages/web/app/logs/webhooks/page.tsx"
+        - "packages/web/app/route-rendering.test.ts"
+        - "packages/web/components/repos/RepoSettingsPanel.tsx"
+        - "packages/web/components/settings/RepoRow.tsx"
+        - "packages/web/components/settings/AddRepoForm.tsx"
+        - "packages/web/components/workbench/RepoSetupFocus.tsx"
+      summary: "Added settings-backed raw payload and webhook event retention durations with defaults/fallbacks, preserved delivery tombstones, and redacted dashboard raw payload previews by default using a reusable JSON/text redaction helper for secret/token/body/comment fields. Updated UI copy to clarify raw payload dashboard previews are redacted."
+      commands:
+        - cmd: "pnpm --dir packages/core test -- webhooks settings schema-invariants"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- github-webhook-handler webhook-payload-retention webhook-payload-redaction route-rendering"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      remaining_blockers: []
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the remaining P1 correctness package: render PR review timestamps with the same millisecond units stored by the worker, set webhook PR child issue/PR creation budgets to 0 by default while preserving allowed push behavior, and expand agent completion check-in/result handling to accept and persist richer completion metadata such as pushed commits arrays, changed file counts, fixed finding counts, and error messages."
+    allowed_files:
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/web/lib/agent/completion.ts"
+      - "packages/web/lib/agent/completion.test.ts"
+      - "packages/web/app/api/v1/agent/completion/route.ts"
+      - "packages/web/app/api/v1/agent/completion/route.test.ts"
+      - "packages/web/components/reviews/ReviewDetailPanel.tsx"
+      - "packages/web/components/reviews/ReviewDetailPanel.test.tsx"
+      - "packages/web/components/sessions/SessionsReviewList.tsx"
+      - "packages/web/components/sessions/SessionsReviewList.test.tsx"
+      - "packages/web/lib/review-detail-data.ts"
+      - "packages/web/lib/review-detail-data.test.ts"
+      - "packages/web/lib/sessions-data.ts"
+      - "packages/web/lib/sessions-data.test.ts"
+    verify:
+      - "pnpm --dir packages/core test -- launch-execute-precheck"
+      - "pnpm --dir packages/web test -- completion api/v1/agent/completion review-detail-data sessions-data ReviewDetailPanel SessionsReviewList"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Owner decision is needed on whether comment-command PR sessions should retain child issue/PR creation budgets."
+      - "Completion metadata would require DB schema changes outside existing completion_result_json storage."
+      - "Timestamp fix would require migrating stored PR review timestamp units instead of UI normalization."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/launch/launch-contexts.ts"
+        - "packages/core/src/launch/launch-execute-precheck.test.ts"
+        - "packages/web/lib/agent/completion.ts"
+        - "packages/web/lib/agent/completion.test.ts"
+        - "packages/web/app/api/v1/agent/completion/route.ts"
+        - "packages/web/app/api/v1/agent/completion/route.test.ts"
+        - "packages/web/components/reviews/ReviewDetailPanel.tsx"
+        - "packages/web/components/reviews/ReviewDetailPanel.test.tsx"
+        - "packages/web/components/sessions/SessionsReviewList.tsx"
+        - "packages/web/components/sessions/SessionsReviewList.test.tsx"
+        - "packages/web/lib/sessions-data.ts"
+        - "packages/web/lib/sessions-data.test.ts"
+      summary: "Webhook/comment-command PR sessions now default child issue/PR creation budgets to 0 while preserving push budget 1; agent completion accepts and persists richer metadata in completion_result_json; PR review timestamps render from stored millisecond values in review detail and sessions review UI."
+      commands:
+        - cmd: "pnpm --dir packages/core test -- launch-execute-precheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- completion api/v1/agent/completion review-detail-data sessions-data ReviewDetailPanel SessionsReviewList"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      remaining_blockers: []
+
+  - id: T006
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Update the board after each verified Worker slice, splitting or replacing queued Worker placeholders with concrete allowed_files and verify commands from receipts."
+    inputs:
+      - "Completed Worker receipts"
+      - "Current gap matrix"
+    constraints:
+      - "Edit only GoalBuddy control files unless a later active Worker allows implementation changes."
+      - "Do not mark the goal done while required Worker work remains queued or active."
+    expected_output:
+      - "Board reflects current remaining gaps."
+      - "Next active task selected or final audit queued."
+      - "Blocked owner decisions recorded as specific blocked tasks, not goal-level blocked status."
+    receipt:
+      result: done
+      summary: "After T900 approved moving from P0/P1 backend/security work into UX/API/CLI parity, PM converted the next safe P2 tranche into active T007. Owner-policy items are carried forward instead of treated as complete."
+      next_active_task: T007
+      carried_owner_decisions:
+        - "Tunnel onboarding policy: user-supplied tunnel only versus managed cloudflared quick tunnel."
+        - "Whether `/api/webhooks/github` alias is required."
+        - "Whether label-removal should kill comment-command sessions."
+        - "Whether CLI command/name deviations are acceptable."
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the largest safe P2 operator UX parity package that does not require owner policy decisions: improve repo settings status/health detail, make sessions/reviews grouping preserve sibling context with collapsible/threaded review groups, add session/review provenance details, and enrich webhook log expansion/live-tail metadata without exposing raw payloads."
+    allowed_files:
+      - "packages/web/components/repos/RepoSettingsPanel.tsx"
+      - "packages/web/components/repos/RepoSettingsPanel.test.tsx"
+      - "packages/web/components/settings/RepoRow.tsx"
+      - "packages/web/components/settings/RepoRow.test.tsx"
+      - "packages/web/components/sessions/SessionsReviewList.tsx"
+      - "packages/web/components/sessions/SessionsReviewList.test.tsx"
+      - "packages/web/components/reviews/ReviewDetailPanel.tsx"
+      - "packages/web/components/reviews/ReviewDetailPanel.test.tsx"
+      - "packages/web/lib/sessions-data.ts"
+      - "packages/web/lib/sessions-data.test.ts"
+      - "packages/web/lib/review-detail-data.ts"
+      - "packages/web/lib/review-detail-data.test.ts"
+      - "packages/web/app/logs/webhooks/page.tsx"
+      - "packages/web/app/logs/webhooks/WebhookLiveTail.tsx"
+      - "packages/web/app/logs/webhooks/page.module.css"
+      - "packages/web/app/route-rendering.test.ts"
+      - "packages/web/lib/webhook-events-stream.ts"
+      - "packages/web/lib/webhook-events-stream.test.ts"
+      - "packages/web/lib/webhook-payload-redaction.ts"
+      - "packages/web/lib/webhook-payload-redaction.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- sessions-data review-detail-data SessionsReviewList ReviewDetailPanel route-rendering webhook-events-stream webhook-payload-redaction"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "A change requires the unresolved tunnel, route alias, label-removal, or CLI naming policy decisions."
+      - "The UI would reveal unredacted raw webhook payloads."
+      - "A browser-only regression cannot be covered without starting the local app."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/components/repos/RepoSettingsPanel.tsx"
+        - "packages/web/components/settings/RepoRow.tsx"
+        - "packages/web/components/sessions/SessionsReviewList.tsx"
+        - "packages/web/components/reviews/ReviewDetailPanel.tsx"
+        - "packages/web/lib/sessions-data.ts"
+        - "packages/web/lib/sessions-data.test.ts"
+        - "packages/web/app/logs/webhooks/page.tsx"
+        - "packages/web/app/logs/webhooks/WebhookLiveTail.tsx"
+        - "packages/web/lib/webhook-events-stream.ts"
+        - "packages/web/lib/webhook-events-stream.test.ts"
+      summary: "Implemented operator UX parity: repo health/status detail, richer repo row status, sibling-preserving sessions/review grouping with provenance and collapsible review groups, review detail provenance/session context, and sanitized webhook live-tail snapshots/props with only redacted payload metadata."
+      commands:
+        - cmd: "pnpm --dir packages/web test -- sessions-data review-detail-data SessionsReviewList ReviewDetailPanel route-rendering webhook-events-stream webhook-payload-redaction"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      remaining_blockers: []
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the safe API/web repo parity gap: make `POST /api/v1/repos` use the same repo add workflow as the Server Action, including webhook installation, label creation, automation settings, and first-ping result when requested; make `DELETE /api/v1/repos/[owner]/[repo]` best-effort delete the GitHub webhook before removing the local repo, matching the web action."
+    allowed_files:
+      - "packages/web/lib/actions/repos.ts"
+      - "packages/web/lib/actions/repos.test.ts"
+      - "packages/web/app/api/v1/repos/route.ts"
+      - "packages/web/app/api/v1/repos/route.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      - "packages/web/lib/github-webhook-utils.ts"
+      - "packages/web/lib/github-webhook-utils.test.ts"
+      - "packages/web/lib/webhook-url-reconciler.ts"
+      - "packages/web/lib/webhook-url-reconciler.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- api/v1/repos actions/repos webhook-url-reconciler github-webhook-utils"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The fix requires choosing the unresolved tunnel policy or adding a new `/api/webhooks/github` alias."
+      - "The API contract would break existing request/response shapes instead of adding parity fields compatibly."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/app/api/v1/repos/route.ts"
+        - "packages/web/app/api/v1/repos/route.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/route.test.ts"
+      summary: "POST /api/v1/repos now delegates to the shared repo add workflow, preserving compatible response fields while adding install/first-ping/warning/cache fields. DELETE /api/v1/repos/[owner]/[repo] delegates removal to the shared action so GitHub webhook deletion is best-effort before local removal."
+      commands:
+        - cmd: "pnpm --dir packages/web test -- api/v1/repos actions/repos webhook-url-reconciler github-webhook-utils"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+      remaining_blockers: []
+
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the safe CLI parity aliases/options package: add `repo add --webhook/--no-webhook` as aliases for installing or skipping webhook setup, add `webhook secret rotate <repo>` as an alias for the existing rotation flow, and document any remaining issue/pr create command surface as an owner-decision/deferred CLI scope item if no safe existing command module exists."
+    allowed_files:
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/commands/repo.ts"
+      - "packages/cli/src/commands/repo.test.ts"
+      - "packages/cli/src/commands/webhook.ts"
+      - "packages/cli/src/commands/webhook.test.ts"
+      - "packages/cli/src/commands/webhook-manage.test.ts"
+      - "packages/cli/src/commands/agent.test.ts"
+      - "packages/cli/src/commands/diag.test.ts"
+      - "packages/cli/src/commands/webhook-intents.test.ts"
+    verify:
+      - "pnpm --dir packages/cli test -- repo webhook webhook-manage agent diag webhook-intents"
+      - "pnpm --dir packages/cli typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Implementing `issue create --auto-launch` or `pr create --auto-review` requires creating new GitHub issue/PR command modules rather than aliasing existing safe CLI surface."
+      - "The alias behavior conflicts with existing documented CLI behavior."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/cli/src/index.ts"
+        - "packages/cli/src/commands/repo.ts"
+        - "packages/cli/src/commands/repo.test.ts"
+        - "packages/cli/src/commands/webhook.ts"
+        - "packages/cli/src/commands/webhook-manage.test.ts"
+      summary: "Added `repo add --webhook/--no-webhook` aliases over existing webhook setup, added `webhook secret rotate <repo>` as an alias for the existing rotation flow, and documented `issue create --auto-launch` / `pr create --auto-review` as deferred owner-decision CLI scope because no safe existing issue/pr command modules exist."
+      commands:
+        - cmd: "pnpm --dir packages/cli test -- repo webhook webhook-manage agent diag webhook-intents"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+      remaining_blockers:
+        - "`issue create --auto-launch` and `pr create --auto-review` remain deferred owner-decision CLI scope unless dedicated GitHub issue/PR command modules are approved."
+
+  - id: T900
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Phase audit after high-priority backend/security/lifecycle slices are complete."
+    inputs:
+      - "T001 gap matrix"
+      - "Backend/security/lifecycle Worker receipts"
+      - "Focused verification output"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any P0/P1 backend/security/lifecycle gap remains."
+    expected_output:
+      - "approved_to_continue_ux | not_ready"
+      - "Remaining backend/security/lifecycle gaps, if any."
+      - "Concrete next Worker package if not ready."
+    receipt:
+      result: done
+      decision: approved_to_continue_ux
+      full_outcome_complete: false
+      rationale: "T003-T005 receipts map the T001 P0/P1 backend/security/lifecycle gaps to dirty source/test changes and focused passing verification. No remaining P0/P1 backend/security/lifecycle gap is evident; remaining work is P2 UX/operator/API/CLI parity plus owner decisions."
+      evidence:
+        - "T003 covers PR review launch/recovery gaps in pr-reviews, deployments, webhook-pr-intent, and webhook-intent-worker with core/web focused tests passing."
+        - "T003 covers terminal notification consistency across webhook worker, PR intent, web repo action, API repo route, and CLI repo path with web/CLI focused tests passing."
+        - "T004 covers raw payload redaction and retention configurability with core/web focused tests and typechecks passing."
+        - "T005 covers timestamp units, child PR budgets, and completion result shape with focused tests and typechecks passing."
+        - "Dirty diff is limited to T003-T005 implementation/test files plus the GoalBuddy board."
+      remaining_work:
+        - "P2 UX/operator/API/CLI parity."
+        - "Owner decisions: tunnel policy, webhook route alias, comment-command label removal behavior, CLI naming deviations."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit: prove whether the app now satisfies issues #506 and #507."
+    inputs:
+      - "All done task receipts"
+      - "Final refreshed gap matrix"
+      - "Last verification output"
+      - "Current dirty diff"
+      - "Any owner-approved deviations"
+    constraints:
+      - "Read-only."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if any #506/#507 requirement remains unfixed and lacks owner-approved deferral/deviation."
+      - "Reject completion on weak proof or stale verification."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix final status"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Completion rejected. Receipts support many implemented P0/P1 and selected P2 fixes, but unapproved deviations remain and proof is not yet consolidated."
+      evidence:
+        - "P0/P1 lifecycle, notification, privacy, retention, timestamp, budget, and completion-shape gaps are covered by T003-T005 receipts."
+        - "Selected P2 UX/API/CLI alias work is covered by T007-T009 receipts."
+        - "`issue create --auto-launch` and `pr create --auto-review` remain explicitly deferred CLI scope."
+        - "Cloudflared onboarding is not resolved/started on demand."
+        - "`/api/webhooks/github` alias is not present."
+        - "Webhook live-tail still uses generic stream event semantics."
+      blocked_tasks:
+        - "Owner decision missing for tunnel/cloudflared onboarding policy."
+        - "Owner decision missing for deferred CLI scope: `issue create --auto-launch` and `pr create --auto-review`."
+        - "Owner/Judge classification still needed for comment-command label-removal semantics."
+      missing_evidence:
+        - "Final gap matrix not yet refreshed to mark every row fixed, not applicable, or owner-approved deferred."
+        - "No consolidated verification fingerprint recorded after all dirty changes."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close remaining safe local audit gaps from T999: add a compatible `/api/webhooks/github` alias if it can delegate to the existing webhook receiver without choosing tunnel policy, make webhook live-tail stream events semantically specific without exposing payloads, refresh the gap matrix statuses, and run consolidated verification."
+    allowed_files:
+      - "packages/web/app/api/webhooks/github/route.ts"
+      - "packages/web/app/api/webhooks/github/route.test.ts"
+      - "packages/web/lib/github-webhook-handler.ts"
+      - "packages/web/lib/github-webhook-handler.test.ts"
+      - "packages/web/lib/webhook-events-stream.ts"
+      - "packages/web/lib/webhook-events-stream.test.ts"
+      - "docs/goals/issue-506-507-gap-closure-plan/notes/T001-gap-matrix.md"
+      - "docs/goals/issue-506-507-gap-closure-plan/state.yaml"
+    verify:
+      - "pnpm --dir packages/web test -- github-webhook-handler webhook-events-stream api/webhooks/github"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/cli typecheck"
+    stop_if:
+      - "Need to choose tunnel/cloudflared policy."
+      - "Need to implement new CLI issue/pr command modules."
+      - "Need files outside allowed_files."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/webhook-events-stream.ts"
+        - "packages/web/lib/webhook-events-stream.test.ts"
+        - "docs/goals/issue-506-507-gap-closure-plan/notes/T001-gap-matrix.md"
+      summary: "Renamed live-tail update messages to `webhook_events_snapshot_updated`, kept stream entries payload-free, and refreshed the gap matrix with final fixed/deferred status. The bare `/api/webhooks/github` alias remains unresolved because the current receiver needs a repo id to select the signing secret before trusting payload content."
+      commands:
+        - cmd: "pnpm --dir packages/web test -- github-webhook-handler webhook-events-stream"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+      remaining_blockers:
+        - "Owner decision needed for tunnel/cloudflared onboarding policy."
+        - "Owner decision needed for a bare `/api/webhooks/github` alias versus accepting the repo-id-bound receiver as canonical."
+        - "Owner decision needed for new CLI issue/pr create command modules."
+        - "Owner decision needed for comment-command label-removal semantics."
+
+  - id: T011
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Owner-decision gate: resolve or explicitly approve deferral/deviation for the remaining issue #506/#507 policy items before another final audit."
+    inputs:
+      - "T999 final audit receipt"
+      - "T010 receipt"
+      - "Final Audit Addendum in notes/T001-gap-matrix.md"
+    constraints:
+      - "Do not implement new policy-dependent behavior without owner approval."
+      - "Do not mark the goal complete."
+    expected_output:
+      - "Owner decisions recorded for tunnel/cloudflared policy, `/api/webhooks/github` alias, new CLI issue/pr create modules, and comment-command label-removal semantics."
+      - "Next Worker task or final Judge audit selected based on owner response."
+    receipt:
+      result: done
+      summary: "Owner decisions resolved the remaining policy gate. The operator will use Cloudflare for public webhook exposure while issuectl keeps the operator-supplied public URL model; the repo-id-bound webhook receiver remains canonical; new CLI `issue create --auto-launch` and `pr create --auto-review` modules are deferred; and label removal is accepted as terminating label/webhook-created sessions without killing explicit comment-command sessions."
+      owner_decisions:
+        - "Tunnel/cloudflared: use Cloudflare outside the app and keep issuectl's configured `public_webhook_base_url` / operator-supplied tunnel URL model rather than adding managed `cloudflared` startup."
+        - "Webhook route: accept `/api/webhook/github/:repoId` as canonical and do not add a bare `/api/webhooks/github` alias because repo-id binding selects the signing secret before trusted processing."
+        - "CLI issue/pr modules: defer new `issue create --auto-launch` and `pr create --auto-review` command modules."
+        - "Comment-command label removal: accept current semantics where label removal ends label/webhook-created sessions but preserves explicit comment-command sessions."
+      next_task: T012
+
+  - id: T012
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after owner decisions: prove whether the app now satisfies issues #506 and #507, with remaining deviations explicitly owner-approved."
+    inputs:
+      - "All done task receipts T001-T011"
+      - "Final refreshed gap matrix"
+      - "Last verification output"
+      - "Current dirty diff"
+      - "Owner-approved deviations from T011"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any #506/#507 requirement remains unfixed and lacks owner-approved deferral/deviation."
+      - "Reject completion on stale or weak verification."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Gap matrix final status"
+      - "Verification evidence"
+      - "Any residual risks or follow-up recommendations."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Final audit complete. All #506/#507 gaps from the three-agent matrix are either implemented with receipts and focused verification or explicitly owner-approved as deviations/deferrals in T011."
+      gap_matrix_final_status:
+        fixed:
+          - "PR review launch/recovery safety and orphaned PR review recovery."
+          - "Idempotent terminal notifications for webhook/repo-disable endings."
+          - "Raw webhook payload redaction and configurable retention."
+          - "PR review timestamp rendering, webhook child issue/PR budgets, and richer completion metadata."
+          - "Repo/operator UX detail, sibling-preserving sessions/reviews grouping, review/session provenance, payload-free webhook live-tail, API repo add/remove parity, `repo add --webhook/--no-webhook`, and `webhook secret rotate`."
+        owner_approved_deviations:
+          - "Use Cloudflare outside the app with issuectl's operator-supplied public webhook URL model instead of managed `cloudflared` startup."
+          - "Keep `/api/webhook/github/:repoId` canonical instead of adding `/api/webhooks/github`."
+          - "Defer new CLI modules for `issue create --auto-launch` and `pr create --auto-review`."
+          - "Keep label removal scoped to label/webhook-created sessions and preserve explicit comment-command sessions."
+      verification:
+        - cmd: "pnpm --dir packages/web test -- github-webhook-handler webhook-events-stream"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - cmd: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/issue-506-507-gap-closure-plan/state.yaml --json"
+          status: pass
+      residual_risk:
+        - "The final accepted route/tunnel/CLI/comment-command choices are product-scope decisions, not code gaps."
+
+checks:
+  dirty_fingerprint: "bb5e4c8df9ca3c547cb4c77d6b7ef16067c10c945a61688575c017c1fadcca16"
+  last_verification:
+    result: pass
+    task: T012
+    commands:
+      - "pnpm --dir packages/web test -- github-webhook-handler webhook-events-stream"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/scripts/check-goal-state.mjs docs/goals/issue-506-507-gap-closure-plan/state.yaml --json"

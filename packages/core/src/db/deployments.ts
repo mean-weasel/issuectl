@@ -223,12 +223,25 @@ export function updateLinkedPR(db: Database.Database, deploymentId: number, prNu
 }
 
 export function endDeployment(db: Database.Database, deploymentId: number, terminalReason?: DeploymentTerminalReason): void {
+  const existing = getDeploymentById(db, deploymentId);
+  if (!existing) throw new Error(`No active deployment found with id ${deploymentId}`);
+  const transition = transitionDeploymentTerminal(db, deploymentId, terminalReason);
+  if (!transition.changed) {
+    throw new Error(`No active deployment found with id ${deploymentId}`);
+  }
+}
+
+export function transitionDeploymentTerminal(
+  db: Database.Database,
+  deploymentId: number,
+  terminalReason?: DeploymentTerminalReason,
+): { deployment: Deployment; changed: boolean } {
   const result = db
     .prepare("UPDATE deployments SET ended_at = datetime('now'), idle_since = NULL, terminal_reason = COALESCE(?, terminal_reason) WHERE id = ? AND ended_at IS NULL")
     .run(terminalReason ?? null, deploymentId);
-  if (result.changes === 0) {
-    throw new Error(`No active deployment found with id ${deploymentId}`);
-  }
+  const deployment = getDeploymentById(db, deploymentId);
+  if (!deployment) throw new Error(`No deployment found with id ${deploymentId}`);
+  return { deployment, changed: result.changes > 0 };
 }
 
 export function recordDeploymentCompletion(db: Database.Database, deploymentId: number, input: { terminalReason: DeploymentTerminalReason; resultJson?: string | null }): void {

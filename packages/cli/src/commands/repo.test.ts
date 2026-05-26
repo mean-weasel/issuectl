@@ -4,7 +4,6 @@ import { confirm, input } from "@inquirer/prompts";
 import {
   addRepo,
   createIssuectlWebhook,
-  endDeployment,
   getRepo,
   getActiveWebhookDeploymentsForRepoTarget,
   listWebhookEvents,
@@ -45,7 +44,6 @@ vi.mock("@issuectl/core", async (importOriginal) => {
     getActiveWebhookDeploymentsForRepoTarget: vi.fn(),
     listWebhookEvents: vi.fn(),
     markActivePrReviewForDeploymentTerminal: vi.fn(),
-    endDeployment: vi.fn(),
     killTmuxSession: vi.fn(),
     killTtyd: vi.fn(),
     recordDiagnosticEventSafely: vi.fn(),
@@ -61,7 +59,10 @@ vi.mock("../utils/db.js", () => ({
   requireDb: vi.fn(),
 }));
 
-const mockDb = {};
+const transitionRun = vi.fn();
+const mockDb = {
+  prepare: vi.fn(() => ({ run: transitionRun })),
+};
 
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
@@ -110,7 +111,8 @@ beforeEach(() => {
     intentId: null,
   }]);
   vi.mocked(markActivePrReviewForDeploymentTerminal).mockReset();
-  vi.mocked(endDeployment).mockReset();
+  transitionRun.mockReset();
+  transitionRun.mockReturnValue({ changes: 1 });
   vi.mocked(killTmuxSession).mockReset();
   vi.mocked(killTtyd).mockReset();
   vi.mocked(recordDiagnosticEventSafely).mockReset();
@@ -165,6 +167,59 @@ describe("repo commands", () => {
       issueAgent: "codex",
       reviewAgent: "claude",
       webhookPayloadMode: "raw",
+    });
+    expect(createIssuectlWebhook).not.toHaveBeenCalled();
+  });
+
+  it("adds a repo with --webhook as an install alias without enabling automation", async () => {
+    vi.mocked(getRepo).mockReturnValue(undefined);
+    vi.mocked(addRepo).mockReturnValue(makeRepo());
+    vi.mocked(confirm)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
+
+    await repoAddCommand("mean-weasel/issuectl", {
+      path: ".",
+      webhook: true,
+      webhookBaseUrl: "https://hooks.example.test/",
+    });
+
+    expect(confirm).toHaveBeenCalledWith({
+      message: "Auto-launch issue sessions from webhooks?",
+      default: false,
+    });
+    expect(confirm).toHaveBeenCalledWith({
+      message: "Reserve PRs for automatic review from webhooks?",
+      default: false,
+    });
+    expect(setSetting).toHaveBeenCalledWith(mockDb, "public_webhook_base_url", "https://hooks.example.test");
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
+      autoLaunchIssues: false,
+      autoReviewPrs: false,
+    });
+    expect(createIssuectlWebhook).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      owner: "mean-weasel",
+      repo: "issuectl",
+      url: "https://hooks.example.test/api/webhook/github/1",
+      secret: expect.any(String),
+    }));
+  });
+
+  it("adds a repo with --no-webhook as a setup skip alias", async () => {
+    vi.mocked(getRepo).mockReturnValue(undefined);
+    vi.mocked(addRepo).mockReturnValue(makeRepo());
+
+    await repoAddCommand("mean-weasel/issuectl", {
+      path: ".",
+      webhook: false,
+    });
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(input).not.toHaveBeenCalled();
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
+      autoLaunchIssues: false,
+      autoReviewPrs: false,
     });
     expect(createIssuectlWebhook).not.toHaveBeenCalled();
   });
@@ -416,8 +471,8 @@ describe("repo commands", () => {
 
     expect(killTtyd).toHaveBeenCalledWith(123, "issuectl-issuectl-issue-506");
     expect(killTmuxSession).toHaveBeenCalledWith("issuectl-issuectl-pr-44");
-    expect(endDeployment).toHaveBeenCalledWith(mockDb, 10, "killed_by_label");
-    expect(endDeployment).toHaveBeenCalledWith(mockDb, 11, "killed_by_label");
+    expect(transitionRun).toHaveBeenCalledWith("killed_by_label", 10);
+    expect(transitionRun).toHaveBeenCalledWith("killed_by_label", 11);
     expect(markActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(mockDb, 11, {
       completedAt: expect.any(Number),
       status: "superseded",

@@ -4,7 +4,7 @@ import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
 import { addRepo } from "./repos.js";
 import { seedRepo } from "./deployments-test-helpers.js";
-import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsByRepo, getActiveWebhookDeploymentsForRepoTarget, listRecentTerminalDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince } from "./deployments.js";
+import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsByRepo, getActiveWebhookDeploymentsForRepoTarget, listRecentTerminalDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince, transitionDeploymentTerminal } from "./deployments.js";
 
 describe("recordDeployment", () => {
   let db: Database.Database;
@@ -381,5 +381,24 @@ describe("endDeployment", () => {
     expect(() => endDeployment(db, 999)).toThrow(
       "No active deployment found with id 999",
     );
+  });
+
+  it("supports idempotent terminal transitions for recovery callers", () => {
+    const repo = seedRepo(db);
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 3,
+      branchName: "recover-branch",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+
+    const first = transitionDeploymentTerminal(db, dep.id, "killed_by_label");
+    const second = transitionDeploymentTerminal(db, dep.id, "failed");
+
+    expect(first.changed).toBe(true);
+    expect(first.deployment.endedAt).toBeTruthy();
+    expect(second.changed).toBe(false);
+    expect(second.deployment.terminalReason).toBe("killed_by_label");
   });
 });

@@ -4,12 +4,10 @@ import log from "@/lib/logger";
 import {
   getDb,
   listRepos,
-  addRepo,
   getRepo,
   formatErrorForUser,
-  updateRepoWebhookSettings,
-  withAuthRetry,
 } from "@issuectl/core";
+import { addRepo as addRepoAction } from "@/lib/actions/repos";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +33,15 @@ const OWNER_REPO_RE = /^[a-zA-Z0-9._-]+$/;
 type AddRepoBody = {
   owner: string;
   name: string;
+  localPath?: string;
   autoLaunchIssues?: boolean;
   autoReviewPrs?: boolean;
   issueAgent?: "claude" | "codex";
   reviewAgent?: "claude" | "codex";
   reviewPreamble?: string | null;
   webhookPayloadMode?: "metadata" | "raw";
+  installWebhook?: boolean;
+  firstPingTimeoutMs?: number;
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -64,6 +65,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!OWNER_REPO_RE.test(body.owner) || !OWNER_REPO_RE.test(body.name)) {
     return NextResponse.json({ error: "Invalid owner/repo format" }, { status: 400 });
   }
+  if (body.localPath !== undefined && typeof body.localPath !== "string") {
+    return NextResponse.json({ error: "localPath must be a string" }, { status: 400 });
+  }
+  if (body.autoLaunchIssues !== undefined && typeof body.autoLaunchIssues !== "boolean") {
+    return NextResponse.json({ error: "autoLaunchIssues must be a boolean" }, { status: 400 });
+  }
+  if (body.autoReviewPrs !== undefined && typeof body.autoReviewPrs !== "boolean") {
+    return NextResponse.json({ error: "autoReviewPrs must be a boolean" }, { status: 400 });
+  }
+  if (body.issueAgent !== undefined && body.issueAgent !== "claude" && body.issueAgent !== "codex") {
+    return NextResponse.json({ error: "issueAgent must be claude or codex" }, { status: 400 });
+  }
+  if (body.reviewAgent !== undefined && body.reviewAgent !== "claude" && body.reviewAgent !== "codex") {
+    return NextResponse.json({ error: "reviewAgent must be claude or codex" }, { status: 400 });
+  }
   if (
     body.reviewPreamble !== undefined &&
     body.reviewPreamble !== null &&
@@ -71,54 +87,53 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   ) {
     return NextResponse.json({ error: "reviewPreamble must be a string or null" }, { status: 400 });
   }
-
-  // Verify the repo exists on GitHub
-  try {
-    await withAuthRetry((octokit) =>
-      octokit.rest.repos.get({ owner: body.owner, repo: body.name }),
-    );
-  } catch (err) {
-    log.warn({ err, msg: "api_repo_add_github_check_failed", owner: body.owner, name: body.name });
-    const status = (err as { status?: number }).status;
-    if (status === 404) {
-      return NextResponse.json(
-        { error: `Repository ${body.owner}/${body.name} not found on GitHub` },
-        { status: 404 },
-      );
-    }
-    return NextResponse.json(
-      { error: `Failed to verify repository on GitHub` },
-      { status: 502 },
-    );
+  if (body.webhookPayloadMode !== undefined && body.webhookPayloadMode !== "metadata" && body.webhookPayloadMode !== "raw") {
+    return NextResponse.json({ error: "webhookPayloadMode must be metadata or raw" }, { status: 400 });
+  }
+  if (body.installWebhook !== undefined && typeof body.installWebhook !== "boolean") {
+    return NextResponse.json({ error: "installWebhook must be a boolean" }, { status: 400 });
+  }
+  if (
+    body.firstPingTimeoutMs !== undefined &&
+    (!Number.isInteger(body.firstPingTimeoutMs) || body.firstPingTimeoutMs < 0)
+  ) {
+    return NextResponse.json({ error: "firstPingTimeoutMs must be a non-negative integer" }, { status: 400 });
   }
 
   try {
-    const db = getDb();
-
-    // Check for duplicates
-    const existing = getRepo(db, body.owner, body.name);
-    if (existing) {
-      return NextResponse.json(
-        { error: "Repository already tracked" },
-        { status: 409 },
-      );
-    }
-
-    const repo = addRepo(db, { owner: body.owner, name: body.name });
-    const webhookUpdates = {
+    const result = await addRepoAction(body.owner, body.name, body.localPath, {
       autoLaunchIssues: body.autoLaunchIssues,
       autoReviewPrs: body.autoReviewPrs,
       issueAgent: body.issueAgent,
       reviewAgent: body.reviewAgent,
       reviewPreamble: body.reviewPreamble,
       webhookPayloadMode: body.webhookPayloadMode,
-    };
-    let updatedRepo = repo;
-    if (Object.values(webhookUpdates).some((value) => value !== undefined)) {
-      updatedRepo = updateRepoWebhookSettings(db, repo.id, webhookUpdates);
+      installWebhook: body.installWebhook,
+      firstPingTimeoutMs: body.firstPingTimeoutMs,
+    });
+    if (!result.success) {
+      const status = result.error === "Repository already tracked"
+        ? 409
+        : result.error.includes("not found on GitHub")
+          ? 404
+          : 500;
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status },
+      );
     }
-    log.info({ msg: "api_repo_added", repoId: repo.id, owner: body.owner, name: body.name });
-    return NextResponse.json({ success: true, repo: updatedRepo });
+
+    const db = getDb();
+    const repo = getRepo(db, body.owner, body.name) ?? result.addedRepo;
+    log.info({ msg: "api_repo_added", repoId: result.addedRepo.id, owner: body.owner, name: body.name });
+    return NextResponse.json({
+      success: true,
+      repo,
+      addedRepo: result.addedRepo,
+      install: result.install,
+      ...(result.warning ? { warning: result.warning } : {}),
+      ...(result.cacheStale ? { cacheStale: true as const } : {}),
+    });
   } catch (err) {
     log.error({ err, msg: "api_repo_add_failed" });
     return NextResponse.json(

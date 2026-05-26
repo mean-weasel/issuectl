@@ -63,6 +63,15 @@ export function RepoSettingsPanel({
   const repoPath = `${repo.owner}/${repo.name}`;
   const webhookConfigured = webhookId !== null && webhookId !== undefined;
   const waitingForFirstPing = webhookConfigured && activity.webhookEvents === 0;
+  const healthItems = repoHealthItems({
+    localPath,
+    webhookConfigured,
+    waitingForFirstPing,
+    autoLaunchIssues,
+    autoReviewPrs,
+    webhookPayloadMode,
+    labelHealth,
+  });
 
   function saveSettings() {
     setMessage(null);
@@ -207,6 +216,20 @@ export function RepoSettingsPanel({
         <Metric label="Reviews" value={activity.prReviews} />
       </section>
 
+      <section className={styles.section} aria-label="Repository health detail">
+        <div>
+          <h2>Status and health</h2>
+          <p>{healthSummary(healthItems)}</p>
+        </div>
+        <div className={styles.actionRow}>
+          {healthItems.map((item) => (
+            <span key={item.label} className={styles.statusPill} data-state={item.state} title={item.detail}>
+              {item.label}: {item.value}
+            </span>
+          ))}
+        </div>
+      </section>
+
       <section className={styles.section} aria-label="Local defaults">
         <div>
           <h2>Local defaults</h2>
@@ -266,7 +289,7 @@ export function RepoSettingsPanel({
             <span>Payload mode</span>
             <select value={webhookPayloadMode} onChange={(event) => setWebhookPayloadMode(event.target.value as WebhookPayloadMode)}>
               <option value="metadata">Metadata</option>
-              <option value="raw">Raw payloads</option>
+              <option value="raw">Raw payloads, dashboard redacted</option>
             </select>
           </label>
         </div>
@@ -377,6 +400,62 @@ function Metric({ label, value }: { label: string; value: number }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+type HealthItem = {
+  label: string;
+  value: string;
+  state: LabelHealth["status"];
+  detail: string;
+};
+
+function repoHealthItems(input: {
+  localPath: string;
+  webhookConfigured: boolean;
+  waitingForFirstPing: boolean;
+  autoLaunchIssues: boolean;
+  autoReviewPrs: boolean;
+  webhookPayloadMode: WebhookPayloadMode;
+  labelHealth: LabelHealth;
+}): HealthItem[] {
+  return [
+    {
+      label: "Local path",
+      value: input.localPath.trim() ? "set" : "missing",
+      state: input.localPath.trim() ? "healthy" : "missing",
+      detail: input.localPath.trim() || "Launches will prompt for clone/path setup.",
+    },
+    {
+      label: "Webhook",
+      value: input.webhookConfigured ? input.waitingForFirstPing ? "waiting" : "configured" : "missing",
+      state: input.webhookConfigured ? input.waitingForFirstPing ? "checking" : "healthy" : "missing",
+      detail: input.webhookConfigured ? "A GitHub webhook id is stored locally." : "Install the webhook before automation can receive deliveries.",
+    },
+    {
+      label: "Automation",
+      value: `${input.autoLaunchIssues ? "issues on" : "issues off"}, ${input.autoReviewPrs ? "PRs on" : "PRs off"}`,
+      state: input.autoLaunchIssues || input.autoReviewPrs ? "healthy" : "idle",
+      detail: "Shows which GitHub labels can create sessions.",
+    },
+    {
+      label: "Payloads",
+      value: input.webhookPayloadMode === "raw" ? "raw retained, redacted UI" : "metadata only",
+      state: input.webhookPayloadMode === "raw" ? "checking" : "healthy",
+      detail: "Dashboard views keep retained raw payloads redacted.",
+    },
+    {
+      label: "Labels",
+      value: input.labelHealth.message,
+      state: input.labelHealth.status,
+      detail: "Use Check labels for a live GitHub label health read.",
+    },
+  ];
+}
+
+function healthSummary(items: HealthItem[]): string {
+  const attention = items.filter((item) => item.state === "missing" || item.state === "error");
+  if (attention.length === 0) return "No blocking repo setup gaps detected in local settings.";
+  return `${attention.length} setup item${attention.length === 1 ? "" : "s"} need attention: ${attention.map((item) => item.label).join(", ")}.`;
 }
 
 function RecentDeliveries({ repo, deliveries }: { repo: Repo; deliveries: WebhookEvent[] }) {
