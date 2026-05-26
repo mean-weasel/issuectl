@@ -34,6 +34,7 @@ describe("launchPrFromWebhook", () => {
       headRepoFullName: "mean-weasel/issuectl",
       baseRepoFullName: "mean-weasel/issuectl",
       defaultBranch: "main",
+      headProtected: false,
     };
     const review: PrReviewRecord = {
       id: 7,

@@ -9,6 +9,7 @@ import {
   coalescePrReviewDesiredHead,
   completePrReview,
   getActivePrReview,
+  getActivePrReviewForDeployment,
   getLatestCompletedPrReview,
   getPrReviewById,
   listPrReviewsForPull,
@@ -271,6 +272,46 @@ describe("pr_reviews", () => {
       status: "failed",
       completedAt: 2_000,
       resultJson: JSON.stringify({ reason: "liveness_missing" }),
+    }));
+    expect(getActivePrReview(db, repoId, 506)).toBeUndefined();
+  });
+
+  it("marks the active review for a timed-out deployment terminal", () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        id, repo_id, issue_number, target_type, target_number, branch_name,
+        workspace_mode, workspace_path
+      ) VALUES (78, ?, NULL, 'pr', 506, 'pr-506', 'existing', '/tmp/repo')`,
+    ).run(repoId);
+    const review = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      deploymentId: 78,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+
+    expect(getActivePrReviewForDeployment(db, 78)).toEqual(expect.objectContaining({
+      id: review.id,
+      status: "reserved",
+    }));
+
+    const updated = markActivePrReviewForDeploymentTerminal(db, 78, {
+      completedAt: 2_000,
+      status: "failed",
+      reason: "timeout",
+    });
+
+    expect(updated).toEqual(expect.objectContaining({
+      id: review.id,
+      status: "failed",
+      completedAt: 2_000,
+      resultJson: JSON.stringify({ reason: "timeout" }),
     }));
     expect(getActivePrReview(db, repoId, 506)).toBeUndefined();
   });

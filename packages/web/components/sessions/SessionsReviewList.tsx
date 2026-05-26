@@ -173,6 +173,15 @@ function SessionGroups({ groups }: { groups: SessionTargetGroup[] }) {
                   {session.webhookDepth > 0 && <Chip tone="neutral">depth {session.webhookDepth}</Chip>}
                 </div>
                 <div className={styles.rowLinks}>
+                  {!session.endedAt && (
+                    <Link
+                      className={styles.primaryRowLink}
+                      href={`/workbench?deployment=${session.id}`}
+                      aria-label={`Open terminal for session ${session.id}`}
+                    >
+                      Terminal
+                    </Link>
+                  )}
                   <a href={githubTargetHref(session.owner, session.repoName, session.targetType, session.targetNumber)}>
                     GitHub
                   </a>

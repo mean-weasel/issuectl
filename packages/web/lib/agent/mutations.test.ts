@@ -172,6 +172,130 @@ describe("executeAgentMutationRequest", () => {
     });
   });
 
+  it("allows only bounded comment and label mutations for issue webhook sessions", async () => {
+    db.prepare(
+      `UPDATE deployments
+       SET target_type = 'issue',
+           target_number = 506,
+           issue_number = 506,
+           triggered_by = 'webhook',
+           completion_token = 'token-506'
+       WHERE id = ?`,
+    ).run(deploymentId);
+    setBudget(db, deploymentId, "comment", 1);
+    setBudget(db, deploymentId, "label", 2);
+    setBudget(db, deploymentId, "create_issue", 0);
+    setBudget(db, deploymentId, "create_pr", 0);
+    setBudget(db, deploymentId, "push", 0);
+    const comment = vi.fn().mockResolvedValue(undefined);
+    const label = vi.fn().mockResolvedValue(undefined);
+    const createIssue = vi.fn().mockResolvedValue(undefined);
+    const createPr = vi.fn().mockResolvedValue(undefined);
+    const push = vi.fn().mockResolvedValue(undefined);
+
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "comment",
+      payload: { body: "Completed local pass." },
+    }, { comment })).resolves.toEqual({ allowed: true });
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "label",
+      payload: { label: "issuectl:done" },
+    }, { label })).resolves.toEqual({ allowed: true });
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "label",
+      payload: { label: "needs-review", operation: "remove" },
+    }, { label })).resolves.toEqual({ allowed: true });
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "create_issue",
+      payload: { title: "Follow-up", body: "Not allowed from issue sessions." },
+    }, { createIssue })).resolves.toEqual({ allowed: false, reason: "budget_exhausted" });
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "create_pr",
+      payload: { title: "Fix", head: "issue-506", base: "main", body: "Not allowed." },
+    }, { createPr })).resolves.toEqual({ allowed: false, reason: "budget_exhausted" });
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "push",
+      payload: {
+        expectedHeadRef: "issue-506",
+        expectedHeadSha: "head-a",
+        newSha: "head-b",
+      },
+    }, {
+      fetchPull: async () => pull(),
+      isBranchProtected: async () => false,
+      verifyWorkspaceHead: async () => ({ ok: true }),
+      push,
+    })).resolves.toEqual({ allowed: false, reason: "target_mismatch" });
+
+    expect(comment).toHaveBeenCalledTimes(1);
+    expect(label).toHaveBeenCalledTimes(2);
+    expect(createIssue).not.toHaveBeenCalled();
+    expect(createPr).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(budgetRow(db, deploymentId, "comment")).toEqual({ limit_count: 1, used_count: 1 });
+    expect(budgetRow(db, deploymentId, "label")).toEqual({ limit_count: 2, used_count: 2 });
+    expect(budgetRow(db, deploymentId, "create_issue")).toEqual({ limit_count: 0, used_count: 0 });
+    expect(budgetRow(db, deploymentId, "create_pr")).toEqual({ limit_count: 0, used_count: 0 });
+    expect(budgetRow(db, deploymentId, "push")).toEqual({ limit_count: 0, used_count: 0 });
+  });
+
+  it("keeps manual sessions denied even when a token and budget exist", async () => {
+    db.prepare(
+      `UPDATE deployments
+       SET target_type = 'issue',
+           target_number = 506,
+           issue_number = 506,
+           triggered_by = 'manual',
+           completion_token = 'token-506'
+       WHERE id = ?`,
+    ).run(deploymentId);
+    setBudget(db, deploymentId, "comment", 1);
+    const comment = vi.fn().mockResolvedValue(undefined);
+
+    await expect(executeAgentMutationRequest(db, {
+      deploymentId,
+      completionToken: "token-506",
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      actionType: "comment",
+      payload: { body: "Should be denied." },
+    }, { comment })).resolves.toEqual({ allowed: false, reason: "manual_session" });
+
+    expect(comment).not.toHaveBeenCalled();
+    expect(budgetRow(db, deploymentId, "comment")).toEqual({ limit_count: 1, used_count: 0 });
+  });
+
   it("denies fork PR pushes before consuming budget or calling the adapter", async () => {
     const push = vi.fn().mockResolvedValue(undefined);
     setBudget(db, deploymentId, "push", 1);

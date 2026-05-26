@@ -87,10 +87,16 @@ export function seedAgentActionBudgets(
   targetType: DeploymentTargetType,
   triggeredBy: DeploymentTriggeredBy | undefined,
 ): void {
-  if (targetType !== "pr") return;
   if (triggeredBy !== "webhook" && triggeredBy !== "comment_command") return;
   setAgentActionBudget(db, deploymentId, "comment", 1);
   setAgentActionBudget(db, deploymentId, "label", 2);
+  if (targetType === "issue") {
+    setAgentActionBudget(db, deploymentId, "create_issue", 0);
+    setAgentActionBudget(db, deploymentId, "create_pr", 0);
+    setAgentActionBudget(db, deploymentId, "push", 0);
+    return;
+  }
+  if (targetType !== "pr") return;
   setAgentActionBudget(db, deploymentId, "create_issue", 1);
   setAgentActionBudget(db, deploymentId, "create_pr", 1);
   setAgentActionBudget(db, deploymentId, "push", 1);

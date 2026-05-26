@@ -26,6 +26,7 @@ export type PullState = {
   headRepoFullName: string;
   baseRepoFullName: string;
   defaultBranch: string;
+  headProtected?: boolean;
 };
 export type FetchPullState = (repo: Repo, prNumber: number) => Promise<PullState>;
 export type PrReviewRecord = {
@@ -74,7 +75,13 @@ export async function handlePullRequestIntent(
       broadcastEventsChanged();
       return result(base, { claimed: 1, skippedOptout: 1, endedSessions });
     }
-    if (!isSafePullForReservation(pull, intent.desiredHeadSha)) {
+    if (triggeredBy === "webhook" && !isSafeWebhookPullForReservation(pull, intent.desiredHeadSha)) {
+      recordPrIntentDiagnostic(db, repo, intent, "webhook.skipped_unsafe_pr", "PR failed auto-review safety gates.");
+      markIntentTerminal(db, intent.id, now, "PR failed safety gates");
+      broadcastEventsChanged();
+      return result(base, { claimed: 1, skippedOptout: 1 });
+    }
+    if (triggeredBy !== "webhook" && !isSafePullForReservation(pull, intent.desiredHeadSha)) {
       recordPrIntentDiagnostic(db, repo, intent, "webhook.skipped_unsafe_pr", "PR failed auto-review safety gates.");
       markIntentTerminal(db, intent.id, now, "PR failed safety gates");
       broadcastEventsChanged();
@@ -182,13 +189,23 @@ async function fetchPullState(repo: Repo, prNumber: number): Promise<PullState> 
       head: { ref: string; sha: string; repo: { full_name: string } | null };
       base: { ref: string; sha: string; repo: { full_name: string; default_branch?: string } | null };
     };
+    const headRepoFullName = d.head.repo?.full_name ?? "";
+    const baseRepoFullName = d.base.repo?.full_name ?? `${repo.owner}/${repo.name}`;
+    const headProtected = headRepoFullName === baseRepoFullName
+      ? Boolean((await octokit.rest.repos.getBranch({
+        owner: repo.owner,
+        repo: repo.name,
+        branch: d.head.ref,
+      })).data.protected)
+      : false;
     return {
       title: d.title, body: d.body ?? null, state: d.state, draft: Boolean(d.draft),
       labels: (d.labels ?? []).map((l) => typeof l === "string" ? l : l.name).filter((n): n is string => Boolean(n)),
       headRef: d.head.ref, baseRef: d.base.ref, headSha: d.head.sha, baseSha: d.base.sha,
-      headRepoFullName: d.head.repo?.full_name ?? "",
-      baseRepoFullName: d.base.repo?.full_name ?? `${repo.owner}/${repo.name}`,
+      headRepoFullName,
+      baseRepoFullName,
       defaultBranch: d.base.repo?.default_branch ?? d.base.ref,
+      headProtected,
     };
   });
 }
@@ -201,6 +218,11 @@ function isSafePullForReservation(pull: PullState, desiredHeadSha: string | null
   return pull.headRepoFullName === pull.baseRepoFullName
     && pull.headRef !== pull.defaultBranch
     && (desiredHeadSha === null || pull.headSha === desiredHeadSha);
+}
+
+function isSafeWebhookPullForReservation(pull: PullState, desiredHeadSha: string | null): boolean {
+  return isSafePullForReservation(pull, desiredHeadSha)
+    && pull.headProtected !== true;
 }
 
 function markPrReviewLaunching(db: Database.Database, reviewId: number): void {

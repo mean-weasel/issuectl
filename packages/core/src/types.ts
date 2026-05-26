@@ -37,6 +37,7 @@ export type SettingKey =
   | "max_webhook_intent_age_minutes"
   | "max_concurrent_webhook_agents"
   | "max_webhook_recursion_depth"
+  | "review_hard_timeout_minutes"
   | "public_webhook_base_url";
 
 export type Setting = {

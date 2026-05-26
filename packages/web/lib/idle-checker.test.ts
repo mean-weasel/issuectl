@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { checkDeploymentLiveness, checkIdleDeployments } from "./idle-checker";
 
@@ -25,6 +26,7 @@ vi.mock("@issuectl/core", async () => {
     setIdleSince: vi.fn(),
     clearIdleSince: vi.fn(),
     getSetting: vi.fn(),
+    markActivePrReviewForDeploymentTerminal: vi.fn(),
   };
 });
 
@@ -55,6 +57,7 @@ import {
   setIdleSince,
   clearIdleSince,
   getSetting,
+  markActivePrReviewForDeploymentTerminal,
 } from "@issuectl/core";
 
 const mockGetRegisteredPorts = vi.mocked(getRegisteredPorts);
@@ -68,6 +71,7 @@ const mockRecordDiagnosticEvent = vi.mocked(recordDiagnosticEventSafely);
 const mockSetIdleSince = vi.mocked(setIdleSince);
 const mockClearIdleSince = vi.mocked(clearIdleSince);
 const mockGetSetting = vi.mocked(getSetting);
+const mockMarkActivePrReviewForDeploymentTerminal = vi.mocked(markActivePrReviewForDeploymentTerminal);
 
 describe("checkIdleDeployments", () => {
   const fakeDb = {} as ReturnType<typeof getDb>;
@@ -253,11 +257,35 @@ describe("checkDeploymentLiveness", () => {
   const fakeDb = {} as ReturnType<typeof getDb>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     mockGetDb.mockReturnValue(fakeDb);
+    mockGetSetting.mockImplementation((_db, key) => {
+      if (String(key) === "review_hard_timeout_minutes") return "30";
+      return undefined;
+    });
+    mockMarkActivePrReviewForDeploymentTerminal.mockReturnValue({
+      id: 101,
+      repoId: 1,
+      prNumber: 44,
+      deploymentId: 4,
+      startedHeadSha: "head-b",
+      completedHeadSha: null,
+      reviewBaseSha: "base-a",
+      reviewedFromSha: null,
+      reviewedToSha: "head-b",
+      headRepoFullName: "owner/repo",
+      headRef: "feature",
+      status: "in_progress",
+      triggeredBy: "webhook",
+      resultJson: null,
+      startedAt: Date.now(),
+      completedAt: null,
+    });
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -310,6 +338,278 @@ describe("checkDeploymentLiveness", () => {
         sessionName: "issuectl-repo-7",
       }),
     );
+  });
+
+  it("ends old active PR deployments as timed out and fails the linked active review", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 4,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date(now - 31 * 60_000).toISOString(),
+        endedAt: null,
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7701,
+        ttydPid: 1235,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(true);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).toHaveBeenCalledWith(fakeDb, 4, "timeout");
+    expect(mockMarkActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(fakeDb, 4, {
+      completedAt: now,
+      status: "failed",
+      reason: "timeout",
+    });
+    expect(notifyDeploymentTerminalOutcome).toHaveBeenCalledWith({ deploymentId: 4 });
+    expect(mockRecordDiagnosticEvent).toHaveBeenCalledWith(
+      fakeDb,
+      expect.objectContaining({
+        level: "warn",
+        event: "review.timeout",
+        targetType: "pr",
+        targetNumber: 44,
+        deploymentId: 4,
+      }),
+    );
+  });
+
+  it("does not time out issue deployments", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 5,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: 7,
+        targetType: "issue",
+        targetNumber: 7,
+        agent: "claude",
+        branchName: "issue-7",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date(now - 31 * 60_000).toISOString(),
+        endedAt: null,
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7701,
+        ttydPid: 1235,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(true);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).not.toHaveBeenCalled();
+    expect(mockMarkActivePrReviewForDeploymentTerminal).not.toHaveBeenCalled();
+  });
+
+  it("does not time out PR deployments without a linked active PR review", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    mockMarkActivePrReviewForDeploymentTerminal.mockReturnValue(undefined);
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 9,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date(now - 31 * 60_000).toISOString(),
+        endedAt: null,
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7701,
+        ttydPid: 1235,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(true);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).not.toHaveBeenCalled();
+    expect(mockMarkActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(fakeDb, 9, {
+      completedAt: now,
+      status: "failed",
+      reason: "timeout",
+    });
+  });
+
+  it("lets tmux_missing win over PR timeout in the same pass", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 6,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date(now - 31 * 60_000).toISOString(),
+        endedAt: null,
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7701,
+        ttydPid: 1235,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(false);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).toHaveBeenCalledWith(fakeDb, 6, "liveness_missing");
+    expect(mockEndDeployment).not.toHaveBeenCalledWith(fakeDb, 6, "timeout");
+    expect(mockMarkActivePrReviewForDeploymentTerminal).toHaveBeenCalledWith(fakeDb, 6, {
+      completedAt: now,
+      status: "failed",
+      reason: "liveness_missing",
+    });
+  });
+
+  it("does not time out PR deployments when review hard timeout is disabled", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    mockGetSetting.mockImplementation((_db, key) => {
+      if (String(key) === "review_hard_timeout_minutes") return "0";
+      return undefined;
+    });
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 7,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date(now - 60 * 60_000).toISOString(),
+        endedAt: null,
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7701,
+        ttydPid: 1235,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(true);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).not.toHaveBeenCalled();
+    expect(mockMarkActivePrReviewForDeploymentTerminal).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the default timeout when the timeout setting is invalid", () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    mockGetSetting.mockImplementation((_db, key) => {
+      if (String(key) === "review_hard_timeout_minutes") return "bogus";
+      return undefined;
+    });
+    mockGetActiveDeployments.mockReturnValue([
+      {
+        id: 8,
+        repoId: 1,
+        owner: "owner",
+        repoName: "repo",
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44",
+        workspaceMode: "existing",
+        workspacePath: "/tmp",
+        linkedPrNumber: null,
+        state: "active",
+        launchedAt: new Date(now - 31 * 60_000).toISOString(),
+        endedAt: null,
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7701,
+        ttydPid: 1235,
+        idleSince: null,
+      },
+    ]);
+    mockIsTmuxSessionAlive.mockReturnValue(true);
+
+    checkDeploymentLiveness();
+
+    expect(mockEndDeployment).toHaveBeenCalledWith(fakeDb, 8, "timeout");
   });
 
   it("records liveness.check_failed when querying active deployments fails", () => {

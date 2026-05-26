@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: Setting[] = [
   { key: "max_webhook_intent_age_minutes", value: "60" },
   { key: "max_concurrent_webhook_agents", value: "2" },
   { key: "max_webhook_recursion_depth", value: "1" },
+  { key: "review_hard_timeout_minutes", value: "30" },
   { key: "public_webhook_base_url", value: "" },
 ];
 

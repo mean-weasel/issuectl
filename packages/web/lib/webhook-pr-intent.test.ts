@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import {
@@ -58,6 +59,7 @@ const safePull = {
   headRepoFullName: "mean-weasel/issuectl",
   baseRepoFullName: "mean-weasel/issuectl",
   defaultBranch: "main",
+  headProtected: false,
 };
 
 describe("PR webhook intents", () => {
@@ -149,6 +151,31 @@ describe("PR webhook intents", () => {
     });
 
     expect(result).toEqual(expect.objectContaining({ claimed: 1, skippedOptout: 1, launched: 0 }));
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({ status: "skipped_optout", deployment_id: null }),
+    );
+    expect(db.prepare("SELECT COUNT(*) AS count FROM pr_reviews").get()).toEqual({ count: 0 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.skipped_unsafe_pr"] })).toHaveLength(1);
+  });
+
+  it("skips protected-branch webhook PR intents before reserving or launching", async () => {
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 49,
+      signalAt: 1_000,
+      scheduledAt: 2_000,
+      desiredHeadSha: "head-b",
+    });
+    const launchPr = vi.fn();
+
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, {
+      fetchPullState: async () => ({ ...safePull, headRef: "release", headProtected: true }),
+      launchPr,
+    });
+
+    expect(result).toEqual(expect.objectContaining({ claimed: 1, skippedOptout: 1, launched: 0 }));
+    expect(launchPr).not.toHaveBeenCalled();
     expect(getIntentRow(db, intentId)).toEqual(
       expect.objectContaining({ status: "skipped_optout", deployment_id: null }),
     );
@@ -290,6 +317,51 @@ describe("PR webhook intents", () => {
     expect(
       db.prepare("SELECT triggered_by FROM pr_reviews WHERE pr_number = 47").get(),
     ).toEqual({ triggered_by: "comment_command" });
+  });
+
+  it("does not apply protected-branch auto-review gating to comment-command PR intents", async () => {
+    updateRepoWebhookSettings(db, repoId, { autoReviewPrs: false });
+    const event = recordWebhookEvent(db, {
+      deliveryId: "delivery-review-protected-command",
+      repoId,
+      eventType: "issue_comment",
+      action: "created",
+      senderLogin: "octocat",
+      targetType: "pr",
+      targetNumber: 50,
+      receivedAt: 1_000,
+    });
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 50,
+      signalAt: 1_000,
+      scheduledAt: 2_000,
+      desiredHeadSha: "head-b",
+      eventId: event.deduped ? null : event.eventId,
+    });
+
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, {
+      fetchPullState: async () => ({ ...safePull, headRef: "release", headProtected: true, labels: [] }),
+      launchPr: async (_db) => {
+        const deploymentId = recordDeployment(_db, {
+          repoId,
+          issueNumber: 50,
+          branchName: "pr-50-review",
+          workspaceMode: "worktree",
+          workspacePath: "/tmp/pr-50",
+        }).id;
+        _db.prepare(
+          "UPDATE deployments SET triggered_by = 'comment_command' WHERE id = ?",
+        ).run(deploymentId);
+        return { deploymentId };
+      },
+    });
+
+    expect(result).toEqual(expect.objectContaining({ claimed: 1, launched: 1, failed: 0 }));
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({ status: "launched", deployment_id: 1 }),
+    );
   });
 
   it("marks the PR review failed when launch fails after reservation", async () => {
