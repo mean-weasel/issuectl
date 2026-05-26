@@ -71,6 +71,7 @@ beforeEach(() => {
     ...repo,
     autoLaunchIssues: true,
     issueAgent: "codex",
+    reviewPreamble: "Use this review preamble.",
     webhookPayloadMode: "raw",
   });
   getActiveWebhookDeploymentsForRepoTarget.mockReset();
@@ -90,6 +91,7 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
       autoReviewPrs: false,
       issueAgent: "codex",
       reviewAgent: "claude",
+      reviewPreamble: "Use this review preamble.",
       webhookPayloadMode: "raw",
     }), { params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }) });
     const json = await response.json();
@@ -100,6 +102,7 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
       autoReviewPrs: false,
       issueAgent: "codex",
       reviewAgent: "claude",
+      reviewPreamble: "Use this review preamble.",
       webhookPayloadMode: "raw",
     });
     expect(json.repo.webhookSecret).toBeUndefined();
@@ -150,6 +153,33 @@ describe("/api/v1/repos/[owner]/[repo]", () => {
 
     expect(response.status).toBe(400);
     expect(json.error).toMatch(/webhookPayloadMode/);
+    expect(updateRepoWebhookSettings).not.toHaveBeenCalled();
+  });
+
+  it("PATCH accepts null review preamble", async () => {
+    const response = await PATCH(request({ reviewPreamble: null }), {
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(updateRepoWebhookSettings).toHaveBeenCalledWith(expect.anything(), 1, {
+      autoLaunchIssues: undefined,
+      autoReviewPrs: undefined,
+      issueAgent: undefined,
+      reviewAgent: undefined,
+      reviewPreamble: null,
+      webhookPayloadMode: undefined,
+    });
+  });
+
+  it("PATCH rejects invalid review preamble", async () => {
+    const response = await PATCH(request({ reviewPreamble: 123 }), {
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }),
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("reviewPreamble must be a string or null");
     expect(updateRepoWebhookSettings).not.toHaveBeenCalled();
   });
 });

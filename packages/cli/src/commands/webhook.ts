@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { randomBytes } from "node:crypto";
 import type { Command } from "commander";
 import { confirm } from "@inquirer/prompts";
@@ -6,6 +7,8 @@ import {
   getSetting,
   listRepos,
   listWebhookEvents,
+  recordDiagnosticEventSafely,
+  replayWebhookDelivery,
   updateRepoWebhookSettings,
   withAuthRetry,
   type RepoWebhookConfig,
@@ -288,6 +291,64 @@ export function registerWebhookCommands(program: Command): void {
   registerWebhookIntentCommands(webhook);
 
   webhook
+    .command("replay <delivery-id>")
+    .description("Re-enqueue a retained webhook delivery")
+    .option("--yes", "Skip confirmation prompt")
+    .action(async (deliveryId: string, opts: { yes?: boolean }, command: Command) => {
+      await parseCommandInput(command, () =>
+        requireConfirmation(opts.yes, `Replay webhook delivery ${deliveryId}?`),
+      );
+      const db = requireDb();
+      const result = replayWebhookDelivery(db, {
+        deliveryId,
+        now: Date.now(),
+      });
+      if (!result.replayed) {
+        const repo = result.event
+          ? listRepos(db).find((candidate) => candidate.id === result.event?.repoId)
+          : undefined;
+        recordDiagnosticEventSafely(db, {
+          level: "warn",
+          event: "webhook.replay_failed",
+          source: "cli",
+          correlationId: deliveryId,
+          owner: repo?.owner,
+          repo: repo?.name,
+          targetType: result.event?.targetType ?? undefined,
+          targetNumber: result.event?.targetNumber ?? undefined,
+          message: `Webhook delivery replay failed: ${result.reason}`,
+          data: {
+            deliveryId,
+            reason: result.reason,
+            eventId: result.event?.id,
+          },
+        });
+        command.error(`Cannot replay webhook delivery ${deliveryId}: ${formatReplayFailure(result.reason)}.`);
+      }
+
+      const repo = listRepos(db).find((candidate) => candidate.id === result.event.repoId);
+      recordDiagnosticEventSafely(db, {
+        level: "info",
+        event: "webhook.replayed",
+        source: "cli",
+        correlationId: deliveryId,
+        owner: repo?.owner,
+        repo: repo?.name,
+        targetType: result.intent.targetType,
+        targetNumber: result.intent.targetNumber,
+        message: "Webhook delivery replayed by operator",
+        data: {
+          deliveryId,
+          eventId: result.event.id,
+          intentId: result.intent.id,
+        },
+      });
+      process.stdout.write(
+        `${result.intent.id}\t${repo ? `${repo.owner}/${repo.name}` : result.intent.repoId}\t${result.intent.targetType}#${result.intent.targetNumber}\t${result.intent.status}\tscheduled=${result.intent.scheduledAt}\n`,
+      );
+    });
+
+  webhook
     .command("create <repo>")
     .description("Create the GitHub webhook for a tracked repo")
     .option("--yes", "Skip confirmation prompt")
@@ -302,4 +363,11 @@ export function registerWebhookCommands(program: Command): void {
     .action((repoRef: string, opts: { yes?: boolean }, command: Command) =>
       configureWebhook(command, repoRef, { yes: opts.yes, rotate: true }),
     );
+}
+
+function formatReplayFailure(reason: "not_found" | "missing_target" | "missing_action" | "not_replayable"): string {
+  if (reason === "not_found") return "delivery not found";
+  if (reason === "missing_target") return "delivery has no issue or PR target metadata";
+  if (reason === "missing_action") return "delivery has no GitHub action metadata";
+  return "delivery event/action is not replayable";
 }

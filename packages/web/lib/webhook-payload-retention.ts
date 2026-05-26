@@ -1,20 +1,29 @@
 import type Database from "better-sqlite3";
+import {
+  pruneOldWebhookEvents,
+  pruneExpiredWebhookPayloads as pruneExpiredWebhookPayloadRows,
+} from "@issuectl/core";
+
+const WEBHOOK_EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+export type WebhookRetentionResult = {
+  prunedPayloads: number;
+  prunedEvents: number;
+};
 
 export function pruneExpiredWebhookPayloads(
   db: Database.Database,
   now: number,
 ): number {
-  const result = db
-    .prepare(
-      `UPDATE webhook_events
-       SET payload_json = NULL
-       WHERE payload_json IS NOT NULL
-         AND delivery_id IN (
-           SELECT delivery_id FROM webhook_deliveries
-           WHERE retained_until IS NOT NULL
-             AND retained_until <= ?
-         )`,
-    )
-    .run(now);
-  return result.changes;
+  return pruneExpiredWebhookPayloadRows(db, now);
+}
+
+export function pruneExpiredWebhookData(
+  db: Database.Database,
+  now: number,
+): WebhookRetentionResult {
+  return {
+    prunedPayloads: pruneExpiredWebhookPayloadRows(db, now),
+    prunedEvents: pruneOldWebhookEvents(db, now, WEBHOOK_EVENT_RETENTION_MS),
+  };
 }

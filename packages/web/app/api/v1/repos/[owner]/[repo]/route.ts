@@ -74,6 +74,7 @@ type UpdateRepoBody = {
   autoReviewPrs?: boolean;
   issueAgent?: "claude" | "codex";
   reviewAgent?: "claude" | "codex";
+  reviewPreamble?: string | null;
   webhookPayloadMode?: "metadata" | "raw";
 };
 
@@ -127,6 +128,13 @@ export async function PATCH(
   if (body.reviewAgent !== undefined && body.reviewAgent !== "claude" && body.reviewAgent !== "codex") {
     return NextResponse.json({ success: false, error: "reviewAgent must be claude or codex" }, { status: 400 });
   }
+  if (
+    body.reviewPreamble !== undefined &&
+    body.reviewPreamble !== null &&
+    typeof body.reviewPreamble !== "string"
+  ) {
+    return NextResponse.json({ success: false, error: "reviewPreamble must be a string or null" }, { status: 400 });
+  }
   if (body.webhookPayloadMode !== undefined && body.webhookPayloadMode !== "metadata" && body.webhookPayloadMode !== "raw") {
     return NextResponse.json({ success: false, error: "webhookPayloadMode must be metadata or raw" }, { status: 400 });
   }
@@ -151,6 +159,7 @@ export async function PATCH(
       autoReviewPrs: body.autoReviewPrs,
       issueAgent: body.issueAgent,
       reviewAgent: body.reviewAgent,
+      reviewPreamble: body.reviewPreamble,
       webhookPayloadMode: body.webhookPayloadMode,
     };
     if (Object.values(webhookUpdates).some((value) => value !== undefined)) {

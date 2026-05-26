@@ -16,9 +16,11 @@ import {
   listWebhookLogEntries,
   listWebhookEvents,
   mergeWebhookIntent,
+  pruneOldWebhookEvents,
   pruneExpiredWebhookPayloads,
   recordWebhookEvent,
   recoverExpiredWebhookIntentLeases,
+  replayWebhookDelivery,
 } from "./webhooks.js";
 
 describe("webhook DB helpers", () => {
@@ -310,6 +312,64 @@ describe("webhook DB helpers", () => {
     ).toEqual({ count: 2 });
   });
 
+  it("prunes old event rows without deleting delivery tombstones", () => {
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-old",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-new",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 507,
+      receivedAt: 5_000,
+    });
+
+    expect(pruneOldWebhookEvents(db, 5_000, 3_000)).toBe(1);
+
+    expect(listWebhookEvents(db)).toEqual([
+      expect.objectContaining({ deliveryId: "delivery-new" }),
+    ]);
+    expect(
+      db.prepare("SELECT delivery_id FROM webhook_deliveries ORDER BY delivery_id").all(),
+    ).toEqual([
+      { delivery_id: "delivery-new" },
+      { delivery_id: "delivery-old" },
+    ]);
+  });
+
+  it("does not prune old event rows attached to active intents", () => {
+    const oldEvent = recordWebhookEvent(db, {
+      deliveryId: "delivery-active",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 10_000,
+      eventId: oldEvent.eventId,
+    });
+
+    expect(pruneOldWebhookEvents(db, 5_000, 3_000)).toBe(0);
+    expect(listWebhookEvents(db)).toEqual([
+      expect.objectContaining({ deliveryId: "delivery-active" }),
+    ]);
+  });
+
   it("finds an existing event by delivery id and repo", () => {
     recordWebhookEvent(db, {
       deliveryId: "delivery-1",
@@ -344,6 +404,73 @@ describe("webhook DB helpers", () => {
         repoId: repoId + 1,
       }),
     ).toBeUndefined();
+  });
+
+  it("replays a retained delivery into an immediate webhook intent", () => {
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-replay",
+      repoId,
+      eventType: "pull_request",
+      action: "synchronize",
+      senderLogin: "octocat",
+      targetType: "pr",
+      targetNumber: 42,
+      payloadJson: JSON.stringify({
+        pull_request: { head: { sha: "abc123" } },
+      }),
+      receivedAt: 1_000,
+      retainedUntil: 5_000,
+    });
+
+    const result = replayWebhookDelivery(db, {
+      deliveryId: "delivery-replay",
+      now: 2_000,
+    });
+
+    expect(result).toEqual({
+      replayed: true,
+      event: expect.objectContaining({
+        deliveryId: "delivery-replay",
+        targetType: "pr",
+        targetNumber: 42,
+      }),
+      intent: expect.objectContaining({
+        repoId,
+        targetType: "pr",
+        targetNumber: 42,
+        status: "pending",
+        scheduledAt: 2_000,
+        desiredHeadSha: "abc123",
+      }),
+    });
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM webhook_deliveries").get(),
+    ).toEqual({ count: 1 });
+    expect(
+      db.prepare("SELECT COUNT(*) AS count FROM webhook_events").get(),
+    ).toEqual({ count: 1 });
+  });
+
+  it("rejects replay when retained metadata cannot identify a target", () => {
+    recordWebhookEvent(db, {
+      deliveryId: "delivery-no-target",
+      repoId,
+      eventType: "issues",
+      action: "opened",
+      targetType: null,
+      targetNumber: null,
+      receivedAt: 1_000,
+    });
+
+    expect(replayWebhookDelivery(db, {
+      deliveryId: "delivery-no-target",
+      now: 2_000,
+    })).toEqual({
+      replayed: false,
+      reason: "missing_target",
+      event: expect.objectContaining({ deliveryId: "delivery-no-target" }),
+    });
+    expect(listWebhookIntents(db)).toEqual([]);
   });
 
   it("claims and recovers stale processing intents", () => {
