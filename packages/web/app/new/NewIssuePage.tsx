@@ -7,7 +7,7 @@ import type { GitHubLabel } from "@issuectl/core";
 import { createIssue } from "@/lib/actions/issues";
 import { useToast } from "@/components/ui/ToastProvider";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import { isLifecycleLabel } from "@/lib/labels";
+import { isSelectableIssueLabel } from "@/lib/labels";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { RepoOption } from "@/lib/types";
 import styles from "./NewIssuePage.module.css";
@@ -70,7 +70,7 @@ export function NewIssuePage({ repos, defaultRepo, labelsPerRepo, initError }: P
   const repoKey = `${selectedRepo.owner}/${selectedRepo.repo}`;
   const availableLabels = useMemo(() => {
     const repoLabels = (labelsPerRepo[repoKey] ?? []).filter(
-      (l) => !isLifecycleLabel(l.name),
+      (l) => isSelectableIssueLabel(l.name),
     );
     return repoLabels.length > 0 ? repoLabels : STANDARD_LABELS;
   }, [labelsPerRepo, repoKey]);

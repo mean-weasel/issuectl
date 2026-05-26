@@ -1,7 +1,7 @@
 "use client";
 
 import type { GitHubLabel } from "@issuectl/core";
-import { isLifecycleLabel } from "@/lib/labels";
+import { isSelectableIssueLabel } from "@/lib/labels";
 import styles from "./LabelSelector.module.css";
 
 type Props = {
@@ -32,7 +32,7 @@ export function LabelSelector({
   onToggle,
   disabled,
 }: Props) {
-  const toggleable = available.filter((l) => !isLifecycleLabel(l.name));
+  const toggleable = available.filter((l) => isSelectableIssueLabel(l.name));
 
   if (toggleable.length === 0) return null;
 
