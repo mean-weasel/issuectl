@@ -1,7 +1,13 @@
 import type { GitHubLabel } from "@issuectl/core";
 
+const SELECTABLE_ISSUECTL_LABELS = new Set(["issuectl:auto-launch"]);
+
 export function isLifecycleLabel(name: string): boolean {
   return name.startsWith("issuectl:");
+}
+
+export function isSelectableIssueLabel(name: string): boolean {
+  return !isLifecycleLabel(name) || SELECTABLE_ISSUECTL_LABELS.has(name);
 }
 
 export function separateLabels(labels: GitHubLabel[]): {
