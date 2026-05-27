@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,11 +15,13 @@ const core = vi.hoisted(() => ({
   queryDiagnosticEvents: vi.fn(),
   getActiveDeployments: vi.fn(),
   getActiveWebhookDeploymentsForRepoTarget: vi.fn(),
+  getDeploymentsForTarget: vi.fn(),
   listPrReviewsForRepo: vi.fn(),
   listRecentTerminalDeploymentsByRepo: vi.fn(),
   listWebhookEvents: vi.fn(),
   getOctokit: vi.fn(),
   getIssueHeader: vi.fn(),
+  getPullDetail: vi.fn(),
   getPriority: vi.fn(),
   getSettings: vi.fn(),
   listLabels: vi.fn(),
@@ -57,6 +60,9 @@ vi.mock("@/components/detail/IssueDetail", () => ({
 vi.mock("@/components/detail/IssueDetailContent", () => ({
   IssueDetailContent: (props: Record<string, unknown>) => React.createElement("mock-issue-detail-content", props),
 }));
+vi.mock("@/components/detail/PrDetail", () => ({
+  PrDetail: (props: Record<string, unknown>) => React.createElement("mock-pr-detail", props),
+}));
 vi.mock("@/components/detail/ImageLightbox", () => ({
   LightboxProvider: (props: Record<string, unknown>) => React.createElement("mock-lightbox-provider", props, props.children as React.ReactNode),
 }));
@@ -93,6 +99,7 @@ beforeEach(() => {
   core.queryDiagnosticEvents.mockReturnValue([]);
   core.getActiveDeployments.mockReturnValue([]);
   core.getActiveWebhookDeploymentsForRepoTarget.mockReturnValue([]);
+  core.getDeploymentsForTarget.mockReturnValue([]);
   core.listPrReviewsForRepo.mockReturnValue([]);
   core.listRecentTerminalDeploymentsByRepo.mockReturnValue([]);
   core.listWebhookEvents.mockReturnValue([webhookEntry()]);
@@ -115,11 +122,38 @@ beforeEach(() => {
     deployments: [],
     referencedFiles: [],
   });
+  core.getPullDetail.mockResolvedValue({
+    pull: {
+      number: 44,
+      title: "Review labels",
+      body: "body",
+      state: "open",
+      labels: [{ name: "issuectl:auto-review", color: "a371f7", description: null }],
+      draft: false,
+      merged: false,
+      user: null,
+      headRef: "feature/review-labels",
+      baseRef: "main",
+      additions: 1,
+      deletions: 0,
+      changedFiles: 1,
+      createdAt: "2026-05-27T00:00:00.000Z",
+      updatedAt: "2026-05-27T00:00:00.000Z",
+      mergedAt: null,
+      closedAt: null,
+      htmlUrl: "https://github.com/mean-weasel/issuectl/pull/44",
+    },
+    checks: [],
+    files: [],
+    reviews: [],
+    linkedIssue: null,
+  });
   core.getPriority.mockReturnValue("normal");
   core.getSettings.mockReturnValue([{ key: "launch_agent", value: "codex" }]);
   core.listLabels.mockResolvedValue([
     { name: "bug", color: "d73a4a", description: null },
     { name: "issuectl:auto-launch", color: "0e8a16", description: null },
+    { name: "issuectl:auto-review", color: "a371f7", description: null },
   ]);
   data.normalizeSessionsFilters.mockReturnValue({ tab: "sessions" });
   data.getSessionsOverviewData.mockResolvedValue({ summary: { activeSessions: 1 } });
@@ -240,6 +274,62 @@ describe("operator route rendering", () => {
     expect(detail?.props.availableLabels).toEqual([
       { name: "bug", color: "d73a4a", description: null },
       { name: "issuectl:auto-launch", color: "0e8a16", description: null },
+      { name: "issuectl:auto-review", color: "a371f7", description: null },
+    ]);
+  });
+
+  it("renders PR detail with repo labels for editing PR automation labels", async () => {
+    const { default: PullDetailPage } = await import("./pulls/[owner]/[repo]/[number]/page");
+    core.getDeploymentsForTarget.mockReturnValueOnce([
+      {
+        id: 77,
+        repoId: 1,
+        issueNumber: null,
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44-review",
+        workspaceMode: "worktree",
+        workspacePath: "/tmp/pr-44",
+        linkedPrNumber: null,
+        state: "active",
+        terminalBackend: "ttyd",
+        triggeredBy: "webhook",
+        parentDeploymentId: null,
+        webhookDepth: 0,
+        launchedAt: "2026-05-27T00:00:00.000Z",
+        endedAt: null,
+        terminalReason: null,
+        completionToken: null,
+        completionResultJson: null,
+        notificationSentAt: null,
+        ttydPort: 7777,
+        ttydPid: 12345,
+        idleSince: null,
+      },
+    ]);
+
+    const tree = await PullDetailPage({
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl", number: "44" }),
+    });
+
+    expect(core.getPullDetail).toHaveBeenCalledWith(core.db, {}, "mean-weasel", "issuectl", 44);
+    expect(core.getDeploymentsForTarget).toHaveBeenCalledWith(core.db, 1, "pr", 44);
+    expect(core.listLabels).toHaveBeenCalledWith({}, "mean-weasel", "issuectl");
+    const detail = findElementWhere(tree, (props) => Array.isArray(props.availableLabels));
+    expect(detail?.props.availableLabels).toEqual([
+      { name: "bug", color: "d73a4a", description: null },
+      { name: "issuectl:auto-launch", color: "0e8a16", description: null },
+      { name: "issuectl:auto-review", color: "a371f7", description: null },
+    ]);
+    expect(detail?.props.pull).toEqual(
+      expect.objectContaining({
+        number: 44,
+        labels: [{ name: "issuectl:auto-review", color: "a371f7", description: null }],
+      }),
+    );
+    expect(detail?.props.deployments).toEqual([
+      expect.objectContaining({ id: 77, targetType: "pr", targetNumber: 44 }),
     ]);
   });
 });

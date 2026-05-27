@@ -267,3 +267,40 @@ export async function toggleLabel(data: {
   const { stale } = revalidateSafely(`/issues/${owner}/${repo}/${number}`, "/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
+
+export async function togglePullLabel(data: {
+  owner: string;
+  repo: string;
+  number: number;
+  label: string;
+  action: "add" | "remove";
+}): Promise<{ success: boolean; error?: string; cacheStale?: true }> {
+  const { owner, repo, number, label, action } = data;
+  if (!owner || !repo || !Number.isFinite(number) || number <= 0 || !label) {
+    return { success: false, error: "Valid owner, repo, PR number, and label are required" };
+  }
+
+  try {
+    const db = getDb();
+    if (!getRepo(db, owner, repo)) {
+      return { success: false, error: "Repository is not tracked" };
+    }
+    if (action === "add") {
+      await withAuthRetry((octokit) =>
+        coreAddLabel(octokit, owner, repo, number, label),
+      );
+    } else {
+      await withAuthRetry((octokit) =>
+        coreRemoveLabel(octokit, owner, repo, number, label),
+      );
+    }
+    clearCacheKey(db, `pull-detail:${owner}/${repo}#${number}`);
+    clearCacheKey(db, `pulls-open:${owner}/${repo}`);
+    clearCacheKey(db, `pulls-with-checks:${owner}/${repo}`);
+  } catch (err) {
+    console.error(`[issuectl] Failed to ${action} PR label:`, err);
+    return { success: false, error: formatErrorForUser(err) };
+  }
+  const { stale } = revalidateSafely(`/pulls/${owner}/${repo}/${number}`, "/?tab=prs");
+  return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
+}

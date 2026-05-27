@@ -31,6 +31,7 @@ function makePull(overrides: Partial<PullWithChecksStatus> = {}): PullWithChecks
     title: "PR",
     body: null,
     state: "open",
+    labels: [],
     draft: false,
     merged: false,
     user: { login: "me", avatarUrl: "" },

@@ -3,6 +3,7 @@ import type { DeploymentTerminalReason } from "../types.js";
 import { getDeploymentById } from "./deployments.js";
 import { getRepoById } from "./repos.js";
 import { recordDiagnosticEventSafely } from "./diagnostics.js";
+import { finishActivePrReviewForDeployment } from "./pr-reviews.js";
 
 export type AgentCompletionStatus =
   | "completed"
@@ -52,6 +53,14 @@ export function recordAgentCompletionCheckIn(
      WHERE id = ? AND completion_result_json IS NULL`,
   ).run(terminalReason, resultJson, input.deploymentId);
   if (result.changes > 0) {
+    if (deployment.targetType === "pr") {
+      finishActivePrReviewForDeployment(db, deployment.id, {
+        completedAt: Date.now(),
+        completedHeadSha: input.finalHeadSha ?? input.pushedCommitSha,
+        status: input.status === "failed" ? "failed" : "completed",
+        result: completionResult(input),
+      });
+    }
     recordCompletionDiagnostic(db, input, "agent.completion_recorded", "info");
     return { accepted: true, duplicate: false };
   }

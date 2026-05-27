@@ -1,9 +1,11 @@
 import type {
+  Deployment,
   GitHubPull,
   GitHubCheck,
   GitHubPullFile,
   GitHubPullReview,
   GitHubIssue,
+  GitHubLabel,
 } from "@issuectl/core";
 import { Chip } from "@/components/paper";
 import { DetailTopBar } from "./DetailTopBar";
@@ -20,6 +22,9 @@ import { FilesChanged } from "./FilesChanged";
 import { MergeButton } from "./MergeButton";
 import { DetailKeyboardNav } from "./DetailKeyboardNav";
 import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
+import { LabelManager } from "@/components/issue/LabelManager";
+import { OpenTerminalButton } from "@/components/terminal/OpenTerminalButton";
+import { launchAgentLabel } from "@/components/launch/agent";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -30,6 +35,8 @@ type Props = {
   files: GitHubPullFile[];
   reviews: GitHubPullReview[];
   linkedIssue: GitHubIssue | null;
+  availableLabels: GitHubLabel[];
+  deployments: Deployment[];
 };
 
 export function PrDetail({
@@ -40,10 +47,13 @@ export function PrDetail({
   files,
   reviews,
   linkedIssue,
+  availableLabels,
+  deployments,
 }: Props) {
   const prState: "open" | "closed" | "merged" = pull.merged
     ? "merged"
     : pull.state;
+  const activeDeployment = deployments.find((deployment) => deployment.endedAt === null);
 
   return (
     <div className={styles.container}>
@@ -72,6 +82,40 @@ export function PrDetail({
             files
           </span>
         </DetailMeta>
+
+        <section className={styles.labelPanel} aria-label="PR labels">
+          <LabelManager
+            owner={owner}
+            repo={repoName}
+            issueNumber={pull.number}
+            targetType="pr"
+            currentLabels={pull.labels ?? []}
+            availableLabels={availableLabels}
+          />
+        </section>
+
+        {activeDeployment && (
+          <section className={styles.sessionPanel} aria-label="Active PR session">
+            <div>
+              <h2 className={styles.sessionTitle}>active review session</h2>
+              <p className={styles.sessionMeta}>
+                #{activeDeployment.id} · {launchAgentLabel(activeDeployment.agent)} · {activeDeployment.branchName}
+              </p>
+            </div>
+            {activeDeployment.ttydPort && (
+              <OpenTerminalButton
+                ttydPort={activeDeployment.ttydPort}
+                deploymentId={activeDeployment.id}
+                owner={owner}
+                repo={repoName}
+                issueNumber={pull.number}
+                targetType="pr"
+                targetNumber={pull.number}
+                issueTitle={pull.title}
+              />
+            )}
+          </section>
+        )}
 
         {prState === "open" && (
           <MergeButton

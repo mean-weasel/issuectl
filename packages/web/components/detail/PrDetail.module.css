@@ -29,6 +29,37 @@
   margin: 0 0 14px;
 }
 
+.labelPanel {
+  margin: 16px 0 20px;
+}
+
+.sessionPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 16px 0 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--paper-line);
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.sessionTitle {
+  margin: 0 0 4px;
+  font-family: var(--paper-serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--paper-ink);
+}
+
+.sessionMeta {
+  margin: 0;
+  font-family: var(--paper-serif);
+  font-size: 13px;
+  color: var(--paper-ink-soft);
+}
+
 .mergeBtn {
   width: 100%;
   min-height: 44px;
@@ -148,6 +179,13 @@
   margin-bottom: 20px;
   background: var(--paper-accent-soft);
   border-radius: var(--paper-radius-md);
+}
+
+@media (max-width: 560px) {
+  .sessionPanel {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 @media (min-width: 768px) {

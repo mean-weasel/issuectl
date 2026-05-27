@@ -15,6 +15,8 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  targetType?: "issue" | "pr";
+  targetNumber?: number;
   issueTitle: string;
 };
 
@@ -24,6 +26,8 @@ export function OpenTerminalButton({
   owner,
   repo,
   issueNumber,
+  targetType = "issue",
+  targetNumber = issueNumber,
   issueTitle,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -89,6 +93,8 @@ export function OpenTerminalButton({
         owner={owner}
         repo={repo}
         issueNumber={issueNumber}
+        targetType={targetType}
+        targetNumber={targetNumber}
         issueTitle={issueTitle}
       />
     </>

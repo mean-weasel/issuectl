@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 import type Database from "better-sqlite3";
 import type { Deployment, DeploymentState, DeploymentTargetType, DeploymentTerminalReason, DeploymentTriggeredBy, LaunchAgent, TerminalBackend } from "../types.js";
+import { markActivePrReviewForDeploymentTerminal } from "./pr-reviews.js";
 
 type DeploymentRow = {
   id: number; repo_id: number; issue_number: number | null; target_type: string; target_number: number; agent: string;
@@ -129,6 +130,26 @@ export function getDeploymentsForIssue(db: Database.Database, repoId: number, is
   return rows.map(rowToDeployment);
 }
 
+export function getDeploymentsForTarget(
+  db: Database.Database,
+  repoId: number,
+  targetType: DeploymentTargetType,
+  targetNumber: number,
+): Deployment[] {
+  const rows = db
+    .prepare(
+      `SELECT *
+       FROM deployments
+       WHERE repo_id = ?
+         AND target_type = ?
+         AND target_number = ?
+         AND state = 'active'
+       ORDER BY launched_at DESC`,
+    )
+    .all(repoId, targetType, targetNumber) as DeploymentRow[];
+  return rows.map(rowToDeployment);
+}
+
 export function getDeploymentsByRepo(db: Database.Database, repoId: number): Deployment[] {
   // See getDeploymentsForIssue — pending rows are excluded from all
   // callers except the launch rollback path.
@@ -241,6 +262,9 @@ export function transitionDeploymentTerminal(
     .run(terminalReason ?? null, deploymentId);
   const deployment = getDeploymentById(db, deploymentId);
   if (!deployment) throw new Error(`No deployment found with id ${deploymentId}`);
+  if (result.changes > 0) {
+    markPrDeploymentReviewTerminal(db, deployment, terminalReason);
+  }
   return { deployment, changed: result.changes > 0 };
 }
 
@@ -256,6 +280,20 @@ export function markDeploymentNotificationSent(db: Database.Database, deployment
     .prepare("UPDATE deployments SET notification_sent_at = COALESCE(notification_sent_at, datetime('now')) WHERE id = ?")
     .run(deploymentId);
   if (result.changes === 0) throw new Error(`No deployment found with id ${deploymentId}`);
+}
+
+function markPrDeploymentReviewTerminal(
+  db: Database.Database,
+  deployment: Deployment,
+  terminalReason?: DeploymentTerminalReason,
+): void {
+  if (deployment.targetType !== "pr") return;
+  const failedReasons = new Set<DeploymentTerminalReason>(["failed", "timeout", "liveness_missing"]);
+  markActivePrReviewForDeploymentTerminal(db, deployment.id, {
+    completedAt: Date.now(),
+    status: terminalReason && failedReasons.has(terminalReason) ? "failed" : "superseded",
+    reason: terminalReason ?? "deployment_terminal",
+  });
 }
 
 export function claimDeploymentNotificationSent(db: Database.Database, deploymentId: number): boolean {

@@ -16,7 +16,7 @@ export type AgentPreflightInput = {
 };
 
 export async function runAgentPreflight(input: AgentPreflightInput): Promise<void> {
-  if (!shouldTrustCodexWorkspace(input.agent, input.triggeredBy)) return;
+  if (!shouldTrustAgentWorkspace(input.agent, input.triggeredBy)) return;
 
   recordDiagnosticEventSafely(input.db, {
     ...diagnosticBase(input.diagnosticContext),
@@ -27,35 +27,47 @@ export async function runAgentPreflight(input: AgentPreflightInput): Promise<voi
   });
 
   try {
-    const result = await trustCodexProject(input.workspacePath);
+    const result = input.agent === "codex"
+      ? await trustCodexProject(input.workspacePath)
+      : await trustClaudeProject(input.workspacePath);
+    const eventPrefix = input.agent === "codex" ? "codex" : "claude";
     recordDiagnosticEventSafely(input.db, {
       ...diagnosticBase(input.diagnosticContext),
       level: "info",
-      event: result.changed ? "codex.trust.recorded" : "codex.trust.already_trusted",
+      event: result.changed ? `${eventPrefix}.trust.recorded` : `${eventPrefix}.trust.already_trusted`,
       deploymentId: input.deploymentId,
       data: { workspacePath: input.workspacePath, configPath: result.configPath },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const eventPrefix = input.agent === "codex" ? "codex" : "claude";
     recordDiagnosticEventSafely(input.db, {
       ...diagnosticBase(input.diagnosticContext),
       level: "error",
-      event: "codex.trust.failed",
+      event: `${eventPrefix}.trust.failed`,
       deploymentId: input.deploymentId,
       message,
       data: { workspacePath: input.workspacePath },
     });
-    throw new Error(`Failed to trust Codex workspace before launch: ${message}`, {
+    throw new Error(`Failed to trust ${input.agent} workspace before launch: ${message}`, {
       cause: err,
     });
   }
+}
+
+export function shouldTrustAgentWorkspace(
+  agent: LaunchAgent,
+  triggeredBy?: DeploymentTriggeredBy,
+): boolean {
+  return (agent === "codex" || agent === "claude")
+    && (triggeredBy === "webhook" || triggeredBy === "comment_command");
 }
 
 export function shouldTrustCodexWorkspace(
   agent: LaunchAgent,
   triggeredBy?: DeploymentTriggeredBy,
 ): boolean {
-  return agent === "codex" && (triggeredBy === "webhook" || triggeredBy === "comment_command");
+  return shouldTrustAgentWorkspace(agent, triggeredBy) && agent === "codex";
 }
 
 export async function trustCodexProject(
@@ -94,8 +106,64 @@ export async function trustCodexProject(
   return { changed: true, configPath };
 }
 
+export async function trustClaudeProject(
+  workspacePath: string,
+): Promise<{ changed: boolean; configPath: string }> {
+  const configPath = claudeConfigPath();
+  let config: ClaudeUserConfig = {};
+  try {
+    config = JSON.parse(await readFile(configPath, "utf8")) as ClaudeUserConfig;
+  } catch (err) {
+    if ((err as { code?: string }).code !== "ENOENT") throw err;
+  }
+
+  const projects = isRecord(config.projects) ? config.projects : {};
+  const existingProject = isRecord(projects[workspacePath])
+    ? projects[workspacePath]
+    : {};
+  if (
+    existingProject.hasTrustDialogAccepted === true
+    && existingProject.hasCompletedProjectOnboarding === true
+  ) {
+    return { changed: false, configPath };
+  }
+
+  config.projects = {
+    ...projects,
+    [workspacePath]: {
+      allowedTools: [],
+      mcpContextUris: [],
+      mcpServers: {},
+      enabledMcpjsonServers: [],
+      disabledMcpjsonServers: [],
+      hasClaudeMdExternalIncludesApproved: false,
+      hasClaudeMdExternalIncludesWarningShown: false,
+      projectOnboardingSeenCount: 0,
+      ...existingProject,
+      hasTrustDialogAccepted: true,
+      hasCompletedProjectOnboarding: true,
+    },
+  };
+
+  await mkdir(dirname(configPath), { recursive: true });
+  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  return { changed: true, configPath };
+}
+
 function codexConfigPath(): string {
   return join(process.env.CODEX_HOME || join(homedir(), ".codex"), "config.toml");
+}
+
+function claudeConfigPath(): string {
+  return process.env.ISSUECTL_CLAUDE_CONFIG_PATH || join(homedir(), ".claude.json");
+}
+
+type ClaudeUserConfig = Record<string, unknown> & {
+  projects?: Record<string, unknown>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function findTomlTable(

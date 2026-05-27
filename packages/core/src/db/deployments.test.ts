@@ -4,7 +4,8 @@ import type Database from "better-sqlite3";
 import { createTestDb } from "./test-helpers.js";
 import { addRepo } from "./repos.js";
 import { seedRepo } from "./deployments-test-helpers.js";
-import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsByRepo, getActiveWebhookDeploymentsForRepoTarget, listRecentTerminalDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince, transitionDeploymentTerminal } from "./deployments.js";
+import { recordDeployment, getDeploymentById, getDeploymentsForIssue, getDeploymentsForTarget, getDeploymentsByRepo, getActiveWebhookDeploymentsForRepoTarget, listRecentTerminalDeploymentsByRepo, updateLinkedPR, endDeployment, setIdleSince, transitionDeploymentTerminal } from "./deployments.js";
+import { getPrReviewById, markPrReviewDeploymentStarted, reservePrReview } from "./pr-reviews.js";
 
 describe("recordDeployment", () => {
   let db: Database.Database;
@@ -273,6 +274,37 @@ describe("getDeploymentsForIssue", () => {
   });
 });
 
+describe("getDeploymentsForTarget", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it("returns active PR target deployments without mixing issue deployments", () => {
+    const repo = seedRepo(db);
+    const prDeployment = recordDeployment(db, {
+      repoId: repo.id,
+      targetType: "pr",
+      targetNumber: 31,
+      branchName: "pr-31-review",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/pr-31",
+    });
+    recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 31,
+      branchName: "issue-31",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issue-31",
+    });
+
+    expect(getDeploymentsForTarget(db, repo.id, "pr", 31)).toEqual([
+      expect.objectContaining({ id: prDeployment.id, targetType: "pr", targetNumber: 31 }),
+    ]);
+  });
+});
+
 describe("getDeploymentsByRepo", () => {
   let db: Database.Database;
 
@@ -400,5 +432,75 @@ describe("endDeployment", () => {
     expect(first.deployment.endedAt).toBeTruthy();
     expect(second.changed).toBe(false);
     expect(second.deployment.terminalReason).toBe("killed_by_label");
+  });
+
+  it("supersedes the linked active PR review when a PR deployment is manually ended", () => {
+    const repo = seedRepo(db);
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      targetType: "pr",
+      targetNumber: 506,
+      branchName: "pr-506-review",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+    const review = reservePrReview(db, {
+      repoId: repo.id,
+      prNumber: 506,
+      startedHeadSha: "head-a",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-a",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/pr",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    expect(markPrReviewDeploymentStarted(db, review.id, dep.id)).toEqual(expect.objectContaining({
+      id: review.id,
+      status: "in_progress",
+    }));
+
+    endDeployment(db, dep.id, "ended_manual");
+
+    expect(getPrReviewById(db, review.id)).toEqual(expect.objectContaining({
+      status: "superseded",
+      completedAt: expect.any(Number),
+      resultJson: JSON.stringify({ reason: "ended_manual" }),
+    }));
+  });
+
+  it("fails the linked active PR review when a PR deployment goes terminal for liveness", () => {
+    const repo = seedRepo(db);
+    const dep = recordDeployment(db, {
+      repoId: repo.id,
+      targetType: "pr",
+      targetNumber: 507,
+      branchName: "pr-507-review",
+      workspaceMode: "existing",
+      workspacePath: "/x",
+    });
+    const review = reservePrReview(db, {
+      repoId: repo.id,
+      prNumber: 507,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/pr",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    markPrReviewDeploymentStarted(db, review.id, dep.id);
+
+    const first = transitionDeploymentTerminal(db, dep.id, "liveness_missing");
+    const second = transitionDeploymentTerminal(db, dep.id, "failed");
+
+    expect(first.changed).toBe(true);
+    expect(second.changed).toBe(false);
+    expect(getPrReviewById(db, review.id)).toEqual(expect.objectContaining({
+      status: "failed",
+      completedAt: expect.any(Number),
+      resultJson: JSON.stringify({ reason: "liveness_missing" }),
+    }));
   });
 });

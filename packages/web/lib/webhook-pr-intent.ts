@@ -4,6 +4,8 @@ import {
   killTmuxSession,
   killTtyd,
   recordDiagnosticEventSafely,
+  removeLabel,
+  clearCacheKey,
   tmuxSessionName,
   withAuthRetry,
 } from "@issuectl/core";
@@ -11,8 +13,11 @@ import type { Repo, WebhookIntent } from "@issuectl/core";
 import type { WebhookIntentWorkerResult } from "./webhook-intent-worker";
 import { getLatestIntentEvent, triggeredByForIntentEvent } from "./webhook-intent-source";
 import { planPrReview } from "./webhook-pr-review-state";
+import { enforceWebhookRunawayControls } from "./webhook-runaway-controls";
 import { broadcastWebhookEventsChanged } from "./webhook-events-stream";
 import { notifyDeploymentTerminalOutcome } from "./push/notifications";
+
+const PR_AUTO_REVIEW_LABEL = "issuectl:auto-review";
 
 export type PullState = {
   title: string;
@@ -70,6 +75,13 @@ export async function handlePullRequestIntent(
     const event = getLatestIntentEvent(db, intent.id);
     const triggeredBy = triggeredByForIntentEvent(event);
     if (triggeredBy === "webhook" && !isPullGatedIn(repo, pull)) {
+      if (isConsumedAutoReviewLabelEvent(db, repo.id, intent.targetNumber, event)) {
+        clearConsumedAutoReviewLabel(db, repo.id, intent.targetNumber);
+        recordPrIntentDiagnostic(db, repo, intent, "webhook.auto_review_label_consumed", "Consumed auto-review label after launch.");
+        markIntentTerminal(db, intent.id, now, "Auto-review label consumed after launch");
+        broadcastEventsChanged();
+        return result(base, { claimed: 1, skippedOptout: 1 });
+      }
       const endedSessions = endWebhookPrSessionForTarget(db, repo, intent, now, terminalReasonForPrOptOut(repo, pull, event));
       recordPrIntentDiagnostic(db, repo, intent, "webhook.skipped_optout", endedSessions > 0 ? "Ended webhook-launched PR review session." : "PR is not opted in for auto-review.");
       markIntentTerminal(db, intent.id, now, "PR is not opted in");
@@ -103,6 +115,11 @@ export async function handlePullRequestIntent(
       broadcastEventsChanged();
       return result(base, { claimed: 1, skippedLocked: 1 });
     }
+    const control = enforceWebhookRunawayControls(db, repo, intent, now);
+    if (!control.allowed) {
+      broadcastEventsChanged();
+      return result(base, { claimed: 1, [control.outcome]: 1 });
+    }
     review = plan.review;
     markPrReviewLaunching(db, review.id);
     broadcastEventsChanged();
@@ -115,6 +132,7 @@ export async function handlePullRequestIntent(
       throw new Error("PR review deployment could not be linked after launch");
     }
     markIntentLaunched(db, intent.id, now, launch.deploymentId);
+    await consumePrAutoReviewLabel(db, repo, intent, launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched PR review session.", launch.deploymentId);
     recordPrIntentDiagnostic(db, repo, intent, "webhook.pr_launched", "Webhook launched PR review session.", launch.deploymentId);
     broadcastEventsChanged();
@@ -271,7 +289,71 @@ async function fetchPullState(repo: Repo, prNumber: number): Promise<PullState> 
 }
 
 function isPullGatedIn(repo: Repo, pull: PullState): boolean {
-  return repo.autoReviewPrs && pull.state === "open" && !pull.draft && pull.labels.includes("issuectl:auto-review");
+  return repo.autoReviewPrs && pull.state === "open" && !pull.draft && pull.labels.includes(PR_AUTO_REVIEW_LABEL);
+}
+
+async function consumePrAutoReviewLabel(
+  db: Database.Database,
+  repo: Repo,
+  intent: WebhookIntent,
+  deploymentId: number,
+): Promise<void> {
+  try {
+    await withAuthRetry((octokit) =>
+      removeLabel(octokit, repo.owner, repo.name, intent.targetNumber, PR_AUTO_REVIEW_LABEL),
+    );
+    clearCacheKey(db, `pull-detail:${repo.owner}/${repo.name}#${intent.targetNumber}`);
+    clearCacheKey(db, `pulls-open:${repo.owner}/${repo.name}`);
+    clearCacheKey(db, `pulls-with-checks:${repo.owner}/${repo.name}`);
+    markAutoReviewLabelConsumed(db, repo.id, intent.targetNumber);
+    recordPrIntentDiagnostic(db, repo, intent, "webhook.auto_review_label_consumed", "Removed auto-review label after successful launch.", deploymentId);
+  } catch (err) {
+    recordPrIntentDiagnostic(
+      db,
+      repo,
+      intent,
+      "webhook.auto_review_label_remove_failed",
+      err instanceof Error ? err.message : String(err),
+      deploymentId,
+    );
+  }
+}
+
+function consumedAutoReviewLabelKey(repoId: number, prNumber: number): string {
+  return `webhook:consumed-auto-review:${repoId}:${prNumber}`;
+}
+
+function markAutoReviewLabelConsumed(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+): void {
+  db.prepare(
+    "INSERT INTO settings (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(consumedAutoReviewLabelKey(repoId, prNumber));
+}
+
+function isConsumedAutoReviewLabelEvent(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+  event: { eventType: string; action: string | null } | null,
+): boolean {
+  if (event?.eventType !== "pull_request" || event.action !== "unlabeled") return false;
+  const row = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(
+    consumedAutoReviewLabelKey(repoId, prNumber),
+  );
+  return Boolean(row);
+}
+
+function clearConsumedAutoReviewLabel(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+): void {
+  db.prepare("DELETE FROM settings WHERE key = ?").run(
+    consumedAutoReviewLabelKey(repoId, prNumber),
+  );
 }
 
 function isSafePullForReservation(pull: PullState, desiredHeadSha: string | null): boolean {

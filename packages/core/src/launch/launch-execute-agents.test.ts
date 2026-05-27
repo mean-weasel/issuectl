@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type Database from "better-sqlite3";
 import type { Octokit } from "@octokit/rest";
@@ -271,6 +272,37 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       .prepare("SELECT agent FROM deployments WHERE repo_id = ? AND issue_number = ?")
       .get(repo.id, 44) as { agent: string };
     expect(row.agent).toBe("codex");
+  });
+
+  it("adds Claude noninteractive permissions for webhook launches", async () => {
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "claude_extra_args",
+      "--model opus",
+    );
+
+    await withConsoleWarnSilenced(() => executeLaunch(db, {} as Octokit, {
+      owner: "acme",
+      repo: "api",
+      issueNumber: 46,
+      agent: "claude",
+      branchName: "claude-webhook",
+      workspaceMode: "existing",
+      selectedComments: [],
+      selectedFiles: [],
+      triggeredBy: "webhook",
+    }));
+
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentCommand: expect.stringMatching(/(^|\/)claude --model opus --dangerously-skip-permissions$/),
+        agentInputMode: "stdin",
+      }),
+    );
   });
 
   it("records a pty bridge deployment and skips ttyd when the experiment is enabled", async () => {

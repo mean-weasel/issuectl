@@ -15,6 +15,7 @@ import {
   buildLaunchAgentCommand,
   extraArgsSettingForAgent,
   getLaunchAgent,
+  launchAgentExtraArgsForTrigger,
   normalizeLaunchAgent,
 } from "./launch-agent-command.js";
 import {
@@ -189,9 +190,14 @@ export async function executeLaunch(
   }
 
   // 9. Spawn terminal backend
-  const agentCommand = buildLaunchAgentCommand(
+  const launchExtraArgs = launchAgentExtraArgsForTrigger(
     launchAgent,
     getSetting(db, extraArgsSettingForAgent(launchAgent)),
+    options.triggeredBy ?? "manual",
+  );
+  const agentCommand = buildLaunchAgentCommand(
+    launchAgent,
+    launchExtraArgs,
   );
   const credentialPolicy = options.triggeredBy === "webhook" || options.triggeredBy === "comment_command"
     ? "scrubbed"
@@ -300,7 +306,7 @@ export {
 } from "./branch.js";
 export { type WorkspaceMode, type WorkspaceResult } from "./workspace.js";
 export { type LaunchContext } from "./context.js";
-export { buildClaudeCommand, buildLaunchAgentCommand } from "./launch-agent-command.js";
+export { buildClaudeCommand, buildLaunchAgentCommand, launchAgentExtraArgsForTrigger } from "./launch-agent-command.js";
 export { expandHome } from "./launch-workspace-setup.js";
 
 function selectTerminalBackend(

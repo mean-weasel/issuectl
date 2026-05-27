@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { buildClaudeCommand, buildLaunchAgentCommand } from "./launch.js";
+import { buildClaudeCommand, buildLaunchAgentCommand, launchAgentExtraArgsForTrigger } from "./launch.js";
 
 describe("buildClaudeCommand", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -109,5 +109,26 @@ describe("buildLaunchAgentCommand", () => {
   it("falls back to plain codex for dangerous stored args", () => {
     expect(buildLaunchAgentCommand("codex", "--model gpt-5; rm -rf /")).toMatch(/(^|\/)codex$/);
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("codex_extra_args"));
+  });
+});
+
+describe("launchAgentExtraArgsForTrigger", () => {
+  it("adds Claude noninteractive permissions for webhook launches", () => {
+    expect(launchAgentExtraArgsForTrigger("claude", undefined, "webhook"))
+      .toBe("--dangerously-skip-permissions");
+  });
+
+  it("preserves configured Claude args and avoids duplicate noninteractive flags", () => {
+    expect(launchAgentExtraArgsForTrigger("claude", "--model opus", "comment_command"))
+      .toBe("--model opus --dangerously-skip-permissions");
+    expect(launchAgentExtraArgsForTrigger("claude", "--dangerously-skip-permissions", "webhook"))
+      .toBe("--dangerously-skip-permissions");
+  });
+
+  it("does not alter manual Claude or Codex launches", () => {
+    expect(launchAgentExtraArgsForTrigger("claude", "--model opus", "manual"))
+      .toBe("--model opus");
+    expect(launchAgentExtraArgsForTrigger("codex", "--full-auto", "webhook"))
+      .toBe("--full-auto");
   });
 });

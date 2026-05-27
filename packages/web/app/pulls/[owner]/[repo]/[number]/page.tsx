@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getDb, getOctokit, getPullDetail } from "@issuectl/core";
+import { getDb, getDeploymentsForTarget, getOctokit, getPullDetail, getRepo, listLabels } from "@issuectl/core";
 import { PrDetail } from "@/components/detail/PrDetail";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,14 @@ export default async function PullDetailPage({
   const octokit = await getOctokit();
 
   try {
-    const detail = await getPullDetail(db, octokit, owner, repo, pullNumber);
+    const repoRecord = getRepo(db, owner, repo);
+    const [detail, availableLabels] = await Promise.all([
+      getPullDetail(db, octokit, owner, repo, pullNumber),
+      listLabels(octokit, owner, repo),
+    ]);
+    const deployments = repoRecord
+      ? getDeploymentsForTarget(db, repoRecord.id, "pr", pullNumber)
+      : [];
     return (
       <PrDetail
         owner={owner}
@@ -45,6 +52,8 @@ export default async function PullDetailPage({
         files={detail.files}
         reviews={detail.reviews}
         linkedIssue={detail.linkedIssue}
+        availableLabels={availableLabels}
+        deployments={deployments}
       />
     );
   } catch (err) {

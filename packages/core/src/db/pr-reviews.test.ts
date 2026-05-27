@@ -8,6 +8,7 @@ import { runMigrations } from "./migrations.js";
 import {
   coalescePrReviewDesiredHead,
   completePrReview,
+  finishActivePrReviewForDeployment,
   getActivePrReview,
   getActivePrReviewForDeployment,
   getLatestCompletedPrReview,
@@ -318,7 +319,7 @@ describe("pr_reviews", () => {
     expect(getActivePrReview(db, repoId, 506)).toBeUndefined();
   });
 
-  it("links a launching review only to an active deployment for the same PR target", () => {
+  it("finishes the active review for a completed agent deployment", () => {
     db.prepare(
       `INSERT INTO deployments (
         id, repo_id, issue_number, target_type, target_number, branch_name,
@@ -328,29 +329,50 @@ describe("pr_reviews", () => {
     const review = reservePrReview(db, {
       repoId,
       prNumber: 506,
-      startedHeadSha: "head-b",
+      deploymentId: 79,
+      startedHeadSha: "head-a",
       reviewBaseSha: "base-a",
-      reviewedToSha: "head-b",
+      reviewedToSha: "head-a",
       headRepoFullName: "mean-weasel/issuectl",
       headRef: "feature/webhooks",
       triggeredBy: "webhook",
       startedAt: 1_000,
     });
-    db.prepare("UPDATE pr_reviews SET status = 'launching' WHERE id = ?").run(review.id);
+    coalescePrReviewDesiredHead(db, review.id, {
+      desiredHeadSha: "head-b",
+      desiredBaseSha: "base-a",
+      desiredHeadRef: "feature/webhooks",
+    });
 
-    expect(markPrReviewDeploymentStarted(db, review.id, 79)).toEqual(expect.objectContaining({
+    const updated = finishActivePrReviewForDeployment(db, 79, {
+      completedAt: 2_000,
+      completedHeadSha: "head-b",
+      status: "completed",
+      result: { status: "pushed_fixes", summary: "fixed" },
+    });
+
+    expect(updated).toEqual(expect.objectContaining({
       id: review.id,
-      status: "in_progress",
-      deploymentId: 79,
+      status: "completed",
+      completedHeadSha: "head-b",
+      completedAt: 2_000,
+      resultJson: JSON.stringify({
+        desiredHeadSha: "head-b",
+        desiredBaseSha: "base-a",
+        desiredHeadRef: "feature/webhooks",
+        followUpGeneration: 1,
+        status: "pushed_fixes",
+        summary: "fixed",
+      }),
     }));
   });
 
-  it("refuses to link a review to a deployment for a different target", () => {
+  it("links a launching review only to an active deployment for the same PR target", () => {
     db.prepare(
       `INSERT INTO deployments (
         id, repo_id, issue_number, target_type, target_number, branch_name,
         workspace_mode, workspace_path
-      ) VALUES (80, ?, 506, 'issue', 506, 'issue-506', 'existing', '/tmp/repo')`,
+      ) VALUES (80, ?, NULL, 'pr', 506, 'pr-506', 'existing', '/tmp/repo')`,
     ).run(repoId);
     const review = reservePrReview(db, {
       repoId,
@@ -365,7 +387,34 @@ describe("pr_reviews", () => {
     });
     db.prepare("UPDATE pr_reviews SET status = 'launching' WHERE id = ?").run(review.id);
 
-    expect(markPrReviewDeploymentStarted(db, review.id, 80)).toBeUndefined();
+    expect(markPrReviewDeploymentStarted(db, review.id, 80)).toEqual(expect.objectContaining({
+      id: review.id,
+      status: "in_progress",
+      deploymentId: 80,
+    }));
+  });
+
+  it("refuses to link a review to a deployment for a different target", () => {
+    db.prepare(
+      `INSERT INTO deployments (
+        id, repo_id, issue_number, target_type, target_number, branch_name,
+        workspace_mode, workspace_path
+      ) VALUES (81, ?, 506, 'issue', 506, 'issue-506', 'existing', '/tmp/repo')`,
+    ).run(repoId);
+    const review = reservePrReview(db, {
+      repoId,
+      prNumber: 506,
+      startedHeadSha: "head-b",
+      reviewBaseSha: "base-a",
+      reviewedToSha: "head-b",
+      headRepoFullName: "mean-weasel/issuectl",
+      headRef: "feature/webhooks",
+      triggeredBy: "webhook",
+      startedAt: 1_000,
+    });
+    db.prepare("UPDATE pr_reviews SET status = 'launching' WHERE id = ?").run(review.id);
+
+    expect(markPrReviewDeploymentStarted(db, review.id, 81)).toBeUndefined();
     expect(getPrReviewById(db, review.id)).toEqual(expect.objectContaining({
       status: "launching",
       deploymentId: null,
@@ -377,7 +426,7 @@ describe("pr_reviews", () => {
       `INSERT INTO deployments (
         id, repo_id, issue_number, target_type, target_number, branch_name,
         workspace_mode, workspace_path, ended_at
-      ) VALUES (81, ?, NULL, 'pr', 507, 'pr-507', 'existing', '/tmp/repo', datetime('now'))`,
+      ) VALUES (82, ?, NULL, 'pr', 507, 'pr-507', 'existing', '/tmp/repo', datetime('now'))`,
     ).run(repoId);
     const reserved = reservePrReview(db, {
       repoId,
@@ -393,7 +442,7 @@ describe("pr_reviews", () => {
     const endedDeployment = reservePrReview(db, {
       repoId,
       prNumber: 507,
-      deploymentId: 81,
+      deploymentId: 82,
       startedHeadSha: "head-c",
       reviewBaseSha: "base-a",
       reviewedToSha: "head-c",

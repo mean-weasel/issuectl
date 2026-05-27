@@ -13,6 +13,22 @@ import {
 } from "@issuectl/core";
 import { runWebhookIntentWorkerOnce } from "./webhook-intent-worker.js";
 
+const coreMocks = vi.hoisted(() => ({
+  removeLabel: vi.fn(),
+  clearCacheKey: vi.fn(),
+  withAuthRetry: vi.fn((fn: (octokit: unknown) => Promise<unknown>) => fn({})),
+}));
+
+vi.mock("@issuectl/core", async () => {
+  const real = await vi.importActual<typeof import("@issuectl/core")>("@issuectl/core");
+  return {
+    ...real,
+    removeLabel: coreMocks.removeLabel,
+    clearCacheKey: coreMocks.clearCacheKey,
+    withAuthRetry: coreMocks.withAuthRetry,
+  };
+});
+
 const notifyDeploymentTerminalOutcome = vi.hoisted(() => vi.fn());
 vi.mock("./push/notifications", () => ({
   notifyDeploymentTerminalOutcome: (...args: unknown[]) => notifyDeploymentTerminalOutcome(...args),
@@ -73,6 +89,9 @@ describe("PR webhook intents", () => {
 
   beforeEach(() => {
     notifyDeploymentTerminalOutcome.mockReset();
+    coreMocks.removeLabel.mockReset();
+    coreMocks.clearCacheKey.mockReset();
+    coreMocks.withAuthRetry.mockImplementation((fn: (octokit: unknown) => Promise<unknown>) => fn({}));
     db = createTestDb();
     repoId = addRepo(db, { owner: "mean-weasel", name: "issuectl" }).id;
     updateRepoWebhookSettings(db, repoId, { autoReviewPrs: true });
@@ -120,6 +139,11 @@ describe("PR webhook intents", () => {
     expect(
       db.prepare("SELECT pr_number, status, deployment_id, reviewed_to_sha FROM pr_reviews").get(),
     ).toEqual({ pr_number: 44, status: "in_progress", deployment_id: 1, reviewed_to_sha: "head-b" });
+    expect(coreMocks.removeLabel).toHaveBeenCalledWith({}, "mean-weasel", "issuectl", 44, "issuectl:auto-review");
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(db, "pull-detail:mean-weasel/issuectl#44");
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(db, "pulls-open:mean-weasel/issuectl");
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(db, "pulls-with-checks:mean-weasel/issuectl");
+    expect(db.prepare("SELECT value FROM settings WHERE key = ?").get("webhook:consumed-auto-review:1:44")).toEqual({ value: "1" });
     const prTarget = { owner: "mean-weasel", repo: "issuectl", targetType: "pr" as const, targetNumber: 44 };
     expect(queryDiagnosticEvents(db, {
       target: prTarget,
@@ -134,6 +158,62 @@ describe("PR webhook intents", () => {
       expect.objectContaining({ issueNumber: null, targetType: "pr", targetNumber: 44, deploymentId: 1 }),
     ]);
     expect(queryDiagnosticEvents(db, { events: ["webhook.pr_launched"] })).toHaveLength(1);
+    expect(queryDiagnosticEvents(db, { events: ["webhook.auto_review_label_consumed"] })).toHaveLength(1);
+  });
+
+  it("treats the follow-up auto-review unlabeled event as consumed without ending the launched PR session", async () => {
+    db.prepare(
+      "INSERT INTO settings (key, value) VALUES ('max_concurrent_webhook_agents', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    ).run();
+    const deploymentId = recordDeployment(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      branchName: "pr-44-review",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/pr-44",
+    }).id;
+    db.prepare("UPDATE deployments SET triggered_by = 'webhook' WHERE id = ?").run(deploymentId);
+    db.prepare(
+      `INSERT INTO pr_reviews (
+        repo_id, pr_number, deployment_id, started_head_sha, review_base_sha,
+        reviewed_to_sha, head_repo_full_name, head_ref, status, triggered_by, started_at
+      ) VALUES (?, 44, ?, 'head-b', 'base-a', 'head-b', 'mean-weasel/issuectl',
+        'feature/webhooks', 'in_progress', 'webhook', 1000)`,
+    ).run(repoId, deploymentId);
+    db.prepare(
+      "INSERT INTO settings (key, value) VALUES ('webhook:consumed-auto-review:1:44', '1')",
+    ).run();
+    const event = recordWebhookEvent(db, {
+      deliveryId: "delivery-pr-consumed-unlabel",
+      repoId,
+      eventType: "pull_request",
+      action: "unlabeled",
+      targetType: "pr",
+      targetNumber: 44,
+      receivedAt: 2_000,
+    });
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      signalAt: 2_000,
+      scheduledAt: 2_000,
+      desiredHeadSha: "head-b",
+      eventId: event.deduped ? null : event.eventId,
+    });
+
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, {
+      fetchPullState: async () => ({ ...safePull, labels: [] }),
+    });
+
+    expect(result).toEqual(expect.objectContaining({ claimed: 1, skippedOptout: 1, endedSessions: 0 }));
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({ status: "skipped_optout", deployment_id: null }),
+    );
+    expect(db.prepare("SELECT ended_at FROM deployments WHERE id = ?").get(deploymentId)).toEqual({ ended_at: null });
+    expect(db.prepare("SELECT value FROM settings WHERE key = ?").get("webhook:consumed-auto-review:1:44")).toBeUndefined();
+    expect(queryDiagnosticEvents(db, { events: ["webhook.auto_review_label_consumed"] })).toHaveLength(1);
   });
 
   it("skips unsafe PR intents without reserving or launching", async () => {
@@ -163,6 +243,38 @@ describe("PR webhook intents", () => {
     );
     expect(db.prepare("SELECT COUNT(*) AS count FROM pr_reviews").get()).toEqual({ count: 0 });
     expect(queryDiagnosticEvents(db, { events: ["webhook.skipped_unsafe_pr"] })).toHaveLength(1);
+  });
+
+  it("skips duplicate same-head PR review records instead of surfacing sqlite constraints", async () => {
+    db.prepare(
+      `INSERT INTO pr_reviews (
+        repo_id, pr_number, deployment_id, started_head_sha, review_base_sha,
+        reviewed_to_sha, head_repo_full_name, head_ref, status, triggered_by, started_at,
+        completed_at, result_json
+      ) VALUES (?, 44, NULL, 'head-b', 'base-a', 'head-b', 'mean-weasel/issuectl',
+        'feature/webhooks', 'superseded', 'webhook', 1000, 1500, '{"reason":"manual_retry_cleanup"}')`,
+    ).run(repoId);
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 44,
+      signalAt: 2_000,
+      scheduledAt: 2_000,
+      desiredHeadSha: "head-b",
+    });
+    const launchPr = vi.fn();
+
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, {
+      fetchPullState: async () => safePull,
+      launchPr,
+    });
+
+    expect(result).toEqual(expect.objectContaining({ claimed: 1, skippedLocked: 1, failed: 0 }));
+    expect(launchPr).not.toHaveBeenCalled();
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({ status: "skipped_locked", deployment_id: null }),
+    );
+    expect(queryDiagnosticEvents(db, { events: ["webhook.pr_already_reviewed"] })).toHaveLength(1);
   });
 
   it("skips protected-branch webhook PR intents before reserving or launching", async () => {

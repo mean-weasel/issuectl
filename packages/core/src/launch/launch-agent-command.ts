@@ -1,10 +1,11 @@
 import type Database from "better-sqlite3";
 import { execFileSync } from "node:child_process";
 import { getSetting } from "../db/settings.js";
-import type { LaunchAgent } from "../types.js";
+import type { DeploymentTriggeredBy, LaunchAgent } from "../types.js";
 
 const DANGEROUS_METACHARS = /[;&|<>`$\n\r\t()]/;
 const LAUNCH_AGENTS = new Set<LaunchAgent>(["claude", "codex"]);
+const CLAUDE_NONINTERACTIVE_FLAG = "--dangerously-skip-permissions";
 
 export async function retryLabel<T>(fn: () => Promise<T>): Promise<T> {
   const delaysMs = [500, 1_000, 2_000];
@@ -69,6 +70,19 @@ export function buildLaunchAgentCommand(
     return command;
   }
   return `${command} ${extraArgs}`;
+}
+
+export function launchAgentExtraArgsForTrigger(
+  agent: LaunchAgent,
+  rawExtraArgs: string | undefined,
+  triggeredBy: DeploymentTriggeredBy,
+): string | undefined {
+  const trimmed = rawExtraArgs?.trim() ?? "";
+  if (agent !== "claude" || (triggeredBy !== "webhook" && triggeredBy !== "comment_command")) {
+    return trimmed || undefined;
+  }
+  if (trimmed.split(/\s+/).includes(CLAUDE_NONINTERACTIVE_FLAG)) return trimmed;
+  return [trimmed, CLAUDE_NONINTERACTIVE_FLAG].filter(Boolean).join(" ");
 }
 
 export function buildClaudeCommand(rawExtraArgs: string | undefined): string {

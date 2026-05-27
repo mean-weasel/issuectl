@@ -43,7 +43,7 @@ vi.mock("@/lib/push/notifications", () => ({
   notifyNewIssue: notifyNewIssueMock,
 }));
 
-const { createIssue, toggleLabel } = await import("./issues");
+const { createIssue, toggleLabel, togglePullLabel } = await import("./issues");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -92,6 +92,39 @@ describe("toggleLabel action", () => {
     expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
       {},
       "issues:acme/api",
+    );
+  });
+});
+
+describe("togglePullLabel action", () => {
+  it("adds PR labels and clears PR caches used by the detail page", async () => {
+    const result = await togglePullLabel({
+      owner: "acme",
+      repo: "api",
+      number: 17,
+      label: "issuectl:auto-review",
+      action: "add",
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(coreMocks.addLabel).toHaveBeenCalledWith(
+      {},
+      "acme",
+      "api",
+      17,
+      "issuectl:auto-review",
+    );
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
+      {},
+      "pull-detail:acme/api#17",
+    );
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
+      {},
+      "pulls-open:acme/api",
+    );
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
+      {},
+      "pulls-with-checks:acme/api",
     );
   });
 });

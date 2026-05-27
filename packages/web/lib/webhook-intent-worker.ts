@@ -128,11 +128,6 @@ export async function runWebhookIntentWorkerOnce(
   });
 
   if (intent.targetType === "pr") {
-    const control = enforceWebhookRunawayControls(db, repo, intent, now);
-    if (!control.allowed) {
-      broadcastEventsChanged();
-      return result(base, { claimed: 1, [control.outcome]: 1 });
-    }
     return handlePullRequestIntent(db, repo, intent, now, base, {
       ...deps,
       launchPr: deps.launchPr ?? launchPrFromWebhook,

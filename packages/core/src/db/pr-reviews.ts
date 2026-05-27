@@ -168,6 +168,37 @@ export function markActivePrReviewForDeploymentTerminal(
   return getPrReviewById(db, review.id);
 }
 
+export function finishActivePrReviewForDeployment(
+  db: Database.Database,
+  deploymentId: number,
+  input: {
+    completedAt: number;
+    completedHeadSha?: string | null;
+    status: Extract<PrReviewStatus, "completed" | "failed">;
+    result?: unknown;
+  },
+): PrReview | undefined {
+  const review = getActivePrReviewForDeployment(db, deploymentId);
+  if (!review) return undefined;
+  const previous = parseResultJson(review.resultJson);
+  const current = asResultObject(input.result);
+  db.prepare(
+    `UPDATE pr_reviews
+     SET status = ?,
+         completed_head_sha = ?,
+         completed_at = ?,
+         result_json = ?
+     WHERE id = ?`,
+  ).run(
+    input.status,
+    input.completedHeadSha ?? review.reviewedToSha,
+    input.completedAt,
+    JSON.stringify({ ...previous, ...current }),
+    review.id,
+  );
+  return getPrReviewById(db, review.id);
+}
+
 export function markPrReviewDeploymentStarted(
   db: Database.Database,
   reviewId: number,
@@ -261,4 +292,8 @@ function parseResultJson(value: string | null): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function asResultObject(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
