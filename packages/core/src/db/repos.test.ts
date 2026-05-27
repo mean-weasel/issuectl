@@ -27,6 +27,8 @@ describe("addRepo", () => {
     expect(repo.name).toBe("api");
     expect(repo.localPath).toBeNull();
     expect(repo.branchPattern).toBeNull();
+    expect(repo.issueAgent).toBe("codex");
+    expect(repo.reviewAgent).toBe("claude");
     expect(repo.createdAt).toBeTruthy();
   });
 

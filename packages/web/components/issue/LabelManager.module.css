@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .header {
@@ -19,16 +19,20 @@
 }
 
 .editButton {
-  font-size: 11px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--paper-ink-muted);
-  background: none;
-  border: none;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
   cursor: pointer;
-  padding: 0;
 }
 
 .editButton:hover {
   color: var(--paper-ink-soft);
+  border-color: var(--paper-line-strong);
 }
 
 .labels {

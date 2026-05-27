@@ -35,7 +35,7 @@ export function RepoSetupFocus({
   const [branchPattern, setBranchPattern] = useState(editableRepo?.branchPattern ?? "");
   const [autoLaunchIssues, setAutoLaunchIssues] = useState(editableRepo?.autoLaunchIssues ?? false);
   const [autoReviewPrs, setAutoReviewPrs] = useState(editableRepo?.autoReviewPrs ?? false);
-  const [issueAgent, setIssueAgent] = useState(editableRepo?.issueAgent ?? "claude");
+  const [issueAgent, setIssueAgent] = useState(editableRepo?.issueAgent ?? "codex");
   const [reviewAgent, setReviewAgent] = useState(editableRepo?.reviewAgent ?? "claude");
   const [webhookPayloadMode, setWebhookPayloadMode] = useState(editableRepo?.webhookPayloadMode ?? "metadata");
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
@@ -49,7 +49,7 @@ export function RepoSetupFocus({
     setBranchPattern(editableRepo?.branchPattern ?? "");
     setAutoLaunchIssues(editableRepo?.autoLaunchIssues ?? false);
     setAutoReviewPrs(editableRepo?.autoReviewPrs ?? false);
-    setIssueAgent(editableRepo?.issueAgent ?? "claude");
+    setIssueAgent(editableRepo?.issueAgent ?? "codex");
     setReviewAgent(editableRepo?.reviewAgent ?? "claude");
     setWebhookPayloadMode(editableRepo?.webhookPayloadMode ?? "metadata");
   }, [
@@ -384,7 +384,7 @@ function normalizeAddedRepo(repo: WorkbenchRepo): WorkbenchRepo {
     launchAgent: repo.launchAgent ?? null,
     autoLaunchIssues: repo.autoLaunchIssues ?? false,
     autoReviewPrs: repo.autoReviewPrs ?? false,
-    issueAgent: repo.issueAgent ?? "claude",
+    issueAgent: repo.issueAgent ?? "codex",
     reviewAgent: repo.reviewAgent ?? "claude",
     webhookId: repo.webhookId ?? null,
     webhookPayloadMode: repo.webhookPayloadMode ?? "metadata",

@@ -11,7 +11,7 @@ const CREATE_TABLES = `
     branch_pattern TEXT,
     auto_launch_issues INTEGER NOT NULL DEFAULT 0 CHECK (auto_launch_issues IN (0, 1)),
     auto_review_prs    INTEGER NOT NULL DEFAULT 0 CHECK (auto_review_prs IN (0, 1)),
-    issue_agent        TEXT NOT NULL DEFAULT 'claude' CHECK (issue_agent IN ('claude', 'codex')),
+    issue_agent        TEXT NOT NULL DEFAULT 'codex' CHECK (issue_agent IN ('claude', 'codex')),
     review_agent       TEXT NOT NULL DEFAULT 'claude' CHECK (review_agent IN ('claude', 'codex')),
     webhook_secret     TEXT,
     webhook_id         INTEGER,

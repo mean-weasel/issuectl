@@ -1,7 +1,8 @@
 import { Suspense, type ReactNode } from "react";
-import type { GitHubIssue, Priority, Deployment } from "@issuectl/core";
+import type { GitHubIssue, Priority, Deployment, GitHubLabel } from "@issuectl/core";
 import type { LaunchAgent } from "@/components/launch/agent";
 import { Chip, LabelChip } from "@/components/paper";
+import { LabelManager } from "@/components/issue/LabelManager";
 import { timeAgo } from "@/lib/format";
 import { DetailTopBar } from "./DetailTopBar";
 import {
@@ -29,6 +30,7 @@ type Props = {
   deployments: Deployment[];
   referencedFiles: string[];
   defaultAgent: LaunchAgent;
+  availableLabels: GitHubLabel[];
   /** Rendered after the body — used by the page to stream the active-deployment banner and comments. */
   children?: ReactNode;
 };
@@ -43,6 +45,7 @@ export function IssueDetail({
   deployments,
   referencedFiles,
   defaultAgent,
+  availableLabels,
   children,
 }: Props) {
   const displayLabels = issue.labels.filter(
@@ -92,6 +95,16 @@ export function IssueDetail({
             currentPriority={currentPriority}
           />
         </DetailMeta>
+
+        <section className={styles.labelPanel} aria-label="Issue labels">
+          <LabelManager
+            owner={owner}
+            repo={repoName}
+            issueNumber={issue.number}
+            currentLabels={issue.labels}
+            availableLabels={availableLabels}
+          />
+        </section>
 
         {issue.state === "closed" ? (
           <ReopenButton owner={owner} repo={repoName} issueNumber={issue.number} />

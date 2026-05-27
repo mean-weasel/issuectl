@@ -194,6 +194,7 @@ export async function closeIssue(
       };
     }
     clearCacheKey(db, `issue-detail:${owner}/${repo}#${number}`);
+    clearCacheKey(db, `issue-header:${owner}/${repo}#${number}`);
     clearCacheKey(db, `issues:${owner}/${repo}`);
   } catch (err) {
     console.error("[issuectl] Failed to close issue:", err);
@@ -257,6 +258,7 @@ export async function toggleLabel(data: {
       );
     }
     clearCacheKey(db, `issue-detail:${owner}/${repo}#${number}`);
+    clearCacheKey(db, `issue-header:${owner}/${repo}#${number}`);
     clearCacheKey(db, `issues:${owner}/${repo}`);
   } catch (err) {
     console.error(`[issuectl] Failed to ${action} label:`, err);

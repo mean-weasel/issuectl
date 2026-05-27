@@ -39,7 +39,7 @@ const DEFAULT_AUTOMATION: AutomationState = {
   autoLaunchIssues: true,
   autoReviewPrs: true,
   issueAgent: "codex",
-  reviewAgent: "codex",
+  reviewAgent: "claude",
   reviewPreamble: "",
   webhookPayloadMode: "metadata",
 };

@@ -37,10 +37,10 @@ export function getLaunchAgent(db: Database.Database): LaunchAgent {
   }
   if (raw) {
     console.warn(
-      `[issuectl] launch_agent setting is invalid; falling back to 'claude'. Got: ${JSON.stringify(raw)}`,
+      `[issuectl] launch_agent setting is invalid; falling back to 'codex'. Got: ${JSON.stringify(raw)}`,
     );
   }
-  return "claude";
+  return "codex";
 }
 
 export function extraArgsSettingForAgent(
