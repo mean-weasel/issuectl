@@ -56,6 +56,13 @@ export function assemblePrReviewContext(data: PrReviewContext): string {
   if (data.reviewedFromSha) blocks.push(`Reviewed range: ${data.reviewedFromSha}..${data.reviewedToSha}`);
   if (data.preamble) blocks.push(`\n${data.preamble}`);
   blocks.push(agentControlInstructions("pr"));
+  blocks.push([
+    "\n## PR Review Source Material",
+    "Use the PR metadata, comments, and file patches provided below as the primary review source.",
+    "For webhook or comment-command launches, ambient GitHub credentials are intentionally unavailable.",
+    "Do not run `gh`, GitHub MCP tools, or other direct GitHub APIs unless the supplied PR data is insufficient.",
+    "When you need to inspect code beyond a patch, read from the local checkout instead.",
+  ].join("\n"));
   blocks.push("\n## Untrusted PR Data (JSON)");
   blocks.push(JSON.stringify({
     body: data.body ?? "",
