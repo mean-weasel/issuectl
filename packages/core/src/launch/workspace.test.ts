@@ -133,16 +133,18 @@ describe("prepareWorkspace — worktree mode", () => {
     const result = await prepareWorkspace({
       ...BASE_OPTIONS,
       mode: "worktree",
+      targetType: "pr",
+      issueNumber: 44,
       branchName: "feature/review",
       expectedHeadRef: "feature/review",
       expectedHeadSha: "head-a",
     });
 
-    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
+    expect(result.path).toBe("/tmp/worktrees/myrepo-pr-44");
     expect(branchMocks.fetchRemoteRef).toHaveBeenCalledWith("/repos/myrepo", "origin", "feature/review");
     expect(execFileMock).toHaveBeenCalledWith(
       "git",
-      ["worktree", "add", "-B", "feature/review", "/tmp/worktrees/myrepo-issue-1", "head-a"],
+      ["worktree", "add", "-B", "feature/review", "/tmp/worktrees/myrepo-pr-44", "head-a"],
       expect.objectContaining({ cwd: "/repos/myrepo" }),
     );
   });
@@ -223,17 +225,19 @@ describe("prepareWorkspace — clone mode", () => {
     const result = await prepareWorkspace({
       ...BASE_OPTIONS,
       mode: "clone",
+      targetType: "pr",
+      issueNumber: 44,
       branchName: "feature/review",
       expectedHeadRef: "feature/review",
       expectedHeadSha: "head-a",
     });
 
-    expect(result.path).toBe("/tmp/worktrees/myrepo-issue-1");
-    expect(branchMocks.fetchRemoteRef).toHaveBeenCalledWith("/tmp/worktrees/myrepo-issue-1", "origin", "feature/review");
+    expect(result.path).toBe("/tmp/worktrees/myrepo-pr-44");
+    expect(branchMocks.fetchRemoteRef).toHaveBeenCalledWith("/tmp/worktrees/myrepo-pr-44", "origin", "feature/review");
     expect(execFileMock).toHaveBeenCalledWith(
       "git",
       ["checkout", "-B", "feature/review", "head-a"],
-      expect.objectContaining({ cwd: "/tmp/worktrees/myrepo-issue-1" }),
+      expect.objectContaining({ cwd: "/tmp/worktrees/myrepo-pr-44" }),
     );
   });
 
