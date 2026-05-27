@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@issuectl/core";
 import {
+  cleanupCompletedIssueLifecycleLabels,
   isAgentCompletionStatus,
   recordAgentCompletionCheckIn,
 } from "@/lib/agent/completion";
@@ -32,7 +33,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const result = recordAgentCompletionCheckIn(getDb(), parsed);
+  const db = getDb();
+  const result = recordAgentCompletionCheckIn(db, parsed);
+  if (result.accepted && !result.duplicate) {
+    await cleanupCompletedIssueLifecycleLabels(db, parsed.deploymentId);
+  }
   return NextResponse.json(result, { status: result.accepted ? 200 : 403 });
 }
 

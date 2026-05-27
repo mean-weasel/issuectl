@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 
 const getDb = vi.hoisted(() => vi.fn());
 const recordAgentCompletionCheckIn = vi.hoisted(() => vi.fn());
+const cleanupCompletedIssueLifecycleLabels = vi.hoisted(() => vi.fn());
 
 vi.mock("@issuectl/core", () => ({
   getDb: () => getDb(),
@@ -11,6 +12,8 @@ vi.mock("@issuectl/core", () => ({
 vi.mock("@/lib/agent/completion", () => ({
   recordAgentCompletionCheckIn: (...args: unknown[]) =>
     recordAgentCompletionCheckIn(...args),
+  cleanupCompletedIssueLifecycleLabels: (...args: unknown[]) =>
+    cleanupCompletedIssueLifecycleLabels(...args),
   isAgentCompletionStatus: (value: unknown) =>
     ["completed", "failed", "no_changes", "pushed_fixes"].includes(String(value)),
 }));
@@ -27,6 +30,7 @@ function request(body: unknown): NextRequest {
 beforeEach(() => {
   getDb.mockReturnValue("db");
   recordAgentCompletionCheckIn.mockReset();
+  cleanupCompletedIssueLifecycleLabels.mockReset();
 });
 
 describe("/api/v1/agent/completion", () => {
@@ -61,6 +65,7 @@ describe("/api/v1/agent/completion", () => {
       fixedFindingCount: 2,
       errorMessage: "non-blocking warning",
     });
+    expect(cleanupCompletedIssueLifecycleLabels).toHaveBeenCalledWith("db", 12);
   });
 
   it("rejects malformed rich metadata", async () => {
