@@ -251,7 +251,7 @@ const migrations: Migration[] = [
     up(db) {
       // Launches can now target either Claude Code or Codex. Existing
       // deployments were all Claude sessions, so the column backfills to
-      // "claude"; settings default to preserving the existing behavior.
+      // "claude"; new default launches prefer Codex.
       db.exec(`
         ALTER TABLE deployments ADD COLUMN agent TEXT NOT NULL DEFAULT 'claude'
           CHECK (agent IN ('claude', 'codex'));
@@ -262,11 +262,11 @@ const migrations: Migration[] = [
       `);
       db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(
         "launch_agent",
-        "claude",
+        "codex",
       );
       db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(
         "codex_extra_args",
-        "",
+        "--sandbox danger-full-access --ask-for-approval never",
       );
     },
   },

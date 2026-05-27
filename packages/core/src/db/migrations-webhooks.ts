@@ -5,7 +5,7 @@ export function runWebhookMigration(db: Database.Database): void {
     db.exec(`
       ALTER TABLE repos ADD COLUMN auto_launch_issues INTEGER NOT NULL DEFAULT 0 CHECK (auto_launch_issues IN (0, 1));
       ALTER TABLE repos ADD COLUMN auto_review_prs INTEGER NOT NULL DEFAULT 0 CHECK (auto_review_prs IN (0, 1));
-      ALTER TABLE repos ADD COLUMN issue_agent TEXT NOT NULL DEFAULT 'claude' CHECK (issue_agent IN ('claude', 'codex'));
+      ALTER TABLE repos ADD COLUMN issue_agent TEXT NOT NULL DEFAULT 'codex' CHECK (issue_agent IN ('claude', 'codex'));
       ALTER TABLE repos ADD COLUMN review_agent TEXT NOT NULL DEFAULT 'claude' CHECK (review_agent IN ('claude', 'codex'));
       ALTER TABLE repos ADD COLUMN webhook_secret TEXT;
       ALTER TABLE repos ADD COLUMN webhook_id INTEGER;

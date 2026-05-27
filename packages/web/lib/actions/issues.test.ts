@@ -5,6 +5,8 @@ const coreMocks = vi.hoisted(() => ({
   getRepo: vi.fn(),
   setSetting: vi.fn(),
   createIssue: vi.fn(),
+  addLabel: vi.fn(),
+  removeLabel: vi.fn(),
   clearCacheKey: vi.fn(),
   withAuthRetry: vi.fn((fn: (octokit: unknown) => Promise<unknown>) => fn({})),
   withIdempotency: vi.fn(
@@ -23,6 +25,8 @@ vi.mock("@issuectl/core", async () => {
     getRepo: coreMocks.getRepo,
     setSetting: coreMocks.setSetting,
     createIssue: coreMocks.createIssue,
+    addLabel: coreMocks.addLabel,
+    removeLabel: coreMocks.removeLabel,
     clearCacheKey: coreMocks.clearCacheKey,
     withAuthRetry: coreMocks.withAuthRetry,
     withIdempotency: coreMocks.withIdempotency,
@@ -39,13 +43,15 @@ vi.mock("@/lib/push/notifications", () => ({
   notifyNewIssue: notifyNewIssueMock,
 }));
 
-const { createIssue } = await import("./issues");
+const { createIssue, toggleLabel } = await import("./issues");
 
 beforeEach(() => {
   vi.clearAllMocks();
   notifyNewIssueMock.mockReset();
   coreMocks.getDb.mockReturnValue({});
   coreMocks.setSetting.mockReset();
+  coreMocks.addLabel.mockReset();
+  coreMocks.removeLabel.mockReset();
   coreMocks.getRepo.mockReturnValue({
     id: 7,
     owner: "acme",
@@ -55,6 +61,39 @@ beforeEach(() => {
     createdAt: "2026-01-01 00:00:00",
   });
   coreMocks.createIssue.mockResolvedValue({ number: 123 });
+});
+
+describe("toggleLabel action", () => {
+  it("adds labels and clears issue header caches used by the detail page", async () => {
+    const result = await toggleLabel({
+      owner: "acme",
+      repo: "api",
+      number: 42,
+      label: "issuectl:auto-launch",
+      action: "add",
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(coreMocks.addLabel).toHaveBeenCalledWith(
+      {},
+      "acme",
+      "api",
+      42,
+      "issuectl:auto-launch",
+    );
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
+      {},
+      "issue-detail:acme/api#42",
+    );
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
+      {},
+      "issue-header:acme/api#42",
+    );
+    expect(coreMocks.clearCacheKey).toHaveBeenCalledWith(
+      {},
+      "issues:acme/api",
+    );
+  });
 });
 
 describe("createIssue action", () => {

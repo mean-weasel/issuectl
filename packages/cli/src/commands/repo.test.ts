@@ -73,8 +73,8 @@ function makeRepo(overrides: Partial<Repo> = {}): Repo {
     branchPattern: null,
     autoLaunchIssues: false,
     autoReviewPrs: false,
-    issueAgent: "claude",
-    reviewAgent: "codex",
+    issueAgent: "codex",
+    reviewAgent: "claude",
     webhookId: null,
     reviewPreamble: null,
     webhookPayloadMode: "metadata",
@@ -302,7 +302,7 @@ describe("repo commands", () => {
     expect(createIssuectlWebhook).not.toHaveBeenCalled();
   });
 
-  it("defaults prompted automation agents to claude", async () => {
+  it("defaults prompted automation agents to codex for issues and claude for reviews", async () => {
     vi.mocked(getRepo).mockReturnValue(undefined);
     vi.mocked(addRepo).mockReturnValue(makeRepo());
     vi.mocked(confirm)
@@ -319,7 +319,7 @@ describe("repo commands", () => {
 
     expect(input).toHaveBeenCalledWith(expect.objectContaining({
       message: "Issue session agent",
-      default: "claude",
+      default: "codex",
     }));
     expect(input).toHaveBeenCalledWith(expect.objectContaining({
       message: "PR review agent",
@@ -328,7 +328,7 @@ describe("repo commands", () => {
     expect(updateRepoWebhookSettings).toHaveBeenCalledWith(mockDb, 1, {
       autoLaunchIssues: true,
       autoReviewPrs: true,
-      issueAgent: "claude",
+      issueAgent: "codex",
       reviewAgent: "claude",
       webhookPayloadMode: "metadata",
     });

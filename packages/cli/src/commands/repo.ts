@@ -258,7 +258,7 @@ async function collectRepoAddWebhookOptions(
 
   let issueAgent = normalizeOptionalAgent(options.issueAgent, "--issue-agent");
   if (autoLaunchIssues && issueAgent === undefined) {
-    issueAgent = await promptLaunchAgent("Issue session agent", "claude");
+    issueAgent = await promptLaunchAgent("Issue session agent", "codex");
   }
 
   let reviewAgent = normalizeOptionalAgent(options.reviewAgent, "--review-agent");

@@ -12,6 +12,7 @@ import {
   getSetting,
   killTmuxSession,
   killTtyd,
+  clearCacheKey,
   recordDiagnosticEventSafely,
   removeLabel,
   recoverExpiredWebhookIntentLeaseRecords,
@@ -295,6 +296,9 @@ async function consumeIssueAutoLaunchLabel(
     await withAuthRetry((octokit) =>
       removeLabel(octokit, repo.owner, repo.name, intent.targetNumber, ISSUE_AUTO_LAUNCH_LABEL),
     );
+    clearCacheKey(db, `issue-header:${repo.owner}/${repo.name}#${intent.targetNumber}`);
+    clearCacheKey(db, `issue-detail:${repo.owner}/${repo.name}#${intent.targetNumber}`);
+    clearCacheKey(db, `issues:${repo.owner}/${repo.name}`);
     markAutoLaunchLabelConsumed(db, repo.id, intent.targetNumber);
     recordIntentDiagnostic(db, repo, intent, "webhook.auto_launch_label_consumed", "Removed auto-launch label after successful launch.", deploymentId);
   } catch (err) {

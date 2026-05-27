@@ -17,6 +17,11 @@ const core = vi.hoisted(() => ({
   listPrReviewsForRepo: vi.fn(),
   listRecentTerminalDeploymentsByRepo: vi.fn(),
   listWebhookEvents: vi.fn(),
+  getOctokit: vi.fn(),
+  getIssueHeader: vi.fn(),
+  getPriority: vi.fn(),
+  getSettings: vi.fn(),
+  listLabels: vi.fn(),
 }));
 
 const data = vi.hoisted(() => ({
@@ -45,6 +50,18 @@ vi.mock("@/components/reviews/ReviewDetailPanel", () => ({
 }));
 vi.mock("@/components/repos/RepoSettingsPanel", () => ({
   RepoSettingsPanel: (props: Record<string, unknown>) => React.createElement("mock-repo-settings-panel", props),
+}));
+vi.mock("@/components/detail/IssueDetail", () => ({
+  IssueDetail: (props: Record<string, unknown>) => React.createElement("mock-issue-detail", props, props.children as React.ReactNode),
+}));
+vi.mock("@/components/detail/IssueDetailContent", () => ({
+  IssueDetailContent: (props: Record<string, unknown>) => React.createElement("mock-issue-detail-content", props),
+}));
+vi.mock("@/components/detail/ImageLightbox", () => ({
+  LightboxProvider: (props: Record<string, unknown>) => React.createElement("mock-lightbox-provider", props, props.children as React.ReactNode),
+}));
+vi.mock("@/components/ui/PullToRefreshWrapper", () => ({
+  PullToRefreshWrapper: (props: Record<string, unknown>) => React.createElement("mock-pull-to-refresh", props, props.children as React.ReactNode),
 }));
 vi.mock("./logs/webhooks/WebhookLiveTail", () => ({
   WebhookLiveTail: (props: Record<string, unknown>) => React.createElement("mock-webhook-live-tail", props),
@@ -79,6 +96,31 @@ beforeEach(() => {
   core.listPrReviewsForRepo.mockReturnValue([]);
   core.listRecentTerminalDeploymentsByRepo.mockReturnValue([]);
   core.listWebhookEvents.mockReturnValue([webhookEntry()]);
+  core.getOctokit.mockResolvedValue({});
+  core.getIssueHeader.mockResolvedValue({
+    issue: {
+      number: 26,
+      title: "Manual QA",
+      body: "body",
+      state: "open",
+      labels: [],
+      assignees: [],
+      user: null,
+      commentCount: 0,
+      createdAt: "2026-05-27T00:00:00.000Z",
+      updatedAt: "2026-05-27T00:00:00.000Z",
+      closedAt: null,
+      htmlUrl: "https://github.com/mean-weasel/issuectl/issues/26",
+    },
+    deployments: [],
+    referencedFiles: [],
+  });
+  core.getPriority.mockReturnValue("normal");
+  core.getSettings.mockReturnValue([{ key: "launch_agent", value: "codex" }]);
+  core.listLabels.mockResolvedValue([
+    { name: "bug", color: "d73a4a", description: null },
+    { name: "issuectl:auto-launch", color: "0e8a16", description: null },
+  ]);
   data.normalizeSessionsFilters.mockReturnValue({ tab: "sessions" });
   data.getSessionsOverviewData.mockResolvedValue({ summary: { activeSessions: 1 } });
   data.getReviewDetailData.mockReturnValue({
@@ -184,6 +226,21 @@ describe("operator route rendering", () => {
       recentDeliveries: [expect.objectContaining({ deliveryId: "delivery-1" })],
       settingsHref: "/settings/repos",
     });
+  });
+
+  it("renders issue detail with repo labels for editing existing issues", async () => {
+    const { default: IssueDetailPage } = await import("./issues/[owner]/[repo]/[number]/page");
+
+    const tree = await IssueDetailPage({
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl", number: "26" }),
+    });
+
+    expect(core.listLabels).toHaveBeenCalledWith({}, "mean-weasel", "issuectl");
+    const detail = findElementWhere(tree, (props) => Array.isArray(props.availableLabels));
+    expect(detail?.props.availableLabels).toEqual([
+      { name: "bug", color: "d73a4a", description: null },
+      { name: "issuectl:auto-launch", color: "0e8a16", description: null },
+    ]);
   });
 });
 

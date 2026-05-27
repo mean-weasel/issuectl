@@ -1,5 +1,8 @@
 /* eslint-disable max-lines */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import type { Octokit } from "@octokit/rest";
 import { executeLaunch } from "./launch.js";
@@ -137,6 +140,8 @@ vi.mock("../github/labels.js", async () => {
 
 describe("executeLaunch duplicate-deployment pre-check", () => {
   let db: Database.Database;
+  let codexHome: string | null = null;
+  const previousCodexHome = process.env.CODEX_HOME;
 
   beforeEach(() => {
     prepareWorkspaceSpy.mockClear();
@@ -148,6 +153,18 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
     db = createTestDb();
+  });
+
+  afterEach(async () => {
+    if (codexHome) {
+      await rm(codexHome, { recursive: true, force: true });
+      codexHome = null;
+    }
+    if (previousCodexHome === undefined) {
+      delete process.env.CODEX_HOME;
+    } else {
+      process.env.CODEX_HOME = previousCodexHome;
+    }
   });
 
   async function withConsoleWarnSilenced<T>(fn: () => Promise<T>): Promise<T> {
@@ -300,6 +317,116 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
         }),
       ]),
     );
+  });
+
+  it("pre-trusts Codex workspaces for webhook issue launches", async () => {
+    codexHome = await mkdtemp(join(tmpdir(), "issuectl-codex-home-"));
+    process.env.CODEX_HOME = codexHome;
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    const result = await withConsoleWarnSilenced(() =>
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        issueNumber: 42,
+        agent: "codex",
+        branchName: "issue-42",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+        triggeredBy: "webhook",
+        completionToken: "completion-42",
+      }),
+    );
+
+    const config = await readFile(join(codexHome, "config.toml"), "utf8");
+    expect(config).toContain(`[projects.${JSON.stringify("/tmp/fake-workspace")}]`);
+    expect(config).toContain(`trust_level = "trusted"`);
+    expect(spawnTtydSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentInputMode: "argument",
+      }),
+    );
+    expect(queryDiagnosticEvents(db, {
+      deploymentId: result.deploymentId,
+      events: ["agent.preflight.started", "codex.trust.recorded"],
+    })).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ event: "agent.preflight.started" }),
+        expect.objectContaining({ event: "codex.trust.recorded" }),
+      ]),
+    );
+  });
+
+  it("pre-trusts Codex workspaces for webhook PR launches when Codex is selected", async () => {
+    codexHome = await mkdtemp(join(tmpdir(), "issuectl-codex-home-"));
+    process.env.CODEX_HOME = codexHome;
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    await withConsoleWarnSilenced(() =>
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "codex",
+        branchName: "pr-44-review",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+        triggeredBy: "webhook",
+        completionToken: "completion-44",
+      }),
+    );
+
+    const config = await readFile(join(codexHome, "config.toml"), "utf8");
+    expect(config).toContain(`[projects.${JSON.stringify("/tmp/fake-workspace")}]`);
+    expect(queryDiagnosticEvents(db, {
+      target: { owner: "acme", repo: "api", targetType: "pr", targetNumber: 44 },
+      events: ["codex.trust.recorded"],
+    })).toHaveLength(1);
+  });
+
+  it("does not pre-trust Claude PR review workspaces", async () => {
+    codexHome = await mkdtemp(join(tmpdir(), "issuectl-codex-home-"));
+    process.env.CODEX_HOME = codexHome;
+    addRepo(db, {
+      owner: "acme",
+      name: "api",
+      localPath: "/tmp/fake",
+    });
+
+    await withConsoleWarnSilenced(() =>
+      executeLaunch(db, {} as Octokit, {
+        owner: "acme",
+        repo: "api",
+        targetType: "pr",
+        targetNumber: 44,
+        agent: "claude",
+        branchName: "pr-44-review",
+        workspaceMode: "existing",
+        selectedComments: [],
+        selectedFiles: [],
+        triggeredBy: "webhook",
+        completionToken: "completion-44",
+      }),
+    );
+
+    await expect(readFile(join(codexHome, "config.toml"), "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(queryDiagnosticEvents(db, {
+      target: { owner: "acme", repo: "api", targetType: "pr", targetNumber: 44 },
+      events: ["codex.trust.recorded"],
+    })).toHaveLength(0);
   });
 
   it("launches webhook issue sessions with agent env and issue-scoped mutation budgets", async () => {

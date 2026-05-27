@@ -163,8 +163,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       expect.objectContaining({
         port: 7700,
         workspacePath: "/tmp/fake-workspace",
-        agentCommand: expect.stringMatching(/(^|\/)claude$/),
-        agentInputMode: "stdin",
+        agentCommand: expect.stringMatching(/(^|\/)codex$/),
+        agentInputMode: "argument",
         sessionName: "issuectl-api-42",
       }),
     );

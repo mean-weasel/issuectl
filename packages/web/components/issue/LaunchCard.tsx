@@ -28,7 +28,7 @@ export function LaunchCard({
   comments,
   deployments,
   referencedFiles,
-  defaultAgent = "claude",
+  defaultAgent = "codex",
 }: Props) {
   const lastDeployment = deployments[0];
   const branch =

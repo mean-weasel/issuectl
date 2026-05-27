@@ -38,6 +38,7 @@ import {
 } from "./launch-contexts.js";
 import { applyLaunchLifecycleLabels } from "./launch-labels.js";
 import { activateRecordedDeployment } from "./launch-activation.js";
+import { runAgentPreflight } from "./agent-preflight.js";
 
 export interface LaunchOptions {
   owner: string;
@@ -208,6 +209,15 @@ export async function executeLaunch(
     expectedHeadSha,
   });
   try {
+    await runAgentPreflight({
+      db,
+      diagnosticContext,
+      deploymentId: deployment.id,
+      agent: launchAgent,
+      workspacePath: workspace.path,
+      triggeredBy: options.triggeredBy,
+    });
+
     if (terminalBackend === "pty_bridge") {
       spawnPtyBridgeSession({
         workspacePath: workspace.path,

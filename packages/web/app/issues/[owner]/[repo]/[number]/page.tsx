@@ -8,7 +8,9 @@ import {
   getRepo,
   getPriority,
   getSettings,
+  listLabels,
 } from "@issuectl/core";
+import type { GitHubLabel } from "@issuectl/core";
 import { IssueDetail } from "@/components/detail/IssueDetail";
 import { IssueDetailContent } from "@/components/detail/IssueDetailContent";
 import { LightboxProvider } from "@/components/detail/ImageLightbox";
@@ -74,6 +76,15 @@ export default async function IssueDetailPage({
     const settings = getSettings(db);
     const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
     const defaultAgent = normalizeLaunchAgent(settingMap.launch_agent);
+    let availableLabels: GitHubLabel[] = [];
+    try {
+      availableLabels = await listLabels(octokit, owner, repo);
+    } catch (err) {
+      console.warn(
+        `[issuectl] Failed to fetch labels for ${owner}/${repo}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
 
     const boundRefresh = refreshIssueAction.bind(
       null,
@@ -95,6 +106,7 @@ export default async function IssueDetailPage({
             deployments={deployments}
             referencedFiles={referencedFiles}
             defaultAgent={defaultAgent}
+            availableLabels={availableLabels}
           >
             <Suspense fallback={<ContentSkeleton />}>
               <IssueDetailContent

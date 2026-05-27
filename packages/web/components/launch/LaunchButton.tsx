@@ -31,7 +31,7 @@ export function LaunchButton({
   comments,
   deployments,
   referencedFiles,
-  defaultAgent = "claude",
+  defaultAgent = "codex",
   className,
 }: Props) {
   const [showModal, setShowModal] = useState(false);

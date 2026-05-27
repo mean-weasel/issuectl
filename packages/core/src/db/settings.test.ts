@@ -95,8 +95,10 @@ describe("seedDefaults", () => {
 
   it("seedDefaults sets the launch agent defaults", () => {
     seedDefaults(db);
-    expect(getSetting(db, "launch_agent")).toBe("claude");
-    expect(getSetting(db, "codex_extra_args")).toBe("");
+    expect(getSetting(db, "launch_agent")).toBe("codex");
+    expect(getSetting(db, "codex_extra_args")).toBe(
+      "--sandbox danger-full-access --ask-for-approval never",
+    );
   });
 
   it("seedDefaults keeps ttyd as the terminal backend default", () => {

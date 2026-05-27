@@ -265,11 +265,11 @@ describe("initSchema does not deadlock against pre-existing duplicate live deplo
     expect(
       (db.prepare("SELECT value FROM settings WHERE key = 'launch_agent'").get() as { value: string })
         .value,
-    ).toBe("claude");
+    ).toBe("codex");
     expect(
       (db.prepare("SELECT value FROM settings WHERE key = 'codex_extra_args'").get() as { value: string })
         .value,
-    ).toBe("");
+    ).toBe("--sandbox danger-full-access --ask-for-approval never");
     expect(() =>
       db.prepare("UPDATE deployments SET agent = 'unknown' WHERE id = 1").run(),
     ).toThrow();

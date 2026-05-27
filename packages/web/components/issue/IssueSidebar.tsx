@@ -36,7 +36,7 @@ export function IssueSidebar({
   repo,
   repoLocalPath,
   availableLabels = [],
-  defaultAgent = "claude",
+  defaultAgent = "codex",
 }: Props) {
   return (
     <div className={styles.sidebar}>
