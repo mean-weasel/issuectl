@@ -70,6 +70,7 @@ export async function prepareLaunchWorkspace(
     owner: options.owner,
     repo: options.repo,
     branchName: options.branchName,
+    targetType,
     issueNumber: options.targetNumber,
     worktreeDir,
     forceResume: options.forceResume,

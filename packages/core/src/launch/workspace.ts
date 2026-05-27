@@ -8,6 +8,7 @@ import {
   getDefaultBranch,
 } from "./branch.js";
 import { timedExec } from "./exec-timeout.js";
+import type { DeploymentTargetType } from "../types.js";
 
 export type WorkspaceMode = "existing" | "worktree" | "clone";
 
@@ -57,6 +58,7 @@ export async function prepareWorkspace(options: {
   owner: string;
   repo: string;
   branchName: string;
+  targetType?: DeploymentTargetType;
   issueNumber: number;
   worktreeDir: string;
   forceResume?: boolean;
@@ -76,6 +78,11 @@ export async function prepareWorkspace(options: {
     case "clone":
       return prepareClone(options);
   }
+}
+
+function workspaceTargetName(repo: string, targetType: DeploymentTargetType | undefined, targetNumber: number): string {
+  const kind = targetType === "pr" ? "pr" : "issue";
+  return `${repo}-${kind}-${targetNumber}`;
 }
 
 async function prepareExisting(
@@ -120,14 +127,16 @@ async function prepareWorktree(options: {
   repoPath: string;
   branchName: string;
   repo: string;
+  targetType?: DeploymentTargetType;
   issueNumber: number;
   worktreeDir: string;
   forceResume?: boolean;
   expectedHeadRef?: string;
   expectedHeadSha?: string;
 }): Promise<WorkspaceResult> {
-  const worktreeName = `${options.repo}-issue-${options.issueNumber}`;
+  const worktreeName = workspaceTargetName(options.repo, options.targetType, options.issueNumber);
   const worktreePath = join(options.worktreeDir, worktreeName);
+  const targetLabel = options.targetType === "pr" ? "PR" : "issue";
 
   await mkdir(options.worktreeDir, { recursive: true });
 
@@ -146,7 +155,7 @@ async function prepareWorktree(options: {
           return { path: worktreePath, mode: "worktree", created: false };
         }
         throw new Error(
-          `Worktree at ${worktreePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the worktree with \`git worktree remove\`) before launching again.`,
+          `Worktree at ${worktreePath} has uncommitted changes from a previous launch of this ${targetLabel}. Commit or stash them (or remove the worktree with \`git worktree remove\`) before launching again.`,
         );
       }
       if (options.expectedHeadRef && options.expectedHeadSha) {
@@ -219,15 +228,17 @@ async function prepareClone(options: {
   owner: string;
   repo: string;
   branchName: string;
+  targetType?: DeploymentTargetType;
   issueNumber: number;
   worktreeDir: string;
   forceResume?: boolean;
   expectedHeadRef?: string;
   expectedHeadSha?: string;
 }): Promise<WorkspaceResult> {
-  const cloneName = `${options.repo}-issue-${options.issueNumber}`;
+  const cloneName = workspaceTargetName(options.repo, options.targetType, options.issueNumber);
   const clonePath = join(options.worktreeDir, cloneName);
   const cloneUrl = `https://github.com/${options.owner}/${options.repo}.git`;
+  const targetLabel = options.targetType === "pr" ? "PR" : "issue";
 
   await mkdir(options.worktreeDir, { recursive: true });
 
@@ -244,7 +255,7 @@ async function prepareClone(options: {
           return { path: clonePath, mode: "clone", created: false };
         }
         throw new Error(
-          `Clone at ${clonePath} has uncommitted changes from a previous launch of this issue. Commit or stash them (or remove the directory) before launching again.`,
+          `Clone at ${clonePath} has uncommitted changes from a previous launch of this ${targetLabel}. Commit or stash them (or remove the directory) before launching again.`,
         );
       }
       await timedExec("git", ["fetch", "origin"], {
