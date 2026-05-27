@@ -1,7 +1,11 @@
 import type Database from "better-sqlite3";
 import {
+  clearCacheKey,
   getRepoById,
+  LIFECYCLE_LABEL,
   recordDiagnosticEventSafely,
+  removeLabel,
+  withAuthRetry,
 } from "@issuectl/core";
 import { notifyDeploymentTerminalOutcome } from "@/lib/push/notifications";
 
@@ -88,6 +92,54 @@ export function recordAgentCompletionCheckIn(
   return deny(db, input, "already_completed");
 }
 
+export async function cleanupCompletedIssueLifecycleLabels(
+  db: Database.Database,
+  deploymentId: number,
+): Promise<void> {
+  const session = getCompletionSession(db, deploymentId);
+  if (!session || session.targetType !== "issue" || session.targetNumber <= 0) return;
+  const repo = getRepoById(db, session.repoId);
+  if (!repo) return;
+
+  try {
+    await withAuthRetry((octokit) =>
+      removeLabel(
+        octokit,
+        repo.owner,
+        repo.name,
+        session.targetNumber,
+        LIFECYCLE_LABEL.inProgress,
+      ),
+    );
+    clearIssueCaches(db, repo.owner, repo.name, session.targetNumber);
+    recordDiagnosticEventSafely(db, {
+      level: "info",
+      event: "lifecycle.in_progress_label_removed",
+      source: "agent.completion",
+      owner: repo.owner,
+      repo: repo.name,
+      issueNumber: session.targetNumber,
+      targetType: "issue",
+      targetNumber: session.targetNumber,
+      deploymentId,
+      message: "Removed in-progress label after agent completion",
+    });
+  } catch (err) {
+    recordDiagnosticEventSafely(db, {
+      level: "warn",
+      event: "lifecycle.in_progress_label_cleanup_failed",
+      source: "agent.completion",
+      owner: repo.owner,
+      repo: repo.name,
+      issueNumber: session.targetNumber,
+      targetType: "issue",
+      targetNumber: session.targetNumber,
+      deploymentId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 function getCompletionSession(
   db: Database.Database,
   deploymentId: number,
@@ -143,6 +195,18 @@ function recordCompletionDiagnostic(
     message: reason ? `Agent completion denied: ${reason}` : "Agent completion recorded",
     data: { status: input.status, reason, targetType, targetNumber },
   });
+}
+
+function clearIssueCaches(
+  db: Database.Database,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): void {
+  clearCacheKey(db, `issue-detail:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-header:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issue-content:${owner}/${repo}#${issueNumber}`);
+  clearCacheKey(db, `issues:${owner}/${repo}`);
 }
 
 function completionResult(input: AgentCompletionInput): Record<string, unknown> {
