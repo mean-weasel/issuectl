@@ -78,6 +78,7 @@ function testWorkerDeps() {
       _db.prepare("UPDATE deployments SET triggered_by = ? WHERE id = ?").run(triggeredBy, deploymentId);
       return { deploymentId };
     },
+    consumeIssueAutoLaunchLabel: async () => {},
   };
 }
 
@@ -121,6 +122,7 @@ describe("runWebhookIntentWorkerOnce", () => {
 
   it("launches due opted-in issue intents", async () => {
     const launchIssue = vi.fn(testWorkerDeps().launchIssue);
+    const consumeIssueAutoLaunchLabel = vi.fn(testWorkerDeps().consumeIssueAutoLaunchLabel);
     const intentId = mergeWebhookIntent(db, {
       repoId,
       targetType: "issue",
@@ -130,7 +132,7 @@ describe("runWebhookIntentWorkerOnce", () => {
       requestedAgent: "codex",
     });
 
-    const result = await runWorker(db, 2_000, { launchIssue });
+    const result = await runWorker(db, 2_000, { launchIssue, consumeIssueAutoLaunchLabel });
 
     expectWorkerResult(result, { claimed: 1, launched: 1 });
     expect(launchIssue).toHaveBeenCalledWith(
@@ -140,6 +142,12 @@ describe("runWebhookIntentWorkerOnce", () => {
       expect.objectContaining({ title: "Fix webhook auto launch" }),
       "webhook",
       expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
+    expect(consumeIssueAutoLaunchLabel).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ id: repoId }),
+      expect.objectContaining({ id: intentId }),
+      1,
     );
     expect(queryDiagnosticEvents(db, {
       target: { owner: "mean-weasel", repo: "issuectl", targetType: "issue", targetNumber: 506 },
@@ -161,6 +169,67 @@ describe("runWebhookIntentWorkerOnce", () => {
       }),
     );
     expect(db.prepare("SELECT agent FROM deployments WHERE id = 1").get()).toEqual({ agent: "codex" });
+  });
+
+  it("ignores the unlabeled webhook caused by consuming auto-launch after launch", async () => {
+    const deploymentId = recordDeployment(db, {
+      repoId,
+      issueNumber: 506,
+      branchName: "issue-506",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issuectl-live",
+    }).id;
+    db.prepare("UPDATE deployments SET triggered_by = 'webhook' WHERE id = ?").run(deploymentId);
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, '1')").run(
+      `webhook:consumed-auto-launch:${repoId}:506`,
+    );
+    const priorIntentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 500,
+      scheduledAt: 500,
+    });
+    db.prepare("UPDATE webhook_intents SET status = 'launched', deployment_id = ?, resolved_at = ? WHERE id = ?").run(deploymentId, 600, priorIntentId);
+    const event = recordWebhookEvent(db, {
+      deliveryId: "delivery-consumed-auto-label",
+      repoId,
+      eventType: "issues",
+      action: "unlabeled",
+      targetType: "issue",
+      targetNumber: 506,
+      receivedAt: 1_000,
+    });
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "issue",
+      targetNumber: 506,
+      signalAt: 1_000,
+      scheduledAt: 2_000,
+      eventId: event.deduped ? null : event.eventId,
+    });
+
+    const result = await runWorker(db, 2_000, {
+      fetchIssueState: async () => ({
+        title: "Fix webhook auto launch",
+        state: "open",
+        labels: ["issuectl:deployed", "issuectl:in-progress"],
+      }),
+    });
+
+    expectWorkerResult(result, { claimed: 1, skippedOptout: 1 });
+    expect(getDeploymentByIdForTest(db, deploymentId)).toEqual({ ended_at: null });
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({
+        status: "skipped_optout",
+        failure_reason: "Auto-launch label consumed after launch",
+      }),
+    );
+    expect(db.prepare("SELECT COUNT(*) AS count FROM settings WHERE key = ?").get(
+      `webhook:consumed-auto-launch:${repoId}:506`,
+    )).toEqual({ count: 0 });
+    expect(queryDiagnosticEvents(db, { events: ["webhook.kill_switch"] })).toHaveLength(0);
+    expect(queryDiagnosticEvents(db, { events: ["webhook.auto_launch_label_consumed"] })).toHaveLength(1);
   });
 
   it("broadcasts live-tail updates when issue intent state changes", async () => {

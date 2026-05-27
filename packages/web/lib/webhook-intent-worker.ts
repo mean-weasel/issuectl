@@ -13,6 +13,7 @@ import {
   killTmuxSession,
   killTtyd,
   recordDiagnosticEventSafely,
+  removeLabel,
   recoverExpiredWebhookIntentLeaseRecords,
   tmuxSessionName,
   withAuthRetry,
@@ -51,6 +52,12 @@ type WorkerDeps = {
     triggeredBy: "webhook" | "comment_command",
     completionToken: string,
   ) => Promise<{ deploymentId: number }>;
+  consumeIssueAutoLaunchLabel?: (
+    db: Database.Database,
+    repo: Repo,
+    intent: WebhookIntent,
+    deploymentId: number,
+  ) => Promise<void>;
   launchPr?: LaunchPrReview;
   isAncestor?: PullWorkerDeps["isAncestor"];
   broadcastEventsChanged?: () => void;
@@ -136,6 +143,13 @@ export async function runWebhookIntentWorkerOnce(
     const event = getLatestIntentEvent(db, intent.id);
     const triggeredBy = triggeredByForIntentEvent(event);
     if (isIssueControlEvent(event) || (triggeredBy === "webhook" && repo.autoLaunchIssues === false)) {
+      if (isConsumedAutoLaunchLabelEvent(db, repo.id, intent.targetNumber, event)) {
+        clearConsumedAutoLaunchLabel(db, repo.id, intent.targetNumber);
+        recordIntentDiagnostic(db, repo, intent, "webhook.auto_launch_label_consumed", "Consumed auto-launch label after launch.");
+        markIntentTerminal(db, intent.id, "skipped_optout", now, "Auto-launch label consumed after launch");
+        broadcastEventsChanged();
+        return result(base, { claimed: 1, skippedOptout: 1 });
+      }
       const endedSessions = endWebhookSessionForTarget(db, repo, intent, terminalReasonForControl(event));
       recordIntentDiagnostic(db, repo, intent, "webhook.kill_switch", endedSessions > 0 ? "Ended webhook-launched session." : "No webhook-launched session to end.");
       markIntentTerminal(db, intent.id, "skipped_optout", now, "Control event or repo auto-launch disabled");
@@ -176,6 +190,12 @@ export async function runWebhookIntentWorkerOnce(
       issue,
       triggeredBy,
       completionToken,
+    );
+    await (deps.consumeIssueAutoLaunchLabel ?? consumeIssueAutoLaunchLabel)(
+      db,
+      repo,
+      intent,
+      launch.deploymentId,
     );
     markIntentTerminal(db, intent.id, "launched", now, null, launch.deploymentId);
     recordIntentDiagnostic(db, repo, intent, "webhook.launched", "Webhook launched issue session.", launch.deploymentId);
@@ -263,6 +283,67 @@ function isIssueGatedIn(repo: Repo, issue: IssueState): boolean {
 
 function isIssueControlEvent(event: IntentEventSummary): boolean {
   return event?.eventType === "issues" && (event.action === "closed" || event.action === "unlabeled");
+}
+
+async function consumeIssueAutoLaunchLabel(
+  db: Database.Database,
+  repo: Repo,
+  intent: WebhookIntent,
+  deploymentId: number,
+): Promise<void> {
+  try {
+    await withAuthRetry((octokit) =>
+      removeLabel(octokit, repo.owner, repo.name, intent.targetNumber, ISSUE_AUTO_LAUNCH_LABEL),
+    );
+    markAutoLaunchLabelConsumed(db, repo.id, intent.targetNumber);
+    recordIntentDiagnostic(db, repo, intent, "webhook.auto_launch_label_consumed", "Removed auto-launch label after successful launch.", deploymentId);
+  } catch (err) {
+    recordIntentDiagnostic(
+      db,
+      repo,
+      intent,
+      "webhook.auto_launch_label_remove_failed",
+      err instanceof Error ? err.message : String(err),
+      deploymentId,
+    );
+  }
+}
+
+function consumedAutoLaunchLabelKey(repoId: number, issueNumber: number): string {
+  return `webhook:consumed-auto-launch:${repoId}:${issueNumber}`;
+}
+
+function markAutoLaunchLabelConsumed(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+): void {
+  db.prepare(
+    "INSERT INTO settings (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(consumedAutoLaunchLabelKey(repoId, issueNumber));
+}
+
+function isConsumedAutoLaunchLabelEvent(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+  event: IntentEventSummary,
+): boolean {
+  if (event?.eventType !== "issues" || event.action !== "unlabeled") return false;
+  const row = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(
+    consumedAutoLaunchLabelKey(repoId, issueNumber),
+  );
+  return Boolean(row);
+}
+
+function clearConsumedAutoLaunchLabel(
+  db: Database.Database,
+  repoId: number,
+  issueNumber: number,
+): void {
+  db.prepare("DELETE FROM settings WHERE key = ?").run(
+    consumedAutoLaunchLabelKey(repoId, issueNumber),
+  );
 }
 
 function markIntentTerminal(
