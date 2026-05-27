@@ -50,6 +50,10 @@ describe("assemblePrReviewContext", () => {
     expect(context).toContain("Review for safe webhook behavior.");
     expect(context).toContain("issuectl agent mutate");
     expect(context).toContain("issuectl agent complete");
+    expect(context).toContain("## PR Review Source Material");
+    expect(context).toContain("ambient GitHub credentials are intentionally unavailable");
+    expect(context).toContain("Do not run `gh`, GitHub MCP tools, or other direct GitHub APIs unless the supplied PR data is insufficient.");
+    expect(context).toContain("read from the local checkout");
     expect(context).not.toContain("ISSUECTL_AGENT_TOKEN=");
   });
 });
