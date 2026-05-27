@@ -23,6 +23,8 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  targetType?: "issue" | "pr";
+  targetNumber?: number;
   issueTitle: string;
 };
 
@@ -35,6 +37,8 @@ export function TerminalPanel({
   owner,
   repo,
   issueNumber,
+  targetType = "issue",
+  targetNumber = issueNumber,
   issueTitle,
 }: Props) {
   const [isPending, startTransition] = useTransition();
@@ -48,7 +52,14 @@ export function TerminalPanel({
   function handleEndSession() {
     setError(null);
     startTransition(async () => {
-      const result = await endSession(deploymentId, owner, repo, issueNumber);
+      const result = await endSession(
+        deploymentId,
+        owner,
+        repo,
+        issueNumber,
+        targetType,
+        targetNumber,
+      );
       if (result.success) {
         onClose();
         router.refresh();
@@ -111,10 +122,14 @@ export function TerminalPanel({
               if (window.history.length > 1) {
                 onClose();
               } else {
-                router.push(`/issues/${owner}/${repo}/${issueNumber}`);
+                router.push(
+                  targetType === "pr"
+                    ? `/pulls/${owner}/${repo}/${targetNumber}`
+                    : `/issues/${owner}/${repo}/${issueNumber}`,
+                );
               }
             }}
-            aria-label="Back to issue"
+            aria-label={targetType === "pr" ? "Back to pull request" : "Back to issue"}
           >
             <svg
               width="12"

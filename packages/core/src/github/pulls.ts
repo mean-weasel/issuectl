@@ -12,6 +12,7 @@ function mapPull(raw: unknown): GitHubPull {
     draft: boolean;
     merged: boolean;
     merged_at: string | null;
+    labels?: Array<{ name?: string; color?: string; description?: string | null } | string>;
     user: RawGitHubUser;
     head: { ref: string; sha: string; repo: { full_name: string } | null };
     base: { ref: string; sha: string; repo: { full_name: string } | null };
@@ -28,6 +29,17 @@ function mapPull(raw: unknown): GitHubPull {
     title: r.title,
     body: r.body,
     state: r.state as GitHubPull["state"],
+    labels: (r.labels ?? [])
+      .map((label) =>
+        typeof label === "string"
+          ? { name: label, color: "", description: null }
+          : {
+            name: label.name ?? "",
+            color: label.color ?? "",
+            description: label.description ?? null,
+          }
+      )
+      .filter((label) => label.name.length > 0),
     draft: r.draft ?? false,
     merged: r.merged ?? r.merged_at !== null,
     user: mapUser(r.user),

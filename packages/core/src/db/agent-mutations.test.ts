@@ -7,11 +7,12 @@ import { queryDiagnosticEvents } from "./diagnostics.js";
 import { initSchema, getSchemaVersion } from "./schema.js";
 import { runMigrations } from "./migrations.js";
 import {
-  evaluateAgentMutationRequest,
+  evaluateAgentMutationBudgetPreview,
   getAgentActionBudget,
   claimAgentActionBudget,
   setAgentActionBudget,
 } from "./agent-mutations.js";
+import * as agentMutations from "./agent-mutations.js";
 
 describe("agent mutation gateway foundation", () => {
   let db: Database.Database;
@@ -33,7 +34,7 @@ describe("agent mutation gateway foundation", () => {
       completionToken: "token-42",
     });
 
-    const decision = evaluateAgentMutationRequest(db, {
+    const decision = evaluateAgentMutationBudgetPreview(db, {
       deploymentId: deployment.id,
       completionToken: "token-42",
       repoId: repo.id,
@@ -74,7 +75,7 @@ describe("agent mutation gateway foundation", () => {
       completionToken: "token-42",
     });
 
-    expect(evaluateAgentMutationRequest(db, {
+    expect(evaluateAgentMutationBudgetPreview(db, {
       deploymentId: deployment.id,
       completionToken: "wrong",
       repoId: repo.id,
@@ -83,7 +84,7 @@ describe("agent mutation gateway foundation", () => {
       actionType: "comment",
     })).toEqual({ allowed: false, reason: "invalid_token" });
 
-    expect(evaluateAgentMutationRequest(db, {
+    expect(evaluateAgentMutationBudgetPreview(db, {
       deploymentId: deployment.id,
       completionToken: "token-42",
       repoId: repo.id,
@@ -104,7 +105,7 @@ describe("agent mutation gateway foundation", () => {
       completionToken: "token-42",
     });
 
-    expect(evaluateAgentMutationRequest(db, {
+    expect(evaluateAgentMutationBudgetPreview(db, {
       deploymentId: deployment.id,
       completionToken: "token-42",
       repoId: repo.id,
@@ -136,6 +137,11 @@ describe("agent mutation gateway foundation", () => {
       limitCount: 1,
       usedCount: 1,
     });
+  });
+
+  it("does not export a daemon-style mutation evaluator from core", () => {
+    expect("evaluateAgentMutationRequest" in agentMutations).toBe(false);
+    expect(typeof agentMutations.evaluateAgentMutationBudgetPreview).toBe("function");
   });
 });
 

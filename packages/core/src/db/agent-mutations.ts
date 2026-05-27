@@ -58,7 +58,7 @@ export function isAgentMutationAction(value: unknown): value is AgentMutationAct
   return typeof value === "string" && AGENT_MUTATION_ACTIONS.includes(value as AgentMutationAction);
 }
 
-export function evaluateAgentMutationRequest(
+export function evaluateAgentMutationBudgetPreview(
   db: Database.Database,
   request: AgentMutationRequest,
 ): AgentMutationDecision {

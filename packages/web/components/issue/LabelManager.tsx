@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { GitHubLabel } from "@issuectl/core";
-import { toggleLabel } from "@/lib/actions/issues";
+import { toggleLabel, togglePullLabel } from "@/lib/actions/issues";
 import { tryOrQueue } from "@/lib/tryOrQueue";
 import { separateLabels } from "@/lib/labels";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -18,6 +18,7 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  targetType?: "issue" | "pr";
   currentLabels: GitHubLabel[];
   availableLabels: GitHubLabel[];
 };
@@ -26,6 +27,7 @@ export function LabelManager({
   owner,
   repo,
   issueNumber,
+  targetType = "issue",
   currentLabels,
   availableLabels,
 }: Props) {
@@ -62,20 +64,28 @@ export function LabelManager({
     const action = selectedNames.includes(label) ? "remove" : "add";
     startTransition(async () => {
       try {
-        const result = await tryOrQueue(
-          "toggleLabel",
-          { owner, repo, issueNumber, label, action },
-          () => toggleLabel({ owner, repo, number: issueNumber, label, action }),
-        );
+        if (targetType === "issue") {
+          const result = await tryOrQueue(
+            "toggleLabel",
+            { owner, repo, issueNumber, label, action },
+            () => toggleLabel({ owner, repo, number: issueNumber, label, action }),
+          );
 
-        if (result.outcome === "queued") {
-          showToast("Label change queued — will sync when online", "warning");
-          return;
-        }
+          if (result.outcome === "queued") {
+            showToast("Label change queued — will sync when online", "warning");
+            return;
+          }
 
-        if (result.outcome === "error") {
-          setError(result.error);
-          return;
+          if (result.outcome === "error") {
+            setError(result.error);
+            return;
+          }
+        } else {
+          const result = await togglePullLabel({ owner, repo, number: issueNumber, label, action });
+          if (!result.success) {
+            setError(result.error ?? "Failed to update label");
+            return;
+          }
         }
 
         showToast("Labels updated", "success");
@@ -127,6 +137,7 @@ export function LabelManager({
             available={availableLabels}
             selected={selectedNames}
             onToggle={handleToggle}
+            targetType={targetType}
             disabled={isPending}
           />
         </div>

@@ -20,6 +20,10 @@ export async function planPrReview(
   if (active) return planForActiveReview(db, active, pull);
 
   const forceFullReview = intent.reviewMode === "full";
+  const existingForHead = getPrReviewForHead(db, repo.id, intent.targetNumber, pull.headSha);
+  if (existingForHead && !forceFullReview) {
+    return { action: "skip", event: "webhook.pr_already_reviewed", reason: "PR head already has a review record." };
+  }
   const completed = getLatestCompletedPrReview(db, repo.id, intent.targetNumber);
   if (!forceFullReview && completed?.reviewedToSha === pull.headSha) {
     return { action: "skip", event: "webhook.pr_already_reviewed", reason: "PR head was already reviewed." };
@@ -86,6 +90,22 @@ function getActivePrReview(db: Database.Database, repoId: number, prNumber: numb
      ORDER BY started_at DESC, id DESC LIMIT 1`,
   ).get(repoId, prNumber) as PrReviewRow | undefined;
   return active ? rowToPrReview(active) : undefined;
+}
+
+function getPrReviewForHead(
+  db: Database.Database,
+  repoId: number,
+  prNumber: number,
+  headSha: string,
+): PrReviewRecord | undefined {
+  const row = db.prepare(
+    `SELECT id, repo_id, pr_number, deployment_id, status, reviewed_from_sha,
+            reviewed_to_sha, completed_head_sha, result_json
+     FROM pr_reviews
+     WHERE repo_id = ? AND pr_number = ? AND reviewed_to_sha = ?
+     ORDER BY id DESC LIMIT 1`,
+  ).get(repoId, prNumber, headSha) as PrReviewRow | undefined;
+  return row ? rowToPrReview(row) : undefined;
 }
 
 function getLatestCompletedPrReview(db: Database.Database, repoId: number, prNumber: number): PrReviewRecord | undefined {

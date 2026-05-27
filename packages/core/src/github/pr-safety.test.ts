@@ -15,6 +15,7 @@ function pull(overrides: Partial<GitHubPull> = {}): GitHubPull {
     title: "Webhook reviews",
     body: null,
     state: "open",
+    labels: [],
     draft: false,
     merged: false,
     user: null,

@@ -235,7 +235,7 @@ export async function endSession(
       `/launch/${owner}/${repo}/${targetNumber}`,
       "/",
     )
-    : revalidateSafely("/");
+    : revalidateSafely(`/pulls/${owner}/${repo}/${targetNumber}`, "/");
   return { success: true, ...(stale ? { cacheStale: true as const } : {}) };
 }
 
