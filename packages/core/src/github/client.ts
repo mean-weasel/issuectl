@@ -22,8 +22,10 @@ export async function getOctokit(): Promise<Octokit> {
     const method = init?.method?.toUpperCase() ?? "GET";
     if (method === "GET") {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      const sep = url.includes("?") ? "&" : "?";
-      return globalThis.fetch(`${url}${sep}_nc=${Date.now()}`, { ...init, cache: "no-store" } as RequestInit);
+      if (!rejectsUnknownQueryParams(url)) {
+        const sep = url.includes("?") ? "&" : "?";
+        return globalThis.fetch(`${url}${sep}_nc=${Date.now()}`, { ...init, cache: "no-store" } as RequestInit);
+      }
     }
     return globalThis.fetch(input, { ...init, cache: "no-store" } as RequestInit);
   };
@@ -70,4 +72,8 @@ function isAuthError(err: unknown): boolean {
     "status" in err &&
     (err as { status?: number }).status === 401
   );
+}
+
+function rejectsUnknownQueryParams(url: string): boolean {
+  return /\/repos\/[^/]+\/[^/]+\/hooks\/\d+\/deliveries(?:\?|$)/.test(url);
 }

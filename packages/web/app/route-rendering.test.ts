@@ -33,9 +33,14 @@ const data = vi.hoisted(() => ({
   getReviewDetailData: vi.fn(),
 }));
 
+const webhookHealth = vi.hoisted(() => ({
+  getWebhookAutomationHealth: vi.fn(),
+}));
+
 vi.mock("@issuectl/core", () => core);
 vi.mock("@/lib/sessions-data", () => data);
 vi.mock("@/lib/review-detail-data", () => data);
+vi.mock("@/lib/webhook-health", () => webhookHealth);
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -103,6 +108,16 @@ beforeEach(() => {
   core.listPrReviewsForRepo.mockReturnValue([]);
   core.listRecentTerminalDeploymentsByRepo.mockReturnValue([]);
   core.listWebhookEvents.mockReturnValue([webhookEntry()]);
+  webhookHealth.getWebhookAutomationHealth.mockResolvedValue({
+    state: "ok",
+    summary: "GitHub webhook delivery looks healthy",
+    detail: "The GitHub hook URL matches local settings and the latest visible delivery succeeded.",
+    recovery: null,
+    expectedUrl: "https://hooks.example.test/api/webhook/github/1",
+    hookId: 123,
+    githubUrl: "https://hooks.example.test/api/webhook/github/1",
+    latestDelivery: null,
+  });
   core.getOctokit.mockResolvedValue({});
   core.getIssueHeader.mockResolvedValue({
     issue: {
@@ -245,10 +260,12 @@ describe("operator route rendering", () => {
 
     expect(core.getRepo).toHaveBeenCalledWith(core.db, "mean-weasel", "issuectl");
     expect(core.listWebhookEvents).toHaveBeenCalledWith(core.db, { repoId: 1, limit: 10 });
+    expect(webhookHealth.getWebhookAutomationHealth).toHaveBeenCalledWith(core.db, repo);
     const panel = findElementWhere(tree, (props) => props.repo === repo);
     expect(panel?.props).toMatchObject({
       repo,
       webhookUrl: "https://hooks.example.test/api/webhook/github/1",
+      webhookHealth: expect.objectContaining({ state: "ok" }),
       activity: {
         activeSessions: 0,
         activeIssueSessions: 0,
@@ -271,6 +288,7 @@ describe("operator route rendering", () => {
 
     expect(core.listLabels).toHaveBeenCalledWith({}, "mean-weasel", "issuectl");
     const detail = findElementWhere(tree, (props) => Array.isArray(props.availableLabels));
+    expect(webhookHealth.getWebhookAutomationHealth).toHaveBeenCalledWith(core.db, repo);
     expect(detail?.props.availableLabels).toEqual([
       { name: "bug", color: "d73a4a", description: null },
       { name: "issuectl:auto-launch", color: "0e8a16", description: null },
@@ -317,6 +335,7 @@ describe("operator route rendering", () => {
     expect(core.getDeploymentsForTarget).toHaveBeenCalledWith(core.db, 1, "pr", 44);
     expect(core.listLabels).toHaveBeenCalledWith({}, "mean-weasel", "issuectl");
     const detail = findElementWhere(tree, (props) => Array.isArray(props.availableLabels));
+    expect(webhookHealth.getWebhookAutomationHealth).toHaveBeenCalledWith(core.db, repo);
     expect(detail?.props.availableLabels).toEqual([
       { name: "bug", color: "d73a4a", description: null },
       { name: "issuectl:auto-launch", color: "0e8a16", description: null },

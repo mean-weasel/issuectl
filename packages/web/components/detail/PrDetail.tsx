@@ -25,6 +25,7 @@ import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
 import { LabelManager } from "@/components/issue/LabelManager";
 import { OpenTerminalButton } from "@/components/terminal/OpenTerminalButton";
 import { launchAgentLabel } from "@/components/launch/agent";
+import type { WebhookAutomationHealth } from "@/lib/webhook-health";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -37,6 +38,7 @@ type Props = {
   linkedIssue: GitHubIssue | null;
   availableLabels: GitHubLabel[];
   deployments: Deployment[];
+  webhookHealth: WebhookAutomationHealth | null;
 };
 
 export function PrDetail({
@@ -49,6 +51,7 @@ export function PrDetail({
   linkedIssue,
   availableLabels,
   deployments,
+  webhookHealth,
 }: Props) {
   const prState: "open" | "closed" | "merged" = pull.merged
     ? "merged"
@@ -91,6 +94,7 @@ export function PrDetail({
             targetType="pr"
             currentLabels={pull.labels ?? []}
             availableLabels={availableLabels}
+            webhookHealth={webhookHealth}
           />
         </section>
 
