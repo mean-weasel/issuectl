@@ -26,10 +26,204 @@
   border-bottom: 1px solid var(--paper-line);
 }
 
+.completedSession {
+  margin: 18px 0 20px;
+  padding: 16px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: color-mix(in srgb, var(--paper-bg-warm) 72%, white);
+  display: grid;
+  gap: 14px;
+}
+
+.completedSessionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.completedSessionHeader h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.completedSessionEyebrow {
+  margin: 0;
+  font: 700 var(--paper-fs-xs) var(--paper-mono);
+  color: var(--paper-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.completedSessionStatus {
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: color-mix(in srgb, var(--paper-green) 12%, white);
+  color: var(--paper-green);
+  font: 700 var(--paper-fs-xs) var(--paper-mono);
+  white-space: nowrap;
+}
+
+.completedSessionMeta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.completedSessionMeta div {
+  min-width: 0;
+}
+
+.completedSessionMeta dt {
+  font: 700 var(--paper-fs-xs) var(--paper-mono);
+  color: var(--paper-ink-muted);
+  text-transform: uppercase;
+}
+
+.completedSessionMeta dd {
+  margin: 3px 0 0;
+  color: var(--paper-ink);
+  overflow-wrap: anywhere;
+}
+
+.completedSessionSummary {
+  margin: 0;
+  color: var(--paper-ink-muted);
+}
+
+.completedSessionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.completedSessionLink,
+.completedSessionSecondaryLink {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: var(--paper-radius-sm);
+  font: 700 var(--paper-fs-sm) var(--paper-mono);
+  text-decoration: none;
+}
+
+.completedSessionLink {
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+  border: 1px solid var(--paper-ink);
+}
+
+.completedSessionSecondaryLink {
+  background: color-mix(in srgb, white 42%, var(--paper-bg));
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+}
+
+.completedTerminalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.completedTerminalBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(24, 22, 18, 0.38);
+}
+
+.completedTerminalPanel {
+  position: relative;
+  z-index: 1;
+  width: min(980px, 100%);
+  max-height: min(760px, calc(100dvh - 36px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-md);
+  background: var(--paper-bg);
+  box-shadow: 0 18px 48px rgba(24, 22, 18, 0.22);
+  overflow: hidden;
+}
+
+.completedTerminalHeader {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--paper-line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.completedTerminalHeader h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.completedTerminalHeader span {
+  display: block;
+  margin-top: 4px;
+  color: var(--paper-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.completedTerminalClose {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: color-mix(in srgb, white 42%, var(--paper-bg));
+  color: var(--paper-ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.completedTerminalError {
+  margin: 0;
+  padding: 16px;
+  color: var(--paper-brick);
+}
+
+.completedTerminalPre {
+  margin: 0;
+  min-height: 300px;
+  padding: 16px;
+  overflow: auto;
+  background: #161512;
+  color: #f7f0df;
+  font: 13px/1.5 var(--paper-mono);
+  white-space: pre-wrap;
+}
+
 @media (min-width: 768px) {
   .body {
     max-width: 820px;
     margin: 0 auto;
     padding: 32px 40px 40px;
+  }
+}
+
+@media (max-width: 560px) {
+  .completedSessionHeader {
+    display: grid;
+  }
+
+  .completedSessionStatus {
+    justify-self: start;
+  }
+
+  .completedSessionMeta {
+    grid-template-columns: 1fr;
   }
 }

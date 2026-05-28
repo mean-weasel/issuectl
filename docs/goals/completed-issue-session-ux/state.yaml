@@ -1,0 +1,244 @@
+version: 2
+
+goal:
+  title: "Completed Issue Session UX"
+  slug: "completed-issue-session-ux"
+  kind: specific
+  status: done
+  created_at: "2026-05-28"
+  source: "User requested GoalBuddy prep for issue #531 completed-session issue detail UX."
+  tranche: "Discover, implement, and verify completed issue session visibility and terminal/history affordance on issue detail pages."
+  oracle:
+    signal: "Issue detail browser QA shows never-launched, live, and completed issue states with distinct correct actions; completed issues show prior agent work and completed terminal/history access when available."
+    final_proof: "Focused web tests plus a Chrome/browser walkthrough against issue #35 or a fresh equivalent issue prove completed deployment history is visible, live Open Terminal remains unchanged, and Launch with Codex remains a separate new-run action."
+  intake:
+    original_request: "Plan out this using GoalBuddy."
+    interpreted_outcome: "Issue detail clearly shows completed agent work and offers completed terminal/session history access after a deployment ends."
+    input_shape: specific
+    audience: "issuectl operators and manual webhook QA users"
+    authority: requested
+    proof_type: demo
+    completion_proof: "Browser walkthrough and tests prove the primary issue detail UI distinguishes completed agent work from live session and never-launched states."
+    likely_misfire: "Only changing labels or sessions list while issue detail still looks unworked after completion."
+    blind_spots_considered:
+      - "The current UI keys live sessions off endedAt === null and should keep doing so."
+      - "Retained tmux sessions may exist after completion, but completed terminal access may need a safe attach/read-only/transcript decision."
+      - "The deployed label may not be sufficient language for 'worked on by agent'."
+      - "Completed session evidence should not imply that the issue is closed or done."
+      - "The work should not regress auto-launch label consumption or in-progress cleanup."
+    existing_plan_facts:
+      - "GitHub issue #531 captures the product gap and acceptance criteria."
+      - "Manual QA issue mean-weasel/issuectl-test-repo-2#35 produced deployment 151 with terminal_reason completed and status no_changes."
+      - "The issue detail page showed Launch with Codex after completion while a tmux session remained."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  preserve_and_validate_existing_plan: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/completed-issue-session-ux/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.3.7/skills/goalbuddy/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/completed-issue-session-ux"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the current issue detail, deployment history, terminal attachment, session list, and lifecycle label rendering paths relevant to completed issue sessions."
+    inputs:
+      - "GitHub issue #531"
+      - "Manual QA evidence for mean-weasel/issuectl-test-repo-2#35 and deployment 151"
+      - "Issue detail page and related components"
+      - "Deployment/session data access helpers"
+      - "Terminal/open-terminal UI paths"
+      - "Existing web tests for issue detail, launch, sessions, and workbench"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Separate current live-session behavior from completed-session/history behavior."
+      - "Identify whether completed terminal viewing should reuse existing terminal attach code or needs a transcript/history surface."
+    expected_output:
+      - "Current behavior map with file paths."
+      - "Data available for completed deployments."
+      - "UI surfaces that already render ended deployments, if any."
+      - "Risks and product decisions."
+      - "Recommended first Worker slice with allowed_files and verification commands."
+    receipt:
+      result: done
+      note: "docs/goals/completed-issue-session-ux/notes/T001-scout.md"
+      summary: "Mapped issue detail deployment rendering. Completed sessions are passed to detail but hidden because LaunchCard only renders live deployments."
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: medium
+    objective: "Choose the smallest coherent UX implementation slice that satisfies issue #531 without confusing completed terminals with live deployments."
+    inputs:
+      - "T001 Scout receipt"
+      - "Issue #531 acceptance criteria"
+      - "Current issue detail and terminal behavior"
+    constraints:
+      - "Read-only."
+      - "Do not approve a slice that removes or hides new launch behavior."
+      - "Do not approve a slice that treats ended deployments as live sessions."
+    expected_output:
+      - "Decision: approved Worker slice or blocked decision."
+      - "Exact Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+    receipt:
+      result: done
+      decision: approved
+      note: "docs/goals/completed-issue-session-ux/notes/T002-judge.md"
+      summary: "Approved a bounded LaunchCard-based completed-session summary linked to filtered sessions history."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the completed issue session UX slice selected by Judge."
+    allowed_files:
+      - "packages/web/components/detail/LaunchCard.tsx"
+      - "packages/web/components/detail/CompletedSessionTerminalButton.tsx"
+      - "packages/web/components/detail/IssueDetail.module.css"
+      - "packages/web/components/detail/LaunchCard.test.ts"
+      - "packages/web/lib/actions/completed-terminal.ts"
+      - "packages/web/lib/actions/completed-terminal.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- components/detail/LaunchCard.test.ts"
+      - "pnpm --dir packages/web typecheck"
+      - "git diff --check -- packages/web/components/detail"
+    stop_if:
+      - "Need files outside Judge-approved allowed_files."
+      - "Completed terminal access requires a product/security decision not recorded by Judge."
+      - "Verification fails twice for the same reason."
+      - "Implementation would regress live Open Terminal behavior."
+    receipt:
+      result: done
+      note: "docs/goals/completed-issue-session-ux/notes/T003-worker.md"
+      summary: "Implemented and verified completed issue session summary on issue detail without changing live terminal behavior."
+      changed_files:
+        - "packages/web/components/detail/LaunchCard.tsx"
+        - "packages/web/components/detail/CompletedSessionTerminalButton.tsx"
+        - "packages/web/components/detail/IssueDetail.module.css"
+        - "packages/web/components/detail/LaunchCard.test.ts"
+        - "packages/web/lib/actions/completed-terminal.ts"
+        - "packages/web/lib/actions/completed-terminal.test.ts"
+      commands:
+        - command: "pnpm --dir packages/web test -- components/detail/LaunchCard.test.ts lib/actions/completed-terminal.test.ts lib/actions/launch.test.ts"
+          status: pass
+        - command: "pnpm --dir packages/web typecheck"
+          status: pass
+        - command: "pnpm --dir packages/web lint"
+          status: pass
+        - command: "git diff --check -- packages/web/components/detail docs/workflows docs/goals/completed-issue-session-ux"
+          status: pass
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Update or add workflow QA documentation so completed-session issue detail behavior becomes part of repeatable webhook issue QA."
+    allowed_files:
+      - "docs/workflows/webhook-label-manual-qa.md"
+      - "docs/workflows/webhook-qa-ladder.md"
+      - "docs/workflows/webhook-auto-sessions.md"
+      - "docs/workflows/webhook-issue-to-pr-review-qa.md"
+    verify:
+      - "git diff --check -- docs/workflows"
+    stop_if:
+      - "Implementation behavior is not yet stable enough to document."
+      - "Need to edit product code from this docs task."
+    receipt:
+      result: done
+      note: "docs/goals/completed-issue-session-ux/notes/T004-docs.md"
+      summary: "Updated webhook manual QA docs and QA ladder with completed issue-session checks."
+      changed_files:
+        - "docs/workflows/webhook-label-manual-qa.md"
+        - "docs/workflows/webhook-qa-ladder.md"
+      commands:
+        - command: "git diff --check -- packages/web/components/detail docs/workflows docs/goals/completed-issue-session-ux"
+          status: pass
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Run manual browser QA for completed issue session behavior using issue #35 or a fresh reversible issue."
+    allowed_files:
+      - "docs/goals/completed-issue-session-ux/state.yaml"
+      - "docs/goals/completed-issue-session-ux/notes/**"
+    verify:
+      - "Browser walkthrough of issue detail completed-state UI."
+      - "SQLite query for deployment ended_at and completion result."
+      - "Diagnostics timeline for the issue."
+      - "If terminal access exists, verify completed terminal/history action works."
+    stop_if:
+      - "Local server or webhook tunnel is unavailable and cannot be safely restarted."
+      - "Manual QA would require destructive cleanup without operator approval."
+      - "The UI cannot be meaningfully tested because implementation is incomplete."
+    receipt:
+      result: done
+      note: "docs/goals/completed-issue-session-ux/notes/T005-manual-qa.md"
+      summary: "Browser QA against issue #35 proved completed session history is visible, Launch with Codex remains available, and Open Terminal is absent for the ended deployment."
+      changed_files:
+        - "docs/goals/completed-issue-session-ux/notes/T005-manual-qa.md"
+        - "docs/goals/completed-issue-session-ux/state.yaml"
+      commands:
+        - command: "Playwright browser walkthrough of http://localhost:3847/issues/mean-weasel/issuectl-test-repo-2/35"
+          status: pass
+        - command: "Playwright click-through of View completed terminal for issue #35"
+          status: pass
+        - command: "sqlite3 deployment query for mean-weasel/issuectl-test-repo-2#35"
+          status: pass
+        - command: "pnpm --dir packages/cli exec issuectl diag show --issue mean-weasel/issuectl-test-repo-2#35"
+          status: pass
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether issue #531 is fully satisfied and the completed issue session UX is ready to close or PR."
+    inputs:
+      - "All task receipts"
+      - "Final diff"
+      - "Focused test output"
+      - "Manual browser QA evidence"
+    constraints:
+      - "Read-only."
+      - "Do not call complete if issue detail cannot demonstrate completed session history."
+    expected_output:
+      - "complete or not_complete"
+      - "full_outcome_complete: true or false"
+      - "Missing evidence or residual risks"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      note: "docs/goals/completed-issue-session-ux/notes/T999-final-audit.md"
+      summary: "Issue #531 acceptance criteria are satisfied with tests, browser QA, DB evidence, diagnostics, and updated webhook QA docs."
