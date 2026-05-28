@@ -64,7 +64,35 @@ pnpm --dir packages/cli exec issuectl webhook status mean-weasel/issuectl-test-r
 tail -f ~/.issuectl/logs/web.log
 ```
 
+5. Confirm GitHub's stored hook URL and recent deliveries are healthy before
+   adding `issuectl:auto-launch` or `issuectl:auto-review`.
+
+```bash
+OWNER=mean-weasel
+REPO=issuectl-test-repo-2
+hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
+select github_webhook_id
+from repos
+where owner='$OWNER' and name='$REPO';")"
+
+gh api "repos/$OWNER/$REPO/hooks/$hook_id" \
+  --jq '{id, active, url: .config.url, updated_at}'
+
+gh api "repos/$OWNER/$REPO/hooks/$hook_id/deliveries" \
+  --jq '.[0:8][] | {event, action, status_code, delivered_at, redelivery}'
+```
+
 Stop if GitHub deliveries are not reaching the local server. Fix the tunnel or hook before making product conclusions.
+
+If recent deliveries show `502` or the hook URL points at a dead quick tunnel:
+
+1. Start a fresh tunnel to `http://localhost:3847`.
+2. Save the new base URL with `issuectl repo set "$OWNER/$REPO" --webhook-base-url <url>`.
+3. Run `issuectl webhook rotate "$OWNER/$REPO" --yes`.
+4. Remove and re-add the trigger label from the local UI so GitHub emits a new
+   `labeled` delivery to the fresh URL.
+5. Only judge product behavior after GitHub shows `status_code=200` for that
+   `labeled` delivery and `issuectl webhook tail` shows the matching local event.
 
 ## Create A Reversible Issue Target
 
