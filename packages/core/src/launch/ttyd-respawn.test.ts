@@ -256,6 +256,7 @@ describe("reconcileOrphanedDeployments", () => {
       (c: unknown[]) => (c[0] as string).includes("SELECT"),
     );
     expect(selectCall).toBeDefined();
+    expect(selectCall![0]).toContain("d.state = 'active'");
     expect(selectCall![0]).toContain("d.ttyd_pid IS NOT NULL OR d.terminal_backend = 'pty_bridge'");
   });
 

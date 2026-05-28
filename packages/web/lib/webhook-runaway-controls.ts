@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import {
   getSetting,
   countActiveWebhookIntents,
+  reconcileOrphanedDeployments,
   recordDiagnosticEventSafely,
   type Repo,
   type WebhookIntent,
@@ -32,11 +33,12 @@ export function enforceWebhookRunawayControls(
     return { allowed: false, outcome: "failed", reason: "queue_depth_exceeded" };
   }
 
-  const activeAgents = countActiveWebhookAgents(db);
   const maxActiveAgents = positiveSetting(
     getSetting(db, "max_concurrent_webhook_agents"),
     DEFAULT_MAX_CONCURRENT_AGENTS,
   );
+  reconcileOrphanedDeployments(db);
+  const activeAgents = countActiveWebhookAgents(db);
   if (activeAgents >= maxActiveAgents) {
     deferIntent(db, repo, intent, now, "concurrent_agents_exceeded", {
       activeAgents,
