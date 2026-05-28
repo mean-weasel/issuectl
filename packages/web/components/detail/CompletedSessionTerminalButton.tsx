@@ -10,6 +10,8 @@ type Props = {
   owner: string;
   repo: string;
   issueNumber: number;
+  targetType?: "issue" | "pr";
+  targetNumber?: number;
 };
 
 export function CompletedSessionTerminalButton({
@@ -17,6 +19,8 @@ export function CompletedSessionTerminalButton({
   owner,
   repo,
   issueNumber,
+  targetType = "issue",
+  targetNumber = issueNumber,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -31,8 +35,8 @@ export function CompletedSessionTerminalButton({
         deploymentId,
         owner,
         repo,
-        targetType: "issue",
-        targetNumber: issueNumber,
+        targetType,
+        targetNumber,
       });
       if (!result.success) {
         setTranscript(null);
