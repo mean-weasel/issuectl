@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getDb, getDeploymentsForTarget, getOctokit, getPullDetail, getRepo, listLabels } from "@issuectl/core";
 import { PrDetail } from "@/components/detail/PrDetail";
+import { getWebhookAutomationHealth } from "@/lib/webhook-health";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function PullDetailPage({
 
   try {
     const repoRecord = getRepo(db, owner, repo);
+    const webhookHealth = await getWebhookAutomationHealth(db, repoRecord);
     const [detail, availableLabels] = await Promise.all([
       getPullDetail(db, octokit, owner, repo, pullNumber),
       listLabels(octokit, owner, repo),
@@ -54,6 +56,7 @@ export default async function PullDetailPage({
         linkedIssue={detail.linkedIssue}
         availableLabels={availableLabels}
         deployments={deployments}
+        webhookHealth={webhookHealth}
       />
     );
   } catch (err) {

@@ -99,4 +99,44 @@ describe("getOctokit caching", () => {
     expect(first).not.toBe(second);
     expect(getGhTokenMock).toHaveBeenCalledTimes(2);
   });
+
+  it("adds cache-busting to ordinary GitHub GET requests", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ login: "octocat" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const octokit = await getOctokit();
+
+    await octokit.rest.users.getAuthenticated();
+
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain("_nc=");
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store" });
+    fetchMock.mockRestore();
+  });
+
+  it("does not add cache-busting query parameters to webhook delivery listing", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const octokit = await getOctokit();
+
+    await octokit.rest.repos.listWebhookDeliveries({
+      owner: "mean-weasel",
+      repo: "issuectl",
+      hook_id: 123,
+      per_page: 5,
+    });
+
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain("/repos/mean-weasel/issuectl/hooks/123/deliveries?per_page=5");
+    expect(url).not.toContain("_nc=");
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store" });
+    fetchMock.mockRestore();
+  });
 });

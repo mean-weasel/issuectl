@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import type { GitHubIssue, Priority, Deployment, GitHubLabel } from "@issuectl/core";
 import type { LaunchAgent } from "@/components/launch/agent";
+import type { WebhookAutomationHealth } from "@/lib/webhook-health";
 import { Chip, LabelChip } from "@/components/paper";
 import { LabelManager } from "@/components/issue/LabelManager";
 import { timeAgo } from "@/lib/format";
@@ -31,6 +32,7 @@ type Props = {
   referencedFiles: string[];
   defaultAgent: LaunchAgent;
   availableLabels: GitHubLabel[];
+  webhookHealth: WebhookAutomationHealth | null;
   /** Rendered after the body — used by the page to stream the active-deployment banner and comments. */
   children?: ReactNode;
 };
@@ -46,6 +48,7 @@ export function IssueDetail({
   referencedFiles,
   defaultAgent,
   availableLabels,
+  webhookHealth,
   children,
 }: Props) {
   const displayLabels = issue.labels.filter(
@@ -103,6 +106,7 @@ export function IssueDetail({
             issueNumber={issue.number}
             currentLabels={issue.labels}
             availableLabels={availableLabels}
+            webhookHealth={webhookHealth}
           />
         </section>
 

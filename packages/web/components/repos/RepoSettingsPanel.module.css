@@ -192,6 +192,50 @@
   text-transform: uppercase;
 }
 
+.webhookHealth {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text-primary);
+}
+
+.webhookHealth strong {
+  font: 700 11px var(--paper-mono);
+  text-transform: uppercase;
+}
+
+.webhookHealth span,
+.webhookHealth code {
+  font-size: 12px;
+}
+
+.webhookHealth code {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.webhookHealth[data-state="ok"] {
+  border-color: #9dc79d;
+  background: #eef8ee;
+}
+
+.webhookHealth[data-state="warning"],
+.webhookHealth[data-state="unknown"] {
+  border-color: #d6a33f;
+  background: #fff2c9;
+}
+
+.webhookHealth[data-state="error"] {
+  border-color: #d9aaa2;
+  background: #ffe1dc;
+}
+
 .deliveryDetails {
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-sm);

@@ -1,0 +1,379 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Stale Webhook Tunnel Detection"
+  slug: "stale-webhook-tunnel-detection"
+  kind: specific
+  tranche: "Detect and surface stale webhook tunnel health before label-triggered issue and PR automation, then verify stale and healthy paths."
+  status: done
+  oracle:
+    signal: "A manual QA walkthrough can intentionally stale the webhook tunnel, see issuectl report the stale webhook/delivery condition before or during label automation, follow a recovery path to rotate the webhook, then successfully run both issue auto-launch and PR auto-review without permission prompts."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Targeted tests pass, UI/CLI behavior is demonstrated in Chrome or equivalent QA, and final audit maps the behavior to issue #534 acceptance criteria."
+  intake:
+    original_request: "Plan out fixing stale webhook tunnel detection with GoalBuddy."
+    interpreted_outcome: "issuectl should make stale webhook tunnel state obvious before users apply auto-launch or auto-review labels and should guide recovery without breaking healthy issue/PR automation."
+    input_shape: specific
+    audience: "issuectl operators using local webhook automation"
+    authority: requested
+    proof_type: demo
+    completion_proof: "A local/manual QA walkthrough proves stale tunnel warning/recovery and healthy issue/PR automation behavior."
+    likely_misfire: "Only documenting the problem or adding a hidden CLI check while the issue/PR label UI still appears actionable against a dead webhook."
+    blind_spots_considered:
+      - "GitHub hook delivery APIs may require repo hook admin permissions."
+      - "The warning must work for both issues and PRs and must not hard-code agent defaults."
+      - "Quick tunnel staleness is one case; persisted webhook URL mismatch and recent failed deliveries are separate signals."
+      - "The UX should distinguish infrastructure delivery failure from product automation failure."
+      - "Manual QA needs reset instructions because stale labels and completed sessions can obscure the result."
+    existing_plan_facts:
+      - "GitHub issue #534 tracks the product hardening request."
+      - "PR #535 documented the manual preflight and stale quick-tunnel recovery flow."
+      - "Existing defaults should remain Codex for issues and Claude for PR review, while either agent remains usable for either object type."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/stale-webhook-tunnel-detection/"
+    command: "npx goalbuddy board docs/goals/stale-webhook-tunnel-detection"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Map existing webhook config, webhook health, repo settings, GitHub delivery, label editing, and issue/PR automation UI/CLI paths relevant to stale tunnel detection."
+    inputs:
+      - "GitHub issue #534"
+      - "docs/workflows/webhook-auto-sessions.md"
+      - "docs/workflows/webhook-label-manual-qa.md"
+      - "docs/workflows/webhook-issue-to-pr-review-qa.md"
+      - "Relevant web, core, and CLI files discovered by search"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Prefer concrete file-path evidence over generic advice."
+      - "Record permission assumptions for GitHub hook delivery APIs."
+    expected_output:
+      - "Existing surfaces and data flow map"
+      - "Candidate health signals and where they can be computed"
+      - "UI/CLI placement options"
+      - "Verification commands and manual QA path"
+      - "Suggested largest safe Worker slice"
+    receipt:
+      result: done
+      summary: "Mapped the stale tunnel gap to operator-facing webhook health surfaces. Existing startup reconciliation can silently update drifted GitHub hook URLs, but issue/PR label editing still has no visible GitHub hook URL or recent delivery status before applying automation labels."
+      evidence:
+        - "https://github.com/mean-weasel/issuectl/issues/534"
+        - "packages/web/lib/webhook-url-reconciler.ts"
+        - "packages/web/app/repos/[owner]/[repo]/settings/page.tsx"
+        - "packages/web/components/repos/RepoSettingsPanel.tsx"
+        - "packages/web/app/issues/[owner]/[repo]/[number]/page.tsx"
+        - "packages/web/app/pulls/[owner]/[repo]/[number]/page.tsx"
+        - "packages/web/components/issue/LabelManager.tsx"
+        - "packages/web/lib/actions/repos.ts"
+        - "packages/cli/src/commands/webhook.ts"
+      findings:
+        - "Repo settings computes the expected receiver URL from public_webhook_base_url and repo id, but only displays local webhook_events rows; GitHub delivery failures that never reach the machine are invisible."
+        - "The web server starts webhook-url-reconciler at startup, which fetches and updates GitHub hook config when public_webhook_base_url changes; reconciliation diagnostics are recorded but not surfaced on issue/PR label editing."
+        - "LabelManager is shared by issue and PR details and is exactly where auto-launch/auto-review labels are applied, but it only knows current/available labels and cannot warn about stale hook state."
+        - "Issue and PR detail pages already fetch the tracked repo and labels server-side, so they can pass a computed automation health summary into LabelManager without changing label action semantics."
+        - "The CLI webhook status command prints local expected URL and secret state but does not currently inspect GitHub hook URL or recent GitHub delivery status."
+      permission_notes:
+        - "GitHub hook config and delivery inspection require repository hook access; product behavior must degrade to an explicit unknown/permission warning rather than blocking basic label editing."
+      verification_candidates:
+        - "pnpm --dir packages/web test -- webhook-url-reconciler"
+        - "pnpm --dir packages/web test -- route-rendering"
+        - "pnpm --dir packages/web test -- actions/repos"
+        - "pnpm --dir packages/web typecheck"
+      suggested_worker_slice: "Add a shared webhook automation health helper, pass its summary into repo settings plus issue/PR label managers, and render a visible warning/recovery message when the GitHub hook URL is stale, delivery status recently failed, no public webhook base URL is configured, or hook inspection is unavailable."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the first largest safe implementation slice that can make stale webhook tunnel state visible without overfitting to one tunnel provider or permission level."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle"
+      - "Issue #534 acceptance criteria"
+    constraints:
+      - "Do not implement."
+      - "Pick a vertical slice that reaches at least one user-facing surface if feasible."
+      - "Include exact allowed_files, verify commands, and stop conditions for Worker."
+      - "Defer lower-value polish rather than blocking the first useful product behavior."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Deferred tasks or risks"
+    receipt:
+      result: done
+      decision: "approved"
+      rationale: "The highest-leverage first slice is a vertical web UI health surface: compute webhook health from local config plus GitHub hook/delivery inspection, show it in repo settings, and pass it to the shared issue/PR LabelManager so automation labels are applied with visible stale-tunnel context."
+      exact_worker_objective: "Implement webhook automation health computation and surface it in repo settings plus issue/PR label editing, with graceful unknown states when GitHub hook/delivery inspection is not permitted."
+      allowed_files:
+        - "packages/web/lib/webhook-health.ts"
+        - "packages/web/lib/webhook-health.test.ts"
+        - "packages/web/app/repos/[owner]/[repo]/settings/page.tsx"
+        - "packages/web/app/issues/[owner]/[repo]/[number]/page.tsx"
+        - "packages/web/app/pulls/[owner]/[repo]/[number]/page.tsx"
+        - "packages/web/components/detail/IssueDetail.tsx"
+        - "packages/web/components/detail/PrDetail.tsx"
+        - "packages/web/components/repos/RepoSettingsPanel.tsx"
+        - "packages/web/components/repos/RepoSettingsPanel.module.css"
+        - "packages/web/components/issue/LabelManager.tsx"
+        - "packages/web/components/issue/LabelManager.module.css"
+        - "packages/web/app/route-rendering.test.ts"
+      verify:
+        - "pnpm --dir packages/web test -- webhook-health route-rendering"
+        - "pnpm --dir packages/web typecheck"
+      stop_if:
+        - "Need core package API/type changes outside the allowed files."
+        - "GitHub hook API method names cannot be validated through tests/typecheck."
+        - "The UI change cannot cover both issue and PR label managers without widening scope."
+        - "Verification fails twice with the same unexplained failure."
+      deferred:
+        - "CLI `webhook status` live GitHub delivery inspection can follow after the first UI slice if the oracle still needs stronger CLI coverage."
+        - "A one-click rotate action directly from warning copy may follow if settings already has rotate/reinstall but issue/PR detail needs a deeper recovery affordance."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute the first stale webhook tunnel detection implementation slice selected by Judge."
+    allowed_files:
+      - "packages/web/lib/webhook-health.ts"
+      - "packages/web/lib/webhook-health.test.ts"
+      - "packages/web/app/repos/[owner]/[repo]/settings/page.tsx"
+      - "packages/web/app/issues/[owner]/[repo]/[number]/page.tsx"
+      - "packages/web/app/pulls/[owner]/[repo]/[number]/page.tsx"
+      - "packages/web/components/detail/IssueDetail.tsx"
+      - "packages/web/components/detail/PrDetail.tsx"
+      - "packages/web/components/repos/RepoSettingsPanel.tsx"
+      - "packages/web/components/repos/RepoSettingsPanel.module.css"
+      - "packages/web/components/issue/LabelManager.tsx"
+      - "packages/web/components/issue/LabelManager.module.css"
+      - "packages/web/app/route-rendering.test.ts"
+    verify:
+      - "pnpm --dir packages/web test -- webhook-health route-rendering"
+      - "pnpm --dir packages/web typecheck"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "GitHub hook API permissions or token behavior make the selected design materially wrong."
+      - "The selected UX cannot cover both issue and PR automation surfaces."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/lib/webhook-health.ts"
+        - "packages/web/lib/webhook-health.test.ts"
+        - "packages/web/app/repos/[owner]/[repo]/settings/page.tsx"
+        - "packages/web/app/issues/[owner]/[repo]/[number]/page.tsx"
+        - "packages/web/app/pulls/[owner]/[repo]/[number]/page.tsx"
+        - "packages/web/components/detail/IssueDetail.tsx"
+        - "packages/web/components/detail/PrDetail.tsx"
+        - "packages/web/components/repos/RepoSettingsPanel.tsx"
+        - "packages/web/components/repos/RepoSettingsPanel.module.css"
+        - "packages/web/components/issue/LabelManager.tsx"
+        - "packages/web/components/issue/LabelManager.module.css"
+        - "packages/web/app/route-rendering.test.ts"
+      commands:
+        - cmd: "source ~/.nvm/nvm.sh && nvm use 24.14.1 >/dev/null && pnpm --dir packages/web test -- webhook-health route-rendering"
+          status: pass
+        - cmd: "source ~/.nvm/nvm.sh && nvm use 24.14.1 >/dev/null && pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "source ~/.nvm/nvm.sh && nvm use 24.14.1 >/dev/null && pnpm --dir packages/web lint"
+          status: pass
+      summary: "Added a webhook automation health helper that compares local expected receiver URL with GitHub hook config and recent delivery status, degrades to explicit unknown/permission states, and surfaces the result in repo settings plus shared issue/PR label editing before automation labels are applied."
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the first implementation slice for correctness, permission behavior, UI clarity, and whether another Worker slice is required before manual QA."
+    inputs:
+      - "T003 receipt"
+      - "Current diff"
+      - "Verification output"
+    constraints:
+      - "Do not implement."
+      - "Reject if issue or PR automation loses existing agent configurability."
+      - "Reject if stale tunnel state is only available in docs or hidden logs."
+    expected_output:
+      - "approved | changes_required"
+      - "full_outcome_complete: true | false"
+      - "Required follow-up Worker task if not complete"
+      - "Manual QA readiness"
+    receipt:
+      result: done
+      decision: "approved"
+      full_outcome_complete: false
+      rationale: "The slice surfaces stale/unknown/error webhook health in both repo settings and the shared issue/PR label manager without changing agent defaults or label mutation semantics. It includes permission-aware degradation and recovery copy. Remaining proof must be runtime/manual QA against the stale and healthy webhook paths."
+      verification_reviewed:
+        - "pnpm --dir packages/web test -- webhook-health route-rendering: pass"
+        - "pnpm --dir packages/web typecheck: pass"
+        - "pnpm --dir packages/web lint: pass"
+      next_task: "T005"
+      manual_qa_readiness: "ready"
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Run and record the manual QA loop for stale and healthy webhook tunnel behavior after implementation is code-complete."
+    allowed_files:
+      - "docs/goals/stale-webhook-tunnel-detection/state.yaml"
+      - "docs/goals/stale-webhook-tunnel-detection/notes/**"
+    verify:
+      - "Use the documented webhook QA workflows to stale or inspect the tunnel, rotate to a fresh tunnel, and test issue plus PR label automation."
+      - "Record evidence links, issue/PR numbers, deployment ids, and any reset steps in the task receipt or notes."
+    stop_if:
+      - "Implementation is not code-complete."
+      - "Manual QA would mutate production repos instead of the configured test repos."
+      - "Need user-controlled browser action that cannot be automated safely."
+    receipt:
+      result: blocked
+      summary: "Runtime QA proved repo settings, issue label editing, and PR label editing render webhook health, but live GitHub delivery inspection returned unknown because Octokit's global `_nc` cache-busting query parameter is rejected by the webhook deliveries endpoint with 422."
+      evidence:
+        - "Playwright rendered repo settings with 'GitHub webhook health could not be checked' and expected receiver URL."
+        - "Playwright rendered issue #36 label area with the auto-launch webhook health warning."
+        - "Playwright rendered PR #37 label area with the auto-review webhook health warning."
+        - "gh api repos/mean-weasel/issuectl-test-repo-2/hooks/631428815 returned active=true and the expected hook URL."
+        - "gh api repos/mean-weasel/issuectl-test-repo-2/hooks/631428815/deliveries returned recent status_code=200 deliveries."
+        - "Direct Octokit call failed with 422: '_nc' is not a permitted key for list webhook deliveries."
+      spawned_tasks:
+        - T006
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Fix Octokit's cache-busting fetch wrapper so GitHub endpoints that reject unknown query parameters, starting with webhook deliveries, can be inspected while preserving no-store behavior."
+    allowed_files:
+      - "packages/core/src/github/client.ts"
+      - "packages/core/src/github/client.test.ts"
+      - "docs/goals/stale-webhook-tunnel-detection/state.yaml"
+      - "docs/goals/stale-webhook-tunnel-detection/notes/**"
+    verify:
+      - "pnpm --dir packages/core test -- github/client"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/web test -- webhook-health route-rendering"
+      - "pnpm --dir packages/web typecheck"
+      - "Runtime check: getWebhookAutomationHealth for mean-weasel/issuectl-test-repo-2 reports ok or a concrete non-unknown GitHub delivery state."
+    stop_if:
+      - "Need to remove cache-busting broadly without an equivalent freshness safeguard."
+      - "GitHub rejects another required webhook endpoint for a different reason."
+      - "Verification fails twice with the same unexplained failure."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/core/src/github/client.ts"
+        - "packages/core/src/github/client.test.ts"
+        - "docs/goals/stale-webhook-tunnel-detection/state.yaml"
+      commands:
+        - cmd: "pnpm --dir packages/core test -- github/client"
+          status: pass
+        - cmd: "pnpm --dir packages/core typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- webhook-health route-rendering"
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/core build"
+          status: pass
+        - cmd: "Runtime getWebhookAutomationHealth for mean-weasel/issuectl-test-repo-2"
+          status: pass
+          detail: "ok, expected URL matched GitHub URL, latest delivery statusCode=200"
+      summary: "Skipped `_nc` cache-busting for GitHub webhook delivery listing while preserving `cache: no-store`; rebuilt core so the web runtime used the fixed client; live health inspection now returns healthy delivery data."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether stale webhook tunnel detection satisfies issue #534 and the original user outcome for both issue and PR label automation."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Manual QA evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if stale tunnel state is not visible before or during label automation."
+      - "Reject completion if healthy issue or PR automation regresses."
+      - "Reject completion if required Worker work is still queued or active."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "The product now detects stale webhook tunnel state and surfaces recovery guidance before automation labels are applied, while the healthy path reports matching GitHub/local URLs and recent successful delivery."
+      evidence:
+        - "Repo settings healthy QA: WEBHOOK: OK, GitHub and Expected URLs matched, Latest issues.closed status 200."
+        - "Issue label healthy QA: opening the Issue labels editor showed 'GitHub webhook delivery looks healthy' for auto-launch labels with latest status 200."
+        - "PR label healthy QA: opening the PR labels editor showed 'GitHub webhook delivery looks healthy' for auto-review labels with latest status 200."
+        - "Stale simulation QA: temporarily set public_webhook_base_url to https://stale-webhook.example.test; repo settings showed 'GitHub webhook URL is stale', GitHub URL vs Expected URL, and `issuectl webhook rotate mean-weasel/issuectl-test-repo-2 --yes` recovery copy."
+        - "Stale issue-label QA: Issue labels editor showed the same stale warning before `issuectl:auto-launch` was applied."
+        - "Reset QA: restored public_webhook_base_url to https://volvo-tablet-centered-diana.trycloudflare.com and verified health returned ok with latest statusCode=200."
+        - "Startup reconciler after restart checked 2 configured webhooks, updated 0, failed 0."
+      verification:
+        - "pnpm --dir packages/web test -- webhook-health route-rendering: pass"
+        - "pnpm --dir packages/web typecheck: pass"
+        - "pnpm --dir packages/web lint: pass"
+        - "pnpm --dir packages/core test -- github/client: pass"
+        - "pnpm --dir packages/core typecheck: pass"
+        - "pnpm --dir packages/core lint: pass"
+      missing_evidence: []
+      next_task: null
+
+checks:
+  dirty_fingerprint: "unrelated local Apple and older goal changes existed before this goal-prep turn; do not stage or revert them"
+  last_verification:
+    result: pass
+    task: T999
+    commands:
+      - "pnpm --dir packages/web test -- webhook-health route-rendering"
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/core test -- github/client"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/core lint"
