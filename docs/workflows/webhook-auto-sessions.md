@@ -52,7 +52,7 @@ REPO=issuectl-test-repo-2
 pnpm --dir packages/cli exec issuectl webhook status "$OWNER/$REPO"
 
 hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
-select github_webhook_id
+select webhook_id
 from repos
 where owner='$OWNER' and name='$REPO';")"
 

@@ -71,7 +71,7 @@ tail -f ~/.issuectl/logs/web.log
 OWNER=mean-weasel
 REPO=issuectl-test-repo-2
 hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
-select github_webhook_id
+select webhook_id
 from repos
 where owner='$OWNER' and name='$REPO';")"
 
@@ -302,7 +302,7 @@ Expected PR evidence:
 Find the deployment id, then inspect the tmux pane. The session name normally follows:
 
 ```text
-issuectl-<repo-name>-issue-<number>
+issuectl-<repo-name>-<number>
 issuectl-<repo-name>-pr-<number>
 ```
 
@@ -348,7 +348,7 @@ for id in $deployment_ids; do
     -d "{\"owner\":\"$OWNER\",\"repo\":\"$REPO\",\"targetType\":\"issue\",\"targetNumber\":$ISSUE_NUMBER}"
 done
 
-tmux ls 2>/dev/null | awk -v repo="$REPO" -v num="$ISSUE_NUMBER" '$1 ~ "issuectl-" repo "-issue-" num ":" { sub(/:$/, "", $1); print $1 }' |
+tmux ls 2>/dev/null | awk -v repo="$REPO" -v num="$ISSUE_NUMBER" '$1 ~ "issuectl-" repo "-" num ":" { sub(/:$/, "", $1); print $1 }' |
 while read -r session; do
   tmux kill-session -t "$session"
 done
@@ -400,6 +400,13 @@ Close the QA PR and delete the branch when the run is done:
 ```bash
 head_ref="$(gh pr view "$PR_NUMBER" --repo "$OWNER/$REPO" --json headRefName --jq .headRefName)"
 gh pr close "$PR_NUMBER" --repo "$OWNER/$REPO" --comment "Closing completed issuectl manual QA target."
+
+# Keep the head branch around until the close/unlabel webhook finishes
+# debouncing. Deleting it immediately can turn cleanup webhooks into
+# branch-not-found diagnostics.
+debounce_seconds="$(sqlite3 ~/.issuectl/issuectl.db "select coalesce(value, '60') from settings where key='webhook_debounce_seconds';")"
+sleep "$(( ${debounce_seconds:-60} + 15 ))"
+
 git ls-remote --exit-code --heads "git@github.com:$OWNER/$REPO.git" "$head_ref" >/dev/null &&
   git push "git@github.com:$OWNER/$REPO.git" --delete "$head_ref"
 ```
