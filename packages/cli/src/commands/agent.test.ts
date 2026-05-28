@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { registerAgentCommands } from "./agent.js";
 
+const originalIssuectlServerUrl = process.env.ISSUECTL_SERVER_URL;
+
 function createProgram(): { program: Command; stderr: () => string } {
   let stderr = "";
   const program = new Command();
@@ -44,6 +46,7 @@ async function parseCommand(args: string[]): Promise<{
 
 beforeEach(() => {
   process.env.ISSUECTL_AGENT_TOKEN = "env-token";
+  delete process.env.ISSUECTL_SERVER_URL;
   vi.stubGlobal("fetch", vi.fn(async () => ({
     ok: true,
     status: 200,
@@ -53,6 +56,11 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.ISSUECTL_AGENT_TOKEN;
+  if (originalIssuectlServerUrl === undefined) {
+    delete process.env.ISSUECTL_SERVER_URL;
+  } else {
+    process.env.ISSUECTL_SERVER_URL = originalIssuectlServerUrl;
+  }
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -92,6 +100,27 @@ describe("agent commands", () => {
       }),
     );
     expect(result.stdout).toContain("accepted");
+  });
+
+  it("uses ISSUECTL_SERVER_URL as the default daemon URL", async () => {
+    process.env.ISSUECTL_SERVER_URL = "http://localhost:4999/";
+
+    const result = await parseCommand([
+      "agent",
+      "complete",
+      "--deployment",
+      "12",
+      "--status",
+      "no_changes",
+      "--summary",
+      "done",
+    ]);
+
+    expect(result.error).toBeUndefined();
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:4999/api/v1/agent/completion",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   it("posts mutation requests through the daemon gateway", async () => {

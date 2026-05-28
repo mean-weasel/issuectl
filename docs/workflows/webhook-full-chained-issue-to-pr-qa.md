@@ -180,6 +180,8 @@ Stage 1 pass criteria:
 - UI transitions from no active session to active session/terminal, then to
   completed session history after completion.
 - Final labels do not include `issuectl:auto-launch`.
+- The issue agent uses `"$ISSUECTL_CLI" agent complete ...` and the terminal
+  does not show `issuectl: command not found`.
 
 ## Stage 2: Create The Follow-Up PR
 
@@ -232,6 +234,7 @@ In the Codex Chrome extension:
    - panel shows deployment id, agent, branch, and `Open Terminal`
    - trigger label is consumed
    - terminal does not block on permissions, trust, or `gh auth`
+   - terminal shows deterministic issuectl controls through `ISSUECTL_CLI`
    - after completion, the active review panel disappears and review state is
      visible in the review surfaces
 
@@ -287,6 +290,8 @@ Stage 3 pass criteria:
 - A `pr_reviews` row links to the deployment.
 - Final labels do not include `issuectl:auto-review`.
 - Follow-up unlabeled deliveries resolve as `skipped_optout` and do not relaunch.
+- The PR review agent uses `"$ISSUECTL_CLI" agent complete ...` and the
+  terminal does not show `issuectl: command not found`.
 
 ## Final Chain Pass Criteria
 
@@ -303,6 +308,8 @@ The chained workflow passes only when all of these are true:
 - Both worktree paths and deployment rows match their target numbers.
 - UI button/status transitions were observed for issue and PR detail pages.
 - Both trigger labels were consumed.
+- Both spawned agents received `ISSUECTL_CLI` and completed through the
+  deterministic issuectl command.
 - Cleanup leaves no live deployment rows, matching tmux sessions, or QA branch.
 
 ## Reset And Cleanup
@@ -360,19 +367,21 @@ head_ref="$(gh pr view "$PR_NUMBER" --repo "$OWNER/$REPO" --json headRefName --j
 if [ -n "$head_ref" ]; then
   gh pr close "$PR_NUMBER" --repo "$OWNER/$REPO" \
     --comment "Closing completed issuectl full chained webhook QA target." || true
-
-  # Keep the head branch around until the close/unlabel webhook finishes
-  # debouncing. Deleting it immediately can turn cleanup webhooks into
-  # branch-not-found diagnostics.
-  debounce_seconds="$(sqlite3 ~/.issuectl/issuectl.db "select coalesce(value, '60') from settings where key='webhook_debounce_seconds';")"
-  sleep "$(( ${debounce_seconds:-60} + 15 ))"
-
   git ls-remote --exit-code --heads "git@github.com:$OWNER/$REPO.git" "$head_ref" >/dev/null 2>&1 &&
     git push "git@github.com:$OWNER/$REPO.git" --delete "$head_ref"
 fi
 
 gh issue close "$ISSUE_NUMBER" --repo "$OWNER/$REPO" \
   --comment "Closing completed issuectl full chained webhook QA target." || true
+
+if [ -n "${hook_id:-}" ]; then
+  gh api -X PATCH "repos/$OWNER/$REPO/hooks/$hook_id" -F active=false >/dev/null || true
+fi
+
+sqlite3 -header -column ~/.issuectl/issuectl.db "
+select count(*) as live_webhook_deployments
+from deployments
+where triggered_by='webhook' and ended_at is null;"
 ```
 
 Cleanup pass criteria:
@@ -381,6 +390,8 @@ Cleanup pass criteria:
 - PR trigger labels are absent.
 - No live deployment rows remain for the issue or PR.
 - No matching tmux sessions remain.
+- The GitHub webhook is disabled when the QA tunnel is not in active use.
+- The local tunnel process is stopped if this workflow started one.
 - The QA PR is closed and its branch is deleted.
 - The QA issue is closed or intentionally left open for another run.
 
@@ -399,6 +410,7 @@ Issue intent ids:
 Issue deployment id:
 Issue worktree:
 Issue terminal prompt status:
+Issue ISSUECTL_CLI evidence:
 PR:
 PR UI transition:
 PR GitHub delivery:
@@ -408,6 +420,7 @@ PR deployment id:
 PR review row:
 PR worktree:
 PR terminal prompt status:
+PR ISSUECTL_CLI evidence:
 Cleanup:
 Residual risk:
 ```

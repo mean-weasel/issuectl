@@ -153,6 +153,9 @@ Use this when the launch succeeded but UI state or labels look stale.
 Expected proof:
 
 - The agent calls `issuectl agent complete`.
+- The agent uses the deterministic `"$ISSUECTL_CLI" agent complete ...`
+  command, with `ISSUECTL_CLI` present in the spawned terminal environment.
+- The terminal transcript does not show `issuectl: command not found`.
 - `deployments.ended_at` is set.
 - `terminal_reason` is `completed`, `failed`, `no_changes`, or the expected terminal outcome.
 - PR runs have a `pr_reviews` row with completed or terminal status.
@@ -170,6 +173,9 @@ Expected proof:
 - Trigger labels are removed.
 - Live deployment rows are ended through the API.
 - Stale tmux sessions are killed.
+- Any temporary GitHub webhook is disabled while the tunnel is not in use.
+- Any temporary tunnel process is stopped.
+- The final active webhook deployment count is zero.
 - QA PRs are closed and branches deleted.
 - The target can be reused or the next fresh target starts untagged.
 

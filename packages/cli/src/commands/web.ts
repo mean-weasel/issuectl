@@ -15,6 +15,41 @@ function getWebPackagePath(): string {
   return resolve(__dirname, "..", "..", "web");
 }
 
+export function resolveIssuectlCliPath(
+  env: NodeJS.ProcessEnv = process.env,
+  argvEntry = process.argv[1],
+): string | undefined {
+  const configured = env.ISSUECTL_CLI?.trim();
+  if (configured) return configured;
+  const entry = argvEntry?.trim();
+  return entry ? resolve(entry) : undefined;
+}
+
+export function buildWebServerEnv(
+  port: string,
+  env: NodeJS.ProcessEnv = process.env,
+  argvEntry = process.argv[1],
+): NodeJS.ProcessEnv {
+  const issuectlCli = resolveIssuectlCliPath(env, argvEntry);
+  return {
+    ...env,
+    PORT: port,
+    ISSUECTL_SERVER_URL: env.ISSUECTL_SERVER_URL?.trim() || `http://localhost:${port}`,
+    ...(issuectlCli ? { ISSUECTL_CLI: issuectlCli } : {}),
+  };
+}
+
+export function buildWebServerArgs(webPath: string): string[] {
+  return [
+    "--import",
+    resolve(webPath, "server-polyfills.mjs"),
+    "--import",
+    "tsx",
+    resolve(webPath, "server.ts"),
+    "--dev",
+  ];
+}
+
 export async function webCommand(options: { port: string }): Promise<void> {
   const port = options.port;
 
@@ -22,7 +57,6 @@ export async function webCommand(options: { port: string }): Promise<void> {
   await requireAuth();
 
   const webPath = getWebPackagePath();
-  const serverPath = resolve(webPath, "server.ts");
   const token = generateApiToken(db);
   const lanIp = detectLanIp();
 
@@ -45,10 +79,10 @@ export async function webCommand(options: { port: string }): Promise<void> {
     log.info(`iOS API token: ${token}`);
   }
 
-  const child = spawn("node", ["--import", "tsx", serverPath, "--dev"], {
+  const child = spawn("node", buildWebServerArgs(webPath), {
     cwd: webPath,
     stdio: "inherit",
-    env: { ...process.env, PORT: port },
+    env: buildWebServerEnv(port),
   });
 
   // Auto-open browser after a short delay (macOS only for v1)
