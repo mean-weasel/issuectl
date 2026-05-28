@@ -2,6 +2,8 @@
 
 This runbook covers the v1 GitHub webhook auto-session flow for issue launches and PR review sessions.
 
+For repeatable hands-on QA with the two test repositories, including target creation, diagnostics, expected evidence, and reset commands, use [Webhook Label Manual QA](./webhook-label-manual-qa.md). To choose the smallest right QA workflow and understand complexity order, use [Webhook QA Ladder](./webhook-qa-ladder.md). For the higher-complexity issue-to-PR-to-review chain, use [Webhook Issue-To-PR Review QA](./webhook-issue-to-pr-review-qa.md).
+
 ## Receiver URL
 
 The local web server handles GitHub deliveries before Next.js request parsing so HMAC verification can use the raw request body.
@@ -36,6 +38,60 @@ issuectl webhook rotate mean-weasel/issuectl --yes
 ```
 
 `issuectl repo add --webhook` performs advisory checks for `gh` hook scope and `cloudflared`, but missing `cloudflared` is not fatal. Operators may use ngrok, Tailscale Funnel, a reverse proxy, or another public endpoint.
+
+### Tunnel Health Preflight
+
+Run this before adding an automation label, especially when using a quick tunnel.
+Quick tunnel hostnames can expire or stop resolving; GitHub then records `502`
+deliveries and issuectl will not create a local webhook intent.
+
+```bash
+OWNER=mean-weasel
+REPO=issuectl-test-repo-2
+
+pnpm --dir packages/cli exec issuectl webhook status "$OWNER/$REPO"
+
+hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
+select github_webhook_id
+from repos
+where owner='$OWNER' and name='$REPO';")"
+
+gh api "repos/$OWNER/$REPO/hooks/$hook_id" \
+  --jq '{id, active, url: .config.url, updated_at}'
+
+gh api "repos/$OWNER/$REPO/hooks/$hook_id/deliveries" \
+  --jq '.[0:8][] | {event, action, status_code, delivered_at, redelivery}'
+```
+
+Pass signal:
+
+- The GitHub hook URL matches `issuectl webhook status`.
+- The hostname resolves and reaches the local server.
+- Recent real deliveries have `status_code=200`.
+
+If the hook points at a stale quick tunnel or recent deliveries show `502`:
+
+1. Start a fresh tunnel.
+2. Save the new base URL:
+
+```bash
+pnpm --dir packages/cli exec issuectl repo set "$OWNER/$REPO" \
+  --webhook-base-url https://fresh-example.trycloudflare.com
+```
+
+3. Rotate the stored GitHub hook so GitHub uses the new URL:
+
+```bash
+pnpm --dir packages/cli exec issuectl webhook rotate "$OWNER/$REPO" --yes
+```
+
+4. Create a fresh delivery by removing and re-adding the trigger label from the
+   local UI. If your `gh` token has `admin:repo_hook`, redelivering the failed
+   GitHub delivery is also acceptable.
+
+Do not treat missing local intents as a product launch failure until GitHub has
+delivered the relevant `issues.labeled` or `pull_request.labeled` event with
+`status_code=200`.
 
 ## Opt-In Model
 

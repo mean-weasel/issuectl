@@ -79,6 +79,23 @@ where key in (
 order by key;"
 ```
 
+Confirm GitHub is delivering to the current tunnel before labeling anything:
+
+```bash
+hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
+select github_webhook_id
+from repos
+where owner='$OWNER' and name='$REPO';")"
+
+pnpm --dir packages/cli exec issuectl webhook status "$OWNER/$REPO"
+
+gh api "repos/$OWNER/$REPO/hooks/$hook_id" \
+  --jq '{id, active, url: .config.url, updated_at}'
+
+gh api "repos/$OWNER/$REPO/hooks/$hook_id/deliveries" \
+  --jq '.[0:8][] | {event, action, status_code, delivered_at, redelivery}'
+```
+
 Expected normal settings:
 
 ```text
@@ -93,8 +110,29 @@ Stop before labeling anything if:
 - The local dashboard is not reachable.
 - The public webhook URL is stale.
 - GitHub deliveries are not reaching this machine.
+- Recent GitHub deliveries show `502`; rotate the hook to a fresh tunnel first.
 - The repo is not tracked or automation is disabled.
 - Another webhook QA run is active for the same target.
+
+If a quick tunnel has gone stale:
+
+1. Start a fresh tunnel to `http://localhost:3847`.
+2. Save the new base URL:
+
+```bash
+pnpm --dir packages/cli exec issuectl repo set "$OWNER/$REPO" \
+  --webhook-base-url https://fresh-example.trycloudflare.com
+```
+
+3. Rotate the GitHub hook:
+
+```bash
+pnpm --dir packages/cli exec issuectl webhook rotate "$OWNER/$REPO" --yes
+```
+
+4. Generate a fresh delivery by removing and re-adding the trigger label from
+   the local UI. Do not continue the chain until the relevant GitHub delivery
+   has `status_code=200` and appears in `issuectl webhook tail`.
 
 ## Variant A: Staged Chain
 

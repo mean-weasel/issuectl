@@ -44,6 +44,14 @@ Use this when a tunnel, webhook URL, repo setup, or local server changed.
 pnpm --dir packages/cli exec issuectl webhook status mean-weasel/issuectl-test-repo-2
 tail -f ~/.issuectl/logs/web.log
 pnpm --dir packages/cli exec issuectl webhook tail --repo mean-weasel/issuectl-test-repo-2 --limit 20
+
+hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
+select github_webhook_id
+from repos
+where owner='mean-weasel' and name='issuectl-test-repo-2';")"
+
+gh api "repos/mean-weasel/issuectl-test-repo-2/hooks/$hook_id/deliveries" \
+  --jq '.[0:8][] | {event, action, status_code, delivered_at}'
 ```
 
 Pass signal:
@@ -51,6 +59,8 @@ Pass signal:
 - GitHub deliveries create local webhook event rows.
 - Invalid signature errors are absent for real deliveries.
 - The receiver URL points at the current public tunnel.
+- Recent GitHub deliveries have `status_code=200`; `502` means the tunnel or
+  hook URL is stale and must be fixed before judging label automation.
 
 ## Rung 2: Untagged Target No-Op
 
