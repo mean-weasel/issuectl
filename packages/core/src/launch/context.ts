@@ -80,8 +80,10 @@ function agentControlInstructions(targetType: "issue" | "pr"): string {
   return [
     "\n## issuectl Agent Controls",
     "When issuectl agent environment variables are present, use daemon-mediated actions instead of direct GitHub mutations.",
-    `- Mutate through \`issuectl agent mutate --deployment "$ISSUECTL_DEPLOYMENT_ID" --repo-id "$ISSUECTL_REPO_ID" --target ${target} --action <push|comment|label|create_issue|create_pr> --payload-file <path>\`.`,
-    "- Finish with `issuectl agent complete --deployment \"$ISSUECTL_DEPLOYMENT_ID\" --status <completed|failed|no_changes|pushed_fixes> --summary \"<summary>\"`.",
+    "The launch environment sets `ISSUECTL_CLI` to the issuectl executable and `ISSUECTL_SERVER_URL` to this dashboard.",
+    `- Mutate through \`"$ISSUECTL_CLI" agent mutate --deployment "$ISSUECTL_DEPLOYMENT_ID" --repo-id "$ISSUECTL_REPO_ID" --target ${target} --action <push|comment|label|create_issue|create_pr> --payload-file <path>\`.`,
+    "- Finish with `\"$ISSUECTL_CLI\" agent complete --deployment \"$ISSUECTL_DEPLOYMENT_ID\" --status <completed|failed|no_changes|pushed_fixes> --summary \"<summary>\"`.",
+    "- If `ISSUECTL_CLI` is missing, stop and report that issuectl agent controls are unavailable.",
     "- Never print, log, or paste `ISSUECTL_AGENT_TOKEN`.",
   ].join("\n");
 }

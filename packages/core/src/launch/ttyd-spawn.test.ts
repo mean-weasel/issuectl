@@ -103,6 +103,10 @@ describe("spawnTtyd", () => {
       agentCommand: "claude",
       sessionName: "issuectl-webhook-42",
       credentialPolicy: "scrubbed",
+      extraEnv: {
+        ISSUECTL_CLI: "/opt/IssueCTL/bin/issuectl",
+        ISSUECTL_SERVER_URL: "http://localhost:4999",
+      },
     });
 
     const tmuxCmd = execFileSyncSpy.mock.calls.find(
@@ -114,6 +118,10 @@ describe("spawnTtyd", () => {
     expect(tmuxCmd).toContain("mktemp -d");
     expect(tmuxCmd).toContain("export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1");
     expect(tmuxCmd).toContain("export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never");
+    expect(tmuxCmd).toContain("export ISSUECTL_CLI=");
+    expect(tmuxCmd).toContain("/opt/IssueCTL/bin/issuectl");
+    expect(tmuxCmd).toContain("export ISSUECTL_SERVER_URL=");
+    expect(tmuxCmd).toContain("http://localhost:4999");
     killSpy.mockRestore();
   });
 

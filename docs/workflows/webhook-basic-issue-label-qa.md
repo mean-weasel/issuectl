@@ -192,6 +192,17 @@ Pass criteria:
   `ensure_ttyd.failed` diagnostic appears before the UI can attach.
 - GitHub labels no longer include `issuectl:auto-launch`.
 
+## Confirm Agent Command Availability
+
+Use the live terminal transcript or completed terminal transcript to confirm the
+spawned agent received deterministic issuectl controls:
+
+- `ISSUECTL_CLI` is present and points at an executable issuectl command.
+- `ISSUECTL_SERVER_URL` points at the local dashboard URL used for this run.
+- The agent uses `"$ISSUECTL_CLI" agent complete ...` for its final check-in.
+- The terminal does not show `issuectl: command not found`.
+- `completion_result_json` is populated on the deployment after completion.
+
 ## Reset And Cleanup
 
 Use this even after a passing run so the target can be reused safely.
@@ -221,6 +232,15 @@ tmux ls 2>/dev/null | awk -v repo="$REPO" -v num="$ISSUE_NUMBER" '$1 ~ "issuectl
 while read -r session; do
   tmux kill-session -t "$session"
 done
+
+if [ -n "${hook_id:-}" ]; then
+  gh api -X PATCH "repos/$OWNER/$REPO/hooks/$hook_id" -F active=false >/dev/null || true
+fi
+
+sqlite3 -header -column ~/.issuectl/issuectl.db "
+select count(*) as live_webhook_deployments
+from deployments
+where triggered_by='webhook' and ended_at is null;"
 ```
 
 Optional:
@@ -247,6 +267,7 @@ Agent:
 Worktree:
 UI transition:
 Terminal prompt status:
+ISSUECTL_CLI evidence:
 Completion status:
 Cleanup:
 Residual risk:

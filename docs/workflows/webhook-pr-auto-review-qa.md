@@ -212,6 +212,18 @@ Pass criteria:
   appears in the terminal.
 - GitHub labels no longer include `issuectl:auto-review`.
 
+## Confirm Agent Command Availability
+
+Use the live terminal transcript or completed terminal transcript to confirm the
+spawned review agent received deterministic issuectl controls:
+
+- `ISSUECTL_CLI` is present and points at an executable issuectl command.
+- `ISSUECTL_SERVER_URL` points at the local dashboard URL used for this run.
+- The agent uses `"$ISSUECTL_CLI" agent complete ...` for its final check-in.
+- The terminal does not show `issuectl: command not found`.
+- `completion_result_json` is populated on the deployment.
+- The linked `pr_reviews` row moves out of an active state after completion.
+
 ## Reset And Cleanup
 
 ```bash
@@ -244,16 +256,18 @@ head_ref="$(gh pr view "$PR_NUMBER" --repo "$OWNER/$REPO" --json headRefName --j
 if [ -n "$head_ref" ]; then
   gh pr close "$PR_NUMBER" --repo "$OWNER/$REPO" \
     --comment "Closing completed issuectl PR auto-review QA target." || true
-
-  # Keep the head branch around until the close/unlabel webhook finishes
-  # debouncing. Deleting it immediately can turn cleanup webhooks into
-  # branch-not-found diagnostics.
-  debounce_seconds="$(sqlite3 ~/.issuectl/issuectl.db "select coalesce(value, '60') from settings where key='webhook_debounce_seconds';")"
-  sleep "$(( ${debounce_seconds:-60} + 15 ))"
-
   git ls-remote --exit-code --heads "git@github.com:$OWNER/$REPO.git" "$head_ref" >/dev/null 2>&1 &&
     git push "git@github.com:$OWNER/$REPO.git" --delete "$head_ref"
 fi
+
+if [ -n "${hook_id:-}" ]; then
+  gh api -X PATCH "repos/$OWNER/$REPO/hooks/$hook_id" -F active=false >/dev/null || true
+fi
+
+sqlite3 -header -column ~/.issuectl/issuectl.db "
+select count(*) as live_webhook_deployments
+from deployments
+where triggered_by='webhook' and ended_at is null;"
 ```
 
 ## Receipt
@@ -274,6 +288,7 @@ Agent:
 Worktree:
 UI transition:
 Terminal prompt status:
+ISSUECTL_CLI evidence:
 Completion/review status:
 Cleanup:
 Residual risk:

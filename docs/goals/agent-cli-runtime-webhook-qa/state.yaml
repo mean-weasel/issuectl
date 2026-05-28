@@ -1,0 +1,460 @@
+version: 2
+
+goal:
+  title: "Harden Agent CLI Runtime And Webhook QA Completion"
+  slug: "agent-cli-runtime-webhook-qa"
+  kind: specific
+  tranche: "Harden auto-launched agent CLI availability and prove issue/PR webhook completion through fresh Chrome-extension QA."
+  status: active
+  oracle:
+    signal: "Fresh Chrome-extension-driven webhook QA proves issue auto-launch and PR auto-review labels applied through the local UI produce 200 webhook deliveries, exactly one launch/review intent each, spawned agents that can run the documented issuectl agent mutation/completion commands without PATH errors, correct session/worktree/deployment and UI transitions, consumed trigger labels with non-launching follow-up intents, and cleanup with hook disabled, tunnel/server stopped, and no active webhook deployments."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipt-backed local verification plus a fresh Chrome QA transcript listing test issue/PR numbers, delivery/intent IDs, session/deployment/worktree/review IDs, deterministic CLI command evidence, UI transition evidence, cleanup proof, PR/CI/merge state if code changed, and full_outcome_complete: true."
+  intake:
+    original_request: "Make a detailed GoalBuddy plan for the next webhook automation improvements after Chrome QA."
+    interpreted_outcome: "Fix the spawned-agent issuectl command availability gap, keep tunnels/hooks shut down outside QA, and prove the completed issue and PR webhook workflows through Chrome."
+    input_shape: specific
+    audience: "issuectl maintainers and future Codex agents"
+    authority: requested
+    proof_type: demo
+    completion_proof: "Fresh Chrome-extension-driven issue and PR webhook QA completes with deterministic issuectl agent command usage, correct local/session/UI state, and full cleanup."
+    likely_misfire: "Stopping after launch-only proof, docs-only changes, issue-only QA, or leaving a tunnel/GitHub hook active after testing."
+    blind_spots_considered:
+      - "tmux-launched agent shells may not inherit interactive PATH."
+      - "pnpm workspace commands may not be resolvable from spawned sessions."
+      - "The final proof must distinguish expected skipped follow-up intents from failures."
+      - "Unrelated dirty Apple/client and prior webhook changes must not be reverted or staged."
+      - "Webhook tunnel and hook lifecycle must be part of the cleanup oracle."
+      - "Chrome extension availability is required for the final user-surface QA."
+    existing_plan_facts:
+      - "PR #536 merged stale webhook tunnel detection and webhook health surfacing."
+      - "Manual QA Markdown workflows exist for basic issue labels, PR auto-review, and full chained issue-to-PR webhook QA."
+      - "Chrome extension QA previously proved issue #45 auto-launch with intent 78 and follow-up 79 skipped_optout."
+      - "Chrome extension QA previously proved PR #46 auto-review with intent 80, review row 14, and follow-up 81 skipped_optout."
+      - "Cleanup from that QA restored the test repo webhook base URL, stopped tunnel/server, closed test targets, deleted the branch, and left zero active webhook deployments."
+      - "Known remaining gap: spawned agents can hit `issuectl: command not found` when trying to use documented `issuectl agent mutate/complete` commands."
+      - "Tunnels and GitHub hooks should be disabled when not actively testing."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/agent-cli-runtime-webhook-qa/"
+    command: "npx goalbuddy board docs/goals/agent-cli-runtime-webhook-qa"
+
+active_task: T008
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Read-only map of the auto-launched agent runtime, issuectl agent command instructions, tmux/session environment, tests, diagnostics, and current Chrome QA receipts."
+    inputs:
+      - "docs/goals/agent-cli-runtime-webhook-qa/goal.md"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/intake.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "docs/workflows/webhook-basic-issue-label-qa.md"
+      - "docs/workflows/webhook-pr-auto-review-qa.md"
+      - "docs/workflows/webhook-full-chained-issue-to-pr-qa.md"
+      - "packages/core launch/session/tmux/context code discovered by search"
+      - "packages/core and packages/web tests discovered by search"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not revert or stage unrelated dirty files."
+      - "Prefer exact file/function/test references over generic advice."
+      - "Separate product runtime gaps from tunnel, GitHub delivery, or local server harness problems."
+    expected_output:
+      - "Runtime map for webhook issue auto-launch and PR auto-review sessions."
+      - "Exact current instructions for `issuectl agent mutate/complete` or equivalents."
+      - "Evidence of how tmux/launched agents receive PATH/env."
+      - "Recommended deterministic CLI design candidates."
+      - "Focused tests to add or update."
+      - "Current QA receipt summary and missing oracle evidence."
+      - "Dirty worktree hazards to preserve."
+    receipt:
+      result: done
+      note: notes/T001-scout-runtime-map.md
+      summary: "Bare `issuectl` in generated agent controls is the fragile runtime gap; seed ISSUECTL_CLI/ISSUECTL_SERVER_URL into launched sessions and update instructions/tests."
+      evidence:
+        - "packages/core/src/launch/context.ts:78"
+        - "packages/core/src/launch/launch-contexts.ts:110"
+        - "packages/core/src/launch/launch.ts:208"
+        - "packages/core/src/launch/tmux-session.ts:53"
+        - "packages/cli/src/commands/web.ts:48"
+        - "packages/cli/src/commands/agent.ts:27"
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the deterministic CLI availability design and the largest safe Worker slice for runtime hardening."
+    inputs:
+      - "T001 receipt"
+      - "docs/goals/agent-cli-runtime-webhook-qa/goal.md"
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+    constraints:
+      - "Do not implement."
+      - "Reject docs-only plans if spawned sessions would still lack a working command."
+      - "Prefer deterministic launch env/context over shell-profile assumptions."
+      - "Define allowed_files, verify commands, and stop_if for T003 before activation."
+      - "Preserve issue auto-launch and PR auto-review defaults."
+    expected_output:
+      - "Decision: ISSUECTL_CLI/env, absolute command, wrapper, or other repo-local pattern."
+      - "Exact Worker objective for T003."
+      - "allowed_files for T003."
+      - "verify commands for T003."
+      - "stop_if conditions for T003."
+      - "Deferred or blocked items if any."
+    receipt:
+      result: done
+      decision: "Use explicit ISSUECTL_CLI/ISSUECTL_SERVER_URL launch env plus generated instruction updates."
+      note: notes/T002-judge-runtime-design.md
+      summary: "Activate T003 to implement deterministic CLI env/context and focused tests."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the Judge-selected runtime hardening slice so auto-launched issue and PR agents can run the documented issuectl agent mutation/completion command under tmux."
+    allowed_files:
+      - "packages/cli/src/commands/web.ts"
+      - "packages/cli/src/commands/web.test.ts"
+      - "packages/cli/src/commands/agent.ts"
+      - "packages/cli/src/commands/agent.test.ts"
+      - "packages/core/src/launch/context.ts"
+      - "packages/core/src/launch/context.test.ts"
+      - "packages/core/src/launch/launch-contexts.ts"
+      - "packages/core/src/launch/launch-execute-precheck.test.ts"
+      - "packages/core/src/launch/ttyd-spawn.test.ts"
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/**"
+    verify:
+      - "pnpm --dir packages/core test -- context launch-execute-precheck ttyd-spawn"
+      - "pnpm --dir packages/cli test -- agent web"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/cli typecheck"
+    stop_if:
+      - "Need files outside the Judge-approved allowed_files."
+      - "The correct command resolution behavior is ambiguous."
+      - "Focused verification fails twice with different root causes."
+      - "A change would regress issue auto-launch or PR auto-review defaults."
+    expected_output:
+      - "Runtime/env/context changes that make the issuectl agent command deterministic."
+      - "Focused tests proving generated env/instructions include the deterministic command."
+      - "No unrelated file changes."
+    receipt:
+      result: done
+      summary: "Seeded ISSUECTL_CLI/ISSUECTL_SERVER_URL into launched agent sessions and updated generated controls/tests."
+      changed_files:
+        - "packages/cli/src/commands/web.ts"
+        - "packages/cli/src/commands/web.test.ts"
+        - "packages/cli/src/commands/agent.ts"
+        - "packages/cli/src/commands/agent.test.ts"
+        - "packages/core/src/launch/context.ts"
+        - "packages/core/src/launch/context.test.ts"
+        - "packages/core/src/launch/launch-contexts.ts"
+        - "packages/core/src/launch/launch-execute-precheck.test.ts"
+        - "packages/core/src/launch/ttyd-spawn.test.ts"
+        - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+        - "docs/goals/agent-cli-runtime-webhook-qa/notes/T003-runtime-hardening.md"
+      commands:
+        - command: "pnpm --dir packages/core test -- context launch-execute-precheck ttyd-spawn"
+          status: pass
+        - command: "pnpm --dir packages/cli test -- agent web"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+      note: notes/T003-runtime-hardening.md
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: medium
+    objective: "Audit T003 and choose whether a QA docs Worker is needed before live Chrome QA."
+    inputs:
+      - "T003 receipt"
+      - "Current dirty diff"
+      - "Focused verification results"
+      - "docs/workflows/webhook-basic-issue-label-qa.md"
+      - "docs/workflows/webhook-pr-auto-review-qa.md"
+      - "docs/workflows/webhook-full-chained-issue-to-pr-qa.md"
+    constraints:
+      - "Do not implement."
+      - "Approve direct QA if docs already cover deterministic CLI evidence and cleanup."
+      - "Require T005 only if runbooks are stale or missing completion/reset steps."
+    expected_output:
+      - "Decision: activate T005 docs update or skip to T006 live QA."
+      - "If T005 is needed: exact allowed_files and verify commands."
+      - "If T005 is skipped: evidence that runbooks are sufficient."
+    receipt:
+      result: done
+      decision: "Run T005 because the runbooks need deterministic ISSUECTL_CLI evidence and stronger hook/tunnel cleanup criteria."
+      note: notes/T004-judge-docs-needed.md
+      summary: "Activate T005 docs update before live Chrome QA."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Update the Markdown QA workflows only if needed so future agents can verify deterministic issuectl command usage and complete cleanup by natural-language prompts."
+    allowed_files:
+      - "docs/workflows/webhook-basic-issue-label-qa.md"
+      - "docs/workflows/webhook-pr-auto-review-qa.md"
+      - "docs/workflows/webhook-full-chained-issue-to-pr-qa.md"
+      - "docs/workflows/webhook-qa-ladder.md"
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/**"
+    verify:
+      - "Manual markdown review against goal oracle."
+      - "rg -n \"ISSUECTL_CLI|issuectl agent|disable|tunnel|cleanup|active webhook\" docs/workflows"
+    stop_if:
+      - "Runbooks already contain the required steps and no docs change is needed."
+      - "A required doc file is outside allowed_files."
+      - "QA expectations conflict with implemented runtime behavior."
+    expected_output:
+      - "Runbooks include deterministic CLI completion checks for issue and PR agents."
+      - "Runbooks include hook/tunnel shutdown and active deployment cleanup."
+      - "Natural-language entry points remain obvious."
+    receipt:
+      result: done
+      summary: "Webhook QA docs now require ISSUECTL_CLI evidence and hook/tunnel cleanup proof."
+      changed_files:
+        - "docs/workflows/webhook-basic-issue-label-qa.md"
+        - "docs/workflows/webhook-pr-auto-review-qa.md"
+        - "docs/workflows/webhook-full-chained-issue-to-pr-qa.md"
+        - "docs/workflows/webhook-qa-ladder.md"
+        - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+        - "docs/goals/agent-cli-runtime-webhook-qa/notes/T005-qa-docs-update.md"
+      commands:
+        - command: "Manual markdown review against goal oracle"
+          status: pass
+        - command: "rg -n \"ISSUECTL_CLI|issuectl agent|disable|tunnel|cleanup|active webhook\" docs/workflows"
+          status: pass
+      note: notes/T005-qa-docs-update.md
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Run local verification for all touched core/web/docs surfaces and record pass/fail receipts before live QA."
+    allowed_files:
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/**"
+    verify:
+      - "pnpm --dir packages/core test -- launch"
+      - "pnpm --dir packages/cli test -- agent web"
+      - "pnpm --dir packages/core test -- github/client"
+      - "pnpm --dir packages/core typecheck"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/core lint"
+      - "pnpm --dir packages/cli lint"
+    stop_if:
+      - "A verification command fails twice for the same root cause."
+      - "Verification reveals a behavior gap requiring implementation outside the current allowed scope."
+      - "The worktree contains unrelated changes that make the result ambiguous."
+    expected_output:
+      - "Verification receipt with exact commands, results, and any intentionally skipped commands."
+      - "Next task readiness for Chrome QA."
+    receipt:
+      result: done
+      summary: "Node 24 local verification passed for core launch/GitHub client and CLI agent/web surfaces."
+      changed_files:
+        - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+        - "docs/goals/agent-cli-runtime-webhook-qa/notes/T006-local-verification.md"
+      commands:
+        - command: "pnpm --dir packages/core test -- launch"
+          status: pass
+        - command: "pnpm --dir packages/core test -- github/client"
+          status: pass
+        - command: "pnpm --dir packages/cli test -- agent web"
+          status: pass
+        - command: "pnpm --dir packages/core typecheck"
+          status: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - command: "pnpm --dir packages/core lint"
+          status: pass
+        - command: "pnpm --dir packages/cli lint"
+          status: pass
+      note: notes/T006-local-verification.md
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Run fresh end-to-end Chrome-extension webhook QA for issue auto-launch and PR auto-review, including deterministic issuectl agent command evidence and cleanup."
+    allowed_files:
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/**"
+    verify:
+      - "Chrome extension QA transcript recorded in notes."
+      - "pnpm --dir packages/cli exec issuectl diag list --limit 50"
+      - "pnpm --dir packages/cli exec issuectl diag show --issue <owner>/<repo>#<issue-number>"
+      - "pnpm --dir packages/cli exec issuectl diag show --issue <owner>/<repo>#<pr-number>"
+      - "Post-QA cleanup check: webhook disabled, tunnel/server stopped, active webhook deployments 0."
+    stop_if:
+      - "Chrome extension is unavailable."
+      - "GitHub credentials or test repo access are unavailable."
+      - "Webhook delivery cannot reach the local server after harness troubleshooting."
+      - "A live QA failure indicates a product bug outside the Judge-approved implementation scope."
+      - "Cleanup cannot safely disable hook/tunnel or end test sessions."
+    expected_output:
+      - "Issue QA proof: repo, issue number, label path, delivery status, intent ID, deployment/session/worktree, deterministic CLI command evidence, UI transitions, cleanup."
+      - "PR QA proof: repo, PR number, label path, delivery status, intent ID, review row, deployment/session/worktree, deterministic CLI command evidence, UI transitions, cleanup."
+      - "Reset proof: labels cleaned, test branch/targets cleaned as appropriate, hook disabled, tunnel stopped, no active webhook deployments."
+    receipt:
+      result: done
+      summary: "Fresh Chrome-extension QA proved issue auto-launch and PR auto-review end to end through the UI, with 200 deliveries, launched intents, completed deployments, deterministic ISSUECTL_CLI completion, sessions UI evidence, and full hook/tunnel cleanup."
+      changed_files:
+        - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+        - "docs/goals/agent-cli-runtime-webhook-qa/notes/T007-live-chrome-webhook-qa.md"
+      commands:
+        - command: "Chrome UI: repo settings webhook health ping"
+          status: pass
+        - command: "Chrome UI: apply issuectl:auto-launch to issue #47"
+          status: pass
+        - command: "Chrome UI: apply issuectl:auto-review to PR #48"
+          status: pass
+        - command: "pnpm --dir packages/cli exec issuectl diag list --limit 50"
+          status: pass
+        - command: "pnpm --dir packages/cli exec issuectl diag show --issue mean-weasel/issuectl-test-repo-2#47"
+          status: pass
+        - command: "pnpm --dir packages/cli exec issuectl diag show --deployment 163"
+          status: pass
+        - command: "Post-QA cleanup check: hook disabled, tunnel/server stopped, active webhook deployments 0, active webhook intents 0"
+          status: pass
+      note: notes/T007-live-chrome-webhook-qa.md
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Fix the `issuectl web` launch wrapper so the local web server starts with the same polyfills as the web package start script under Node 24."
+    allowed_files:
+      - "packages/cli/src/commands/web.ts"
+      - "packages/cli/src/commands/web.test.ts"
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/**"
+    verify:
+      - "pnpm --dir packages/cli test -- web"
+      - "pnpm --dir packages/cli typecheck"
+      - "pnpm --dir packages/cli lint"
+      - "pnpm --dir packages/cli build"
+      - "issuectl web starts without AsyncLocalStorage crash"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "The web server still crashes after adding the package polyfill import."
+      - "Fixing this requires changing Next or web server runtime behavior outside the CLI wrapper."
+    expected_output:
+      - "CLI web command imports packages/web/server-polyfills.mjs before tsx/server.ts."
+      - "Focused CLI verification passes."
+      - "A live server start reaches an HTTP-ready state without the AsyncLocalStorage crash."
+    receipt:
+      result: done
+      summary: "CLI web wrapper now imports the web server polyfills before tsx; Node 24 wrapper startup reaches HTTP 200 without the AsyncLocalStorage crash."
+      changed_files:
+        - "packages/cli/src/commands/web.ts"
+        - "packages/cli/src/commands/web.test.ts"
+        - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+        - "docs/goals/agent-cli-runtime-webhook-qa/notes/T010-web-wrapper-polyfills.md"
+      commands:
+        - command: "pnpm --dir packages/cli test -- web"
+          status: pass
+        - command: "pnpm --dir packages/cli typecheck"
+          status: pass
+        - command: "pnpm --dir packages/cli lint"
+          status: pass
+        - command: "pnpm --dir packages/cli build"
+          status: pass
+        - command: "pnpm --dir packages/cli exec issuectl web --port 3847"
+          status: pass
+        - command: "curl -sS -o /tmp/issuectl-web-root.html -w 'status=%{http_code} bytes=%{size_download}\\n' http://localhost:3847/"
+          status: pass
+      note: notes/T010-web-wrapper-polyfills.md
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "If code or docs changed, open a PR, monitor CI, fix failures, and merge when clean."
+    allowed_files:
+      - "docs/goals/agent-cli-runtime-webhook-qa/state.yaml"
+      - "docs/goals/agent-cli-runtime-webhook-qa/notes/**"
+    verify:
+      - "GitHub PR URL recorded if changes exist."
+      - "CI checks green before merge."
+      - "Merged PR URL recorded, or no-code/no-PR rationale recorded."
+    stop_if:
+      - "User approval is needed for a destructive or policy-sensitive GitHub action."
+      - "CI fails twice for the same root cause after a fix attempt."
+      - "The branch contains unrelated user changes that cannot be separated safely."
+    expected_output:
+      - "PR/CI/merge receipt if changes exist."
+      - "Explicit no-PR receipt if no repo changes were required."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit against the full oracle, including runtime hardening, local verification, Chrome issue/PR QA, cleanup, and PR/CI/merge state if applicable."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Chrome QA transcript note"
+      - "PR/CI/merge receipt if any"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if spawned agents did not prove deterministic issuectl command usage."
+      - "Reject completion if either issue or PR path lacks fresh Chrome QA evidence."
+      - "Reject completion if hook/tunnel cleanup is missing."
+      - "Reject completion if required Worker tasks are still queued or active."
+    expected_output:
+      - "decision: complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle item pass/fail table."
+      - "Missing evidence or next task if not complete."
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T007
+    commands:
+      - "Chrome UI repo settings webhook health: ping 200"
+      - "Chrome UI issue label QA: issue #47 deployment 162 completed no_changes"
+      - "Chrome UI PR auto-review QA: PR #48 review row 15 and deployment 163 completed no_changes"
+      - "Cleanup: hook disabled, tunnel/server stopped, active webhook deployments 0, active webhook intents 0"
