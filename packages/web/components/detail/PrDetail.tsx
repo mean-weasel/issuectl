@@ -26,6 +26,10 @@ import { LabelManager } from "@/components/issue/LabelManager";
 import { OpenTerminalButton } from "@/components/terminal/OpenTerminalButton";
 import { launchAgentLabel } from "@/components/launch/agent";
 import type { WebhookAutomationHealth } from "@/lib/webhook-health";
+import {
+  CompletedSessionCard,
+  latestCompletedDeployment,
+} from "./CompletedSessionCard";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -57,6 +61,9 @@ export function PrDetail({
     ? "merged"
     : pull.state;
   const activeDeployment = deployments.find((deployment) => deployment.endedAt === null);
+  const completedDeployment = activeDeployment
+    ? null
+    : latestCompletedDeployment(deployments);
 
   return (
     <div className={styles.container}>
@@ -119,6 +126,16 @@ export function PrDetail({
               />
             )}
           </section>
+        )}
+
+        {completedDeployment && (
+          <CompletedSessionCard
+            owner={owner}
+            repo={repoName}
+            targetType="pr"
+            targetNumber={pull.number}
+            deployment={completedDeployment}
+          />
         )}
 
         {prState === "open" && (
