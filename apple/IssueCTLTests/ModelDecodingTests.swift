@@ -1530,7 +1530,30 @@ final class ModelDecodingTests: XCTestCase {
                     "triggered_by": "webhook",
                     "result_json": "{\\"summary\\":\\"No regressions\\",\\"fixedFindingCount\\":1}",
                     "started_at": 1777440000,
-                    "completed_at": 1777440300
+                    "completed_at": 1777440300,
+                    "deployment": {
+                        "id": 42,
+                        "repo_id": 7,
+                        "target_type": "pr",
+                        "target_number": 88,
+                        "target_label": "PR #88",
+                        "issue_number": null,
+                        "branch_name": "feature/review",
+                        "agent": "claude",
+                        "workspace_mode": "worktree",
+                        "workspace_path": "/tmp/review",
+                        "linked_pr_number": null,
+                        "state": "active",
+                        "terminal_backend": "ttyd",
+                        "triggered_by": "webhook",
+                        "parent_deployment_id": null,
+                        "webhook_depth": 0,
+                        "launched_at": "2026-05-29 02:53:42",
+                        "ended_at": null,
+                        "terminal_reason": null,
+                        "ttyd_port": 7717,
+                        "idle_since": null
+                    }
                 }
             ],
             "from_cache": false,
@@ -1544,6 +1567,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.reviewRuns[0].triggeredBy, .webhook)
         XCTAssertEqual(response.reviewRuns[0].reviewBaseSha, "base999")
         XCTAssertEqual(response.reviewRuns[0].completedHeadSha, "def456")
+        XCTAssertNil(response.reviewRuns[0].deployment?.issueNumber)
     }
 
     func testDiagnosticEventDecodingFromAutomationFixture() throws {
