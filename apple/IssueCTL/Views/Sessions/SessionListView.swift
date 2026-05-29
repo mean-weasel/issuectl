@@ -813,15 +813,11 @@ private struct DeploymentDiagnosticsSheet: View {
                 OfflineStatusBanner(message: staleDataMessage(kind: "diagnostics", cachedAt: response.cachedAt.flatMap(parseIssueCTLDate)))
             }
 
-            HStack(spacing: 8) {
-                Image(systemName: response.firstFailure == nil ? "checkmark.circle" : "exclamationmark.triangle")
-                    .foregroundStyle(response.firstFailure == nil ? Color.green : Color.orange)
-                Text(response.summaryText)
-                    .font(.subheadline.weight(.semibold))
+            DeploymentDiagnosticsSummaryCard(response: response)
+
+            if let filters = response.filters {
+                DeploymentDiagnosticsFiltersCard(filters: filters)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
 
             if response.events.isEmpty {
                 ContentUnavailableView {
@@ -883,6 +879,80 @@ private struct DeploymentDiagnosticsSheet: View {
     }
 }
 
+private struct DeploymentDiagnosticsSummaryCard: View {
+    let response: DeploymentDiagnosticsResponse
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: response.hasFailure ? "exclamationmark.triangle" : "checkmark.circle")
+                    .foregroundStyle(response.hasFailure ? Color.orange : Color.green)
+                Text(response.summaryText)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+            }
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                ForEach(Array(response.summaryRows.enumerated()), id: \.offset) { row in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(row.element.0)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(row.element.1)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier("deployment-diagnostics-summary")
+    }
+}
+
+private struct DeploymentDiagnosticsFiltersCard: View {
+    let filters: DiagnosticFilters
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Label("Request", systemImage: "line.3.horizontal.decrease.circle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 8)
+
+            Text(filters.targetDescription)
+                .font(.caption.monospaced())
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Text(filters.limitDescription)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("deployment-diagnostics-filters")
+    }
+}
+
 private struct DiagnosticEventCard: View {
     let event: DiagnosticEvent
 
@@ -897,7 +967,7 @@ private struct DiagnosticEventCard: View {
                     Text(event.event)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(2)
-                    Text("\(event.timeText) - \(event.source)")
+                    Text(eventContextText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -955,6 +1025,19 @@ private struct DiagnosticEventCard: View {
         case .warn: Color.orange
         case .error: Color.red
         }
+    }
+
+    private var eventContextText: String {
+        [
+            event.timeText,
+            event.source,
+            event.targetLabel,
+        ]
+        .compactMap { value in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
+        .joined(separator: " - ")
     }
 }
 
