@@ -1251,4 +1251,158 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertTrue(response.fromCache)
         XCTAssertEqual(response.cachedAt, "2026-04-27T00:00:00Z")
     }
+
+    // MARK: - Automation contracts
+
+    func testEnrichedDeploymentDecodingPreservesAutomationFields() throws {
+        let json = """
+        {
+            "id": 42,
+            "repo_id": 7,
+            "issue_number": null,
+            "target_type": "pr",
+            "target_number": 88,
+            "agent": "codex",
+            "terminal_backend": "pty_bridge",
+            "triggered_by": "comment_command",
+            "terminal_reason": "completed",
+            "parent_deployment_id": 12,
+            "webhook_depth": 1,
+            "idle_since": null,
+            "branch_name": "review/pr-88",
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/issuectl/pr-88",
+            "linked_pr_number": 88,
+            "state": "pending",
+            "launched_at": "2026-05-29T10:00:00.000Z",
+            "ended_at": null,
+            "completion_token": "token-redacted",
+            "completion_result_json": "{\\"status\\":\\"completed\\",\\"summary\\":\\"Reviewed changes.\\"}",
+            "notification_sent_at": "2026-05-29T10:05:00.000Z",
+            "ttyd_port": null,
+            "ttyd_pid": null,
+            "owner": "org",
+            "repo_name": "alpha"
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(ActiveDeployment.self, from: json)
+        XCTAssertEqual(deployment.targetType, .pr)
+        XCTAssertEqual(deployment.targetNumber, 88)
+        XCTAssertEqual(deployment.issueNumber, 88)
+        XCTAssertEqual(deployment.state, .pending)
+        XCTAssertEqual(deployment.triggeredBy, .commentCommand)
+        XCTAssertEqual(deployment.parentDeploymentId, 12)
+        XCTAssertEqual(deployment.completionToken, "token-redacted")
+        XCTAssertEqual(deployment.completionResultJson, #"{"status":"completed","summary":"Reviewed changes."}"#)
+        XCTAssertEqual(deployment.notificationSentAt, "2026-05-29T10:05:00.000Z")
+    }
+
+    func testWebhookEventDecodingFromAutomationFixture() throws {
+        let json = """
+        {
+            "events": [
+                {
+                    "id": 1001,
+                    "delivery_id": "delivery-1",
+                    "repo_id": 7,
+                    "event_type": "pull_request",
+                    "action": "synchronize",
+                    "sender_login": "octocat",
+                    "target_type": "pr",
+                    "target_number": 88,
+                    "payload_json": "{\\"pull_request\\":{\\"number\\":88}}",
+                    "received_at": 1777440000,
+                    "intent_id": 55
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(WebhookEventsResponse.self, from: json)
+        XCTAssertEqual(response.events.count, 1)
+        XCTAssertEqual(response.events[0].repoId, 7)
+        XCTAssertEqual(response.events[0].targetType, .pr)
+        XCTAssertEqual(response.events[0].payloadJson, #"{"pull_request":{"number":88}}"#)
+        XCTAssertFalse(response.fromCache)
+    }
+
+    func testReviewRunDecodingFromAutomationFixture() throws {
+        let json = """
+        {
+            "review_runs": [
+                {
+                    "id": 55,
+                    "repo_id": 7,
+                    "pr_number": 88,
+                    "deployment_id": 42,
+                    "started_head_sha": "abc123",
+                    "completed_head_sha": "def456",
+                    "review_base_sha": "base999",
+                    "reviewed_from_sha": "abc123",
+                    "reviewed_to_sha": "def456",
+                    "head_repo_full_name": "org/alpha",
+                    "head_ref": "feature/review",
+                    "status": "completed",
+                    "triggered_by": "webhook",
+                    "result_json": "{\\"summary\\":\\"No regressions\\",\\"fixedFindingCount\\":1}",
+                    "started_at": 1777440000,
+                    "completed_at": 1777440300
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunsResponse.self, from: json)
+        XCTAssertEqual(response.reviewRuns.count, 1)
+        XCTAssertEqual(response.reviewRuns[0].status, .completed)
+        XCTAssertEqual(response.reviewRuns[0].triggeredBy, .webhook)
+        XCTAssertEqual(response.reviewRuns[0].reviewBaseSha, "base999")
+        XCTAssertEqual(response.reviewRuns[0].completedHeadSha, "def456")
+    }
+
+    func testDiagnosticEventDecodingFromAutomationFixture() throws {
+        let json = """
+        {
+            "events": [
+                {
+                    "id": 9001,
+                    "timestamp": 1777440500,
+                    "level": "warn",
+                    "event": "agent.mutation_denied",
+                    "source": "agent.mutation",
+                    "correlation_id": "corr-1",
+                    "owner": "org",
+                    "repo": "alpha",
+                    "issue_number": null,
+                    "target_type": "pr",
+                    "target_number": 88,
+                    "deployment_id": 42,
+                    "session_name": "issuectl-42",
+                    "ttyd_port": null,
+                    "ttyd_pid": null,
+                    "status": "invalid_token",
+                    "message": "Agent mutation denied: invalid_token",
+                    "data": {
+                        "actionType": "push",
+                        "targetType": "pr",
+                        "targetNumber": 88
+                    }
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DiagnosticsResponse.self, from: json)
+        XCTAssertEqual(response.events.count, 1)
+        XCTAssertEqual(response.events[0].level, .warn)
+        XCTAssertEqual(response.events[0].targetType, .pr)
+        XCTAssertEqual(response.events[0].data?["actionType"], .string("push"))
+    }
 }

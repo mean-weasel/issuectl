@@ -354,6 +354,37 @@ final class APIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
+    // Depends on issue #546: these automation list endpoints are fixture-driven
+    // until the web API exposes dedicated list routes for native clients.
+    func webhookEvents(owner: String, repo: String) async throws -> WebhookEventsResponse {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/webhook/events")
+        return try decoder.decode(WebhookEventsResponse.self, from: data)
+    }
+
+    func reviewRuns(owner: String, repo: String) async throws -> ReviewRunsResponse {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/review-runs")
+        return try decoder.decode(ReviewRunsResponse.self, from: data)
+    }
+
+    func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
+        let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
+        return try decoder.decode(DiagnosticsResponse.self, from: data)
+    }
+
+    func agentMutation(body: AgentMutationRequestBody) async throws -> AgentMutationDecision {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/agent/mutations", method: "POST", body: bodyData)
+        return try decoder.decode(AgentMutationDecision.self, from: data)
+    }
+
+    func agentCompletion(body: AgentCompletionRequestBody) async throws -> AgentCompletionResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/agent/completion", method: "POST", body: bodyData)
+        clearActiveDeploymentsCache()
+        clearWorkbenchCache()
+        return try decoder.decode(AgentCompletionResponse.self, from: data)
+    }
+
     func workbench(refresh: Bool = false, maxAge: TimeInterval = 10) async throws -> WorkbenchPayload {
         let now = Date()
         if !refresh,
