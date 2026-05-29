@@ -607,9 +607,12 @@ private struct SessionControlsSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(deployment.targetLabel) Session")
+                Text(deployment.sessionRoleTitle)
                     .font(.title2.weight(.bold))
-                Text(deployment.repoFullName)
+                Text("\(deployment.repoFullName) \(deployment.targetLabel)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(deployment.provenanceSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

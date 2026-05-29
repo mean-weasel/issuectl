@@ -44,6 +44,20 @@ final class PRBrowseTests: XCTestCase {
     }
 
     @MainActor
+    func testPRDetailShowsActiveReviewSessionProvenance() {
+        server.seedPullRequestDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("prs-tab", label: "PRs", in: app)
+        assertElement("pr-row-7", existsIn: app, timeout: 8)
+        element("pr-row-7", in: app).tap()
+
+        XCTAssertTrue(app.staticTexts["Active Review Session"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Webhook - Codex - depth 1"].waitForExistence(timeout: 5), app.debugDescription)
+        assertElement("pr-review-session-open-9507", existsIn: app, timeout: 5)
+    }
+
+    @MainActor
     func testPRAutoReviewLabelControlTogglesAutomationLabel() {
         let app = launchApp(server: server)
 

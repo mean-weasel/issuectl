@@ -33,6 +33,16 @@ struct SessionRowView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
+            VStack(alignment: .leading, spacing: 4) {
+                Label(deployment.sessionRoleTitle, systemImage: deployment.isIssueTarget ? "number" : "arrow.triangle.merge")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(deployment.provenanceSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
             HStack(spacing: 10) {
                 sessionMetric(value: deployment.runningDuration, label: "Duration", systemImage: "clock")
 
