@@ -121,7 +121,7 @@ export function buildAgentEnvironment(input: {
 }): Record<string, string> {
   if (!input.completionToken) return {};
   const issuectlCli = resolveIssuectlCliPath();
-  const issuectlServerUrl = process.env.ISSUECTL_SERVER_URL?.trim();
+  const issuectlServerUrl = resolveIssuectlServerUrl();
   return {
     ISSUECTL_AGENT_TOKEN: input.completionToken,
     ISSUECTL_DEPLOYMENT_ID: String(input.deploymentId),
@@ -135,12 +135,23 @@ export function buildAgentEnvironment(input: {
   };
 }
 
-export function resolveIssuectlCliPath(env: NodeJS.ProcessEnv = process.env): string | undefined {
+export function resolveIssuectlCliPath(
+  env: NodeJS.ProcessEnv = process.env,
+  moduleUrl = import.meta.url,
+): string | undefined {
   const configured = env.ISSUECTL_CLI?.trim();
   if (configured) return configured;
-  const bundledCli = resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    "../../../cli/dist/index.js",
-  );
-  return existsSync(bundledCli) ? bundledCli : undefined;
+  const moduleDir = dirname(fileURLToPath(moduleUrl));
+  const candidates = [
+    resolve(moduleDir, "../../cli/dist/index.js"),
+    resolve(moduleDir, "../../../cli/dist/index.js"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
+function resolveIssuectlServerUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.ISSUECTL_SERVER_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  const port = env.PORT?.trim() || "3847";
+  return `http://localhost:${port}`;
 }
