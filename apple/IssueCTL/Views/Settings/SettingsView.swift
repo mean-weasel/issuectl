@@ -160,6 +160,7 @@ struct SettingsView: View {
                         RepoRow(repo: repo)
                     }
                     .tint(.primary)
+                    .accessibilityIdentifier("settings-repo-\(repo.id)")
                 }
                 .onDelete(perform: deleteRepos)
             }
@@ -350,6 +351,18 @@ private struct RepoRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                }
+
+                HStack(spacing: 6) {
+                    if repo.autoLaunchIssues {
+                        SetupStatusPill(title: "Issues", systemImage: "bolt.fill", tint: .green)
+                    }
+                    if repo.autoReviewPrs {
+                        SetupStatusPill(title: "PRs", systemImage: "checkmark.shield.fill", tint: IssueCTLColors.action)
+                    }
+                    if repo.webhookId != nil {
+                        SetupStatusPill(title: "Webhook", systemImage: "dot.radiowaves.left.and.right", tint: .purple)
+                    }
                 }
             }
 

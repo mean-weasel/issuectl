@@ -16,7 +16,7 @@ struct SessionRowView: View {
                 Text(deployment.repoFullName)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.primary)
-                Text("#\(deployment.issueNumber)")
+                Text(deployment.targetLabel)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)

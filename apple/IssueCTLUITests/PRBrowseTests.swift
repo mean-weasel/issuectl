@@ -44,6 +44,21 @@ final class PRBrowseTests: XCTestCase {
     }
 
     @MainActor
+    func testPRAutoReviewLabelControlTogglesAutomationLabel() {
+        let app = launchApp(server: server)
+
+        tapMainTab("prs-tab", label: "PRs", in: app)
+        assertElement("pr-row-7", existsIn: app, timeout: 8)
+        element("pr-row-7", in: app).tap()
+
+        assertElement("pr-auto-review-label-button", existsIn: app, timeout: 8)
+        tapElement("pr-auto-review-label-button", in: app)
+
+        XCTAssertTrue(app.staticTexts["Auto-review label applied"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(server.lastPullLabelAction, "add")
+    }
+
+    @MainActor
     func testPRFilterAndSearchButtons() {
         let app = launchApp(server: server)
 

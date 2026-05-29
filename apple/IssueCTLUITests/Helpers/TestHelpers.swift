@@ -38,15 +38,15 @@ func tapMainTab(
     file: StaticString = #filePath,
     line: UInt = #line
 ) {
-    let identifiedTab = element(identifier, in: app)
-    if identifiedTab.exists {
-        identifiedTab.tap()
-        return
-    }
-
     let labeledTab = app.tabBars.buttons[label]
     if labeledTab.exists {
         labeledTab.tap()
+        return
+    }
+
+    let identifiedTab = element(identifier, in: app)
+    if identifiedTab.exists {
+        identifiedTab.tap()
         return
     }
 
@@ -161,13 +161,13 @@ func assertRepoContext(_ expectedValue: String, in app: XCUIApplication) {
 
 @MainActor
 func dismissRestoredModal(in app: XCUIApplication) {
-    if app.buttons["terminal-done-button"].waitForExistence(timeout: 1) {
+    if app.buttons["terminal-done-button"].exists {
         app.buttons["terminal-done-button"].tap()
     }
-    if app.buttons["launch-cancel-button"].waitForExistence(timeout: 1) {
+    if app.buttons["launch-cancel-button"].exists {
         app.buttons["launch-cancel-button"].tap()
     }
-    if app.buttons["settings-done-button"].waitForExistence(timeout: 1) {
+    if app.buttons["settings-done-button"].exists {
         app.buttons["settings-done-button"].tap()
     }
 }

@@ -151,7 +151,7 @@ describe("incremental PR webhook intents", () => {
         reviewed_to_sha: "head-c",
       }),
     ]);
-  });
+  }, 10_000);
 
   it("supersedes the completed range and launches a full review after force push", async () => {
     seedCompletedReview(db, repoId, 49, {

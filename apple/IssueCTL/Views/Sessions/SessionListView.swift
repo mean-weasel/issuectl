@@ -43,7 +43,7 @@ struct SessionListView: View {
         let matchingItems = items.filter { deployment in
             [
                 deployment.repoFullName,
-                "#\(deployment.issueNumber)",
+                deployment.targetLabel,
                 deployment.branchName,
                 deployment.ttydPort.map(String.init) ?? "starting",
             ]
@@ -76,6 +76,10 @@ struct SessionListView: View {
         return "\(names[0]), \(names[1]) +\(names.count - 2)"
     }
 
+    private var activeRepoFullNames: [String] {
+        Array(Set(deployments.filter(\.isActive).map(\.repoFullName))).sorted()
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
@@ -87,8 +91,8 @@ struct SessionListView: View {
 
                 RepoContextStrip(
                     repos: repos,
+                    activeRepoFullNames: activeRepoFullNames,
                     valueOverride: selectedRepoSummary,
-                    showsActiveSummary: false,
                     onTap: { showFiltersSheet = true }
                 )
 
@@ -136,7 +140,7 @@ struct SessionListView: View {
                                     ContentUnavailableView {
                                         Label("No Matching Sessions", systemImage: "magnifyingglass")
                                     } description: {
-                                        Text("Try another repo, issue number, branch, or port.")
+                                        Text("Try another repo, target number, branch, or port.")
                                     } actions: {
                                         Button(hasActiveFilters ? "Clear Filters" : "Clear Search", action: resetFiltersAndSearch)
                                     }
@@ -168,6 +172,9 @@ struct SessionListView: View {
             }
             .navigationDestination(for: IssueDestination.self) { dest in
                 IssueDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
+            }
+            .navigationDestination(for: PRDestination.self) { dest in
+                PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
             .task { await load() }
             .task(id: scenePhase) {
@@ -204,13 +211,21 @@ struct SessionListView: View {
                         sessionControlsTarget = nil
                         openTerminal(deployment)
                     },
-                    onViewIssue: {
+                    onViewTarget: {
                         sessionControlsTarget = nil
-                        navigationPath.append(IssueDestination(
-                            owner: deployment.owner,
-                            repo: deployment.repoName,
-                            number: deployment.issueNumber
-                        ))
+                        if deployment.isIssueTarget {
+                            navigationPath.append(IssueDestination(
+                                owner: deployment.owner,
+                                repo: deployment.repoName,
+                                number: deployment.issueNumber
+                            ))
+                        } else {
+                            navigationPath.append(PRDestination(
+                                owner: deployment.owner,
+                                repo: deployment.repoName,
+                                number: deployment.targetNumber
+                            ))
+                        }
                     },
                     onEnd: {
                         Task {
@@ -460,7 +475,9 @@ struct SessionListView: View {
                 deploymentId: deployment.id,
                 owner: deployment.owner,
                 repo: deployment.repoName,
-                issueNumber: deployment.issueNumber
+                issueNumber: deployment.issueNumber,
+                targetType: deployment.targetType,
+                targetNumber: deployment.targetNumber
             )
             deployments.removeAll { $0.id == deployment.id }
             if let port = deployment.ttydPort {
@@ -584,13 +601,13 @@ private struct SessionControlsSheet: View {
     let deployment: ActiveDeployment
     let isEnding: Bool
     let onOpenTerminal: () -> Void
-    let onViewIssue: () -> Void
+    let onViewTarget: () -> Void
     let onEnd: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("#\(deployment.issueNumber) Session")
+                Text("\(deployment.targetLabel) Session")
                     .font(.title2.weight(.bold))
                 Text(deployment.repoFullName)
                     .font(.caption)
@@ -602,6 +619,7 @@ private struct SessionControlsSheet: View {
                     title: "Open Terminal",
                     subtitle: deployment.ttydPort.map { "Port \($0)" } ?? "Terminal is still preparing.",
                     systemImage: "terminal",
+                    accessibilityIdentifier: "session-open-terminal-\(deployment.id)",
                     isDisabled: deployment.ttydPort == nil,
                     action: onOpenTerminal
                 )
@@ -609,10 +627,13 @@ private struct SessionControlsSheet: View {
                 Divider()
 
                 sheetAction(
-                    title: "View Issue",
-                    subtitle: "Jump to #\(deployment.issueNumber) without losing this session.",
-                    systemImage: "number",
-                    action: onViewIssue
+                    title: deployment.isIssueTarget ? "View Issue" : "View Pull Request",
+                    subtitle: deployment.isIssueTarget
+                        ? "Jump to #\(deployment.issueNumber) without losing this session."
+                        : "Open PR #\(deployment.targetNumber) without losing this session.",
+                    systemImage: deployment.isIssueTarget ? "number" : "arrow.triangle.merge",
+                    accessibilityIdentifier: "session-target-action-\(deployment.id)",
+                    action: onViewTarget
                 )
 
                 Divider()
@@ -637,6 +658,7 @@ private struct SessionControlsSheet: View {
                     .padding(12)
                 }
                 .disabled(isEnding)
+                .accessibilityIdentifier("session-end-\(deployment.id)")
             }
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
@@ -649,6 +671,7 @@ private struct SessionControlsSheet: View {
         title: String,
         subtitle: String,
         systemImage: String,
+        accessibilityIdentifier: String,
         isDisabled: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
@@ -673,5 +696,6 @@ private struct SessionControlsSheet: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.55 : 1)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 }

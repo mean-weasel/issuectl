@@ -122,8 +122,28 @@ final class TestableAPIClient {
         return try decoder.decode(GitHubAccessibleReposResponse.self, from: data)
     }
 
-    func updateRepo(owner: String, name: String, localPath: String, branchPattern: String) async throws -> Repo {
-        let body = UpdateRepoRequest(localPath: localPath, branchPattern: branchPattern)
+    func updateRepo(
+        owner: String,
+        name: String,
+        localPath: String? = nil,
+        branchPattern: String? = nil,
+        autoLaunchIssues: Bool? = nil,
+        autoReviewPrs: Bool? = nil,
+        issueAgent: LaunchAgent? = nil,
+        reviewAgent: LaunchAgent? = nil,
+        reviewPreamble: String? = nil,
+        webhookPayloadMode: WebhookPayloadMode? = nil
+    ) async throws -> Repo {
+        let body = UpdateRepoRequest(
+            localPath: localPath,
+            branchPattern: branchPattern,
+            autoLaunchIssues: autoLaunchIssues,
+            autoReviewPrs: autoReviewPrs,
+            issueAgent: issueAgent,
+            reviewAgent: reviewAgent,
+            reviewPreamble: reviewPreamble,
+            webhookPayloadMode: webhookPayloadMode
+        )
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(name)", method: "PATCH", body: bodyData)
         let response = try decoder.decode(UpdateRepoResponse.self, from: data)
@@ -131,6 +151,34 @@ final class TestableAPIClient {
             throw APIError.serverError(400, response.error ?? "Failed to update repository")
         }
         return repo
+    }
+
+    func workbench() async throws -> WorkbenchPayload {
+        let (data, _) = try await request(path: "/api/v1/workbench")
+        return try decoder.decode(WorkbenchPayload.self, from: data)
+    }
+
+    func configureWebhook(owner: String, repo: String, action: WebhookAction) async throws -> WebhookConfigurationResponse {
+        let bodyData = try JSONEncoder().encode(WebhookActionRequest(action: action))
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/webhook", method: "POST", body: bodyData)
+        return try decoder.decode(WebhookConfigurationResponse.self, from: data)
+    }
+
+    func webhookHealth(owner: String, repo: String) async throws -> WebhookAutomationHealth {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/webhook/health")
+        return try decoder.decode(WebhookHealthResponse.self, from: data).health
+    }
+
+    func recreateRepoLabels(owner: String, repo: String) async throws -> RepoLabelsRecreateResponse {
+        let bodyData = try JSONEncoder().encode(RecreateRepoLabelsRequest())
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/labels", method: "POST", body: bodyData)
+        return try decoder.decode(RepoLabelsRecreateResponse.self, from: data)
+    }
+
+    func togglePullLabel(owner: String, repo: String, number: Int, body: ToggleLabelRequestBody) async throws -> ToggleLabelResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/pulls/\(owner)/\(repo)/\(number)/labels", method: "POST", body: bodyData)
+        return try decoder.decode(ToggleLabelResponse.self, from: data)
     }
 
     func getSettings() async throws -> [String: String] {
@@ -378,6 +426,24 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.sessionPreviews()
+    }
+
+    @MainActor
+    func testWorkbenchEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/workbench"))
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {"repos":[],"deployments":[],"previews":{},"settings":{},"health":{"ok":true,"version":null,"timestamp":null,"error":null},"user":{"login":null,"error":null},"generatedAt":"2026-04-27T00:00:00Z"}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        let payload = try await client.workbench()
+        XCTAssertTrue(payload.repos.isEmpty)
+        XCTAssertTrue(payload.health.ok)
     }
 
     // MARK: - Successful Responses

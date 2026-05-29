@@ -119,6 +119,7 @@ func runningDeployment(
 ) -> ActiveDeployment? {
     deployments.first {
         $0.isActive &&
+        $0.targetType == .issue &&
         $0.repoFullName == repoFullName &&
         $0.issueNumber == issue.number
     }
@@ -132,6 +133,7 @@ func runningDeployment(
 ) -> ActiveDeployment? {
     deployments.first {
         $0.isActive &&
+        $0.targetType == .issue &&
         $0.owner == owner &&
         $0.repoName == repo &&
         $0.issueNumber == number

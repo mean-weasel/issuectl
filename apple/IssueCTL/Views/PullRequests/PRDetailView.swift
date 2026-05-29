@@ -16,6 +16,9 @@ struct PRDetailView: View {
     @State private var showCommentSheet = false
     @State private var showMergeConfirm = false
     @State private var actionError: String?
+    @State private var repoAutomation: Repo?
+    @State private var automationWebhookHealth: WebhookAutomationHealth?
+    @State private var isTogglingAutomationLabel = false
 
     var body: some View {
         Group {
@@ -42,6 +45,7 @@ struct PRDetailView: View {
                             headerSection(detail.pull)
                             branchSection(detail.pull)
                             reviewStatusSection(detail)
+                            automationLabelSection(detail.pull)
                             bodySection(detail.pull)
                             if !detail.checks.isEmpty {
                                 checksSection(detail.checks)
@@ -176,6 +180,25 @@ struct PRDetailView: View {
             )
             .accessibilityIdentifier("pr-detail-review-status-card")
         }
+    }
+
+    @ViewBuilder
+    private func automationLabelSection(_ pull: GitHubPull) -> some View {
+        let kind = AutomationLabelKind.prAutoReview
+        let isApplied = pull.labels.contains { $0.name == kind.labelName }
+
+        AutomationLabelStatusCard(
+            kind: kind,
+            isApplied: isApplied,
+            isAutomationEnabled: repoAutomation?.autoReviewPrs ?? false,
+            webhookSummary: automationWebhookSummary,
+            isToggling: isTogglingAutomationLabel,
+            buttonIdentifier: "pr-auto-review-label-button",
+            onToggle: {
+                Task { await togglePRAutomationLabel(isApplied: isApplied) }
+            }
+        )
+        .accessibilityIdentifier("pr-auto-review-label-card")
     }
 
     @ViewBuilder
@@ -411,11 +434,65 @@ struct PRDetailView: View {
         isLoading = true
         errorMessage = nil
         do {
-            detail = try await api.pullDetail(owner: owner, repo: repo, number: number, refresh: refresh)
+            async let detailResult = api.pullDetail(owner: owner, repo: repo, number: number, refresh: refresh)
+            async let reposResult: Result<[Repo], Error> = {
+                do { return .success(try await api.repos()) }
+                catch { return .failure(error) }
+            }()
+            async let webhookHealthResult: Result<WebhookAutomationHealth, Error> = {
+                do { return .success(try await api.webhookHealth(owner: owner, repo: repo)) }
+                catch { return .failure(error) }
+            }()
+
+            detail = try await detailResult
+            switch await reposResult {
+            case .success(let repos):
+                repoAutomation = repos.first { $0.owner == owner && $0.name == repo }
+            case .failure:
+                repoAutomation = nil
+            }
+            switch await webhookHealthResult {
+            case .success(let health):
+                automationWebhookHealth = health
+            case .failure:
+                automationWebhookHealth = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private var automationWebhookSummary: String? {
+        if let automationWebhookHealth {
+            return automationWebhookHealth.summary
+        }
+        if repoAutomation?.webhookId == nil {
+            return "Webhook not installed"
+        }
+        return nil
+    }
+
+    private func togglePRAutomationLabel(isApplied: Bool) async {
+        guard !isTogglingAutomationLabel else { return }
+        isTogglingAutomationLabel = true
+        actionError = nil
+        defer { isTogglingAutomationLabel = false }
+
+        do {
+            let body = ToggleLabelRequestBody(
+                label: AutomationLabelKind.prAutoReview.labelName,
+                action: isApplied ? "remove" : "add"
+            )
+            let response = try await api.togglePullLabel(owner: owner, repo: repo, number: number, body: body)
+            if response.success {
+                await load(refresh: true)
+            } else {
+                actionError = response.error ?? "Failed to update auto-review label"
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
     }
 
     private func approve() async {
