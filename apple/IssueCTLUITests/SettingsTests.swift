@@ -69,6 +69,11 @@ final class SettingsTests: XCTestCase {
         revealElement("edit-repo-webhook-health-button", in: app)
         tapElement("edit-repo-webhook-health-button", in: app)
         XCTAssertTrue(app.staticTexts["Webhook not verified"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Latest delivery"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "issues labeled")).firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+        assertElement("edit-repo-webhook-activity", existsIn: app, timeout: 5)
+        XCTAssertTrue(app.staticTexts["Recent activity"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "mock-delivery")).firstMatch.waitForExistence(timeout: 5), app.debugDescription)
 
         revealElement("edit-repo-recreate-labels-button", in: app)
         tapElement("edit-repo-recreate-labels-button", in: app)
