@@ -38,6 +38,7 @@
 		23988D605A2821DBAE05F3FE /* EditCommentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B19DB112594A978EE5AF5B /* EditCommentSheet.swift */; };
 		23D942475A1170ACA34A2C42 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5695C48F5E921940A3CBDA5A /* AppVersion.swift */; };
 		23EAF525A8ADA655565F610F /* BranchNameHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41112C39357ED8D8B331352 /* BranchNameHelper.swift */; };
+		2431D2D3CD1D8C0AA5CE544D /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF141F6D9A6899512B98F4 /* OfflineSyncService.swift */; };
 		2460ABA7F82EAE25FC756C3C /* APIClient+Priority.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13DA6D6632CDEBCF8A5BEB2 /* APIClient+Priority.swift */; };
 		250D0308D12F0EE129E4C7E2 /* MacIssuesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A60283ECC077E01E26EAC1 /* MacIssuesView.swift */; };
 		25A88772F8BE82458C3B5052 /* AssigneeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE9191D87F0834C417E13B0 /* AssigneeSheet.swift */; };
@@ -51,6 +52,7 @@
 		2C6227E7E0F80BD2182521C9 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E556B4EF9EA078249A82EF01 /* NetworkMonitor.swift */; };
 		2C7A9A16CF290C19E722BD37 /* SessionManagementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CEF9A9D19EA4BD4284C8F00 /* SessionManagementTests.swift */; };
 		2DB5F8C9697670EC9F57E8BB /* Deployment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7F190EE0A4BF58DFDEA250 /* Deployment.swift */; };
+		2F64054CA40B9D66D299C895 /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF141F6D9A6899512B98F4 /* OfflineSyncService.swift */; };
 		317FBE7551EB60A27BE9BEC0 /* CommentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13760098C8ED1658B27AD54B /* CommentSheet.swift */; };
 		31F1727D0042386D7B07C93A /* CacheAgeLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2841D89323711B68449BB980 /* CacheAgeLabel.swift */; };
 		327EF2CAB79710212AEE37A6 /* ParseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2FEDC36ACDF7207272AE3 /* ParseView.swift */; };
@@ -155,6 +157,7 @@
 		ABD4FEB7F53690ECF6E60CDC /* MacSidebarTextScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49CDE37EDB8F4EA3712FE68E /* MacSidebarTextScale.swift */; };
 		AC365E4994FF7C90DE1AB835 /* IssueCommentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488FA6CF4785A8769D688726 /* IssueCommentSheet.swift */; };
 		AC8A27DFD7686F7350A8B4D3 /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39EDF1F24285C1D3795B24B1 /* TestHelpers.swift */; };
+		ACD6A402572A722BE2F41480 /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAF141F6D9A6899512B98F4 /* OfflineSyncService.swift */; };
 		AFAB97B43E866DC13C3F8563 /* DisplaySidebarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D358F5D75299EF3D754F99D5 /* DisplaySidebarCoordinator.swift */; };
 		B0B4D310A36FCCDF3F73C336 /* CacheAgeLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2841D89323711B68449BB980 /* CacheAgeLabel.swift */; };
 		B1F252A9CAEFE3AEBAD72627 /* APIClient+AdvancedSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35F92CAF45ECF0BED4F462D /* APIClient+AdvancedSettings.swift */; };
@@ -190,7 +193,6 @@
 		C9D9618A4076FAE0E98D71AC /* MacIssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF37A7CB40F1701C4C149CE2 /* MacIssueDetailView.swift */; };
 		CA0880B76E28E6276050AEB3 /* IssueCTLMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AB7A2B9999184E67A3064A /* IssueCTLMacApp.swift */; };
 		CAB1C0D607788F1D1314C3E5 /* MacSidebarSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0E8C15D2965C1673B992B7 /* MacSidebarSmokeTests.swift */; };
-		CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		CC16C63936A1F4ECDEB3133E /* NotificationPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2438738AD84484EC2E7B20C9 /* NotificationPreferences.swift */; };
 		CC83F861B2A764DB8AA4FC4A /* IssueRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4FF2A59CF2F42F9977FE4D /* IssueRowView.swift */; };
 		CCD66F76181E54FD2700F813 /* MacSidebarPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C02C0464A65420CBD5D90E /* MacSidebarPreferencesTests.swift */; };
@@ -204,7 +206,6 @@
 		D365E6F4AACBF2399319E5BC /* GitHubAccessibleRepo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F2045894076CF711FE18DAA /* GitHubAccessibleRepo.swift */; };
 		D44F79649E736044B57946F0 /* APIClient+DetailActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493D2F4114A7CD0C28DC8F76 /* APIClient+DetailActions.swift */; };
 		D52DC5DDE3BE88CF966B0675 /* IssueCTLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864FC68F504BF4FA08B86548 /* IssueCTLUITests.swift */; };
-		D54371BD0B51A23079CEEEFF /* OfflineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */; };
 		D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF815A24660864A5AA69B05 /* LaunchProgressView.swift */; };
 		D9D891AEA02391C6479319B5 /* NotificationSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B8353783F6D7E7BC9420E5 /* NotificationSettingsStore.swift */; };
 		D9E454235B1E43451B1B9597 /* NotificationPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2438738AD84484EC2E7B20C9 /* NotificationPreferences.swift */; };
@@ -359,8 +360,8 @@
 		941E84F1DD44B81B044A9963 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		959347AB556CB71BEA308105 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
 		9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditRepoSheet.swift; sourceTree = "<group>"; };
-		9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncService.swift; sourceTree = "<group>"; };
 		9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestChangesSheet.swift; sourceTree = "<group>"; };
+		9FAF141F6D9A6899512B98F4 /* OfflineSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncService.swift; sourceTree = "<group>"; };
 		A225C37217DC60896282FCA4 /* APIClient+ImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+ImageUpload.swift"; sourceTree = "<group>"; };
 		A857FE28B9D50395BE2B49FA /* APIClient+Assignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Assignment.swift"; sourceTree = "<group>"; };
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -490,7 +491,6 @@
 			isa = PBXGroup;
 			children = (
 				61B8353783F6D7E7BC9420E5 /* NotificationSettingsStore.swift */,
-				9D18AA45E02B78332950BEDE /* OfflineSyncService.swift */,
 				BC1D044DCA62B13F4196F816 /* SetupLink.swift */,
 			);
 			path = Services;
@@ -614,6 +614,7 @@
 				CAB04FB5543994CCE2DE041E /* KeychainService.swift */,
 				E556B4EF9EA078249A82EF01 /* NetworkMonitor.swift */,
 				C4E7EDBC4DCA5DCEF3D3EA2D /* OfflineCacheStore.swift */,
+				9FAF141F6D9A6899512B98F4 /* OfflineSyncService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1136,7 +1137,7 @@
 				55AEB0B56C5CDDF6FD4B7B0F /* NotificationSettingsView.swift in Sources */,
 				54858A7D5CD383BE094BC9CA /* OfflineCacheStore.swift in Sources */,
 				9EE10C9DAB5A8E58DFFD571E /* OfflineQueueView.swift in Sources */,
-				D54371BD0B51A23079CEEEFF /* OfflineSyncService.swift in Sources */,
+				2431D2D3CD1D8C0AA5CE544D /* OfflineSyncService.swift in Sources */,
 				2B4C13B0BF6A1A03B8D80F28 /* OnboardingView.swift in Sources */,
 				A9B2111D17EC7F6C48EEE268 /* PRDetailView.swift in Sources */,
 				65142BB24364562CB5305E0F /* PRListView.swift in Sources */,
@@ -1223,7 +1224,7 @@
 				54C6FF5A24ED1F784D022F19 /* NotificationSettingsView.swift in Sources */,
 				62B5079DBAD2F4DE311C4075 /* OfflineCacheStore.swift in Sources */,
 				7DCCB51EE3C4FBCD4C6719A3 /* OfflineQueueView.swift in Sources */,
-				CB1BD4038692E9AD73D95C1B /* OfflineSyncService.swift in Sources */,
+				2F64054CA40B9D66D299C895 /* OfflineSyncService.swift in Sources */,
 				227F5D726370EBF5F1C55F98 /* OnboardingView.swift in Sources */,
 				B5F6E35A791604A67AB43860 /* PRDetailView.swift in Sources */,
 				29142761332EA217923C5D78 /* PRListView.swift in Sources */,
@@ -1339,6 +1340,7 @@
 				B4AF2A85F0768942BCD81D8C /* NetworkMonitor.swift in Sources */,
 				D9E454235B1E43451B1B9597 /* NotificationPreferences.swift in Sources */,
 				3F98C9896C5653D619ABA40F /* OfflineCacheStore.swift in Sources */,
+				ACD6A402572A722BE2F41480 /* OfflineSyncService.swift in Sources */,
 				74BBC81070D4A029011534E6 /* PerformanceTrace.swift in Sources */,
 				B3D5E3FD4EF67AE7FA0244FA /* PullRequest.swift in Sources */,
 				358CDAE5EB531763716F6364 /* PushDevice.swift in Sources */,
