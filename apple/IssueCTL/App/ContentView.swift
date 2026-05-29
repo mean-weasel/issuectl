@@ -34,6 +34,11 @@ struct ContentView: View {
                         .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("today-tab")
+                    Tab("Board", systemImage: "rectangle.grid.2x2", value: AppTab.board) {
+                        BoardView(onShowSettings: { showSettings = true })
+                            .ignoresSafeArea(.container, edges: .bottom)
+                    }
+                    .accessibilityIdentifier("board-tab")
                     Tab("Issues", systemImage: "list.bullet", value: AppTab.issues) {
                         IssueListView(onShowSettings: { showSettings = true })
                             .ignoresSafeArea(.container, edges: .bottom)
@@ -112,6 +117,7 @@ struct ContentView: View {
 
 private enum AppTab: Hashable {
     case today
+    case board
     case issues
     case pullRequests
     case active

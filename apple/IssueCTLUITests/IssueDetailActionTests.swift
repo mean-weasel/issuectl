@@ -174,6 +174,21 @@ final class IssueDetailActionTests: XCTestCase {
     }
 
     @MainActor
+    func testIssueAutoLaunchLabelControlTogglesAutomationLabel() {
+        let app = launchApp(server: server)
+
+        openIssuesSection(in: app)
+        assertElement("issue-row-101", existsIn: app, timeout: 8)
+        element("issue-row-101", in: app).tap()
+
+        assertElement("issue-auto-launch-label-button", existsIn: app, timeout: 8)
+        tapElement("issue-auto-launch-label-button", in: app)
+
+        XCTAssertTrue(app.staticTexts["Auto-launch label applied"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(server.lastIssueLabelAction, "add")
+    }
+
+    @MainActor
     private func openClosedIssue101(in app: XCUIApplication) {
         let openTab = element("section-tab-open", in: app)
         XCTAssertTrue(openTab.waitForExistence(timeout: 8), app.debugDescription)

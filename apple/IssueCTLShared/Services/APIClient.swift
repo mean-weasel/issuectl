@@ -14,6 +14,9 @@ final class APIClient {
     var cachedActiveDeployments: ActiveDeploymentsResponse?
     var cachedActiveDeploymentsExpiresAt: Date?
     var activeDeploymentsTask: Task<ActiveDeploymentsResponse, Error>?
+    var cachedWorkbench: WorkbenchPayload?
+    var cachedWorkbenchExpiresAt: Date?
+    var workbenchTask: Task<WorkbenchPayload, Error>?
     var isConfigured: Bool {
         !serverURL.isEmpty && !apiToken.isEmpty
     }
@@ -44,6 +47,7 @@ final class APIClient {
         clearCurrentUserCache()
         clearReposCache()
         clearActiveDeploymentsCache()
+        clearWorkbenchCache()
         try KeychainService.save(key: "serverURL", value: url)
         try KeychainService.save(key: "apiToken", value: token)
     }
@@ -55,6 +59,7 @@ final class APIClient {
         clearCurrentUserCache()
         clearReposCache()
         clearActiveDeploymentsCache()
+        clearWorkbenchCache()
         KeychainService.delete(key: "serverURL")
         KeychainService.delete(key: "apiToken")
     }
@@ -78,6 +83,13 @@ final class APIClient {
         cachedActiveDeploymentsExpiresAt = nil
         activeDeploymentsTask?.cancel()
         activeDeploymentsTask = nil
+    }
+
+    func clearWorkbenchCache() {
+        cachedWorkbench = nil
+        cachedWorkbenchExpiresAt = nil
+        workbenchTask?.cancel()
+        workbenchTask = nil
     }
 
     private var baseURL: URL? {
@@ -342,6 +354,42 @@ final class APIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
+    func workbench(refresh: Bool = false, maxAge: TimeInterval = 10) async throws -> WorkbenchPayload {
+        let now = Date()
+        if !refresh,
+           let cachedWorkbench,
+           let cachedWorkbenchExpiresAt,
+           now < cachedWorkbenchExpiresAt {
+            return cachedWorkbench
+        }
+
+        if !refresh, let workbenchTask {
+            return try await workbenchTask.value
+        }
+
+        let task = Task { @MainActor in
+            let (data, _) = try await request(path: "/api/v1/workbench")
+            let payload = try decoder.decode(WorkbenchPayload.self, from: data)
+            offlineCache.save(payload, for: "workbench", serverURL: serverURL)
+            return payload
+        }
+        workbenchTask = task
+
+        do {
+            let payload = try await task.value
+            cachedWorkbench = payload
+            cachedWorkbenchExpiresAt = Date().addingTimeInterval(maxAge)
+            workbenchTask = nil
+            return payload
+        } catch {
+            workbenchTask = nil
+            if let cached = offlineCache.load(WorkbenchPayload.self, for: "workbench", serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
+    }
+
     func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/launch/\(owner)/\(repo)/\(number)", method: "POST", body: bodyData)
@@ -349,11 +397,25 @@ final class APIClient {
         return try decoder.decode(LaunchResponse.self, from: data)
     }
 
-    func endSession(deploymentId: Int, owner: String, repo: String, issueNumber: Int) async throws -> EndSessionResponse {
-        let body = EndSessionRequestBody(owner: owner, repo: repo, issueNumber: issueNumber)
+    func endSession(
+        deploymentId: Int,
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        targetType: DeploymentTargetType = .issue,
+        targetNumber: Int? = nil
+    ) async throws -> EndSessionResponse {
+        let body = EndSessionRequestBody(
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber,
+            targetType: targetType,
+            targetNumber: targetNumber
+        )
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/deployments/\(deploymentId)/end", method: "POST", body: bodyData)
         clearActiveDeploymentsCache()
+        clearWorkbenchCache()
         return try decoder.decode(EndSessionResponse.self, from: data)
     }
 

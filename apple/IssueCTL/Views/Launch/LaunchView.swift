@@ -619,6 +619,7 @@ struct LaunchView: View {
         let response = try await api.activeDeployments()
         return response.deployments.first {
             $0.isActive &&
+            $0.targetType == .issue &&
             $0.owner == owner &&
             $0.repoName == repo &&
             $0.issueNumber == issueNumber

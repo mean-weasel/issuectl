@@ -225,6 +225,123 @@ final class APIClientExtensionTests: XCTestCase {
     }
 
     @MainActor
+    func testUpdateRepoSendsAutomationFields() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl")
+            XCTAssertEqual(request.httpMethod, "PATCH")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["autoLaunchIssues"] as? Bool, true)
+            XCTAssertEqual(json["autoReviewPrs"] as? Bool, true)
+            XCTAssertEqual(json["issueAgent"] as? String, "codex")
+            XCTAssertEqual(json["reviewAgent"] as? String, "claude")
+            XCTAssertEqual(json["webhookPayloadMode"] as? String, "raw")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":{"id":7,"owner":"mean-weasel","name":"issuectl","local_path":"/Users/me/issuectl","branch_pattern":"feature/{{number}}","auto_launch_issues":true,"auto_review_prs":true,"issue_agent":"codex","review_agent":"claude","webhook_id":44,"webhook_payload_mode":"raw","review_preamble":"Review carefully.","created_at":"2026-05-14T00:00:00Z"}}
+            """.data(using: .utf8)!)
+        }
+
+        let repo = try await client.updateRepo(
+            owner: "mean-weasel",
+            name: "issuectl",
+            autoLaunchIssues: true,
+            autoReviewPrs: true,
+            issueAgent: .codex,
+            reviewAgent: .claude,
+            reviewPreamble: "Review carefully.",
+            webhookPayloadMode: .raw
+        )
+
+        XCTAssertTrue(repo.autoLaunchIssues)
+        XCTAssertTrue(repo.autoReviewPrs)
+        XCTAssertEqual(repo.webhookId, 44)
+        XCTAssertEqual(repo.webhookPayloadMode, .raw)
+    }
+
+    @MainActor
+    func testWebhookHealthUsesRepoHealthEndpoint() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/webhook/health")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            return (self.makeResponse(url: request.url!), """
+            {"health":{"state":"warning","summary":"Webhook missing","detail":"Install it","recovery":"Create webhook","expectedUrl":"https://hooks.example/api/webhook/github/7","hookId":null,"githubUrl":null,"latestDelivery":null}}
+            """.data(using: .utf8)!)
+        }
+
+        let health = try await client.webhookHealth(owner: "mean-weasel", repo: "issuectl")
+
+        XCTAssertEqual(health.state, "warning")
+        XCTAssertEqual(health.summary, "Webhook missing")
+        XCTAssertFalse(health.isOK)
+    }
+
+    @MainActor
+    func testConfigureWebhookSendsAction() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/webhook")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["action"] as? String, "rotate")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":null,"webhook":{"id":123,"url":"https://hooks.example/api/webhook/github/7","created_by":"alice"},"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.configureWebhook(owner: "mean-weasel", repo: "issuectl", action: .rotate)
+
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.webhook?.id, 123)
+    }
+
+    @MainActor
+    func testRecreateRepoLabelsSendsAction() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/labels")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["action"] as? String, "recreate")
+
+            return (self.makeResponse(url: request.url!), #"{"success":true,"error":null}"#.data(using: .utf8)!)
+        }
+
+        let response = try await client.recreateRepoLabels(owner: "mean-weasel", repo: "issuectl")
+
+        XCTAssertTrue(response.success)
+    }
+
+    @MainActor
+    func testTogglePullLabelUsesPullLabelEndpoint() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/pulls/mean-weasel/issuectl/44/labels")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["label"] as? String, "issuectl:auto-review")
+            XCTAssertEqual(json["action"] as? String, "add")
+
+            return (self.makeResponse(url: request.url!), #"{"success":true,"error":null}"#.data(using: .utf8)!)
+        }
+
+        let response = try await client.togglePullLabel(
+            owner: "mean-weasel",
+            repo: "issuectl",
+            number: 44,
+            body: ToggleLabelRequestBody(label: "issuectl:auto-review", action: "add")
+        )
+
+        XCTAssertTrue(response.success)
+    }
+
+    @MainActor
     func testRemoveRepoSendsDeleteAndSurfacesFailure() async throws {
         var calls = 0
         MockURLProtocol.requestHandler = { request in
