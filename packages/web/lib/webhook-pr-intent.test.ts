@@ -348,6 +348,67 @@ describe("PR webhook intents", () => {
     expect(queryDiagnosticEvents(db, { events: ["webhook.pr_session_ended"] })).toHaveLength(1);
   });
 
+  it("skips closed PR intents without requiring the deleted same-repo head branch", async () => {
+    const getBranch = vi.fn(async () => {
+      throw new Error("Branch not found - https://docs.github.com/rest/branches/branches#get-a-branch");
+    });
+    coreMocks.withAuthRetry.mockImplementation((fn: (octokit: unknown) => Promise<unknown>) =>
+      fn({
+        rest: {
+          pulls: {
+            get: async () => ({
+              data: {
+                title: "Closed QA PR",
+                body: null,
+                state: "closed",
+                draft: false,
+                labels: [],
+                head: {
+                  ref: "issuectl-pr-auto-review-qa-deleted",
+                  sha: "head-b",
+                  repo: { full_name: "mean-weasel/issuectl" },
+                },
+                base: {
+                  ref: "main",
+                  sha: "base-a",
+                  repo: { full_name: "mean-weasel/issuectl", default_branch: "main" },
+                },
+              },
+            }),
+          },
+          repos: { getBranch },
+        },
+      }),
+    );
+    const event = recordWebhookEvent(db, {
+      deliveryId: "delivery-pr-close-deleted-head",
+      repoId,
+      eventType: "pull_request",
+      action: "closed",
+      targetType: "pr",
+      targetNumber: 51,
+      receivedAt: 2_000,
+    });
+    const intentId = mergeWebhookIntent(db, {
+      repoId,
+      targetType: "pr",
+      targetNumber: 51,
+      signalAt: 2_000,
+      scheduledAt: 2_000,
+      desiredHeadSha: "head-b",
+      eventId: event.deduped ? null : event.eventId,
+    });
+
+    const result = await runWebhookIntentWorkerOnce(db, 2_000, {});
+
+    expect(result).toEqual(expect.objectContaining({ claimed: 1, skippedOptout: 1, failed: 0 }));
+    expect(getBranch).not.toHaveBeenCalled();
+    expect(getIntentRow(db, intentId)).toEqual(
+      expect.objectContaining({ status: "skipped_optout", deployment_id: null }),
+    );
+    expect(queryDiagnosticEvents(db, { events: ["webhook.skipped_optout"] })).toHaveLength(1);
+  });
+
   it("does not end comment-command PR sessions on webhook opt-out", async () => {
     const deploymentId = recordDeployment(db, {
       repoId,

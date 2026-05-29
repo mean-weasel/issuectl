@@ -269,7 +269,8 @@ async function fetchPullState(repo: Repo, prNumber: number): Promise<PullState> 
     };
     const headRepoFullName = d.head.repo?.full_name ?? "";
     const baseRepoFullName = d.base.repo?.full_name ?? `${repo.owner}/${repo.name}`;
-    const headProtected = headRepoFullName === baseRepoFullName
+    const shouldCheckHeadProtection = d.state === "open" && headRepoFullName === baseRepoFullName;
+    const headProtected = shouldCheckHeadProtection
       ? Boolean((await octokit.rest.repos.getBranch({
         owner: repo.owner,
         repo: repo.name,
