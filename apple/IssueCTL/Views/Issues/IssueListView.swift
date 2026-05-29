@@ -5,6 +5,7 @@ struct IssueListView: View {
     @Environment(NetworkMonitor.self) private var network
     @Environment(OfflineSyncService.self) private var offlineSync
     let onShowSettings: () -> Void
+    @Binding private var route: AppRoute?
 
     @State private var repos: [Repo] = []
     @State private var issuesByRepo: [String: [GitHubIssue]] = [:]
@@ -55,6 +56,11 @@ struct IssueListView: View {
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
     private typealias RepoIssueLoadResult = (fullName: String, name: String, issues: [GitHubIssue]?, cachedAt: String?, fromCache: Bool, error: Error?)
+
+    init(onShowSettings: @escaping () -> Void, route: Binding<AppRoute?> = .constant(nil)) {
+        self.onShowSettings = onShowSettings
+        _route = route
+    }
 
     private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
         runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
@@ -375,6 +381,10 @@ struct IssueListView: View {
                 if let s = IssueSection(rawValue: storedSection) { section = s }
                 if let s = SortOrder(rawValue: storedSortOrder) { sortOrder = s }
                 mineOnly = storedMineOnly
+                consumeRouteIfNeeded(route)
+            }
+            .onChange(of: route) { _, newRoute in
+                consumeRouteIfNeeded(newRoute)
             }
             .onChange(of: section) { _, new in
                 displayLimit = pageSize
@@ -722,6 +732,13 @@ struct IssueListView: View {
         selectedRepoIds.removeAll()
         sortOrder = .updated
         mineOnly = false
+    }
+
+    private func consumeRouteIfNeeded(_ route: AppRoute?) {
+        guard case let .issue(owner, repo, number) = route else { return }
+        navigationPath = NavigationPath()
+        navigationPath.append(IssueDestination(owner: owner, repo: repo, number: number))
+        self.route = nil
     }
 
     private func prepareLaunch(owner: String, repo: String, number: Int, title: String) async {

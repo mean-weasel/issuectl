@@ -1,11 +1,21 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 extension Notification.Name {
     static let apnsDeviceTokenReceived = Notification.Name("issuectl.apnsDeviceTokenReceived")
+    static let notificationResponseReceived = Notification.Name("issuectl.notificationResponseReceived")
 }
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
@@ -27,6 +37,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             object: nil,
             userInfo: ["error": error.localizedDescription]
         )
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        NotificationCenter.default.post(
+            name: .notificationResponseReceived,
+            object: nil,
+            userInfo: response.notification.request.content.userInfo
+        )
+        completionHandler()
     }
 }
 

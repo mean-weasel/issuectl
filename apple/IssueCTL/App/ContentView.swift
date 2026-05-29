@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(OfflineSyncService.self) private var offlineSync
     @State private var selectedTab: AppTab = .today
     @State private var showSettings = false
+    @State private var pendingRoute: AppRoute?
     private let launchNotificationSyncDelay: Duration = .seconds(1)
 
     init() {
@@ -40,12 +41,18 @@ struct ContentView: View {
                     }
                     .accessibilityIdentifier("board-tab")
                     Tab("Issues", systemImage: "list.bullet", value: AppTab.issues) {
-                        IssueListView(onShowSettings: { showSettings = true })
+                        IssueListView(
+                            onShowSettings: { showSettings = true },
+                            route: $pendingRoute
+                        )
                             .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("issues-tab")
                     Tab("PRs", systemImage: "arrow.triangle.merge", value: AppTab.pullRequests) {
-                        PRListView(onShowSettings: { showSettings = true })
+                        PRListView(
+                            onShowSettings: { showSettings = true },
+                            route: $pendingRoute
+                        )
                             .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("prs-tab")
@@ -94,9 +101,13 @@ struct ContentView: View {
             Task { await offlineSync.syncPendingActions() }
         }
         .onOpenURL { url in
-            guard let setup = SetupLink(url: url) else { return }
-            try? api.configure(url: setup.serverURL, token: setup.token)
-            Task { await notificationSettings.syncRegistration(apiClient: api) }
+            if let setup = SetupLink(url: url) {
+                try? api.configure(url: setup.serverURL, token: setup.token)
+                Task { await notificationSettings.syncRegistration(apiClient: api) }
+                return
+            }
+            guard let route = AppRoute(url: url) else { return }
+            handle(route)
         }
         .task {
             try? await Task.sleep(for: launchNotificationSyncDelay)
@@ -111,6 +122,30 @@ struct ContentView: View {
             guard let token = notification.userInfo?["token"] as? String else { return }
             notificationSettings.updateDeviceToken(token)
             Task { await notificationSettings.syncRegistration(apiClient: api) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .notificationResponseReceived)) { notification in
+            guard let route = AppRoute(notificationUserInfo: notification.userInfo ?? [:]) else { return }
+            handle(route)
+        }
+    }
+
+    private func handle(_ route: AppRoute) {
+        switch route {
+        case .issue:
+            selectedTab = .issues
+            pendingRoute = route
+        case .pullRequest:
+            selectedTab = .pullRequests
+            pendingRoute = route
+        case .board:
+            selectedTab = .board
+            pendingRoute = nil
+        case .sessions:
+            selectedTab = .active
+            pendingRoute = nil
+        case .reviews:
+            selectedTab = .today
+            pendingRoute = nil
         }
     }
 }
