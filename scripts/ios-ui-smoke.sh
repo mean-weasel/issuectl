@@ -52,6 +52,7 @@ FULL_TESTS=(
   "$UI_TEST_TARGET/IssueCTLUITests/testListToolbarActionsAreReachableFromTabs"
   "$UI_TEST_TARGET/IssueCTLUITests/testTodayActiveSessionsThumbButtonOpensSessions"
   "$UI_TEST_TARGET/IssueCTLUITests/testLaunchingIssueCanBeReenteredFromActiveSessions"
+  "$UI_TEST_TARGET/IssueCTLUITests/testAutomationParityFixtureShowsAvailableSessionStates"
   "$UI_TEST_TARGET/IssueCTLUITests/testMultipleLaunchedIssueSessionsRemainAvailableFromActiveSessions"
   "$UI_TEST_TARGET/IssueCTLUITests/testRunningIssueDetailShowsReentryInsteadOfLaunch"
 )

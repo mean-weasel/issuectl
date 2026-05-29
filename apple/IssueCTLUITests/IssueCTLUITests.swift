@@ -159,6 +159,30 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testAutomationParityFixtureShowsAvailableSessionStates() {
+        server.seedAutomationParitySessions()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9401", existsIn: app, timeout: 8)
+        assertElement("session-reenter-terminal-9402", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9407", existsIn: app, timeout: 5)
+
+        XCTAssertTrue(
+            app.staticTexts["Running"].waitForExistence(timeout: 8),
+            "Manual active session state missing\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Idle"].waitForExistence(timeout: 5),
+            "Webhook idle session state missing\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Error"].waitForExistence(timeout: 5),
+            "Comment command error session state missing\n\(app.debugDescription)"
+        )
+    }
+
+    @MainActor
     func testRepoContextIsVisibleAcrossPrimaryTabs() {
         server.seedSecondRepo()
         server.seedActiveDeployment()

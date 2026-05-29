@@ -873,6 +873,22 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(payload.user.login, "alice")
     }
 
+    func testAutomationParityWorkbenchFixtureDecoding() throws {
+        let fixture = try loadFixtureData("automation-parity-workbench")
+
+        let payload = try decoder.decode(WorkbenchPayload.self, from: fixture)
+
+        XCTAssertEqual(payload.repos.count, 2)
+        XCTAssertEqual(payload.deployments.compactMap(\.triggeredBy), [.manual, .webhook, .commentCommand])
+        XCTAssertEqual(payload.deployments.map(\.targetType), [.issue, .issue, .pr])
+        XCTAssertEqual(payload.deployments[1].parentDeploymentId, 9401)
+        XCTAssertEqual(payload.deployments[1].webhookDepth, 1)
+        XCTAssertEqual(payload.previews["19002"]?.status, .idle)
+        XCTAssertEqual(payload.repos[0].webhookEvents[0].targetType, .issue)
+        XCTAssertEqual(payload.repos[0].prReviews[0].triggeredBy, .webhook)
+        XCTAssertEqual(payload.repos[1].autoLaunchIssues, false)
+    }
+
     func testSessionPreviewsResponseDecoding() throws {
         let json = """
         {
@@ -902,6 +918,15 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.previewsByPort[7701]?.status, .unavailable)
         XCTAssertEqual(response.previewsByPort[7701]?.status.displayName, "Unavailable")
         XCTAssertEqual(response.previewsByPort[7701]?.status.accessibilityName, "preview unavailable")
+    }
+
+    private func loadFixtureData(_ name: String) throws -> Data {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let fixtureURL = testFile
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures")
+            .appendingPathComponent("\(name).json")
+        return try Data(contentsOf: fixtureURL)
     }
 
     // MARK: - GitHubAccessibleRepo

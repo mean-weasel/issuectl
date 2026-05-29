@@ -173,6 +173,46 @@ final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
+    func seedAutomationParitySessions() {
+        hiddenPreviewIssueNumbers = []
+        repos = [defaultRepo, betaRepo]
+        activeDeployments = [
+            automationParityDeployment(
+                id: 9401,
+                targetType: "issue",
+                targetNumber: 501,
+                issueNumber: 501,
+                triggeredBy: "manual",
+                webhookDepth: 0,
+                previewStatus: "active",
+                previewLines: ["issue #501: manual launch", "agent is running"]
+            ),
+            automationParityDeployment(
+                id: 9402,
+                targetType: "issue",
+                targetNumber: 502,
+                issueNumber: 502,
+                triggeredBy: "webhook",
+                parentDeploymentId: 9401,
+                webhookDepth: 1,
+                previewStatus: "idle",
+                previewLines: ["issue #502: webhook label", "waiting for changes"]
+            ),
+            automationParityDeployment(
+                id: 9407,
+                targetType: "pr",
+                targetNumber: 7,
+                issueNumber: nil,
+                triggeredBy: "comment_command",
+                terminalReason: "review",
+                parentDeploymentId: 9402,
+                webhookDepth: 2,
+                previewStatus: "error",
+                previewLines: ["PR #7: /issuectl review", "automation command failed"]
+            ),
+        ]
+    }
+
     func seedDeploymentWithMissingPreview() {
         activeDeployments = [deployment(issueNumber: 101)]
         hiddenPreviewIssueNumbers = [101]
@@ -853,6 +893,47 @@ final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
+    func automationParityDeployment(
+        id: Int,
+        targetType: String,
+        targetNumber: Int,
+        issueNumber: Int?,
+        triggeredBy: String,
+        terminalReason: String? = nil,
+        parentDeploymentId: Int? = nil,
+        webhookDepth: Int,
+        previewStatus: String,
+        previewLines: [String]
+    ) -> [String: Any] {
+        [
+            "id": id,
+            "repo_id": 1,
+            "issue_number": issueNumber ?? NSNull(),
+            "target_type": targetType,
+            "target_number": targetNumber,
+            "agent": "codex",
+            "terminal_backend": "ttyd",
+            "triggered_by": triggeredBy,
+            "terminal_reason": terminalReason ?? NSNull(),
+            "parent_deployment_id": parentDeploymentId ?? NSNull(),
+            "webhook_depth": webhookDepth,
+            "idle_since": previewStatus == "idle" ? "2026-04-29 08:05:00" : NSNull(),
+            "branch_name": targetType == "pr" ? "pr-\(targetNumber)-review" : branchName(for: targetNumber),
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/alpha-automation-\(targetNumber)",
+            "linked_pr_number": NSNull(),
+            "state": "active",
+            "launched_at": "2026-04-29 08:00:00",
+            "ended_at": NSNull(),
+            "ttyd_port": 19000 + (id - 9400),
+            "ttyd_pid": 13000 + id,
+            "owner": "org",
+            "repo_name": "alpha",
+            "preview_status": previewStatus,
+            "preview_lines": previewLines,
+        ]
+    }
+
     func workbenchPayload() -> [String: Any] {
         [
             "drafts": drafts,
@@ -1017,14 +1098,15 @@ final class MockIssueCTLServer: @unchecked Sendable {
             let targetNumber = (deployment["target_number"] as? Int) ?? (deployment["issue_number"] as? Int) ?? 0
             guard !hiddenPreviewIssueNumbers.contains(targetNumber) else { continue }
             let targetLabel = targetType == "pr" ? "PR #\(targetNumber)" : "issue #\(targetNumber)"
+            let lines = deployment["preview_lines"] as? [String] ?? [
+                "\(targetLabel): running checks",
+                targetNumber == 101 ? "pass: launch handoff" : "waiting for agent output",
+            ]
             previews[String(port)] = [
-                "lines": [
-                    "\(targetLabel): running checks",
-                    targetNumber == 101 ? "pass: launch handoff" : "waiting for agent output",
-                ],
+                "lines": lines,
                 "lastUpdatedMs": 1_777_800_000_000,
                 "lastChangedMs": 1_777_799_999_000,
-                "status": targetNumber == 102 ? "idle" : "active",
+                "status": deployment["preview_status"] as? String ?? (targetNumber == 102 ? "idle" : "active"),
             ]
         }
         return previews
