@@ -621,13 +621,53 @@ struct DeploymentDiagnosticsResponse: Codable, Sendable {
         events.first(where: \.isFailure)
     }
 
+    var hasFailure: Bool {
+        if let errorCount = summary?.levelCount(for: .error), errorCount > 0 {
+            return true
+        }
+        return firstFailure != nil
+    }
+
+    var summaryEventCount: Int {
+        summary?.count ?? events.count
+    }
+
     var summaryText: String {
-        guard !events.isEmpty else { return "No diagnostic events recorded yet" }
-        let countLabel = events.count == 1 ? "1 diagnostic event" : "\(events.count) diagnostic events"
+        guard summaryEventCount > 0 else { return "No diagnostic events recorded yet" }
+        let countLabel = summaryEventCount == 1 ? "1 diagnostic event" : "\(summaryEventCount) diagnostic events"
+        if let errorCount = summary?.levelCount(for: .error), errorCount > 0 {
+            let errorLabel = errorCount == 1 ? "1 error" : "\(errorCount) errors"
+            return "\(countLabel), \(errorLabel)"
+        }
         if let firstFailure {
             return "\(countLabel), first failure: \(firstFailure.event)"
         }
+        if let warningCount = summary?.levelCount(for: .warn), warningCount > 0 {
+            let warningLabel = warningCount == 1 ? "1 warning" : "\(warningCount) warnings"
+            return "\(countLabel), \(warningLabel), no error recorded"
+        }
         return "\(countLabel), no failure recorded"
+    }
+
+    var summaryRows: [(String, String)] {
+        var rows: [(String, String)] = [("Events", "\(summaryEventCount)")]
+        if let summary {
+            for level in [DiagnosticLevel.error, .warn, .info, .debug] {
+                let count = summary.levelCount(for: level)
+                if count > 0 {
+                    rows.append((level.summaryLabel, "\(count)"))
+                }
+            }
+            if let filters {
+                rows.append(("Limit", filters.limitDescription))
+            }
+            if let latest = summary.latestTimestampIso ?? summary.latestTimestampText {
+                rows.append(("Latest", latest))
+            }
+        } else if let filters {
+            rows.append(("Limit", filters.limitDescription))
+        }
+        return rows
     }
 }
 
@@ -636,6 +676,20 @@ struct DiagnosticFilters: Codable, Sendable {
     let targetType: DeploymentTargetType?
     let targetNumber: Int?
     let limit: Int
+
+    var targetDescription: String {
+        guard let targetType, let targetNumber else { return "Deployment only" }
+        switch targetType {
+        case .issue:
+            return "Issue #\(targetNumber)"
+        case .pr:
+            return "PR #\(targetNumber)"
+        }
+    }
+
+    var limitDescription: String {
+        "Latest \(limit)"
+    }
 }
 
 struct DiagnosticSummary: Codable, Sendable {
@@ -643,6 +697,32 @@ struct DiagnosticSummary: Codable, Sendable {
     let levelCounts: [String: Int]
     let latestTimestamp: Int?
     let latestTimestampIso: String?
+
+    func levelCount(for level: DiagnosticLevel) -> Int {
+        levelCounts[level.rawValue] ?? 0
+    }
+
+    var latestTimestampText: String? {
+        guard let latestTimestamp else { return nil }
+        let rawTimestamp = Double(latestTimestamp)
+        let seconds = rawTimestamp > 10_000_000_000 ? rawTimestamp / 1000 : rawTimestamp
+        return DateFormatter.localizedString(
+            from: Date(timeIntervalSince1970: seconds),
+            dateStyle: .none,
+            timeStyle: .medium
+        )
+    }
+}
+
+private extension DiagnosticLevel {
+    var summaryLabel: String {
+        switch self {
+        case .debug: "Debug"
+        case .info: "Info"
+        case .warn: "Warnings"
+        case .error: "Errors"
+        }
+    }
 }
 
 enum SessionPreviewStatus: String, Codable, Sendable {

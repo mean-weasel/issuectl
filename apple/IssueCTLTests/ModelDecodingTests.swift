@@ -703,6 +703,49 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.summaryText, "No diagnostic events recorded yet")
     }
 
+    func testDeploymentDiagnosticsSummaryUsesServerSummaryAndFilters() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 101,
+              "timestamp": 1780000000000,
+              "level": "info",
+              "event": "deployment.activated",
+              "message": "Deployment activated",
+              "deployment_id": 42,
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "metadata": {"ttydPort": 49152}
+            }
+          ],
+          "filters": {
+            "deployment_id": 42,
+            "target_type": "issue",
+            "target_number": 560,
+            "limit": 1
+          },
+          "summary": {
+            "count": 3,
+            "level_counts": {"info": 1, "warn": 1, "error": 1},
+            "latest_timestamp": 1780000000000,
+            "latest_timestamp_iso": "2026-05-29T20:26:40.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertEqual(response.summaryText, "3 diagnostic events, 1 error")
+        XCTAssertEqual(response.summaryRows.map(\.0), ["Events", "Errors", "Warnings", "Info", "Limit", "Latest"])
+        XCTAssertEqual(response.summaryRows.map(\.1), ["3", "1", "1", "1", "Latest 1", "2026-05-29T20:26:40.000Z"])
+        XCTAssertEqual(response.filters?.targetDescription, "Issue #560")
+        XCTAssertEqual(response.filters?.limitDescription, "Latest 1")
+        XCTAssertTrue(response.hasFailure)
+        XCTAssertTrue(response.events[0].metadataRows.contains { $0.0 == "ttydPort" && $0.1 == "49152" })
+    }
+
     // MARK: - ActiveDeployment
 
     func testActiveDeploymentDecoding() throws {
