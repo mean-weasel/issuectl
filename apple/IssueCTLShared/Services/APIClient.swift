@@ -356,13 +356,39 @@ final class APIClient {
 
     // Depends on issue #546: these automation list endpoints are fixture-driven
     // until the web API exposes dedicated list routes for native clients.
-    func webhookEvents(owner: String, repo: String) async throws -> WebhookEventsResponse {
-        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/webhook/events")
+    func webhookEvents(
+        owner: String,
+        repo: String,
+        targetType: DeploymentTargetType? = nil,
+        targetNumber: Int? = nil,
+        limit: Int = 50
+    ) async throws -> WebhookEventsResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/repos/\(owner)/\(repo)/webhook/events"
+        components.queryItems = [
+            targetType.map { URLQueryItem(name: "targetType", value: $0.rawValue) },
+            targetNumber.map { URLQueryItem(name: "targetNumber", value: String($0)) },
+            URLQueryItem(name: "limit", value: String(limit))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
         return try decoder.decode(WebhookEventsResponse.self, from: data)
     }
 
-    func reviewRuns(owner: String, repo: String) async throws -> ReviewRunsResponse {
-        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/review-runs")
+    func reviewRuns(
+        owner: String,
+        repo: String,
+        pr: Int? = nil,
+        status: ReviewRunStatusFilter = .all,
+        limit: Int = 24
+    ) async throws -> ReviewRunsResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/repos/\(owner)/\(repo)/review-runs"
+        components.queryItems = [
+            pr.map { URLQueryItem(name: "pr", value: String($0)) },
+            URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "limit", value: String(limit))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
         return try decoder.decode(ReviewRunsResponse.self, from: data)
     }
 

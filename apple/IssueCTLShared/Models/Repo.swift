@@ -305,31 +305,91 @@ struct WebhookEvent: Codable, Identifiable, Sendable {
     let id: Int
     let deliveryId: String
     let repoId: Int
+    let repoFullName: String?
+    let owner: String?
+    let repoName: String?
     let eventType: String
     let action: String?
     let senderLogin: String?
     let targetType: DeploymentTargetType?
     let targetNumber: Int?
+    let targetLabel: String?
     let payloadJson: String?
     let receivedAt: Int
+    let receivedAtIso: String?
     let intentId: Int?
+    let result: String?
+    let resultDetail: String?
+    let actionId: String?
+    let intent: WebhookIntentSummary?
 }
 
 struct WebhookEventsResponse: Codable, Sendable {
     let events: [WebhookEvent]
+    let repos: [RepoContractSummary]
+    let filters: WebhookEventFilters?
+    let summary: WebhookEventSummary?
     let fromCache: Bool
     let cachedAt: String?
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         events = try container.decode([WebhookEvent].self, forKey: .events)
+        repos = try container.decodeIfPresent([RepoContractSummary].self, forKey: .repos) ?? []
+        filters = try container.decodeIfPresent(WebhookEventFilters.self, forKey: .filters)
+        summary = try container.decodeIfPresent(WebhookEventSummary.self, forKey: .summary)
         fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
         cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case events, fromCache, cachedAt
+        case events, repos, filters, summary, fromCache, cachedAt
     }
+}
+
+struct RepoContractSummary: Codable, Identifiable, Sendable {
+    let id: Int
+    let fullName: String
+}
+
+struct WebhookIntentSummary: Codable, Identifiable, Sendable {
+    let id: Int
+    let status: String
+    let targetType: DeploymentTargetType
+    let targetNumber: Int
+    let targetLabel: String
+    let firstSignalAt: Int
+    let firstSignalAtIso: String
+    let lastSignalAt: Int
+    let lastSignalAtIso: String
+    let scheduledAt: Int
+    let scheduledAtIso: String
+    let processingStartedAt: Int?
+    let processingStartedAtIso: String?
+    let leaseExpiresAt: Int?
+    let leaseExpiresAtIso: String?
+    let resolvedAt: Int?
+    let resolvedAtIso: String?
+    let generation: Int
+    let requestedAgent: String?
+    let reviewMode: String?
+    let signalCount: Int
+    let deploymentId: Int?
+    let failureReason: String?
+}
+
+struct WebhookEventFilters: Codable, Sendable {
+    let repo: String?
+    let targetType: DeploymentTargetType?
+    let targetNumber: Int?
+    let limit: Int
+}
+
+struct WebhookEventSummary: Codable, Sendable {
+    let count: Int
+    let latestReceivedAt: Int?
+    let latestReceivedAtIso: String?
+    let resultCounts: [String: Int]
 }
 
 enum ReviewRunStatus: String, Codable, CaseIterable, Sendable {
@@ -341,23 +401,46 @@ enum ReviewRunStatus: String, Codable, CaseIterable, Sendable {
     case superseded
 }
 
+enum ReviewRunStatusFilter: String, CaseIterable, Identifiable, Sendable {
+    case all
+    case reserved
+    case launching
+    case inProgress = "in_progress"
+    case completed
+    case failed
+    case superseded
+
+    var id: String { rawValue }
+}
+
 struct ReviewRun: Codable, Identifiable, Sendable {
     let id: Int
     let repoId: Int
+    let repoFullName: String?
+    let owner: String?
+    let repoName: String?
     let prNumber: Int
     let deploymentId: Int?
     let startedHeadSha: String?
     let completedHeadSha: String?
-    let reviewBaseSha: String
+    let reviewBaseSha: String?
     let reviewedFromSha: String?
     let reviewedToSha: String
-    let headRepoFullName: String
-    let headRef: String
+    let headRepoFullName: String?
+    let headRef: String?
     let status: ReviewRunStatus
     let triggeredBy: DeploymentTrigger
+    let result: [String: JSONValue]?
     let resultJson: String?
+    let summary: String?
+    let findingCount: Int?
+    let rangeLabel: String?
+    let detailHref: String?
     let startedAt: Int
+    let startedAtIso: String?
     let completedAt: Int?
+    let completedAtIso: String?
+    let deployment: ReviewRunDeployment?
 }
 
 struct ReviewRunsResponse: Codable, Sendable {
@@ -377,6 +460,30 @@ struct ReviewRunsResponse: Codable, Sendable {
     }
 }
 
+struct ReviewRunDeployment: Codable, Identifiable, Sendable {
+    let id: Int
+    let repoId: Int
+    let targetType: DeploymentTargetType
+    let targetNumber: Int
+    let targetLabel: String
+    let issueNumber: Int
+    let branchName: String
+    let agent: LaunchAgent?
+    let workspaceMode: WorkspaceMode
+    let workspacePath: String
+    let linkedPrNumber: Int?
+    let state: DeploymentState
+    let terminalBackend: String?
+    let triggeredBy: DeploymentTrigger?
+    let parentDeploymentId: Int?
+    let webhookDepth: Int?
+    let launchedAt: String
+    let endedAt: String?
+    let terminalReason: String?
+    let ttydPort: Int?
+    let idleSince: String?
+}
+
 enum DiagnosticLevel: String, Codable, CaseIterable, Sendable {
     case debug
     case info
@@ -387,9 +494,10 @@ enum DiagnosticLevel: String, Codable, CaseIterable, Sendable {
 struct DiagnosticEvent: Codable, Identifiable, Sendable {
     let id: Int
     let timestamp: Int
+    let timestampIso: String?
     let level: DiagnosticLevel
     let event: String
-    let source: String
+    let source: String?
     let correlationId: String?
     let owner: String?
     let repo: String?
@@ -402,7 +510,33 @@ struct DiagnosticEvent: Codable, Identifiable, Sendable {
     let ttydPid: Int?
     let status: String?
     let message: String?
+    let serverTargetLabel: String?
+    let metadata: [String: JSONValue]?
     let data: [String: JSONValue]?
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case timestamp
+        case timestampIso
+        case level
+        case event
+        case source
+        case correlationId
+        case owner
+        case repo
+        case issueNumber
+        case targetType
+        case targetNumber
+        case deploymentId
+        case sessionName
+        case ttydPort
+        case ttydPid
+        case status
+        case message
+        case serverTargetLabel = "targetLabel"
+        case metadata
+        case data
+    }
 }
 
 struct DiagnosticsResponse: Codable, Sendable {

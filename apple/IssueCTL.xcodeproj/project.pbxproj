@@ -31,6 +31,7 @@
 		1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */; };
 		1F5CD736DCA791429CB2F501 /* Repo.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC54A0EAA1EEB03CA4C70E1E /* Repo.swift */; };
 		20B9C47DF425B4A135A52965 /* ImageLightbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39642CB180355E5C62A75E /* ImageLightbox.swift */; };
+		213D75960BBDC6390A8C8F89 /* automation-parity-workbench.json in Resources */ = {isa = PBXBuildFile; fileRef = 341333B18AD52B87BA8F67A7 /* automation-parity-workbench.json */; };
 		22192A28A190D660B52AAEDA /* WorkbenchStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CEBD2A9CA0D417DCD4FFEB4 /* WorkbenchStoreTests.swift */; };
 		227F5D726370EBF5F1C55F98 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD234C4632456D401809E8A5 /* OnboardingView.swift */; };
 		22B99716E42E20F0DA147C5B /* MacSidebarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04E7DE3BF0A6826FE986B1D /* MacSidebarStore.swift */; };
@@ -307,6 +308,7 @@
 		2CF8C3C59744B61C3B659ECD /* APIClient+Drafts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Drafts.swift"; sourceTree = "<group>"; };
 		2D10373E745B3E9EC223B684 /* IssueCTLPreview.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTLPreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3403F8C644518F599E01A976 /* ReassignSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReassignSheet.swift; sourceTree = "<group>"; };
+		341333B18AD52B87BA8F67A7 /* automation-parity-workbench.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "automation-parity-workbench.json"; sourceTree = "<group>"; };
 		3518E82E2F76B696A0CACFEB /* LabelManagementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabelManagementSheet.swift; sourceTree = "<group>"; };
 		364C3F577D49589A381F15B4 /* SessionRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRowView.swift; sourceTree = "<group>"; };
 		39EDF1F24285C1D3795B24B1 /* TestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
@@ -539,6 +541,7 @@
 				244DA774E9D8E1B7695BD3BA /* OfflineSyncServiceTests.swift */,
 				F63680089A3314AB67CE5883 /* ViewLogicTests.swift */,
 				0CEBD2A9CA0D417DCD4FFEB4 /* WorkbenchStoreTests.swift */,
+				E0CFA3689097EA6A905B89C7 /* Fixtures */,
 			);
 			path = IssueCTLTests;
 			sourceTree = "<group>";
@@ -725,6 +728,14 @@
 			path = IssueCTLMac;
 			sourceTree = "<group>";
 		};
+		E0CFA3689097EA6A905B89C7 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				341333B18AD52B87BA8F67A7 /* automation-parity-workbench.json */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
 		E149D3B1F961F064D7101362 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -829,6 +840,7 @@
 			buildConfigurationList = 188108183A585BD066C9C064 /* Build configuration list for PBXNativeTarget "IssueCTLTests" */;
 			buildPhases = (
 				0CFDDAD5B48B63CD070021C8 /* Sources */,
+				F96391E9EA82A34928D0341B /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1020,6 +1032,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				CF85E149379CEBC2696FFAF6 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F96391E9EA82A34928D0341B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				213D75960BBDC6390A8C8F89 /* automation-parity-workbench.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

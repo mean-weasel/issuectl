@@ -543,6 +543,7 @@ extension DiagnosticEvent {
     }
 
     var targetLabel: String? {
+        if let serverTargetLabel { return serverTargetLabel }
         guard let targetType, let targetNumber else { return nil }
         switch targetType {
         case .issue: return "#\(targetNumber)"
@@ -571,17 +572,34 @@ extension DiagnosticEvent {
                 }
             }
         }
+        if let metadata {
+            for key in metadata.keys.sorted() {
+                if let value = metadata[key] {
+                    rows.append((key, value.displayValue))
+                }
+            }
+        }
         return rows
     }
 }
 
 struct DeploymentDiagnosticsResponse: Codable, Sendable {
     let events: [DiagnosticEvent]
+    let filters: DiagnosticFilters?
+    let summary: DiagnosticSummary?
     let fromCache: Bool
     let cachedAt: String?
 
-    init(events: [DiagnosticEvent], fromCache: Bool = false, cachedAt: String? = nil) {
+    init(
+        events: [DiagnosticEvent],
+        filters: DiagnosticFilters? = nil,
+        summary: DiagnosticSummary? = nil,
+        fromCache: Bool = false,
+        cachedAt: String? = nil
+    ) {
         self.events = events
+        self.filters = filters
+        self.summary = summary
         self.fromCache = fromCache
         self.cachedAt = cachedAt
     }
@@ -589,12 +607,14 @@ struct DeploymentDiagnosticsResponse: Codable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         events = try container.decode([DiagnosticEvent].self, forKey: .events)
+        filters = try container.decodeIfPresent(DiagnosticFilters.self, forKey: .filters)
+        summary = try container.decodeIfPresent(DiagnosticSummary.self, forKey: .summary)
         fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
         cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case events, fromCache, cachedAt
+        case events, filters, summary, fromCache, cachedAt
     }
 
     var firstFailure: DiagnosticEvent? {
@@ -609,6 +629,20 @@ struct DeploymentDiagnosticsResponse: Codable, Sendable {
         }
         return "\(countLabel), no failure recorded"
     }
+}
+
+struct DiagnosticFilters: Codable, Sendable {
+    let deploymentId: Int?
+    let targetType: DeploymentTargetType?
+    let targetNumber: Int?
+    let limit: Int
+}
+
+struct DiagnosticSummary: Codable, Sendable {
+    let count: Int
+    let levelCounts: [String: Int]
+    let latestTimestamp: Int?
+    let latestTimestampIso: String?
 }
 
 enum SessionPreviewStatus: String, Codable, Sendable {
