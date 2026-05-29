@@ -855,6 +855,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
     func workbenchPayload() -> [String: Any] {
         [
+            "drafts": drafts,
             "repos": repos.map { repo in
                 let repoId = repo["id"] as? Int ?? 0
                 let owner = repo["owner"] as? String ?? "org"

@@ -75,6 +75,7 @@ struct ReposResponse: Codable, Sendable {
 }
 
 struct WorkbenchPayload: Codable, Sendable {
+    let drafts: [Draft]
     let repos: [WorkbenchRepo]
     let deployments: [ActiveDeployment]
     let previews: [String: SessionPreview]
@@ -82,6 +83,38 @@ struct WorkbenchPayload: Codable, Sendable {
     let health: WorkbenchHealth
     let user: WorkbenchUser
     let generatedAt: String
+
+    init(
+        drafts: [Draft],
+        repos: [WorkbenchRepo],
+        deployments: [ActiveDeployment],
+        previews: [String: SessionPreview],
+        settings: [String: String],
+        health: WorkbenchHealth,
+        user: WorkbenchUser,
+        generatedAt: String
+    ) {
+        self.drafts = drafts
+        self.repos = repos
+        self.deployments = deployments
+        self.previews = previews
+        self.settings = settings
+        self.health = health
+        self.user = user
+        self.generatedAt = generatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        drafts = try container.decodeIfPresent([Draft].self, forKey: .drafts) ?? []
+        repos = try container.decode([WorkbenchRepo].self, forKey: .repos)
+        deployments = try container.decode([ActiveDeployment].self, forKey: .deployments)
+        previews = try container.decode([String: SessionPreview].self, forKey: .previews)
+        settings = try container.decode([String: String].self, forKey: .settings)
+        health = try container.decode(WorkbenchHealth.self, forKey: .health)
+        user = try container.decode(WorkbenchUser.self, forKey: .user)
+        generatedAt = try container.decode(String.self, forKey: .generatedAt)
+    }
 }
 
 struct WorkbenchHealth: Codable, Sendable {

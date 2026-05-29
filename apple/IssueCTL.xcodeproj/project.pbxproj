@@ -31,6 +31,7 @@
 		1DACE987CE6F52ACE3A239C0 /* ImageAttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894B92EC0F4DFFEE33872F28 /* ImageAttachmentButton.swift */; };
 		1F5CD736DCA791429CB2F501 /* Repo.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC54A0EAA1EEB03CA4C70E1E /* Repo.swift */; };
 		20B9C47DF425B4A135A52965 /* ImageLightbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39642CB180355E5C62A75E /* ImageLightbox.swift */; };
+		22192A28A190D660B52AAEDA /* WorkbenchStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CEBD2A9CA0D417DCD4FFEB4 /* WorkbenchStoreTests.swift */; };
 		227F5D726370EBF5F1C55F98 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD234C4632456D401809E8A5 /* OnboardingView.swift */; };
 		22B99716E42E20F0DA147C5B /* MacSidebarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04E7DE3BF0A6826FE986B1D /* MacSidebarStore.swift */; };
 		233107B6AA5A3C1BDFE9020D /* CloseIssueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15A1E2EA43AFA474E8518F5 /* CloseIssueSheet.swift */; };
@@ -287,6 +288,7 @@
 		0B211BFFBBC1DA50DF7B008D /* MacIssueFilterStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacIssueFilterStateTests.swift; sourceTree = "<group>"; };
 		0C9BFED5728AF737B76F2F26 /* MacDraftsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDraftsView.swift; sourceTree = "<group>"; };
 		0CB1AF798EF85A0DFAB89A4C /* MockServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockServer.swift; sourceTree = "<group>"; };
+		0CEBD2A9CA0D417DCD4FFEB4 /* WorkbenchStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkbenchStoreTests.swift; sourceTree = "<group>"; };
 		0CF6456214BCA5794B4D8A25 /* IssueCTLUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = IssueCTLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0D0BAA5CBBCAB0D60E199A0D /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
 		0FA58C21063864ADB4BAC822 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
@@ -536,6 +538,7 @@
 				533CCB5045E471F6D1675F9D /* ModelDecodingTests.swift */,
 				244DA774E9D8E1B7695BD3BA /* OfflineSyncServiceTests.swift */,
 				F63680089A3314AB67CE5883 /* ViewLogicTests.swift */,
+				0CEBD2A9CA0D417DCD4FFEB4 /* WorkbenchStoreTests.swift */,
 			);
 			path = IssueCTLTests;
 			sourceTree = "<group>";
@@ -1077,6 +1080,7 @@
 				DBAAAF7B3925847446CC5E39 /* ModelDecodingTests.swift in Sources */,
 				52543EF1C7077597CC6DC8F0 /* OfflineSyncServiceTests.swift in Sources */,
 				EE5CBD61D807436206C48637 /* ViewLogicTests.swift in Sources */,
+				22192A28A190D660B52AAEDA /* WorkbenchStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

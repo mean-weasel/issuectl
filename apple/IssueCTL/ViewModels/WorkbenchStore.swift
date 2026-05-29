@@ -1,6 +1,7 @@
 import Foundation
 
 enum WorkbenchIssueFilter: String, CaseIterable, Identifiable, Sendable {
+    case unassigned
     case open
     case running
     case closed
@@ -9,6 +10,8 @@ enum WorkbenchIssueFilter: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
+        case .unassigned:
+            return "Drafts"
         case .open:
             return "Open"
         case .running:
@@ -20,6 +23,8 @@ enum WorkbenchIssueFilter: String, CaseIterable, Identifiable, Sendable {
 
     var icon: String {
         switch self {
+        case .unassigned:
+            return "doc.text"
         case .open:
             return "circle"
         case .running:
@@ -31,8 +36,10 @@ enum WorkbenchIssueFilter: String, CaseIterable, Identifiable, Sendable {
 
     func includes(_ issue: WorkbenchBoardIssue) -> Bool {
         switch self {
+        case .unassigned:
+            return false
         case .open:
-            return issue.issue.isOpen
+            return issue.issue.isOpen && !issue.isRunning
         case .running:
             return issue.issue.isOpen && issue.isRunning
         case .closed:
@@ -76,7 +83,8 @@ final class WorkbenchStore {
     var counts: [WorkbenchIssueFilter: Int] {
         let issues = boardIssues(filteringByRepoOnly: true)
         return [
-            .open: issues.filter { $0.issue.isOpen }.count,
+            .unassigned: payload?.drafts.count ?? 0,
+            .open: issues.filter { $0.issue.isOpen && !$0.isRunning }.count,
             .running: issues.filter { $0.issue.isOpen && $0.isRunning }.count,
             .closed: issues.filter { !$0.issue.isOpen }.count,
         ]
@@ -84,6 +92,11 @@ final class WorkbenchStore {
 
     var visibleIssues: [WorkbenchBoardIssue] {
         boardIssues(filteringByRepoOnly: false)
+    }
+
+    var visibleDrafts: [Draft] {
+        guard filter == .unassigned else { return [] }
+        return payload?.drafts ?? []
     }
 
     var selectedRepoSummary: String {
@@ -110,8 +123,9 @@ final class WorkbenchStore {
     var headerSubtitle: String {
         let open = counts[.open] ?? 0
         let running = counts[.running] ?? 0
+        let drafts = counts[.unassigned] ?? 0
         if open == 0 && running == 0 {
-            return "No open board work"
+            return drafts > 0 ? "\(drafts) drafts" : "No open board work"
         }
         if running > 0 {
             return "\(open) open - \(running) running"

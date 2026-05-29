@@ -24,6 +24,7 @@ const getDb = vi.hoisted(() => vi.fn());
 const listRepos = vi.hoisted(() => vi.fn());
 const getActiveDeployments = vi.hoisted(() => vi.fn());
 const getIssues = vi.hoisted(() => vi.fn());
+const listDrafts = vi.hoisted(() => vi.fn());
 const listPrReviewsForRepo = vi.hoisted(() => vi.fn());
 const listPrioritiesForRepo = vi.hoisted(() => vi.fn());
 const listRecentTerminalDeploymentsByRepo = vi.hoisted(() => vi.fn());
@@ -41,6 +42,7 @@ vi.mock("@issuectl/core", () => ({
   listRepos: (...args: unknown[]) => listRepos(...args),
   getActiveDeployments: (...args: unknown[]) => getActiveDeployments(...args),
   getIssues: (...args: unknown[]) => getIssues(...args),
+  listDrafts: (...args: unknown[]) => listDrafts(...args),
   listPrReviewsForRepo: (...args: unknown[]) => listPrReviewsForRepo(...args),
   listPrioritiesForRepo: (...args: unknown[]) => listPrioritiesForRepo(...args),
   listRecentTerminalDeploymentsByRepo: (...args: unknown[]) => listRecentTerminalDeploymentsByRepo(...args),
@@ -108,6 +110,7 @@ beforeEach(() => {
   listRepos.mockReset();
   getActiveDeployments.mockReset();
   getIssues.mockReset();
+  listDrafts.mockReset();
   listPrReviewsForRepo.mockReset();
   listPrioritiesForRepo.mockReset();
   listRecentTerminalDeploymentsByRepo.mockReset();
@@ -125,6 +128,16 @@ beforeEach(() => {
   getDb.mockReturnValue(db);
   listRepos.mockReturnValue(repos);
   getActiveDeployments.mockReturnValue(deployments);
+  listDrafts.mockReturnValue([
+    {
+      id: "draft-1",
+      title: "Draft next dashboard batch",
+      body: "Carry the web board contract into iOS.",
+      priority: "high",
+      createdAt: 1_779_000_000,
+      updatedAt: 1_779_000_100,
+    },
+  ]);
   getSettings.mockReturnValue([
     { key: "branch_pattern", value: "issue-{number}-{slug}" },
     { key: "launch_agent", value: "codex" },
@@ -225,6 +238,13 @@ describe("/api/v1/workbench", () => {
 
     expect(response.status).toBe(200);
     expect(json.repos[0].badgeCount).toBe(3);
+    expect(json.drafts).toEqual([
+      expect.objectContaining({
+        id: "draft-1",
+        title: "Draft next dashboard batch",
+        priority: "high",
+      }),
+    ]);
     expect(json.repos[0].issues).toHaveLength(4);
     expect(json.repos[0].deployments).toHaveLength(3);
     expect(json.repos[0].recentCompletions).toEqual([

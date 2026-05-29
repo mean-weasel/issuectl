@@ -2,6 +2,7 @@ import type { WorkbenchPayload, WorkbenchRepo } from "./workbench-types";
 
 export function payloadFixture(): WorkbenchPayload {
   return {
+    drafts: [],
     repos: [
       repo(1, "issuectl", 3),
       repo(2, "bugdrop", 1),
