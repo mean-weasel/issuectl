@@ -862,6 +862,7 @@ final class ModelDecodingTests: XCTestCase {
         """.data(using: .utf8)!
 
         let payload = try decoder.decode(WorkbenchPayload.self, from: json)
+        XCTAssertTrue(payload.drafts.isEmpty)
         XCTAssertEqual(payload.repos.count, 1)
         XCTAssertEqual(payload.repos[0].fullName, "org/alpha")
         XCTAssertTrue(payload.repos[0].autoLaunchIssues)

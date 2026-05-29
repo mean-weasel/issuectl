@@ -61,6 +61,11 @@ struct BoardView: View {
                     IssueDetailView(owner: owner, repo: repo, number: number)
                 }
             }
+            .navigationDestination(for: DraftDestination.self) { destination in
+                DraftDetailView(draft: destination.draft, onSaved: {
+                    Task { await store.load(api: api, refresh: true) }
+                })
+            }
             .sheet(isPresented: $showRepoFilters) {
                 WorkbenchRepoFilterSheet(repos: store.repos, selectedRepoIds: $store.selectedRepoIds)
                     .presentationDetents([.medium, .large])
@@ -101,7 +106,25 @@ struct BoardView: View {
 
                     BoardSummaryStrip(counts: store.counts, repoCount: store.repos.count)
 
-                    if store.visibleIssues.isEmpty {
+                    if store.filter == .unassigned {
+                        if store.visibleDrafts.isEmpty {
+                            ContentUnavailableView {
+                                Label("No Drafts", systemImage: store.filter.icon)
+                            } description: {
+                                Text(emptyDescription)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 28)
+                        } else {
+                            ForEach(store.visibleDrafts) { draft in
+                                NavigationLink(value: DraftDestination(draft: draft)) {
+                                    WorkbenchDraftCard(draft: draft)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("board-draft-\(draft.id)")
+                            }
+                        }
+                    } else if store.visibleIssues.isEmpty {
                         ContentUnavailableView {
                             Label("No Board Issues", systemImage: store.filter.icon)
                         } description: {
@@ -134,6 +157,8 @@ struct BoardView: View {
 
     private var emptyDescription: String {
         switch store.filter {
+        case .unassigned:
+            return "Drafts from the web dashboard will appear here until they are assigned to a repository."
         case .open:
             return "No open issues matched the current repository filters."
         case .running:
@@ -197,6 +222,14 @@ private struct BoardSummaryStrip: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            BoardSummaryTile(
+                title: "Drafts",
+                value: counts[.unassigned] ?? 0,
+                systemImage: "doc.text",
+                tint: .orange,
+                accessibilityIdentifier: "board-summary-unassigned"
+            )
+
             BoardSummaryTile(
                 title: "Open",
                 value: counts[.open] ?? 0,
@@ -363,6 +396,57 @@ private struct WorkbenchIssueCard: View {
         case .low:
             return .blue
         }
+    }
+}
+
+private struct WorkbenchDraftCard: View {
+    let draft: Draft
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "doc.text")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.orange)
+                .padding(.top, 3)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    BoardIssueChip(title: "Draft", tint: .orange)
+                    if let priority = draft.priority {
+                        BoardIssueChip(title: priority.rawValue.capitalized, tint: priority == .high ? .red : .secondary)
+                    }
+                }
+
+                Text(draft.title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                if let body = draft.body, !body.isEmpty {
+                    Text(body)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 4)
+                .accessibilityHidden(true)
+        }
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Draft, \(draft.title)")
     }
 }
 

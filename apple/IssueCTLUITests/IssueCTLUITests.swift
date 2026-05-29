@@ -143,8 +143,11 @@ final class IssueCTLUITests: XCTestCase {
         tapMainTab("board-tab", label: "Board", in: app)
 
         assertElement("board-summary-open", existsIn: app, timeout: 8)
-        assertElement("board-issue-1-101", existsIn: app, timeout: 5)
         assertElement("board-issue-2-201", existsIn: app, timeout: 5)
+        XCTAssertFalse(
+            element("board-issue-1-101", in: app).waitForExistence(timeout: 1),
+            "Open filter should hide running alpha issue\n\(app.debugDescription)"
+        )
 
         element("board-filter-running", in: app).tap()
 
