@@ -5,6 +5,42 @@ final class ViewLogicTests: XCTestCase {
 
     // MARK: - iOS Setup Links
 
+    func testAppRouteParsesIssuePath() throws {
+        let url = try XCTUnwrap(URL(string: "/issues/mean-weasel/issuectl/550"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .issue(owner: "mean-weasel", repo: "issuectl", number: 550))
+    }
+
+    func testAppRouteParsesPullRequestPath() throws {
+        let url = try XCTUnwrap(URL(string: "/pulls/mean-weasel/issuectl/44"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .pullRequest(owner: "mean-weasel", repo: "issuectl", number: 44))
+    }
+
+    func testAppRouteParsesCustomSchemeTargetURL() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl://issues/mean-weasel/issuectl/550"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .issue(owner: "mean-weasel", repo: "issuectl", number: 550))
+    }
+
+    func testAppRouteParsesNotificationURLPayload() throws {
+        let route = try XCTUnwrap(AppRoute(notificationUserInfo: [
+            "url": "/pulls/mean-weasel/issuectl/44",
+        ]))
+
+        XCTAssertEqual(route, .pullRequest(owner: "mean-weasel", repo: "issuectl", number: 44))
+    }
+
+    func testAppRouteFallsBackForFuturePaths() throws {
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/sessions?repo=mean-weasel%2Fissuectl"))), .sessions)
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/reviews/review-123"))), .reviews)
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/workbench/kanban"))), .board)
+        XCTAssertNil(AppRoute(url: try XCTUnwrap(URL(string: "/settings"))))
+    }
+
     func testSetupLinkParsesServerURLAndToken() throws {
         let url = try XCTUnwrap(URL(string: "issuectl://setup?serverURL=http%3A%2F%2F192.0.2.10%3A3847&token=abc123"))
         let setup = try XCTUnwrap(SetupLink(url: url))

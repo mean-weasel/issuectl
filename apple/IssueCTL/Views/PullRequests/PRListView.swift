@@ -3,6 +3,7 @@ import SwiftUI
 struct PRListView: View {
     @Environment(APIClient.self) private var api
     let onShowSettings: () -> Void
+    @Binding private var route: AppRoute?
 
     @State private var repos: [Repo] = []
     @State private var pullsByRepo: [String: [GitHubPull]] = [:]
@@ -36,6 +37,11 @@ struct PRListView: View {
     @FocusState private var isSearchFocused: Bool
     @State private var lastRefreshDate: Date?
     private let refreshCooldown: TimeInterval = 10
+
+    init(onShowSettings: @escaping () -> Void, route: Binding<AppRoute?> = .constant(nil)) {
+        self.onShowSettings = onShowSettings
+        _route = route
+    }
 
     private var repoFilteredPulls: [GitHubPull] {
         filterItemsByRepo(
@@ -251,6 +257,10 @@ struct PRListView: View {
                 if let s = PRSection(rawValue: storedSection) { section = s }
                 if let s = SortOrder(rawValue: storedSortOrder) { sortOrder = s }
                 mineOnly = storedMineOnly
+                consumeRouteIfNeeded(route)
+            }
+            .onChange(of: route) { _, newRoute in
+                consumeRouteIfNeeded(newRoute)
             }
             .onChange(of: section) { _, new in
                 displayLimit = pageSize
@@ -480,6 +490,13 @@ struct PRListView: View {
         selectedRepoIds.removeAll()
         sortOrder = .updated
         mineOnly = false
+    }
+
+    private func consumeRouteIfNeeded(_ route: AppRoute?) {
+        guard case let .pullRequest(owner, repo, number) = route else { return }
+        navigationPath = NavigationPath()
+        navigationPath.append(PRDestination(owner: owner, repo: repo, number: number))
+        self.route = nil
     }
 
     private func mergePull(owner: String, repo: String, number: Int, strategy: String) async {
