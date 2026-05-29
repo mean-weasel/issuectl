@@ -5,6 +5,60 @@ enum WebhookPayloadMode: String, Codable, CaseIterable, Sendable {
     case raw
 }
 
+enum JSONValue: Codable, Equatable, Sendable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case object([String: JSONValue])
+    case array([JSONValue])
+    case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self = .null
+        } else if let value = try? container.decode(Bool.self) {
+            self = .bool(value)
+        } else if let value = try? container.decode(Int.self) {
+            self = .int(value)
+        } else if let value = try? container.decode(Double.self) {
+            self = .double(value)
+        } else if let value = try? container.decode(String.self) {
+            self = .string(value)
+        } else if let value = try? container.decode([String: JSONValue].self) {
+            self = .object(value)
+        } else if let value = try? container.decode([JSONValue].self) {
+            self = .array(value)
+        } else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported JSON value"
+            )
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value):
+            try container.encode(value)
+        case .int(let value):
+            try container.encode(value)
+        case .double(let value):
+            try container.encode(value)
+        case .bool(let value):
+            try container.encode(value)
+        case .object(let value):
+            try container.encode(value)
+        case .array(let value):
+            try container.encode(value)
+        case .null:
+            try container.encodeNil()
+        }
+    }
+}
+
 struct Repo: Codable, Identifiable, Sendable {
     let id: Int
     let owner: String
@@ -177,11 +231,13 @@ struct WorkbenchIssueSummary: Codable, Identifiable, Sendable {
 struct WorkbenchWebhookEvent: Codable, Identifiable, Sendable {
     let id: Int
     let deliveryId: String
+    let repoId: Int?
     let eventType: String
     let action: String?
     let senderLogin: String?
     let targetType: DeploymentTargetType?
     let targetNumber: Int?
+    let payloadJson: String?
     let receivedAt: Int
     let intentId: Int?
 }
@@ -191,6 +247,9 @@ struct WorkbenchPrReview: Codable, Identifiable, Sendable {
     let repoId: Int
     let prNumber: Int
     let deploymentId: Int?
+    let startedHeadSha: String?
+    let completedHeadSha: String?
+    let reviewBaseSha: String?
     let reviewedFromSha: String?
     let reviewedToSha: String
     let headRepoFullName: String
@@ -240,4 +299,203 @@ struct WebhookConfiguration: Codable, Sendable {
     let id: Int
     let url: String
     let createdBy: String?
+}
+
+struct WebhookEvent: Codable, Identifiable, Sendable {
+    let id: Int
+    let deliveryId: String
+    let repoId: Int
+    let eventType: String
+    let action: String?
+    let senderLogin: String?
+    let targetType: DeploymentTargetType?
+    let targetNumber: Int?
+    let payloadJson: String?
+    let receivedAt: Int
+    let intentId: Int?
+}
+
+struct WebhookEventsResponse: Codable, Sendable {
+    let events: [WebhookEvent]
+    let fromCache: Bool
+    let cachedAt: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        events = try container.decode([WebhookEvent].self, forKey: .events)
+        fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
+        cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case events, fromCache, cachedAt
+    }
+}
+
+enum ReviewRunStatus: String, Codable, CaseIterable, Sendable {
+    case reserved
+    case launching
+    case inProgress = "in_progress"
+    case completed
+    case failed
+    case superseded
+}
+
+struct ReviewRun: Codable, Identifiable, Sendable {
+    let id: Int
+    let repoId: Int
+    let prNumber: Int
+    let deploymentId: Int?
+    let startedHeadSha: String?
+    let completedHeadSha: String?
+    let reviewBaseSha: String
+    let reviewedFromSha: String?
+    let reviewedToSha: String
+    let headRepoFullName: String
+    let headRef: String
+    let status: ReviewRunStatus
+    let triggeredBy: DeploymentTrigger
+    let resultJson: String?
+    let startedAt: Int
+    let completedAt: Int?
+}
+
+struct ReviewRunsResponse: Codable, Sendable {
+    let reviewRuns: [ReviewRun]
+    let fromCache: Bool
+    let cachedAt: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        reviewRuns = try container.decode([ReviewRun].self, forKey: .reviewRuns)
+        fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
+        cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case reviewRuns, fromCache, cachedAt
+    }
+}
+
+enum DiagnosticLevel: String, Codable, CaseIterable, Sendable {
+    case debug
+    case info
+    case warn
+    case error
+}
+
+struct DiagnosticEvent: Codable, Identifiable, Sendable {
+    let id: Int
+    let timestamp: Int
+    let level: DiagnosticLevel
+    let event: String
+    let source: String
+    let correlationId: String?
+    let owner: String?
+    let repo: String?
+    let issueNumber: Int?
+    let targetType: DeploymentTargetType?
+    let targetNumber: Int?
+    let deploymentId: Int?
+    let sessionName: String?
+    let ttydPort: Int?
+    let ttydPid: Int?
+    let status: String?
+    let message: String?
+    let data: [String: JSONValue]?
+}
+
+struct DiagnosticsResponse: Codable, Sendable {
+    let events: [DiagnosticEvent]
+    let fromCache: Bool
+    let cachedAt: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        events = try container.decode([DiagnosticEvent].self, forKey: .events)
+        fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
+        cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case events, fromCache, cachedAt
+    }
+}
+
+enum AgentMutationAction: String, Codable, CaseIterable, Sendable {
+    case push
+    case comment
+    case label
+    case createIssue = "create_issue"
+    case createPr = "create_pr"
+}
+
+struct AgentMutationRequestBody: Codable, Sendable {
+    let deploymentId: Int
+    let completionToken: String
+    let repoId: Int
+    let targetType: DeploymentTargetType
+    let targetNumber: Int
+    let actionType: AgentMutationAction
+    let payload: JSONValue?
+
+    init(
+        deploymentId: Int,
+        completionToken: String,
+        repoId: Int,
+        targetType: DeploymentTargetType,
+        targetNumber: Int,
+        actionType: AgentMutationAction,
+        payload: JSONValue? = nil
+    ) {
+        self.deploymentId = deploymentId
+        self.completionToken = completionToken
+        self.repoId = repoId
+        self.targetType = targetType
+        self.targetNumber = targetNumber
+        self.actionType = actionType
+        self.payload = payload
+    }
+}
+
+struct AgentMutationDecision: Codable, Sendable {
+    let allowed: Bool
+    let reason: String?
+}
+
+enum AgentCompletionStatus: String, Codable, CaseIterable, Sendable {
+    case completed
+    case failed
+    case noChanges = "no_changes"
+    case pushedFixes = "pushed_fixes"
+}
+
+struct AgentCompletionRequestBody: Codable, Sendable {
+    let deploymentId: Int
+    let completionToken: String
+    let status: AgentCompletionStatus
+    let summary: String
+    let finalHeadSha: String?
+    let pushedCommitSha: String?
+    let pushedCommits: [String]?
+    let changedFileCount: Int?
+    let fixedFindingCount: Int?
+    let errorMessage: String?
+}
+
+struct AgentCompletionResponse: Codable, Sendable {
+    let accepted: Bool
+    let duplicate: Bool
+    let reason: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        accepted = try container.decode(Bool.self, forKey: .accepted)
+        duplicate = try container.decodeIfPresent(Bool.self, forKey: .duplicate) ?? false
+        reason = try container.decodeIfPresent(String.self, forKey: .reason)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case accepted, duplicate, reason
+    }
 }

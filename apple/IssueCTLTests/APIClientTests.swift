@@ -28,6 +28,35 @@ final class MockURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+private func requestBodyData(_ request: URLRequest) throws -> Data {
+    if let httpBody = request.httpBody {
+        return httpBody
+    }
+    guard let bodyStream = request.httpBodyStream else {
+        throw NSError(domain: "IssueCTLTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Request has no body"])
+    }
+
+    bodyStream.open()
+    defer { bodyStream.close() }
+
+    var data = Data()
+    let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: 1024)
+    defer { buffer.deallocate() }
+
+    while bodyStream.hasBytesAvailable {
+        let read = bodyStream.read(buffer, maxLength: 1024)
+        if read > 0 {
+            data.append(buffer, count: read)
+        } else if read < 0 {
+            throw bodyStream.streamError ?? NSError(domain: "IssueCTLTests", code: 2)
+        } else {
+            break
+        }
+    }
+
+    return data
+}
+
 // MARK: - Testable APIClient subclass
 
 /// A testable version of APIClient that uses a custom URLSession with MockURLProtocol.
@@ -233,6 +262,33 @@ final class TestableAPIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
+    func webhookEvents(owner: String, repo: String) async throws -> WebhookEventsResponse {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/webhook/events")
+        return try decoder.decode(WebhookEventsResponse.self, from: data)
+    }
+
+    func reviewRuns(owner: String, repo: String) async throws -> ReviewRunsResponse {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/review-runs")
+        return try decoder.decode(ReviewRunsResponse.self, from: data)
+    }
+
+    func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
+        let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
+        return try decoder.decode(DiagnosticsResponse.self, from: data)
+    }
+
+    func agentMutation(body: AgentMutationRequestBody) async throws -> AgentMutationDecision {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/agent/mutations", method: "POST", body: bodyData)
+        return try decoder.decode(AgentMutationDecision.self, from: data)
+    }
+
+    func agentCompletion(body: AgentCompletionRequestBody) async throws -> AgentCompletionResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/agent/completion", method: "POST", body: bodyData)
+        return try decoder.decode(AgentCompletionResponse.self, from: data)
+    }
+
     func parseNaturalLanguage(input: String) async throws -> ParsedIssuesData {
         let body = ParseRequestBody(input: input)
         let bodyData = try JSONEncoder().encode(body)
@@ -426,6 +482,99 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.sessionPreviews()
+    }
+
+    @MainActor
+    func testAutomationListEndpointURLs() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/repos/org/alpha/webhook/events")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"events":[]}"#.data(using: .utf8)!)
+        }
+
+        _ = try await client.webhookEvents(owner: "org", repo: "alpha")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/repos/org/alpha/review-runs")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"review_runs":[]}"#.data(using: .utf8)!)
+        }
+
+        _ = try await client.reviewRuns(owner: "org", repo: "alpha")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/diagnostics")
+            XCTAssertEqual(request.url!.query, "deploymentId=42")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"events":[]}"#.data(using: .utf8)!)
+        }
+
+        _ = try await client.diagnostics(deploymentId: 42)
+    }
+
+    @MainActor
+    func testAgentMutationEndpointEncodesAutomationContract() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/agent/mutations")
+            XCTAssertEqual(request.httpMethod, "POST")
+            let body = try requestBodyData(request)
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertEqual(json["deploymentId"] as? Int, 42)
+            XCTAssertEqual(json["completionToken"] as? String, "token")
+            XCTAssertEqual(json["targetType"] as? String, "pr")
+            XCTAssertEqual(json["actionType"] as? String, "comment")
+            XCTAssertEqual((json["payload"] as? [String: Any])?["body"] as? String, "LGTM")
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"allowed":true}"#.data(using: .utf8)!)
+        }
+
+        let decision = try await client.agentMutation(body: AgentMutationRequestBody(
+            deploymentId: 42,
+            completionToken: "token",
+            repoId: 7,
+            targetType: .pr,
+            targetNumber: 88,
+            actionType: .comment,
+            payload: .object(["body": .string("LGTM")])
+        ))
+
+        XCTAssertTrue(decision.allowed)
+        XCTAssertNil(decision.reason)
+    }
+
+    @MainActor
+    func testAgentCompletionEndpointEncodesAutomationContract() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/agent/completion")
+            XCTAssertEqual(request.httpMethod, "POST")
+            let body = try requestBodyData(request)
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertEqual(json["deploymentId"] as? Int, 42)
+            XCTAssertEqual(json["status"] as? String, "pushed_fixes")
+            XCTAssertEqual(json["summary"] as? String, "Fixed one finding.")
+            XCTAssertEqual(json["fixedFindingCount"] as? Int, 1)
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"accepted":true,"duplicate":false}"#.data(using: .utf8)!)
+        }
+
+        let result = try await client.agentCompletion(body: AgentCompletionRequestBody(
+            deploymentId: 42,
+            completionToken: "token",
+            status: .pushedFixes,
+            summary: "Fixed one finding.",
+            finalHeadSha: "def456",
+            pushedCommitSha: "def456",
+            pushedCommits: ["def456"],
+            changedFileCount: 2,
+            fixedFindingCount: 1,
+            errorMessage: nil
+        ))
+
+        XCTAssertTrue(result.accepted)
+        XCTAssertFalse(result.duplicate)
+        XCTAssertNil(result.reason)
     }
 
     @MainActor

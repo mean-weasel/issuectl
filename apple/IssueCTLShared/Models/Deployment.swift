@@ -32,6 +32,7 @@ enum LaunchAgent: String, Codable, CaseIterable, Hashable, Identifiable, Sendabl
 }
 
 enum DeploymentState: String, Codable, Sendable {
+    case pending
     case active
     case ended
 }
@@ -64,6 +65,9 @@ struct Deployment: Codable, Identifiable, Sendable {
     let terminalBackend: TerminalBackend?
     let triggeredBy: DeploymentTrigger?
     let terminalReason: String?
+    let parentDeploymentId: Int?
+    let webhookDepth: Int?
+    let idleSince: String?
     let branchName: String
     let workspaceMode: WorkspaceMode
     let workspacePath: String
@@ -71,6 +75,9 @@ struct Deployment: Codable, Identifiable, Sendable {
     let state: DeploymentState
     let launchedAt: String
     let endedAt: String?
+    let completionToken: String?
+    let completionResultJson: String?
+    let notificationSentAt: String?
     let ttydPort: Int?
     let ttydPid: Int?
 
@@ -128,6 +135,9 @@ struct Deployment: Codable, Identifiable, Sendable {
         terminalBackend = try container.decodeIfPresent(TerminalBackend.self, forKey: .terminalBackend)
         triggeredBy = try container.decodeIfPresent(DeploymentTrigger.self, forKey: .triggeredBy)
         terminalReason = try container.decodeIfPresent(String.self, forKey: .terminalReason)
+        parentDeploymentId = try container.decodeIfPresent(Int.self, forKey: .parentDeploymentId)
+        webhookDepth = try container.decodeIfPresent(Int.self, forKey: .webhookDepth)
+        idleSince = try container.decodeIfPresent(String.self, forKey: .idleSince)
         branchName = try container.decode(String.self, forKey: .branchName)
         workspaceMode = try container.decode(WorkspaceMode.self, forKey: .workspaceMode)
         workspacePath = try container.decode(String.self, forKey: .workspacePath)
@@ -135,6 +145,9 @@ struct Deployment: Codable, Identifiable, Sendable {
         state = try container.decode(DeploymentState.self, forKey: .state)
         launchedAt = try container.decode(String.self, forKey: .launchedAt)
         endedAt = try container.decodeIfPresent(String.self, forKey: .endedAt)
+        completionToken = try container.decodeIfPresent(String.self, forKey: .completionToken)
+        completionResultJson = try container.decodeIfPresent(String.self, forKey: .completionResultJson)
+        notificationSentAt = try container.decodeIfPresent(String.self, forKey: .notificationSentAt)
         ttydPort = try container.decodeIfPresent(Int.self, forKey: .ttydPort)
         ttydPid = try container.decodeIfPresent(Int.self, forKey: .ttydPid)
     }
@@ -149,6 +162,9 @@ struct Deployment: Codable, Identifiable, Sendable {
         case terminalBackend
         case triggeredBy
         case terminalReason
+        case parentDeploymentId
+        case webhookDepth
+        case idleSince
         case branchName
         case workspaceMode
         case workspacePath
@@ -156,6 +172,9 @@ struct Deployment: Codable, Identifiable, Sendable {
         case state
         case launchedAt
         case endedAt
+        case completionToken
+        case completionResultJson
+        case notificationSentAt
         case ttydPort
         case ttydPid
     }
@@ -174,6 +193,9 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
     let parentDeploymentId: Int?
     let webhookDepth: Int?
     let idleSince: String?
+    let completionToken: String?
+    let completionResultJson: String?
+    let notificationSentAt: String?
     let branchName: String
     let workspaceMode: WorkspaceMode
     let workspacePath: String
@@ -235,6 +257,9 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         parentDeploymentId: Int? = nil,
         webhookDepth: Int? = nil,
         idleSince: String? = nil,
+        completionToken: String? = nil,
+        completionResultJson: String? = nil,
+        notificationSentAt: String? = nil,
         branchName: String,
         workspaceMode: WorkspaceMode,
         workspacePath: String,
@@ -259,6 +284,9 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         self.parentDeploymentId = parentDeploymentId
         self.webhookDepth = webhookDepth
         self.idleSince = idleSince
+        self.completionToken = completionToken
+        self.completionResultJson = completionResultJson
+        self.notificationSentAt = notificationSentAt
         self.branchName = branchName
         self.workspaceMode = workspaceMode
         self.workspacePath = workspacePath
@@ -299,6 +327,9 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         parentDeploymentId = try container.decodeIfPresent(Int.self, forKey: .parentDeploymentId)
         webhookDepth = try container.decodeIfPresent(Int.self, forKey: .webhookDepth)
         idleSince = try container.decodeIfPresent(String.self, forKey: .idleSince)
+        completionToken = try container.decodeIfPresent(String.self, forKey: .completionToken)
+        completionResultJson = try container.decodeIfPresent(String.self, forKey: .completionResultJson)
+        notificationSentAt = try container.decodeIfPresent(String.self, forKey: .notificationSentAt)
         branchName = try container.decode(String.self, forKey: .branchName)
         workspaceMode = try container.decode(WorkspaceMode.self, forKey: .workspaceMode)
         workspacePath = try container.decode(String.self, forKey: .workspacePath)
@@ -325,6 +356,9 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         case parentDeploymentId
         case webhookDepth
         case idleSince
+        case completionToken
+        case completionResultJson
+        case notificationSentAt
         case branchName
         case workspaceMode
         case workspacePath
