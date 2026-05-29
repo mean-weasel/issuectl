@@ -434,7 +434,15 @@ final class MockIssueCTLServer: @unchecked Sendable {
                     "expectedUrl": "https://hooks.example.test/api/webhook/github/1",
                     "hookId": 123,
                     "githubUrl": "https://github.com/org/alpha/settings/hooks/123",
-                    "latestDelivery": NSNull(),
+                    "latestDelivery": [
+                        "id": 987,
+                        "guid": "delivery-guid-1",
+                        "event": "issues",
+                        "action": "labeled",
+                        "status": "OK",
+                        "statusCode": 200,
+                        "deliveredAt": "2026-05-14T12:34:56Z",
+                    ],
                 ],
             ]
 

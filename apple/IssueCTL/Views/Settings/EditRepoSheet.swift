@@ -16,14 +16,17 @@ struct EditRepoSheet: View {
     @State private var webhookPayloadMode: WebhookPayloadMode
     @State private var reviewPreamble: String
     @State private var webhookHealth: WebhookAutomationHealth?
+    @State private var recentWebhookEvents: [WorkbenchWebhookEvent] = []
     @State private var isSaving = false
     @State private var isCheckingWebhookSessions = false
     @State private var isCheckingWebhookHealth = false
+    @State private var isLoadingWebhookActivity = false
     @State private var isConfiguringWebhook = false
     @State private var isRecreatingLabels = false
     @State private var errorMessage: String?
     @State private var actionMessage: String?
     @State private var actionError: String?
+    @State private var webhookActivityError: String?
     @State private var showDisableAutomationConfirm = false
 
     init(repo: Repo, onUpdated: @escaping (Repo) -> Void) {
@@ -154,6 +157,9 @@ struct EditRepoSheet: View {
                 Text("Webhook-triggered sessions are still running for this repo. Saving will stop future automation only; it will not end existing sessions.")
             }
             .interactiveDismissDisabled(isSaveBusy)
+            .task {
+                await loadWebhookActivity()
+            }
         }
     }
 
@@ -200,6 +206,11 @@ struct EditRepoSheet: View {
     private var webhookSection: some View {
         Section {
             WebhookStatusSummary(repo: currentRepo, health: webhookHealth)
+            WebhookActivitySummary(
+                events: recentWebhookEvents,
+                isLoading: isLoadingWebhookActivity,
+                errorMessage: webhookActivityError
+            )
 
             Button {
                 Task { await checkWebhookHealth() }
@@ -352,6 +363,7 @@ struct EditRepoSheet: View {
                 onUpdated(updated)
             }
             actionMessage = action == .create ? "Webhook installed." : "Webhook rotated."
+            await loadWebhookActivity(refresh: true)
         } catch {
             actionError = error.localizedDescription
         }
@@ -367,11 +379,27 @@ struct EditRepoSheet: View {
             let response = try await api.recreateRepoLabels(owner: currentRepo.owner, repo: currentRepo.name)
             if response.success {
                 actionMessage = "Automation labels recreated."
+                await loadWebhookActivity(refresh: true)
             } else {
                 actionError = response.error ?? "Failed to recreate automation labels."
             }
         } catch {
             actionError = error.localizedDescription
+        }
+    }
+
+    private func loadWebhookActivity(refresh: Bool = false) async {
+        isLoadingWebhookActivity = true
+        webhookActivityError = nil
+        defer { isLoadingWebhookActivity = false }
+
+        do {
+            let payload = try await api.workbench(refresh: refresh)
+            recentWebhookEvents = payload.repos
+                .first { $0.id == currentRepo.id }?
+                .webhookEvents ?? []
+        } catch {
+            webhookActivityError = error.localizedDescription
         }
     }
 }
@@ -406,6 +434,21 @@ private struct WebhookStatusSummary: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if let delivery = health?.latestDelivery {
+                Divider()
+                    .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Latest delivery")
+                        .font(.caption.weight(.semibold))
+                    Text(delivery.summary)
+                        .font(.caption)
+                    Text(delivery.detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .accessibilityIdentifier("edit-repo-webhook-status")
     }
@@ -436,6 +479,133 @@ private struct WebhookStatusSummary: View {
             return health.isOK ? .green : .orange
         }
         return repo.webhookId == nil ? .secondary : .green
+    }
+}
+
+private struct WebhookActivitySummary: View {
+    let events: [WorkbenchWebhookEvent]
+    let isLoading: Bool
+    let errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundStyle(IssueCTLColors.action)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recent activity")
+                        .font(.subheadline.weight(.semibold))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else if events.isEmpty, !isLoading {
+                Text("No recent webhook activity is available from the workbench feed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(events.prefix(3)) { event in
+                    WebhookActivityRow(event: event)
+                }
+            }
+        }
+        .accessibilityIdentifier("edit-repo-webhook-activity")
+    }
+
+    private var subtitle: String {
+        if isLoading { return "Loading workbench activity..." }
+        if events.isEmpty { return "No retained events" }
+        return "\(events.count) retained event\(events.count == 1 ? "" : "s")"
+    }
+}
+
+private struct WebhookActivityRow: View {
+    let event: WorkbenchWebhookEvent
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(event.summary)
+                .font(.caption.weight(.semibold))
+            Text(event.detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.leading, 36)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private extension WorkbenchWebhookEvent {
+    var summary: String {
+        var parts = [eventType]
+        if let action, !action.isEmpty {
+            parts.append(action)
+        }
+        if let targetLabel {
+            parts.append(targetLabel)
+        }
+        return parts.joined(separator: " ")
+    }
+
+    var detail: String {
+        var parts: [String] = []
+        if let senderLogin, !senderLogin.isEmpty {
+            parts.append("by \(senderLogin)")
+        }
+        parts.append(deliveryId)
+        return parts.joined(separator: " · ")
+    }
+
+    private var targetLabel: String? {
+        guard let targetType, let targetNumber else { return nil }
+        switch targetType {
+        case .issue:
+            return "#\(targetNumber)"
+        case .pr:
+            return "PR #\(targetNumber)"
+        }
+    }
+}
+
+private extension WebhookLatestDelivery {
+    var summary: String {
+        var parts = [event ?? "delivery"]
+        if let action, !action.isEmpty {
+            parts.append(action)
+        }
+        return parts.joined(separator: " ")
+    }
+
+    var detail: String {
+        var parts: [String] = []
+        if let status, !status.isEmpty {
+            if let statusCode {
+                parts.append("\(status) \(statusCode)")
+            } else {
+                parts.append(status)
+            }
+        } else if let statusCode {
+            parts.append("HTTP \(statusCode)")
+        }
+        if let deliveredAt, !deliveredAt.isEmpty {
+            parts.append(deliveredAt)
+        }
+        if let guid, !guid.isEmpty {
+            parts.append(guid)
+        }
+        return parts.joined(separator: " · ")
     }
 }
 
