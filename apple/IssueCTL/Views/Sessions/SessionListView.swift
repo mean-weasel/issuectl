@@ -17,6 +17,7 @@ struct SessionListView: View {
     @State private var isShowingCachedDeployments = false
     @State private var terminalPresentation: TerminalPresentation?
     @State private var sessionControlsTarget: ActiveDeployment?
+    @State private var diagnosticsTarget: ActiveDeployment?
     @State private var showCreateSheet = false
     @State private var endingDeploymentId: Int?
     @State private var navigationPath = NavigationPath()
@@ -227,6 +228,10 @@ struct SessionListView: View {
                             ))
                         }
                     },
+                    onViewDiagnostics: {
+                        sessionControlsTarget = nil
+                        diagnosticsTarget = deployment
+                    },
                     onEnd: {
                         Task {
                             await endSession(deployment)
@@ -234,8 +239,13 @@ struct SessionListView: View {
                         }
                     }
                 )
-                .presentationDetents([.height(330), .medium])
+                .presentationDetents([.height(390), .medium])
                 .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $diagnosticsTarget) { deployment in
+                DeploymentDiagnosticsSheet(deployment: deployment)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showCreateSheet) {
                 QuickCreateSheet(repos: repos, onSuccess: { warning in
@@ -602,6 +612,7 @@ private struct SessionControlsSheet: View {
     let isEnding: Bool
     let onOpenTerminal: () -> Void
     let onViewTarget: () -> Void
+    let onViewDiagnostics: () -> Void
     let onEnd: () -> Void
 
     var body: some View {
@@ -637,6 +648,16 @@ private struct SessionControlsSheet: View {
                     systemImage: deployment.isIssueTarget ? "number" : "arrow.triangle.merge",
                     accessibilityIdentifier: "session-target-action-\(deployment.id)",
                     action: onViewTarget
+                )
+
+                Divider()
+
+                sheetAction(
+                    title: "View Diagnostics",
+                    subtitle: "Browse launch and session lifecycle events.",
+                    systemImage: "waveform.path.ecg",
+                    accessibilityIdentifier: "session-diagnostics-\(deployment.id)",
+                    action: onViewDiagnostics
                 )
 
                 Divider()
@@ -701,4 +722,247 @@ private struct SessionControlsSheet: View {
         .opacity(isDisabled ? 0.55 : 1)
         .accessibilityIdentifier(accessibilityIdentifier)
     }
+}
+
+private struct DeploymentDiagnosticsSheet: View {
+    @Environment(APIClient.self) private var api
+    @Environment(\.dismiss) private var dismiss
+
+    let deployment: ActiveDeployment
+
+    @State private var response: DeploymentDiagnosticsResponse?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    init(deployment: ActiveDeployment, initialResponse: DeploymentDiagnosticsResponse? = nil) {
+        self.deployment = deployment
+        _response = State(initialValue: initialResponse)
+        _isLoading = State(initialValue: initialResponse == nil)
+    }
+
+    private var diagnosticsCommand: String {
+        "pnpm --dir packages/cli exec issuectl diag show --deployment \(deployment.id)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    header
+
+                    if isLoading && response == nil {
+                        ProgressView("Loading diagnostics...")
+                            .frame(maxWidth: .infinity, minHeight: 160)
+                    } else if let errorMessage, response == nil {
+                        unavailableState(errorMessage)
+                    } else if let response {
+                        diagnosticsContent(response)
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("Diagnostics")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .task(id: deployment.id) {
+                await load()
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label(deployment.targetLabel, systemImage: deployment.isIssueTarget ? "number" : "arrow.triangle.merge")
+                    .font(.headline)
+                Spacer(minLength: 8)
+                Text("Deployment #\(deployment.id)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(deployment.repoFullName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("CLI fallback")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(diagnosticsCommand)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .lineLimit(3)
+                    .accessibilityIdentifier("deployment-diagnostics-command-\(deployment.id)")
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func diagnosticsContent(_ response: DeploymentDiagnosticsResponse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if response.fromCache {
+                OfflineStatusBanner(message: staleDataMessage(kind: "diagnostics", cachedAt: response.cachedAt.flatMap(parseIssueCTLDate)))
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: response.firstFailure == nil ? "checkmark.circle" : "exclamationmark.triangle")
+                    .foregroundStyle(response.firstFailure == nil ? Color.green : Color.orange)
+                Text(response.summaryText)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+
+            if response.events.isEmpty {
+                ContentUnavailableView {
+                    Label("No Events", systemImage: "list.bullet.rectangle")
+                } description: {
+                    Text("No launch or session diagnostics have been recorded for this deployment yet.")
+                }
+                .frame(maxWidth: .infinity, minHeight: 160)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    ForEach(response.events) { event in
+                        DiagnosticEventCard(event: event)
+                    }
+                }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(4)
+            }
+        }
+    }
+
+    private func unavailableState(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ContentUnavailableView {
+                Label("Diagnostics Unavailable", systemImage: "waveform.path.ecg")
+            } description: {
+                Text(message)
+            } actions: {
+                Button("Retry") {
+                    Task { await load() }
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 220)
+
+            Text(mobileDiagnosticsDependencyMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    @MainActor
+    private func load() async {
+        guard response == nil else { return }
+        isLoading = true
+        errorMessage = nil
+        do {
+            response = try await api.deploymentDiagnostics(deploymentId: deployment.id)
+        } catch {
+            errorMessage = diagnosticsErrorMessage(error)
+        }
+        isLoading = false
+    }
+}
+
+private struct DiagnosticEventCard: View {
+    let event: DiagnosticEvent
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: event.level.systemImage)
+                    .foregroundStyle(levelColor)
+                    .frame(width: 22)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(event.event)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                    Text("\(event.timeText) - \(event.source)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(event.level.displayName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(levelColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(levelColor.opacity(0.14), in: Capsule())
+            }
+
+            if let message = event.message, !message.isEmpty {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !event.metadataRows.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(event.metadataRows.enumerated()), id: \.offset) { row in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(row.element.0)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 92, alignment: .leading)
+                            Text(row.element.1)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.primary)
+                                .lineLimit(3)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+                .padding(10)
+                .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(levelColor.opacity(event.isFailure ? 0.45 : 0.16), lineWidth: 1)
+        }
+        .accessibilityIdentifier("diagnostic-event-\(event.id)")
+    }
+
+    private var levelColor: Color {
+        switch event.level {
+        case .debug: Color.secondary
+        case .info: IssueCTLColors.action
+        case .warn: Color.orange
+        case .error: Color.red
+        }
+    }
+}
+
+private let mobileDiagnosticsDependencyMessage = "Live mobile diagnostics require the structured /api/v1/diagnostics/deployments/:id endpoint from issue #546. This iOS browser is wired for that JSON API and does not scrape dashboard HTML."
+
+private func diagnosticsErrorMessage(_ error: Error) -> String {
+    if case APIError.serverError(let code, _) = error, code == 404 {
+        return "The connected issuectl server does not expose the mobile diagnostics endpoint yet."
+    }
+    return error.localizedDescription
 }

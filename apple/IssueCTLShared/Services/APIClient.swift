@@ -371,6 +371,14 @@ final class APIClient {
         return try decoder.decode(DiagnosticsResponse.self, from: data)
     }
 
+    func deploymentDiagnostics(deploymentId: Int, limit: Int = 50) async throws -> DeploymentDiagnosticsResponse {
+        // Depends on the mobile diagnostics API from issue #546. This client
+        // intentionally targets structured JSON instead of scraping web HTML.
+        let safeLimit = max(1, min(200, limit))
+        let (data, _) = try await request(path: "/api/v1/diagnostics/deployments/\(deploymentId)?limit=\(safeLimit)")
+        return try decoder.decode(DeploymentDiagnosticsResponse.self, from: data)
+    }
+
     func agentMutation(body: AgentMutationRequestBody) async throws -> AgentMutationDecision {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/agent/mutations", method: "POST", body: bodyData)

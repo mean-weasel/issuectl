@@ -277,6 +277,12 @@ final class TestableAPIClient {
         return try decoder.decode(DiagnosticsResponse.self, from: data)
     }
 
+    func deploymentDiagnostics(deploymentId: Int, limit: Int = 50) async throws -> DeploymentDiagnosticsResponse {
+        let safeLimit = max(1, min(200, limit))
+        let (data, _) = try await request(path: "/api/v1/diagnostics/deployments/\(deploymentId)?limit=\(safeLimit)")
+        return try decoder.decode(DeploymentDiagnosticsResponse.self, from: data)
+    }
+
     func agentMutation(body: AgentMutationRequestBody) async throws -> AgentMutationDecision {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/agent/mutations", method: "POST", body: bodyData)
@@ -510,6 +516,23 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.diagnostics(deploymentId: 42)
+    }
+
+    @MainActor
+    func testDeploymentDiagnosticsEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/diagnostics/deployments/9001"))
+            XCTAssertEqual(request.url?.query, "limit=25")
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {"events": [], "from_cache": false, "cached_at": null}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        _ = try await client.deploymentDiagnostics(deploymentId: 9001, limit: 25)
     }
 
     @MainActor

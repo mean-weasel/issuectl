@@ -456,6 +456,161 @@ struct ActiveDeploymentsResponse: Codable, Sendable {
     }
 }
 
+// MARK: - Diagnostics
+
+extension DiagnosticLevel {
+    var displayName: String {
+        switch self {
+        case .debug: "Debug"
+        case .info: "Info"
+        case .warn: "Warning"
+        case .error: "Error"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .debug: "ladybug"
+        case .info: "info.circle"
+        case .warn: "exclamationmark.triangle"
+        case .error: "xmark.octagon"
+        }
+    }
+}
+
+extension JSONValue {
+    var stringValue: String? {
+        if case .string(let value) = self { return value }
+        return nil
+    }
+
+    var integerValue: Int? {
+        switch self {
+        case .int(let value):
+            value
+        case .double(let value):
+            Int(value)
+        default:
+            nil
+        }
+    }
+
+    var doubleValue: Double? {
+        switch self {
+        case .int(let value):
+            Double(value)
+        case .double(let value):
+            value
+        default:
+            nil
+        }
+    }
+
+    var boolValue: Bool? {
+        if case .bool(let value) = self { return value }
+        return nil
+    }
+
+    var displayValue: String {
+        switch self {
+        case .string(let value):
+            value
+        case .int(let value):
+            String(value)
+        case .double(let value):
+            value.rounded() == value ? String(Int(value)) : String(value)
+        case .bool(let value):
+            value ? "true" : "false"
+        case .object(let value):
+            "\(value.count) fields"
+        case .array(let value):
+            "\(value.count) items"
+        case .null:
+            "null"
+        }
+    }
+}
+
+extension DiagnosticEvent {
+    var occurredAt: Date {
+        let rawTimestamp = Double(timestamp)
+        let seconds = rawTimestamp > 10_000_000_000 ? rawTimestamp / 1000 : rawTimestamp
+        return Date(timeIntervalSince1970: seconds)
+    }
+
+    var timeText: String {
+        DateFormatter.localizedString(from: occurredAt, dateStyle: .none, timeStyle: .medium)
+    }
+
+    var targetLabel: String? {
+        guard let targetType, let targetNumber else { return nil }
+        switch targetType {
+        case .issue: return "#\(targetNumber)"
+        case .pr: return "PR #\(targetNumber)"
+        }
+    }
+
+    var isFailure: Bool {
+        level == .error
+            || event.contains("failed")
+            || event.contains("missing")
+            || status?.lowercased() == "failed"
+    }
+
+    var metadataRows: [(String, String)] {
+        var rows: [(String, String)] = []
+        if let status { rows.append(("Status", status)) }
+        if let correlationId { rows.append(("Correlation", correlationId)) }
+        if let sessionName { rows.append(("Session", sessionName)) }
+        if let ttydPort { rows.append(("ttyd port", "\(ttydPort)")) }
+        if let ttydPid { rows.append(("ttyd pid", "\(ttydPid)")) }
+        if let data {
+            for key in data.keys.sorted() {
+                if let value = data[key] {
+                    rows.append((key, value.displayValue))
+                }
+            }
+        }
+        return rows
+    }
+}
+
+struct DeploymentDiagnosticsResponse: Codable, Sendable {
+    let events: [DiagnosticEvent]
+    let fromCache: Bool
+    let cachedAt: String?
+
+    init(events: [DiagnosticEvent], fromCache: Bool = false, cachedAt: String? = nil) {
+        self.events = events
+        self.fromCache = fromCache
+        self.cachedAt = cachedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        events = try container.decode([DiagnosticEvent].self, forKey: .events)
+        fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
+        cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case events, fromCache, cachedAt
+    }
+
+    var firstFailure: DiagnosticEvent? {
+        events.first(where: \.isFailure)
+    }
+
+    var summaryText: String {
+        guard !events.isEmpty else { return "No diagnostic events recorded yet" }
+        let countLabel = events.count == 1 ? "1 diagnostic event" : "\(events.count) diagnostic events"
+        if let firstFailure {
+            return "\(countLabel), first failure: \(firstFailure.event)"
+        }
+        return "\(countLabel), no failure recorded"
+    }
+}
+
 enum SessionPreviewStatus: String, Codable, Sendable {
     case active
     case idle
