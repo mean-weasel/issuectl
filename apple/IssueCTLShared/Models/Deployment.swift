@@ -543,6 +543,7 @@ extension DiagnosticEvent {
     }
 
     var targetLabel: String? {
+        if let serverTargetLabel { return serverTargetLabel }
         guard let targetType, let targetNumber else { return nil }
         switch targetType {
         case .issue: return "#\(targetNumber)"
@@ -571,17 +572,34 @@ extension DiagnosticEvent {
                 }
             }
         }
+        if let metadata {
+            for key in metadata.keys.sorted() {
+                if let value = metadata[key] {
+                    rows.append((key, value.displayValue))
+                }
+            }
+        }
         return rows
     }
 }
 
 struct DeploymentDiagnosticsResponse: Codable, Sendable {
     let events: [DiagnosticEvent]
+    let filters: DiagnosticFilters?
+    let summary: DiagnosticSummary?
     let fromCache: Bool
     let cachedAt: String?
 
-    init(events: [DiagnosticEvent], fromCache: Bool = false, cachedAt: String? = nil) {
+    init(
+        events: [DiagnosticEvent],
+        filters: DiagnosticFilters? = nil,
+        summary: DiagnosticSummary? = nil,
+        fromCache: Bool = false,
+        cachedAt: String? = nil
+    ) {
         self.events = events
+        self.filters = filters
+        self.summary = summary
         self.fromCache = fromCache
         self.cachedAt = cachedAt
     }
@@ -589,25 +607,121 @@ struct DeploymentDiagnosticsResponse: Codable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         events = try container.decode([DiagnosticEvent].self, forKey: .events)
+        filters = try container.decodeIfPresent(DiagnosticFilters.self, forKey: .filters)
+        summary = try container.decodeIfPresent(DiagnosticSummary.self, forKey: .summary)
         fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
         cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case events, fromCache, cachedAt
+        case events, filters, summary, fromCache, cachedAt
     }
 
     var firstFailure: DiagnosticEvent? {
         events.first(where: \.isFailure)
     }
 
+    var hasFailure: Bool {
+        if let errorCount = summary?.levelCount(for: .error), errorCount > 0 {
+            return true
+        }
+        return firstFailure != nil
+    }
+
+    var summaryEventCount: Int {
+        summary?.count ?? events.count
+    }
+
     var summaryText: String {
-        guard !events.isEmpty else { return "No diagnostic events recorded yet" }
-        let countLabel = events.count == 1 ? "1 diagnostic event" : "\(events.count) diagnostic events"
+        guard summaryEventCount > 0 else { return "No diagnostic events recorded yet" }
+        let countLabel = summaryEventCount == 1 ? "1 diagnostic event" : "\(summaryEventCount) diagnostic events"
+        if let errorCount = summary?.levelCount(for: .error), errorCount > 0 {
+            let errorLabel = errorCount == 1 ? "1 error" : "\(errorCount) errors"
+            return "\(countLabel), \(errorLabel)"
+        }
         if let firstFailure {
             return "\(countLabel), first failure: \(firstFailure.event)"
         }
+        if let warningCount = summary?.levelCount(for: .warn), warningCount > 0 {
+            let warningLabel = warningCount == 1 ? "1 warning" : "\(warningCount) warnings"
+            return "\(countLabel), \(warningLabel), no error recorded"
+        }
         return "\(countLabel), no failure recorded"
+    }
+
+    var summaryRows: [(String, String)] {
+        var rows: [(String, String)] = [("Events", "\(summaryEventCount)")]
+        if let summary {
+            for level in [DiagnosticLevel.error, .warn, .info, .debug] {
+                let count = summary.levelCount(for: level)
+                if count > 0 {
+                    rows.append((level.summaryLabel, "\(count)"))
+                }
+            }
+            if let filters {
+                rows.append(("Limit", filters.limitDescription))
+            }
+            if let latest = summary.latestTimestampIso ?? summary.latestTimestampText {
+                rows.append(("Latest", latest))
+            }
+        } else if let filters {
+            rows.append(("Limit", filters.limitDescription))
+        }
+        return rows
+    }
+}
+
+struct DiagnosticFilters: Codable, Sendable {
+    let deploymentId: Int?
+    let targetType: DeploymentTargetType?
+    let targetNumber: Int?
+    let limit: Int
+
+    var targetDescription: String {
+        guard let targetType, let targetNumber else { return "Deployment only" }
+        switch targetType {
+        case .issue:
+            return "Issue #\(targetNumber)"
+        case .pr:
+            return "PR #\(targetNumber)"
+        }
+    }
+
+    var limitDescription: String {
+        "Latest \(limit)"
+    }
+}
+
+struct DiagnosticSummary: Codable, Sendable {
+    let count: Int
+    let levelCounts: [String: Int]
+    let latestTimestamp: Int?
+    let latestTimestampIso: String?
+
+    func levelCount(for level: DiagnosticLevel) -> Int {
+        levelCounts[level.rawValue] ?? 0
+    }
+
+    var latestTimestampText: String? {
+        guard let latestTimestamp else { return nil }
+        let rawTimestamp = Double(latestTimestamp)
+        let seconds = rawTimestamp > 10_000_000_000 ? rawTimestamp / 1000 : rawTimestamp
+        return DateFormatter.localizedString(
+            from: Date(timeIntervalSince1970: seconds),
+            dateStyle: .none,
+            timeStyle: .medium
+        )
+    }
+}
+
+private extension DiagnosticLevel {
+    var summaryLabel: String {
+        switch self {
+        case .debug: "Debug"
+        case .info: "Info"
+        case .warn: "Warnings"
+        case .error: "Errors"
+        }
     }
 }
 

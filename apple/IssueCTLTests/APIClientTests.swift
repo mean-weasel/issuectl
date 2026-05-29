@@ -262,13 +262,39 @@ final class TestableAPIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
-    func webhookEvents(owner: String, repo: String) async throws -> WebhookEventsResponse {
-        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/webhook/events")
+    func webhookEvents(
+        owner: String,
+        repo: String,
+        targetType: DeploymentTargetType? = nil,
+        targetNumber: Int? = nil,
+        limit: Int = 50
+    ) async throws -> WebhookEventsResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/repos/\(owner)/\(repo)/webhook/events"
+        components.queryItems = [
+            targetType.map { URLQueryItem(name: "targetType", value: $0.rawValue) },
+            targetNumber.map { URLQueryItem(name: "targetNumber", value: String($0)) },
+            URLQueryItem(name: "limit", value: String(limit))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
         return try decoder.decode(WebhookEventsResponse.self, from: data)
     }
 
-    func reviewRuns(owner: String, repo: String) async throws -> ReviewRunsResponse {
-        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/review-runs")
+    func reviewRuns(
+        owner: String,
+        repo: String,
+        pr: Int? = nil,
+        status: ReviewRunStatusFilter = .all,
+        limit: Int = 24
+    ) async throws -> ReviewRunsResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/repos/\(owner)/\(repo)/review-runs"
+        components.queryItems = [
+            pr.map { URLQueryItem(name: "pr", value: String($0)) },
+            URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "limit", value: String(limit))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
         return try decoder.decode(ReviewRunsResponse.self, from: data)
     }
 
@@ -494,16 +520,19 @@ final class APIClientTests: XCTestCase {
     func testAutomationListEndpointURLs() async throws {
         MockURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.url!.path, "/api/v1/repos/org/alpha/webhook/events")
+            XCTAssertTrue(request.url!.query?.contains("limit=50") == true)
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            return (response, #"{"events":[]}"#.data(using: .utf8)!)
+            return (response, #"{"events":[],"from_cache":false,"cached_at":null}"#.data(using: .utf8)!)
         }
 
         _ = try await client.webhookEvents(owner: "org", repo: "alpha")
 
         MockURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.url!.path, "/api/v1/repos/org/alpha/review-runs")
+            XCTAssertTrue(request.url!.query?.contains("status=all") == true)
+            XCTAssertTrue(request.url!.query?.contains("limit=24") == true)
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            return (response, #"{"review_runs":[]}"#.data(using: .utf8)!)
+            return (response, #"{"review_runs":[],"from_cache":false,"cached_at":null}"#.data(using: .utf8)!)
         }
 
         _ = try await client.reviewRuns(owner: "org", repo: "alpha")
@@ -527,12 +556,55 @@ final class APIClientTests: XCTestCase {
 
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             let data = """
-            {"events": [], "from_cache": false, "cached_at": null}
+            {
+              "events": [],
+              "filters": {"deployment_id": 9001, "target_type": null, "target_number": null, "limit": 25},
+              "summary": {"count": 0, "level_counts": {}, "latest_timestamp": null, "latest_timestamp_iso": null}
+            }
             """.data(using: .utf8)!
             return (response, data)
         }
 
         _ = try await client.deploymentDiagnostics(deploymentId: 9001, limit: 25)
+    }
+
+    @MainActor
+    func testAutomationListEndpointFilters() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/repos/mean-weasel/issuectl/webhook/events")
+            XCTAssertTrue(request.url!.query?.contains("targetType=issue") == true)
+            XCTAssertTrue(request.url!.query?.contains("targetNumber=560") == true)
+            XCTAssertTrue(request.url!.query?.contains("limit=10") == true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"events":[],"repos":[],"filters":{"repo":"mean-weasel/issuectl","target_type":"issue","target_number":560,"limit":10},"summary":{"count":0,"latest_received_at":null,"latest_received_at_iso":null,"result_counts":{}},"from_cache":false,"cached_at":null}"#.data(using: .utf8)!)
+        }
+
+        let webhookResponse = try await client.webhookEvents(
+            owner: "mean-weasel",
+            repo: "issuectl",
+            targetType: .issue,
+            targetNumber: 560,
+            limit: 10
+        )
+        XCTAssertEqual(webhookResponse.filters?.targetNumber, 560)
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/repos/mean-weasel/issuectl/review-runs")
+            XCTAssertTrue(request.url!.query?.contains("pr=563") == true)
+            XCTAssertTrue(request.url!.query?.contains("status=completed") == true)
+            XCTAssertTrue(request.url!.query?.contains("limit=5") == true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"review_runs":[],"from_cache":false,"cached_at":null}"#.data(using: .utf8)!)
+        }
+
+        let reviewResponse = try await client.reviewRuns(
+            owner: "mean-weasel",
+            repo: "issuectl",
+            pr: 563,
+            status: .completed,
+            limit: 5
+        )
+        XCTAssertTrue(reviewResponse.reviewRuns.isEmpty)
     }
 
     @MainActor

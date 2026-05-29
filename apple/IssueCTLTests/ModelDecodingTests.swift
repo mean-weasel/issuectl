@@ -703,6 +703,49 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.summaryText, "No diagnostic events recorded yet")
     }
 
+    func testDeploymentDiagnosticsSummaryUsesServerSummaryAndFilters() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 101,
+              "timestamp": 1780000000000,
+              "level": "info",
+              "event": "deployment.activated",
+              "message": "Deployment activated",
+              "deployment_id": 42,
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "metadata": {"ttydPort": 49152}
+            }
+          ],
+          "filters": {
+            "deployment_id": 42,
+            "target_type": "issue",
+            "target_number": 560,
+            "limit": 1
+          },
+          "summary": {
+            "count": 3,
+            "level_counts": {"info": 1, "warn": 1, "error": 1},
+            "latest_timestamp": 1780000000000,
+            "latest_timestamp_iso": "2026-05-29T20:26:40.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertEqual(response.summaryText, "3 diagnostic events, 1 error")
+        XCTAssertEqual(response.summaryRows.map(\.0), ["Events", "Errors", "Warnings", "Info", "Limit", "Latest"])
+        XCTAssertEqual(response.summaryRows.map(\.1), ["3", "1", "1", "1", "Latest 1", "2026-05-29T20:26:40.000Z"])
+        XCTAssertEqual(response.filters?.targetDescription, "Issue #560")
+        XCTAssertEqual(response.filters?.limitDescription, "Latest 1")
+        XCTAssertTrue(response.hasFailure)
+        XCTAssertTrue(response.events[0].metadataRows.contains { $0.0 == "ttydPort" && $0.1 == "49152" })
+    }
+
     // MARK: - ActiveDeployment
 
     func testActiveDeploymentDecoding() throws {
@@ -1542,5 +1585,161 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.events[0].level, .warn)
         XCTAssertEqual(response.events[0].targetType, .pr)
         XCTAssertEqual(response.events[0].data?["actionType"], .string("push"))
+    }
+
+    func testDeploymentDiagnosticsResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 101,
+              "timestamp": 1780000000000,
+              "timestamp_iso": "2026-05-29T20:26:40.000Z",
+              "level": "info",
+              "event": "deployment.activated",
+              "message": "Deployment activated",
+              "deployment_id": 42,
+              "issue_number": 560,
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "metadata": {"ttydPort": 49152}
+            }
+          ],
+          "filters": {
+            "deployment_id": 42,
+            "target_type": null,
+            "target_number": null,
+            "limit": 50
+          },
+          "summary": {
+            "count": 1,
+            "level_counts": {"info": 1},
+            "latest_timestamp": 1780000000000,
+            "latest_timestamp_iso": "2026-05-29T20:26:40.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+        XCTAssertEqual(response.events.count, 1)
+        XCTAssertEqual(response.events[0].deploymentId, 42)
+        XCTAssertEqual(response.events[0].event, "deployment.activated")
+        XCTAssertEqual(response.events[0].targetLabel, "Issue #560")
+        XCTAssertEqual(response.summary?.levelCounts["info"], 1)
+    }
+
+    func testWebhookEventsResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 7,
+              "delivery_id": "delivery-1",
+              "repo_id": 1,
+              "repo_full_name": "mean-weasel/issuectl",
+              "owner": "mean-weasel",
+              "repo_name": "issuectl",
+              "event_type": "issues",
+              "action": "labeled",
+              "sender_login": "neonwatty",
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "received_at": 1780000001000,
+              "received_at_iso": "2026-05-29T20:26:41.000Z",
+              "intent_id": 9,
+              "result": "accepted",
+              "result_detail": "queued",
+              "action_id": "auto-session",
+              "intent": {
+                "id": 9,
+                "status": "scheduled",
+                "target_type": "issue",
+                "target_number": 560,
+                "target_label": "Issue #560",
+                "first_signal_at": 1780000001000,
+                "first_signal_at_iso": "2026-05-29T20:26:41.000Z",
+                "last_signal_at": 1780000001000,
+                "last_signal_at_iso": "2026-05-29T20:26:41.000Z",
+                "scheduled_at": 1780000002000,
+                "scheduled_at_iso": "2026-05-29T20:26:42.000Z",
+                "processing_started_at": null,
+                "processing_started_at_iso": null,
+                "lease_expires_at": null,
+                "lease_expires_at_iso": null,
+                "resolved_at": null,
+                "resolved_at_iso": null,
+                "generation": 1,
+                "requested_agent": "codex",
+                "review_mode": null,
+                "signal_count": 1,
+                "deployment_id": null,
+                "failure_reason": null
+              }
+            }
+          ],
+          "repos": [{"id": 1, "full_name": "mean-weasel/issuectl"}],
+          "filters": {"repo": "mean-weasel/issuectl", "target_type": "issue", "target_number": 560, "limit": 50},
+          "summary": {
+            "count": 1,
+            "latest_received_at": 1780000001000,
+            "latest_received_at_iso": "2026-05-29T20:26:41.000Z",
+            "result_counts": {"accepted": 1}
+          },
+          "from_cache": false,
+          "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(WebhookEventsResponse.self, from: json)
+        XCTAssertEqual(response.events.first?.targetNumber, 560)
+        XCTAssertEqual(response.events.first?.intent?.requestedAgent, "codex")
+        XCTAssertEqual(response.summary?.resultCounts["accepted"], 1)
+    }
+
+    func testReviewRunsResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "review_runs": [
+            {
+              "id": 33,
+              "repo_id": 1,
+              "repo_full_name": "mean-weasel/issuectl",
+              "owner": "mean-weasel",
+              "repo_name": "issuectl",
+              "pr_number": 563,
+              "deployment_id": 42,
+              "started_head_sha": "abcdef123456",
+              "completed_head_sha": "abcdef123456",
+              "review_base_sha": "1111111",
+              "reviewed_from_sha": "2222222",
+              "reviewed_to_sha": "abcdef123456",
+              "head_repo_full_name": "mean-weasel/issuectl",
+              "head_ref": "codex/ios-repo-automation-list-api",
+              "status": "completed",
+              "triggered_by": "webhook",
+              "result": {"summary": "No issues found", "findingCount": 0},
+              "summary": "No issues found",
+              "finding_count": 0,
+              "range_label": "2222222..abcdef1",
+              "detail_href": "/reviews/33",
+              "started_at": 1780000003000,
+              "started_at_iso": "2026-05-29T20:26:43.000Z",
+              "completed_at": 1780000004000,
+              "completed_at_iso": "2026-05-29T20:26:44.000Z",
+              "deployment": null
+            }
+          ],
+          "from_cache": false,
+          "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunsResponse.self, from: json)
+        XCTAssertEqual(response.reviewRuns.count, 1)
+        XCTAssertEqual(response.reviewRuns[0].status, .completed)
+        XCTAssertEqual(response.reviewRuns[0].summary, "No issues found")
+        XCTAssertEqual(response.reviewRuns[0].findingCount, 0)
     }
 }

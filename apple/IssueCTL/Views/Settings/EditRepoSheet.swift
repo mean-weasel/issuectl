@@ -212,6 +212,13 @@ struct EditRepoSheet: View {
                 errorMessage: webhookActivityError
             )
 
+            NavigationLink {
+                RepoAutomationActivityView(repo: currentRepo)
+            } label: {
+                Label("Automation Activity", systemImage: "clock.arrow.circlepath")
+            }
+            .accessibilityIdentifier("edit-repo-automation-activity-link")
+
             Button {
                 Task { await checkWebhookHealth() }
             } label: {
