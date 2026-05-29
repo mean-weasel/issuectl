@@ -46,6 +46,17 @@ enum DeploymentTrigger: String, Codable, Sendable {
     case manual
     case webhook
     case commentCommand = "comment_command"
+
+    var displayName: String {
+        switch self {
+        case .manual:
+            return "Manual"
+        case .webhook:
+            return "Webhook"
+        case .commentCommand:
+            return "Comment command"
+        }
+    }
 }
 
 enum TerminalBackend: String, Codable, Sendable {
@@ -225,6 +236,55 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
 
     var isIssueTarget: Bool {
         targetType == .issue
+    }
+
+    var sessionRoleTitle: String {
+        if targetType == .pr && terminalReason == "review" {
+            return "PR review session"
+        }
+        switch targetType {
+        case .issue:
+            return "Issue session"
+        case .pr:
+            return "PR session"
+        }
+    }
+
+    var provenanceSummary: String {
+        var parts: [String] = []
+        if let triggeredBy {
+            parts.append(triggeredBy.displayName)
+        } else {
+            parts.append("Unknown trigger")
+        }
+        if let agent {
+            parts.append(agent.displayName)
+        }
+        if let parentDeploymentId {
+            parts.append("follow-up #\(parentDeploymentId)")
+        }
+        if let webhookDepth, webhookDepth > 0 {
+            parts.append("depth \(webhookDepth)")
+        }
+        return parts.joined(separator: " - ")
+    }
+
+    var workspaceSummary: String {
+        switch terminalBackend {
+        case .ptyBridge:
+            return "\(branchName) - PTY bridge"
+        case .ttyd:
+            return "\(branchName) - ttyd"
+        case nil:
+            return branchName
+        }
+    }
+
+    func matchesPullRequest(owner: String, repo: String, number: Int) -> Bool {
+        targetType == .pr
+            && targetNumber == number
+            && self.owner == owner
+            && repoName == repo
     }
 
     var launchedDate: Date? {

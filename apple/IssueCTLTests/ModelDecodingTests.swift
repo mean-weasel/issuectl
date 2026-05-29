@@ -703,6 +703,42 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertFalse(deployment.isIssueTarget)
     }
 
+    func testActiveDeploymentReviewSessionPresentationIncludesProvenance() throws {
+        let json = """
+        {
+            "id": 6,
+            "repo_id": 42,
+            "issue_number": null,
+            "target_type": "pr",
+            "target_number": 44,
+            "agent": "codex",
+            "terminal_backend": "pty_bridge",
+            "triggered_by": "comment_command",
+            "terminal_reason": "review",
+            "parent_deployment_id": 5,
+            "webhook_depth": 2,
+            "idle_since": null,
+            "branch_name": "feature/webhook-review",
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/wt",
+            "linked_pr_number": null,
+            "state": "active",
+            "launched_at": "2026-04-27T06:00:00Z",
+            "ended_at": null,
+            "ttyd_port": 7684,
+            "ttyd_pid": 1000,
+            "owner": "neonwatty",
+            "repo_name": "issuectl"
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(ActiveDeployment.self, from: json)
+        XCTAssertEqual(deployment.sessionRoleTitle, "PR review session")
+        XCTAssertEqual(deployment.provenanceSummary, "Comment command - Codex - follow-up #5 - depth 2")
+        XCTAssertTrue(deployment.matchesPullRequest(owner: "neonwatty", repo: "issuectl", number: 44))
+        XCTAssertFalse(deployment.matchesPullRequest(owner: "neonwatty", repo: "issuectl", number: 45))
+    }
+
     func testActiveDeploymentsResponseDecoding() throws {
         let json = """
         {

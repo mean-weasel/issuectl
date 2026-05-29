@@ -19,6 +19,8 @@ struct PRDetailView: View {
     @State private var repoAutomation: Repo?
     @State private var automationWebhookHealth: WebhookAutomationHealth?
     @State private var isTogglingAutomationLabel = false
+    @State private var activeReviewDeployments: [ActiveDeployment] = []
+    @State private var terminalPresentation: PRTerminalPresentation?
 
     var body: some View {
         Group {
@@ -44,6 +46,9 @@ struct PRDetailView: View {
                         VStack(alignment: .leading, spacing: 20) {
                             headerSection(detail.pull)
                             branchSection(detail.pull)
+                            if !activeReviewDeployments.isEmpty {
+                                activeReviewSessionSection(activeReviewDeployments)
+                            }
                             reviewStatusSection(detail)
                             automationLabelSection(detail.pull)
                             bodySection(detail.pull)
@@ -101,6 +106,22 @@ struct PRDetailView: View {
             Button("Merge Commit") { Task { await merge(method: "merge") } }
             Button("Squash and Merge") { Task { await merge(method: "squash") } }
             Button("Rebase and Merge") { Task { await merge(method: "rebase") } }
+        }
+        .fullScreenCover(item: $terminalPresentation) { presentation in
+            let deployment = presentation.deployment
+            if let port = deployment.ttydPort {
+                TerminalView(
+                    deployment: deployment,
+                    port: port,
+                    onClose: {
+                        terminalPresentation = nil
+                    },
+                    onEnd: {
+                        terminalPresentation = nil
+                        activeReviewDeployments.removeAll { $0.id == deployment.id }
+                    }
+                )
+            }
         }
     }
 
@@ -179,6 +200,26 @@ struct PRDetailView: View {
                 }
             )
             .accessibilityIdentifier("pr-detail-review-status-card")
+        }
+    }
+
+    private func activeReviewSessionSection(_ deployments: [ActiveDeployment]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+            PRDetailSectionHeader(
+                title: deployments.count == 1 ? "Active Review Session" : "Active Review Sessions",
+                systemImage: "terminal"
+            )
+
+            ForEach(deployments) { deployment in
+                PRReviewSessionCard(
+                    deployment: deployment,
+                    onOpenTerminal: {
+                        guard deployment.ttydPort != nil else { return }
+                        terminalPresentation = PRTerminalPresentation(deployment: deployment)
+                    }
+                )
+            }
         }
     }
 
@@ -443,6 +484,10 @@ struct PRDetailView: View {
                 do { return .success(try await api.webhookHealth(owner: owner, repo: repo)) }
                 catch { return .failure(error) }
             }()
+            async let deploymentsResult: Result<ActiveDeploymentsResponse, Error> = {
+                do { return .success(try await api.activeDeployments(refresh: refresh)) }
+                catch { return .failure(error) }
+            }()
 
             detail = try await detailResult
             switch await reposResult {
@@ -456,6 +501,13 @@ struct PRDetailView: View {
                 automationWebhookHealth = health
             case .failure:
                 automationWebhookHealth = nil
+            }
+            switch await deploymentsResult {
+            case .success(let response):
+                activeReviewDeployments = response.deployments
+                    .filter { $0.matchesPullRequest(owner: owner, repo: repo, number: number) }
+            case .failure:
+                activeReviewDeployments = []
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -531,6 +583,11 @@ struct PRDetailView: View {
 }
 
 // MARK: - Supporting Views
+
+private struct PRTerminalPresentation: Identifiable {
+    let id = UUID()
+    let deployment: ActiveDeployment
+}
 
 private struct PRDetailSectionHeader: View {
     let title: String
@@ -631,6 +688,62 @@ private struct PRStatusActionCard: View {
         .buttonBorderShape(dynamicTypeSize.isAccessibilitySize ? .roundedRectangle : .circle)
         .tint(primaryTint)
         .accessibilityLabel(primaryTitle)
+    }
+}
+
+private struct PRReviewSessionCard: View {
+    let deployment: ActiveDeployment
+    let onOpenTerminal: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "terminal")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(IssueCTLColors.action)
+                    .frame(width: 30, height: 30)
+                    .background(IssueCTLColors.action.opacity(0.12), in: RoundedRectangle(cornerRadius: IssueCTLColors.iconCornerRadius))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(deployment.sessionRoleTitle)
+                            .font(.subheadline.weight(.semibold))
+                        Text(deployment.targetLabel)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(IssueCTLColors.action)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(IssueCTLColors.action.opacity(0.12), in: Capsule())
+                    }
+                    Text(deployment.provenanceSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Text(deployment.workspaceSummary)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            Button(action: onOpenTerminal) {
+                Label(deployment.ttydPort == nil ? "Starting..." : "Open Terminal", systemImage: "terminal")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 40)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(IssueCTLColors.action.opacity(deployment.ttydPort == nil ? 0.5 : 1))
+            .disabled(deployment.ttydPort == nil)
+            .accessibilityIdentifier("pr-review-session-open-\(deployment.id)")
+        }
+        .padding(12)
+        .background(IssueCTLColors.cardBackground, in: RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: IssueCTLColors.cardCornerRadius)
+                .stroke(IssueCTLColors.hairline, lineWidth: 0.5)
+        }
     }
 }
 
