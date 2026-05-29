@@ -626,6 +626,83 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertNil(deployment.ttydPid)
     }
 
+    // MARK: - Diagnostics
+
+    func testDeploymentDiagnosticsResponseDecoding() throws {
+        let json = """
+        {
+            "events": [
+                {
+                    "id": 101,
+                    "timestamp": 1778760000000,
+                    "level": "info",
+                    "event": "launch.requested",
+                    "source": "core.launch",
+                    "correlation_id": "launch-abc",
+                    "owner": "org",
+                    "repo": "alpha",
+                    "issue_number": 42,
+                    "target_type": "issue",
+                    "target_number": 42,
+                    "deployment_id": 9001,
+                    "session_name": "issuectl-alpha-42",
+                    "ttyd_port": null,
+                    "ttyd_pid": null,
+                    "status": "starting",
+                    "message": "Launch requested.",
+                    "data": {"agent": "codex", "attempt": 1}
+                },
+                {
+                    "id": 102,
+                    "timestamp": 1778760002500,
+                    "level": "error",
+                    "event": "launch.spawn_failed",
+                    "source": "core.launch",
+                    "correlation_id": "launch-abc",
+                    "owner": "org",
+                    "repo": "alpha",
+                    "issue_number": 42,
+                    "target_type": "issue",
+                    "target_number": 42,
+                    "deployment_id": 9001,
+                    "session_name": "issuectl-alpha-42",
+                    "ttyd_port": 19001,
+                    "ttyd_pid": 333,
+                    "status": "failed",
+                    "message": "tmux failed to create session.",
+                    "data": {"exit_code": 1, "retryable": false}
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertEqual(response.events.count, 2)
+        XCTAssertEqual(response.events[0].level, .info)
+        XCTAssertEqual(response.events[0].correlationId, "launch-abc")
+        XCTAssertEqual(response.events[0].targetType, .issue)
+        XCTAssertEqual(response.events[0].data?["agent"]?.stringValue, "codex")
+        XCTAssertEqual(response.events[0].data?["attempt"]?.integerValue, 1)
+        XCTAssertEqual(response.events[1].level, .error)
+        XCTAssertEqual(response.events[1].data?["retryable"]?.boolValue, false)
+        XCTAssertEqual(response.firstFailure?.event, "launch.spawn_failed")
+        XCTAssertEqual(response.summaryText, "2 diagnostic events, first failure: launch.spawn_failed")
+    }
+
+    func testDeploymentDiagnosticsEmptySummary() throws {
+        let json = """
+        {"events": [], "from_cache": false, "cached_at": null}
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertNil(response.firstFailure)
+        XCTAssertEqual(response.summaryText, "No diagnostic events recorded yet")
+    }
+
     // MARK: - ActiveDeployment
 
     func testActiveDeploymentDecoding() throws {
