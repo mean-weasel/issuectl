@@ -1,61 +1,9 @@
 import SwiftUI
 
-enum RepoAutomationActivityScope: String, CaseIterable, Identifiable {
-    case all
-    case issues
-    case pullRequests
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .all:
-            return "All"
-        case .issues:
-            return "Issues"
-        case .pullRequests:
-            return "PRs"
-        }
-    }
-}
-
-struct RepoAutomationActivityQuery: Equatable {
-    var scope: RepoAutomationActivityScope = .all
-    var numberText = ""
-    var reviewStatus: ReviewRunStatusFilter = .all
-
-    var webhookTargetType: DeploymentTargetType? {
-        switch scope {
-        case .all:
-            return nil
-        case .issues:
-            return .issue
-        case .pullRequests:
-            return .pr
-        }
-    }
-
-    var webhookTargetNumber: Int? {
-        parsedNumber
-    }
-
-    var reviewPRNumber: Int? {
-        scope == .pullRequests ? parsedNumber : nil
-    }
-
-    private var parsedNumber: Int? {
-        let trimmed = numberText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return Int(trimmed)
-    }
-}
-
-struct RepoAutomationActivityView: View {
+struct AutomationFeedView: View {
     @Environment(APIClient.self) private var api
 
-    let repo: Repo
-
-    @State private var query = RepoAutomationActivityQuery()
+    @State private var reviewStatus: ReviewRunStatusFilter = .all
     @State private var webhookEvents: [WebhookEvent] = []
     @State private var reviewRuns: [ReviewRun] = []
     @State private var isLoadingWebhookEvents = false
@@ -67,28 +15,29 @@ struct RepoAutomationActivityView: View {
 
     var body: some View {
         Form {
-            filterSection
+            filtersSection
             webhookEventsSection
             reviewRunsSection
         }
-        .navigationTitle("Automation Activity")
+        .navigationTitle("Automation Feed")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    Task { await loadActivity() }
+                    Task { await loadFeed() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
                 .disabled(isLoading)
-                .accessibilityLabel("Refresh automation activity")
+                .accessibilityLabel("Refresh automation feed")
             }
         }
-        .task {
-            await loadActivity()
+        .task(id: reviewStatus) {
+            await loadFeed()
+            await pollFeed()
         }
         .refreshable {
-            await loadActivity()
+            await loadFeed()
         }
     }
 
@@ -96,50 +45,14 @@ struct RepoAutomationActivityView: View {
         isLoadingWebhookEvents || isLoadingReviewRuns
     }
 
-    private var filterSection: some View {
+    private var filtersSection: some View {
         Section {
-            Picker("Scope", selection: $query.scope) {
-                ForEach(RepoAutomationActivityScope.allCases) { scope in
-                    Text(scope.title).tag(scope)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("repo-automation-activity-scope-picker")
-            .onChange(of: query.scope) { _, scope in
-                if scope == .all {
-                    query.numberText = ""
-                }
-            }
-
-            TextField(numberPrompt, text: $query.numberText)
-                .keyboardType(.numberPad)
-                .disabled(query.scope == .all)
-                .accessibilityIdentifier("repo-automation-activity-number-field")
-
-            Picker("Review status", selection: $query.reviewStatus) {
+            Picker("Review status", selection: $reviewStatus) {
                 ForEach(ReviewRunStatusFilter.allCases) { status in
                     Text(status.displayName).tag(status)
                 }
             }
-            .accessibilityIdentifier("repo-automation-activity-status-picker")
-
-            Button {
-                Task { await loadActivity() }
-            } label: {
-                HStack {
-                    Label("Apply Filters", systemImage: "line.3.horizontal.decrease.circle")
-                    Spacer()
-                    if isLoading {
-                        ProgressView()
-                    }
-                }
-            }
-            .disabled(isLoading)
-            .accessibilityIdentifier("repo-automation-activity-apply-button")
-        } header: {
-            Text(repo.fullName)
-        } footer: {
-            Text("Filters apply to webhook events. PR number and review status also apply to review runs.")
+            .accessibilityIdentifier("automation-feed-review-status-picker")
         }
     }
 
@@ -155,7 +68,7 @@ struct RepoAutomationActivityView: View {
                 ContentUnavailableView {
                     Label("No Webhook Events", systemImage: "dot.radiowaves.left.and.right")
                 } description: {
-                    Text("No retained webhook deliveries match these filters.")
+                    Text("No retained webhook deliveries are available.")
                 }
             } else {
                 ForEach(webhookEvents) { event in
@@ -181,7 +94,7 @@ struct RepoAutomationActivityView: View {
                 ContentUnavailableView {
                     Label("No Review Runs", systemImage: "checkmark.shield")
                 } description: {
-                    Text("No repo automation review runs match these filters.")
+                    Text("No PR review runs match this status.")
                 }
             } else {
                 ForEach(reviewRuns) { run in
@@ -192,17 +105,6 @@ struct RepoAutomationActivityView: View {
             sectionHeader(title: "Review Runs", count: reviewRuns.count, isLoading: isLoadingReviewRuns)
         } footer: {
             cacheFooter(fromCache: reviewRunsResponse?.fromCache, cachedAt: reviewRunsResponse?.cachedAt)
-        }
-    }
-
-    private var numberPrompt: String {
-        switch query.scope {
-        case .all:
-            return "Target number"
-        case .issues:
-            return "Issue number"
-        case .pullRequests:
-            return "PR number"
         }
     }
 
@@ -250,9 +152,18 @@ struct RepoAutomationActivityView: View {
         }
     }
 
-    private func loadActivity() async {
-        await loadWebhookEvents()
-        await loadReviewRuns()
+    private func pollFeed() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(60))
+            guard !Task.isCancelled else { return }
+            await loadFeed()
+        }
+    }
+
+    private func loadFeed() async {
+        async let events: () = loadWebhookEvents()
+        async let reviews: () = loadReviewRuns()
+        _ = await (events, reviews)
     }
 
     private func loadWebhookEvents() async {
@@ -261,13 +172,7 @@ struct RepoAutomationActivityView: View {
         defer { isLoadingWebhookEvents = false }
 
         do {
-            let response = try await api.webhookEvents(
-                owner: repo.owner,
-                repo: repo.name,
-                targetType: query.webhookTargetType,
-                targetNumber: query.webhookTargetNumber,
-                limit: 50
-            )
+            let response = try await api.globalWebhookEvents(limit: 50)
             webhookResponse = response
             webhookEvents = response.events
         } catch {
@@ -283,13 +188,7 @@ struct RepoAutomationActivityView: View {
         defer { isLoadingReviewRuns = false }
 
         do {
-            let response = try await api.reviewRuns(
-                owner: repo.owner,
-                repo: repo.name,
-                pr: query.reviewPRNumber,
-                status: query.reviewStatus,
-                limit: 24
-            )
+            let response = try await api.globalReviewRuns(status: reviewStatus, limit: 50)
             reviewRunsResponse = response
             reviewRuns = response.reviewRuns
         } catch {

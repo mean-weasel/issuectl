@@ -1766,4 +1766,56 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.reviewRuns[0].summary, "No issues found")
         XCTAssertEqual(response.reviewRuns[0].findingCount, 0)
     }
+
+    func testGlobalReviewRunsResponseDecodesReviewsKeyFromLiveContract() throws {
+        let json = """
+        {
+          "reviews": [
+            {
+              "id": 44,
+              "repo_id": 1,
+              "repo_full_name": "mean-weasel/issuectl",
+              "owner": "mean-weasel",
+              "repo_name": "issuectl",
+              "pr_number": 563,
+              "deployment_id": null,
+              "started_head_sha": "abcdef123456",
+              "completed_head_sha": "abcdef123456",
+              "review_base_sha": "1111111",
+              "reviewed_from_sha": null,
+              "reviewed_to_sha": "abcdef123456",
+              "head_repo_full_name": "mean-weasel/issuectl",
+              "head_ref": "codex/ios-global-automation-feed",
+              "status": "completed",
+              "triggered_by": "webhook",
+              "result": {"summary": "No issues found"},
+              "summary": "No issues found",
+              "finding_count": 0,
+              "range_label": "full abcdef1",
+              "detail_href": "/reviews/44",
+              "started_at": 1780000003000,
+              "started_at_iso": "2026-05-29T20:26:43.000Z",
+              "completed_at": 1780000004000,
+              "completed_at_iso": "2026-05-29T20:26:44.000Z",
+              "deployment": null
+            }
+          ],
+          "repos": [{"id": 1, "full_name": "mean-weasel/issuectl"}],
+          "filters": {"repo": null, "pr": null, "status": "all", "limit": 50},
+          "summary": {
+            "count": 1,
+            "active_count": 0,
+            "completed_count": 1,
+            "failed_count": 0,
+            "latest_started_at": 1780000003000,
+            "latest_started_at_iso": "2026-05-29T20:26:43.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunsResponse.self, from: json)
+        XCTAssertEqual(response.reviewRuns.count, 1)
+        XCTAssertEqual(response.reviewRuns[0].repoFullName, "mean-weasel/issuectl")
+        XCTAssertEqual(response.reviewRuns[0].status, .completed)
+    }
 }

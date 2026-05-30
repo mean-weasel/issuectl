@@ -374,6 +374,17 @@ final class APIClient {
         return try decoder.decode(WebhookEventsResponse.self, from: data)
     }
 
+    func globalWebhookEvents(limit: Int = 50) async throws -> WebhookEventsResponse {
+        let safeLimit = max(1, min(100, limit))
+        var components = URLComponents()
+        components.path = "/api/v1/webhooks/events"
+        components.queryItems = [
+            URLQueryItem(name: "limit", value: String(safeLimit))
+        ]
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(WebhookEventsResponse.self, from: data)
+    }
+
     func reviewRuns(
         owner: String,
         repo: String,
@@ -388,6 +399,18 @@ final class APIClient {
             URLQueryItem(name: "status", value: status.rawValue),
             URLQueryItem(name: "limit", value: String(limit))
         ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(ReviewRunsResponse.self, from: data)
+    }
+
+    func globalReviewRuns(status: ReviewRunStatusFilter = .all, limit: Int = 50) async throws -> ReviewRunsResponse {
+        let safeLimit = max(1, min(100, limit))
+        var components = URLComponents()
+        components.path = "/api/v1/pr-reviews"
+        components.queryItems = [
+            URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "limit", value: String(safeLimit))
+        ]
         let (data, _) = try await request(path: components.string ?? components.path)
         return try decoder.decode(ReviewRunsResponse.self, from: data)
     }
