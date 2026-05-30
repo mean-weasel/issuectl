@@ -34,10 +34,31 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(route, .pullRequest(owner: "mean-weasel", repo: "issuectl", number: 44))
     }
 
+    func testAppRouteParsesSessionsRepoQuery() throws {
+        let url = try XCTUnwrap(URL(string: "/sessions?repo=mean-weasel%2Fissuectl"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .sessions(repoFullName: "mean-weasel/issuectl"))
+    }
+
+    func testAppRouteParsesReviewIdentifier() throws {
+        let url = try XCTUnwrap(URL(string: "/reviews/16"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .review(id: "16"))
+    }
+
+    func testAppRouteParsesWorkbenchDeploymentQuery() throws {
+        let url = try XCTUnwrap(URL(string: "/workbench?repo=mean-weasel%2Fissuectl&deployment=113"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .board(repoFullName: "mean-weasel/issuectl", deploymentId: 113))
+    }
+
     func testAppRouteFallsBackForFuturePaths() throws {
-        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/sessions?repo=mean-weasel%2Fissuectl"))), .sessions)
-        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/reviews/review-123"))), .reviews)
-        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/workbench/kanban"))), .board)
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/sessions"))), .sessions(repoFullName: nil))
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/reviews/review-123"))), .review(id: "review-123"))
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/workbench/kanban"))), .board(repoFullName: nil, deploymentId: nil))
         XCTAssertNil(AppRoute(url: try XCTUnwrap(URL(string: "/settings"))))
     }
 

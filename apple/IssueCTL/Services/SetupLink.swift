@@ -25,13 +25,16 @@ struct SetupLink: Equatable, Sendable {
 enum AppRoute: Equatable, Sendable {
     case issue(owner: String, repo: String, number: Int)
     case pullRequest(owner: String, repo: String, number: Int)
-    case sessions
-    case reviews
-    case board
+    case sessions(repoFullName: String?)
+    case review(id: String)
+    case board(repoFullName: String?, deploymentId: Int?)
 
     init?(url: URL) {
         let components = Self.pathComponents(from: url)
         guard let first = components.first else { return nil }
+        let query = Self.queryItems(from: url)
+        let repoFullName = query.first(where: { $0.name == "repo" })?.value
+        let deploymentId = query.first(where: { $0.name == "deployment" })?.value.flatMap(Int.init)
 
         switch first {
         case "issues":
@@ -41,11 +44,12 @@ enum AppRoute: Equatable, Sendable {
             guard let target = Self.repoTarget(from: components) else { return nil }
             self = .pullRequest(owner: target.owner, repo: target.repo, number: target.number)
         case "sessions":
-            self = .sessions
+            self = .sessions(repoFullName: repoFullName)
         case "reviews":
-            self = .reviews
+            guard components.count == 2, !components[1].isEmpty else { return nil }
+            self = .review(id: components[1])
         case "workbench", "board":
-            self = .board
+            self = .board(repoFullName: repoFullName, deploymentId: deploymentId)
         default:
             return nil
         }
@@ -66,6 +70,10 @@ enum AppRoute: Equatable, Sendable {
         }
         components.append(contentsOf: url.pathComponents.filter { $0 != "/" })
         return components.map { $0.removingPercentEncoding ?? $0 }
+    }
+
+    private static func queryItems(from url: URL) -> [URLQueryItem] {
+        URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
     }
 
     private static func repoTarget(from components: [String]) -> (owner: String, repo: String, number: Int)? {
