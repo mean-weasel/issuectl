@@ -354,6 +354,30 @@ final class APIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
+    func sessionsOverview(
+        tab: SessionsOverviewTab = .sessions,
+        searchText: String = "",
+        repo: String? = nil,
+        trigger: SessionsOverviewTriggerFilter = .all,
+        state: SessionsOverviewStateFilter = .all,
+        status: ReviewRunStatusFilter = .all,
+        diagnosticLimit: Int = 20
+    ) async throws -> SessionsOverviewResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/sessions/overview"
+        components.queryItems = [
+            URLQueryItem(name: "tab", value: tab.rawValue),
+            searchText.isEmpty ? nil : URLQueryItem(name: "q", value: searchText),
+            repo.flatMap { $0.isEmpty ? nil : URLQueryItem(name: "repo", value: $0) },
+            trigger == .all ? nil : URLQueryItem(name: "trigger", value: trigger.rawValue),
+            state == .all ? nil : URLQueryItem(name: "state", value: state.rawValue),
+            status == .all ? nil : URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "diagnosticLimit", value: String(max(1, min(100, diagnosticLimit))))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(SessionsOverviewResponse.self, from: data)
+    }
+
     // Depends on issue #546: these automation list endpoints are fixture-driven
     // until the web API exposes dedicated list routes for native clients.
     func webhookEvents(

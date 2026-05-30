@@ -1,22 +1,26 @@
 import SwiftUI
 
+extension SessionsOverviewTab: SectionTabItem {
+    var icon: String {
+        switch self {
+        case .sessions: "play.circle"
+        case .reviews: "eye"
+        }
+    }
+}
+
 struct SessionListView: View {
     @Environment(APIClient.self) private var api
-    @Environment(\.scenePhase) private var scenePhase
     let onShowSettings: () -> Void
     let onShowIssues: () -> Void
 
     @State private var repos: [Repo] = []
-    @State private var deployments: [ActiveDeployment] = []
-    @State private var previews: [Int: SessionPreview] = [:]
+    @State private var overviewResponse: SessionsOverviewResponse?
     @State private var isLoading = true
-    @State private var isFetchingPreviews = false
     @State private var errorMessage: String?
     @State private var actionError: String?
-    @State private var cachedDeploymentsAt: Date?
-    @State private var isShowingCachedDeployments = false
     @State private var terminalPresentation: TerminalPresentation?
-    @State private var sessionControlsTarget: ActiveDeployment?
+    @State private var sessionControlsTarget: SessionsOverviewSession?
     @State private var diagnosticsTarget: ActiveDeployment?
     @State private var showCreateSheet = false
     @State private var endingDeploymentId: Int?
@@ -24,40 +28,24 @@ struct SessionListView: View {
     @State private var searchText = ""
     @State private var isSearchVisible = false
     @State private var selectedRepoIds: Set<Int> = []
+    @State private var selectedTab: SessionsOverviewTab = .sessions
+    @State private var selectedState: SessionsOverviewStateFilter = .all
+    @State private var selectedTrigger: SessionsOverviewTriggerFilter = .all
+    @State private var selectedReviewStatus: ReviewRunStatusFilter = .all
     @State private var showFiltersSheet = false
     @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
-    private var filteredDeployments: [ActiveDeployment] {
-        var items = deployments
-
-        if !selectedRepoIds.isEmpty {
-            items = items.filter { selectedRepoIds.contains($0.repoId) }
-        }
-
-        if searchText.isEmpty {
-            return sortDeploymentsForInvestigation(items)
-        }
-
-        let query = searchText.lowercased()
-        let matchingItems = items.filter { deployment in
-            [
-                deployment.repoFullName,
-                deployment.targetLabel,
-                deployment.branchName,
-                deployment.ttydPort.map(String.init) ?? "starting",
-            ]
-            .compactMap { $0 }
-            .joined(separator: " ")
-            .lowercased()
-            .contains(query)
-        }
-        return sortDeploymentsForInvestigation(matchingItems)
+    private var overview: SessionsOverviewData? {
+        overviewResponse?.overview
     }
 
     private var hasActiveFilters: Bool {
         !selectedRepoIds.isEmpty
+            || selectedState != .all
+            || selectedTrigger != .all
+            || selectedReviewStatus != .all
     }
 
     private var selectedRepoSummary: String {
@@ -78,7 +66,69 @@ struct SessionListView: View {
     }
 
     private var activeRepoFullNames: [String] {
-        Array(Set(deployments.filter(\.isActive).map(\.repoFullName))).sorted()
+        Array(Set((overview?.sessionGroups ?? [])
+            .flatMap(\.sessions)
+            .filter(\.isActive)
+            .map(\.repoFullName)))
+            .sorted()
+    }
+
+    private var selectedRepoQuery: String? {
+        guard selectedRepoIds.count == 1,
+              let repo = repos.first(where: { selectedRepoIds.contains($0.id) })
+        else { return nil }
+        return repo.fullName
+    }
+
+    private var filteredSessionGroups: [SessionsOverviewSessionGroup] {
+        let groups = overview?.sessionGroups ?? []
+        guard !selectedRepoIds.isEmpty, selectedRepoQuery == nil else { return groups }
+        return groups
+            .map { group in
+                SessionsOverviewSessionGroup(
+                    key: group.key,
+                    repoFullName: group.repoFullName,
+                    targetType: group.targetType,
+                    targetNumber: group.targetNumber,
+                    targetLabel: group.targetLabel,
+                    sessions: group.sessions.filter { selectedRepoIds.contains($0.repoId) },
+                    matchingSessionCount: group.matchingSessionCount
+                )
+            }
+            .filter { !$0.sessions.isEmpty }
+    }
+
+    private var filteredReviewGroups: [SessionsOverviewReviewGroup] {
+        let groups = overview?.reviewGroups ?? []
+        guard !selectedRepoIds.isEmpty, selectedRepoQuery == nil else { return groups }
+        return groups
+            .map { group in
+                SessionsOverviewReviewGroup(
+                    key: group.key,
+                    repoFullName: group.repoFullName,
+                    owner: group.owner,
+                    repoName: group.repoName,
+                    prNumber: group.prNumber,
+                    runs: group.runs.filter { selectedRepoIds.contains($0.repoId) },
+                    matchingRunCount: group.matchingRunCount
+                )
+            }
+            .filter { !$0.runs.isEmpty }
+    }
+
+    private var hasOverviewItems: Bool {
+        !filteredSessionGroups.isEmpty || !filteredReviewGroups.isEmpty
+    }
+
+    private var overviewQuerySignature: String {
+        [
+            selectedTab.rawValue,
+            searchText,
+            selectedRepoIds.sorted().map(String.init).joined(separator: ","),
+            selectedState.rawValue,
+            selectedTrigger.rawValue,
+            selectedReviewStatus.rawValue,
+        ].joined(separator: "|")
     }
 
     var body: some View {
@@ -97,8 +147,17 @@ struct SessionListView: View {
                     onTap: { showFiltersSheet = true }
                 )
 
+                SectionTabs(
+                    selected: $selectedTab,
+                    counts: [
+                        .sessions: (overview?.summary.activeSessions ?? 0) + (overview?.summary.endedSessions ?? 0),
+                        .reviews: overview?.summary.reviewRuns ?? 0,
+                    ]
+                )
+                .padding(.top, 8)
+
                 Group {
-                    if isLoading && deployments.isEmpty {
+                    if isLoading && overviewResponse == nil {
                         ProgressView("Loading sessions...")
                     } else if let errorMessage {
                         ContentUnavailableView {
@@ -111,11 +170,11 @@ struct SessionListView: View {
                                 Button("Open Settings", action: onShowSettings)
                             }
                         }
-                    } else if deployments.isEmpty {
+                    } else if !hasOverviewItems {
                         ContentUnavailableView {
-                            Label("No Active Sessions", systemImage: "play.circle")
+                            Label("No Sessions", systemImage: "play.circle")
                         } description: {
-                            Text("Launch an agent from an issue, then return here to open terminals and end sessions.")
+                            Text("Launch an agent from an issue or review a PR, then return here to open terminals and inspect history.")
                         } actions: {
                             HStack {
                                 Button("Open Issues", action: onShowIssues)
@@ -123,49 +182,7 @@ struct SessionListView: View {
                             }
                         }
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                if isShowingCachedDeployments {
-                                    OfflineStatusBanner(message: staleDataMessage(kind: "sessions", cachedAt: cachedDeploymentsAt))
-                                }
-
-                                if let actionError {
-                                    Label(actionError, systemImage: "exclamationmark.triangle")
-                                        .foregroundStyle(.red)
-                                        .font(.subheadline)
-                                        .lineLimit(3)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-
-                                if filteredDeployments.isEmpty {
-                                    ContentUnavailableView {
-                                        Label("No Matching Sessions", systemImage: "magnifyingglass")
-                                    } description: {
-                                        Text("Try another repo, target number, branch, or port.")
-                                    } actions: {
-                                        Button(hasActiveFilters ? "Clear Filters" : "Clear Search", action: resetFiltersAndSearch)
-                                    }
-                                    .padding(.top, 18)
-                                }
-
-                                ForEach(filteredDeployments) { deployment in
-                                    let port = deployment.ttydPort
-                                    SessionRowView(
-                                        deployment: deployment,
-                                        preview: port.flatMap { previews[$0] },
-                                        isEnding: endingDeploymentId == deployment.id,
-                                        onOpen: {
-                                            openTerminal(deployment)
-                                        },
-                                        onControls: {
-                                            sessionControlsTarget = deployment
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                        }
+                        overviewContent
                         .refreshable { await refreshSessions() }
                     }
                 }
@@ -177,9 +194,8 @@ struct SessionListView: View {
             .navigationDestination(for: PRDestination.self) { dest in
                 PRDetailView(owner: dest.owner, repo: dest.repo, number: dest.number)
             }
-            .task { await load() }
-            .task(id: scenePhase) {
-                await pollPreviews()
+            .task(id: overviewQuerySignature) {
+                await load()
             }
             .onReceive(refreshTimer) { _ in
                 guard terminalPresentation == nil else { return }
@@ -199,42 +215,42 @@ struct SessionListView: View {
                         },
                         onEnd: {
                             terminalPresentation = nil
-                            deployments.removeAll { $0.id == deployment.id }
+                            Task { await load(refresh: true, includeRepos: false) }
                         }
                     )
                 }
             }
-            .sheet(item: $sessionControlsTarget) { deployment in
+            .sheet(item: $sessionControlsTarget) { session in
                 SessionControlsSheet(
-                    deployment: deployment,
-                    isEnding: endingDeploymentId == deployment.id,
+                    session: session,
+                    isEnding: endingDeploymentId == session.id,
                     onOpenTerminal: {
                         sessionControlsTarget = nil
-                        openTerminal(deployment)
+                        openTerminal(session)
                     },
                     onViewTarget: {
                         sessionControlsTarget = nil
-                        if deployment.isIssueTarget {
+                        if session.isIssueTarget {
                             navigationPath.append(IssueDestination(
-                                owner: deployment.owner,
-                                repo: deployment.repoName,
-                                number: deployment.issueNumber
+                                owner: session.owner,
+                                repo: session.repoName,
+                                number: session.resolvedIssueNumber
                             ))
                         } else {
                             navigationPath.append(PRDestination(
-                                owner: deployment.owner,
-                                repo: deployment.repoName,
-                                number: deployment.targetNumber
+                                owner: session.owner,
+                                repo: session.repoName,
+                                number: session.targetNumber
                             ))
                         }
                     },
                     onViewDiagnostics: {
                         sessionControlsTarget = nil
-                        diagnosticsTarget = deployment
+                        diagnosticsTarget = session.activeDeployment
                     },
                     onEnd: {
                         Task {
-                            await endSession(deployment)
+                            await endSession(session)
                             sessionControlsTarget = nil
                         }
                     }
@@ -257,12 +273,78 @@ struct SessionListView: View {
                 SessionFilterSheet(
                     repos: repos,
                     selectedRepoIds: $selectedRepoIds,
-                    selectedRepoSummary: selectedRepoSummary
+                    selectedRepoSummary: selectedRepoSummary,
+                    selectedState: $selectedState,
+                    selectedTrigger: $selectedTrigger,
+                    selectedReviewStatus: $selectedReviewStatus,
+                    selectedTab: selectedTab
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
         }
+    }
+
+    private var overviewContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                if let actionError {
+                    Label(actionError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .font(.subheadline)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                switch selectedTab {
+                case .sessions:
+                    if filteredSessionGroups.isEmpty {
+                        emptyFilteredState
+                    } else {
+                        ForEach(filteredSessionGroups) { group in
+                            SessionTargetGroupView(
+                                group: group,
+                                endingDeploymentId: endingDeploymentId,
+                                onOpen: openTerminal,
+                                onControls: { sessionControlsTarget = $0 }
+                            )
+                        }
+                    }
+                case .reviews:
+                    if filteredReviewGroups.isEmpty {
+                        emptyFilteredState
+                    } else {
+                        ForEach(filteredReviewGroups) { group in
+                            ReviewRunGroupView(
+                                group: group,
+                                onOpenDeployment: openTerminal,
+                                onOpenPullRequest: { run in
+                                    navigationPath.append(PRDestination(owner: run.owner, repo: run.repoName, number: run.prNumber))
+                                },
+                                onOpenDiagnostics: { run in
+                                    if let deployment = run.deployment {
+                                        diagnosticsTarget = deployment.activeDeployment
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+        }
+    }
+
+    private var emptyFilteredState: some View {
+        ContentUnavailableView {
+            Label("No Matches", systemImage: "magnifyingglass")
+        } description: {
+            Text(selectedTab == .sessions ? "Try another repo, state, trigger, target, branch, or port." : "Try another repo, review status, trigger, or PR number.")
+        } actions: {
+            Button(hasActiveFilters ? "Clear Filters" : "Clear Search", action: resetFiltersAndSearch)
+        }
+        .padding(.top, 18)
     }
 
     private var sessionHeader: some View {
@@ -306,11 +388,22 @@ struct SessionListView: View {
     }
 
     private var sessionSubtitle: String {
-        if deployments.isEmpty {
+        guard let summary = overview?.summary else {
             return "No active sessions"
         }
 
-        return "Running sessions"
+        switch selectedTab {
+        case .sessions:
+            if summary.activeSessions == 0 && summary.endedSessions == 0 {
+                return "No sessions"
+            }
+            return "\(summary.activeSessions) active · \(summary.endedSessions) ended"
+        case .reviews:
+            if summary.reviewRuns == 0 {
+                return "No review runs"
+            }
+            return "\(summary.reviewRuns) reviews · \(summary.activeReviewRuns) active"
+        }
     }
 
     private var sessionSearchBar: some View {
@@ -357,42 +450,19 @@ struct SessionListView: View {
 
     private func resetFiltersAndSearch() {
         selectedRepoIds.removeAll()
+        selectedState = .all
+        selectedTrigger = .all
+        selectedReviewStatus = .all
         hideSearch()
-    }
-
-    private func sortDeploymentsForInvestigation(_ items: [ActiveDeployment]) -> [ActiveDeployment] {
-        items
-            .enumerated()
-            .sorted { lhs, rhs in
-                let lhsRank = sessionSortRank(lhs.element)
-                let rhsRank = sessionSortRank(rhs.element)
-                if lhsRank != rhsRank {
-                    return lhsRank < rhsRank
-                }
-                return lhs.offset < rhs.offset
-            }
-            .map(\.element)
-    }
-
-    private func sessionSortRank(_ deployment: ActiveDeployment) -> Int {
-        guard let port = deployment.ttydPort else {
-            return 4
-        }
-
-        switch previews[port]?.status {
-        case .idle:
-            return 0
-        case .error:
-            return 1
-        case .unavailable, nil:
-            return 2
-        case .active:
-            return 3
-        }
     }
 
     private func sessionErrorDescription(_ message: String) -> String {
         "\(message)\n\nRetry after starting issuectl web, or open Settings to update the server."
+    }
+
+    private func openTerminal(_ session: SessionsOverviewSession) {
+        guard session.isActive else { return }
+        openTerminal(session.activeDeployment)
     }
 
     private func openTerminal(_ deployment: ActiveDeployment) {
@@ -403,23 +473,26 @@ struct SessionListView: View {
     private func load(refresh: Bool = false, includeRepos: Bool? = nil) async {
         let shouldLoadRepos = includeRepos ?? (refresh || repos.isEmpty)
         let trace = PerformanceTrace.begin("sessions.load", metadata: "refresh=\(refresh) include_repos=\(shouldLoadRepos)")
-        if deployments.isEmpty { isLoading = true }
+        if overviewResponse == nil { isLoading = true }
         errorMessage = nil
         if refresh { actionError = nil }
         defer {
-            PerformanceTrace.end(trace, metadata: "deployments=\(deployments.count) repos=\(repos.count)")
+            PerformanceTrace.end(trace, metadata: "session_groups=\(overview?.sessionGroups.count ?? 0) review_groups=\(overview?.reviewGroups.count ?? 0) repos=\(repos.count)")
         }
         do {
-            async let deploymentsResult = api.activeDeployments()
+            async let overviewResult = api.sessionsOverview(
+                tab: selectedTab,
+                searchText: searchText,
+                repo: selectedRepoQuery,
+                trigger: selectedTrigger,
+                state: selectedState,
+                status: selectedReviewStatus
+            )
             async let reposResult: Result<[Repo], Error>? = shouldLoadRepos ? {
                 do { return .success(try await api.repos()) }
                 catch { return .failure(error) }
             }() : nil
-            let response = try await deploymentsResult
-            deployments = response.deployments
-            isShowingCachedDeployments = response.fromCache
-            cachedDeploymentsAt = response.cachedAt.flatMap(parseIssueCTLDate)
-            prunePreviewState()
+            overviewResponse = try await overviewResult
             if let reposResult = await reposResult {
                 switch reposResult {
                 case .success(let loadedRepos):
@@ -431,70 +504,33 @@ struct SessionListView: View {
                 }
             }
         } catch {
-            if deployments.isEmpty {
+            if overviewResponse == nil {
                 errorMessage = error.localizedDescription
+            } else {
+                actionError = error.localizedDescription
             }
         }
         isLoading = false
     }
 
-    private func fetchPreviews() async {
-        guard !isFetchingPreviews else { return }
-        guard !deployments.isEmpty else {
-            previews = [:]
-            return
-        }
-        isFetchingPreviews = true
-        defer { isFetchingPreviews = false }
-        do {
-            let response = try await api.sessionPreviews()
-            previews = response.previewsByPort
-            prunePreviewState()
-        } catch {
-            // Preview data is supplementary; keep the session list usable if
-            // the endpoint is temporarily unavailable.
-        }
-    }
-
-    private func pollPreviews() async {
-        guard scenePhase == .active else { return }
-        while !Task.isCancelled {
-            if deployments.isEmpty {
-                previews = [:]
-            } else {
-                await fetchPreviews()
-            }
-            try? await Task.sleep(for: .seconds(2))
-        }
-    }
-
     private func refreshSessions() async {
         await load(refresh: true)
-        await fetchPreviews()
     }
 
-    private func prunePreviewState() {
-        let ports = Set(deployments.compactMap(\.ttydPort))
-        previews = previews.filter { ports.contains($0.key) }
-    }
-
-    private func endSession(_ deployment: ActiveDeployment) async {
-        endingDeploymentId = deployment.id
+    private func endSession(_ session: SessionsOverviewSession) async {
+        endingDeploymentId = session.id
         do {
             _ = try await api.endSession(
-                deploymentId: deployment.id,
-                owner: deployment.owner,
-                repo: deployment.repoName,
-                issueNumber: deployment.issueNumber,
-                targetType: deployment.targetType,
-                targetNumber: deployment.targetNumber
+                deploymentId: session.id,
+                owner: session.owner,
+                repo: session.repoName,
+                issueNumber: session.resolvedIssueNumber,
+                targetType: session.targetType,
+                targetNumber: session.targetNumber
             )
-            deployments.removeAll { $0.id == deployment.id }
-            if let port = deployment.ttydPort {
-                previews.removeValue(forKey: port)
-            }
+            await load(refresh: true, includeRepos: false)
         } catch {
-            errorMessage = error.localizedDescription
+            actionError = error.localizedDescription
         }
         endingDeploymentId = nil
     }
@@ -505,10 +541,334 @@ private struct TerminalPresentation: Identifiable {
     let deployment: ActiveDeployment
 }
 
+private struct SessionTargetGroupView: View {
+    let group: SessionsOverviewSessionGroup
+    let endingDeploymentId: Int?
+    let onOpen: (SessionsOverviewSession) -> Void
+    let onControls: (SessionsOverviewSession) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            groupHeader
+            ForEach(group.sessions) { session in
+                SessionOverviewRow(
+                    session: session,
+                    isEnding: endingDeploymentId == session.id,
+                    onOpen: { onOpen(session) },
+                    onControls: { onControls(session) }
+                )
+            }
+        }
+        .accessibilityIdentifier("session-group-\(group.key)")
+    }
+
+    private var groupHeader: some View {
+        HStack(spacing: 8) {
+            Label(group.targetLabel, systemImage: group.targetType == .issue ? "number" : "arrow.triangle.merge")
+                .font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
+            Text(group.repoFullName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 2)
+    }
+}
+
+private struct SessionOverviewRow: View {
+    let session: SessionsOverviewSession
+    let isEnding: Bool
+    let onOpen: () -> Void
+    let onControls: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                Text(session.repoFullName)
+                    .font(.subheadline.weight(.medium))
+                Text(session.targetLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Text(statusText)
+                    .font(.caption.bold())
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusColor.opacity(0.14), in: Capsule())
+            }
+
+            Label(session.branchName, systemImage: "arrow.triangle.branch")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Label(session.sessionRoleTitle, systemImage: session.isIssueTarget ? "number" : "arrow.triangle.merge")
+                    .font(.caption.weight(.semibold))
+                Text(session.provenanceSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            HStack(spacing: 10) {
+                sessionMetric(value: session.durationLabel, label: session.isActive ? "Duration" : "Elapsed", systemImage: "clock")
+                if let port = session.ttydPort {
+                    sessionMetric(value: "\(port)", label: "Terminal", systemImage: "terminal")
+                } else {
+                    sessionMetric(value: session.isActive ? "Starting" : "Ended", label: "Terminal", systemImage: "terminal")
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button(action: onOpen) {
+                    Label(openButtonTitle, systemImage: "terminal")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(IssueCTLColors.action.opacity(canOpenTerminal ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canOpenTerminal || isEnding)
+                .accessibilityIdentifier("session-reenter-terminal-\(session.id)")
+
+                Button(action: onControls) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 44, height: 40)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.bordered)
+                .disabled(isEnding)
+                .accessibilityLabel("Session controls")
+                .accessibilityIdentifier("session-controls-\(session.id)")
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(statusColor.opacity(0.34), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if canOpenTerminal {
+                onOpen()
+            }
+        }
+    }
+
+    private var canOpenTerminal: Bool {
+        session.isActive && session.ttydPort != nil
+    }
+
+    private var openButtonTitle: String {
+        if !session.isActive { return "Session Ended" }
+        return session.ttydPort == nil ? "Starting..." : "Open Terminal"
+    }
+
+    private var statusColor: Color {
+        if !session.isActive { return Color.secondary }
+        switch session.preview?.status {
+        case .active: return Color.green
+        case .idle: return Color.orange
+        case .error: return Color.red
+        case .unavailable: return Color.secondary
+        case nil: return session.ttydPort == nil ? Color.orange : Color.secondary
+        }
+    }
+
+    private var statusText: String {
+        if !session.isActive { return "Ended" }
+        guard session.ttydPort != nil else { return "Starting" }
+        switch session.preview?.status {
+        case .idle: return "Idle"
+        case .error: return "Error"
+        case .unavailable: return "Checking"
+        case .active: return "Running"
+        case nil: return "Checking"
+        }
+    }
+
+    private func sessionMetric(value: String, label: String, systemImage: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value.isEmpty ? "-" : value)
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct ReviewRunGroupView: View {
+    let group: SessionsOverviewReviewGroup
+    let onOpenDeployment: (SessionsOverviewSession) -> Void
+    let onOpenPullRequest: (SessionsOverviewReviewRun) -> Void
+    let onOpenDiagnostics: (SessionsOverviewReviewRun) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("PR #\(group.prNumber)", systemImage: "eye")
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 8)
+                Text(group.repoFullName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 2)
+
+            ForEach(group.runs) { run in
+                ReviewRunRow(
+                    run: run,
+                    onOpenDeployment: { deployment in onOpenDeployment(deployment) },
+                    onOpenPullRequest: { onOpenPullRequest(run) },
+                    onOpenDiagnostics: { onOpenDiagnostics(run) }
+                )
+            }
+        }
+        .accessibilityIdentifier("review-group-\(group.key)")
+    }
+}
+
+private struct ReviewRunRow: View {
+    let run: SessionsOverviewReviewRun
+    let onOpenDeployment: (SessionsOverviewSession) -> Void
+    let onOpenPullRequest: () -> Void
+    let onOpenDiagnostics: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text(run.statusLabel)
+                    .font(.caption.bold())
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusColor.opacity(0.14), in: Capsule())
+                Text(run.triggeredBy.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(run.elapsedLabel ?? "")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(run.summary ?? "No review summary recorded.")
+                    .font(.subheadline)
+                    .lineLimit(3)
+                Text("\(run.rangeLabel) · \(run.headRepoFullName):\(run.headRef)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            HStack(spacing: 8) {
+                if let count = run.findingCount {
+                    reviewMetric(value: "\(count)", label: "Findings", systemImage: "exclamationmark.bubble")
+                }
+                if let deployment = run.deployment {
+                    reviewMetric(value: "#\(deployment.id)", label: "Session", systemImage: "terminal")
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button(action: onOpenPullRequest) {
+                    Label("Open PR", systemImage: "arrow.triangle.merge")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 38)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("review-open-pr-\(run.id)")
+
+                if let deployment = run.deployment, deployment.isActive, deployment.ttydPort != nil {
+                    Button {
+                        onOpenDeployment(deployment)
+                    } label: {
+                        Image(systemName: "terminal")
+                            .frame(width: 42, height: 38)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityLabel("Open review terminal")
+                    .accessibilityIdentifier("review-open-terminal-\(run.id)")
+                }
+
+                if run.deployment != nil {
+                    Button(action: onOpenDiagnostics) {
+                        Image(systemName: "waveform.path.ecg")
+                            .frame(width: 42, height: 38)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Open review diagnostics")
+                    .accessibilityIdentifier("review-diagnostics-\(run.id)")
+                }
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(statusColor.opacity(0.24), lineWidth: 1)
+        }
+    }
+
+    private var statusColor: Color {
+        switch run.status {
+        case .completed: Color.green
+        case .failed: Color.red
+        case .superseded: Color.secondary
+        case .reserved, .launching, .inProgress: Color.orange
+        }
+    }
+
+    private func reviewMetric(value: String, label: String, systemImage: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.subheadline.bold())
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 private struct SessionFilterSheet: View {
     let repos: [Repo]
     @Binding var selectedRepoIds: Set<Int>
     let selectedRepoSummary: String
+    @Binding var selectedState: SessionsOverviewStateFilter
+    @Binding var selectedTrigger: SessionsOverviewTriggerFilter
+    @Binding var selectedReviewStatus: ReviewRunStatusFilter
+    let selectedTab: SessionsOverviewTab
 
     var body: some View {
         NavigationStack {
@@ -557,6 +917,50 @@ private struct SessionFilterSheet: View {
                     }
                     .padding(12)
                     .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Session State", systemImage: "circle.dashed")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Session state", selection: $selectedState) {
+                            ForEach(SessionsOverviewStateFilter.allCases) { state in
+                                Text(state.displayName).tag(state)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Trigger", systemImage: "bolt")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Trigger", selection: $selectedTrigger) {
+                            ForEach(SessionsOverviewTriggerFilter.allCases) { trigger in
+                                Text(trigger.displayName).tag(trigger)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+
+                    if selectedTab == .reviews {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Review Status", systemImage: "checklist")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Picker("Review status", selection: $selectedReviewStatus) {
+                                ForEach(ReviewRunStatusFilter.allCases) { status in
+                                    Text(status.displayName).tag(status)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        .padding(12)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                    }
                 }
                 .padding(16)
             }
@@ -573,9 +977,12 @@ private struct SessionFilterSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if !selectedRepoIds.isEmpty {
+            if !selectedRepoIds.isEmpty || selectedState != .all || selectedTrigger != .all || selectedReviewStatus != .all {
                 Button("Reset") {
                     selectedRepoIds.removeAll()
+                    selectedState = .all
+                    selectedTrigger = .all
+                    selectedReviewStatus = .all
                 }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(IssueCTLColors.action)
@@ -608,7 +1015,7 @@ private struct SessionFilterSheet: View {
 }
 
 private struct SessionControlsSheet: View {
-    let deployment: ActiveDeployment
+    let session: SessionsOverviewSession
     let isEnding: Bool
     let onOpenTerminal: () -> Void
     let onViewTarget: () -> Void
@@ -618,12 +1025,12 @@ private struct SessionControlsSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(deployment.sessionRoleTitle)
+                Text(session.sessionRoleTitle)
                     .font(.title2.weight(.bold))
-                Text("\(deployment.repoFullName) \(deployment.targetLabel)")
+                Text(session.repoTitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(deployment.provenanceSummary)
+                Text(session.provenanceSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -631,22 +1038,22 @@ private struct SessionControlsSheet: View {
             VStack(spacing: 0) {
                 sheetAction(
                     title: "Open Terminal",
-                    subtitle: deployment.ttydPort.map { "Port \($0)" } ?? "Terminal is still preparing.",
+                    subtitle: session.isActive ? (session.ttydPort.map { "Port \($0)" } ?? "Terminal is still preparing.") : "Session has ended.",
                     systemImage: "terminal",
-                    accessibilityIdentifier: "session-open-terminal-\(deployment.id)",
-                    isDisabled: deployment.ttydPort == nil,
+                    accessibilityIdentifier: "session-open-terminal-\(session.id)",
+                    isDisabled: !session.isActive || session.ttydPort == nil,
                     action: onOpenTerminal
                 )
 
                 Divider()
 
                 sheetAction(
-                    title: deployment.isIssueTarget ? "View Issue" : "View Pull Request",
-                    subtitle: deployment.isIssueTarget
-                        ? "Jump to #\(deployment.issueNumber) without losing this session."
-                        : "Open PR #\(deployment.targetNumber) without losing this session.",
-                    systemImage: deployment.isIssueTarget ? "number" : "arrow.triangle.merge",
-                    accessibilityIdentifier: "session-target-action-\(deployment.id)",
+                    title: session.isIssueTarget ? "View Issue" : "View Pull Request",
+                    subtitle: session.isIssueTarget
+                        ? "Jump to #\(session.resolvedIssueNumber) without losing this session."
+                        : "Open PR #\(session.targetNumber) without losing this session.",
+                    systemImage: session.isIssueTarget ? "number" : "arrow.triangle.merge",
+                    accessibilityIdentifier: "session-target-action-\(session.id)",
                     action: onViewTarget
                 )
 
@@ -656,33 +1063,35 @@ private struct SessionControlsSheet: View {
                     title: "View Diagnostics",
                     subtitle: "Browse launch and session lifecycle events.",
                     systemImage: "waveform.path.ecg",
-                    accessibilityIdentifier: "session-diagnostics-\(deployment.id)",
+                    accessibilityIdentifier: "session-diagnostics-\(session.id)",
                     action: onViewDiagnostics
                 )
 
-                Divider()
+                if session.isActive {
+                    Divider()
 
-                Button(role: .destructive, action: onEnd) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "stop.circle")
-                            .frame(width: 26)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(isEnding ? "Ending Session" : "End Session")
-                                .font(.subheadline.weight(.semibold))
-                            Text("Stop ttyd and mark deployment ended.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    Button(role: .destructive, action: onEnd) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "stop.circle")
+                                .frame(width: 26)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isEnding ? "Ending Session" : "End Session")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Stop ttyd and mark deployment ended.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if isEnding {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
                         }
-                        Spacer()
-                        if isEnding {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
+                        .padding(12)
                     }
-                    .padding(12)
+                    .disabled(isEnding)
+                    .accessibilityIdentifier("session-end-\(session.id)")
                 }
-                .disabled(isEnding)
-                .accessibilityIdentifier("session-end-\(deployment.id)")
             }
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
