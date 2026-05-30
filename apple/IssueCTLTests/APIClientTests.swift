@@ -762,6 +762,7 @@ final class APIClientTests: XCTestCase {
               "deployment": null,
               "lineage": [],
               "diagnostics": {"events": [], "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 0}, "summary": {"count": 0, "level_counts": {}, "latest_timestamp": null, "latest_timestamp_iso": null}},
+              "findings": [],
               "banners": [],
               "metadata": {"current_review_preamble": null, "trigger_event": null},
               "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": false},
