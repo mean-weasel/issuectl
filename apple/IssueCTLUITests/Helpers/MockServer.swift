@@ -498,6 +498,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
         case ("GET", "/api/v1/sessions/previews"):
             body = ["previews": sessionPreviews()]
 
+        case ("GET", "/api/v1/sessions/overview"):
+            body = sessionsOverviewPayload()
+
         case ("GET", "/api/v1/drafts"):
             body = ["drafts": drafts]
 
@@ -1042,6 +1045,158 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "ttydPid": deployment["ttyd_pid"] ?? NSNull(),
             "owner": deployment["owner"] ?? "org",
             "repoName": deployment["repo_name"] ?? "alpha",
+        ]
+    }
+
+    func sessionsOverviewPayload() -> [String: Any] {
+        let previews = sessionPreviews()
+        let sessions = activeDeployments.map { sessionOverviewSession($0, previews: previews) }
+        let groups = Dictionary(grouping: sessions) { session -> String in
+            let repoId = session["repoId"] as? Int ?? 0
+            let targetType = session["targetType"] as? String ?? "issue"
+            let targetNumber = session["targetNumber"] as? Int ?? 0
+            return "\(repoId):\(targetType):\(targetNumber)"
+        }
+        let sessionGroups = groups.keys.sorted().compactMap { key -> [String: Any]? in
+            guard let groupSessions = groups[key], let first = groupSessions.first else { return nil }
+            return [
+                "key": key,
+                "repoFullName": first["repoFullName"] ?? "org/alpha",
+                "targetType": first["targetType"] ?? "issue",
+                "targetNumber": first["targetNumber"] ?? 0,
+                "targetLabel": first["targetLabel"] ?? "#0",
+                "sessions": groupSessions,
+                "matchingSessionCount": groupSessions.count,
+            ]
+        }
+
+        let reviewRuns = activeDeployments
+            .filter { ($0["target_type"] as? String) == "pr" || ($0["terminal_reason"] as? String) == "review" }
+            .map { deployment -> [String: Any] in
+                let session = sessionOverviewSession(deployment, previews: previews)
+                let prNumber = (deployment["target_number"] as? Int) ?? (deployment["issue_number"] as? Int) ?? 7
+                let repoId = deployment["repo_id"] as? Int ?? 1
+                let owner = deployment["owner"] as? String ?? "org"
+                let name = deployment["repo_name"] as? String ?? "alpha"
+                return [
+                    "id": 30_000 + (deployment["id"] as? Int ?? 0),
+                    "repoId": repoId,
+                    "repoFullName": "\(owner)/\(name)",
+                    "owner": owner,
+                    "repoName": name,
+                    "prNumber": prNumber,
+                    "deploymentId": deployment["id"] ?? NSNull(),
+                    "startedHeadSha": "abc123",
+                    "completedHeadSha": "def456",
+                    "reviewBaseSha": "base999",
+                    "reviewedFromSha": "abc123",
+                    "reviewedToSha": "def456",
+                    "headRepoFullName": "\(owner)/\(name)",
+                    "headRef": "feature-\(prNumber)",
+                    "status": (deployment["ended_at"] is NSNull) ? "in_progress" : "completed",
+                    "triggeredBy": deployment["triggered_by"] ?? "webhook",
+                    "result": ["summary": "Review session captured", "findingCount": 0],
+                    "resultJson": "{\"summary\":\"Review session captured\",\"findingCount\":0}",
+                    "summary": "Review session captured",
+                    "findingCount": 0,
+                    "rangeLabel": "abc123..def456",
+                    "detailHref": "/reviews/\(30_000 + (deployment["id"] as? Int ?? 0))",
+                    "provenanceLabel": "webhook · session #\(deployment["id"] as? Int ?? 0)",
+                    "elapsedLabel": "5m",
+                    "startedAt": 1_777_800_000_000,
+                    "completedAt": NSNull(),
+                    "deployment": session,
+                ]
+            }
+        let reviewGroups = Dictionary(grouping: reviewRuns) { run -> String in
+            "\(run["repoId"] as? Int ?? 0):\(run["prNumber"] as? Int ?? 0)"
+        }
+        .keys
+        .sorted()
+        .compactMap { key -> [String: Any]? in
+            let runs = Dictionary(grouping: reviewRuns) { run -> String in
+                "\(run["repoId"] as? Int ?? 0):\(run["prNumber"] as? Int ?? 0)"
+            }[key] ?? []
+            guard let first = runs.first else { return nil }
+            return [
+                "key": key,
+                "repoFullName": first["repoFullName"] ?? "org/alpha",
+                "owner": first["owner"] ?? "org",
+                "repoName": first["repoName"] ?? "alpha",
+                "prNumber": first["prNumber"] ?? 0,
+                "runs": runs,
+                "matchingRunCount": runs.count,
+            ]
+        }
+
+        return [
+            "overview": [
+                "initialized": true,
+                "filters": [
+                    "tab": "sessions",
+                    "q": "",
+                    "repo": "",
+                    "trigger": "all",
+                    "state": "all",
+                    "status": "all",
+                ],
+                "repos": repos.map { repo in
+                    [
+                        "id": repo["id"] ?? 0,
+                        "fullName": "\(repo["owner"] as? String ?? "org")/\(repo["name"] as? String ?? "alpha")",
+                    ]
+                },
+                "sessionGroups": sessionGroups,
+                "reviewGroups": reviewGroups,
+                "summary": [
+                    "activeSessions": sessions.filter { ($0["endedAt"] as? NSNull) != nil }.count,
+                    "endedSessions": 0,
+                    "reviewRuns": reviewRuns.count,
+                    "activeReviewRuns": reviewRuns.filter { ($0["status"] as? String) == "in_progress" }.count,
+                ],
+            ],
+            "diagnostics": [
+                "events": [],
+                "filters": ["deploymentId": NSNull(), "targetType": NSNull(), "targetNumber": NSNull(), "limit": 20],
+                "summary": ["count": 0, "levelCounts": [:], "latestTimestamp": NSNull(), "latestTimestampIso": NSNull()],
+            ],
+            "generatedAt": isoDate,
+        ]
+    }
+
+    private func sessionOverviewSession(_ deployment: [String: Any], previews: [String: Any]) -> [String: Any] {
+        let targetType = deployment["target_type"] as? String ?? "issue"
+        let targetNumber = (deployment["target_number"] as? Int) ?? (deployment["issue_number"] as? Int) ?? 0
+        let owner = deployment["owner"] as? String ?? "org"
+        let name = deployment["repo_name"] as? String ?? "alpha"
+        let port = deployment["ttyd_port"] as? Int
+        return [
+            "id": deployment["id"] ?? 0,
+            "repoId": deployment["repo_id"] ?? 0,
+            "repoFullName": "\(owner)/\(name)",
+            "owner": owner,
+            "repoName": name,
+            "targetType": targetType,
+            "targetNumber": targetNumber,
+            "targetLabel": targetType == "pr" ? "PR #\(targetNumber)" : "Issue #\(targetNumber)",
+            "issueNumber": deployment["issue_number"] ?? NSNull(),
+            "branchName": deployment["branch_name"] ?? "",
+            "agent": deployment["agent"] ?? "codex",
+            "workspaceMode": deployment["workspace_mode"] ?? "worktree",
+            "workspacePath": deployment["workspace_path"] ?? "",
+            "linkedPrNumber": deployment["linked_pr_number"] ?? NSNull(),
+            "triggeredBy": deployment["triggered_by"] ?? "manual",
+            "parentDeploymentId": deployment["parent_deployment_id"] ?? NSNull(),
+            "childDeploymentCount": 0,
+            "webhookDepth": deployment["webhook_depth"] ?? 0,
+            "terminalReason": deployment["terminal_reason"] ?? NSNull(),
+            "launchedAt": deployment["launched_at"] ?? isoDate,
+            "endedAt": deployment["ended_at"] ?? NSNull(),
+            "ttydPort": deployment["ttyd_port"] ?? NSNull(),
+            "idleSince": deployment["idle_since"] ?? NSNull(),
+            "preview": port.flatMap { previews[String($0)] } ?? NSNull(),
+            "provenanceLabel": "\(deployment["triggered_by"] as? String ?? "manual") · root session",
+            "elapsedLabel": "5m",
         ]
     }
 

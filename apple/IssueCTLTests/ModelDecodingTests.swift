@@ -1818,4 +1818,120 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.reviewRuns[0].repoFullName, "mean-weasel/issuectl")
         XCTAssertEqual(response.reviewRuns[0].status, .completed)
     }
+
+    func testSessionsOverviewResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "overview": {
+            "initialized": true,
+            "filters": {
+              "tab": "reviews",
+              "q": "PR #563",
+              "repo": "mean-weasel/issuectl",
+              "trigger": "webhook",
+              "state": "all",
+              "status": "completed"
+            },
+            "repos": [{"id": 1, "full_name": "mean-weasel/issuectl"}],
+            "session_groups": [
+              {
+                "key": "1:pr:563",
+                "repo_full_name": "mean-weasel/issuectl",
+                "target_type": "pr",
+                "target_number": 563,
+                "target_label": "PR #563",
+                "matching_session_count": 1,
+                "sessions": [
+                  {
+                    "id": 42,
+                    "repo_id": 1,
+                    "repo_full_name": "mean-weasel/issuectl",
+                    "owner": "mean-weasel",
+                    "repo_name": "issuectl",
+                    "target_type": "pr",
+                    "target_number": 563,
+                    "target_label": "PR #563",
+                    "issue_number": null,
+                    "branch_name": "pr-563-review",
+                    "agent": "codex",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/review",
+                    "linked_pr_number": null,
+                    "triggered_by": "webhook",
+                    "parent_deployment_id": null,
+                    "child_deployment_count": 0,
+                    "webhook_depth": 0,
+                    "terminal_reason": "review",
+                    "launched_at": "2026-05-29 20:26:43",
+                    "ended_at": "2026-05-29 20:31:43",
+                    "ttyd_port": 7701,
+                    "idle_since": null,
+                    "preview": {"lines":["review complete"],"last_updated_ms":1780000200000,"last_changed_ms":1780000200000,"status":"idle"},
+                    "provenance_label": "webhook · root session",
+                    "elapsed_label": "5m"
+                  }
+                ]
+              }
+            ],
+            "review_groups": [
+              {
+                "key": "1:563",
+                "repo_full_name": "mean-weasel/issuectl",
+                "owner": "mean-weasel",
+                "repo_name": "issuectl",
+                "pr_number": 563,
+                "matching_run_count": 1,
+                "runs": [
+                  {
+                    "id": 33,
+                    "repo_id": 1,
+                    "repo_full_name": "mean-weasel/issuectl",
+                    "owner": "mean-weasel",
+                    "repo_name": "issuectl",
+                    "pr_number": 563,
+                    "deployment_id": 42,
+                    "started_head_sha": "abcdef123456",
+                    "completed_head_sha": "abcdef123456",
+                    "review_base_sha": "1111111",
+                    "reviewed_from_sha": "2222222",
+                    "reviewed_to_sha": "abcdef123456",
+                    "head_repo_full_name": "mean-weasel/issuectl",
+                    "head_ref": "codex/ios-repo-automation-list-api",
+                    "status": "completed",
+                    "triggered_by": "webhook",
+                    "result": {"summary": "No issues found", "findingCount": 0},
+                    "result_json": "{\\"summary\\":\\"No issues found\\"}",
+                    "summary": "No issues found",
+                    "finding_count": 0,
+                    "range_label": "2222222..abcdef1",
+                    "detail_href": "/reviews/33",
+                    "provenance_label": "webhook · session #42",
+                    "elapsed_label": "1m",
+                    "started_at": 1780000003000,
+                    "completed_at": 1780000004000,
+                    "deployment": null
+                  }
+                ]
+              }
+            ],
+            "summary": {"active_sessions": 1, "ended_sessions": 1, "review_runs": 1, "active_review_runs": 0}
+          },
+          "diagnostics": {
+            "events": [],
+            "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 20},
+            "summary": {"count": 0, "level_counts": {}, "latest_timestamp": null, "latest_timestamp_iso": null}
+          },
+          "generated_at": "2026-05-30T00:00:00.000Z"
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(SessionsOverviewResponse.self, from: json)
+        XCTAssertEqual(response.overview.filters.tab, .reviews)
+        XCTAssertEqual(response.overview.filters.trigger, .webhook)
+        XCTAssertEqual(response.overview.summary.endedSessions, 1)
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.sessionRoleTitle, "PR review session")
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.durationLabel, "5m")
+        XCTAssertEqual(response.overview.reviewGroups.first?.runs.first?.statusLabel, "Completed")
+        XCTAssertEqual(response.diagnostics?.filters?.targetNumber, 563)
+    }
 }

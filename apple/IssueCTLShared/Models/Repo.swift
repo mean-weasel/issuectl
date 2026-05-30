@@ -401,7 +401,7 @@ enum ReviewRunStatus: String, Codable, CaseIterable, Sendable {
     case superseded
 }
 
-enum ReviewRunStatusFilter: String, CaseIterable, Identifiable, Sendable {
+enum ReviewRunStatusFilter: String, Codable, CaseIterable, Identifiable, Sendable {
     case all
     case reserved
     case launching
@@ -491,6 +491,255 @@ struct ReviewRunDeployment: Codable, Identifiable, Sendable {
     let terminalReason: String?
     let ttydPort: Int?
     let idleSince: String?
+}
+
+enum SessionsOverviewTab: String, Codable, CaseIterable, Sendable {
+    case sessions
+    case reviews
+}
+
+enum SessionsOverviewStateFilter: String, Codable, CaseIterable, Identifiable, Sendable {
+    case active
+    case ended
+    case all
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .active: "Active"
+        case .ended: "Ended"
+        case .all: "All"
+        }
+    }
+}
+
+enum SessionsOverviewTriggerFilter: String, Codable, CaseIterable, Identifiable, Sendable {
+    case manual
+    case webhook
+    case commentCommand = "comment_command"
+    case all
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .manual: "Manual"
+        case .webhook: "Webhook"
+        case .commentCommand: "Comment command"
+        case .all: "All"
+        }
+    }
+}
+
+struct SessionsOverviewFilters: Codable, Sendable {
+    let tab: SessionsOverviewTab
+    let q: String
+    let repo: String
+    let trigger: SessionsOverviewTriggerFilter
+    let state: SessionsOverviewStateFilter
+    let status: ReviewRunStatusFilter
+}
+
+struct SessionsOverviewRepoSummary: Codable, Identifiable, Sendable {
+    let id: Int
+    let fullName: String
+}
+
+struct SessionsOverviewSession: Codable, Identifiable, Sendable {
+    let id: Int
+    let repoId: Int
+    let repoFullName: String
+    let owner: String
+    let repoName: String
+    let targetType: DeploymentTargetType
+    let targetNumber: Int
+    let targetLabel: String
+    let issueNumber: Int?
+    let branchName: String
+    let agent: LaunchAgent?
+    let workspaceMode: WorkspaceMode
+    let workspacePath: String
+    let linkedPrNumber: Int?
+    let triggeredBy: DeploymentTrigger?
+    let parentDeploymentId: Int?
+    let childDeploymentCount: Int
+    let webhookDepth: Int
+    let terminalReason: String?
+    let launchedAt: String
+    let endedAt: String?
+    let ttydPort: Int?
+    let idleSince: String?
+    let preview: SessionPreview?
+    let provenanceLabel: String?
+    let elapsedLabel: String?
+
+    var isActive: Bool { endedAt == nil }
+    var isIssueTarget: Bool { targetType == .issue }
+    var resolvedIssueNumber: Int { issueNumber ?? targetNumber }
+    var repoTitle: String { "\(repoFullName) \(targetLabel)" }
+
+    var sessionRoleTitle: String {
+        if targetType == .pr && terminalReason == "review" {
+            return "PR review session"
+        }
+        switch targetType {
+        case .issue: return "Issue session"
+        case .pr: return "PR session"
+        }
+    }
+
+    var provenanceSummary: String {
+        if let provenanceLabel, !provenanceLabel.isEmpty {
+            return provenanceLabel
+        }
+        var parts: [String] = [triggeredBy?.displayName ?? "Unknown trigger"]
+        if let agent {
+            parts.append(agent.displayName)
+        }
+        if let parentDeploymentId {
+            parts.append("follow-up #\(parentDeploymentId)")
+        }
+        if webhookDepth > 0 {
+            parts.append("depth \(webhookDepth)")
+        }
+        return parts.joined(separator: " - ")
+    }
+
+    var durationLabel: String {
+        elapsedLabel ?? runningDuration
+    }
+
+    var runningDuration: String {
+        guard let date = parseIssueCTLDate(launchedAt) else { return "" }
+        let endDate = endedAt.flatMap(parseIssueCTLDate) ?? Date()
+        let interval = endDate.timeIntervalSince(date)
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m"
+    }
+
+    var activeDeployment: ActiveDeployment {
+        ActiveDeployment(
+            id: id,
+            repoId: repoId,
+            issueNumber: resolvedIssueNumber,
+            targetType: targetType,
+            targetNumber: targetNumber,
+            agent: agent,
+            terminalBackend: nil,
+            triggeredBy: triggeredBy,
+            terminalReason: terminalReason,
+            parentDeploymentId: parentDeploymentId,
+            webhookDepth: webhookDepth,
+            idleSince: idleSince,
+            branchName: branchName,
+            workspaceMode: workspaceMode,
+            workspacePath: workspacePath,
+            linkedPrNumber: linkedPrNumber,
+            state: isActive ? .active : .ended,
+            launchedAt: launchedAt,
+            endedAt: endedAt,
+            ttydPort: ttydPort,
+            ttydPid: nil,
+            owner: owner,
+            repoName: repoName
+        )
+    }
+}
+
+struct SessionsOverviewSessionGroup: Codable, Identifiable, Sendable {
+    let key: String
+    let repoFullName: String
+    let targetType: DeploymentTargetType
+    let targetNumber: Int
+    let targetLabel: String
+    let sessions: [SessionsOverviewSession]
+    let matchingSessionCount: Int?
+
+    var id: String { key }
+}
+
+struct SessionsOverviewReviewRun: Codable, Identifiable, Sendable {
+    let id: Int
+    let repoId: Int
+    let repoFullName: String
+    let owner: String
+    let repoName: String
+    let prNumber: Int
+    let deploymentId: Int?
+    let startedHeadSha: String?
+    let completedHeadSha: String?
+    let reviewBaseSha: String?
+    let reviewedFromSha: String?
+    let reviewedToSha: String
+    let headRepoFullName: String
+    let headRef: String
+    let status: ReviewRunStatus
+    let triggeredBy: DeploymentTrigger
+    let result: [String: JSONValue]
+    let resultJson: String?
+    let summary: String?
+    let findingCount: Int?
+    let rangeLabel: String
+    let detailHref: String
+    let provenanceLabel: String?
+    let elapsedLabel: String?
+    let startedAt: Int
+    let completedAt: Int?
+    let deployment: SessionsOverviewSession?
+
+    var statusLabel: String {
+        switch status {
+        case .reserved: "Reserved"
+        case .launching: "Launching"
+        case .inProgress: "In progress"
+        case .completed: "Completed"
+        case .failed: "Failed"
+        case .superseded: "Superseded"
+        }
+    }
+
+    var isActive: Bool {
+        status == .reserved || status == .launching || status == .inProgress
+    }
+}
+
+struct SessionsOverviewReviewGroup: Codable, Identifiable, Sendable {
+    let key: String
+    let repoFullName: String
+    let owner: String
+    let repoName: String
+    let prNumber: Int
+    let runs: [SessionsOverviewReviewRun]
+    let matchingRunCount: Int?
+
+    var id: String { key }
+}
+
+struct SessionsOverviewSummary: Codable, Sendable {
+    let activeSessions: Int
+    let endedSessions: Int
+    let reviewRuns: Int
+    let activeReviewRuns: Int
+}
+
+struct SessionsOverviewData: Codable, Sendable {
+    let initialized: Bool
+    let filters: SessionsOverviewFilters
+    let repos: [SessionsOverviewRepoSummary]
+    let sessionGroups: [SessionsOverviewSessionGroup]
+    let reviewGroups: [SessionsOverviewReviewGroup]
+    let summary: SessionsOverviewSummary
+}
+
+struct SessionsOverviewResponse: Codable, Sendable {
+    let overview: SessionsOverviewData
+    let diagnostics: DeploymentDiagnosticsResponse?
+    let generatedAt: String
 }
 
 enum DiagnosticLevel: String, Codable, CaseIterable, Sendable {

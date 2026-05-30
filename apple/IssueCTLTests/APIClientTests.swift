@@ -267,6 +267,30 @@ final class TestableAPIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
+    func sessionsOverview(
+        tab: SessionsOverviewTab = .sessions,
+        searchText: String = "",
+        repo: String? = nil,
+        trigger: SessionsOverviewTriggerFilter = .all,
+        state: SessionsOverviewStateFilter = .all,
+        status: ReviewRunStatusFilter = .all,
+        diagnosticLimit: Int = 20
+    ) async throws -> SessionsOverviewResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/sessions/overview"
+        components.queryItems = [
+            URLQueryItem(name: "tab", value: tab.rawValue),
+            searchText.isEmpty ? nil : URLQueryItem(name: "q", value: searchText),
+            repo.flatMap { $0.isEmpty ? nil : URLQueryItem(name: "repo", value: $0) },
+            trigger == .all ? nil : URLQueryItem(name: "trigger", value: trigger.rawValue),
+            state == .all ? nil : URLQueryItem(name: "state", value: state.rawValue),
+            status == .all ? nil : URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "diagnosticLimit", value: String(max(1, min(100, diagnosticLimit))))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(SessionsOverviewResponse.self, from: data)
+    }
+
     func webhookEvents(
         owner: String,
         repo: String,
@@ -542,6 +566,50 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.sessionPreviews()
+    }
+
+    @MainActor
+    func testSessionsOverviewEndpointURLAndFilters() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/sessions/overview")
+            XCTAssertTrue(request.url!.query?.contains("tab=reviews") == true)
+            XCTAssertTrue(request.url!.query?.contains("q=PR%20%2344") == true)
+            XCTAssertTrue(request.url!.query?.contains("repo=mean-weasel/issuectl") == true)
+            XCTAssertTrue(request.url!.query?.contains("trigger=webhook") == true)
+            XCTAssertTrue(request.url!.query?.contains("state=ended") == true)
+            XCTAssertTrue(request.url!.query?.contains("status=completed") == true)
+            XCTAssertTrue(request.url!.query?.contains("diagnosticLimit=5") == true)
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {
+              "overview": {
+                "initialized": true,
+                "filters": {"tab":"reviews","q":"PR #44","repo":"mean-weasel/issuectl","trigger":"webhook","state":"ended","status":"completed"},
+                "repos": [],
+                "session_groups": [],
+                "review_groups": [],
+                "summary": {"active_sessions":0,"ended_sessions":0,"review_runs":0,"active_review_runs":0}
+              },
+              "diagnostics": {"events":[],"filters":{"deployment_id":null,"target_type":null,"target_number":null,"limit":5},"summary":{"count":0,"level_counts":{},"latest_timestamp":null,"latest_timestamp_iso":null}},
+              "generated_at": "2026-05-30T00:00:00.000Z"
+            }
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        let response = try await client.sessionsOverview(
+            tab: .reviews,
+            searchText: "PR #44",
+            repo: "mean-weasel/issuectl",
+            trigger: .webhook,
+            state: .ended,
+            status: .completed,
+            diagnosticLimit: 5
+        )
+        XCTAssertEqual(response.overview.filters.tab, .reviews)
+        XCTAssertEqual(response.overview.filters.status, .completed)
+        XCTAssertEqual(response.diagnostics?.filters?.limit, 5)
     }
 
     @MainActor
