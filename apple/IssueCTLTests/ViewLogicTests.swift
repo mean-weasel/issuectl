@@ -119,6 +119,28 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertNil(cache.load([Repo].self, for: "repos", serverURL: "http://two.example"))
     }
 
+    func testFreshnessStatusDoesNotCallFreshLoadedDataCachedWhenOffline() {
+        let message = freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: false,
+            isNetworkConnected: false,
+            cachedAt: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertEqual(message, "Offline - showing latest loaded today data")
+    }
+
+    func testFreshnessStatusKeepsCachedDataMessageWhenCacheUsed() {
+        let message = freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: true,
+            isNetworkConnected: true,
+            cachedAt: nil
+        )
+
+        XCTAssertEqual(message, "Showing cached today data")
+    }
+
     // MARK: - Repo Automation Controls
 
     func testAutomationDisableConfirmationCopyMatchesServerBehavior() {
