@@ -80,6 +80,20 @@ struct ReviewRunDetailSheet: View {
                 }
             }
 
+            sectionCard(title: "Findings", systemImage: "exclamationmark.bubble") {
+                if detail.findings.isEmpty {
+                    Text("No structured findings were recorded for this review.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(detail.findings) { finding in
+                            findingRow(finding)
+                        }
+                    }
+                }
+            }
+
             sectionCard(title: "Diagnostics", systemImage: "waveform.path.ecg") {
                 ReviewRunDetailDiagnosticsSummaryCard(response: detail.diagnostics)
                 if detail.diagnostics.events.isEmpty {
@@ -244,6 +258,41 @@ struct ReviewRunDetailSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func findingRow(_ finding: ReviewRunFinding) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(finding.title)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if let severity = finding.severity, !severity.isEmpty {
+                    Text(severity.uppercased())
+                        .font(.caption2.bold())
+                        .foregroundStyle(.orange)
+                }
+            }
+            if let location = finding.locationLabel {
+                Text(location)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            if let body = finding.body, !body.isEmpty {
+                Text(body)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            if let htmlUrl = finding.htmlUrl {
+                linkButton(title: "Open Finding", systemImage: "arrow.up.forward", urlString: htmlUrl)
+                    .controlSize(.small)
+            }
         }
         .padding(10)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
