@@ -45,6 +45,7 @@ struct EditRepoSheet: View {
     @State private var isCheckingWebhookHealth = false
     @State private var isLoadingWebhookActivity = false
     @State private var isConfiguringWebhook = false
+    @State private var isSendingWebhookPing = false
     @State private var isRecreatingLabels = false
     @State private var isCopyingWebhookURL = false
     @State private var isCheckingLabels = false
@@ -282,6 +283,30 @@ struct EditRepoSheet: View {
             .accessibilityIdentifier("edit-repo-webhook-configure-button")
 
             Button {
+                Task { await configureWebhook(action: .reinstall) }
+            } label: {
+                settingsActionLabel(
+                    title: "Reinstall Webhook",
+                    systemImage: "arrow.triangle.2.circlepath",
+                    isLoading: isConfiguringWebhook
+                )
+            }
+            .disabled(isConfiguringWebhook)
+            .accessibilityIdentifier("edit-repo-webhook-reinstall-button")
+
+            Button {
+                Task { await sendWebhookPing() }
+            } label: {
+                settingsActionLabel(
+                    title: "Re-send Webhook Ping",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    isLoading: isSendingWebhookPing
+                )
+            }
+            .disabled(isSendingWebhookPing || currentRepo.webhookId == nil)
+            .accessibilityIdentifier("edit-repo-webhook-ping-button")
+
+            Button {
                 Task { await checkLabels() }
             } label: {
                 settingsActionLabel(
@@ -417,14 +442,14 @@ struct EditRepoSheet: View {
         }
     }
 
-    private func configureWebhook() async {
+    private func configureWebhook(action requestedAction: WebhookAction? = nil) async {
         isConfiguringWebhook = true
         actionMessage = nil
         actionWarning = nil
         actionError = nil
         defer { isConfiguringWebhook = false }
 
-        let action: WebhookAction = currentRepo.webhookId == nil ? .create : .rotate
+        let action: WebhookAction = requestedAction ?? (currentRepo.webhookId == nil ? .create : .rotate)
 
         do {
             let response = try await api.configureWebhook(owner: currentRepo.owner, repo: currentRepo.name, action: action)
@@ -432,7 +457,32 @@ struct EditRepoSheet: View {
                 currentRepo = updated
                 onUpdated(updated)
             }
-            actionMessage = action == .create ? "Webhook installed." : "Webhook rotated."
+            switch action {
+            case .create:
+                actionMessage = "Webhook installed."
+            case .rotate:
+                actionMessage = "Webhook rotated."
+            case .reinstall:
+                actionMessage = "Webhook reinstalled."
+            case .ping:
+                actionMessage = "Webhook ping sent."
+            }
+            await loadWebhookActivity(refresh: true)
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func sendWebhookPing() async {
+        isSendingWebhookPing = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isSendingWebhookPing = false }
+
+        do {
+            _ = try await api.configureWebhook(owner: currentRepo.owner, repo: currentRepo.name, action: .ping)
+            actionMessage = "Webhook ping sent."
             await loadWebhookActivity(refresh: true)
         } catch {
             actionError = error.localizedDescription

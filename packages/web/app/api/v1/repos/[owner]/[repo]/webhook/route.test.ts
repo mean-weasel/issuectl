@@ -19,7 +19,14 @@ const listRepos = vi.hoisted(() => vi.fn());
 const recordDiagnosticEventSafely = vi.hoisted(() => vi.fn());
 const rotateIssuectlWebhook = vi.hoisted(() => vi.fn());
 const updateRepoWebhookSettings = vi.hoisted(() => vi.fn());
-const withAuthRetry = vi.hoisted(() => vi.fn((fn: (octokit: unknown) => unknown) => fn({})));
+const pingWebhook = vi.hoisted(() => vi.fn());
+const withAuthRetry = vi.hoisted(() => vi.fn((fn: (octokit: unknown) => unknown) => fn({
+  rest: {
+    repos: {
+      pingWebhook,
+    },
+  },
+})));
 
 vi.mock("@issuectl/core", () => ({
   createIssuectlWebhook: (...args: unknown[]) => createIssuectlWebhook(...args),
@@ -61,6 +68,8 @@ beforeEach(() => {
   createIssuectlWebhook.mockResolvedValue({ id: 123, createdBy: "jeremy" });
   rotateIssuectlWebhook.mockReset();
   rotateIssuectlWebhook.mockResolvedValue({ id: 456, createdBy: "jeremy" });
+  pingWebhook.mockReset();
+  pingWebhook.mockResolvedValue({});
   recordDiagnosticEventSafely.mockReset();
   updateRepoWebhookSettings.mockReset();
   updateRepoWebhookSettings.mockReturnValue({ ...repo, webhookId: 123 });
@@ -132,6 +141,62 @@ describe("/api/v1/repos/[owner]/[repo]/webhook", () => {
       event: "webhook.url_reconciled",
       data: expect.objectContaining({ hookId: 456 }),
     }));
+  });
+
+  it("reinstalls by rotating an existing webhook id", async () => {
+    getRepoWebhookConfigById.mockReturnValue({ ...repo, webhookId: 77, webhookSecret: "old" });
+    updateRepoWebhookSettings.mockReturnValue({ ...repo, webhookId: 456 });
+
+    const response = await POST(request({ action: "reinstall" }), {
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(rotateIssuectlWebhook).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      hookId: 77,
+    }));
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.webhook_reinstalled",
+    }));
+  });
+
+  it("reinstalls by creating when the stored webhook id is stale", async () => {
+    getRepoWebhookConfigById.mockReturnValue({ ...repo, webhookId: 77, webhookSecret: "old" });
+    rotateIssuectlWebhook.mockRejectedValue({ status: 404 });
+
+    const response = await POST(request({ action: "reinstall" }), {
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }),
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(createIssuectlWebhook).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      owner: "mean-weasel",
+      repo: "issuectl",
+    }));
+    expect(json.webhook.id).toBe(123);
+  });
+
+  it("sends a webhook ping without exposing secrets", async () => {
+    getRepoWebhookConfigById.mockReturnValue({ ...repo, webhookId: 77, webhookSecret: "old" });
+
+    const response = await POST(request({ action: "ping" }), {
+      params: Promise.resolve({ owner: "mean-weasel", repo: "issuectl" }),
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(pingWebhook).toHaveBeenCalledWith({
+      owner: "mean-weasel",
+      repo: "issuectl",
+      hook_id: 77,
+    });
+    expect(rotateIssuectlWebhook).not.toHaveBeenCalled();
+    expect(createIssuectlWebhook).not.toHaveBeenCalled();
+    expect(recordDiagnosticEventSafely).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      event: "repo.webhook_ping_sent",
+    }));
+    expect(JSON.stringify(json)).not.toContain("webhookSecret");
   });
 
   it("rejects rotate when no webhook id is stored", async () => {
