@@ -493,6 +493,79 @@ struct ReviewRunDeployment: Codable, Identifiable, Sendable {
     let idleSince: String?
 }
 
+struct ReviewRunDetailResponse: Codable, Sendable {
+    let review: ReviewRun
+    let repo: ReviewRunDetailRepo
+    let deployment: ReviewRunDeployment?
+    let lineage: [ReviewRunLineageItem]
+    let diagnostics: DeploymentDiagnosticsResponse
+    let banners: [ReviewRunBanner]
+    let metadata: ReviewRunDetailMetadata
+    let actions: ReviewRunDetailActions
+    let links: ReviewRunDetailLinks
+}
+
+struct ReviewRunDetailRepo: Codable, Identifiable, Sendable {
+    let id: Int
+    let fullName: String
+    let owner: String
+    let name: String
+}
+
+struct ReviewRunLineageItem: Codable, Identifiable, Sendable {
+    let id: Int
+    let active: Bool
+    let label: String
+    let status: ReviewRunStatus
+    let triggeredBy: DeploymentTrigger
+    let deploymentId: Int?
+    let reviewedFromSha: String?
+    let reviewedToSha: String
+    let result: [String: JSONValue]?
+    let summary: String?
+    let startedAt: Int
+    let startedAtIso: String?
+    let completedAt: Int?
+    let completedAtIso: String?
+}
+
+struct ReviewRunBanner: Codable, Identifiable, Sendable {
+    let tone: ReviewRunBannerTone
+    let title: String
+    let body: String
+
+    var id: String { "\(tone.rawValue)-\(title)" }
+}
+
+enum ReviewRunBannerTone: String, Codable, Sendable {
+    case bad
+    case warn
+    case info
+}
+
+struct ReviewRunDetailMetadata: Codable, Sendable {
+    let currentReviewPreamble: String?
+    let triggerEvent: DiagnosticEvent?
+}
+
+struct ReviewRunDetailActions: Codable, Sendable {
+    let canRetry: Bool
+    let canFullRerun: Bool
+    let disabledReason: String?
+    let mobileWriteActionsEnabled: Bool
+}
+
+struct ReviewRunDetailLinks: Codable, Sendable {
+    let githubPr: String
+    let githubReview: String?
+    let githubReviewFiles: String
+    let workbench: String
+    let repoSettings: String
+    let sessions: String
+    let webhookLogs: String
+    let diagnosticsCli: String
+}
+
 enum SessionsOverviewTab: String, Codable, CaseIterable, Sendable {
     case sessions
     case reviews

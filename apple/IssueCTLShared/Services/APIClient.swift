@@ -439,6 +439,12 @@ final class APIClient {
         return try decoder.decode(ReviewRunsResponse.self, from: data)
     }
 
+    func reviewRunDetail(id: Int) async throws -> ReviewRunDetailResponse {
+        let safeId = max(1, id)
+        let (data, _) = try await request(path: "/api/v1/pr-reviews/\(safeId)")
+        return try decoder.decode(ReviewRunDetailResponse.self, from: data)
+    }
+
     func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
         let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
         return try decoder.decode(DiagnosticsResponse.self, from: data)
