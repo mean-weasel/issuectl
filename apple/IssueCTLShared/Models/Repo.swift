@@ -450,13 +450,22 @@ struct ReviewRunsResponse: Codable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        reviewRuns = try container.decode([ReviewRun].self, forKey: .reviewRuns)
+        reviewRuns = try container.decodeIfPresent([ReviewRun].self, forKey: .reviewRuns)
+            ?? container.decodeIfPresent([ReviewRun].self, forKey: .reviews)
+            ?? []
         fromCache = try container.decodeIfPresent(Bool.self, forKey: .fromCache) ?? false
         cachedAt = try container.decodeIfPresent(String.self, forKey: .cachedAt)
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(reviewRuns, forKey: .reviewRuns)
+        try container.encode(fromCache, forKey: .fromCache)
+        try container.encodeIfPresent(cachedAt, forKey: .cachedAt)
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case reviewRuns, fromCache, cachedAt
+        case reviewRuns, reviews, fromCache, cachedAt
     }
 }
 

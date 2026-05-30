@@ -67,6 +67,7 @@
 		3A294328BBF7D4016CC7B91E /* DraftDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3814ACC4885AAA637A3041 /* DraftDetailView.swift */; };
 		3C8E5B7EEE8B870210CB8DDC /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1162B5421C0F279C8492942 /* APIClient.swift */; };
 		3D1ECFFEF7507D51F7F2E0C2 /* RepoFilterChips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0193FA27DDE9FE825F4DCA1B /* RepoFilterChips.swift */; };
+		3D4D2C49164044A49C57105E /* AutomationFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41357EAF7329A9950B0794A /* AutomationFeedView.swift */; };
 		3F98C9896C5653D619ABA40F /* OfflineCacheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E7EDBC4DCA5DCEF3D3EA2D /* OfflineCacheStore.swift */; };
 		40ACA9C6A6F085A9F001A9C2 /* SetupLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1D044DCA62B13F4196F816 /* SetupLink.swift */; };
 		42EE83997C330D92A0AF72EF /* WorktreeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D8CD9DD1A8317523ED863 /* WorktreeListView.swift */; };
@@ -119,6 +120,7 @@
 		730EFF3CBA2ED540A483520A /* RepoAutomationActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DD3EAD6425B42F99E2BBBA /* RepoAutomationActivityView.swift */; };
 		7340473639227F6F40A9B792 /* APIClient+AdvancedSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35F92CAF45ECF0BED4F462D /* APIClient+AdvancedSettings.swift */; };
 		74BBC81070D4A029011534E6 /* PerformanceTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA90F554E1CF22EA56B51AB /* PerformanceTrace.swift */; };
+		756921D42B98FEBB1C16A7A8 /* AutomationActivityRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9857E6F0AFD20465F77A6C5 /* AutomationActivityRows.swift */; };
 		779767D8AA5F26F07A4B7F31 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1162B5421C0F279C8492942 /* APIClient.swift */; };
 		78A07AEB3E3123D8640D060E /* CommandCenterComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B990A804E6850DD8423327 /* CommandCenterComponents.swift */; };
 		78C4075442E5AFA3CEC1CDD5 /* IssueCTLApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223E1C810B3BD014B117301B /* IssueCTLApp.swift */; };
@@ -167,6 +169,7 @@
 		B0B4D310A36FCCDF3F73C336 /* CacheAgeLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2841D89323711B68449BB980 /* CacheAgeLabel.swift */; };
 		B1F252A9CAEFE3AEBAD72627 /* APIClient+AdvancedSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35F92CAF45ECF0BED4F462D /* APIClient+AdvancedSettings.swift */; };
 		B3D5E3FD4EF67AE7FA0244FA /* PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84CFE58A48C5143017DDCD88 /* PullRequest.swift */; };
+		B3DE599338B4E6B79D27C378 /* AutomationFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41357EAF7329A9950B0794A /* AutomationFeedView.swift */; };
 		B46FB3602D7536C5ADB4E5CC /* WorkbenchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436AD98A6942EE0DBA6EDB1A /* WorkbenchStore.swift */; };
 		B4AE7A30FA4C9D89B7400802 /* APIClient+ImageUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = A225C37217DC60896282FCA4 /* APIClient+ImageUpload.swift */; };
 		B4AF2A85F0768942BCD81D8C /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E556B4EF9EA078249A82EF01 /* NetworkMonitor.swift */; };
@@ -209,6 +212,7 @@
 		D1B085BF32A2BA054762456F /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC00C899D2ADA14475787AE7 /* APIClientTests.swift */; };
 		D313EE47970005D888007FBE /* GitHubAccessibleRepo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F2045894076CF711FE18DAA /* GitHubAccessibleRepo.swift */; };
 		D365E6F4AACBF2399319E5BC /* GitHubAccessibleRepo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F2045894076CF711FE18DAA /* GitHubAccessibleRepo.swift */; };
+		D37D67F958F348E75F1E6D75 /* AutomationActivityRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9857E6F0AFD20465F77A6C5 /* AutomationActivityRows.swift */; };
 		D44F79649E736044B57946F0 /* APIClient+DetailActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493D2F4114A7CD0C28DC8F76 /* APIClient+DetailActions.swift */; };
 		D52DC5DDE3BE88CF966B0675 /* IssueCTLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 864FC68F504BF4FA08B86548 /* IssueCTLUITests.swift */; };
 		D672987F49396A1562FEAA5B /* LaunchProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF815A24660864A5AA69B05 /* LaunchProgressView.swift */; };
@@ -371,7 +375,9 @@
 		9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestChangesSheet.swift; sourceTree = "<group>"; };
 		9FAF141F6D9A6899512B98F4 /* OfflineSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSyncService.swift; sourceTree = "<group>"; };
 		A225C37217DC60896282FCA4 /* APIClient+ImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+ImageUpload.swift"; sourceTree = "<group>"; };
+		A41357EAF7329A9950B0794A /* AutomationFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationFeedView.swift; sourceTree = "<group>"; };
 		A857FE28B9D50395BE2B49FA /* APIClient+Assignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Assignment.swift"; sourceTree = "<group>"; };
+		A9857E6F0AFD20465F77A6C5 /* AutomationActivityRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationActivityRows.swift; sourceTree = "<group>"; };
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD0E8C15D2965C1673B992B7 /* MacSidebarSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSidebarSmokeTests.swift; sourceTree = "<group>"; };
 		AD3C1581E55A12781F1E76A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -526,6 +532,8 @@
 			children = (
 				F327BCF6E8F284459A3256FF /* AddRepoSheet.swift */,
 				6E52120CCBF1B17E45E2DDC1 /* AdvancedSettingsView.swift */,
+				A9857E6F0AFD20465F77A6C5 /* AutomationActivityRows.swift */,
+				A41357EAF7329A9950B0794A /* AutomationFeedView.swift */,
 				9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */,
 				87C78179FB5D86E7E107E81B /* NotificationSettingsView.swift */,
 				5CF37EEF251C5C18C03E86D4 /* OfflineQueueView.swift */,
@@ -1129,6 +1137,8 @@
 				B4D3E5DC8306990F763058B6 /* AdvancedSettingsView.swift in Sources */,
 				EA782E1A1F8C5112A664DAAA /* AppVersion.swift in Sources */,
 				916892AA5B3D923B618E6288 /* AssigneeSheet.swift in Sources */,
+				756921D42B98FEBB1C16A7A8 /* AutomationActivityRows.swift in Sources */,
+				B3DE599338B4E6B79D27C378 /* AutomationFeedView.swift in Sources */,
 				A5A40C3369B96157539628A4 /* BoardView.swift in Sources */,
 				23EAF525A8ADA655565F610F /* BranchNameHelper.swift in Sources */,
 				31F1727D0042386D7B07C93A /* CacheAgeLabel.swift in Sources */,
@@ -1217,6 +1227,8 @@
 				A9B874605B9902D25572BC69 /* AdvancedSettingsView.swift in Sources */,
 				23D942475A1170ACA34A2C42 /* AppVersion.swift in Sources */,
 				25A88772F8BE82458C3B5052 /* AssigneeSheet.swift in Sources */,
+				D37D67F958F348E75F1E6D75 /* AutomationActivityRows.swift in Sources */,
+				3D4D2C49164044A49C57105E /* AutomationFeedView.swift in Sources */,
 				0F3A28DC1E9028EB85E10458 /* BoardView.swift in Sources */,
 				9E5810655BCFC5AD8846D206 /* BranchNameHelper.swift in Sources */,
 				B0B4D310A36FCCDF3F73C336 /* CacheAgeLabel.swift in Sources */,

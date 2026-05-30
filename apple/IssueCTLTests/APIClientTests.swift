@@ -280,6 +280,17 @@ final class TestableAPIClient {
         return try decoder.decode(WebhookEventsResponse.self, from: data)
     }
 
+    func globalWebhookEvents(limit: Int = 50) async throws -> WebhookEventsResponse {
+        let safeLimit = max(1, min(100, limit))
+        var components = URLComponents()
+        components.path = "/api/v1/webhooks/events"
+        components.queryItems = [
+            URLQueryItem(name: "limit", value: String(safeLimit))
+        ]
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(WebhookEventsResponse.self, from: data)
+    }
+
     func reviewRuns(
         owner: String,
         repo: String,
@@ -294,6 +305,18 @@ final class TestableAPIClient {
             URLQueryItem(name: "status", value: status.rawValue),
             URLQueryItem(name: "limit", value: String(limit))
         ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(ReviewRunsResponse.self, from: data)
+    }
+
+    func globalReviewRuns(status: ReviewRunStatusFilter = .all, limit: Int = 50) async throws -> ReviewRunsResponse {
+        let safeLimit = max(1, min(100, limit))
+        var components = URLComponents()
+        components.path = "/api/v1/pr-reviews"
+        components.queryItems = [
+            URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "limit", value: String(safeLimit))
+        ]
         let (data, _) = try await request(path: components.string ?? components.path)
         return try decoder.decode(ReviewRunsResponse.self, from: data)
     }
@@ -545,6 +568,33 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.diagnostics(deploymentId: 42)
+    }
+
+    @MainActor
+    func testGlobalWebhookEventsEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/webhooks/events")
+            XCTAssertTrue(request.url!.query?.contains("limit=50") == true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"events":[],"repos":[],"filters":{"repo":null,"target_type":null,"target_number":null,"limit":50},"summary":{"count":0,"latest_received_at":null,"latest_received_at_iso":null,"result_counts":{}}}"#.data(using: .utf8)!)
+        }
+
+        let response = try await client.globalWebhookEvents(limit: 50)
+        XCTAssertTrue(response.events.isEmpty)
+    }
+
+    @MainActor
+    func testGlobalReviewRunsEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/pr-reviews")
+            XCTAssertTrue(request.url!.query?.contains("status=all") == true)
+            XCTAssertTrue(request.url!.query?.contains("limit=50") == true)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, #"{"reviews":[],"repos":[],"filters":{"repo":null,"pr":null,"status":"all","limit":50},"summary":{"count":0,"active_count":0,"completed_count":0,"failed_count":0,"latest_started_at":null,"latest_started_at_iso":null}}"#.data(using: .utf8)!)
+        }
+
+        let response = try await client.globalReviewRuns(status: .all, limit: 50)
+        XCTAssertTrue(response.reviewRuns.isEmpty)
     }
 
     @MainActor

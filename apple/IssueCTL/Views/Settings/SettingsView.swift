@@ -40,6 +40,8 @@ struct SettingsView: View {
                 switch dest {
                 case .advancedSettings:
                     AdvancedSettingsView()
+                case .automationFeed:
+                    AutomationFeedView()
                 case .notifications:
                     NotificationSettingsView()
                 case .worktrees:
@@ -182,6 +184,10 @@ struct SettingsView: View {
             NavigationLink(value: SettingsDestination.advancedSettings) {
                 Label("Agent Harness & Defaults", systemImage: "terminal")
             }
+            NavigationLink(value: SettingsDestination.automationFeed) {
+                Label("Automation Feed", systemImage: "dot.radiowaves.left.and.right")
+            }
+            .accessibilityIdentifier("settings-automation-feed-link")
             NavigationLink(value: SettingsDestination.notifications) {
                 Label("Notifications", systemImage: "bell.badge")
             }
@@ -294,6 +300,7 @@ struct SettingsView: View {
 
 enum SettingsDestination: Hashable {
     case advancedSettings
+    case automationFeed
     case notifications
     case worktrees
     case offlineQueue
