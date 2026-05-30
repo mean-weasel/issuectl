@@ -204,6 +204,11 @@ final class TestableAPIClient {
         return try decoder.decode(RepoLabelsRecreateResponse.self, from: data)
     }
 
+    func repoLabels(owner: String, repo: String) async throws -> [GitHubLabel] {
+        let (data, _) = try await request(path: "/api/v1/repos/\(owner)/\(repo)/labels")
+        return try decoder.decode(LabelsResponse.self, from: data).labels
+    }
+
     func togglePullLabel(owner: String, repo: String, number: Int, body: ToggleLabelRequestBody) async throws -> ToggleLabelResponse {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/pulls/\(owner)/\(repo)/\(number)/labels", method: "POST", body: bodyData)

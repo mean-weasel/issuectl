@@ -1,4 +1,27 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
+
+let editRepoDisableAutomationConfirmationMessage = "Disabling automation stops future label-triggered sessions and ends matching active webhook sessions for this repository."
+
+private let requiredAutomationLabelNames = ["issuectl:auto-launch", "issuectl:auto-review"]
+
+func webhookReceiverURL(publicBaseURL: String?, repoId: Int) -> String? {
+    guard let publicBaseURL else { return nil }
+    let trimmed = publicBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    return "\(trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/api/webhook/github/\(repoId)"
+}
+
+func automationLabelCheckMessage(for labels: [GitHubLabel]) -> String {
+    let names = Set(labels.map(\.name))
+    let missing = requiredAutomationLabelNames.filter { !names.contains($0) }
+    if missing.isEmpty {
+        return "Required automation labels are present."
+    }
+    return "Missing labels: \(missing.joined(separator: ", "))"
+}
 
 struct EditRepoSheet: View {
     @Environment(APIClient.self) private var api
@@ -23,8 +46,11 @@ struct EditRepoSheet: View {
     @State private var isLoadingWebhookActivity = false
     @State private var isConfiguringWebhook = false
     @State private var isRecreatingLabels = false
+    @State private var isCopyingWebhookURL = false
+    @State private var isCheckingLabels = false
     @State private var errorMessage: String?
     @State private var actionMessage: String?
+    @State private var actionWarning: String?
     @State private var actionError: String?
     @State private var webhookActivityError: String?
     @State private var showDisableAutomationConfirm = false
@@ -154,7 +180,7 @@ struct EditRepoSheet: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Webhook-triggered sessions are still running for this repo. Saving will stop future automation only; it will not end existing sessions.")
+                Text(editRepoDisableAutomationConfirmationMessage)
             }
             .interactiveDismissDisabled(isSaveBusy)
             .task {
@@ -220,6 +246,18 @@ struct EditRepoSheet: View {
             .accessibilityIdentifier("edit-repo-automation-activity-link")
 
             Button {
+                Task { await copyReceiverURL() }
+            } label: {
+                settingsActionLabel(
+                    title: "Copy Receiver URL",
+                    systemImage: "doc.on.doc",
+                    isLoading: isCopyingWebhookURL
+                )
+            }
+            .disabled(isCopyingWebhookURL)
+            .accessibilityIdentifier("edit-repo-webhook-copy-url-button")
+
+            Button {
                 Task { await checkWebhookHealth() }
             } label: {
                 settingsActionLabel(
@@ -244,6 +282,18 @@ struct EditRepoSheet: View {
             .accessibilityIdentifier("edit-repo-webhook-configure-button")
 
             Button {
+                Task { await checkLabels() }
+            } label: {
+                settingsActionLabel(
+                    title: "Check Automation Labels",
+                    systemImage: "tag",
+                    isLoading: isCheckingLabels
+                )
+            }
+            .disabled(isCheckingLabels)
+            .accessibilityIdentifier("edit-repo-check-labels-button")
+
+            Button {
                 Task { await recreateLabels() }
             } label: {
                 settingsActionLabel(
@@ -259,12 +309,21 @@ struct EditRepoSheet: View {
                 Label(actionMessage, systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                     .font(.caption)
+                    .accessibilityIdentifier("edit-repo-action-message")
+            }
+
+            if let actionWarning {
+                Label(actionWarning, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                    .accessibilityIdentifier("edit-repo-action-warning")
             }
 
             if let actionError {
                 Label(actionError, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
                     .font(.caption)
+                    .accessibilityIdentifier("edit-repo-action-error")
             }
         } header: {
             Text("Webhook")
@@ -285,6 +344,7 @@ struct EditRepoSheet: View {
 
     private func requestSave() async {
         actionMessage = nil
+        actionWarning = nil
         actionError = nil
 
         if disablesWebhookAutomation, await hasActiveWebhookSessions() {
@@ -318,6 +378,7 @@ struct EditRepoSheet: View {
 
         isSaving = true
         errorMessage = nil
+        actionWarning = nil
         actionError = nil
         defer { isSaving = false }
 
@@ -345,6 +406,7 @@ struct EditRepoSheet: View {
     private func checkWebhookHealth() async {
         isCheckingWebhookHealth = true
         actionMessage = nil
+        actionWarning = nil
         actionError = nil
         defer { isCheckingWebhookHealth = false }
 
@@ -358,6 +420,7 @@ struct EditRepoSheet: View {
     private func configureWebhook() async {
         isConfiguringWebhook = true
         actionMessage = nil
+        actionWarning = nil
         actionError = nil
         defer { isConfiguringWebhook = false }
 
@@ -379,6 +442,7 @@ struct EditRepoSheet: View {
     private func recreateLabels() async {
         isRecreatingLabels = true
         actionMessage = nil
+        actionWarning = nil
         actionError = nil
         defer { isRecreatingLabels = false }
 
@@ -389,6 +453,51 @@ struct EditRepoSheet: View {
                 await loadWebhookActivity(refresh: true)
             } else {
                 actionError = response.error ?? "Failed to recreate automation labels."
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func copyReceiverURL() async {
+        isCopyingWebhookURL = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isCopyingWebhookURL = false }
+
+        do {
+            let settings = try await api.getSettings()
+            guard let receiverURL = webhookReceiverURL(
+                publicBaseURL: settings["public_webhook_base_url"],
+                repoId: currentRepo.id
+            ) else {
+                actionWarning = "Set Public Webhook Base URL before copying the receiver URL."
+                return
+            }
+            #if os(iOS)
+            UIPasteboard.general.string = receiverURL
+            #endif
+            actionMessage = "Webhook URL copied."
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func checkLabels() async {
+        isCheckingLabels = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isCheckingLabels = false }
+
+        do {
+            let labels = try await api.repoLabels(owner: currentRepo.owner, repo: currentRepo.name)
+            let message = automationLabelCheckMessage(for: labels)
+            if message.hasPrefix("Missing labels:") {
+                actionWarning = message
+            } else {
+                actionMessage = message
             }
         } catch {
             actionError = error.localizedDescription

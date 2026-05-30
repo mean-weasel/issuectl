@@ -451,6 +451,21 @@ final class APIClientExtensionTests: XCTestCase {
     }
 
     @MainActor
+    func testRepoLabelsClientUsesRepoLabelsEndpoint() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/labels")
+            XCTAssertEqual(request.httpMethod, "GET")
+            return (self.makeResponse(url: request.url!), """
+            {"labels": [{"name": "issuectl:auto-launch", "color": "2f81f7", "description": "Opt issue into issuectl auto-launch"}]}
+            """.data(using: .utf8)!)
+        }
+
+        let labels = try await client.repoLabels(owner: "mean-weasel", repo: "issuectl")
+
+        XCTAssertEqual(labels.map(\.name), ["issuectl:auto-launch"])
+    }
+
+    @MainActor
     func testAssignDraftWithLabelsURL() async throws {
         MockURLProtocol.requestHandler = { request in
             XCTAssertTrue(request.url!.path.hasSuffix("/api/v1/drafts/draft-abc/assign"))

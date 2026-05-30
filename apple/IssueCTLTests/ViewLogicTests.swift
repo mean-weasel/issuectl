@@ -98,6 +98,41 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertNil(cache.load([Repo].self, for: "repos", serverURL: "http://two.example"))
     }
 
+    // MARK: - Repo Automation Controls
+
+    func testAutomationDisableConfirmationCopyMatchesServerBehavior() {
+        XCTAssertTrue(editRepoDisableAutomationConfirmationMessage.contains("stops future label-triggered sessions"))
+        XCTAssertTrue(editRepoDisableAutomationConfirmationMessage.contains("ends matching active webhook sessions"))
+    }
+
+    func testWebhookReceiverURLUsesPublicWebhookBaseURL() {
+        XCTAssertEqual(
+            webhookReceiverURL(publicBaseURL: "https://hooks.example.test/", repoId: 42),
+            "https://hooks.example.test/api/webhook/github/42"
+        )
+        XCTAssertNil(webhookReceiverURL(publicBaseURL: "   ", repoId: 42))
+        XCTAssertNil(webhookReceiverURL(publicBaseURL: nil, repoId: 42))
+    }
+
+    func testAutomationLabelCheckMessageReportsMissingLabels() {
+        let labels = [
+            GitHubLabel(name: "issuectl:auto-launch", color: "2f81f7", description: nil),
+            GitHubLabel(name: "bug", color: "d73a4a", description: nil),
+        ]
+
+        XCTAssertEqual(
+            automationLabelCheckMessage(for: labels),
+            "Missing labels: issuectl:auto-review"
+        )
+        XCTAssertEqual(
+            automationLabelCheckMessage(for: [
+                GitHubLabel(name: "issuectl:auto-launch", color: "2f81f7", description: nil),
+                GitHubLabel(name: "issuectl:auto-review", color: "a371f7", description: nil),
+            ]),
+            "Required automation labels are present."
+        )
+    }
+
     // MARK: - Offline Action Queue
 
     func testOfflineActionQueuePersistsIssueComments() throws {
