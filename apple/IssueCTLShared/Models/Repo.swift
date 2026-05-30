@@ -466,7 +466,7 @@ struct ReviewRunDeployment: Codable, Identifiable, Sendable {
     let targetType: DeploymentTargetType
     let targetNumber: Int
     let targetLabel: String
-    let issueNumber: Int
+    let issueNumber: Int?
     let branchName: String
     let agent: LaunchAgent?
     let workspaceMode: WorkspaceMode
