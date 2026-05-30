@@ -499,6 +499,7 @@ struct ReviewRunDetailResponse: Codable, Sendable {
     let deployment: ReviewRunDeployment?
     let lineage: [ReviewRunLineageItem]
     let diagnostics: DeploymentDiagnosticsResponse
+    let findings: [ReviewRunFinding]
     let banners: [ReviewRunBanner]
     let metadata: ReviewRunDetailMetadata
     let actions: ReviewRunDetailActions
@@ -535,6 +536,22 @@ struct ReviewRunBanner: Codable, Identifiable, Sendable {
     let body: String
 
     var id: String { "\(tone.rawValue)-\(title)" }
+}
+
+struct ReviewRunFinding: Codable, Identifiable, Sendable {
+    let id: String
+    let title: String
+    let body: String?
+    let path: String?
+    let line: Int?
+    let severity: String?
+    let htmlUrl: String?
+
+    var locationLabel: String? {
+        guard let path else { return nil }
+        if let line { return "\(path):\(line)" }
+        return path
+    }
 }
 
 enum ReviewRunBannerTone: String, Codable, Sendable {

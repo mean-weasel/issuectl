@@ -1888,6 +1888,17 @@ final class ModelDecodingTests: XCTestCase {
             "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 1},
             "summary": {"count": 1, "level_counts": {"info": 1}, "latest_timestamp": 1780000003000, "latest_timestamp_iso": "2026-05-29T20:26:43.000Z"}
           },
+          "findings": [
+            {
+              "id": "Sources/App.swift-42",
+              "title": "Nil branch is not handled",
+              "body": "Guard the optional value before rendering.",
+              "path": "Sources/App.swift",
+              "line": 42,
+              "severity": "warning",
+              "html_url": "https://github.com/mean-weasel/issuectl/pull/563/files#diff-app"
+            }
+          ],
           "banners": [{"tone": "info", "title": "Follow-up requested", "body": "A newer PR head was coalesced."}],
           "metadata": {
             "current_review_preamble": null,
@@ -1921,6 +1932,8 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.lineage.first?.active, true)
         XCTAssertEqual(response.diagnostics.summaryText, "1 diagnostic event, no failure recorded")
         XCTAssertEqual(response.diagnostics.events.first?.targetLabel, "PR #563")
+        XCTAssertEqual(response.findings.first?.locationLabel, "Sources/App.swift:42")
+        XCTAssertEqual(response.findings.first?.title, "Nil branch is not handled")
         XCTAssertEqual(response.banners.first?.tone, .info)
         XCTAssertFalse(response.actions.mobileWriteActionsEnabled)
         XCTAssertEqual(response.links.githubPr, "https://github.com/mean-weasel/issuectl/pull/563")

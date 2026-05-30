@@ -59,6 +59,7 @@ function buildPrReviewDetailPayload(data: ReviewDetailData): unknown {
         limit: data.diagnostics.length,
       },
     }),
+    findings: mobileFindings(data.result),
     banners: data.banners,
     metadata: data.metadata,
     actions: {
@@ -146,6 +147,45 @@ function mobileDeployment(deployment: Deployment): unknown {
   };
 }
 
+function mobileFindings(result: Record<string, unknown>): unknown[] {
+  const rawFindings = arrayValue(result.findings) ?? arrayValue(result.comments) ?? [];
+  return rawFindings
+    .map((item, index) => mobileFinding(item, index))
+    .filter((item) => item !== null);
+}
+
+function mobileFinding(item: unknown, index: number): Record<string, unknown> | null {
+  if (typeof item !== "object" || item === null || Array.isArray(item)) return null;
+  const finding = item as Record<string, unknown>;
+  const path = stringValue(finding.path)
+    ?? stringValue(finding.file)
+    ?? stringValue(finding.filePath)
+    ?? stringValue(finding.file_path)
+    ?? stringValue(finding.filename);
+  const line = numberValue(finding.line)
+    ?? numberValue(finding.startLine)
+    ?? numberValue(finding.start_line)
+    ?? numberValue(finding.originalLine)
+    ?? numberValue(finding.original_line);
+  const body = stringValue(finding.body)
+    ?? stringValue(finding.message)
+    ?? stringValue(finding.comment)
+    ?? stringValue(finding.description);
+  const title = stringValue(finding.title)
+    ?? stringValue(finding.rule)
+    ?? firstLine(body)
+    ?? (path ? `${path}${line ? `:${line}` : ""}` : `Finding ${index + 1}`);
+  return {
+    id: stringValue(finding.id) ?? `${path ?? "finding"}-${line ?? index}`,
+    title,
+    body: body ?? null,
+    path: path ?? null,
+    line: line ?? null,
+    severity: stringValue(finding.severity) ?? stringValue(finding.level) ?? null,
+    htmlUrl: stringValue(finding.htmlUrl) ?? stringValue(finding.html_url) ?? stringValue(finding.url) ?? null,
+  };
+}
+
 function reviewSummary(result: Record<string, unknown>): string | null {
   return stringValue(result.summary) ?? stringValue(result.reason) ?? stringValue(result.error) ?? null;
 }
@@ -196,6 +236,14 @@ function numberValue(value: unknown): number | undefined {
 
 function arrayLength(value: unknown): number | null {
   return Array.isArray(value) ? value.length : null;
+}
+
+function arrayValue(value: unknown): unknown[] | null {
+  return Array.isArray(value) ? value : null;
+}
+
+function firstLine(value: string | undefined): string | undefined {
+  return value?.split(/\r?\n/, 1)[0];
 }
 
 function toIso(value: number): string {

@@ -63,6 +63,17 @@ describe("/api/v1/pr-reviews/[id]", () => {
         targetLabel: "PR #44",
       }),
     ]);
+    expect(json.findings).toEqual([
+      expect.objectContaining({
+        id: "a.ts-12",
+        title: "Guard missing",
+        body: "Check the null branch.",
+        path: "a.ts",
+        line: 12,
+        severity: "warning",
+        htmlUrl: "https://github.com/mean-weasel/issuectl/pull/44/files#diff-a",
+      }),
+    ]);
     expect(json.actions).toEqual({
       canRetry: true,
       canFullRerun: true,
@@ -143,7 +154,17 @@ function reviewDetailData() {
     headRef: "feature/mobile-contracts",
     status: "completed",
     triggeredBy: "webhook",
-    resultJson: JSON.stringify({ summary: "found one issue", findings: [{ path: "a.ts" }] }),
+    resultJson: JSON.stringify({
+      summary: "found one issue",
+      findings: [{
+        path: "a.ts",
+        line: 12,
+        title: "Guard missing",
+        body: "Check the null branch.",
+        severity: "warning",
+        html_url: "https://github.com/mean-weasel/issuectl/pull/44/files#diff-a",
+      }],
+    }),
     startedAt: 1_779_000_000_000,
     completedAt: 1_779_000_600_000,
   };
