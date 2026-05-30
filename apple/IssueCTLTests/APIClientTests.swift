@@ -320,6 +320,28 @@ final class TestableAPIClient {
         return try decoder.decode(WebhookEventsResponse.self, from: data)
     }
 
+    func webhookEventsStreamURL() throws -> URL {
+        guard !apiToken.isEmpty, var components = URLComponents(string: serverURL) else {
+            throw APIError.notConfigured
+        }
+        switch components.scheme {
+        case "http":
+            components.scheme = "ws"
+        case "https":
+            components.scheme = "wss"
+        case "ws", "wss":
+            break
+        default:
+            throw APIError.invalidPath(serverURL)
+        }
+        components.path = "/api/webhooks/events/stream"
+        components.queryItems = nil
+        guard let url = components.url else {
+            throw APIError.invalidPath("/api/webhooks/events/stream")
+        }
+        return url
+    }
+
     func reviewRuns(
         owner: String,
         repo: String,
@@ -660,6 +682,28 @@ final class APIClientTests: XCTestCase {
 
         let response = try await client.globalWebhookEvents(limit: 50)
         XCTAssertTrue(response.events.isEmpty)
+    }
+
+    @MainActor
+    func testWebhookEventsStreamURLUsesWebSocketSchemeWithoutLeakingToken() throws {
+        let httpClient = TestableAPIClient(
+            serverURL: "http://localhost:3847",
+            apiToken: "stream-token"
+        )
+        let httpURL = try httpClient.webhookEventsStreamURL()
+        XCTAssertEqual(httpURL.scheme, "ws")
+        XCTAssertEqual(httpURL.host, "localhost")
+        XCTAssertEqual(httpURL.port, 3847)
+        XCTAssertEqual(httpURL.path, "/api/webhooks/events/stream")
+        XCTAssertNil(httpURL.query)
+
+        let httpsClient = TestableAPIClient(
+            serverURL: "https://issuectl.example.test",
+            apiToken: "stream-token"
+        )
+        let httpsURL = try httpsClient.webhookEventsStreamURL()
+        XCTAssertEqual(httpsURL.scheme, "wss")
+        XCTAssertEqual(httpsURL.host, "issuectl.example.test")
     }
 
     @MainActor

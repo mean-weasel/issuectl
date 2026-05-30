@@ -198,6 +198,9 @@ struct SessionListView: View {
             .task(id: overviewQuerySignature) {
                 await load()
             }
+            .task {
+                await streamSessionUpdates()
+            }
             .onReceive(refreshTimer) { _ in
                 guard terminalPresentation == nil else { return }
                 Task { await load(includeRepos: false) }
@@ -524,6 +527,24 @@ struct SessionListView: View {
 
     private func refreshSessions() async {
         await load(refresh: true)
+    }
+
+    private func streamSessionUpdates() async {
+        while !Task.isCancelled {
+            let task: URLSessionWebSocketTask
+            do {
+                task = try api.webhookEventsStreamTask()
+                task.resume()
+                defer { task.cancel(with: .goingAway, reason: nil) }
+                while !Task.isCancelled {
+                    _ = try await task.receive()
+                    guard terminalPresentation == nil else { continue }
+                    await load(includeRepos: false)
+                }
+            } catch {
+                try? await Task.sleep(for: .seconds(5))
+            }
+        }
     }
 
     private func endSession(_ session: SessionsOverviewSession) async {
