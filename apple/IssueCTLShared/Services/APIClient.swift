@@ -409,6 +409,34 @@ final class APIClient {
         return try decoder.decode(WebhookEventsResponse.self, from: data)
     }
 
+    func webhookEventsStreamURL() throws -> URL {
+        guard !apiToken.isEmpty, var components = URLComponents(string: serverURL) else {
+            throw APIError.notConfigured
+        }
+        switch components.scheme {
+        case "http":
+            components.scheme = "ws"
+        case "https":
+            components.scheme = "wss"
+        case "ws", "wss":
+            break
+        default:
+            throw APIError.invalidPath(serverURL)
+        }
+        components.path = "/api/webhooks/events/stream"
+        components.queryItems = nil
+        guard let url = components.url else {
+            throw APIError.invalidPath("/api/webhooks/events/stream")
+        }
+        return url
+    }
+
+    func webhookEventsStreamTask() throws -> URLSessionWebSocketTask {
+        var request = URLRequest(url: try webhookEventsStreamURL())
+        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        return URLSession.shared.webSocketTask(with: request)
+    }
+
     func reviewRuns(
         owner: String,
         repo: String,

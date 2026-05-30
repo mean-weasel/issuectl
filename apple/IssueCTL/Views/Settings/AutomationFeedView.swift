@@ -13,6 +13,7 @@ struct AutomationFeedView: View {
     @State private var webhookResponse: WebhookEventsResponse?
     @State private var reviewRunsResponse: ReviewRunsResponse?
     @State private var reviewDetailTarget: ReviewRunDetailTarget?
+    @State private var isLiveStreamConnected = false
 
     var body: some View {
         Form {
@@ -37,6 +38,9 @@ struct AutomationFeedView: View {
             await loadFeed()
             await pollFeed()
         }
+        .task {
+            await streamFeedUpdates()
+        }
         .refreshable {
             await loadFeed()
         }
@@ -59,6 +63,14 @@ struct AutomationFeedView: View {
                 }
             }
             .accessibilityIdentifier("automation-feed-review-status-picker")
+
+            Label(
+                isLiveStreamConnected ? "Live webhook updates connected" : "Live webhook updates reconnecting",
+                systemImage: isLiveStreamConnected ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash"
+            )
+            .font(.caption)
+            .foregroundStyle(isLiveStreamConnected ? .green : .secondary)
+            .accessibilityIdentifier("automation-feed-live-stream-status")
         }
     }
 
@@ -165,6 +177,28 @@ struct AutomationFeedView: View {
             try? await Task.sleep(for: .seconds(60))
             guard !Task.isCancelled else { return }
             await loadFeed()
+        }
+    }
+
+    private func streamFeedUpdates() async {
+        while !Task.isCancelled {
+            let task: URLSessionWebSocketTask
+            do {
+                task = try api.webhookEventsStreamTask()
+                task.resume()
+                isLiveStreamConnected = true
+                defer {
+                    task.cancel(with: .goingAway, reason: nil)
+                    isLiveStreamConnected = false
+                }
+                while !Task.isCancelled {
+                    _ = try await task.receive()
+                    await loadFeed()
+                }
+            } catch {
+                isLiveStreamConnected = false
+                try? await Task.sleep(for: .seconds(5))
+            }
         }
     }
 
