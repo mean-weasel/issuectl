@@ -19,7 +19,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type WebhookActionBody = {
-  action?: "create" | "rotate";
+  action?: "create" | "rotate" | "reinstall" | "ping";
 };
 
 export async function POST(
@@ -33,8 +33,8 @@ export async function POST(
   const body = await readBody(request);
   if (body instanceof NextResponse) return body;
   const action = body.action;
-  if (action !== "create" && action !== "rotate") {
-    return NextResponse.json({ success: false, error: "action must be create or rotate" }, { status: 400 });
+  if (action !== "create" && action !== "rotate" && action !== "reinstall" && action !== "ping") {
+    return NextResponse.json({ success: false, error: "action must be create, rotate, reinstall, or ping" }, { status: 400 });
   }
 
   try {
@@ -47,6 +47,29 @@ export async function POST(
     if (!config) {
       return NextResponse.json({ success: false, error: "Repository not found" }, { status: 404 });
     }
+    if (action === "ping") {
+      if (!config.webhookId) {
+        return NextResponse.json({ success: false, error: "No webhook id is stored for this repo" }, { status: 400 });
+      }
+      await withAuthRetry((octokit) =>
+        octokit.rest.repos.pingWebhook({
+          owner,
+          repo: repoName,
+          hook_id: config.webhookId ?? 0,
+        }));
+      recordDiagnosticEventSafely(db, {
+        level: "info",
+        event: "repo.webhook_ping_sent",
+        source: "web",
+        owner,
+        repo: repoName,
+        message: "Repository webhook ping sent",
+        data: { repoId: repo.id, hookId: config.webhookId },
+      });
+      log.info({ msg: "api_repo_webhook_ping_sent", repoId: repo.id, owner, name: repoName, hookId: config.webhookId });
+      return NextResponse.json({ success: true, repo, webhook: null });
+    }
+
     if (action === "create" && config.webhookId) {
       return NextResponse.json({ success: false, error: "Webhook already exists; rotate it instead" }, { status: 409 });
     }
@@ -56,20 +79,28 @@ export async function POST(
 
     const url = webhookUrl(db, repo.id);
     const secret = randomBytes(32).toString("hex");
-    const result = await withAuthRetry((octokit) => action === "create"
-      ? createIssuectlWebhook(octokit, { owner, repo: repoName, url, secret })
-      : rotateIssuectlWebhook(octokit, { owner, repo: repoName, hookId: config.webhookId ?? 0, url, secret }));
+    const result = await withAuthRetry(async (octokit) => {
+      if (action === "create" || (action === "reinstall" && !config.webhookId)) {
+        return createIssuectlWebhook(octokit, { owner, repo: repoName, url, secret });
+      }
+      try {
+        return await rotateIssuectlWebhook(octokit, { owner, repo: repoName, hookId: config.webhookId ?? 0, url, secret });
+      } catch (err) {
+        if (action !== "reinstall" || (err as { status?: number }).status !== 404) throw err;
+        return createIssuectlWebhook(octokit, { owner, repo: repoName, url, secret });
+      }
+    });
     const updated = updateRepoWebhookSettings(db, repo.id, {
       webhookId: result.id,
       webhookSecret: secret,
     });
     recordDiagnosticEventSafely(db, {
       level: "info",
-      event: action === "create" ? "repo.webhook_reinstalled" : "repo.webhook_secret_rotated",
+      event: action === "rotate" ? "repo.webhook_secret_rotated" : "repo.webhook_reinstalled",
       source: "web",
       owner,
       repo: repoName,
-      message: action === "create" ? "Repository webhook installed" : "Repository webhook secret rotated",
+      message: action === "rotate" ? "Repository webhook secret rotated" : "Repository webhook reinstalled",
       data: { repoId: repo.id, hookId: result.id, url },
     });
     recordDiagnosticEventSafely(db, {

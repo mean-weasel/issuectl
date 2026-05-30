@@ -96,6 +96,8 @@ struct RecreateRepoLabelsRequest: Encodable, Sendable {
 enum WebhookAction: String, Encodable, Sendable {
     case create
     case rotate
+    case reinstall
+    case ping
 }
 
 struct WebhookActionRequest: Encodable, Sendable {

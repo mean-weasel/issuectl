@@ -300,6 +300,46 @@ final class APIClientExtensionTests: XCTestCase {
     }
 
     @MainActor
+    func testConfigureWebhookSendsReinstallAction() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/webhook")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["action"] as? String, "reinstall")
+
+            return (self.makeResponse(url: request.url!), """
+            {"success":true,"repo":null,"webhook":{"id":124,"url":"https://hooks.example/api/webhook/github/7","created_by":"alice"},"error":null}
+            """.data(using: .utf8)!)
+        }
+
+        let response = try await client.configureWebhook(owner: "mean-weasel", repo: "issuectl", action: .reinstall)
+
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.webhook?.id, 124)
+    }
+
+    @MainActor
+    func testConfigureWebhookSendsPingAction() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/webhook")
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let bodyData = try XCTUnwrap(self.readBody(from: request))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+            XCTAssertEqual(json["action"] as? String, "ping")
+
+            return (self.makeResponse(url: request.url!), #"{"success":true,"repo":null,"webhook":null,"error":null}"#.data(using: .utf8)!)
+        }
+
+        let response = try await client.configureWebhook(owner: "mean-weasel", repo: "issuectl", action: .ping)
+
+        XCTAssertTrue(response.success)
+        XCTAssertNil(response.webhook)
+    }
+
+    @MainActor
     func testRecreateRepoLabelsSendsAction() async throws {
         MockURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/labels")
