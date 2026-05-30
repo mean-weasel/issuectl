@@ -138,13 +138,14 @@ struct ContentView: View {
             selectedTab = .pullRequests
             pendingRoute = route
         case .board:
+            // Board/Sessions focus can consume the preserved route context in follow-up work.
             selectedTab = .board
             pendingRoute = nil
         case .sessions:
             selectedTab = .active
             pendingRoute = nil
-        case .reviews:
-            selectedTab = .today
+        case .review:
+            selectedTab = .active
             pendingRoute = nil
         }
     }
