@@ -36,3 +36,18 @@ func staleDataMessage(kind: String, cachedAt: Date?) -> String {
     formatter.unitsStyle = .abbreviated
     return "Showing cached \(kind) from \(formatter.localizedString(for: cachedAt, relativeTo: Date()))"
 }
+
+func freshnessStatusMessage(
+    kind: String,
+    isShowingCachedData: Bool,
+    isNetworkConnected: Bool,
+    cachedAt: Date?
+) -> String? {
+    if isShowingCachedData {
+        return staleDataMessage(kind: kind, cachedAt: cachedAt)
+    }
+    if !isNetworkConnected {
+        return "Offline - showing latest loaded \(kind)"
+    }
+    return nil
+}
