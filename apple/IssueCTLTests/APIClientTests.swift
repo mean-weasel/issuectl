@@ -350,6 +350,12 @@ final class TestableAPIClient {
         return try decoder.decode(ReviewRunsResponse.self, from: data)
     }
 
+    func reviewRunDetail(id: Int) async throws -> ReviewRunDetailResponse {
+        let safeId = max(1, id)
+        let (data, _) = try await request(path: "/api/v1/pr-reviews/\(safeId)")
+        return try decoder.decode(ReviewRunDetailResponse.self, from: data)
+    }
+
     func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
         let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
         return try decoder.decode(DiagnosticsResponse.self, from: data)
@@ -668,6 +674,72 @@ final class APIClientTests: XCTestCase {
 
         let response = try await client.globalReviewRuns(status: .all, limit: 50)
         XCTAssertTrue(response.reviewRuns.isEmpty)
+    }
+
+    @MainActor
+    func testReviewRunDetailEndpointURL() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/pr-reviews/33")
+            XCTAssertNil(request.url!.query)
+            XCTAssertEqual(request.httpMethod, "GET")
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {
+              "review": {
+                "id": 33,
+                "repo_id": 1,
+                "repo_full_name": "mean-weasel/issuectl",
+                "owner": "mean-weasel",
+                "repo_name": "issuectl",
+                "pr_number": 563,
+                "deployment_id": null,
+                "started_head_sha": "abcdef123456",
+                "completed_head_sha": "abcdef123456",
+                "review_base_sha": "1111111",
+                "reviewed_from_sha": null,
+                "reviewed_to_sha": "abcdef123456",
+                "head_repo_full_name": "mean-weasel/issuectl",
+                "head_ref": "codex/ios-review-detail-parity",
+                "status": "completed",
+                "triggered_by": "webhook",
+                "result": {"summary": "No issues found"},
+                "summary": "No issues found",
+                "finding_count": 0,
+                "range_label": "full abcdef1",
+                "detail_href": "/reviews/33",
+                "started_at": 1780000003000,
+                "started_at_iso": "2026-05-29T20:26:43.000Z",
+                "completed_at": 1780000004000,
+                "completed_at_iso": "2026-05-29T20:26:44.000Z",
+                "deployment": null
+              },
+              "repo": {"id": 1, "full_name": "mean-weasel/issuectl", "owner": "mean-weasel", "name": "issuectl"},
+              "deployment": null,
+              "lineage": [],
+              "diagnostics": {"events": [], "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 0}, "summary": {"count": 0, "level_counts": {}, "latest_timestamp": null, "latest_timestamp_iso": null}},
+              "banners": [],
+              "metadata": {"current_review_preamble": null, "trigger_event": null},
+              "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": false},
+              "links": {
+                "github_pr": "https://github.com/mean-weasel/issuectl/pull/563",
+                "github_review": null,
+                "github_review_files": "https://github.com/mean-weasel/issuectl/pull/563/files",
+                "workbench": "/workbench?repo=mean-weasel%2Fissuectl",
+                "repo_settings": "/repos/mean-weasel/issuectl/settings",
+                "sessions": "/sessions?tab=reviews",
+                "webhook_logs": "/logs/webhooks",
+                "diagnostics_cli": "pnpm --dir packages/cli exec issuectl diag show --pr mean-weasel/issuectl#563"
+              }
+            }
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        let response = try await client.reviewRunDetail(id: 33)
+        XCTAssertEqual(response.review.id, 33)
+        XCTAssertEqual(response.repo.fullName, "mean-weasel/issuectl")
+        XCTAssertFalse(response.actions.mobileWriteActionsEnabled)
     }
 
     @MainActor

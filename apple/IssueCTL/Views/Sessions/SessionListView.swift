@@ -22,6 +22,7 @@ struct SessionListView: View {
     @State private var terminalPresentation: TerminalPresentation?
     @State private var sessionControlsTarget: SessionsOverviewSession?
     @State private var diagnosticsTarget: ActiveDeployment?
+    @State private var reviewDetailTarget: ReviewRunDetailTarget?
     @State private var showCreateSheet = false
     @State private var endingDeploymentId: Int?
     @State private var navigationPath = NavigationPath()
@@ -263,6 +264,11 @@ struct SessionListView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+            .sheet(item: $reviewDetailTarget) { target in
+                ReviewRunDetailSheet(reviewId: target.id)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
             .sheet(isPresented: $showCreateSheet) {
                 QuickCreateSheet(repos: repos, onSuccess: { warning in
                     if let warning { actionError = warning }
@@ -325,6 +331,9 @@ struct SessionListView: View {
                                     if let deployment = run.deployment {
                                         diagnosticsTarget = deployment.activeDeployment
                                     }
+                                },
+                                onOpenDetail: { run in
+                                    reviewDetailTarget = ReviewRunDetailTarget(id: run.id)
                                 }
                             )
                         }
@@ -722,6 +731,7 @@ private struct ReviewRunGroupView: View {
     let onOpenDeployment: (SessionsOverviewSession) -> Void
     let onOpenPullRequest: (SessionsOverviewReviewRun) -> Void
     let onOpenDiagnostics: (SessionsOverviewReviewRun) -> Void
+    let onOpenDetail: (SessionsOverviewReviewRun) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -741,7 +751,8 @@ private struct ReviewRunGroupView: View {
                     run: run,
                     onOpenDeployment: { deployment in onOpenDeployment(deployment) },
                     onOpenPullRequest: { onOpenPullRequest(run) },
-                    onOpenDiagnostics: { onOpenDiagnostics(run) }
+                    onOpenDiagnostics: { onOpenDiagnostics(run) },
+                    onOpenDetail: { onOpenDetail(run) }
                 )
             }
         }
@@ -754,6 +765,7 @@ private struct ReviewRunRow: View {
     let onOpenDeployment: (SessionsOverviewSession) -> Void
     let onOpenPullRequest: () -> Void
     let onOpenDiagnostics: () -> Void
+    let onOpenDetail: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -793,12 +805,20 @@ private struct ReviewRunRow: View {
             }
 
             HStack(spacing: 8) {
-                Button(action: onOpenPullRequest) {
-                    Label("Open PR", systemImage: "arrow.triangle.merge")
+                Button(action: onOpenDetail) {
+                    Label("Details", systemImage: "list.bullet.rectangle")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 38)
                 }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("review-detail-\(run.id)")
+
+                Button(action: onOpenPullRequest) {
+                    Image(systemName: "arrow.triangle.merge")
+                        .frame(width: 42, height: 38)
+                }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Open PR")
                 .accessibilityIdentifier("review-open-pr-\(run.id)")
 
                 if let deployment = run.deployment, deployment.isActive, deployment.ttydPort != nil {

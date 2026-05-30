@@ -1819,6 +1819,113 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.reviewRuns[0].status, .completed)
     }
 
+    func testReviewRunDetailResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "review": {
+            "id": 33,
+            "repo_id": 1,
+            "repo_full_name": "mean-weasel/issuectl",
+            "owner": "mean-weasel",
+            "repo_name": "issuectl",
+            "pr_number": 563,
+            "deployment_id": 42,
+            "started_head_sha": "abcdef123456",
+            "completed_head_sha": "abcdef123456",
+            "review_base_sha": "1111111",
+            "reviewed_from_sha": "2222222",
+            "reviewed_to_sha": "abcdef123456",
+            "head_repo_full_name": "mean-weasel/issuectl",
+            "head_ref": "codex/ios-review-detail-parity",
+            "status": "completed",
+            "triggered_by": "webhook",
+            "result": {"summary": "No issues found", "findingCount": 0},
+            "summary": "No issues found",
+            "finding_count": 0,
+            "range_label": "2222222..abcdef1",
+            "detail_href": "/reviews/33",
+            "started_at": 1780000003000,
+            "started_at_iso": "2026-05-29T20:26:43.000Z",
+            "completed_at": 1780000004000,
+            "completed_at_iso": "2026-05-29T20:26:44.000Z",
+            "deployment": null
+          },
+          "repo": {"id": 1, "full_name": "mean-weasel/issuectl", "owner": "mean-weasel", "name": "issuectl"},
+          "deployment": null,
+          "lineage": [
+            {
+              "id": 33,
+              "active": true,
+              "label": "2222222..abcdef1",
+              "status": "completed",
+              "triggered_by": "webhook",
+              "deployment_id": 42,
+              "reviewed_from_sha": "2222222",
+              "reviewed_to_sha": "abcdef123456",
+              "result": {"summary": "No issues found"},
+              "summary": "No issues found",
+              "started_at": 1780000003000,
+              "started_at_iso": "2026-05-29T20:26:43.000Z",
+              "completed_at": 1780000004000,
+              "completed_at_iso": "2026-05-29T20:26:44.000Z"
+            }
+          ],
+          "diagnostics": {
+            "events": [
+              {
+                "id": 52,
+                "timestamp": 1780000003000,
+                "timestamp_iso": "2026-05-29T20:26:43.000Z",
+                "level": "info",
+                "event": "webhook.pr_launched",
+                "target_type": "pr",
+                "target_number": 563,
+                "target_label": "PR #563",
+                "deployment_id": 42,
+                "message": "Review launched"
+              }
+            ],
+            "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 1},
+            "summary": {"count": 1, "level_counts": {"info": 1}, "latest_timestamp": 1780000003000, "latest_timestamp_iso": "2026-05-29T20:26:43.000Z"}
+          },
+          "banners": [{"tone": "info", "title": "Follow-up requested", "body": "A newer PR head was coalesced."}],
+          "metadata": {
+            "current_review_preamble": null,
+            "trigger_event": {
+              "id": 52,
+              "timestamp": 1780000003000,
+              "level": "info",
+              "event": "webhook.pr_launched",
+              "target_type": "pr",
+              "target_number": 563,
+              "target_label": "PR #563"
+            }
+          },
+          "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": false},
+          "links": {
+            "github_pr": "https://github.com/mean-weasel/issuectl/pull/563",
+            "github_review": null,
+            "github_review_files": "https://github.com/mean-weasel/issuectl/pull/563/files",
+            "workbench": "/workbench?repo=mean-weasel%2Fissuectl",
+            "repo_settings": "/repos/mean-weasel/issuectl/settings",
+            "sessions": "/sessions?tab=reviews",
+            "webhook_logs": "/logs/webhooks",
+            "diagnostics_cli": "pnpm --dir packages/cli exec issuectl diag show --pr mean-weasel/issuectl#563"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunDetailResponse.self, from: json)
+        XCTAssertEqual(response.review.id, 33)
+        XCTAssertEqual(response.repo.fullName, "mean-weasel/issuectl")
+        XCTAssertEqual(response.lineage.first?.active, true)
+        XCTAssertEqual(response.diagnostics.summaryText, "1 diagnostic event, no failure recorded")
+        XCTAssertEqual(response.diagnostics.events.first?.targetLabel, "PR #563")
+        XCTAssertEqual(response.banners.first?.tone, .info)
+        XCTAssertFalse(response.actions.mobileWriteActionsEnabled)
+        XCTAssertEqual(response.links.githubPr, "https://github.com/mean-weasel/issuectl/pull/563")
+    }
+
     func testSessionsOverviewResponseDecodingFromLiveContract() throws {
         let json = """
         {

@@ -37,6 +37,7 @@ struct WebhookEventActivityRow: View {
 
 struct ReviewRunActivityRow: View {
     let run: ReviewRun
+    var onOpenDetail: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -72,6 +73,16 @@ struct ReviewRunActivityRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let onOpenDetail {
+                    Button(action: onOpenDetail) {
+                        Label("Details", systemImage: "list.bullet.rectangle")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("automation-review-detail-\(run.id)")
+                }
             }
         }
         .padding(.vertical, 4)

@@ -64,6 +64,7 @@ struct RepoAutomationActivityView: View {
     @State private var reviewRunsError: String?
     @State private var webhookResponse: WebhookEventsResponse?
     @State private var reviewRunsResponse: ReviewRunsResponse?
+    @State private var reviewDetailTarget: ReviewRunDetailTarget?
 
     var body: some View {
         Form {
@@ -89,6 +90,11 @@ struct RepoAutomationActivityView: View {
         }
         .refreshable {
             await loadActivity()
+        }
+        .sheet(item: $reviewDetailTarget) { target in
+            ReviewRunDetailSheet(reviewId: target.id)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -185,7 +191,9 @@ struct RepoAutomationActivityView: View {
                 }
             } else {
                 ForEach(reviewRuns) { run in
-                    ReviewRunActivityRow(run: run)
+                    ReviewRunActivityRow(run: run) {
+                        reviewDetailTarget = ReviewRunDetailTarget(id: run.id)
+                    }
                 }
             }
         } header: {
