@@ -1912,7 +1912,7 @@ final class ModelDecodingTests: XCTestCase {
               "target_label": "PR #563"
             }
           },
-          "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": false},
+          "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": true},
           "links": {
             "github_pr": "https://github.com/mean-weasel/issuectl/pull/563",
             "github_review": null,
@@ -1935,7 +1935,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.findings.first?.locationLabel, "Sources/App.swift:42")
         XCTAssertEqual(response.findings.first?.title, "Nil branch is not handled")
         XCTAssertEqual(response.banners.first?.tone, .info)
-        XCTAssertFalse(response.actions.mobileWriteActionsEnabled)
+        XCTAssertTrue(response.actions.mobileWriteActionsEnabled)
         XCTAssertEqual(response.links.githubPr, "https://github.com/mean-weasel/issuectl/pull/563")
     }
 

@@ -572,6 +572,23 @@ struct ReviewRunDetailActions: Codable, Sendable {
     let mobileWriteActionsEnabled: Bool
 }
 
+enum ReviewRunActionMode: String, Codable, Sendable {
+    case retry
+    case full
+}
+
+struct ReviewRunActionRequest: Codable, Sendable {
+    let mode: ReviewRunActionMode
+}
+
+struct ReviewRunActionResponse: Codable, Sendable {
+    let success: Bool
+    let reviewId: Int
+    let intentId: Int
+    let mode: ReviewRunActionMode
+    let message: String
+}
+
 struct ReviewRunDetailLinks: Codable, Sendable {
     let githubPr: String
     let githubReview: String?

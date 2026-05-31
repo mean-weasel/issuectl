@@ -378,6 +378,13 @@ final class TestableAPIClient {
         return try decoder.decode(ReviewRunDetailResponse.self, from: data)
     }
 
+    func requestReviewRunAction(id: Int, mode: ReviewRunActionMode) async throws -> ReviewRunActionResponse {
+        let safeId = max(1, id)
+        let bodyData = try JSONEncoder().encode(ReviewRunActionRequest(mode: mode))
+        let (data, _) = try await request(path: "/api/v1/pr-reviews/\(safeId)/actions", method: "POST", body: bodyData)
+        return try decoder.decode(ReviewRunActionResponse.self, from: data)
+    }
+
     func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
         let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
         return try decoder.decode(DiagnosticsResponse.self, from: data)
@@ -765,7 +772,7 @@ final class APIClientTests: XCTestCase {
               "findings": [],
               "banners": [],
               "metadata": {"current_review_preamble": null, "trigger_event": null},
-              "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": false},
+              "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": true},
               "links": {
                 "github_pr": "https://github.com/mean-weasel/issuectl/pull/563",
                 "github_review": null,
@@ -784,7 +791,32 @@ final class APIClientTests: XCTestCase {
         let response = try await client.reviewRunDetail(id: 33)
         XCTAssertEqual(response.review.id, 33)
         XCTAssertEqual(response.repo.fullName, "mean-weasel/issuectl")
-        XCTAssertFalse(response.actions.mobileWriteActionsEnabled)
+        XCTAssertTrue(response.actions.mobileWriteActionsEnabled)
+    }
+
+    @MainActor
+    func testRequestReviewRunActionEndpointURLAndBody() async throws {
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url!.path, "/api/v1/pr-reviews/33/actions")
+            XCTAssertNil(request.url!.query)
+            XCTAssertEqual(request.httpMethod, "POST")
+
+            let body = try JSONSerialization.jsonObject(with: try requestBodyData(request)) as? [String: String]
+            XCTAssertEqual(body?["mode"], "full")
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let data = """
+            {"success":true,"review_id":33,"intent_id":501,"mode":"full","message":"Manual full PR review rerun requested."}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        let response = try await client.requestReviewRunAction(id: 33, mode: .full)
+        XCTAssertTrue(response.success)
+        XCTAssertEqual(response.reviewId, 33)
+        XCTAssertEqual(response.intentId, 501)
+        XCTAssertEqual(response.mode, .full)
+        XCTAssertEqual(response.message, "Manual full PR review rerun requested.")
     }
 
     @MainActor
