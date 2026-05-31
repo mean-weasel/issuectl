@@ -535,10 +535,10 @@ struct IssueListView: View {
                         if issue.isOpen {
                             if let deployment = runningDeployment(for: issue, in: repo.fullName, deployments: activeDeployments) {
                                 Button {
-                                    if deployment.ttydPort != nil {
+                                    if deployment.canOpenTerminalInApp {
                                         terminalTarget = deployment
                                     } else {
-                                        actionError = "Session is running, but its terminal is not ready yet."
+                                        actionError = deployment.terminalUnavailableDescription
                                     }
                                 } label: {
                                     Label("Terminal", systemImage: "terminal")
@@ -754,10 +754,10 @@ struct IssueListView: View {
         }
 
         if let deployment = runningDeployment(owner: owner, repo: repo, number: number, deployments: activeDeployments) {
-            if deployment.ttydPort != nil {
+            if deployment.canOpenTerminalInApp {
                 terminalTarget = deployment
             } else {
-                actionError = "Session is running, but its terminal is not ready yet."
+                actionError = deployment.terminalUnavailableDescription
             }
             return
         }

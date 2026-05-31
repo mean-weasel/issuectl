@@ -1163,7 +1163,7 @@ final class APIClientTests: XCTestCase {
 
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             let responseData = """
-            {"success": true, "deployment_id": 1, "ttyd_port": 7682, "error": null, "label_warning": null}
+            {"success": true, "correlation_id": "launch-correlation", "deployment_id": 1, "terminal_backend": "pty_bridge", "ttyd_port": null, "error": null, "label_warning": null}
             """.data(using: .utf8)!
             return (response, responseData)
         }
@@ -1172,6 +1172,7 @@ final class APIClientTests: XCTestCase {
             agent: .codex,
             branchName: "issue-5-fix",
             workspaceMode: .worktree,
+            terminalBackend: .ptyBridge,
             selectedCommentIndices: [0, 1],
             selectedFilePaths: ["src/main.ts"],
             preamble: "Fix the bug",
@@ -1179,6 +1180,8 @@ final class APIClientTests: XCTestCase {
             idempotencyKey: nil
         )
         let bodyData = try JSONEncoder().encode(body)
+        let requestJson = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+        XCTAssertEqual(requestJson?["terminalBackend"] as? String, "pty_bridge")
         let (data, httpResponse) = try await client.request(path: "/api/v1/launch/org/repo/5", method: "POST", body: bodyData)
         XCTAssertEqual(httpResponse.statusCode, 200)
 
@@ -1187,6 +1190,9 @@ final class APIClientTests: XCTestCase {
         let launchResponse = try decoder.decode(LaunchResponse.self, from: data)
         XCTAssertTrue(launchResponse.success)
         XCTAssertEqual(launchResponse.deploymentId, 1)
+        XCTAssertEqual(launchResponse.correlationId, "launch-correlation")
+        XCTAssertEqual(launchResponse.terminalBackend, .ptyBridge)
+        XCTAssertNil(launchResponse.ttydPort)
     }
 
     // MARK: - Base URL configuration

@@ -309,10 +309,10 @@ struct MacIssueDetailView: View {
                     Button {
                         openTerminal(activeSession)
                     } label: {
-                        Label(activeSession.ttydPort == nil ? "Starting" : "Open", systemImage: "terminal")
+                        Label(activeSession.canOpenTerminalInApp ? "Open" : activeSession.terminalActionTitle, systemImage: "terminal")
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(activeSession.ttydPort == nil)
+                    .disabled(!activeSession.canOpenTerminalInApp)
                 } else {
                     HStack(spacing: 8) {
                         Button {
@@ -435,14 +435,14 @@ struct MacIssueDetailView: View {
 
     private var sessionTitle: String {
         if let activeSession {
-            return activeSession.ttydPort == nil ? "Session Starting" : "Session Active"
+            return activeSession.canOpenTerminalInApp ? "Session Active" : activeSession.terminalMetricValue
         }
         return issue.isOpen ? "Ready to Launch" : "Issue Closed"
     }
 
     private var sessionSubtitle: String {
         if let activeSession {
-            let terminalState = activeSession.ttydPort.map { "port \($0)" } ?? "terminal preparing"
+            let terminalState = activeSession.ttydPort.map { "port \($0)" } ?? activeSession.terminalMetricValue
             return "\(activeSession.branchName) - \(terminalState)"
         }
         return issue.isOpen ? "Start an agent session with the shared launch settings." : "Reopen the issue before launching."
@@ -450,14 +450,14 @@ struct MacIssueDetailView: View {
 
     private var sessionIcon: String {
         if let activeSession {
-            return activeSession.ttydPort == nil ? "hourglass" : "terminal"
+            return activeSession.canOpenTerminalInApp ? "terminal" : (activeSession.usesPtyBridgeTerminal ? "network" : "hourglass")
         }
         return issue.isOpen ? "play.circle.fill" : "checkmark.circle.fill"
     }
 
     private var sessionTint: Color {
         if let activeSession {
-            return activeSession.ttydPort == nil ? .orange : .green
+            return activeSession.canOpenTerminalInApp || activeSession.usesPtyBridgeTerminal ? .green : .orange
         }
         return issue.isOpen ? .blue : .purple
     }
@@ -853,6 +853,19 @@ struct MacIssueDetailView: View {
             id: deployment.id,
             repoId: deployment.repoId,
             issueNumber: deployment.issueNumber,
+            targetType: deployment.targetType,
+            targetNumber: deployment.targetNumber,
+            agent: deployment.agent,
+            terminalBackend: deployment.terminalBackend,
+            correlationId: deployment.correlationId,
+            triggeredBy: deployment.triggeredBy,
+            terminalReason: deployment.terminalReason,
+            parentDeploymentId: deployment.parentDeploymentId,
+            webhookDepth: deployment.webhookDepth,
+            idleSince: deployment.idleSince,
+            completionToken: deployment.completionToken,
+            completionResultJson: deployment.completionResultJson,
+            notificationSentAt: deployment.notificationSentAt,
             branchName: deployment.branchName,
             workspaceMode: deployment.workspaceMode,
             workspacePath: deployment.workspacePath,
@@ -870,6 +883,10 @@ struct MacIssueDetailView: View {
     @MainActor
     private func openTerminalAsync(_ session: ActiveDeployment) async {
         errorMessage = nil
+        guard session.canOpenTerminalInApp else {
+            errorMessage = session.terminalUnavailableDescription
+            return
+        }
         MacTerminalWindowController.open(session: session, store: store, api: api) {
             activeSession = nil
         }

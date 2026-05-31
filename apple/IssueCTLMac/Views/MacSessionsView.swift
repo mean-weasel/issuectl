@@ -276,9 +276,9 @@ struct MacSessionsView: View {
             }
 
             HStack(spacing: 8) {
-                Label(session.ttydPort == nil ? "Starting" : "Ready", systemImage: session.ttydPort == nil ? "hourglass" : "terminal")
+                Label(session.canOpenTerminalInApp ? "Ready" : session.terminalMetricValue, systemImage: session.canOpenTerminalInApp ? "terminal" : (session.usesPtyBridgeTerminal ? "network" : "hourglass"))
                     .font(.macSidebar(size: 11, scale: textScale))
-                    .foregroundStyle(session.ttydPort == nil ? .orange : .green)
+                    .foregroundStyle(session.canOpenTerminalInApp || session.usesPtyBridgeTerminal ? .green : .orange)
 
                 Spacer()
 
@@ -295,10 +295,10 @@ struct MacSessionsView: View {
                 Button {
                     openTerminal(session)
                 } label: {
-                    Label("Open", systemImage: "terminal")
+                    Label(session.canOpenTerminalInApp ? "Open" : session.terminalActionTitle, systemImage: "terminal")
                 }
                 .buttonStyle(.bordered)
-                .disabled(session.ttydPort == nil)
+                .disabled(!session.canOpenTerminalInApp)
                 .accessibilityLabel("Open terminal for session \(session.id)")
                 .accessibilityIdentifier("mac-session-open-terminal-\(session.id)")
 
@@ -338,7 +338,7 @@ struct MacSessionsView: View {
                     }
                 }
             } else {
-                Text(session.ttydPort == nil ? "Terminal preparing" : "Preview unavailable")
+                Text(session.ttydPort == nil ? session.terminalMetricValue : "Preview unavailable")
                     .font(.macSidebar(size: 10, scale: textScale))
                     .foregroundStyle(.secondary)
             }
@@ -349,6 +349,10 @@ struct MacSessionsView: View {
     private func openTerminal(_ session: ActiveDeployment) {
         errorMessage = nil
         terminalNotice = nil
+        guard session.canOpenTerminalInApp else {
+            terminalNotice = session.terminalUnavailableDescription
+            return
+        }
         MacTerminalWindowController.open(session: session, store: store, api: api) {
             filterState.syncRepoSelection(repoKeys: availableRepoKeys)
         }

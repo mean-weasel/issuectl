@@ -74,6 +74,7 @@ struct Deployment: Codable, Identifiable, Sendable {
     let targetNumber: Int
     let agent: LaunchAgent?
     let terminalBackend: TerminalBackend?
+    let correlationId: String?
     let triggeredBy: DeploymentTrigger?
     let terminalReason: String?
     let parentDeploymentId: Int?
@@ -93,6 +94,44 @@ struct Deployment: Codable, Identifiable, Sendable {
     let ttydPid: Int?
 
     var isActive: Bool { state == .active && endedAt == nil }
+
+    var usesPtyBridgeTerminal: Bool {
+        terminalBackend == .ptyBridge
+    }
+
+    var canOpenTerminalInApp: Bool {
+        isActive && ttydPort != nil
+    }
+
+    var terminalMetricValue: String {
+        if let ttydPort {
+            return "\(ttydPort)"
+        }
+        if usesPtyBridgeTerminal {
+            return "PTY bridge"
+        }
+        return isActive ? "Starting" : "Ended"
+    }
+
+    var terminalActionTitle: String {
+        if ttydPort != nil {
+            return "Open Terminal"
+        }
+        if usesPtyBridgeTerminal {
+            return "Web Terminal"
+        }
+        return isActive ? "Starting..." : "Session Ended"
+    }
+
+    var terminalUnavailableDescription: String {
+        if !isActive {
+            return "Session has ended."
+        }
+        if usesPtyBridgeTerminal {
+            return "PTY bridge terminals open from the web workbench."
+        }
+        return "Terminal is still preparing."
+    }
 
     var targetLabel: String {
         switch targetType {
@@ -144,6 +183,7 @@ struct Deployment: Codable, Identifiable, Sendable {
         targetNumber = resolvedTargetNumber
         agent = try container.decodeIfPresent(LaunchAgent.self, forKey: .agent)
         terminalBackend = try container.decodeIfPresent(TerminalBackend.self, forKey: .terminalBackend)
+        correlationId = try container.decodeIfPresent(String.self, forKey: .correlationId)
         triggeredBy = try container.decodeIfPresent(DeploymentTrigger.self, forKey: .triggeredBy)
         terminalReason = try container.decodeIfPresent(String.self, forKey: .terminalReason)
         parentDeploymentId = try container.decodeIfPresent(Int.self, forKey: .parentDeploymentId)
@@ -171,6 +211,7 @@ struct Deployment: Codable, Identifiable, Sendable {
         case targetNumber
         case agent
         case terminalBackend
+        case correlationId
         case triggeredBy
         case terminalReason
         case parentDeploymentId
@@ -199,6 +240,7 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
     let targetNumber: Int
     let agent: LaunchAgent?
     let terminalBackend: TerminalBackend?
+    let correlationId: String?
     let triggeredBy: DeploymentTrigger?
     let terminalReason: String?
     let parentDeploymentId: Int?
@@ -220,6 +262,44 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
     let repoName: String
 
     var isActive: Bool { state == .active && endedAt == nil }
+
+    var usesPtyBridgeTerminal: Bool {
+        terminalBackend == .ptyBridge
+    }
+
+    var canOpenTerminalInApp: Bool {
+        isActive && ttydPort != nil
+    }
+
+    var terminalMetricValue: String {
+        if let ttydPort {
+            return "\(ttydPort)"
+        }
+        if usesPtyBridgeTerminal {
+            return "PTY bridge"
+        }
+        return isActive ? "Starting" : "Ended"
+    }
+
+    var terminalActionTitle: String {
+        if ttydPort != nil {
+            return "Open Terminal"
+        }
+        if usesPtyBridgeTerminal {
+            return "Web Terminal"
+        }
+        return isActive ? "Starting..." : "Session Ended"
+    }
+
+    var terminalUnavailableDescription: String {
+        if !isActive {
+            return "Session has ended."
+        }
+        if usesPtyBridgeTerminal {
+            return "PTY bridge terminals open from the web workbench."
+        }
+        return "Terminal is still preparing."
+    }
 
     var targetLabel: String {
         switch targetType {
@@ -312,6 +392,7 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         targetNumber: Int? = nil,
         agent: LaunchAgent? = nil,
         terminalBackend: TerminalBackend? = nil,
+        correlationId: String? = nil,
         triggeredBy: DeploymentTrigger? = nil,
         terminalReason: String? = nil,
         parentDeploymentId: Int? = nil,
@@ -339,6 +420,7 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         self.targetNumber = targetNumber ?? issueNumber
         self.agent = agent
         self.terminalBackend = terminalBackend
+        self.correlationId = correlationId
         self.triggeredBy = triggeredBy
         self.terminalReason = terminalReason
         self.parentDeploymentId = parentDeploymentId
@@ -382,6 +464,7 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         targetNumber = resolvedTargetNumber
         agent = try container.decodeIfPresent(LaunchAgent.self, forKey: .agent)
         terminalBackend = try container.decodeIfPresent(TerminalBackend.self, forKey: .terminalBackend)
+        correlationId = try container.decodeIfPresent(String.self, forKey: .correlationId)
         triggeredBy = try container.decodeIfPresent(DeploymentTrigger.self, forKey: .triggeredBy)
         terminalReason = try container.decodeIfPresent(String.self, forKey: .terminalReason)
         parentDeploymentId = try container.decodeIfPresent(Int.self, forKey: .parentDeploymentId)
@@ -411,6 +494,7 @@ struct ActiveDeployment: Codable, Identifiable, Sendable {
         case targetNumber
         case agent
         case terminalBackend
+        case correlationId
         case triggeredBy
         case terminalReason
         case parentDeploymentId
@@ -794,19 +878,82 @@ struct LaunchRequestBody: Encodable, Sendable {
     let agent: LaunchAgent
     let branchName: String
     let workspaceMode: WorkspaceMode
+    let terminalBackend: TerminalBackend?
     let selectedCommentIndices: [Int]
     let selectedFilePaths: [String]
     let preamble: String?
     let forceResume: Bool?
     let idempotencyKey: String?
+
+    init(
+        agent: LaunchAgent,
+        branchName: String,
+        workspaceMode: WorkspaceMode,
+        terminalBackend: TerminalBackend? = nil,
+        selectedCommentIndices: [Int],
+        selectedFilePaths: [String],
+        preamble: String?,
+        forceResume: Bool?,
+        idempotencyKey: String?
+    ) {
+        self.agent = agent
+        self.branchName = branchName
+        self.workspaceMode = workspaceMode
+        self.terminalBackend = terminalBackend
+        self.selectedCommentIndices = selectedCommentIndices
+        self.selectedFilePaths = selectedFilePaths
+        self.preamble = preamble
+        self.forceResume = forceResume
+        self.idempotencyKey = idempotencyKey
+    }
 }
 
 struct LaunchResponse: Codable, Sendable {
     let success: Bool
     let deploymentId: Int?
     let ttydPort: Int?
+    let correlationId: String?
+    let terminalBackend: TerminalBackend?
     let error: String?
     let labelWarning: String?
+
+    func activeDeployment(
+        repoId: Int,
+        issueNumber: Int,
+        targetType: DeploymentTargetType = .issue,
+        targetNumber: Int? = nil,
+        agent: LaunchAgent?,
+        branchName: String,
+        workspaceMode: WorkspaceMode,
+        workspacePath: String,
+        linkedPrNumber: Int?,
+        launchedAt: String,
+        owner: String,
+        repoName: String
+    ) -> ActiveDeployment? {
+        guard success, let deploymentId else { return nil }
+        return ActiveDeployment(
+            id: deploymentId,
+            repoId: repoId,
+            issueNumber: issueNumber,
+            targetType: targetType,
+            targetNumber: targetNumber,
+            agent: agent,
+            terminalBackend: terminalBackend,
+            correlationId: correlationId,
+            branchName: branchName,
+            workspaceMode: workspaceMode,
+            workspacePath: workspacePath,
+            linkedPrNumber: linkedPrNumber,
+            state: .active,
+            launchedAt: launchedAt,
+            endedAt: nil,
+            ttydPort: ttydPort,
+            ttydPid: nil,
+            owner: owner,
+            repoName: repoName
+        )
+    }
 }
 
 struct EndSessionRequestBody: Encodable, Sendable {

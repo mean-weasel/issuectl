@@ -682,6 +682,7 @@ struct SessionsOverviewSession: Codable, Identifiable, Sendable {
     let childDeploymentCount: Int
     let webhookDepth: Int
     let terminalReason: String?
+    let terminalBackend: TerminalBackend?
     let launchedAt: String
     let endedAt: String?
     let ttydPort: Int?
@@ -694,6 +695,31 @@ struct SessionsOverviewSession: Codable, Identifiable, Sendable {
     var isIssueTarget: Bool { targetType == .issue }
     var resolvedIssueNumber: Int { issueNumber ?? targetNumber }
     var repoTitle: String { "\(repoFullName) \(targetLabel)" }
+    var usesPtyBridgeTerminal: Bool { terminalBackend == .ptyBridge }
+    var canOpenTerminalInApp: Bool { isActive && ttydPort != nil }
+
+    var terminalMetricValue: String {
+        if let ttydPort {
+            return "\(ttydPort)"
+        }
+        if usesPtyBridgeTerminal {
+            return "PTY bridge"
+        }
+        return isActive ? "Starting" : "Ended"
+    }
+
+    var terminalActionSubtitle: String {
+        if !isActive {
+            return "Session has ended."
+        }
+        if let ttydPort {
+            return "Port \(ttydPort)"
+        }
+        if usesPtyBridgeTerminal {
+            return "PTY bridge terminals open from the web workbench."
+        }
+        return "Terminal is still preparing."
+    }
 
     var sessionRoleTitle: String {
         if targetType == .pr && terminalReason == "review" {
@@ -746,7 +772,7 @@ struct SessionsOverviewSession: Codable, Identifiable, Sendable {
             targetType: targetType,
             targetNumber: targetNumber,
             agent: agent,
-            terminalBackend: nil,
+            terminalBackend: terminalBackend,
             triggeredBy: triggeredBy,
             terminalReason: terminalReason,
             parentDeploymentId: parentDeploymentId,

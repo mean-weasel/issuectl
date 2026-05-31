@@ -759,12 +759,15 @@ final class ViewLogicTests: XCTestCase {
         repo: String = "alpha",
         issueNumber: Int = 1,
         state: DeploymentState = .active,
-        endedAt: String? = nil
+        endedAt: String? = nil,
+        terminalBackend: TerminalBackend? = nil,
+        ttydPort: Int? = 7681
     ) -> ActiveDeployment {
         ActiveDeployment(
             id: id,
             repoId: 1,
             issueNumber: issueNumber,
+            terminalBackend: terminalBackend,
             branchName: "issue-\(issueNumber)",
             workspaceMode: .worktree,
             workspacePath: "/tmp/repo",
@@ -772,11 +775,22 @@ final class ViewLogicTests: XCTestCase {
             state: state,
             launchedAt: "2026-04-27T08:00:00Z",
             endedAt: endedAt,
-            ttydPort: 7681,
+            ttydPort: ttydPort,
             ttydPid: 123,
             owner: owner,
             repoName: repo
         )
+    }
+
+    func testPtyBridgeActiveDeploymentUsesWebTerminalState() {
+        let deployment = makeDeployment(terminalBackend: .ptyBridge, ttydPort: nil)
+
+        XCTAssertTrue(deployment.isActive)
+        XCTAssertTrue(deployment.usesPtyBridgeTerminal)
+        XCTAssertFalse(deployment.canOpenTerminalInApp)
+        XCTAssertEqual(deployment.terminalMetricValue, "PTY bridge")
+        XCTAssertEqual(deployment.terminalActionTitle, "Web Terminal")
+        XCTAssertEqual(deployment.terminalUnavailableDescription, "PTY bridge terminals open from the web workbench.")
     }
 
     func testFilterItemsByRepoNoSelection() {

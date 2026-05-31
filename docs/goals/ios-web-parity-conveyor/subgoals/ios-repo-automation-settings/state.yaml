@@ -1,0 +1,15 @@
+version: 2
+goal:
+  title: "iOS Repo Automation Settings"
+  slug: "ios-repo-automation-settings"
+  kind: existing_plan
+  tranche: "Bring native Settings up to web repo automation and webhook configuration parity."
+  status: queued
+active_task: null
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: queued
+    objective: "Map existing web repo automation/webhook settings contracts and native Settings gaps."
+    receipt: null

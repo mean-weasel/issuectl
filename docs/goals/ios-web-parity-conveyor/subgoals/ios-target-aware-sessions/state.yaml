@@ -1,0 +1,133 @@
+version: 2
+
+goal:
+  title: "iOS Target-Aware Sessions"
+  slug: "ios-target-aware-sessions"
+  kind: existing_plan
+  tranche: "Complete the remaining target-aware launch contract gap on top of current origin/main, then land it through review, PR, CI, and merge."
+  status: active
+  oracle:
+    signal: "Apple clients can decode PR-target deployments, preserve terminal/backend/trigger metadata, display target labels, avoid treating PR sessions as issue sessions, and preserve launch correlation/backend metadata."
+    cadence: "after local verification, adversarial review, PR CI, and merge"
+    final_proof: "Merged PR with focused tests, build proof, resolved review findings, and parent conveyor handoff."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_completion_without_judge_or_pm_audit: true
+  no_completion_on_weak_proof: true
+  pr_required: true
+  ci_green_required: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/ios-target-aware-sessions/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-analysis-20260531/docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions"
+
+active_task: T004
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    objective: "Audit current origin/main against the target-aware sessions child scope."
+    receipt:
+      result: done
+      summary: "origin/main already contains the broad target-aware deployment/session work: target type/number decoding, PR labels/titles, session overview, diagnostics models, end-session target metadata, and PR session display guards."
+      evidence:
+        - "apple/IssueCTLShared/Models/Deployment.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTLTests/ModelDecodingTests.swift"
+      remaining_gap:
+        - "LaunchRequestBody lacks terminalBackend."
+        - "LaunchResponse lacks correlationId and terminalBackend."
+  - id: T002
+    type: worker
+    assignee: PM
+    status: done
+    objective: "Implement launch request/response metadata parity for target-aware sessions."
+    receipt:
+      result: done
+      summary: "LaunchRequestBody now encodes optional terminalBackend; LaunchResponse decodes correlationId and terminalBackend; iOS and macOS fallback ActiveDeployment creation preserve returned terminalBackend and selected agent. Follow-up review fixes accept PTY bridge launches without ttydPort and present PTY bridge sessions as active web-workbench terminals instead of failed or perpetually starting ttyd terminals."
+      changed_files:
+        - "apple/IssueCTLShared/Models/Deployment.swift"
+        - "apple/IssueCTLShared/Models/Repo.swift"
+        - "apple/IssueCTL/Views/Issues/IssueDetailView.swift"
+        - "apple/IssueCTL/Views/Issues/IssueListView.swift"
+        - "apple/IssueCTL/Views/Launch/LaunchView.swift"
+        - "apple/IssueCTL/Views/PullRequests/PRDetailView.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionRowView.swift"
+        - "apple/IssueCTLMac/Views/MacIssueDetailView.swift"
+        - "apple/IssueCTLMac/Views/MacSessionsView.swift"
+        - "apple/IssueCTLMac/Views/MacSidebarStore.swift"
+        - "apple/IssueCTLTests/APIClientTests.swift"
+        - "apple/IssueCTLTests/ModelDecodingTests.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+        - "packages/web/components/sessions/SessionsReviewList.test.ts"
+        - "packages/web/lib/sessions-data.ts"
+        - "packages/web/lib/sessions-data.test.ts"
+      verification:
+        - "PASS xcodebuildmcp test_sim -only-testing:IssueCTLTests/ModelDecodingTests/testLaunchResponseDecoding -only-testing:IssueCTLTests/APIClientTests/testPostRequestIncludesBody"
+        - "PASS xcodebuildmcp test_sim -only-testing:IssueCTLTests/ModelDecodingTests/testLaunchResponseDecoding -only-testing:IssueCTLTests/APIClientTests/testPostRequestIncludesBody -only-testing:IssueCTLTests/ViewLogicTests/testPtyBridgeActiveDeploymentUsesWebTerminalState -only-testing:IssueCTLTests/ModelDecodingTests/testSessionsOverviewResponseDecodingFromLiveContract"
+        - "PASS xcodebuildmcp build_sim"
+        - "PASS xcodebuild -project apple/IssueCTL.xcodeproj -scheme IssueCTLMac -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build"
+        - "PASS pnpm --dir packages/web test lib/sessions-data.test.ts components/sessions/SessionsReviewList.test.ts"
+        - "PASS pnpm --dir packages/web typecheck"
+        - "PASS git diff --check"
+        - "PASS ruby YAML parse for parent and child conveyor state.yaml files"
+      full_outcome_complete: false
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    objective: "Run adversarial review for the launch metadata completion slice and conveyor board changes."
+    verify:
+      - "Spec and code-quality review complete."
+      - "Critical/Important findings fixed before PR."
+    receipt:
+      result: approved
+      initial_review_block:
+        - "High/Critical: LaunchView previously required ttydPort and treated successful PTY bridge launches as Launch failed."
+        - "High/Critical: Session UI presented PTY bridge null-port sessions as Starting instead of active web-workbench terminals with non-terminal controls."
+        - "Important: tests covered terminalBackend only with non-null ttydPort."
+        - "High: correlationId was decoded but not preserved into ActiveDeployment/local launch state."
+        - "High: child boards were peer docs/goals directories instead of depth-1 conveyor subgoals."
+      fixes_applied:
+        - "LaunchView now accepts success with deploymentId even when ttydPort is nil; it preserves terminalBackend and exposes an existing session card without opening TerminalView."
+        - "LaunchResponse.activeDeployment now preserves terminalBackend, correlationId, and ttydPort together; iOS and macOS launch fallback paths use it."
+        - "Shared Deployment, ActiveDeployment, and SessionsOverviewSession helpers distinguish in-app ttyd terminal access from PTY bridge web-workbench state."
+        - "iOS issue, issue list, sessions, PR review session, and macOS issue/session surfaces use the helpers for terminal labels and disabled open actions."
+        - "Web sessions overview now emits terminalBackend so Apple sessions overview can identify PTY bridge sessions."
+        - "Child boards now live under docs/goals/ios-web-parity-conveyor/subgoals/* and parent paths reference those depth-1 subgoals."
+        - "Launch/API/session-overview tests now cover pty_bridge with null ttyd_port, preserved correlationId, and terminalBackend in overview data."
+      verification:
+        - "PASS xcodebuildmcp test_sim selected 5 tests for launch response, API request/response, PTY bridge view logic, sessions overview decoding, and PR target deployment decoding."
+        - "PASS iOS simulator build."
+        - "PASS macOS Debug build."
+        - "PASS pnpm --dir packages/web test lib/sessions-data.test.ts components/sessions/SessionsReviewList.test.ts."
+        - "PASS pnpm --dir packages/web typecheck."
+        - "PASS git diff --check."
+        - "PASS YAML parse for parent and child conveyor state files."
+      review_decisions:
+        - "Code-quality reviewer approved with no blocking findings."
+        - "GoalBuddy Judge approved after correlationId preservation, web overview terminalBackend, and subgoal structure fixes."
+  - id: T004
+    type: pm
+    assignee: PM
+    status: active
+    objective: "Commit, push, open PR, monitor CI, merge when green, then activate the next conveyor child."
+    verify:
+      - "PR URL recorded."
+      - "CI green recorded."
+      - "Merge SHA recorded."
+    receipt: null

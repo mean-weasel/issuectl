@@ -1259,8 +1259,10 @@ final class ModelDecodingTests: XCTestCase {
         let json = """
         {
             "success": true,
+            "correlation_id": "launch-correlation",
             "deployment_id": 99,
-            "ttyd_port": 7682,
+            "terminal_backend": "pty_bridge",
+            "ttyd_port": null,
             "error": null,
             "label_warning": "Label 'priority:high' not found on repo"
         }
@@ -1268,10 +1270,31 @@ final class ModelDecodingTests: XCTestCase {
 
         let response = try decoder.decode(LaunchResponse.self, from: json)
         XCTAssertTrue(response.success)
+        XCTAssertEqual(response.correlationId, "launch-correlation")
         XCTAssertEqual(response.deploymentId, 99)
-        XCTAssertEqual(response.ttydPort, 7682)
+        XCTAssertEqual(response.terminalBackend, .ptyBridge)
+        XCTAssertNil(response.ttydPort)
         XCTAssertNil(response.error)
         XCTAssertEqual(response.labelWarning, "Label 'priority:high' not found on repo")
+
+        let deployment = try XCTUnwrap(response.activeDeployment(
+            repoId: 7,
+            issueNumber: 123,
+            agent: .codex,
+            branchName: "issue-123",
+            workspaceMode: .worktree,
+            workspacePath: "/tmp/issue-123",
+            linkedPrNumber: nil,
+            launchedAt: "2026-05-31T22:00:00Z",
+            owner: "mean-weasel",
+            repoName: "issuectl"
+        ))
+        XCTAssertEqual(deployment.id, 99)
+        XCTAssertEqual(deployment.correlationId, "launch-correlation")
+        XCTAssertEqual(deployment.terminalBackend, .ptyBridge)
+        XCTAssertNil(deployment.ttydPort)
+        XCTAssertFalse(deployment.canOpenTerminalInApp)
+        XCTAssertEqual(deployment.terminalMetricValue, "PTY bridge")
     }
 
     func testLaunchResponseFailure() throws {
@@ -2000,11 +2023,12 @@ final class ModelDecodingTests: XCTestCase {
                     "child_deployment_count": 0,
                     "webhook_depth": 0,
                     "terminal_reason": "review",
+                    "terminal_backend": "pty_bridge",
                     "launched_at": "2026-05-29 20:26:43",
-                    "ended_at": "2026-05-29 20:31:43",
-                    "ttyd_port": 7701,
+                    "ended_at": null,
+                    "ttyd_port": null,
                     "idle_since": null,
-                    "preview": {"lines":["review complete"],"last_updated_ms":1780000200000,"last_changed_ms":1780000200000,"status":"idle"},
+                    "preview": null,
                     "provenance_label": "webhook · root session",
                     "elapsed_label": "5m"
                   }
@@ -2069,6 +2093,10 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.overview.summary.endedSessions, 1)
         XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.sessionRoleTitle, "PR review session")
         XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.durationLabel, "5m")
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.terminalBackend, .ptyBridge)
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.terminalMetricValue, "PTY bridge")
+        XCTAssertFalse(response.overview.sessionGroups.first?.sessions.first?.canOpenTerminalInApp ?? true)
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.activeDeployment.terminalBackend, .ptyBridge)
         XCTAssertEqual(response.overview.reviewGroups.first?.runs.first?.statusLabel, "Completed")
         XCTAssertEqual(response.diagnostics?.filters?.targetNumber, 563)
     }

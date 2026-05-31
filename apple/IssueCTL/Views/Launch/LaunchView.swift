@@ -334,9 +334,9 @@ struct LaunchView: View {
         VStack(spacing: 8) {
             if let existingDeployment {
                 launchActionButton(
-                    title: existingDeployment.ttydPort == nil ? "Terminal Starting" : "Re-enter Running Terminal",
+                    title: existingDeployment.canOpenTerminalInApp ? "Re-enter Running Terminal" : existingDeployment.terminalActionTitle,
                     systemImage: "terminal",
-                    isDisabled: existingDeployment.ttydPort == nil
+                    isDisabled: !existingDeployment.canOpenTerminalInApp
                 ) {
                     openExistingTerminal(existingDeployment)
                 }
@@ -628,7 +628,7 @@ struct LaunchView: View {
 
     private func openExistingTerminal(_ deployment: ActiveDeployment) {
         guard let port = deployment.ttydPort else {
-            errorMessage = "Session is running, but its terminal is not ready yet."
+            errorMessage = deployment.terminalUnavailableDescription
             return
         }
         shouldDismissAfterTerminalClose = true
@@ -670,25 +670,28 @@ struct LaunchView: View {
             let response = try await api.launch(
                 owner: owner, repo: repo, number: issueNumber, body: body
             )
-            if response.success, let deploymentId = response.deploymentId, let port = response.ttydPort {
-                shouldDismissAfterTerminalClose = true
-                launchedPort = port
-                let deployment = ActiveDeployment(
-                    id: deploymentId,
-                    repoId: 0,
-                    issueNumber: issueNumber,
-                    branchName: branchName,
-                    workspaceMode: workspaceMode,
-                    workspacePath: "",
-                    linkedPrNumber: nil,
-                    state: .active,
-                    launchedAt: sharedISO8601Formatter.string(from: Date()),
-                    endedAt: nil, ttydPort: port, ttydPid: nil,
-                    owner: owner, repoName: repo
-                )
+            if let deployment = response.activeDeployment(
+                repoId: 0,
+                issueNumber: issueNumber,
+                agent: selectedAgent,
+                branchName: branchName,
+                workspaceMode: workspaceMode,
+                workspacePath: "",
+                linkedPrNumber: nil,
+                launchedAt: sharedISO8601Formatter.string(from: Date()),
+                owner: owner,
+                repoName: repo
+            ) {
                 existingDeployment = deployment
                 onSessionAvailable(deployment)
-                launchedDeployment = deployment
+                if let port = response.ttydPort {
+                    shouldDismissAfterTerminalClose = true
+                    launchedPort = port
+                    launchedDeployment = deployment
+                } else {
+                    shouldDismissAfterTerminalClose = false
+                    launchedPort = nil
+                }
             } else {
                 errorMessage = response.error ?? "Launch failed"
             }
@@ -789,9 +792,9 @@ private struct ExistingSessionCard: View {
                     .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(deployment.ttydPort == nil ? "Terminal Starting" : "Terminal Running")
+                    Text(deployment.canOpenTerminalInApp ? "Terminal Running" : deployment.terminalMetricValue)
                         .font(.subheadline.weight(.semibold))
-                    Text("\(deployment.branchName) - \(deployment.runningDuration)")
+                    Text("\(deployment.workspaceSummary) - \(deployment.runningDuration)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
@@ -803,12 +806,12 @@ private struct ExistingSessionCard: View {
             Button {
                 onOpen()
             } label: {
-                Label(deployment.ttydPort == nil ? "Terminal Starting" : "Open Existing Terminal", systemImage: "terminal")
+                Label(deployment.canOpenTerminalInApp ? "Open Existing Terminal" : deployment.terminalActionTitle, systemImage: "terminal")
                     .font(.caption.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(deployment.ttydPort == nil)
+            .disabled(!deployment.canOpenTerminalInApp)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
