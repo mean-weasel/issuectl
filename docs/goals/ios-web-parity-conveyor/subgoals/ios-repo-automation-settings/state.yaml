@@ -4,12 +4,22 @@ goal:
   slug: "ios-repo-automation-settings"
   kind: existing_plan
   tranche: "Bring native Settings up to web repo automation and webhook configuration parity."
-  status: queued
+  status: complete
 active_task: null
 tasks:
   - id: T001
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     objective: "Map existing web repo automation/webhook settings contracts and native Settings gaps."
-    receipt: null
+    receipt:
+      result: already_satisfied_on_main
+      summary: "Merged main already contains native repo automation/webhook settings parity, including toggles, agents, payload mode, review preamble, webhook install/rotate/reinstall/ping, receiver URL copy, label recreation/health, recent activity, and disabling-automation confirmation."
+      evidence:
+        - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+        - "apple/IssueCTL/Views/Settings/SettingsView.swift"
+        - "apple/IssueCTL/Views/Settings/RepoAutomationActivityView.swift"
+        - "apple/IssueCTLShared/Services/APIClient+Settings.swift"
+      verification:
+        - "PASS xcodebuildmcp test_sim selected repo automation decoding, webhook health/configure/reinstall/ping/recreate labels, receiver URL, label health, and RepoAutomationActivityViewTests."
+        - "PASS pnpm --dir packages/web test quoted repo/settings/workbench automation route/component tests."

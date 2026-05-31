@@ -5,7 +5,7 @@ goal:
   slug: "ios-target-aware-sessions"
   kind: existing_plan
   tranche: "Complete the remaining target-aware launch contract gap on top of current origin/main, then land it through review, PR, CI, and merge."
-  status: active
+  status: complete
   oracle:
     signal: "Apple clients can decode PR-target deployments, preserve terminal/backend/trigger metadata, display target labels, avoid treating PR sessions as issue sessions, and preserve launch correlation/backend metadata."
     cadence: "after local verification, adversarial review, PR CI, and merge"
@@ -32,7 +32,7 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/ios-target-aware-sessions/"
     command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-analysis-20260531/docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions"
 
-active_task: T004
+active_task: null
 
 tasks:
   - id: T001
@@ -124,18 +124,24 @@ tasks:
   - id: T004
     type: pm
     assignee: PM
-    status: active
+    status: done
     objective: "Commit, push, open PR, monitor CI, merge when green, then activate the next conveyor child."
     verify:
       - "PR URL recorded."
       - "CI green recorded."
       - "Merge SHA recorded."
     receipt:
-      result: in_progress
+      result: done
       pr_url: "https://github.com/mean-weasel/issuectl/pull/581"
       branch: "codex/ios-web-parity-analysis-20260531"
-      commit: "7b377ae"
+      commits:
+        - "7b377ae"
+        - "a762c0c"
+      merge_sha: "7b6a544986ac71e306de98b14a41c9e3c35ec00e"
       local_checks:
         - "PASS repo pre-commit typecheck/lint hooks."
         - "PASS repo pre-push typecheck hook."
-      next: "Monitor GitHub CI, fix red checks if any, merge when green, then activate the next child board."
+      ci:
+        - "PASS PR CI: Build, Build + UI Smoke, Build Mac App, Detect changes, E2E Web, Lint, Physical iPhone Preview Smoke, Test, Typecheck."
+        - "PASS merge queue: CI merge_group and Local macOS E2E."
+      next: "Merged; parent conveyor advanced to audit remaining child boards."
