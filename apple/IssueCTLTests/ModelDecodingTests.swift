@@ -742,8 +742,26 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.summaryRows.map(\.1), ["3", "1", "1", "1", "Latest 1", "2026-05-29T20:26:40.000Z"])
         XCTAssertEqual(response.filters?.targetDescription, "Issue #560")
         XCTAssertEqual(response.filters?.limitDescription, "Latest 1")
+        XCTAssertEqual(response.eventLimitNotice, "Showing latest 1 diagnostic event")
         XCTAssertTrue(response.hasFailure)
         XCTAssertTrue(response.events[0].metadataRows.contains { $0.0 == "ttydPort" && $0.1 == "49152" })
+    }
+
+    func testDeploymentDiagnosticsLimitNoticeOnlyAppearsWhenResultsHitLimit() throws {
+        let json = """
+        {
+          "events": [
+            {"id": 101, "timestamp": 1780000000000, "level": "info", "event": "deployment.activated", "message": "Deployment activated"},
+            {"id": 102, "timestamp": 1780000001000, "level": "info", "event": "deployment.visible", "message": "Deployment visible"}
+          ],
+          "filters": {"deployment_id": null, "target_type": "pr", "target_number": 44, "limit": 12},
+          "summary": {"count": 2, "level_counts": {"info": 2}, "latest_timestamp": 1780000001000, "latest_timestamp_iso": "2026-05-29T20:26:41.000Z"}
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertNil(response.eventLimitNotice)
     }
 
     // MARK: - ActiveDeployment

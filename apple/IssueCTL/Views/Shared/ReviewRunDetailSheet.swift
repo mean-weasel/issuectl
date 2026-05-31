@@ -15,6 +15,8 @@ struct ReviewRunDetailSheet: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var actionInFlight: ReviewRunActionMode?
+    @State private var requestedActionModes: Set<ReviewRunActionMode> = []
+    @State private var actionConfirmation: ReviewRunActionMode?
 
     var body: some View {
         NavigationStack {
@@ -173,29 +175,40 @@ struct ReviewRunDetailSheet: View {
                         enabled: detail.actions.mobileWriteActionsEnabled && detail.actions.canFullRerun
                     )
                 }
+
+                if let actionConfirmation {
+                    Label(actionConfirmation.requestedDisplayName, systemImage: "checkmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.green)
+                        .accessibilityIdentifier("review-run-action-confirmation")
+                }
             }
         }
     }
 
     private func actionButton(title: String, systemImage: String, mode: ReviewRunActionMode, enabled: Bool) -> some View {
-        Button {
+        let wasRequested = requestedActionModes.contains(mode)
+
+        return Button {
             Task { await requestAction(mode) }
         } label: {
             HStack(spacing: 7) {
                 if actionInFlight == mode {
                     ProgressView()
                         .controlSize(.small)
+                } else if wasRequested {
+                    Image(systemName: "checkmark.circle.fill")
                 } else {
                     Image(systemName: systemImage)
                 }
-                Text(title)
+                Text(wasRequested ? mode.requestedDisplayName : title)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .disabled(!enabled || actionInFlight != nil)
+        .disabled(!enabled || actionInFlight != nil || wasRequested)
         .accessibilityIdentifier("review-run-\(mode.rawValue)-button")
     }
 
@@ -410,16 +423,19 @@ struct ReviewRunDetailSheet: View {
 
     @MainActor
     private func requestAction(_ mode: ReviewRunActionMode) async {
+        guard actionInFlight == nil, !requestedActionModes.contains(mode) else { return }
         actionInFlight = mode
+        defer { actionInFlight = nil }
         errorMessage = nil
         do {
             _ = try await api.requestReviewRunAction(id: reviewId, mode: mode)
+            requestedActionModes.insert(mode)
+            actionConfirmation = mode
             detail = nil
             await load(force: true)
         } catch {
             errorMessage = error.localizedDescription
         }
-        actionInFlight = nil
     }
 }
 
@@ -470,6 +486,13 @@ private struct ReviewRunDetailDiagnosticsSummaryCard: View {
                     .padding(.vertical, 6)
                     .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
                 }
+            }
+
+            if let eventLimitNotice = response.eventLimitNotice {
+                Label(eventLimitNotice, systemImage: "line.3.horizontal.decrease.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("deployment-diagnostics-limit-notice")
             }
         }
     }
