@@ -56,9 +56,9 @@ active_task: T001
 queue:
   - slug: "ios-target-aware-sessions"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions/goal.md"
-    status: ready_for_pr
+    status: pr_open
     branch: "codex/ios-web-parity-analysis-20260531"
-    pr_url: null
+    pr_url: "https://github.com/mean-weasel/issuectl/pull/581"
   - slug: "ios-workbench-api-parity"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-workbench-api-parity/goal.md"
     status: queued

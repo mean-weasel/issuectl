@@ -130,4 +130,12 @@ tasks:
       - "PR URL recorded."
       - "CI green recorded."
       - "Merge SHA recorded."
-    receipt: null
+    receipt:
+      result: in_progress
+      pr_url: "https://github.com/mean-weasel/issuectl/pull/581"
+      branch: "codex/ios-web-parity-analysis-20260531"
+      commit: "7b377ae"
+      local_checks:
+        - "PASS repo pre-commit typecheck/lint hooks."
+        - "PASS repo pre-push typecheck hook."
+      next: "Monitor GitHub CI, fix red checks if any, merge when green, then activate the next child board."
