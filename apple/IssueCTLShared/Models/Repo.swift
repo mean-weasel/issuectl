@@ -572,9 +572,18 @@ struct ReviewRunDetailActions: Codable, Sendable {
     let mobileWriteActionsEnabled: Bool
 }
 
-enum ReviewRunActionMode: String, Codable, Sendable {
+enum ReviewRunActionMode: String, Codable, Hashable, Sendable {
     case retry
     case full
+
+    var requestedDisplayName: String {
+        switch self {
+        case .retry:
+            return "Retry requested"
+        case .full:
+            return "Full rerun requested"
+        }
+    }
 }
 
 struct ReviewRunActionRequest: Codable, Sendable {

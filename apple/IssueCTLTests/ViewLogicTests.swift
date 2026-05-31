@@ -187,6 +187,13 @@ final class ViewLogicTests: XCTestCase {
         )
     }
 
+    // MARK: - Review Run Actions
+
+    func testReviewRunActionModeRequestedDisplayNames() {
+        XCTAssertEqual(ReviewRunActionMode.retry.requestedDisplayName, "Retry requested")
+        XCTAssertEqual(ReviewRunActionMode.full.requestedDisplayName, "Full rerun requested")
+    }
+
     // MARK: - Offline Action Queue
 
     func testOfflineActionQueuePersistsIssueComments() throws {

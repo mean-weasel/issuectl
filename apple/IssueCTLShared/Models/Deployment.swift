@@ -669,6 +669,12 @@ struct DeploymentDiagnosticsResponse: Codable, Sendable {
         }
         return rows
     }
+
+    var eventLimitNotice: String? {
+        guard let limit = filters?.limit, limit > 0, events.count >= limit else { return nil }
+        let eventLabel = limit == 1 ? "event" : "events"
+        return "Showing latest \(limit) diagnostic \(eventLabel)"
+    }
 }
 
 struct DiagnosticFilters: Codable, Sendable {
