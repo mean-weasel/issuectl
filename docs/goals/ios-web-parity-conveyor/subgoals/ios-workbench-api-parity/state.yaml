@@ -1,0 +1,15 @@
+version: 2
+goal:
+  title: "iOS Workbench API Parity"
+  slug: "ios-workbench-api-parity"
+  kind: existing_plan
+  tranche: "Add native /api/v1/workbench models, API client call, and first aggregate refresh integration."
+  status: queued
+active_task: null
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: queued
+    objective: "Confirm current web workbench payload fields and the smallest safe native aggregate refresh slice."
+    receipt: null

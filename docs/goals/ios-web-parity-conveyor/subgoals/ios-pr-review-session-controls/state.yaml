@@ -1,0 +1,15 @@
+version: 2
+goal:
+  title: "iOS PR Review Session Controls"
+  slug: "ios-pr-review-session-controls"
+  kind: existing_plan
+  tranche: "Add native PR review-session actions once target-aware sessions and daemon contracts are in place."
+  status: queued
+active_task: null
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: queued
+    objective: "Map web PR review-session controls and identify native controls that can safely ship after target-aware sessions."
+    receipt: null

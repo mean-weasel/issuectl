@@ -1,0 +1,109 @@
+version: 2
+
+goal:
+  title: "iOS/Web Parity Conveyor"
+  slug: "ios-web-parity-conveyor"
+  kind: existing_plan
+  tranche: "Run iOS/web parity as sequential child boards, each ending in reviewed PR, green CI, merge, and handoff before the next board."
+  status: active
+  oracle:
+    signal: "Every queued iOS/web parity child board is merged or explicitly blocked/deferred with evidence, and final Apple verification maps back to the parity plan."
+    cadence: "after each child PR review, CI result, merge, and queue advancement"
+    final_proof: "Final audit cites child board receipts, PR URLs, CI outcomes, merge SHAs, and final focused Apple/web verification."
+  intake:
+    original_request: "Create the autonomous iOS/web parity conveyor with those authority boundaries. Start with the existing plan, split it into child GoalBuddy boards, run the first slice through PR review, CI, merge, then continue."
+    interpreted_outcome: "A parent GoalBuddy queue coordinates child vertical-slice boards and autonomously advances each slice through implementation, adversarial review, PR, CI, green merge, and next-board activation."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and Apple client users"
+    authority: requested
+    proof_type: review
+    completion_proof: "All queued parity boards are merged or blocked/deferred with receipts, and a final audit proves the remaining iOS/web gaps are closed or intentionally deferred."
+    likely_misfire: "Treating local implementation or board creation as completion without PR review, CI, merge, and queue advancement."
+    blind_spots_considered:
+      - "The first slice is already locally implemented but still needs adversarial review, PR, CI, and merge."
+      - "Native workbench, automation settings, diagnostics, and PR review controls should remain separate PR-sized slices."
+      - "CI monitoring may require heartbeat continuation if checks outlive this turn."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  no_completion_on_weak_proof: true
+  pr_required_per_child: true
+  merge_green_before_next_child: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: pending
+    url: "http://goalbuddy.localhost:41737/ios-web-parity-conveyor/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-analysis-20260531/docs/goals/ios-web-parity-conveyor"
+
+active_task: T001
+
+queue:
+  - slug: "ios-target-aware-sessions"
+    goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions/goal.md"
+    status: pr_open
+    branch: "codex/ios-web-parity-analysis-20260531"
+    pr_url: "https://github.com/mean-weasel/issuectl/pull/581"
+  - slug: "ios-workbench-api-parity"
+    goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-workbench-api-parity/goal.md"
+    status: queued
+    branch: null
+    pr_url: null
+  - slug: "ios-repo-automation-settings"
+    goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-repo-automation-settings/goal.md"
+    status: queued
+    branch: null
+    pr_url: null
+  - slug: "ios-diagnostics-timeline"
+    goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-diagnostics-timeline/goal.md"
+    status: queued
+    branch: null
+    pr_url: null
+  - slug: "ios-pr-review-session-controls"
+    goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-pr-review-session-controls/goal.md"
+    status: queued
+    branch: null
+    pr_url: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: active
+    objective: "Drive the first child board, ios-target-aware-sessions, through launch-metadata completion, adversarial review, PR, CI, merge, and queue handoff."
+    child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions/goal.md"
+    verify:
+      - "Child board records implemented slice, review findings, fixes, PR URL, CI status, merge SHA, and next-board activation."
+    stop_if:
+      - "Adversarial review finds architecture-level blocker."
+      - "CI repeats red after focused fixes."
+      - "GitHub permissions or branch protection block merge."
+    receipt: null
+  - id: T002
+    type: pm
+    assignee: PM
+    status: queued
+    objective: "Activate ios-workbench-api-parity after the first child merges."
+    child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-workbench-api-parity/goal.md"
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    objective: "Final conveyor audit after all child boards are merged or explicitly blocked/deferred."
+    receipt: null

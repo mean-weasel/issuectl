@@ -478,7 +478,7 @@ struct SessionListView: View {
     }
 
     private func openTerminal(_ deployment: ActiveDeployment) {
-        guard deployment.ttydPort != nil else { return }
+        guard deployment.canOpenTerminalInApp else { return }
         terminalPresentation = TerminalPresentation(deployment: deployment)
     }
 
@@ -648,11 +648,7 @@ private struct SessionOverviewRow: View {
 
             HStack(spacing: 10) {
                 sessionMetric(value: session.durationLabel, label: session.isActive ? "Duration" : "Elapsed", systemImage: "clock")
-                if let port = session.ttydPort {
-                    sessionMetric(value: "\(port)", label: "Terminal", systemImage: "terminal")
-                } else {
-                    sessionMetric(value: session.isActive ? "Starting" : "Ended", label: "Terminal", systemImage: "terminal")
-                }
+                sessionMetric(value: session.terminalMetricValue, label: "Terminal", systemImage: "terminal")
             }
 
             HStack(spacing: 8) {
@@ -695,12 +691,13 @@ private struct SessionOverviewRow: View {
     }
 
     private var canOpenTerminal: Bool {
-        session.isActive && session.ttydPort != nil
+        session.canOpenTerminalInApp
     }
 
     private var openButtonTitle: String {
         if !session.isActive { return "Session Ended" }
-        return session.ttydPort == nil ? "Starting..." : "Open Terminal"
+        if session.ttydPort != nil { return "Open Terminal" }
+        return session.usesPtyBridgeTerminal ? "Web Terminal" : "Starting..."
     }
 
     private var statusColor: Color {
@@ -710,13 +707,13 @@ private struct SessionOverviewRow: View {
         case .idle: return Color.orange
         case .error: return Color.red
         case .unavailable: return Color.secondary
-        case nil: return session.ttydPort == nil ? Color.orange : Color.secondary
+        case nil: return session.usesPtyBridgeTerminal ? Color.green : (session.ttydPort == nil ? Color.orange : Color.secondary)
         }
     }
 
     private var statusText: String {
         if !session.isActive { return "Ended" }
-        guard session.ttydPort != nil else { return "Starting" }
+        guard session.ttydPort != nil else { return session.usesPtyBridgeTerminal ? "PTY bridge" : "Starting" }
         switch session.preview?.status {
         case .idle: return "Idle"
         case .error: return "Error"
@@ -842,7 +839,7 @@ private struct ReviewRunRow: View {
                 .accessibilityLabel("Open PR")
                 .accessibilityIdentifier("review-open-pr-\(run.id)")
 
-                if let deployment = run.deployment, deployment.isActive, deployment.ttydPort != nil {
+                if let deployment = run.deployment, deployment.canOpenTerminalInApp {
                     Button {
                         onOpenDeployment(deployment)
                     } label: {
@@ -1079,10 +1076,10 @@ private struct SessionControlsSheet: View {
             VStack(spacing: 0) {
                 sheetAction(
                     title: "Open Terminal",
-                    subtitle: session.isActive ? (session.ttydPort.map { "Port \($0)" } ?? "Terminal is still preparing.") : "Session has ended.",
+                    subtitle: session.terminalActionSubtitle,
                     systemImage: "terminal",
                     accessibilityIdentifier: "session-open-terminal-\(session.id)",
-                    isDisabled: !session.isActive || session.ttydPort == nil,
+                    isDisabled: !session.canOpenTerminalInApp,
                     action: onOpenTerminal
                 )
 

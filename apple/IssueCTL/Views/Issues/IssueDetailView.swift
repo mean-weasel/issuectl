@@ -311,12 +311,12 @@ struct IssueDetailView: View {
                     .accessibilityIdentifier("issue-detail-actions-loading-card")
                 } else if let deployment = activeDeployment(from: detail) {
                     SessionStatusCard(
-                        title: deployment.ttydPort == nil ? "Session Starting" : "Session Active",
+                        title: deployment.canOpenTerminalInApp ? "Session Active" : deployment.terminalMetricValue,
                         subtitle: "\(deployment.branchName) - \(deployment.runningDuration)",
-                        status: deployment.ttydPort == nil ? "Terminal not ready" : "Terminal ready",
-                        systemImage: deployment.ttydPort == nil ? "hourglass" : "terminal",
-                        tint: deployment.ttydPort == nil ? .orange : .green,
-                        primaryTitle: deployment.ttydPort == nil ? nil : "Open Terminal",
+                        status: deployment.canOpenTerminalInApp ? "Terminal ready" : deployment.terminalMetricValue,
+                        systemImage: deployment.canOpenTerminalInApp ? "terminal" : (deployment.usesPtyBridgeTerminal ? "network" : "hourglass"),
+                        tint: deployment.canOpenTerminalInApp || deployment.usesPtyBridgeTerminal ? .green : .orange,
+                        primaryTitle: deployment.canOpenTerminalInApp ? "Open Terminal" : nil,
                         primarySystemImage: "terminal",
                         primaryAccessibilityIdentifier: "issue-detail-reenter-terminal-button",
                         primaryAction: {
@@ -700,6 +700,19 @@ struct IssueDetailView: View {
             id: deployment.id,
             repoId: deployment.repoId,
             issueNumber: deployment.issueNumber,
+            targetType: deployment.targetType,
+            targetNumber: deployment.targetNumber,
+            agent: deployment.agent,
+            terminalBackend: deployment.terminalBackend,
+            correlationId: deployment.correlationId,
+            triggeredBy: deployment.triggeredBy,
+            terminalReason: deployment.terminalReason,
+            parentDeploymentId: deployment.parentDeploymentId,
+            webhookDepth: deployment.webhookDepth,
+            idleSince: deployment.idleSince,
+            completionToken: deployment.completionToken,
+            completionResultJson: deployment.completionResultJson,
+            notificationSentAt: deployment.notificationSentAt,
             branchName: deployment.branchName,
             workspaceMode: deployment.workspaceMode,
             workspacePath: deployment.workspacePath,
@@ -715,8 +728,8 @@ struct IssueDetailView: View {
     }
 
     private func openTerminal(_ deployment: ActiveDeployment) {
-        guard deployment.ttydPort != nil else {
-            actionError = "Session is running, but its terminal is not ready yet."
+        guard deployment.canOpenTerminalInApp else {
+            actionError = deployment.terminalUnavailableDescription
             return
         }
         terminalTarget = deployment

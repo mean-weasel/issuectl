@@ -45,26 +45,21 @@ struct SessionRowView: View {
 
             HStack(spacing: 10) {
                 sessionMetric(value: deployment.runningDuration, label: "Duration", systemImage: "clock")
-
-                if let port = deployment.ttydPort {
-                    sessionMetric(value: "\(port)", label: "Terminal", systemImage: "terminal")
-                } else {
-                    sessionMetric(value: "Starting", label: "Terminal", systemImage: "terminal")
-                }
+                sessionMetric(value: deployment.terminalMetricValue, label: "Terminal", systemImage: "terminal")
             }
 
             HStack(spacing: 8) {
                 Button(action: onOpen) {
-                    Label(deployment.ttydPort == nil ? "Starting..." : "Open Terminal", systemImage: "terminal")
+                    Label(deployment.terminalActionTitle, systemImage: "terminal")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(IssueCTLColors.action.opacity(deployment.ttydPort == nil ? 0.45 : 1), in: RoundedRectangle(cornerRadius: 12))
+                        .background(IssueCTLColors.action.opacity(deployment.canOpenTerminalInApp ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 12))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(deployment.ttydPort == nil || isEnding)
-                .accessibilityLabel(deployment.ttydPort == nil ? "Starting" : "Open Terminal")
+                .disabled(!deployment.canOpenTerminalInApp || isEnding)
+                .accessibilityLabel(deployment.canOpenTerminalInApp ? "Open Terminal" : deployment.terminalUnavailableDescription)
                 .accessibilityIdentifier("session-reenter-terminal-\(deployment.id)")
 
                 Button(action: onControls) {
@@ -87,7 +82,7 @@ struct SessionRowView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if deployment.ttydPort != nil {
+            if deployment.canOpenTerminalInApp {
                 onOpen()
             }
         }
@@ -104,12 +99,12 @@ struct SessionRowView: View {
         case .unavailable:
             Color.secondary
         case nil:
-            deployment.ttydPort == nil ? Color.orange : Color.secondary
+            deployment.usesPtyBridgeTerminal ? Color.green : (deployment.ttydPort == nil ? Color.orange : Color.secondary)
         }
     }
 
     private var statusText: String {
-        guard deployment.ttydPort != nil else { return "Starting" }
+        guard deployment.ttydPort != nil else { return deployment.usesPtyBridgeTerminal ? "PTY bridge" : "Starting" }
         switch preview?.status {
         case .idle:
             return "Idle"

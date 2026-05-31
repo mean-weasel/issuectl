@@ -215,7 +215,7 @@ struct PRDetailView: View {
                 PRReviewSessionCard(
                     deployment: deployment,
                     onOpenTerminal: {
-                        guard deployment.ttydPort != nil else { return }
+                        guard deployment.canOpenTerminalInApp else { return }
                         terminalPresentation = PRTerminalPresentation(deployment: deployment)
                     }
                 )
@@ -729,13 +729,13 @@ private struct PRReviewSessionCard: View {
             }
 
             Button(action: onOpenTerminal) {
-                Label(deployment.ttydPort == nil ? "Starting..." : "Open Terminal", systemImage: "terminal")
+                Label(deployment.terminalActionTitle, systemImage: "terminal")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 40)
             }
             .buttonStyle(.borderedProminent)
-            .tint(IssueCTLColors.action.opacity(deployment.ttydPort == nil ? 0.5 : 1))
-            .disabled(deployment.ttydPort == nil)
+            .tint(IssueCTLColors.action.opacity(deployment.canOpenTerminalInApp ? 1 : 0.5))
+            .disabled(!deployment.canOpenTerminalInApp)
             .accessibilityIdentifier("pr-review-session-open-\(deployment.id)")
         }
         .padding(12)
