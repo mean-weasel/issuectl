@@ -14,6 +14,7 @@ struct ReviewRunDetailSheet: View {
     @State private var detail: ReviewRunDetailResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var actionInFlight: ReviewRunActionMode?
 
     var body: some View {
         NavigationStack {
@@ -54,6 +55,8 @@ struct ReviewRunDetailSheet: View {
                     }
                 }
             }
+
+            reviewActions(detail)
 
             sectionCard(title: "Run Details", systemImage: "info.circle") {
                 detailRows([
@@ -145,6 +148,55 @@ struct ReviewRunDetailSheet: View {
                     .foregroundStyle(.orange)
             }
         }
+    }
+
+    private func reviewActions(_ detail: ReviewRunDetailResponse) -> some View {
+        sectionCard(title: "Actions", systemImage: "arrow.clockwise.circle") {
+            VStack(alignment: .leading, spacing: 10) {
+                if let disabledReason = detail.actions.disabledReason {
+                    Label(disabledReason, systemImage: "hourglass")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 10) {
+                    actionButton(
+                        title: "Retry",
+                        systemImage: "arrow.clockwise",
+                        mode: .retry,
+                        enabled: detail.actions.mobileWriteActionsEnabled && detail.actions.canRetry
+                    )
+                    actionButton(
+                        title: "Full rerun",
+                        systemImage: "arrow.triangle.2.circlepath",
+                        mode: .full,
+                        enabled: detail.actions.mobileWriteActionsEnabled && detail.actions.canFullRerun
+                    )
+                }
+            }
+        }
+    }
+
+    private func actionButton(title: String, systemImage: String, mode: ReviewRunActionMode, enabled: Bool) -> some View {
+        Button {
+            Task { await requestAction(mode) }
+        } label: {
+            HStack(spacing: 7) {
+                if actionInFlight == mode {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: systemImage)
+                }
+                Text(title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(!enabled || actionInFlight != nil)
+        .accessibilityIdentifier("review-run-\(mode.rawValue)-button")
     }
 
     private func header(_ detail: ReviewRunDetailResponse) -> some View {
@@ -354,6 +406,20 @@ struct ReviewRunDetailSheet: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    @MainActor
+    private func requestAction(_ mode: ReviewRunActionMode) async {
+        actionInFlight = mode
+        errorMessage = nil
+        do {
+            _ = try await api.requestReviewRunAction(id: reviewId, mode: mode)
+            detail = nil
+            await load(force: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        actionInFlight = nil
     }
 }
 

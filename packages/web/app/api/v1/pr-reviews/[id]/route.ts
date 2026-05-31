@@ -64,7 +64,7 @@ function buildPrReviewDetailPayload(data: ReviewDetailData): unknown {
     metadata: data.metadata,
     actions: {
       ...data.actions,
-      mobileWriteActionsEnabled: false,
+      mobileWriteActionsEnabled: true,
     },
     links: data.links,
   };

@@ -78,7 +78,7 @@ describe("/api/v1/pr-reviews/[id]", () => {
       canRetry: true,
       canFullRerun: true,
       disabledReason: null,
-      mobileWriteActionsEnabled: false,
+      mobileWriteActionsEnabled: true,
     });
     expect(JSON.stringify(json)).not.toContain("resultJson");
     expect(JSON.stringify(json)).not.toContain("completionToken");

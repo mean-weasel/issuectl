@@ -473,6 +473,13 @@ final class APIClient {
         return try decoder.decode(ReviewRunDetailResponse.self, from: data)
     }
 
+    func requestReviewRunAction(id: Int, mode: ReviewRunActionMode) async throws -> ReviewRunActionResponse {
+        let safeId = max(1, id)
+        let bodyData = try JSONEncoder().encode(ReviewRunActionRequest(mode: mode))
+        let (data, _) = try await request(path: "/api/v1/pr-reviews/\(safeId)/actions", method: "POST", body: bodyData)
+        return try decoder.decode(ReviewRunActionResponse.self, from: data)
+    }
+
     func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
         let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
         return try decoder.decode(DiagnosticsResponse.self, from: data)
