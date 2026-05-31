@@ -5,7 +5,7 @@ goal:
   slug: "ios-web-parity-conveyor"
   kind: existing_plan
   tranche: "Run iOS/web parity as sequential child boards, each ending in reviewed PR, green CI, merge, and handoff before the next board."
-  status: active
+  status: complete
   oracle:
     signal: "Every queued iOS/web parity child board is merged or explicitly blocked/deferred with evidence, and final Apple verification maps back to the parity plan."
     cadence: "after each child PR review, CI result, merge, and queue advancement"
@@ -51,40 +51,41 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/ios-web-parity-conveyor/"
     command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-analysis-20260531/docs/goals/ios-web-parity-conveyor"
 
-active_task: T001
+active_task: T999
 
 queue:
   - slug: "ios-target-aware-sessions"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions/goal.md"
-    status: pr_open
+    status: merged
     branch: "codex/ios-web-parity-analysis-20260531"
     pr_url: "https://github.com/mean-weasel/issuectl/pull/581"
+    merge_sha: "7b6a544986ac71e306de98b14a41c9e3c35ec00e"
   - slug: "ios-workbench-api-parity"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-workbench-api-parity/goal.md"
-    status: queued
-    branch: null
+    status: satisfied_on_main
+    branch: "codex/ios-workbench-api-parity-20260531"
     pr_url: null
   - slug: "ios-repo-automation-settings"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-repo-automation-settings/goal.md"
-    status: queued
-    branch: null
+    status: satisfied_on_main
+    branch: "codex/ios-workbench-api-parity-20260531"
     pr_url: null
   - slug: "ios-diagnostics-timeline"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-diagnostics-timeline/goal.md"
-    status: queued
-    branch: null
+    status: satisfied_on_main
+    branch: "codex/ios-workbench-api-parity-20260531"
     pr_url: null
   - slug: "ios-pr-review-session-controls"
     goal_path: "docs/goals/ios-web-parity-conveyor/subgoals/ios-pr-review-session-controls/goal.md"
-    status: queued
-    branch: null
+    status: satisfied_on_main
+    branch: "codex/ios-workbench-api-parity-20260531"
     pr_url: null
 
 tasks:
   - id: T001
     type: pm
     assignee: PM
-    status: active
+    status: done
     objective: "Drive the first child board, ios-target-aware-sessions, through launch-metadata completion, adversarial review, PR, CI, merge, and queue handoff."
     child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-target-aware-sessions/goal.md"
     verify:
@@ -93,17 +94,73 @@ tasks:
       - "Adversarial review finds architecture-level blocker."
       - "CI repeats red after focused fixes."
       - "GitHub permissions or branch protection block merge."
-    receipt: null
+    receipt:
+      result: done
+      pr_url: "https://github.com/mean-weasel/issuectl/pull/581"
+      merge_sha: "7b6a544986ac71e306de98b14a41c9e3c35ec00e"
+      ci:
+        - "PASS PR CI: Build, Build + UI Smoke, Build Mac App, Detect changes, E2E Web, Lint, Physical iPhone Preview Smoke, Test, Typecheck."
+        - "PASS merge queue: CI merge_group and Local macOS E2E."
   - id: T002
     type: pm
     assignee: PM
-    status: queued
+    status: done
     objective: "Activate ios-workbench-api-parity after the first child merges."
     child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-workbench-api-parity/goal.md"
-    receipt: null
+    receipt:
+      result: done
+      summary: "Activated and audited ios-workbench-api-parity. The slice was already satisfied on merged main: Apple WorkbenchPayload models, APIClient.workbench(refresh:), WorkbenchStore, BoardView, and web /api/v1/workbench route/tests are present."
+      verification:
+        - "PASS xcodebuildmcp test_sim selected WorkbenchPayload decoding, automation parity fixture decoding, workbench endpoint URL/cache tests, and WorkbenchStoreTests."
+        - "PASS pnpm --dir packages/web test app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts."
+        - "PASS pnpm --dir packages/web typecheck."
+  - id: T003
+    type: pm
+    assignee: PM
+    status: done
+    objective: "Audit ios-repo-automation-settings after workbench parity was found satisfied."
+    child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-repo-automation-settings/goal.md"
+    receipt:
+      result: done
+      summary: "Native repo automation settings were already satisfied on merged main: edit sheet exposes auto-launch, auto-review, issue/review agents, payload mode, review preamble, webhook install/rotate/reinstall/ping, label recreation, label health, recent activity, and disabling-automation confirmation."
+      verification:
+        - "PASS xcodebuildmcp test_sim selected repo automation decoding, webhook health/configure/reinstall/ping/recreate labels, receiver URL, label health, and RepoAutomationActivityViewTests."
+        - "PASS pnpm --dir packages/web test quoted repo/settings/workbench automation route/component tests."
+  - id: T004
+    type: pm
+    assignee: PM
+    status: done
+    objective: "Audit ios-diagnostics-timeline after repo automation settings were found satisfied."
+    child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-diagnostics-timeline/goal.md"
+    receipt:
+      result: done
+      summary: "Native diagnostics-first troubleshooting was already satisfied on merged main: read-only diagnostics routes, Apple diagnostics models/client methods, deployment diagnostics sheet, PR review diagnostics summaries, and focused route/model/API tests are present."
+      verification:
+        - "PASS xcodebuildmcp test_sim selected DeploymentDiagnostics decoding/live-contract/API endpoint tests."
+        - "PASS pnpm --dir packages/web test app/api/v1/diagnostics/route.test.ts app/api/v1/diagnostics/deployments/[id]/route.test.ts."
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    objective: "Audit ios-pr-review-session-controls after diagnostics parity was found satisfied."
+    child_goal: "docs/goals/ios-web-parity-conveyor/subgoals/ios-pr-review-session-controls/goal.md"
+    receipt:
+      result: done
+      summary: "Native PR review-session controls were already satisfied on merged main where daemon contracts allow them: PR detail toggles auto-review labels, shows active review sessions, opens eligible terminals, and ReviewRunDetailSheet exposes lineage, findings, diagnostics, retry, and full-rerun actions gated by server capabilities."
+      verification:
+        - "PASS xcodebuildmcp test_sim selected PR review run decoding/detail/action endpoint, pull label, and action-mode tests."
+        - "PASS pnpm --dir packages/web test pr-reviews route/detail/actions and pull-label route tests."
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     objective: "Final conveyor audit after all child boards are merged or explicitly blocked/deferred."
-    receipt: null
+    receipt:
+      result: approved
+      summary: "The conveyor completed after PR #581 merged the first active target-aware/PTT bridge slice. Subsequent queued child slices were adversarially audited against updated main and found already satisfied with focused green verification, so no redundant feature PRs were created."
+      final_proof:
+        - "First child merged: https://github.com/mean-weasel/issuectl/pull/581 at 7b6a544986ac71e306de98b14a41c9e3c35ec00e."
+        - "Workbench API parity verified on main."
+        - "Repo automation settings parity verified on main."
+        - "Diagnostics timeline parity verified on main."
+        - "PR review-session controls verified on main."

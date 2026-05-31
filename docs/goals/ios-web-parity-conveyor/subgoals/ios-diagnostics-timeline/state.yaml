@@ -4,12 +4,23 @@ goal:
   slug: "ios-diagnostics-timeline"
   kind: existing_plan
   tranche: "Expose diagnostics journal evidence natively for launch/session failures."
-  status: queued
+  status: complete
 active_task: null
 tasks:
   - id: T001
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     objective: "Confirm diagnostics journal schema/CLI behavior and identify the safest read-only API plus native UI slice."
-    receipt: null
+    receipt:
+      result: already_satisfied_on_main
+      summary: "Merged main already contains the diagnostics-first native troubleshooting surface and read-only API: diagnostics routes, diagnostics payload helpers, Apple diagnostics models/API client, session diagnostics sheet, and PR review diagnostics summaries."
+      evidence:
+        - "packages/web/app/api/v1/diagnostics/route.ts"
+        - "packages/web/app/api/v1/diagnostics/deployments/[id]/route.ts"
+        - "apple/IssueCTLShared/Models/Deployment.swift"
+        - "apple/IssueCTLShared/Services/APIClient.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      verification:
+        - "PASS xcodebuildmcp test_sim selected DeploymentDiagnostics decoding/live-contract/API endpoint tests."
+        - "PASS pnpm --dir packages/web test app/api/v1/diagnostics/route.test.ts app/api/v1/diagnostics/deployments/[id]/route.test.ts."

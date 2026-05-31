@@ -4,12 +4,23 @@ goal:
   slug: "ios-pr-review-session-controls"
   kind: existing_plan
   tranche: "Add native PR review-session actions once target-aware sessions and daemon contracts are in place."
-  status: queued
+  status: complete
 active_task: null
 tasks:
   - id: T001
     type: scout
     assignee: Scout
-    status: queued
+    status: done
     objective: "Map web PR review-session controls and identify native controls that can safely ship after target-aware sessions."
-    receipt: null
+    receipt:
+      result: already_satisfied_on_main
+      summary: "Merged main already contains native PR review-session controls where server contracts allow them: PR auto-review label toggling, active review-session cards, terminal opening for eligible sessions, review-run detail with lineage/findings/diagnostics, and retry/full-rerun actions gated by server capability flags."
+      evidence:
+        - "apple/IssueCTL/Views/PullRequests/PRDetailView.swift"
+        - "apple/IssueCTL/Views/Shared/ReviewRunDetailSheet.swift"
+        - "apple/IssueCTLShared/Services/APIClient.swift"
+        - "apple/IssueCTLShared/Services/APIClient+DetailActions.swift"
+        - "packages/web/app/api/v1/pr-reviews/[id]/actions/route.ts"
+      verification:
+        - "PASS xcodebuildmcp test_sim selected PR review run decoding/detail/action endpoint, pull label, and action-mode tests."
+        - "PASS pnpm --dir packages/web test pr-reviews route/detail/actions and pull-label route tests."
