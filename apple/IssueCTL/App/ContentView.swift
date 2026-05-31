@@ -70,24 +70,10 @@ struct ContentView: View {
                 .sheet(isPresented: $showSettings) {
                     SettingsView()
                 }
-                .overlay(alignment: .top) {
-                    VStack(spacing: 8) {
-                        OfflineBanner()
-                        OfflineQueueBanner(
-                            pendingCount: offlineSync.pendingCount,
-                            failedCount: offlineSync.failedCount,
-                            isSyncing: offlineSync.isSyncing,
-                            onSync: {
-                                offlineSync.retryFailedActions()
-                                await offlineSync.syncPendingActions()
-                            },
-                            onDismissFailed: {
-                                offlineSync.clearFailedActions()
-                            }
-                        )
+                .overlay(alignment: .bottom) {
+                    if shouldShowStatusBanners {
+                        statusBanners
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
                 }
                 .animation(.easeInOut(duration: 0.3), value: network.isConnected)
                 .animation(.easeInOut(duration: 0.25), value: offlineSync.pendingCount)
@@ -127,6 +113,31 @@ struct ContentView: View {
             guard let route = AppRoute(notificationUserInfo: notification.userInfo ?? [:]) else { return }
             handle(route)
         }
+    }
+
+    private var shouldShowStatusBanners: Bool {
+        !network.isConnected || offlineSync.pendingCount > 0 || offlineSync.failedCount > 0 || offlineSync.isSyncing
+    }
+
+    private var statusBanners: some View {
+        VStack(spacing: 8) {
+            OfflineBanner()
+            OfflineQueueBanner(
+                pendingCount: offlineSync.pendingCount,
+                failedCount: offlineSync.failedCount,
+                isSyncing: offlineSync.isSyncing,
+                onSync: {
+                    offlineSync.retryFailedActions()
+                    await offlineSync.syncPendingActions()
+                },
+                onDismissFailed: {
+                    offlineSync.clearFailedActions()
+                }
+            )
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 92)
+        .background(.clear)
     }
 
     private func handle(_ route: AppRoute) {

@@ -141,6 +141,17 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(message, "Showing cached today data")
     }
 
+    func testFreshnessStatusDistinguishesOfflineCachedFallback() {
+        let message = freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: true,
+            isNetworkConnected: false,
+            cachedAt: nil
+        )
+
+        XCTAssertEqual(message, "Offline - showing cached today data")
+    }
+
     // MARK: - Repo Automation Controls
 
     func testAutomationDisableConfirmationCopyMatchesServerBehavior() {
