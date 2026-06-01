@@ -466,6 +466,13 @@ struct TodayView: View {
                     primary: activeDeployments,
                     workbenchBootstrap: bootstrap
                 )
+                let freshness = todayMergedFreshness(
+                    isShowingCachedData: isShowingCachedData,
+                    oldestCachedAt: oldestCachedAt,
+                    workbenchBootstrap: bootstrap
+                )
+                isShowingCachedData = freshness.isShowingCachedData
+                oldestCachedAt = freshness.oldestCachedAt
             } catch {
                 guard loadGeneration == generation else { return }
                 workbenchBootstrap = nil
@@ -575,6 +582,21 @@ func todayMergedActiveDeployments(
         seenIDs.insert(deployment.id)
     }
     return merged
+}
+
+func todayMergedFreshness(
+    isShowingCachedData: Bool,
+    oldestCachedAt: Date?,
+    workbenchBootstrap: WorkbenchBootstrap?
+) -> (isShowingCachedData: Bool, oldestCachedAt: Date?) {
+    guard let workbenchBootstrap, workbenchBootstrap.usesCachedIssues else {
+        return (isShowingCachedData, oldestCachedAt)
+    }
+
+    return (
+        true,
+        ([oldestCachedAt] + workbenchBootstrap.issueCachedDates).compactMap { $0 }.min()
+    )
 }
 
 enum TodayDestination: Hashable {

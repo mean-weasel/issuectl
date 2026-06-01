@@ -1003,6 +1003,36 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), [42_001])
     }
 
+    func testTodayMergedFreshnessIncludesCachedWorkbenchIssues() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+        let endpointCachedAt = try XCTUnwrap(parseIssueCTLDate("2026-05-16T15:40:00.000Z"))
+
+        let result = todayMergedFreshness(
+            isShowingCachedData: false,
+            oldestCachedAt: endpointCachedAt,
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertTrue(result.isShowingCachedData)
+        XCTAssertEqual(
+            result.oldestCachedAt.map { sharedISO8601Formatter.string(from: $0) },
+            "2026-05-16T15:30:00.000Z"
+        )
+    }
+
+    func testTodayMergedFreshnessKeepsLiveStatusWhenWorkbenchIssuesAreLive() throws {
+        let bootstrap = try makeWorkbenchBootstrap(issuesFromCache: false, issuesCachedAt: nil)
+
+        let result = todayMergedFreshness(
+            isShowingCachedData: false,
+            oldestCachedAt: nil,
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertFalse(result.isShowingCachedData)
+        XCTAssertNil(result.oldestCachedAt)
+    }
+
     func testTodaySearchMatchesTitleBodyRepoAndNumber() {
         XCTAssertTrue(todayMatchesSearchQuery(
             query: "login",
@@ -1162,10 +1192,19 @@ final class ViewLogicTests: XCTestCase {
         )
     }
 
-    private func makeWorkbenchBootstrap() throws -> WorkbenchBootstrap {
+    private func makeWorkbenchBootstrap(
+        issuesFromCache: Bool = true,
+        issuesCachedAt: String? = "2026-05-16T15:30:00.000Z"
+    ) throws -> WorkbenchBootstrap {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        let payload = try decoder.decode(WorkbenchPayload.self, from: Self.workbenchFixture)
+        let json = String(data: Self.workbenchFixture, encoding: .utf8)?
+            .replacingOccurrences(of: "__ISSUES_FROM_CACHE__", with: issuesFromCache ? "true" : "false")
+            .replacingOccurrences(
+                of: "__ISSUES_CACHED_AT__",
+                with: issuesCachedAt.map { "\"\($0)\"" } ?? "null"
+            ) ?? ""
+        let payload = try decoder.decode(WorkbenchPayload.self, from: Data(json.utf8))
         return WorkbenchBootstrap(payload: payload)
     }
 
@@ -1189,8 +1228,8 @@ final class ViewLogicTests: XCTestCase {
           "launch_agent": "codex",
           "terminal_backend_default": "ttyd",
           "issue_error": null,
-          "issues_from_cache": false,
-          "issues_cached_at": null,
+          "issues_from_cache": __ISSUES_FROM_CACHE__,
+          "issues_cached_at": __ISSUES_CACHED_AT__,
           "priorities": [
             {"repo_id": 1, "issue_number": 42, "priority": "high", "updated_at": 1779000000},
             {"repo_id": 1, "issue_number": 43, "priority": "low", "updated_at": 1779000001}
