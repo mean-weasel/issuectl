@@ -314,3 +314,16 @@ QA skills are available for targeted quality checks. All browser-based checks us
 - Branch naming: `phase-{N}-{short-description}` for implementation work
 - Commit messages: concise, imperative, focused on the "why"
 - One commit per logical change, not one commit per file
+
+## Burden Of Proof
+
+Before declaring work complete, try to disprove the change. Identify the
+strongest realistic failure mode, verify it with a command, test, trace,
+screenshot, audit record, diff, or direct inspection, and include that evidence
+in the final handoff.
+
+Treat `done`, `tests passed`, worker claims, passing happy-path tests, generated
+summaries, and optimistic UI as claims, not proof. Treat unverified assumptions
+as blockers or explicit follow-ups.
+
+Keep this section synchronized with `AGENTS.md` whenever either file changes.

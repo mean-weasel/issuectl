@@ -13,6 +13,13 @@ GitHub webhook delivery reaches this machine, issuectl creates exactly one PR
 review session, the trigger label is consumed, the review deployment and
 `pr_reviews` row agree, and the PR detail UI reflects the active review state.
 
+Final handoffs for this workflow must include a disproof receipt: the most
+likely way this could have been a false pass, plus the command, diagnostic
+trace, screenshot, or inspection that ruled it out. For PR review automation,
+that is usually the GitHub `pull_request.labeled` delivery status, the
+`webhook_intents`/`deployments`/`pr_reviews` SQL rows, and a PR detail UI
+inspection showing the trigger label was consumed.
+
 ## Scope
 
 Target repository:

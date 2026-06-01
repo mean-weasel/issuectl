@@ -92,6 +92,21 @@ List available device identifiers and preview destinations:
 pnpm ios:list-devices
 ```
 
+Before accepting an iOS preview/device smoke result, record one negative case
+that could have made the pass misleading. Useful disproof checks include:
+
+- routing: open a preview URL scheme or deep link for the changed surface and
+  confirm it lands on the expected screen rather than the production app
+- auth: verify stale or missing setup credentials fail visibly instead of
+  silently showing cached data
+- state drift: compare the app Settings build SHA, target device name, or smoke
+  profile against the GitHub run or local command you intended to test
+
+Include the command, simulator/device trace, screenshot, or direct inspection
+receipt in the PR handoff. If the negative case cannot be run because the
+simulator, physical phone, signing keychain, or runner is unavailable, list that
+as residual risk.
+
 ## Physical Preview Performance Timing
 
 Use the existing preview smoke wrapper to collect app-side `PerformanceTrace` timings from `iPhone-preview`. The wrapper resolves `iPhone-preview`, checks that the phone is visible and unlocked, and runs the `IssueCTLPreview-UISmoke` scheme with `ISSUECTL_UI_TESTING=1`, which mirrors timing events to device logs with a `[PerformanceTrace]` prefix.

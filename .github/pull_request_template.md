@@ -19,6 +19,10 @@ Top realistic failure modes considered:
 
 -
 
+Strongest disproof attempt:
+
+-
+
 Evidence collected:
 
 -

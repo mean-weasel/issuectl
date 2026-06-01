@@ -4,6 +4,21 @@ This runbook covers the v1 GitHub webhook auto-session flow for issue launches a
 
 For repeatable hands-on QA with the two test repositories, including target creation, diagnostics, expected evidence, and reset commands, use [Webhook Label Manual QA](./webhook-label-manual-qa.md). To choose the smallest right QA workflow and understand complexity order, use [Webhook QA Ladder](./webhook-qa-ladder.md). For the higher-complexity issue-to-PR-to-review chain, use [Webhook Issue-To-PR Review QA](./webhook-issue-to-pr-review-qa.md).
 
+## Handoff Proof
+
+Do not close a webhook automation task with only "launch worked" or "tests
+passed." Record the strongest realistic failure mode and the receipt that would
+have exposed it, such as:
+
+- `issuectl webhook tail` output for the target delivery and intent
+- `issuectl diag show` or `diag tail` output for the deployment lifecycle
+- a GitHub hook delivery query proving the labeled event returned `200`
+- a dashboard screenshot or direct inspection showing label consumption and the
+  expected active or completed session state
+
+If the disproof attempt was skipped because the tunnel, credentials, device, or
+test repo was unavailable, mark that as residual risk in the handoff.
+
 ## Receiver URL
 
 The local web server handles GitHub deliveries before Next.js request parsing so HMAC verification can use the raw request body.
