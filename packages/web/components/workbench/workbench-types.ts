@@ -1,6 +1,7 @@
 import type {
   ActiveDeploymentWithRepo,
   Deployment,
+  Draft,
   IssuePriority,
   LaunchAgent,
   PrReview,
@@ -85,6 +86,7 @@ export type WorkbenchRepo = {
 };
 
 export type WorkbenchPayload = {
+  drafts: Draft[];
   repos: WorkbenchRepo[];
   deployments: WorkbenchDeployment[];
   previews: Record<string, WorkbenchPreview>;

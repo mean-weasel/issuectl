@@ -1,0 +1,358 @@
+{
+  "repos": [
+    {
+      "id": 1,
+      "owner": "org",
+      "name": "alpha",
+      "localPath": "/tmp/alpha",
+      "branchPattern": null,
+      "autoLaunchIssues": true,
+      "autoReviewPrs": true,
+      "issueAgent": "codex",
+      "reviewAgent": "claude",
+      "webhookId": 123,
+      "webhookPayloadMode": "metadata",
+      "badgeCount": 3,
+      "deployedCount": 3,
+      "launchAgent": "codex",
+      "terminalBackendDefault": "ttyd",
+      "issueError": null,
+      "issuesFromCache": false,
+      "issuesCachedAt": null,
+      "priorities": [
+        {
+          "repoId": 1,
+          "issueNumber": 501,
+          "priority": "high",
+          "updatedAt": 1777440000
+        }
+      ],
+      "deployments": [
+        {
+          "id": 9401,
+          "repoId": 1,
+          "issueNumber": 501,
+          "targetType": "issue",
+          "targetNumber": 501,
+          "agent": "codex",
+          "terminalBackend": "ttyd",
+          "triggeredBy": "manual",
+          "terminalReason": null,
+          "parentDeploymentId": null,
+          "webhookDepth": 0,
+          "idleSince": null,
+          "branchName": "issue-501-manual-session",
+          "workspaceMode": "worktree",
+          "workspacePath": "/tmp/alpha-automation-501",
+          "linkedPrNumber": null,
+          "state": "active",
+          "launchedAt": "2026-04-29 08:00:00",
+          "endedAt": null,
+          "ttydPort": 19001,
+          "ttydPid": 22401,
+          "owner": "org",
+          "repoName": "alpha"
+        },
+        {
+          "id": 9402,
+          "repoId": 1,
+          "issueNumber": 502,
+          "targetType": "issue",
+          "targetNumber": 502,
+          "agent": "codex",
+          "terminalBackend": "ttyd",
+          "triggeredBy": "webhook",
+          "terminalReason": null,
+          "parentDeploymentId": 9401,
+          "webhookDepth": 1,
+          "idleSince": "2026-04-29 08:05:00",
+          "branchName": "issue-502-webhook-session",
+          "workspaceMode": "worktree",
+          "workspacePath": "/tmp/alpha-automation-502",
+          "linkedPrNumber": null,
+          "state": "active",
+          "launchedAt": "2026-04-29 08:00:00",
+          "endedAt": null,
+          "ttydPort": 19002,
+          "ttydPid": 22402,
+          "owner": "org",
+          "repoName": "alpha"
+        },
+        {
+          "id": 9407,
+          "repoId": 1,
+          "issueNumber": null,
+          "targetType": "pr",
+          "targetNumber": 7,
+          "agent": "codex",
+          "terminalBackend": "ttyd",
+          "triggeredBy": "comment_command",
+          "terminalReason": "review",
+          "parentDeploymentId": 9402,
+          "webhookDepth": 2,
+          "idleSince": null,
+          "branchName": "pr-7-review",
+          "workspaceMode": "worktree",
+          "workspacePath": "/tmp/alpha-automation-7",
+          "linkedPrNumber": null,
+          "state": "active",
+          "launchedAt": "2026-04-29 08:00:00",
+          "endedAt": null,
+          "ttydPort": 19007,
+          "ttydPid": 22407,
+          "owner": "org",
+          "repoName": "alpha"
+        }
+      ],
+      "recentCompletions": [],
+      "webhookEvents": [
+        {
+          "id": 1,
+          "deliveryId": "mock-delivery-501",
+          "eventType": "issues",
+          "action": "labeled",
+          "senderLogin": "alice",
+          "targetType": "issue",
+          "targetNumber": 501,
+          "receivedAt": 1777440000,
+          "intentId": 50
+        }
+      ],
+      "prReviews": [
+        {
+          "id": 7,
+          "repoId": 1,
+          "prNumber": 7,
+          "deploymentId": 9407,
+          "reviewedFromSha": null,
+          "reviewedToSha": "abc123",
+          "headRepoFullName": "org/alpha",
+          "headRef": "feature-7",
+          "status": "in_progress",
+          "triggeredBy": "webhook",
+          "resultJson": null,
+          "startedAt": 1777440000,
+          "completedAt": null
+        }
+      ],
+      "previews": {
+        "19001": {
+          "lines": [
+            "issue #501: manual launch",
+            "agent is running"
+          ],
+          "lastUpdatedMs": 1777800000000,
+          "lastChangedMs": 1777799999000,
+          "status": "active"
+        },
+        "19002": {
+          "lines": [
+            "issue #502: webhook label",
+            "waiting for changes"
+          ],
+          "lastUpdatedMs": 1777800000000,
+          "lastChangedMs": 1777799999000,
+          "status": "idle"
+        },
+        "19007": {
+          "lines": [
+            "PR #7: /issuectl review",
+            "automation command failed"
+          ],
+          "lastUpdatedMs": 1777800000000,
+          "lastChangedMs": 1777799999000,
+          "status": "error"
+        }
+      },
+      "issues": [
+        {
+          "number": 501,
+          "title": "Manual automation baseline",
+          "state": "open",
+          "labels": [
+            "bug"
+          ],
+          "updatedAt": "2026-04-29T08:00:00Z",
+          "priority": "high",
+          "hasActiveDeployment": true,
+          "htmlUrl": "https://github.com/org/alpha/issues/501",
+          "authorLogin": "alice"
+        },
+        {
+          "number": 502,
+          "title": "Webhook-triggered follow-up",
+          "state": "open",
+          "labels": [
+            "issuectl:auto-launch"
+          ],
+          "updatedAt": "2026-04-29T08:00:00Z",
+          "priority": "normal",
+          "hasActiveDeployment": true,
+          "htmlUrl": "https://github.com/org/alpha/issues/502",
+          "authorLogin": "alice"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "owner": "org",
+      "name": "beta",
+      "localPath": "/tmp/beta",
+      "branchPattern": null,
+      "autoLaunchIssues": false,
+      "autoReviewPrs": false,
+      "issueAgent": "claude",
+      "reviewAgent": "claude",
+      "webhookId": null,
+      "webhookPayloadMode": "metadata",
+      "badgeCount": 0,
+      "deployedCount": 0,
+      "launchAgent": "claude",
+      "terminalBackendDefault": "ttyd",
+      "issueError": null,
+      "issuesFromCache": false,
+      "issuesCachedAt": null,
+      "priorities": [],
+      "deployments": [],
+      "recentCompletions": [],
+      "webhookEvents": [],
+      "prReviews": [],
+      "previews": {},
+      "issues": [
+        {
+          "number": 601,
+          "title": "Automation disabled repo",
+          "state": "open",
+          "labels": [
+            "board"
+          ],
+          "updatedAt": "2026-04-29T08:00:00Z",
+          "priority": "normal",
+          "hasActiveDeployment": false,
+          "htmlUrl": "https://github.com/org/beta/issues/601",
+          "authorLogin": "bob"
+        }
+      ]
+    }
+  ],
+  "deployments": [
+    {
+      "id": 9401,
+      "repoId": 1,
+      "issueNumber": 501,
+      "targetType": "issue",
+      "targetNumber": 501,
+      "agent": "codex",
+      "terminalBackend": "ttyd",
+      "triggeredBy": "manual",
+      "terminalReason": null,
+      "parentDeploymentId": null,
+      "webhookDepth": 0,
+      "idleSince": null,
+      "branchName": "issue-501-manual-session",
+      "workspaceMode": "worktree",
+      "workspacePath": "/tmp/alpha-automation-501",
+      "linkedPrNumber": null,
+      "state": "active",
+      "launchedAt": "2026-04-29 08:00:00",
+      "endedAt": null,
+      "ttydPort": 19001,
+      "ttydPid": 22401,
+      "owner": "org",
+      "repoName": "alpha"
+    },
+    {
+      "id": 9402,
+      "repoId": 1,
+      "issueNumber": 502,
+      "targetType": "issue",
+      "targetNumber": 502,
+      "agent": "codex",
+      "terminalBackend": "ttyd",
+      "triggeredBy": "webhook",
+      "terminalReason": null,
+      "parentDeploymentId": 9401,
+      "webhookDepth": 1,
+      "idleSince": "2026-04-29 08:05:00",
+      "branchName": "issue-502-webhook-session",
+      "workspaceMode": "worktree",
+      "workspacePath": "/tmp/alpha-automation-502",
+      "linkedPrNumber": null,
+      "state": "active",
+      "launchedAt": "2026-04-29 08:00:00",
+      "endedAt": null,
+      "ttydPort": 19002,
+      "ttydPid": 22402,
+      "owner": "org",
+      "repoName": "alpha"
+    },
+    {
+      "id": 9407,
+      "repoId": 1,
+      "issueNumber": null,
+      "targetType": "pr",
+      "targetNumber": 7,
+      "agent": "codex",
+      "terminalBackend": "ttyd",
+      "triggeredBy": "comment_command",
+      "terminalReason": "review",
+      "parentDeploymentId": 9402,
+      "webhookDepth": 2,
+      "idleSince": null,
+      "branchName": "pr-7-review",
+      "workspaceMode": "worktree",
+      "workspacePath": "/tmp/alpha-automation-7",
+      "linkedPrNumber": null,
+      "state": "active",
+      "launchedAt": "2026-04-29 08:00:00",
+      "endedAt": null,
+      "ttydPort": 19007,
+      "ttydPid": 22407,
+      "owner": "org",
+      "repoName": "alpha"
+    }
+  ],
+  "previews": {
+    "19001": {
+      "lines": [
+        "issue #501: manual launch",
+        "agent is running"
+      ],
+      "lastUpdatedMs": 1777800000000,
+      "lastChangedMs": 1777799999000,
+      "status": "active"
+    },
+    "19002": {
+      "lines": [
+        "issue #502: webhook label",
+        "waiting for changes"
+      ],
+      "lastUpdatedMs": 1777800000000,
+      "lastChangedMs": 1777799999000,
+      "status": "idle"
+    },
+    "19007": {
+      "lines": [
+        "PR #7: /issuectl review",
+        "automation command failed"
+      ],
+      "lastUpdatedMs": 1777800000000,
+      "lastChangedMs": 1777799999000,
+      "status": "error"
+    }
+  },
+  "settings": {
+    "launch_agent": "codex"
+  },
+  "health": {
+    "ok": true,
+    "version": "ui-test",
+    "timestamp": "2026-04-29T08:00:00Z",
+    "error": null
+  },
+  "user": {
+    "login": "alice",
+    "error": null
+  },
+  "generatedAt": "2026-04-29T08:00:00Z"
+}

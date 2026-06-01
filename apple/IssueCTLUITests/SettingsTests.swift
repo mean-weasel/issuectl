@@ -58,6 +58,56 @@ final class SettingsTests: XCTestCase {
     }
 
     @MainActor
+    func testRepoEditorShowsAutomationWebhookAndLabelControls() {
+        let app = launchApp(server: server)
+
+        openSettingsFromToday(in: app)
+        openAlphaRepoEditor(in: app)
+
+        assertElement("edit-repo-auto-launch-toggle", existsIn: app, timeout: 5)
+        assertElement("edit-repo-auto-review-toggle", existsIn: app)
+        revealElement("edit-repo-webhook-health-button", in: app)
+        tapElement("edit-repo-webhook-health-button", in: app)
+        XCTAssertTrue(app.staticTexts["Webhook not verified"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Latest delivery"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "issues labeled")).firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+        assertElement("edit-repo-webhook-activity", existsIn: app, timeout: 5)
+        XCTAssertTrue(app.staticTexts["Recent activity"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "mock-delivery")).firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+
+        revealElement("edit-repo-recreate-labels-button", in: app)
+        tapElement("edit-repo-recreate-labels-button", in: app)
+        XCTAssertEqual(server.lastRepoLabelsAction, "recreate")
+
+        revealElement("edit-repo-webhook-configure-button", in: app)
+        tapElement("edit-repo-webhook-configure-button", in: app)
+        XCTAssertEqual(server.lastWebhookAction, "rotate")
+    }
+
+    @MainActor
+    func testDisablingAutomationWarnsWhenWebhookSessionIsActive() {
+        server.seedPullRequestDeployment()
+        let app = launchApp(server: server)
+
+        openSettingsFromToday(in: app)
+        openAlphaRepoEditor(in: app)
+        assertElement("edit-repo-auto-review-toggle", existsIn: app, timeout: 5)
+        let autoReviewSwitch = app.switches["edit-repo-auto-review-toggle"]
+        if autoReviewSwitch.exists {
+            autoReviewSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        } else {
+            element("edit-repo-auto-review-toggle", in: app).tap()
+        }
+
+        let saveButton = app.buttons["edit-repo-save-button"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(saveButton.isEnabled, "Save should be enabled after disabling PR automation\n\(app.debugDescription)")
+        saveButton.tap()
+
+        XCTAssertTrue(app.buttons["Save Changes"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    @MainActor
     func testSettingsOpensOfflineQueue() {
         let app = launchApp(server: server)
 
@@ -84,5 +134,20 @@ final class SettingsTests: XCTestCase {
         confirmButton.tap()
 
         XCTAssertTrue(app.staticTexts["Worktrees Clear"].waitForExistence(timeout: 5), app.debugDescription)
+    }
+
+    @MainActor
+    private func openAlphaRepoEditor(in app: XCUIApplication) {
+        let repoText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "org/alpha")).firstMatch
+        XCTAssertTrue(repoText.waitForExistence(timeout: 5), "Repo row missing\n\(app.debugDescription)")
+        repoText.tap()
+    }
+
+    @MainActor
+    private func revealElement(_ identifier: String, in app: XCUIApplication) {
+        for _ in 0..<4 where !element(identifier, in: app).exists {
+            app.swipeUp()
+        }
+        assertElement(identifier, existsIn: app, timeout: 5)
     }
 }

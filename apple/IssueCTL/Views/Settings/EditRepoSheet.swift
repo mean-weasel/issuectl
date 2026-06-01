@@ -1,4 +1,27 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
+
+let editRepoDisableAutomationConfirmationMessage = "Disabling automation stops future label-triggered sessions and ends matching active webhook sessions for this repository."
+
+private let requiredAutomationLabelNames = ["issuectl:auto-launch", "issuectl:auto-review"]
+
+func webhookReceiverURL(publicBaseURL: String?, repoId: Int) -> String? {
+    guard let publicBaseURL else { return nil }
+    let trimmed = publicBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    return "\(trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/api/webhook/github/\(repoId)"
+}
+
+func automationLabelCheckMessage(for labels: [GitHubLabel]) -> String {
+    let names = Set(labels.map(\.name))
+    let missing = requiredAutomationLabelNames.filter { !names.contains($0) }
+    if missing.isEmpty {
+        return "Required automation labels are present."
+    }
+    return "Missing labels: \(missing.joined(separator: ", "))"
+}
 
 struct EditRepoSheet: View {
     @Environment(APIClient.self) private var api
@@ -6,24 +29,81 @@ struct EditRepoSheet: View {
     let repo: Repo
     var onUpdated: (Repo) -> Void
 
+    @State private var currentRepo: Repo
     @State private var localPath: String
     @State private var branchPattern: String
+    @State private var autoLaunchIssues: Bool
+    @State private var autoReviewPrs: Bool
+    @State private var issueAgent: LaunchAgent
+    @State private var reviewAgent: LaunchAgent
+    @State private var webhookPayloadMode: WebhookPayloadMode
+    @State private var reviewPreamble: String
+    @State private var webhookHealth: WebhookAutomationHealth?
+    @State private var recentWebhookEvents: [WorkbenchWebhookEvent] = []
     @State private var isSaving = false
+    @State private var isCheckingWebhookSessions = false
+    @State private var isCheckingWebhookHealth = false
+    @State private var isLoadingWebhookActivity = false
+    @State private var isConfiguringWebhook = false
+    @State private var isSendingWebhookPing = false
+    @State private var isRecreatingLabels = false
+    @State private var isCopyingWebhookURL = false
+    @State private var isCheckingLabels = false
     @State private var errorMessage: String?
+    @State private var actionMessage: String?
+    @State private var actionWarning: String?
+    @State private var actionError: String?
+    @State private var webhookActivityError: String?
+    @State private var showDisableAutomationConfirm = false
 
     init(repo: Repo, onUpdated: @escaping (Repo) -> Void) {
         self.repo = repo
         self.onUpdated = onUpdated
+        _currentRepo = State(initialValue: repo)
         _localPath = State(initialValue: repo.localPath ?? "")
         _branchPattern = State(initialValue: repo.branchPattern ?? "")
+        _autoLaunchIssues = State(initialValue: repo.autoLaunchIssues)
+        _autoReviewPrs = State(initialValue: repo.autoReviewPrs)
+        _issueAgent = State(initialValue: repo.issueAgent)
+        _reviewAgent = State(initialValue: repo.reviewAgent)
+        _webhookPayloadMode = State(initialValue: repo.webhookPayloadMode)
+        _reviewPreamble = State(initialValue: repo.reviewPreamble ?? "")
     }
 
     private var hasChanges: Bool {
-        let currentPath = localPath.trimmingCharacters(in: .whitespaces)
-        let currentPattern = branchPattern.trimmingCharacters(in: .whitespaces)
+        let currentPath = trimmedLocalPath
+        let currentPattern = trimmedBranchPattern
         let originalPath = repo.localPath ?? ""
         let originalPattern = repo.branchPattern ?? ""
-        return currentPath != originalPath || currentPattern != originalPattern
+        let originalPreamble = repo.reviewPreamble?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return currentPath != originalPath
+            || currentPattern != originalPattern
+            || autoLaunchIssues != repo.autoLaunchIssues
+            || autoReviewPrs != repo.autoReviewPrs
+            || issueAgent != repo.issueAgent
+            || reviewAgent != repo.reviewAgent
+            || webhookPayloadMode != repo.webhookPayloadMode
+            || trimmedReviewPreamble != originalPreamble
+    }
+
+    private var trimmedLocalPath: String {
+        localPath.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedBranchPattern: String {
+        branchPattern.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedReviewPreamble: String {
+        reviewPreamble.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isSaveBusy: Bool {
+        isSaving || isCheckingWebhookSessions
+    }
+
+    private var disablesWebhookAutomation: Bool {
+        (repo.autoLaunchIssues && !autoLaunchIssues) || (repo.autoReviewPrs && !autoReviewPrs)
     }
 
     var body: some View {
@@ -60,6 +140,9 @@ struct EditRepoSheet: View {
                     Text("Pattern for naming branches (e.g. feature/{{number}}-{{slug}}).")
                 }
 
+                automationSection
+                webhookSection
+
                 if let errorMessage {
                     Section {
                         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -77,26 +160,251 @@ struct EditRepoSheet: View {
                     .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    if isSaving {
+                    if isSaveBusy {
                         ProgressView()
                     } else {
                         Button("Save") {
-                            Task { await save() }
+                            Task { await requestSave() }
                         }
                         .disabled(!hasChanges)
+                        .accessibilityIdentifier("edit-repo-save-button")
                     }
                 }
             }
-            .interactiveDismissDisabled(isSaving)
+            .confirmationDialog(
+                "Active Webhook Sessions",
+                isPresented: $showDisableAutomationConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Save Changes", role: .destructive) {
+                    Task { await save() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(editRepoDisableAutomationConfirmationMessage)
+            }
+            .interactiveDismissDisabled(isSaveBusy)
+            .task {
+                await loadWebhookActivity()
+            }
+        }
+    }
+
+    private var automationSection: some View {
+        Section {
+            Toggle("Auto-launch issues", isOn: $autoLaunchIssues)
+                .accessibilityIdentifier("edit-repo-auto-launch-toggle")
+
+            Picker("Issue agent", selection: $issueAgent) {
+                ForEach(LaunchAgent.allCases) { agent in
+                    Text(agent.displayName).tag(agent)
+                }
+            }
+            .accessibilityIdentifier("edit-repo-issue-agent-picker")
+
+            Toggle("Auto-review PRs", isOn: $autoReviewPrs)
+                .accessibilityIdentifier("edit-repo-auto-review-toggle")
+
+            Picker("Review agent", selection: $reviewAgent) {
+                ForEach(LaunchAgent.allCases) { agent in
+                    Text(agent.displayName).tag(agent)
+                }
+            }
+            .accessibilityIdentifier("edit-repo-review-agent-picker")
+
+            Picker("Webhook payload", selection: $webhookPayloadMode) {
+                ForEach(WebhookPayloadMode.allCases, id: \.self) { mode in
+                    Text(mode.settingsTitle).tag(mode)
+                }
+            }
+            .accessibilityIdentifier("edit-repo-webhook-payload-picker")
+
+            TextField("Review preamble", text: $reviewPreamble, axis: .vertical)
+                .lineLimit(2...5)
+                .autocorrectionDisabled()
+                .accessibilityIdentifier("edit-repo-review-preamble-field")
+        } header: {
+            Text("Automation")
+        } footer: {
+            Text("Issue automation launches work sessions from labels. PR automation prepares review sessions from webhook labels.")
+        }
+    }
+
+    private var webhookSection: some View {
+        Section {
+            WebhookStatusSummary(repo: currentRepo, health: webhookHealth)
+            WebhookActivitySummary(
+                events: recentWebhookEvents,
+                isLoading: isLoadingWebhookActivity,
+                errorMessage: webhookActivityError
+            )
+
+            NavigationLink {
+                RepoAutomationActivityView(repo: currentRepo)
+            } label: {
+                Label("Automation Activity", systemImage: "clock.arrow.circlepath")
+            }
+            .accessibilityIdentifier("edit-repo-automation-activity-link")
+
+            Button {
+                Task { await copyReceiverURL() }
+            } label: {
+                settingsActionLabel(
+                    title: "Copy Receiver URL",
+                    systemImage: "doc.on.doc",
+                    isLoading: isCopyingWebhookURL
+                )
+            }
+            .disabled(isCopyingWebhookURL)
+            .accessibilityIdentifier("edit-repo-webhook-copy-url-button")
+
+            Button {
+                Task { await checkWebhookHealth() }
+            } label: {
+                settingsActionLabel(
+                    title: "Check Webhook Health",
+                    systemImage: "waveform.path.ecg",
+                    isLoading: isCheckingWebhookHealth
+                )
+            }
+            .disabled(isCheckingWebhookHealth)
+            .accessibilityIdentifier("edit-repo-webhook-health-button")
+
+            Button {
+                Task { await configureWebhook() }
+            } label: {
+                settingsActionLabel(
+                    title: currentRepo.webhookId == nil ? "Install Webhook" : "Rotate Webhook",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    isLoading: isConfiguringWebhook
+                )
+            }
+            .disabled(isConfiguringWebhook)
+            .accessibilityIdentifier("edit-repo-webhook-configure-button")
+
+            Button {
+                Task { await configureWebhook(action: .reinstall) }
+            } label: {
+                settingsActionLabel(
+                    title: "Reinstall Webhook",
+                    systemImage: "arrow.triangle.2.circlepath",
+                    isLoading: isConfiguringWebhook
+                )
+            }
+            .disabled(isConfiguringWebhook)
+            .accessibilityIdentifier("edit-repo-webhook-reinstall-button")
+
+            Button {
+                Task { await sendWebhookPing() }
+            } label: {
+                settingsActionLabel(
+                    title: "Re-send Webhook Ping",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    isLoading: isSendingWebhookPing
+                )
+            }
+            .disabled(isSendingWebhookPing || currentRepo.webhookId == nil)
+            .accessibilityIdentifier("edit-repo-webhook-ping-button")
+
+            Button {
+                Task { await checkLabels() }
+            } label: {
+                settingsActionLabel(
+                    title: "Check Automation Labels",
+                    systemImage: "tag",
+                    isLoading: isCheckingLabels
+                )
+            }
+            .disabled(isCheckingLabels)
+            .accessibilityIdentifier("edit-repo-check-labels-button")
+
+            Button {
+                Task { await recreateLabels() }
+            } label: {
+                settingsActionLabel(
+                    title: "Recreate Automation Labels",
+                    systemImage: "tag",
+                    isLoading: isRecreatingLabels
+                )
+            }
+            .disabled(isRecreatingLabels)
+            .accessibilityIdentifier("edit-repo-recreate-labels-button")
+
+            if let actionMessage {
+                Label(actionMessage, systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+                    .accessibilityIdentifier("edit-repo-action-message")
+            }
+
+            if let actionWarning {
+                Label(actionWarning, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                    .accessibilityIdentifier("edit-repo-action-warning")
+            }
+
+            if let actionError {
+                Label(actionError, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                    .font(.caption)
+                    .accessibilityIdentifier("edit-repo-action-error")
+            }
+        } header: {
+            Text("Webhook")
+        } footer: {
+            Text("Health checks are on demand so Settings stays quick when GitHub is slow.")
+        }
+    }
+
+    private func settingsActionLabel(title: String, systemImage: String, isLoading: Bool) -> some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+            Spacer()
+            if isLoading {
+                ProgressView()
+            }
+        }
+    }
+
+    private func requestSave() async {
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+
+        if disablesWebhookAutomation, await hasActiveWebhookSessions() {
+            showDisableAutomationConfirm = true
+            return
+        }
+
+        await save()
+    }
+
+    private func hasActiveWebhookSessions() async -> Bool {
+        isCheckingWebhookSessions = true
+        defer { isCheckingWebhookSessions = false }
+
+        do {
+            let response = try await api.activeDeployments(refresh: true)
+            return response.deployments.contains { deployment in
+                deployment.repoId == currentRepo.id
+                    && deployment.triggeredBy == .webhook
+                    && deployment.isActive
+            }
+        } catch {
+            actionError = "Could not check active webhook sessions: \(error.localizedDescription)"
+            return true
         }
     }
 
     private func save() async {
-        let trimmedPath = localPath.trimmingCharacters(in: .whitespaces)
-        let trimmedPattern = branchPattern.trimmingCharacters(in: .whitespaces)
+        let trimmedPath = trimmedLocalPath
+        let trimmedPattern = trimmedBranchPattern
 
         isSaving = true
         errorMessage = nil
+        actionWarning = nil
+        actionError = nil
         defer { isSaving = false }
 
         do {
@@ -104,12 +412,376 @@ struct EditRepoSheet: View {
                 owner: repo.owner,
                 name: repo.name,
                 localPath: trimmedPath,
-                branchPattern: trimmedPattern
+                branchPattern: trimmedPattern,
+                autoLaunchIssues: autoLaunchIssues,
+                autoReviewPrs: autoReviewPrs,
+                issueAgent: issueAgent,
+                reviewAgent: reviewAgent,
+                reviewPreamble: trimmedReviewPreamble,
+                webhookPayloadMode: webhookPayloadMode
             )
+            currentRepo = updated
             onUpdated(updated)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func checkWebhookHealth() async {
+        isCheckingWebhookHealth = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isCheckingWebhookHealth = false }
+
+        do {
+            webhookHealth = try await api.webhookHealth(owner: currentRepo.owner, repo: currentRepo.name)
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func configureWebhook(action requestedAction: WebhookAction? = nil) async {
+        isConfiguringWebhook = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isConfiguringWebhook = false }
+
+        let action: WebhookAction = requestedAction ?? (currentRepo.webhookId == nil ? .create : .rotate)
+
+        do {
+            let response = try await api.configureWebhook(owner: currentRepo.owner, repo: currentRepo.name, action: action)
+            if let updated = response.repo {
+                currentRepo = updated
+                onUpdated(updated)
+            }
+            switch action {
+            case .create:
+                actionMessage = "Webhook installed."
+            case .rotate:
+                actionMessage = "Webhook rotated."
+            case .reinstall:
+                actionMessage = "Webhook reinstalled."
+            case .ping:
+                actionMessage = "Webhook ping sent."
+            }
+            await loadWebhookActivity(refresh: true)
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func sendWebhookPing() async {
+        isSendingWebhookPing = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isSendingWebhookPing = false }
+
+        do {
+            _ = try await api.configureWebhook(owner: currentRepo.owner, repo: currentRepo.name, action: .ping)
+            actionMessage = "Webhook ping sent."
+            await loadWebhookActivity(refresh: true)
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func recreateLabels() async {
+        isRecreatingLabels = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isRecreatingLabels = false }
+
+        do {
+            let response = try await api.recreateRepoLabels(owner: currentRepo.owner, repo: currentRepo.name)
+            if response.success {
+                actionMessage = "Automation labels recreated."
+                await loadWebhookActivity(refresh: true)
+            } else {
+                actionError = response.error ?? "Failed to recreate automation labels."
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func copyReceiverURL() async {
+        isCopyingWebhookURL = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isCopyingWebhookURL = false }
+
+        do {
+            let settings = try await api.getSettings()
+            guard let receiverURL = webhookReceiverURL(
+                publicBaseURL: settings["public_webhook_base_url"],
+                repoId: currentRepo.id
+            ) else {
+                actionWarning = "Set Public Webhook Base URL before copying the receiver URL."
+                return
+            }
+            #if os(iOS)
+            UIPasteboard.general.string = receiverURL
+            #endif
+            actionMessage = "Webhook URL copied."
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func checkLabels() async {
+        isCheckingLabels = true
+        actionMessage = nil
+        actionWarning = nil
+        actionError = nil
+        defer { isCheckingLabels = false }
+
+        do {
+            let labels = try await api.repoLabels(owner: currentRepo.owner, repo: currentRepo.name)
+            let message = automationLabelCheckMessage(for: labels)
+            if message.hasPrefix("Missing labels:") {
+                actionWarning = message
+            } else {
+                actionMessage = message
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func loadWebhookActivity(refresh: Bool = false) async {
+        isLoadingWebhookActivity = true
+        webhookActivityError = nil
+        defer { isLoadingWebhookActivity = false }
+
+        do {
+            let payload = try await api.workbench(refresh: refresh)
+            recentWebhookEvents = payload.repos
+                .first { $0.id == currentRepo.id }?
+                .webhookEvents ?? []
+        } catch {
+            webhookActivityError = error.localizedDescription
+        }
+    }
+}
+
+private struct WebhookStatusSummary: View {
+    let repo: Repo
+    let health: WebhookAutomationHealth?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .foregroundStyle(tint)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let detail = health?.detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let recovery = health?.recovery, !recovery.isEmpty {
+                Text(recovery)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let delivery = health?.latestDelivery {
+                Divider()
+                    .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Latest delivery")
+                        .font(.caption.weight(.semibold))
+                    Text(delivery.summary)
+                        .font(.caption)
+                    Text(delivery.detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityIdentifier("edit-repo-webhook-status")
+    }
+
+    private var title: String {
+        health?.summary ?? (repo.webhookId == nil ? "Webhook not installed" : "Webhook installed")
+    }
+
+    private var subtitle: String {
+        if let expectedUrl = health?.expectedUrl {
+            return expectedUrl
+        }
+        if let hookId = repo.webhookId {
+            return "GitHub hook #\(hookId)"
+        }
+        return "Install a webhook to enable automation labels."
+    }
+
+    private var icon: String {
+        if let health {
+            return health.isOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        }
+        return repo.webhookId == nil ? "dot.radiowaves.left.and.right" : "checkmark.circle.fill"
+    }
+
+    private var tint: Color {
+        if let health {
+            return health.isOK ? .green : .orange
+        }
+        return repo.webhookId == nil ? .secondary : .green
+    }
+}
+
+private struct WebhookActivitySummary: View {
+    let events: [WorkbenchWebhookEvent]
+    let isLoading: Bool
+    let errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundStyle(IssueCTLColors.action)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recent activity")
+                        .font(.subheadline.weight(.semibold))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else if events.isEmpty, !isLoading {
+                Text("No recent webhook activity is available from the workbench feed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(events.prefix(3)) { event in
+                    WebhookActivityRow(event: event)
+                }
+            }
+        }
+        .accessibilityIdentifier("edit-repo-webhook-activity")
+    }
+
+    private var subtitle: String {
+        if isLoading { return "Loading workbench activity..." }
+        if events.isEmpty { return "No retained events" }
+        return "\(events.count) retained event\(events.count == 1 ? "" : "s")"
+    }
+}
+
+private struct WebhookActivityRow: View {
+    let event: WorkbenchWebhookEvent
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(event.summary)
+                .font(.caption.weight(.semibold))
+            Text(event.detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.leading, 36)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private extension WorkbenchWebhookEvent {
+    var summary: String {
+        var parts = [eventType]
+        if let action, !action.isEmpty {
+            parts.append(action)
+        }
+        if let targetLabel {
+            parts.append(targetLabel)
+        }
+        return parts.joined(separator: " ")
+    }
+
+    var detail: String {
+        var parts: [String] = []
+        if let senderLogin, !senderLogin.isEmpty {
+            parts.append("by \(senderLogin)")
+        }
+        parts.append(deliveryId)
+        return parts.joined(separator: " · ")
+    }
+
+    private var targetLabel: String? {
+        guard let targetType, let targetNumber else { return nil }
+        switch targetType {
+        case .issue:
+            return "#\(targetNumber)"
+        case .pr:
+            return "PR #\(targetNumber)"
+        }
+    }
+}
+
+private extension WebhookLatestDelivery {
+    var summary: String {
+        var parts = [event ?? "delivery"]
+        if let action, !action.isEmpty {
+            parts.append(action)
+        }
+        return parts.joined(separator: " ")
+    }
+
+    var detail: String {
+        var parts: [String] = []
+        if let status, !status.isEmpty {
+            if let statusCode {
+                parts.append("\(status) \(statusCode)")
+            } else {
+                parts.append(status)
+            }
+        } else if let statusCode {
+            parts.append("HTTP \(statusCode)")
+        }
+        if let deliveredAt, !deliveredAt.isEmpty {
+            parts.append(deliveredAt)
+        }
+        if let guid, !guid.isEmpty {
+            parts.append(guid)
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+private extension WebhookPayloadMode {
+    var settingsTitle: String {
+        switch self {
+        case .metadata:
+            return "Metadata"
+        case .raw:
+            return "Raw payload"
         }
     }
 }

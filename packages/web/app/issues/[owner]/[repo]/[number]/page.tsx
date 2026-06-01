@@ -17,6 +17,7 @@ import { LightboxProvider } from "@/components/detail/ImageLightbox";
 import { PullToRefreshWrapper } from "@/components/ui/PullToRefreshWrapper";
 import { refreshIssueAction } from "@/lib/actions/refresh";
 import { normalizeLaunchAgent } from "@/components/launch/agent";
+import { getWebhookAutomationHealth } from "@/lib/webhook-health";
 import styles from "./loading.module.css";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,7 @@ export default async function IssueDetailPage({
       issueNumber,
     );
     const repoRecord = getRepo(db, owner, repo);
+    const webhookHealth = await getWebhookAutomationHealth(db, repoRecord);
     const repoId = repoRecord?.id ?? 0;
     const currentPriority = repoId > 0
       ? getPriority(db, repoId, issueNumber)
@@ -107,6 +109,7 @@ export default async function IssueDetailPage({
             referencedFiles={referencedFiles}
             defaultAgent={defaultAgent}
             availableLabels={availableLabels}
+            webhookHealth={webhookHealth}
           >
             <Suspense fallback={<ContentSkeleton />}>
               <IssueDetailContent

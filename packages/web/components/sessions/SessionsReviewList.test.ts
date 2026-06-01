@@ -66,6 +66,7 @@ function session(input: { id: number; endedAt: string | null }): SessionListItem
     workspaceMode: "worktree",
     workspacePath: `/tmp/worktree-${input.id}`,
     linkedPrNumber: null,
+    terminalBackend: "ttyd",
     triggeredBy: "webhook",
     parentDeploymentId: null,
     childDeploymentCount: 0,

@@ -1,5 +1,8 @@
 import type Database from "better-sqlite3";
 import type { Octokit } from "@octokit/rest";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { setAgentActionBudget } from "../db/agent-mutations.js";
 import { getIssueDetail } from "../data/issues.js";
 import { getPullDetail } from "../data/pulls.js";
@@ -117,13 +120,38 @@ export function buildAgentEnvironment(input: {
   expectedHeadSha?: string;
 }): Record<string, string> {
   if (!input.completionToken) return {};
+  const issuectlCli = resolveIssuectlCliPath();
+  const issuectlServerUrl = resolveIssuectlServerUrl();
   return {
     ISSUECTL_AGENT_TOKEN: input.completionToken,
     ISSUECTL_DEPLOYMENT_ID: String(input.deploymentId),
     ISSUECTL_REPO_ID: String(input.repoId),
     ISSUECTL_TARGET_TYPE: input.targetType,
     ISSUECTL_TARGET_NUMBER: String(input.targetNumber),
+    ...(issuectlCli ? { ISSUECTL_CLI: issuectlCli } : {}),
+    ...(issuectlServerUrl ? { ISSUECTL_SERVER_URL: issuectlServerUrl } : {}),
     ...(input.expectedHeadRef ? { ISSUECTL_EXPECTED_HEAD_REF: input.expectedHeadRef } : {}),
     ...(input.expectedHeadSha ? { ISSUECTL_EXPECTED_HEAD_SHA: input.expectedHeadSha } : {}),
   };
+}
+
+export function resolveIssuectlCliPath(
+  env: NodeJS.ProcessEnv = process.env,
+  moduleUrl = import.meta.url,
+): string | undefined {
+  const configured = env.ISSUECTL_CLI?.trim();
+  if (configured) return configured;
+  const moduleDir = dirname(fileURLToPath(moduleUrl));
+  const candidates = [
+    resolve(moduleDir, "../../cli/dist/index.js"),
+    resolve(moduleDir, "../../../cli/dist/index.js"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
+function resolveIssuectlServerUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.ISSUECTL_SERVER_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  const port = env.PORT?.trim() || "3847";
+  return `http://localhost:${port}`;
 }

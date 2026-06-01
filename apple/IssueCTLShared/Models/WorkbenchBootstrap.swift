@@ -14,7 +14,7 @@ struct WorkbenchBootstrap: Sendable {
     let generatedAt: String
     let issueSummariesByRepo: [String: [WorkbenchIssueSummary]]
     let issueLookup: [WorkbenchIssueKey: WorkbenchIssueSummary]
-    let activeIssueDeploymentsByKey: [WorkbenchIssueKey: WorkbenchDeployment]
+    let activeIssueDeploymentsByKey: [WorkbenchIssueKey: ActiveDeployment]
     let prioritiesByKey: [WorkbenchIssueKey: Priority]
 
     init(payload: WorkbenchPayload) {
@@ -23,7 +23,7 @@ struct WorkbenchBootstrap: Sendable {
 
         var summariesByRepo: [String: [WorkbenchIssueSummary]] = [:]
         var summaries: [WorkbenchIssueKey: WorkbenchIssueSummary] = [:]
-        var activeDeployments: [WorkbenchIssueKey: WorkbenchDeployment] = [:]
+        var activeDeployments: [WorkbenchIssueKey: ActiveDeployment] = [:]
         var priorities: [WorkbenchIssueKey: Priority] = [:]
 
         for repo in payload.repos {
@@ -62,7 +62,7 @@ struct WorkbenchBootstrap: Sendable {
         issueLookup[key]
     }
 
-    func activeIssueDeployment(for key: WorkbenchIssueKey) -> WorkbenchDeployment? {
+    func activeIssueDeployment(for key: WorkbenchIssueKey) -> ActiveDeployment? {
         activeIssueDeploymentsByKey[key]
     }
 
@@ -77,34 +77,10 @@ struct WorkbenchBootstrap: Sendable {
     }
 
     func activeDeployment(owner: String, repo: String, number: Int) -> ActiveDeployment? {
-        activeIssueDeployment(for: WorkbenchIssueKey(owner: owner, repo: repo, number: number))?.activeDeployment
+        activeIssueDeployment(for: WorkbenchIssueKey(owner: owner, repo: repo, number: number))
     }
 
     var activeDeployments: [ActiveDeployment] {
-        activeIssueDeploymentsByKey.values.compactMap(\.activeDeployment)
-    }
-}
-
-extension WorkbenchDeployment {
-    var activeDeployment: ActiveDeployment? {
-        guard isActive && isIssueTarget else { return nil }
-        return ActiveDeployment(
-            id: id,
-            repoId: repoId,
-            issueNumber: targetNumber,
-            targetType: .issue,
-            targetNumber: targetNumber,
-            branchName: branchName,
-            workspaceMode: workspaceMode,
-            workspacePath: workspacePath,
-            linkedPrNumber: linkedPrNumber,
-            state: .active,
-            launchedAt: launchedAt,
-            endedAt: endedAt,
-            ttydPort: ttydPort,
-            ttydPid: ttydPid,
-            owner: owner,
-            repoName: repoName
-        )
+        Array(activeIssueDeploymentsByKey.values)
     }
 }

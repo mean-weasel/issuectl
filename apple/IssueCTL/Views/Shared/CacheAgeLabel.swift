@@ -28,11 +28,33 @@ struct CacheAgeLabel: View {
 }
 
 func staleDataMessage(kind: String, cachedAt: Date?) -> String {
+    cachedDataMessage(prefix: "Showing cached", kind: kind, cachedAt: cachedAt)
+}
+
+func cachedDataMessage(prefix: String, kind: String, cachedAt: Date?) -> String {
     guard let cachedAt else {
-        return "Showing cached \(kind)"
+        return "\(prefix) \(kind)"
     }
 
     let formatter = RelativeDateTimeFormatter()
     formatter.unitsStyle = .abbreviated
-    return "Showing cached \(kind) from \(formatter.localizedString(for: cachedAt, relativeTo: Date()))"
+    return "\(prefix) \(kind) from \(formatter.localizedString(for: cachedAt, relativeTo: Date()))"
+}
+
+func freshnessStatusMessage(
+    kind: String,
+    isShowingCachedData: Bool,
+    isNetworkConnected: Bool,
+    cachedAt: Date?
+) -> String? {
+    if isShowingCachedData {
+        if !isNetworkConnected {
+            return cachedDataMessage(prefix: "Offline - showing cached", kind: kind, cachedAt: cachedAt)
+        }
+        return staleDataMessage(kind: kind, cachedAt: cachedAt)
+    }
+    if !isNetworkConnected {
+        return "Offline - showing latest loaded \(kind)"
+    }
+    return nil
 }

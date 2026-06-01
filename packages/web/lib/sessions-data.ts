@@ -45,6 +45,7 @@ export type SessionListItem = {
   workspaceMode: string;
   workspacePath: string;
   linkedPrNumber: number | null;
+  terminalBackend: Deployment["terminalBackend"];
   triggeredBy: DeploymentTriggeredBy;
   parentDeploymentId: number | null;
   childDeploymentCount: number;
@@ -235,6 +236,7 @@ function sessionFromDeployment(
     workspaceMode: deployment.workspaceMode,
     workspacePath: deployment.workspacePath,
     linkedPrNumber: deployment.linkedPrNumber,
+    terminalBackend: deployment.terminalBackend,
     triggeredBy: deployment.triggeredBy,
     parentDeploymentId: deployment.parentDeploymentId,
     childDeploymentCount: childCounts.get(deployment.id) ?? 0,

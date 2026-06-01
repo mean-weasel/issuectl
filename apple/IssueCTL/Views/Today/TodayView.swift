@@ -223,8 +223,8 @@ struct TodayView: View {
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    if isShowingCachedData || !network.isConnected {
-                        OfflineStatusBanner(message: cacheMessage)
+                    if let freshnessMessage {
+                        OfflineStatusBanner(message: freshnessMessage)
                     }
 
                     metrics
@@ -384,16 +384,13 @@ struct TodayView: View {
             : "Open"
     }
 
-    private var cacheMessage: String {
-        if isShowingCachedData {
-            return staleDataMessage(kind: "today data", cachedAt: oldestCachedAt)
-        }
-        if let oldestCachedAt {
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .abbreviated
-            return "Offline - showing cached data from \(formatter.localizedString(for: oldestCachedAt, relativeTo: Date()))"
-        }
-        return "Offline - showing cached data"
+    private var freshnessMessage: String? {
+        freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: isShowingCachedData,
+            isNetworkConnected: network.isConnected,
+            cachedAt: oldestCachedAt
+        )
     }
 
     private func load(refresh: Bool = false) async {

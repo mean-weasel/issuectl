@@ -1,0 +1,8 @@
+[
+  { "kind": "issue", "url": "/issues/mean-weasel/issuectl/550" },
+  { "kind": "pull", "url": "/pulls/mean-weasel/issuectl/44" },
+  { "kind": "sessions-repo", "url": "/sessions?repo=mean-weasel%2Fissuectl" },
+  { "kind": "review", "url": "/reviews/16" },
+  { "kind": "workbench-deployment", "url": "/workbench?repo=mean-weasel%2Fissuectl&deployment=113" },
+  { "kind": "board", "url": "/workbench/board" }
+]

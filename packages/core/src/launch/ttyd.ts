@@ -390,6 +390,7 @@ export function reconcileOrphanedDeployments(db: Database.Database): void {
          FROM deployments d
          JOIN repos r ON r.id = d.repo_id
          WHERE d.ended_at IS NULL
+           AND d.state = 'active'
            AND (d.ttyd_pid IS NOT NULL OR d.terminal_backend = 'pty_bridge')`,
       )
       .all() as typeof rows;

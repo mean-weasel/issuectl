@@ -25,6 +25,11 @@ import { KeyboardHelpOverlay } from "@/components/ui/KeyboardHelpOverlay";
 import { LabelManager } from "@/components/issue/LabelManager";
 import { OpenTerminalButton } from "@/components/terminal/OpenTerminalButton";
 import { launchAgentLabel } from "@/components/launch/agent";
+import type { WebhookAutomationHealth } from "@/lib/webhook-health";
+import {
+  CompletedSessionCard,
+  latestCompletedDeployment,
+} from "./CompletedSessionCard";
 import styles from "./PrDetail.module.css";
 
 type Props = {
@@ -37,6 +42,7 @@ type Props = {
   linkedIssue: GitHubIssue | null;
   availableLabels: GitHubLabel[];
   deployments: Deployment[];
+  webhookHealth: WebhookAutomationHealth | null;
 };
 
 export function PrDetail({
@@ -49,11 +55,15 @@ export function PrDetail({
   linkedIssue,
   availableLabels,
   deployments,
+  webhookHealth,
 }: Props) {
   const prState: "open" | "closed" | "merged" = pull.merged
     ? "merged"
     : pull.state;
   const activeDeployment = deployments.find((deployment) => deployment.endedAt === null);
+  const completedDeployment = activeDeployment
+    ? null
+    : latestCompletedDeployment(deployments);
 
   return (
     <div className={styles.container}>
@@ -91,6 +101,7 @@ export function PrDetail({
             targetType="pr"
             currentLabels={pull.labels ?? []}
             availableLabels={availableLabels}
+            webhookHealth={webhookHealth}
           />
         </section>
 
@@ -115,6 +126,16 @@ export function PrDetail({
               />
             )}
           </section>
+        )}
+
+        {completedDeployment && (
+          <CompletedSessionCard
+            owner={owner}
+            repo={repoName}
+            targetType="pr"
+            targetNumber={pull.number}
+            deployment={completedDeployment}
+          />
         )}
 
         {prState === "open" && (

@@ -9,6 +9,7 @@ import { separateLabels } from "@/lib/labels";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Badge } from "@/components/ui/Badge";
 import { SyncDot } from "@/components/ui/SyncDot";
+import type { WebhookAutomationHealth } from "@/lib/webhook-health";
 import { LabelSelector } from "./LabelSelector";
 import styles from "./LabelManager.module.css";
 
@@ -21,6 +22,7 @@ type Props = {
   targetType?: "issue" | "pr";
   currentLabels: GitHubLabel[];
   availableLabels: GitHubLabel[];
+  webhookHealth?: WebhookAutomationHealth | null;
 };
 
 export function LabelManager({
@@ -30,6 +32,7 @@ export function LabelManager({
   targetType = "issue",
   currentLabels,
   availableLabels,
+  webhookHealth,
 }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -58,6 +61,13 @@ export function LabelManager({
   const { lifecycle: lifecycleLabels, regular: regularLabels } =
     separateLabels(currentLabels);
   const selectedNames = currentLabels.map((l) => l.name);
+  const automationLabel = targetType === "pr" ? "issuectl:auto-review" : "issuectl:auto-launch";
+  const hasAutomationLabel = selectedNames.includes(automationLabel)
+    || availableLabels.some((label) => label.name === automationLabel);
+  const showWebhookHealth = hasAutomationLabel
+    && webhookHealth !== null
+    && webhookHealth !== undefined
+    && (webhookHealth.state !== "ok" || showSelector);
 
   function handleToggle(label: string) {
     setError(null);
@@ -131,6 +141,10 @@ export function LabelManager({
         <span className={styles.empty}>No labels</span>
       )}
 
+      {showWebhookHealth && (
+        <AutomationHealthNotice health={webhookHealth} targetType={targetType} />
+      )}
+
       {showSelector && (
         <div className={styles.selector}>
           <LabelSelector
@@ -148,6 +162,31 @@ export function LabelManager({
           {error}
         </span>
       )}
+    </div>
+  );
+}
+
+function AutomationHealthNotice({
+  health,
+  targetType,
+}: {
+  health: WebhookAutomationHealth;
+  targetType: "issue" | "pr";
+}) {
+  const label = targetType === "pr" ? "auto-review" : "auto-launch";
+  return (
+    <div className={styles.automationHealth} data-state={health.state} role={health.state === "ok" ? "status" : "alert"}>
+      <strong>{health.summary}</strong>
+      <span>
+        {label} labels rely on the GitHub webhook reaching this machine. {health.detail}
+      </span>
+      {health.latestDelivery && (
+        <code>
+          latest: {health.latestDelivery.event ?? "delivery"}
+          {health.latestDelivery.action ? `.${health.latestDelivery.action}` : ""} · {health.latestDelivery.statusCode ?? "unknown"}
+        </code>
+      )}
+      {health.recovery && <span>{health.recovery}</span>}
     </div>
   );
 }

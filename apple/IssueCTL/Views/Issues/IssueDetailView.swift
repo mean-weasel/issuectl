@@ -17,8 +17,11 @@ struct IssueDetailView: View {
     @State private var liveDeployment: ActiveDeployment?
     @State private var isClosing = false
     @State private var isReopening = false
+    @State private var isTogglingAutomationLabel = false
     @State private var activeConfirmation: ActiveConfirmation?
     @State private var actionError: String?
+    @State private var repoAutomation: Repo?
+    @State private var automationWebhookHealth: WebhookAutomationHealth?
 
     // Comment actions and error display
     @State private var isDeletingComment = false
@@ -83,6 +86,7 @@ struct IssueDetailView: View {
                         VStack(alignment: .leading, spacing: 20) {
                             headerSection(detail.issue)
                             primaryActionSection(detail)
+                            automationLabelSection(detail.issue)
                             bodySection(detail.issue)
                             if !detail.linkedPRs.isEmpty {
                                 linkedPRsSection(detail.linkedPRs)
@@ -307,12 +311,12 @@ struct IssueDetailView: View {
                     .accessibilityIdentifier("issue-detail-actions-loading-card")
                 } else if let deployment = activeDeployment(from: detail) {
                     SessionStatusCard(
-                        title: deployment.ttydPort == nil ? "Session Starting" : "Session Active",
+                        title: deployment.canOpenTerminalInApp ? "Session Active" : deployment.terminalMetricValue,
                         subtitle: "\(deployment.branchName) - \(deployment.runningDuration)",
-                        status: deployment.ttydPort == nil ? "Terminal not ready" : "Terminal ready",
-                        systemImage: deployment.ttydPort == nil ? "hourglass" : "terminal",
-                        tint: deployment.ttydPort == nil ? .orange : .green,
-                        primaryTitle: deployment.ttydPort == nil ? nil : "Open Terminal",
+                        status: deployment.canOpenTerminalInApp ? "Terminal ready" : deployment.terminalMetricValue,
+                        systemImage: deployment.canOpenTerminalInApp ? "terminal" : (deployment.usesPtyBridgeTerminal ? "network" : "hourglass"),
+                        tint: deployment.canOpenTerminalInApp || deployment.usesPtyBridgeTerminal ? .green : .orange,
+                        primaryTitle: deployment.canOpenTerminalInApp ? "Open Terminal" : nil,
                         primarySystemImage: "terminal",
                         primaryAccessibilityIdentifier: "issue-detail-reenter-terminal-button",
                         primaryAction: {
@@ -353,6 +357,25 @@ struct IssueDetailView: View {
                 .accessibilityIdentifier("issue-detail-closed-status-card")
             }
         }
+    }
+
+    @ViewBuilder
+    private func automationLabelSection(_ issue: GitHubIssue) -> some View {
+        let kind = AutomationLabelKind.issueAutoLaunch
+        let isApplied = issue.labels.contains { $0.name == kind.labelName }
+
+        AutomationLabelStatusCard(
+            kind: kind,
+            isApplied: isApplied,
+            isAutomationEnabled: repoAutomation?.autoLaunchIssues ?? false,
+            webhookSummary: automationWebhookSummary,
+            isToggling: isTogglingAutomationLabel,
+            buttonIdentifier: "issue-auto-launch-label-button",
+            onToggle: {
+                Task { await toggleIssueAutomationLabel(isApplied: isApplied) }
+            }
+        )
+        .accessibilityIdentifier("issue-auto-launch-label-card")
     }
 
     @ViewBuilder
@@ -607,6 +630,14 @@ struct IssueDetailView: View {
                 do { return .success(try await api.getPriority(owner: owner, repo: repo, number: number)) }
                 catch { return .failure(error) }
             }()
+            async let reposResult: Result<[Repo], Error> = {
+                do { return .success(try await api.repos()) }
+                catch { return .failure(error) }
+            }()
+            async let webhookHealthResult: Result<WebhookAutomationHealth, Error> = {
+                do { return .success(try await api.webhookHealth(owner: owner, repo: repo)) }
+                catch { return .failure(error) }
+            }()
             detail = try await detailResult
             hasLoadedFullDetail = true
 
@@ -628,6 +659,18 @@ struct IssueDetailView: View {
                 currentPriority = .normal
                 failures.append("priority (\(error.localizedDescription))")
             }
+            switch await reposResult {
+            case .success(let repos):
+                repoAutomation = repos.first { $0.owner == owner && $0.name == repo }
+            case .failure:
+                repoAutomation = nil
+            }
+            switch await webhookHealthResult {
+            case .success(let health):
+                automationWebhookHealth = health
+            case .failure:
+                automationWebhookHealth = nil
+            }
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"
             }
@@ -646,6 +689,7 @@ struct IssueDetailView: View {
 
     private func isMatchingActiveDeployment(_ deployment: ActiveDeployment) -> Bool {
         deployment.isActive &&
+        deployment.targetType == .issue &&
         deployment.owner == owner &&
         deployment.repoName == repo &&
         deployment.issueNumber == number
@@ -656,6 +700,19 @@ struct IssueDetailView: View {
             id: deployment.id,
             repoId: deployment.repoId,
             issueNumber: deployment.issueNumber,
+            targetType: deployment.targetType,
+            targetNumber: deployment.targetNumber,
+            agent: deployment.agent,
+            terminalBackend: deployment.terminalBackend,
+            correlationId: deployment.correlationId,
+            triggeredBy: deployment.triggeredBy,
+            terminalReason: deployment.terminalReason,
+            parentDeploymentId: deployment.parentDeploymentId,
+            webhookDepth: deployment.webhookDepth,
+            idleSince: deployment.idleSince,
+            completionToken: deployment.completionToken,
+            completionResultJson: deployment.completionResultJson,
+            notificationSentAt: deployment.notificationSentAt,
             branchName: deployment.branchName,
             workspaceMode: deployment.workspaceMode,
             workspacePath: deployment.workspacePath,
@@ -671,11 +728,43 @@ struct IssueDetailView: View {
     }
 
     private func openTerminal(_ deployment: ActiveDeployment) {
-        guard deployment.ttydPort != nil else {
-            actionError = "Session is running, but its terminal is not ready yet."
+        guard deployment.canOpenTerminalInApp else {
+            actionError = deployment.terminalUnavailableDescription
             return
         }
         terminalTarget = deployment
+    }
+
+    private var automationWebhookSummary: String? {
+        if let automationWebhookHealth {
+            return automationWebhookHealth.summary
+        }
+        if repoAutomation?.webhookId == nil {
+            return "Webhook not installed"
+        }
+        return nil
+    }
+
+    private func toggleIssueAutomationLabel(isApplied: Bool) async {
+        guard !isTogglingAutomationLabel else { return }
+        isTogglingAutomationLabel = true
+        actionError = nil
+        defer { isTogglingAutomationLabel = false }
+
+        do {
+            let body = ToggleLabelRequestBody(
+                label: AutomationLabelKind.issueAutoLaunch.labelName,
+                action: isApplied ? "remove" : "add"
+            )
+            let response = try await api.toggleLabel(owner: owner, repo: repo, number: number, body: body)
+            if response.success {
+                await load(refresh: true)
+            } else {
+                actionError = response.error ?? "Failed to update auto-launch label"
+            }
+        } catch {
+            actionError = error.localizedDescription
+        }
     }
 
     private func confirmPriority(_ priority: Priority, rollbackTo previous: Priority) async {

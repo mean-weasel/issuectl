@@ -14,6 +14,9 @@ final class APIClient {
     var cachedActiveDeployments: ActiveDeploymentsResponse?
     var cachedActiveDeploymentsExpiresAt: Date?
     var activeDeploymentsTask: Task<ActiveDeploymentsResponse, Error>?
+    var cachedWorkbench: WorkbenchPayload?
+    var cachedWorkbenchExpiresAt: Date?
+    var workbenchTask: Task<WorkbenchPayload, Error>?
     var isConfigured: Bool {
         !serverURL.isEmpty && !apiToken.isEmpty
     }
@@ -44,6 +47,7 @@ final class APIClient {
         clearCurrentUserCache()
         clearReposCache()
         clearActiveDeploymentsCache()
+        clearWorkbenchCache()
         try KeychainService.save(key: "serverURL", value: url)
         try KeychainService.save(key: "apiToken", value: token)
     }
@@ -55,6 +59,7 @@ final class APIClient {
         clearCurrentUserCache()
         clearReposCache()
         clearActiveDeploymentsCache()
+        clearWorkbenchCache()
         KeychainService.delete(key: "serverURL")
         KeychainService.delete(key: "apiToken")
     }
@@ -78,6 +83,13 @@ final class APIClient {
         cachedActiveDeploymentsExpiresAt = nil
         activeDeploymentsTask?.cancel()
         activeDeploymentsTask = nil
+    }
+
+    func clearWorkbenchCache() {
+        cachedWorkbench = nil
+        cachedWorkbenchExpiresAt = nil
+        workbenchTask?.cancel()
+        workbenchTask = nil
     }
 
     private var baseURL: URL? {
@@ -342,6 +354,195 @@ final class APIClient {
         return try decoder.decode(SessionPreviewsResponse.self, from: data)
     }
 
+    func sessionsOverview(
+        tab: SessionsOverviewTab = .sessions,
+        searchText: String = "",
+        repo: String? = nil,
+        trigger: SessionsOverviewTriggerFilter = .all,
+        state: SessionsOverviewStateFilter = .all,
+        status: ReviewRunStatusFilter = .all,
+        diagnosticLimit: Int = 20
+    ) async throws -> SessionsOverviewResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/sessions/overview"
+        components.queryItems = [
+            URLQueryItem(name: "tab", value: tab.rawValue),
+            searchText.isEmpty ? nil : URLQueryItem(name: "q", value: searchText),
+            repo.flatMap { $0.isEmpty ? nil : URLQueryItem(name: "repo", value: $0) },
+            trigger == .all ? nil : URLQueryItem(name: "trigger", value: trigger.rawValue),
+            state == .all ? nil : URLQueryItem(name: "state", value: state.rawValue),
+            status == .all ? nil : URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "diagnosticLimit", value: String(max(1, min(100, diagnosticLimit))))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(SessionsOverviewResponse.self, from: data)
+    }
+
+    // Depends on issue #546: these automation list endpoints are fixture-driven
+    // until the web API exposes dedicated list routes for native clients.
+    func webhookEvents(
+        owner: String,
+        repo: String,
+        targetType: DeploymentTargetType? = nil,
+        targetNumber: Int? = nil,
+        limit: Int = 50
+    ) async throws -> WebhookEventsResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/repos/\(owner)/\(repo)/webhook/events"
+        components.queryItems = [
+            targetType.map { URLQueryItem(name: "targetType", value: $0.rawValue) },
+            targetNumber.map { URLQueryItem(name: "targetNumber", value: String($0)) },
+            URLQueryItem(name: "limit", value: String(limit))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(WebhookEventsResponse.self, from: data)
+    }
+
+    func globalWebhookEvents(limit: Int = 50) async throws -> WebhookEventsResponse {
+        let safeLimit = max(1, min(100, limit))
+        var components = URLComponents()
+        components.path = "/api/v1/webhooks/events"
+        components.queryItems = [
+            URLQueryItem(name: "limit", value: String(safeLimit))
+        ]
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(WebhookEventsResponse.self, from: data)
+    }
+
+    func webhookEventsStreamURL() throws -> URL {
+        guard !apiToken.isEmpty, var components = URLComponents(string: serverURL) else {
+            throw APIError.notConfigured
+        }
+        switch components.scheme {
+        case "http":
+            components.scheme = "ws"
+        case "https":
+            components.scheme = "wss"
+        case "ws", "wss":
+            break
+        default:
+            throw APIError.invalidPath(serverURL)
+        }
+        components.path = "/api/webhooks/events/stream"
+        components.queryItems = nil
+        guard let url = components.url else {
+            throw APIError.invalidPath("/api/webhooks/events/stream")
+        }
+        return url
+    }
+
+    func webhookEventsStreamTask() throws -> URLSessionWebSocketTask {
+        var request = URLRequest(url: try webhookEventsStreamURL())
+        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        return URLSession.shared.webSocketTask(with: request)
+    }
+
+    func reviewRuns(
+        owner: String,
+        repo: String,
+        pr: Int? = nil,
+        status: ReviewRunStatusFilter = .all,
+        limit: Int = 24
+    ) async throws -> ReviewRunsResponse {
+        var components = URLComponents()
+        components.path = "/api/v1/repos/\(owner)/\(repo)/review-runs"
+        components.queryItems = [
+            pr.map { URLQueryItem(name: "pr", value: String($0)) },
+            URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "limit", value: String(limit))
+        ].compactMap { $0 }
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(ReviewRunsResponse.self, from: data)
+    }
+
+    func globalReviewRuns(status: ReviewRunStatusFilter = .all, limit: Int = 50) async throws -> ReviewRunsResponse {
+        let safeLimit = max(1, min(100, limit))
+        var components = URLComponents()
+        components.path = "/api/v1/pr-reviews"
+        components.queryItems = [
+            URLQueryItem(name: "status", value: status.rawValue),
+            URLQueryItem(name: "limit", value: String(safeLimit))
+        ]
+        let (data, _) = try await request(path: components.string ?? components.path)
+        return try decoder.decode(ReviewRunsResponse.self, from: data)
+    }
+
+    func reviewRunDetail(id: Int) async throws -> ReviewRunDetailResponse {
+        let safeId = max(1, id)
+        let (data, _) = try await request(path: "/api/v1/pr-reviews/\(safeId)")
+        return try decoder.decode(ReviewRunDetailResponse.self, from: data)
+    }
+
+    func requestReviewRunAction(id: Int, mode: ReviewRunActionMode) async throws -> ReviewRunActionResponse {
+        let safeId = max(1, id)
+        let bodyData = try JSONEncoder().encode(ReviewRunActionRequest(mode: mode))
+        let (data, _) = try await request(path: "/api/v1/pr-reviews/\(safeId)/actions", method: "POST", body: bodyData)
+        return try decoder.decode(ReviewRunActionResponse.self, from: data)
+    }
+
+    func diagnostics(deploymentId: Int) async throws -> DiagnosticsResponse {
+        let (data, _) = try await request(path: "/api/v1/diagnostics?deploymentId=\(deploymentId)")
+        return try decoder.decode(DiagnosticsResponse.self, from: data)
+    }
+
+    func deploymentDiagnostics(deploymentId: Int, limit: Int = 50) async throws -> DeploymentDiagnosticsResponse {
+        // Depends on the mobile diagnostics API from issue #546. This client
+        // intentionally targets structured JSON instead of scraping web HTML.
+        let safeLimit = max(1, min(200, limit))
+        let (data, _) = try await request(path: "/api/v1/diagnostics/deployments/\(deploymentId)?limit=\(safeLimit)")
+        return try decoder.decode(DeploymentDiagnosticsResponse.self, from: data)
+    }
+
+    func agentMutation(body: AgentMutationRequestBody) async throws -> AgentMutationDecision {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/agent/mutations", method: "POST", body: bodyData)
+        return try decoder.decode(AgentMutationDecision.self, from: data)
+    }
+
+    func agentCompletion(body: AgentCompletionRequestBody) async throws -> AgentCompletionResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(path: "/api/v1/agent/completion", method: "POST", body: bodyData)
+        clearActiveDeploymentsCache()
+        clearWorkbenchCache()
+        return try decoder.decode(AgentCompletionResponse.self, from: data)
+    }
+
+    func workbench(refresh: Bool = false, maxAge: TimeInterval = 10) async throws -> WorkbenchPayload {
+        let now = Date()
+        if !refresh,
+           let cachedWorkbench,
+           let cachedWorkbenchExpiresAt,
+           now < cachedWorkbenchExpiresAt {
+            return cachedWorkbench
+        }
+
+        if !refresh, let workbenchTask {
+            return try await workbenchTask.value
+        }
+
+        let task = Task { @MainActor in
+            let (data, _) = try await request(path: "/api/v1/workbench")
+            let payload = try decoder.decode(WorkbenchPayload.self, from: data)
+            offlineCache.save(payload, for: "workbench", serverURL: serverURL)
+            return payload
+        }
+        workbenchTask = task
+
+        do {
+            let payload = try await task.value
+            cachedWorkbench = payload
+            cachedWorkbenchExpiresAt = Date().addingTimeInterval(maxAge)
+            workbenchTask = nil
+            return payload
+        } catch {
+            workbenchTask = nil
+            if let cached = offlineCache.load(WorkbenchPayload.self, for: "workbench", serverURL: serverURL) {
+                return cached.value
+            }
+            throw error
+        }
+    }
+
     func launch(owner: String, repo: String, number: Int, body: LaunchRequestBody) async throws -> LaunchResponse {
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/launch/\(owner)/\(repo)/\(number)", method: "POST", body: bodyData)
@@ -349,11 +550,25 @@ final class APIClient {
         return try decoder.decode(LaunchResponse.self, from: data)
     }
 
-    func endSession(deploymentId: Int, owner: String, repo: String, issueNumber: Int) async throws -> EndSessionResponse {
-        let body = EndSessionRequestBody(owner: owner, repo: repo, issueNumber: issueNumber)
+    func endSession(
+        deploymentId: Int,
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        targetType: DeploymentTargetType = .issue,
+        targetNumber: Int? = nil
+    ) async throws -> EndSessionResponse {
+        let body = EndSessionRequestBody(
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber,
+            targetType: targetType,
+            targetNumber: targetNumber
+        )
         let bodyData = try JSONEncoder().encode(body)
         let (data, _) = try await request(path: "/api/v1/deployments/\(deploymentId)/end", method: "POST", body: bodyData)
         clearActiveDeploymentsCache()
+        clearWorkbenchCache()
         return try decoder.decode(EndSessionResponse.self, from: data)
     }
 

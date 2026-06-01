@@ -1,0 +1,27 @@
+version: 2
+goal:
+  title: "iOS Workbench API Parity"
+  slug: "ios-workbench-api-parity"
+  kind: existing_plan
+  tranche: "Add native /api/v1/workbench models, API client call, and first aggregate refresh integration."
+  status: complete
+active_task: null
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    objective: "Confirm current web workbench payload fields and the smallest safe native aggregate refresh slice."
+    receipt:
+      result: already_satisfied_on_main
+      summary: "Merged main already contains native /api/v1/workbench parity: WorkbenchPayload/WorkbenchRepo models, APIClient.workbench(refresh:) with cache/offline fallback, WorkbenchStore, BoardView, and focused Apple/web tests."
+      evidence:
+        - "apple/IssueCTLShared/Models/Repo.swift"
+        - "apple/IssueCTLShared/Services/APIClient.swift"
+        - "apple/IssueCTL/ViewModels/WorkbenchStore.swift"
+        - "apple/IssueCTL/Views/Workbench/BoardView.swift"
+        - "packages/web/app/api/v1/workbench/route.ts"
+      verification:
+        - "PASS xcodebuildmcp test_sim selected WorkbenchPayload decoding, automation parity fixture decoding, workbench endpoint URL/cache tests, and WorkbenchStoreTests."
+        - "PASS pnpm --dir packages/web test app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts."
+        - "PASS pnpm --dir packages/web typecheck."

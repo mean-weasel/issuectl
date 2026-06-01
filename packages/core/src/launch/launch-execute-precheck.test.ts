@@ -144,6 +144,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
   let claudeConfigPath: string | null = null;
   const previousCodexHome = process.env.CODEX_HOME;
   const previousClaudeConfigPath = process.env.ISSUECTL_CLAUDE_CONFIG_PATH;
+  const previousIssuectlCli = process.env.ISSUECTL_CLI;
+  const previousIssuectlServerUrl = process.env.ISSUECTL_SERVER_URL;
 
   beforeEach(() => {
     prepareWorkspaceSpy.mockClear();
@@ -155,6 +157,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
     reserveTtydPortSpy.mockClear();
     updateTtydInfoSpy.mockClear();
     db = createTestDb();
+    process.env.ISSUECTL_CLI = "/opt/issuectl/bin/issuectl";
+    process.env.ISSUECTL_SERVER_URL = "http://localhost:4999";
   });
 
   afterEach(async () => {
@@ -175,6 +179,16 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
       delete process.env.ISSUECTL_CLAUDE_CONFIG_PATH;
     } else {
       process.env.ISSUECTL_CLAUDE_CONFIG_PATH = previousClaudeConfigPath;
+    }
+    if (previousIssuectlCli === undefined) {
+      delete process.env.ISSUECTL_CLI;
+    } else {
+      process.env.ISSUECTL_CLI = previousIssuectlCli;
+    }
+    if (previousIssuectlServerUrl === undefined) {
+      delete process.env.ISSUECTL_SERVER_URL;
+    } else {
+      process.env.ISSUECTL_SERVER_URL = previousIssuectlServerUrl;
     }
   });
 
@@ -294,6 +308,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
           ISSUECTL_AGENT_TOKEN: "completion-44",
           ISSUECTL_TARGET_TYPE: "pr",
           ISSUECTL_TARGET_NUMBER: "44",
+          ISSUECTL_CLI: "/opt/issuectl/bin/issuectl",
+          ISSUECTL_SERVER_URL: "http://localhost:4999",
           ISSUECTL_EXPECTED_HEAD_REF: "feature/webhooks",
           ISSUECTL_EXPECTED_HEAD_SHA: "head-b",
         }),
@@ -473,6 +489,8 @@ describe("executeLaunch duplicate-deployment pre-check", () => {
           ISSUECTL_AGENT_TOKEN: "completion-42",
           ISSUECTL_TARGET_TYPE: "issue",
           ISSUECTL_TARGET_NUMBER: "42",
+          ISSUECTL_CLI: "/opt/issuectl/bin/issuectl",
+          ISSUECTL_SERVER_URL: "http://localhost:4999",
         }),
       }),
     );

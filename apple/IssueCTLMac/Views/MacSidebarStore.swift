@@ -397,10 +397,24 @@ final class MacSidebarStore {
         }
 
         await refreshSessions(api: api)
-        return activeSession(for: item) ?? ActiveDeployment(
+        return activeSession(for: item) ?? response.activeDeployment(
+            repoId: item.repo.id,
+            issueNumber: item.issue.number,
+            agent: options.agent,
+            branchName: options.branchName,
+            workspaceMode: options.workspaceMode,
+            workspacePath: "",
+            linkedPrNumber: nil,
+            launchedAt: sharedISO8601Formatter.string(from: Date()),
+            owner: item.repo.owner,
+            repoName: item.repo.name
+        ) ?? ActiveDeployment(
             id: deploymentId,
             repoId: item.repo.id,
             issueNumber: item.issue.number,
+            agent: options.agent,
+            terminalBackend: response.terminalBackend,
+            correlationId: response.correlationId,
             branchName: options.branchName,
             workspaceMode: options.workspaceMode,
             workspacePath: "",

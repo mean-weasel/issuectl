@@ -2,6 +2,16 @@
 
 This ladder orders issue and PR webhook QA workflows from lowest complexity to highest complexity. Use it to pick the smallest manual or agent-driven check that can answer the question in front of you.
 
+## Natural Language Entry Points
+
+Use these exact prompts to hand repeatable QA to a future Codex agent:
+
+| Ask | Runbook |
+| --- | --- |
+| `run the basic issue label QA` | [Basic Issue Label Webhook QA](./webhook-basic-issue-label-qa.md) |
+| `run the PR auto-review webhook QA` | [PR Auto-Review Webhook QA](./webhook-pr-auto-review-qa.md) |
+| `run the full chained issue-to-PR webhook QA` | [Full Chained Issue-To-PR Webhook QA](./webhook-full-chained-issue-to-pr-qa.md) |
+
 Prefer running the lower rungs first when the environment is fresh, the tunnel changed, the web server restarted, labels were reset, or a failure could be infrastructure instead of product behavior.
 
 ## Complexity Order
@@ -12,13 +22,13 @@ Prefer running the lower rungs first when the environment is fresh, the tunnel c
 | 1 | Webhook delivery health | Repo | GitHub can reach the local receiver and HMAC verification is working. | [Webhook Auto-Sessions Runbook](./webhook-auto-sessions.md) |
 | 2 | Untagged target no-op | Issue or PR | Webhook delivery alone does not launch without the opt-in label. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
 | 3 | Label editor smoke | Issue or PR | Local UI can add/remove labels and GitHub reflects the changes. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
-| 4 | Issue auto-launch | Issue | `issuectl:auto-launch` launches exactly one Codex issue session and consumes the label. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
-| 5 | PR auto-review | PR | `issuectl:auto-review` launches exactly one Claude review session and consumes the label. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
+| 4 | Issue auto-launch | Issue | `issuectl:auto-launch` launches exactly one Codex issue session and consumes the label. | [Basic Issue Label Webhook QA](./webhook-basic-issue-label-qa.md) |
+| 5 | PR auto-review | PR | `issuectl:auto-review` launches exactly one Claude review session and consumes the label. | [PR Auto-Review Webhook QA](./webhook-pr-auto-review-qa.md) |
 | 6 | Agent matrix | Issue and PR | Both Codex and Claude can start for either target without trust or permission prompts. | Future runbook |
 | 7 | Completion and cleanup lifecycle | Issue and PR | Agent completion updates DB/UI state, removes active labels, and follow-up webhooks do not relaunch. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
 | 8 | Failure and reset recovery | Issue and PR | Operators can clean up stale labels, stale deployments, tmux sessions, and test branches. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
 | 9 | Full regression pass | Issue and PR | Fresh issue and fresh PR both pass the whole one-shot automation oracle in one session. | [Webhook Label Manual QA](./webhook-label-manual-qa.md) |
-| 10 | Issue-to-PR review chain | Issue then PR | Issue auto-work feeds a PR that is then auto-reviewed, with current default budget limits made explicit. | [Webhook Issue-To-PR Review QA](./webhook-issue-to-pr-review-qa.md) |
+| 10 | Issue-to-PR review chain | Issue then PR | Issue auto-work feeds a PR that is then auto-reviewed, with current default budget limits made explicit. | [Full Chained Issue-To-PR Webhook QA](./webhook-full-chained-issue-to-pr-qa.md) |
 
 ## Rung 0: Local Server Health
 
@@ -46,7 +56,7 @@ tail -f ~/.issuectl/logs/web.log
 pnpm --dir packages/cli exec issuectl webhook tail --repo mean-weasel/issuectl-test-repo-2 --limit 20
 
 hook_id="$(sqlite3 ~/.issuectl/issuectl.db "
-select github_webhook_id
+select webhook_id
 from repos
 where owner='mean-weasel' and name='issuectl-test-repo-2';")"
 
@@ -143,6 +153,9 @@ Use this when the launch succeeded but UI state or labels look stale.
 Expected proof:
 
 - The agent calls `issuectl agent complete`.
+- The agent uses the deterministic `"$ISSUECTL_CLI" agent complete ...`
+  command, with `ISSUECTL_CLI` present in the spawned terminal environment.
+- The terminal transcript does not show `issuectl: command not found`.
 - `deployments.ended_at` is set.
 - `terminal_reason` is `completed`, `failed`, `no_changes`, or the expected terminal outcome.
 - PR runs have a `pr_reviews` row with completed or terminal status.
@@ -160,6 +173,9 @@ Expected proof:
 - Trigger labels are removed.
 - Live deployment rows are ended through the API.
 - Stale tmux sessions are killed.
+- Any temporary GitHub webhook is disabled while the tunnel is not in use.
+- Any temporary tunnel process is stopped.
+- The final active webhook deployment count is zero.
 - QA PRs are closed and branches deleted.
 - The target can be reused or the next fresh target starts untagged.
 
@@ -199,6 +215,7 @@ Important default behavior:
 - Therefore the default supported chained QA is staged: auto-launch the issue, then manually create a small PR, then label that PR for auto-review.
 - A fully automatic issue-worker-created PR requires an explicit product/security decision to grant issue sessions PR creation and push authority.
 
-Primary runbook:
+Primary runbooks:
 
-[Webhook Issue-To-PR Review QA](./webhook-issue-to-pr-review-qa.md)
+- [Full Chained Issue-To-PR Webhook QA](./webhook-full-chained-issue-to-pr-qa.md)
+- [Webhook Issue-To-PR Review QA](./webhook-issue-to-pr-review-qa.md)

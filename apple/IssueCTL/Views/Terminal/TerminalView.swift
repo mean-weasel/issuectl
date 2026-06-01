@@ -74,7 +74,7 @@ struct TerminalView: View {
                     }
                 }
             }
-            .navigationTitle("\(deployment.repoFullName) #\(deployment.issueNumber)")
+            .navigationTitle(deployment.targetTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -190,7 +190,9 @@ struct TerminalView: View {
                 deploymentId: deployment.id,
                 owner: deployment.owner,
                 repo: deployment.repoName,
-                issueNumber: deployment.issueNumber
+                issueNumber: deployment.issueNumber,
+                targetType: deployment.targetType,
+                targetNumber: deployment.targetNumber
             )
             if response.success {
                 onEnd()

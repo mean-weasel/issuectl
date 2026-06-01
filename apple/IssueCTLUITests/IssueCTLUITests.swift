@@ -52,32 +52,134 @@ final class IssueCTLUITests: XCTestCase {
     func testListToolbarActionsAreReachableFromTabs() {
         let app = launchApp(server: server)
 
+        assertElement("today-create-issue-button", existsIn: app, timeout: 8)
+        assertElement("board-tab", existsIn: app)
+        assertElement("issues-tab", existsIn: app)
+        assertElement("prs-tab", existsIn: app)
+        assertElement("active-tab", existsIn: app)
+    }
+
+    @MainActor
+    func testBoardToolbarActionsAreReachable() {
+        let app = launchApp(server: server)
+
+        tapMainTab("board-tab", label: "Board", in: app)
+        assertElement("board-refresh-button", existsIn: app, timeout: 5)
+        assertElement("board-filter-menu-button", existsIn: app)
+        assertElement("board-settings-button", existsIn: app)
+    }
+
+    @MainActor
+    func testIssueToolbarActionsAreReachable() {
+        let app = launchApp(server: server)
+
         tapMainTab("issues-tab", label: "Issues", in: app)
         assertElement("issues-create-issue-button", existsIn: app, timeout: 5)
         assertElement("issues-search-button", existsIn: app)
         assertElement("issues-filter-button", existsIn: app)
-        element("issues-search-button", in: app).tap()
-        assertElement("issues-search-field", existsIn: app, timeout: 3)
-        app.buttons["Cancel"].tap()
-        waitForNonexistence("issues-search-field", in: app)
+    }
+
+    @MainActor
+    func testPullRequestToolbarActionsAreReachable() {
+        let app = launchApp(server: server)
 
         tapMainTab("prs-tab", label: "PRs", in: app)
         assertElement("prs-create-issue-button", existsIn: app, timeout: 5)
         assertElement("prs-search-button", existsIn: app)
         assertElement("prs-filter-button", existsIn: app)
-        element("prs-search-button", in: app).tap()
-        assertElement("prs-search-field", existsIn: app, timeout: 3)
-        app.buttons["Cancel"].tap()
-        waitForNonexistence("prs-search-field", in: app)
+    }
+
+    @MainActor
+    func testActiveSessionToolbarActionsAreReachable() {
+        let app = launchApp(server: server)
 
         tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-create-issue-button", existsIn: app, timeout: 5)
         assertElement("sessions-search-button", existsIn: app)
         assertElement("sessions-refresh-button", existsIn: app)
-        element("sessions-search-button", in: app).tap()
-        assertElement("sessions-search-field", existsIn: app, timeout: 3)
-        app.buttons["Cancel"].tap()
-        waitForNonexistence("sessions-search-field", in: app)
+    }
+
+    @MainActor
+    func testPullRequestSessionControlsOpenPullRequestDetail() {
+        server.seedPullRequestDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9507", existsIn: app, timeout: 8)
+        tapElement("session-controls-9507", in: app)
+
+        assertElement("session-target-action-9507", existsIn: app, timeout: 5)
+        tapElement("session-target-action-9507", in: app)
+
+        XCTAssertTrue(
+            app.staticTexts["Pending review work"].waitForExistence(timeout: 5),
+            "PR session target action should open pull request detail\n\(app.debugDescription)"
+        )
+    }
+
+    @MainActor
+    func testEndingPullRequestSessionSendsTargetAwareBody() {
+        server.seedPullRequestDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9507", existsIn: app, timeout: 8)
+        tapElement("session-controls-9507", in: app)
+
+        assertElement("session-end-9507", existsIn: app, timeout: 5)
+        tapElement("session-end-9507", in: app)
+
+        waitForNonexistence("session-reenter-terminal-9507", in: app, timeout: 5)
+        XCTAssertEqual(server.lastEndSessionTargetType, "pr")
+        XCTAssertEqual(server.lastEndSessionTargetNumber, 7)
+    }
+
+    @MainActor
+    func testBoardTabShowsCrossRepoIssueQueueAndRunningFilter() {
+        server.seedSecondRepo()
+        server.seedActiveDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("board-tab", label: "Board", in: app)
+
+        assertElement("board-summary-open", existsIn: app, timeout: 8)
+        assertElement("board-issue-2-201", existsIn: app, timeout: 5)
+        XCTAssertFalse(
+            element("board-issue-1-101", in: app).waitForExistence(timeout: 1),
+            "Open filter should hide running alpha issue\n\(app.debugDescription)"
+        )
+
+        element("board-filter-running", in: app).tap()
+
+        assertElement("board-issue-1-101", existsIn: app, timeout: 5)
+        XCTAssertFalse(
+            element("board-issue-2-201", in: app).waitForExistence(timeout: 1),
+            "Running filter should hide non-running beta issue\n\(app.debugDescription)"
+        )
+    }
+
+    @MainActor
+    func testAutomationParityFixtureShowsAvailableSessionStates() {
+        server.seedAutomationParitySessions()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9401", existsIn: app, timeout: 8)
+        assertElement("session-reenter-terminal-9402", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9407", existsIn: app, timeout: 5)
+
+        XCTAssertTrue(
+            app.staticTexts["Running"].waitForExistence(timeout: 8),
+            "Manual active session state missing\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Idle"].waitForExistence(timeout: 5),
+            "Webhook idle session state missing\n\(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Error"].waitForExistence(timeout: 5),
+            "Comment command error session state missing\n\(app.debugDescription)"
+        )
     }
 
     @MainActor

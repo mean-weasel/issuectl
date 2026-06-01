@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import notificationContractFixture from "./notification-contract.fixture.json";
 
 const deletePushDevice = vi.hoisted(() => vi.fn());
 const getDb = vi.hoisted(() => vi.fn());
@@ -173,5 +174,13 @@ describe("push notifications", () => {
 
     expect(sendApnsNotification).toHaveBeenCalledTimes(1);
     expect(deletePushDevice).not.toHaveBeenCalled();
+  });
+
+  it("keeps notification deep links relative and parseable", () => {
+    for (const item of notificationContractFixture) {
+      expect(item.url.startsWith("/")).toBe(true);
+      expect(item.url).not.toContain("://");
+      expect(() => new URL(item.url, "http://localhost:3847")).not.toThrow();
+    }
   });
 });

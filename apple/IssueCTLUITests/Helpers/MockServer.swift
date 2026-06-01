@@ -24,11 +24,59 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
     private let stateLock = NSLock()
     private var lastLaunchPayload: [String: Any] = [:]
+    private var lastEndSessionPayload: [String: Any] = [:]
+    private var lastRepoUpdatePayload: [String: Any] = [:]
+    private var lastWebhookPayload: [String: Any] = [:]
+    private var lastRepoLabelsPayload: [String: Any] = [:]
+    private var lastIssueLabelPayload: [String: Any] = [:]
+    private var lastPullLabelPayload: [String: Any] = [:]
 
     var lastLaunchAgent: String? {
         stateLock.lock()
         defer { stateLock.unlock() }
         return lastLaunchPayload["agent"] as? String
+    }
+
+    var lastEndSessionTargetType: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastEndSessionPayload["targetType"] as? String
+    }
+
+    var lastEndSessionTargetNumber: Int? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastEndSessionPayload["targetNumber"] as? Int
+    }
+
+    var lastRepoUpdateAutoReviewPrs: Bool? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastRepoUpdatePayload["autoReviewPrs"] as? Bool
+    }
+
+    var lastWebhookAction: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastWebhookPayload["action"] as? String
+    }
+
+    var lastRepoLabelsAction: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastRepoLabelsPayload["action"] as? String
+    }
+
+    var lastIssueLabelAction: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastIssueLabelPayload["action"] as? String
+    }
+
+    var lastPullLabelAction: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastPullLabelPayload["action"] as? String
     }
 
     // Fixture state for extended test coverage.
@@ -38,6 +86,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
         101: [["name": "bug", "color": "d73a4a", "description": NSNull()]],
         102: [["name": "bug", "color": "d73a4a", "description": NSNull()]],
     ]
+    var pullLabels: [Int: [[String: Any]]] = [:]
     var issuePriorities: [Int: String] = [101: "high", 102: "normal"]
     var repos: [[String: Any]] = []
     var worktrees: [[String: Any]] = []
@@ -101,6 +150,11 @@ final class MockIssueCTLServer: @unchecked Sendable {
         activeDeployments = [deployment(issueNumber: 101)]
     }
 
+    func seedPullRequestDeployment() {
+        hiddenPreviewIssueNumbers = []
+        activeDeployments = [pullRequestDeployment(number: 7)]
+    }
+
     func seedMixedActivityDeployments() {
         hiddenPreviewIssueNumbers = []
         activeDeployments = [
@@ -116,6 +170,46 @@ final class MockIssueCTLServer: @unchecked Sendable {
         activeDeployments = [
             deployment(issueNumber: 101),
             deployment(issueNumber: 201, repoId: 2, owner: "org", repoName: "beta"),
+        ]
+    }
+
+    func seedAutomationParitySessions() {
+        hiddenPreviewIssueNumbers = []
+        repos = [defaultRepo, betaRepo]
+        activeDeployments = [
+            automationParityDeployment(
+                id: 9401,
+                targetType: "issue",
+                targetNumber: 501,
+                issueNumber: 501,
+                triggeredBy: "manual",
+                webhookDepth: 0,
+                previewStatus: "active",
+                previewLines: ["issue #501: manual launch", "agent is running"]
+            ),
+            automationParityDeployment(
+                id: 9402,
+                targetType: "issue",
+                targetNumber: 502,
+                issueNumber: 502,
+                triggeredBy: "webhook",
+                parentDeploymentId: 9401,
+                webhookDepth: 1,
+                previewStatus: "idle",
+                previewLines: ["issue #502: webhook label", "waiting for changes"]
+            ),
+            automationParityDeployment(
+                id: 9407,
+                targetType: "pr",
+                targetNumber: 7,
+                issueNumber: nil,
+                triggeredBy: "comment_command",
+                terminalReason: "review",
+                parentDeploymentId: 9402,
+                webhookDepth: 2,
+                previewStatus: "error",
+                previewLines: ["PR #7: /issuectl review", "automation command failed"]
+            ),
         ]
     }
 
@@ -237,6 +331,22 @@ final class MockIssueCTLServer: @unchecked Sendable {
         let rawPath = parts.indices.contains(1) ? String(parts[1]) : "/"
         let path = rawPath.split(separator: "?", maxSplits: 1).first.map(String.init) ?? rawPath
 
+        let pathSegments = path.split(separator: "/")
+        if method == "POST",
+           pathSegments.count == 5,
+           pathSegments[0] == "api",
+           pathSegments[1] == "v1",
+           pathSegments[2] == "deployments",
+           pathSegments[4] == "end",
+           let deploymentId = Int(pathSegments[3]) {
+            let payload = jsonBody(from: request)
+            stateLock.lock()
+            lastEndSessionPayload = payload
+            stateLock.unlock()
+            activeDeployments.removeAll { $0["id"] as? Int == deploymentId }
+            return http(status: 200, json: ["success": true])
+        }
+
         let body: Any
         switch (method, path) {
         case ("GET", "/api/v1/health"):
@@ -299,9 +409,30 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
         case ("PATCH", "/api/v1/repos/org/alpha"):
             let payload = jsonBody(from: request)
+            stateLock.lock()
+            lastRepoUpdatePayload = payload
+            stateLock.unlock()
             if let idx = repos.firstIndex(where: { $0["name"] as? String == "alpha" }) {
                 for (key, value) in payload {
                     repos[idx][key] = value
+                }
+                if let autoLaunchIssues = payload["autoLaunchIssues"] {
+                    repos[idx]["auto_launch_issues"] = autoLaunchIssues
+                }
+                if let autoReviewPrs = payload["autoReviewPrs"] {
+                    repos[idx]["auto_review_prs"] = autoReviewPrs
+                }
+                if let issueAgent = payload["issueAgent"] {
+                    repos[idx]["issue_agent"] = issueAgent
+                }
+                if let reviewAgent = payload["reviewAgent"] {
+                    repos[idx]["review_agent"] = reviewAgent
+                }
+                if let webhookPayloadMode = payload["webhookPayloadMode"] {
+                    repos[idx]["webhook_payload_mode"] = webhookPayloadMode
+                }
+                if let reviewPreamble = payload["reviewPreamble"] {
+                    repos[idx]["review_preamble"] = reviewPreamble
                 }
                 body = ["success": true, "repo": repos[idx]]
             } else {
@@ -310,6 +441,53 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
         case ("GET", "/api/v1/repos/org/alpha/labels"):
             body = ["labels": repoLabels]
+
+        case ("POST", "/api/v1/repos/org/alpha/labels"):
+            let payload = jsonBody(from: request)
+            stateLock.lock()
+            lastRepoLabelsPayload = payload
+            stateLock.unlock()
+            body = ["success": true, "error": NSNull()]
+
+        case ("POST", "/api/v1/repos/org/alpha/webhook"):
+            let payload = jsonBody(from: request)
+            stateLock.lock()
+            lastWebhookPayload = payload
+            stateLock.unlock()
+            if let idx = repos.firstIndex(where: { $0["name"] as? String == "alpha" }) {
+                repos[idx]["webhook_id"] = repos[idx]["webhook_id"] ?? 123
+            }
+            body = [
+                "success": true,
+                "repo": repos.first ?? defaultRepo,
+                "webhook": ["id": 123, "url": "https://hooks.example.test/api/webhook/github/1", "created_by": "mock"],
+                "error": NSNull(),
+            ]
+
+        case ("GET", "/api/v1/repos/org/alpha/webhook/health"):
+            body = [
+                "health": [
+                    "state": "warning",
+                    "summary": "Webhook not verified",
+                    "detail": "Send a ping before relying on automation labels.",
+                    "recovery": "Open repo settings and reinstall the webhook.",
+                    "expectedUrl": "https://hooks.example.test/api/webhook/github/1",
+                    "hookId": 123,
+                    "githubUrl": "https://github.com/org/alpha/settings/hooks/123",
+                    "latestDelivery": [
+                        "id": 987,
+                        "guid": "delivery-guid-1",
+                        "event": "issues",
+                        "action": "labeled",
+                        "status": "OK",
+                        "statusCode": 200,
+                        "deliveredAt": "2026-05-14T12:34:56Z",
+                    ],
+                ],
+            ]
+
+        case ("GET", "/api/v1/workbench"):
+            body = workbenchPayload()
 
         case ("GET", "/api/v1/deployments"):
             if failDeployments {
@@ -320,9 +498,8 @@ final class MockIssueCTLServer: @unchecked Sendable {
         case ("GET", "/api/v1/sessions/previews"):
             body = ["previews": sessionPreviews()]
 
-        case ("POST", "/api/v1/deployments/9001/end"):
-            activeDeployments.removeAll { $0["id"] as? Int == 9001 }
-            body = ["success": true]
+        case ("GET", "/api/v1/sessions/overview"):
+            body = sessionsOverviewPayload()
 
         case ("GET", "/api/v1/drafts"):
             body = ["drafts": drafts]
@@ -398,11 +575,15 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
         case ("POST", "/api/v1/issues/org/alpha/101/labels"):
             let payload = jsonBody(from: request)
-            if let name = payload["name"] as? String {
+            stateLock.lock()
+            lastIssueLabelPayload = payload
+            stateLock.unlock()
+            if let name = (payload["label"] as? String) ?? (payload["name"] as? String) {
                 var labels = issueLabels[101] ?? []
-                if let idx = labels.firstIndex(where: { $0["name"] as? String == name }) {
+                if payload["action"] as? String == "remove",
+                   let idx = labels.firstIndex(where: { $0["name"] as? String == name }) {
                     labels.remove(at: idx)
-                } else {
+                } else if !labels.contains(where: { $0["name"] as? String == name }) {
                     labels.append(["name": name, "color": "0075ca", "description": NSNull()])
                 }
                 issueLabels[101] = labels
@@ -420,6 +601,14 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
         case ("GET", "/api/v1/pulls/org/alpha/8"):
             body = pullDetailBody(number: 8, title: "Passing background work", checksStatus: "success")
+
+        case ("POST", "/api/v1/pulls/org/alpha/7/labels"):
+            updatePullLabels(number: 7, request: request)
+            body = ["success": true, "error": NSNull()]
+
+        case ("POST", "/api/v1/pulls/org/alpha/8/labels"):
+            updatePullLabels(number: 8, request: request)
+            body = ["success": true, "error": NSNull()]
 
         case ("POST", "/api/v1/launch/org/alpha/101"):
             activateDeployment(issueNumber: 101, request: request)
@@ -511,6 +700,13 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "name": "alpha",
             "local_path": "/tmp/alpha",
             "branch_pattern": NSNull(),
+            "auto_launch_issues": true,
+            "auto_review_prs": true,
+            "issue_agent": "codex",
+            "review_agent": "claude",
+            "webhook_id": 123,
+            "webhook_payload_mode": "metadata",
+            "review_preamble": NSNull(),
             "created_at": isoDate,
         ]
     }
@@ -522,6 +718,13 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "name": "beta",
             "local_path": "/tmp/beta",
             "branch_pattern": NSNull(),
+            "auto_launch_issues": false,
+            "auto_review_prs": false,
+            "issue_agent": "claude",
+            "review_agent": "claude",
+            "webhook_id": NSNull(),
+            "webhook_payload_mode": "metadata",
+            "review_preamble": NSNull(),
             "created_at": isoDate,
         ]
     }
@@ -552,6 +755,8 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
     var repoLabels: [[String: Any]] {
         [
+            ["name": "issuectl:auto-launch", "color": "2da44e", "description": "Launch an issue work session from webhook labels"],
+            ["name": "issuectl:auto-review", "color": "8250df", "description": "Create a PR review session from webhook labels"],
             ["name": "bug", "color": "d73a4a", "description": "Something isn't working"],
             ["name": "enhancement", "color": "0075ca", "description": "New feature or request"],
             ["name": "documentation", "color": "0052cc", "description": "Improvements to docs"],
@@ -611,6 +816,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "number": number,
             "title": title,
             "body": NSNull(),
+            "labels": pullLabels[number] ?? [],
             "state": "open",
             "draft": false,
             "merged": false,
@@ -646,6 +852,15 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "id": id,
             "repo_id": repoId,
             "issue_number": issueNumber,
+            "target_type": "issue",
+            "target_number": issueNumber,
+            "agent": "codex",
+            "terminal_backend": "ttyd",
+            "triggered_by": "manual",
+            "terminal_reason": NSNull(),
+            "parent_deployment_id": NSNull(),
+            "webhook_depth": 0,
+            "idle_since": NSNull(),
             "branch_name": branchName(for: issueNumber),
             "workspace_mode": "worktree",
             "workspace_path": "/tmp/\(repoName)-worktree-\(issueNumber)",
@@ -658,6 +873,366 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "owner": owner,
             "repo_name": repoName,
         ]
+    }
+
+    func pullRequestDeployment(number: Int, repoId: Int = 1, owner: String = "org", repoName: String = "alpha") -> [String: Any] {
+        let id = 9500 + number
+        return [
+            "id": id,
+            "repo_id": repoId,
+            "issue_number": NSNull(),
+            "target_type": "pr",
+            "target_number": number,
+            "agent": "codex",
+            "terminal_backend": "ttyd",
+            "triggered_by": "webhook",
+            "terminal_reason": "review",
+            "parent_deployment_id": NSNull(),
+            "webhook_depth": 1,
+            "idle_since": NSNull(),
+            "branch_name": "pr-\(number)-review",
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/\(repoName)-pr-\(number)",
+            "linked_pr_number": NSNull(),
+            "state": "active",
+            "launched_at": "2026-04-29 08:00:00",
+            "ended_at": NSNull(),
+            "ttyd_port": 19500 + number,
+            "ttyd_pid": 12500 + number,
+            "owner": owner,
+            "repo_name": repoName,
+        ]
+    }
+
+    func automationParityDeployment(
+        id: Int,
+        targetType: String,
+        targetNumber: Int,
+        issueNumber: Int?,
+        triggeredBy: String,
+        terminalReason: String? = nil,
+        parentDeploymentId: Int? = nil,
+        webhookDepth: Int,
+        previewStatus: String,
+        previewLines: [String]
+    ) -> [String: Any] {
+        [
+            "id": id,
+            "repo_id": 1,
+            "issue_number": issueNumber ?? NSNull(),
+            "target_type": targetType,
+            "target_number": targetNumber,
+            "agent": "codex",
+            "terminal_backend": "ttyd",
+            "triggered_by": triggeredBy,
+            "terminal_reason": terminalReason ?? NSNull(),
+            "parent_deployment_id": parentDeploymentId ?? NSNull(),
+            "webhook_depth": webhookDepth,
+            "idle_since": previewStatus == "idle" ? "2026-04-29 08:05:00" : NSNull(),
+            "branch_name": targetType == "pr" ? "pr-\(targetNumber)-review" : branchName(for: targetNumber),
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/alpha-automation-\(targetNumber)",
+            "linked_pr_number": NSNull(),
+            "state": "active",
+            "launched_at": "2026-04-29 08:00:00",
+            "ended_at": NSNull(),
+            "ttyd_port": 19000 + (id - 9400),
+            "ttyd_pid": 13000 + id,
+            "owner": "org",
+            "repo_name": "alpha",
+            "preview_status": previewStatus,
+            "preview_lines": previewLines,
+        ]
+    }
+
+    func workbenchPayload() -> [String: Any] {
+        [
+            "drafts": drafts,
+            "repos": repos.map { repo in
+                let repoId = repo["id"] as? Int ?? 0
+                let owner = repo["owner"] as? String ?? "org"
+                let name = repo["name"] as? String ?? "alpha"
+                let repoDeployments = activeDeployments.filter { ($0["repo_id"] as? Int) == repoId }
+                return [
+                    "id": repoId,
+                    "owner": owner,
+                    "name": name,
+                    "localPath": repo["local_path"] ?? NSNull(),
+                    "branchPattern": repo["branch_pattern"] ?? NSNull(),
+                    "autoLaunchIssues": repo["auto_launch_issues"] ?? false,
+                    "autoReviewPrs": repo["auto_review_prs"] ?? false,
+                    "issueAgent": repo["issue_agent"] ?? "claude",
+                    "reviewAgent": repo["review_agent"] ?? "claude",
+                    "webhookId": repo["webhook_id"] ?? NSNull(),
+                    "webhookPayloadMode": repo["webhook_payload_mode"] ?? "metadata",
+                    "badgeCount": repoDeployments.count,
+                    "deployedCount": repoDeployments.count,
+                    "launchAgent": "codex",
+                    "terminalBackendDefault": "ttyd",
+                    "issueError": NSNull(),
+                    "issuesFromCache": false,
+                    "issuesCachedAt": NSNull(),
+                    "priorities": [
+                        ["repoId": repoId, "issueNumber": 101, "priority": issuePriorities[101] ?? "normal", "updatedAt": 1_777_440_000],
+                    ],
+                    "deployments": repoDeployments.map(workbenchDeployment),
+                    "recentCompletions": [],
+                    "webhookEvents": [
+                        [
+                            "id": 1,
+                            "deliveryId": "mock-delivery",
+                            "eventType": "issues",
+                            "action": "labeled",
+                            "senderLogin": "alice",
+                            "targetType": "issue",
+                            "targetNumber": 101,
+                            "receivedAt": 1_777_440_000,
+                            "intentId": 1,
+                        ],
+                    ],
+                    "prReviews": [
+                        [
+                            "id": 1,
+                            "repoId": repoId,
+                            "prNumber": 7,
+                            "deploymentId": NSNull(),
+                            "reviewedFromSha": NSNull(),
+                            "reviewedToSha": "abc",
+                            "headRepoFullName": "\(owner)/\(name)",
+                            "headRef": "feature-7",
+                            "status": "reserved",
+                            "triggeredBy": "webhook",
+                            "resultJson": NSNull(),
+                            "startedAt": 1_777_440_000,
+                            "completedAt": NSNull(),
+                        ],
+                    ],
+                    "previews": sessionPreviews(),
+                    "issues": workbenchIssues(owner: owner, name: name, repoDeployments: repoDeployments),
+                ]
+            },
+            "deployments": activeDeployments.map(workbenchDeployment),
+            "previews": sessionPreviews(),
+            "settings": ["launch_agent": defaultLaunchAgent],
+            "health": ["ok": true, "version": "ui-test", "timestamp": isoDate, "error": NSNull()],
+            "user": ["login": "alice", "error": NSNull()],
+            "generatedAt": isoDate,
+        ]
+    }
+
+    private func workbenchDeployment(_ deployment: [String: Any]) -> [String: Any] {
+        [
+            "id": deployment["id"] ?? 0,
+            "repoId": deployment["repo_id"] ?? 0,
+            "issueNumber": deployment["issue_number"] ?? NSNull(),
+            "targetType": deployment["target_type"] ?? "issue",
+            "targetNumber": deployment["target_number"] ?? deployment["issue_number"] ?? 0,
+            "agent": deployment["agent"] ?? "codex",
+            "terminalBackend": deployment["terminal_backend"] ?? "ttyd",
+            "triggeredBy": deployment["triggered_by"] ?? "manual",
+            "terminalReason": deployment["terminal_reason"] ?? NSNull(),
+            "parentDeploymentId": deployment["parent_deployment_id"] ?? NSNull(),
+            "webhookDepth": deployment["webhook_depth"] ?? 0,
+            "idleSince": deployment["idle_since"] ?? NSNull(),
+            "branchName": deployment["branch_name"] ?? "",
+            "workspaceMode": deployment["workspace_mode"] ?? "worktree",
+            "workspacePath": deployment["workspace_path"] ?? "",
+            "linkedPrNumber": deployment["linked_pr_number"] ?? NSNull(),
+            "state": deployment["state"] ?? "active",
+            "launchedAt": deployment["launched_at"] ?? isoDate,
+            "endedAt": deployment["ended_at"] ?? NSNull(),
+            "ttydPort": deployment["ttyd_port"] ?? NSNull(),
+            "ttydPid": deployment["ttyd_pid"] ?? NSNull(),
+            "owner": deployment["owner"] ?? "org",
+            "repoName": deployment["repo_name"] ?? "alpha",
+        ]
+    }
+
+    func sessionsOverviewPayload() -> [String: Any] {
+        let previews = sessionPreviews()
+        let sessions = activeDeployments.map { sessionOverviewSession($0, previews: previews) }
+        let groups = Dictionary(grouping: sessions) { session -> String in
+            let repoId = session["repoId"] as? Int ?? 0
+            let targetType = session["targetType"] as? String ?? "issue"
+            let targetNumber = session["targetNumber"] as? Int ?? 0
+            return "\(repoId):\(targetType):\(targetNumber)"
+        }
+        let sessionGroups = groups.keys.sorted().compactMap { key -> [String: Any]? in
+            guard let groupSessions = groups[key], let first = groupSessions.first else { return nil }
+            return [
+                "key": key,
+                "repoFullName": first["repoFullName"] ?? "org/alpha",
+                "targetType": first["targetType"] ?? "issue",
+                "targetNumber": first["targetNumber"] ?? 0,
+                "targetLabel": first["targetLabel"] ?? "#0",
+                "sessions": groupSessions,
+                "matchingSessionCount": groupSessions.count,
+            ]
+        }
+
+        let reviewRuns = activeDeployments
+            .filter { ($0["target_type"] as? String) == "pr" || ($0["terminal_reason"] as? String) == "review" }
+            .map { deployment -> [String: Any] in
+                let session = sessionOverviewSession(deployment, previews: previews)
+                let prNumber = (deployment["target_number"] as? Int) ?? (deployment["issue_number"] as? Int) ?? 7
+                let repoId = deployment["repo_id"] as? Int ?? 1
+                let owner = deployment["owner"] as? String ?? "org"
+                let name = deployment["repo_name"] as? String ?? "alpha"
+                return [
+                    "id": 30_000 + (deployment["id"] as? Int ?? 0),
+                    "repoId": repoId,
+                    "repoFullName": "\(owner)/\(name)",
+                    "owner": owner,
+                    "repoName": name,
+                    "prNumber": prNumber,
+                    "deploymentId": deployment["id"] ?? NSNull(),
+                    "startedHeadSha": "abc123",
+                    "completedHeadSha": "def456",
+                    "reviewBaseSha": "base999",
+                    "reviewedFromSha": "abc123",
+                    "reviewedToSha": "def456",
+                    "headRepoFullName": "\(owner)/\(name)",
+                    "headRef": "feature-\(prNumber)",
+                    "status": (deployment["ended_at"] is NSNull) ? "in_progress" : "completed",
+                    "triggeredBy": deployment["triggered_by"] ?? "webhook",
+                    "result": ["summary": "Review session captured", "findingCount": 0],
+                    "resultJson": "{\"summary\":\"Review session captured\",\"findingCount\":0}",
+                    "summary": "Review session captured",
+                    "findingCount": 0,
+                    "rangeLabel": "abc123..def456",
+                    "detailHref": "/reviews/\(30_000 + (deployment["id"] as? Int ?? 0))",
+                    "provenanceLabel": "webhook · session #\(deployment["id"] as? Int ?? 0)",
+                    "elapsedLabel": "5m",
+                    "startedAt": 1_777_800_000_000,
+                    "completedAt": NSNull(),
+                    "deployment": session,
+                ]
+            }
+        let reviewGroups = Dictionary(grouping: reviewRuns) { run -> String in
+            "\(run["repoId"] as? Int ?? 0):\(run["prNumber"] as? Int ?? 0)"
+        }
+        .keys
+        .sorted()
+        .compactMap { key -> [String: Any]? in
+            let runs = Dictionary(grouping: reviewRuns) { run -> String in
+                "\(run["repoId"] as? Int ?? 0):\(run["prNumber"] as? Int ?? 0)"
+            }[key] ?? []
+            guard let first = runs.first else { return nil }
+            return [
+                "key": key,
+                "repoFullName": first["repoFullName"] ?? "org/alpha",
+                "owner": first["owner"] ?? "org",
+                "repoName": first["repoName"] ?? "alpha",
+                "prNumber": first["prNumber"] ?? 0,
+                "runs": runs,
+                "matchingRunCount": runs.count,
+            ]
+        }
+
+        return [
+            "overview": [
+                "initialized": true,
+                "filters": [
+                    "tab": "sessions",
+                    "q": "",
+                    "repo": "",
+                    "trigger": "all",
+                    "state": "all",
+                    "status": "all",
+                ],
+                "repos": repos.map { repo in
+                    [
+                        "id": repo["id"] ?? 0,
+                        "fullName": "\(repo["owner"] as? String ?? "org")/\(repo["name"] as? String ?? "alpha")",
+                    ]
+                },
+                "sessionGroups": sessionGroups,
+                "reviewGroups": reviewGroups,
+                "summary": [
+                    "activeSessions": sessions.filter { ($0["endedAt"] as? NSNull) != nil }.count,
+                    "endedSessions": 0,
+                    "reviewRuns": reviewRuns.count,
+                    "activeReviewRuns": reviewRuns.filter { ($0["status"] as? String) == "in_progress" }.count,
+                ],
+            ],
+            "diagnostics": [
+                "events": [],
+                "filters": ["deploymentId": NSNull(), "targetType": NSNull(), "targetNumber": NSNull(), "limit": 20],
+                "summary": ["count": 0, "levelCounts": [:], "latestTimestamp": NSNull(), "latestTimestampIso": NSNull()],
+            ],
+            "generatedAt": isoDate,
+        ]
+    }
+
+    private func sessionOverviewSession(_ deployment: [String: Any], previews: [String: Any]) -> [String: Any] {
+        let targetType = deployment["target_type"] as? String ?? "issue"
+        let targetNumber = (deployment["target_number"] as? Int) ?? (deployment["issue_number"] as? Int) ?? 0
+        let owner = deployment["owner"] as? String ?? "org"
+        let name = deployment["repo_name"] as? String ?? "alpha"
+        let port = deployment["ttyd_port"] as? Int
+        return [
+            "id": deployment["id"] ?? 0,
+            "repoId": deployment["repo_id"] ?? 0,
+            "repoFullName": "\(owner)/\(name)",
+            "owner": owner,
+            "repoName": name,
+            "targetType": targetType,
+            "targetNumber": targetNumber,
+            "targetLabel": targetType == "pr" ? "PR #\(targetNumber)" : "Issue #\(targetNumber)",
+            "issueNumber": deployment["issue_number"] ?? NSNull(),
+            "branchName": deployment["branch_name"] ?? "",
+            "agent": deployment["agent"] ?? "codex",
+            "workspaceMode": deployment["workspace_mode"] ?? "worktree",
+            "workspacePath": deployment["workspace_path"] ?? "",
+            "linkedPrNumber": deployment["linked_pr_number"] ?? NSNull(),
+            "triggeredBy": deployment["triggered_by"] ?? "manual",
+            "parentDeploymentId": deployment["parent_deployment_id"] ?? NSNull(),
+            "childDeploymentCount": 0,
+            "webhookDepth": deployment["webhook_depth"] ?? 0,
+            "terminalReason": deployment["terminal_reason"] ?? NSNull(),
+            "launchedAt": deployment["launched_at"] ?? isoDate,
+            "endedAt": deployment["ended_at"] ?? NSNull(),
+            "ttydPort": deployment["ttyd_port"] ?? NSNull(),
+            "idleSince": deployment["idle_since"] ?? NSNull(),
+            "preview": port.flatMap { previews[String($0)] } ?? NSNull(),
+            "provenanceLabel": "\(deployment["triggered_by"] as? String ?? "manual") · root session",
+            "elapsedLabel": "5m",
+        ]
+    }
+
+    private func workbenchIssues(owner: String, name: String, repoDeployments: [[String: Any]]) -> [[String: Any]] {
+        switch name {
+        case "alpha":
+            return [
+                [
+                    "number": 101,
+                    "title": "Improve launch handoff",
+                    "state": issueStates[101] ?? "open",
+                    "labels": ["issuectl:auto-launch"],
+                    "updatedAt": isoDate,
+                    "priority": issuePriorities[101] ?? "normal",
+                    "hasActiveDeployment": repoDeployments.contains { ($0["issue_number"] as? Int) == 101 },
+                    "htmlUrl": "https://github.com/\(owner)/\(name)/issues/101",
+                    "authorLogin": "alice",
+                ],
+            ]
+        case "beta":
+            return [
+                [
+                    "number": 201,
+                    "title": "Beta repo board coverage",
+                    "state": issueStates[201] ?? "open",
+                    "labels": ["board"],
+                    "updatedAt": isoDate,
+                    "priority": issuePriorities[201] ?? "normal",
+                    "hasActiveDeployment": repoDeployments.contains { ($0["issue_number"] as? Int) == 201 },
+                    "htmlUrl": "https://github.com/\(owner)/\(name)/issues/201",
+                    "authorLogin": "bob",
+                ],
+            ]
+        default:
+            return []
+        }
     }
 
     private func branchName(for issueNumber: Int) -> String {
@@ -682,16 +1257,19 @@ final class MockIssueCTLServer: @unchecked Sendable {
         var previews: [String: Any] = [:]
         for deployment in activeDeployments {
             guard let port = deployment["ttyd_port"] as? Int else { continue }
-            let issueNumber = deployment["issue_number"] as? Int ?? 0
-            guard !hiddenPreviewIssueNumbers.contains(issueNumber) else { continue }
+            let targetType = deployment["target_type"] as? String ?? "issue"
+            let targetNumber = (deployment["target_number"] as? Int) ?? (deployment["issue_number"] as? Int) ?? 0
+            guard !hiddenPreviewIssueNumbers.contains(targetNumber) else { continue }
+            let targetLabel = targetType == "pr" ? "PR #\(targetNumber)" : "issue #\(targetNumber)"
+            let lines = deployment["preview_lines"] as? [String] ?? [
+                "\(targetLabel): running checks",
+                targetNumber == 101 ? "pass: launch handoff" : "waiting for agent output",
+            ]
             previews[String(port)] = [
-                "lines": [
-                    "issue #\(issueNumber): running checks",
-                    issueNumber == 101 ? "pass: launch handoff" : "waiting for agent output",
-                ],
+                "lines": lines,
                 "lastUpdatedMs": 1_777_800_000_000,
                 "lastChangedMs": 1_777_799_999_000,
-                "status": issueNumber == 102 ? "idle" : "active",
+                "status": deployment["preview_status"] as? String ?? (targetNumber == 102 ? "idle" : "active"),
             ]
         }
         return previews
@@ -721,6 +1299,26 @@ final class MockIssueCTLServer: @unchecked Sendable {
         }
         activeDeployments.removeAll { $0["issue_number"] as? Int == issueNumber }
         activeDeployments.append(deployment(issueNumber: issueNumber))
+    }
+
+    private func updatePullLabels(number: Int, request: String) {
+        let payload = jsonBody(from: request)
+        stateLock.lock()
+        lastPullLabelPayload = payload
+        stateLock.unlock()
+
+        guard let name = (payload["label"] as? String) ?? (payload["name"] as? String) else {
+            return
+        }
+
+        var labels = pullLabels[number] ?? []
+        if payload["action"] as? String == "remove",
+           let idx = labels.firstIndex(where: { $0["name"] as? String == name }) {
+            labels.remove(at: idx)
+        } else if !labels.contains(where: { $0["name"] as? String == name }) {
+            labels.append(["name": name, "color": "8250df", "description": NSNull()])
+        }
+        pullLabels[number] = labels
     }
 }
 

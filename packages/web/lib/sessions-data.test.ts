@@ -44,7 +44,7 @@ describe("sessions-data", () => {
         activeDeployment({ id: 11, targetType: "issue", targetNumber: 507, triggeredBy: "webhook", parentDeploymentId: 10 }),
       ],
       recentDeploymentsByRepo: new Map([
-        [repo.id, [endedDeployment({ id: 9, targetType: "issue", targetNumber: 507, triggeredBy: "manual" })]],
+        [repo.id, [{ ...endedDeployment({ id: 9, targetType: "issue", targetNumber: 507, triggeredBy: "manual" }), terminalBackend: "pty_bridge" }]],
       ]),
       reviewsByRepo: new Map(),
       previews: { "7710": { status: "active", lines: ["running tests"], lastUpdatedMs: 1, lastChangedMs: 1 } },
@@ -59,6 +59,7 @@ describe("sessions-data", () => {
     expect(data.sessionGroups[0].sessions).toHaveLength(3);
     expect(data.sessionGroups[0].sessions.find((session) => session.id === 10)?.childDeploymentCount).toBe(1);
     expect(data.sessionGroups[0].sessions.find((session) => session.id === 11)?.parentDeploymentId).toBe(10);
+    expect(data.sessionGroups[0].sessions.find((session) => session.id === 9)?.terminalBackend).toBe("pty_bridge");
     expect(data.sessionGroups[0].sessions.find((session) => session.id === 10)?.preview?.lines).toEqual(["running tests"]);
   });
 

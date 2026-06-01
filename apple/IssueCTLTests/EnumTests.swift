@@ -91,6 +91,39 @@ final class EnumTests: XCTestCase {
         XCTAssertThrowsError(try decoder.decode(DeploymentState.self, from: json))
     }
 
+    // MARK: - DeploymentTargetType
+
+    func testDeploymentTargetTypeRawValues() {
+        XCTAssertEqual(DeploymentTargetType.issue.rawValue, "issue")
+        XCTAssertEqual(DeploymentTargetType.pr.rawValue, "pr")
+    }
+
+    func testDeploymentTargetTypeRoundTrip() throws {
+        for targetType in [DeploymentTargetType.issue, .pr] {
+            let data = try encoder.encode(targetType)
+            let decoded = try decoder.decode(DeploymentTargetType.self, from: data)
+            XCTAssertEqual(decoded, targetType)
+        }
+    }
+
+    func testEndSessionRequestBodyIncludesTargetFields() throws {
+        let body = EndSessionRequestBody(
+            owner: "org",
+            repo: "app",
+            issueNumber: 44,
+            targetType: .pr,
+            targetNumber: 44
+        )
+
+        let data = try encoder.encode(body)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(json["owner"] as? String, "org")
+        XCTAssertEqual(json["repo"] as? String, "app")
+        XCTAssertEqual(json["issueNumber"] as? Int, 44)
+        XCTAssertEqual(json["targetType"] as? String, "pr")
+        XCTAssertEqual(json["targetNumber"] as? Int, 44)
+    }
+
     func testDeploymentStateIsActiveOnDeployment() throws {
         // active state with no endedAt -> isActive
         let activeJSON = """

@@ -19,6 +19,7 @@ struct GitHubPull: Codable, Identifiable, Sendable {
     let closedAt: String?
     let htmlUrl: String
     let checksStatus: String?
+    let labels: [GitHubLabel]
 
     /// Use htmlUrl as the stable ID — PR numbers are only unique per-repo,
     /// so using `number` would collide when multiple repos are shown together.
@@ -29,6 +30,93 @@ struct GitHubPull: Codable, Identifiable, Sendable {
 
     var diffSummary: String {
         "+\(additions) -\(deletions)"
+    }
+
+    init(
+        number: Int,
+        title: String,
+        body: String?,
+        state: String,
+        draft: Bool?,
+        merged: Bool,
+        user: GitHubUser?,
+        headRef: String,
+        baseRef: String,
+        additions: Int,
+        deletions: Int,
+        changedFiles: Int,
+        createdAt: String,
+        updatedAt: String,
+        mergedAt: String?,
+        closedAt: String?,
+        htmlUrl: String,
+        checksStatus: String?,
+        labels: [GitHubLabel] = []
+    ) {
+        self.number = number
+        self.title = title
+        self.body = body
+        self.state = state
+        self.draft = draft
+        self.merged = merged
+        self.user = user
+        self.headRef = headRef
+        self.baseRef = baseRef
+        self.additions = additions
+        self.deletions = deletions
+        self.changedFiles = changedFiles
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.mergedAt = mergedAt
+        self.closedAt = closedAt
+        self.htmlUrl = htmlUrl
+        self.checksStatus = checksStatus
+        self.labels = labels
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        number = try container.decode(Int.self, forKey: .number)
+        title = try container.decode(String.self, forKey: .title)
+        body = try container.decodeIfPresent(String.self, forKey: .body)
+        state = try container.decode(String.self, forKey: .state)
+        draft = try container.decodeIfPresent(Bool.self, forKey: .draft)
+        merged = try container.decode(Bool.self, forKey: .merged)
+        user = try container.decodeIfPresent(GitHubUser.self, forKey: .user)
+        headRef = try container.decode(String.self, forKey: .headRef)
+        baseRef = try container.decode(String.self, forKey: .baseRef)
+        additions = try container.decode(Int.self, forKey: .additions)
+        deletions = try container.decode(Int.self, forKey: .deletions)
+        changedFiles = try container.decode(Int.self, forKey: .changedFiles)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        mergedAt = try container.decodeIfPresent(String.self, forKey: .mergedAt)
+        closedAt = try container.decodeIfPresent(String.self, forKey: .closedAt)
+        htmlUrl = try container.decode(String.self, forKey: .htmlUrl)
+        checksStatus = try container.decodeIfPresent(String.self, forKey: .checksStatus)
+        labels = try container.decodeIfPresent([GitHubLabel].self, forKey: .labels) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case number
+        case title
+        case body
+        case state
+        case draft
+        case merged
+        case user
+        case headRef
+        case baseRef
+        case additions
+        case deletions
+        case changedFiles
+        case createdAt
+        case updatedAt
+        case mergedAt
+        case closedAt
+        case htmlUrl
+        case checksStatus
+        case labels
     }
 }
 

@@ -3,6 +3,7 @@
 
 import { useState, useTransition } from "react";
 import type { LaunchAgent, Repo, WebhookEvent, WebhookPayloadMode } from "@issuectl/core";
+import type { WebhookAutomationHealth, WebhookAutomationHealthState } from "@/lib/webhook-health";
 import {
   configureRepoWebhook,
   recreateRepoLabels,
@@ -24,6 +25,7 @@ export type RepoSettingsActivity = {
 export type RepoSettingsPanelProps = {
   repo: Repo;
   webhookUrl: string | null;
+  webhookHealth: WebhookAutomationHealth | null;
   activity: RepoSettingsActivity;
   recentDeliveries: WebhookEvent[];
   settingsHref?: string;
@@ -39,6 +41,7 @@ const REQUIRED_LABELS = ["issuectl:auto-launch", "issuectl:auto-review"];
 export function RepoSettingsPanel({
   repo,
   webhookUrl,
+  webhookHealth,
   activity,
   recentDeliveries,
   settingsHref,
@@ -71,6 +74,7 @@ export function RepoSettingsPanel({
     autoReviewPrs,
     webhookPayloadMode,
     labelHealth,
+    webhookHealth,
   });
 
   function saveSettings() {
@@ -320,6 +324,7 @@ export function RepoSettingsPanel({
             Waiting for first GitHub delivery
           </div>
         )}
+        {webhookHealth && <WebhookHealthCard health={webhookHealth} />}
         <label>
           <span>Receiver URL</span>
           <input value={webhookUrl ?? "Set Public Webhook Base URL first"} readOnly />
@@ -405,7 +410,7 @@ function Metric({ label, value }: { label: string; value: number }) {
 type HealthItem = {
   label: string;
   value: string;
-  state: LabelHealth["status"];
+  state: LabelHealth["status"] | WebhookAutomationHealthState;
   detail: string;
 };
 
@@ -417,6 +422,7 @@ function repoHealthItems(input: {
   autoReviewPrs: boolean;
   webhookPayloadMode: WebhookPayloadMode;
   labelHealth: LabelHealth;
+  webhookHealth: WebhookAutomationHealth | null;
 }): HealthItem[] {
   return [
     {
@@ -427,9 +433,9 @@ function repoHealthItems(input: {
     },
     {
       label: "Webhook",
-      value: input.webhookConfigured ? input.waitingForFirstPing ? "waiting" : "configured" : "missing",
-      state: input.webhookConfigured ? input.waitingForFirstPing ? "checking" : "healthy" : "missing",
-      detail: input.webhookConfigured ? "A GitHub webhook id is stored locally." : "Install the webhook before automation can receive deliveries.",
+      value: webhookHealthValue(input),
+      state: input.webhookHealth?.state ?? (input.webhookConfigured ? input.waitingForFirstPing ? "checking" : "healthy" : "missing"),
+      detail: input.webhookHealth?.detail ?? (input.webhookConfigured ? "A GitHub webhook id is stored locally." : "Install the webhook before automation can receive deliveries."),
     },
     {
       label: "Automation",
@@ -453,9 +459,39 @@ function repoHealthItems(input: {
 }
 
 function healthSummary(items: HealthItem[]): string {
-  const attention = items.filter((item) => item.state === "missing" || item.state === "error");
+  const attention = items.filter((item) =>
+    item.state === "missing" || item.state === "error" || item.state === "unknown",
+  );
   if (attention.length === 0) return "No blocking repo setup gaps detected in local settings.";
   return `${attention.length} setup item${attention.length === 1 ? "" : "s"} need attention: ${attention.map((item) => item.label).join(", ")}.`;
+}
+
+function webhookHealthValue(input: {
+  webhookConfigured: boolean;
+  waitingForFirstPing: boolean;
+  webhookHealth: WebhookAutomationHealth | null;
+}): string {
+  if (input.webhookHealth) return input.webhookHealth.state;
+  if (!input.webhookConfigured) return "missing";
+  return input.waitingForFirstPing ? "waiting" : "configured";
+}
+
+function WebhookHealthCard({ health }: { health: WebhookAutomationHealth }) {
+  return (
+    <div className={styles.webhookHealth} data-state={health.state} role={health.state === "ok" ? "status" : "alert"}>
+      <strong>{health.summary}</strong>
+      <span>{health.detail}</span>
+      {health.githubUrl && <code>GitHub: {health.githubUrl}</code>}
+      {health.expectedUrl && <code>Expected: {health.expectedUrl}</code>}
+      {health.latestDelivery && (
+        <code>
+          Latest: {health.latestDelivery.event ?? "delivery"}
+          {health.latestDelivery.action ? `.${health.latestDelivery.action}` : ""} · {health.latestDelivery.statusCode ?? "unknown"}
+        </code>
+      )}
+      {health.recovery && <span>{health.recovery}</span>}
+    </div>
+  );
 }
 
 function RecentDeliveries({ repo, deliveries }: { repo: Repo; deliveries: WebhookEvent[] }) {

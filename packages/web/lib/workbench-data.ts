@@ -17,6 +17,7 @@ import {
   getDb,
   getIssues,
   getSettings,
+  listDrafts,
   listPrReviewsForRepo,
   listPrioritiesForRepo,
   listRecentTerminalDeploymentsByRepo,
@@ -68,6 +69,7 @@ export async function getWorkbenchPayload({
   ]);
 
   return {
+    drafts: listDrafts(db),
     repos: workbenchRepos,
     deployments: activeDeployments,
     previews,

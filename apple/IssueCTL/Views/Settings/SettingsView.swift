@@ -40,6 +40,8 @@ struct SettingsView: View {
                 switch dest {
                 case .advancedSettings:
                     AdvancedSettingsView()
+                case .automationFeed:
+                    AutomationFeedView()
                 case .notifications:
                     NotificationSettingsView()
                 case .worktrees:
@@ -160,6 +162,7 @@ struct SettingsView: View {
                         RepoRow(repo: repo)
                     }
                     .tint(.primary)
+                    .accessibilityIdentifier("settings-repo-\(repo.id)")
                 }
                 .onDelete(perform: deleteRepos)
             }
@@ -181,6 +184,10 @@ struct SettingsView: View {
             NavigationLink(value: SettingsDestination.advancedSettings) {
                 Label("Agent Harness & Defaults", systemImage: "terminal")
             }
+            NavigationLink(value: SettingsDestination.automationFeed) {
+                Label("Automation Feed", systemImage: "dot.radiowaves.left.and.right")
+            }
+            .accessibilityIdentifier("settings-automation-feed-link")
             NavigationLink(value: SettingsDestination.notifications) {
                 Label("Notifications", systemImage: "bell.badge")
             }
@@ -293,6 +300,7 @@ struct SettingsView: View {
 
 enum SettingsDestination: Hashable {
     case advancedSettings
+    case automationFeed
     case notifications
     case worktrees
     case offlineQueue
@@ -350,6 +358,18 @@ private struct RepoRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                }
+
+                HStack(spacing: 6) {
+                    if repo.autoLaunchIssues {
+                        SetupStatusPill(title: "Issues", systemImage: "bolt.fill", tint: .green)
+                    }
+                    if repo.autoReviewPrs {
+                        SetupStatusPill(title: "PRs", systemImage: "checkmark.shield.fill", tint: IssueCTLColors.action)
+                    }
+                    if repo.webhookId != nil {
+                        SetupStatusPill(title: "Webhook", systemImage: "dot.radiowaves.left.and.right", tint: .purple)
+                    }
                 }
             }
 

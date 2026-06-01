@@ -113,6 +113,21 @@ extension APIClient {
             method: "POST",
             body: bodyData
         )
+        clearWorkbenchCache()
+        return try decoder.decode(ToggleLabelResponse.self, from: data)
+    }
+
+    func togglePullLabel(
+        owner: String, repo: String, number: Int,
+        body: ToggleLabelRequestBody
+    ) async throws -> ToggleLabelResponse {
+        let bodyData = try JSONEncoder().encode(body)
+        let (data, _) = try await request(
+            path: "/api/v1/pulls/\(owner)/\(repo)/\(number)/labels",
+            method: "POST",
+            body: bodyData
+        )
+        clearWorkbenchCache()
         return try decoder.decode(ToggleLabelResponse.self, from: data)
     }
 }

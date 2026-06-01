@@ -36,7 +36,7 @@ export function registerAgentCommands(program: Command): void {
     .requiredOption("--summary <summary>", "Completion summary")
     .option("--final-head-sha <sha>", "Final PR head SHA observed by the agent")
     .option("--pushed-commit-sha <sha>", "Commit SHA pushed by the agent")
-    .option("--server-url <url>", "issuectl web server URL", DEFAULT_SERVER_URL)
+    .option("--server-url <url>", "issuectl web server URL", defaultServerUrl())
     .action((opts: CompleteOptions, command: Command) =>
       runCommand(command, () => complete(opts)),
     );
@@ -49,7 +49,7 @@ export function registerAgentCommands(program: Command): void {
     .requiredOption("--action <action>", "push, comment, label, create_issue, or create_pr")
     .option("--payload <json>", "Mutation payload as JSON")
     .option("--payload-file <path>", "Read mutation payload JSON from a file, or - for stdin")
-    .option("--server-url <url>", "issuectl web server URL", DEFAULT_SERVER_URL)
+    .option("--server-url <url>", "issuectl web server URL", defaultServerUrl())
     .action((opts: MutateOptions, command: Command) =>
       runCommand(command, () => mutate(opts)),
     );
@@ -127,6 +127,10 @@ function parseTarget(value: string): { targetType: "issue" | "pr"; targetNumber:
 
 function serverUrl(value = DEFAULT_SERVER_URL): string {
   return value.replace(/\/$/, "");
+}
+
+function defaultServerUrl(): string {
+  return process.env.ISSUECTL_SERVER_URL?.trim() || DEFAULT_SERVER_URL;
 }
 
 async function readPayload(opts: MutateOptions): Promise<unknown> {

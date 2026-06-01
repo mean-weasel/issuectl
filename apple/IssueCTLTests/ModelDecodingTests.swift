@@ -52,6 +52,11 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(repo.localPath, "/Users/dev/issuectl")
         XCTAssertEqual(repo.branchPattern, "issue-{{number}}-{{slug}}")
         XCTAssertEqual(repo.fullName, "neonwatty/issuectl")
+        XCTAssertFalse(repo.autoLaunchIssues)
+        XCTAssertFalse(repo.autoReviewPrs)
+        XCTAssertEqual(repo.issueAgent, .claude)
+        XCTAssertEqual(repo.reviewAgent, .claude)
+        XCTAssertEqual(repo.webhookPayloadMode, .metadata)
     }
 
     func testRepoDecodingNullOptionals() throws {
@@ -69,6 +74,35 @@ final class ModelDecodingTests: XCTestCase {
         let repo = try decoder.decode(Repo.self, from: json)
         XCTAssertNil(repo.localPath)
         XCTAssertNil(repo.branchPattern)
+    }
+
+    func testRepoDecodesAutomationFields() throws {
+        let json = """
+        {
+            "id": 42,
+            "owner": "neonwatty",
+            "name": "issuectl",
+            "local_path": "/Users/dev/issuectl",
+            "branch_pattern": "issue-{{number}}",
+            "auto_launch_issues": true,
+            "auto_review_prs": true,
+            "issue_agent": "codex",
+            "review_agent": "claude",
+            "webhook_id": 123,
+            "webhook_payload_mode": "raw",
+            "review_preamble": "Focus on regressions.",
+            "created_at": "2026-04-01T12:00:00Z"
+        }
+        """.data(using: .utf8)!
+
+        let repo = try decoder.decode(Repo.self, from: json)
+        XCTAssertTrue(repo.autoLaunchIssues)
+        XCTAssertTrue(repo.autoReviewPrs)
+        XCTAssertEqual(repo.issueAgent, .codex)
+        XCTAssertEqual(repo.reviewAgent, .claude)
+        XCTAssertEqual(repo.webhookId, 123)
+        XCTAssertEqual(repo.webhookPayloadMode, .raw)
+        XCTAssertEqual(repo.reviewPreamble, "Focus on regressions.")
     }
 
     func testReposResponseDecoding() throws {
@@ -435,7 +469,10 @@ final class ModelDecodingTests: XCTestCase {
                 "updated_at": "2026-04-01T00:00:00Z",
                 "merged_at": null,
                 "closed_at": null,
-                "html_url": "https://example.com/42"
+                "html_url": "https://example.com/42",
+                "labels": [
+                    {"name": "issuectl:auto-review", "color": "8250df", "description": "Auto review"}
+                ]
             },
             "checks": [
                 {"name": "CI", "status": "completed", "conclusion": "success", "started_at": null, "completed_at": null, "html_url": null}
@@ -454,6 +491,7 @@ final class ModelDecodingTests: XCTestCase {
 
         let response = try decoder.decode(PullDetailResponse.self, from: json)
         XCTAssertEqual(response.pull.number, 42)
+        XCTAssertEqual(response.pull.labels.map(\.name), ["issuectl:auto-review"])
         XCTAssertEqual(response.checks.count, 1)
         XCTAssertEqual(response.files.count, 1)
         XCTAssertEqual(response.files[0].filename, "src/index.ts")
@@ -588,6 +626,144 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertNil(deployment.ttydPid)
     }
 
+    // MARK: - Diagnostics
+
+    func testDeploymentDiagnosticsResponseDecoding() throws {
+        let json = """
+        {
+            "events": [
+                {
+                    "id": 101,
+                    "timestamp": 1778760000000,
+                    "level": "info",
+                    "event": "launch.requested",
+                    "source": "core.launch",
+                    "correlation_id": "launch-abc",
+                    "owner": "org",
+                    "repo": "alpha",
+                    "issue_number": 42,
+                    "target_type": "issue",
+                    "target_number": 42,
+                    "deployment_id": 9001,
+                    "session_name": "issuectl-alpha-42",
+                    "ttyd_port": null,
+                    "ttyd_pid": null,
+                    "status": "starting",
+                    "message": "Launch requested.",
+                    "data": {"agent": "codex", "attempt": 1}
+                },
+                {
+                    "id": 102,
+                    "timestamp": 1778760002500,
+                    "level": "error",
+                    "event": "launch.spawn_failed",
+                    "source": "core.launch",
+                    "correlation_id": "launch-abc",
+                    "owner": "org",
+                    "repo": "alpha",
+                    "issue_number": 42,
+                    "target_type": "issue",
+                    "target_number": 42,
+                    "deployment_id": 9001,
+                    "session_name": "issuectl-alpha-42",
+                    "ttyd_port": 19001,
+                    "ttyd_pid": 333,
+                    "status": "failed",
+                    "message": "tmux failed to create session.",
+                    "data": {"exit_code": 1, "retryable": false}
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertEqual(response.events.count, 2)
+        XCTAssertEqual(response.events[0].level, .info)
+        XCTAssertEqual(response.events[0].correlationId, "launch-abc")
+        XCTAssertEqual(response.events[0].targetType, .issue)
+        XCTAssertEqual(response.events[0].data?["agent"]?.stringValue, "codex")
+        XCTAssertEqual(response.events[0].data?["attempt"]?.integerValue, 1)
+        XCTAssertEqual(response.events[1].level, .error)
+        XCTAssertEqual(response.events[1].data?["retryable"]?.boolValue, false)
+        XCTAssertEqual(response.firstFailure?.event, "launch.spawn_failed")
+        XCTAssertEqual(response.summaryText, "2 diagnostic events, first failure: launch.spawn_failed")
+    }
+
+    func testDeploymentDiagnosticsEmptySummary() throws {
+        let json = """
+        {"events": [], "from_cache": false, "cached_at": null}
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertNil(response.firstFailure)
+        XCTAssertEqual(response.summaryText, "No diagnostic events recorded yet")
+    }
+
+    func testDeploymentDiagnosticsSummaryUsesServerSummaryAndFilters() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 101,
+              "timestamp": 1780000000000,
+              "level": "info",
+              "event": "deployment.activated",
+              "message": "Deployment activated",
+              "deployment_id": 42,
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "metadata": {"ttydPort": 49152}
+            }
+          ],
+          "filters": {
+            "deployment_id": 42,
+            "target_type": "issue",
+            "target_number": 560,
+            "limit": 1
+          },
+          "summary": {
+            "count": 3,
+            "level_counts": {"info": 1, "warn": 1, "error": 1},
+            "latest_timestamp": 1780000000000,
+            "latest_timestamp_iso": "2026-05-29T20:26:40.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertEqual(response.summaryText, "3 diagnostic events, 1 error")
+        XCTAssertEqual(response.summaryRows.map(\.0), ["Events", "Errors", "Warnings", "Info", "Limit", "Latest"])
+        XCTAssertEqual(response.summaryRows.map(\.1), ["3", "1", "1", "1", "Latest 1", "2026-05-29T20:26:40.000Z"])
+        XCTAssertEqual(response.filters?.targetDescription, "Issue #560")
+        XCTAssertEqual(response.filters?.limitDescription, "Latest 1")
+        XCTAssertEqual(response.eventLimitNotice, "Showing latest 1 diagnostic event")
+        XCTAssertTrue(response.hasFailure)
+        XCTAssertTrue(response.events[0].metadataRows.contains { $0.0 == "ttydPort" && $0.1 == "49152" })
+    }
+
+    func testDeploymentDiagnosticsLimitNoticeOnlyAppearsWhenResultsHitLimit() throws {
+        let json = """
+        {
+          "events": [
+            {"id": 101, "timestamp": 1780000000000, "level": "info", "event": "deployment.activated", "message": "Deployment activated"},
+            {"id": 102, "timestamp": 1780000001000, "level": "info", "event": "deployment.visible", "message": "Deployment visible"}
+          ],
+          "filters": {"deployment_id": null, "target_type": "pr", "target_number": 44, "limit": 12},
+          "summary": {"count": 2, "level_counts": {"info": 2}, "latest_timestamp": 1780000001000, "latest_timestamp_iso": "2026-05-29T20:26:41.000Z"}
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+
+        XCTAssertNil(response.eventLimitNotice)
+    }
+
     // MARK: - ActiveDeployment
 
     func testActiveDeploymentDecoding() throws {
@@ -615,8 +791,90 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(deployment.owner, "neonwatty")
         XCTAssertEqual(deployment.repoName, "issuectl")
         XCTAssertEqual(deployment.repoFullName, "neonwatty/issuectl")
+        XCTAssertEqual(deployment.targetType, .issue)
+        XCTAssertEqual(deployment.targetNumber, 7)
+        XCTAssertEqual(deployment.targetLabel, "#7")
         XCTAssertNotNil(deployment.launchedDate)
         XCTAssertFalse(deployment.runningDuration.isEmpty)
+    }
+
+    func testActiveDeploymentDecodesPrTargetWithoutIssueNumber() throws {
+        let json = """
+        {
+            "id": 6,
+            "repo_id": 42,
+            "issue_number": null,
+            "target_type": "pr",
+            "target_number": 44,
+            "agent": "codex",
+            "terminal_backend": "ttyd",
+            "triggered_by": "webhook",
+            "terminal_reason": "review",
+            "parent_deployment_id": null,
+            "webhook_depth": 1,
+            "idle_since": null,
+            "branch_name": "feature/webhook-review",
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/wt",
+            "linked_pr_number": null,
+            "state": "active",
+            "launched_at": "2026-04-27T06:00:00Z",
+            "ended_at": null,
+            "ttyd_port": 7684,
+            "ttyd_pid": 1000,
+            "owner": "neonwatty",
+            "repo_name": "issuectl"
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(ActiveDeployment.self, from: json)
+        XCTAssertEqual(deployment.issueNumber, 44)
+        XCTAssertEqual(deployment.targetType, .pr)
+        XCTAssertEqual(deployment.targetNumber, 44)
+        XCTAssertEqual(deployment.agent, .codex)
+        XCTAssertEqual(deployment.terminalBackend, .ttyd)
+        XCTAssertEqual(deployment.triggeredBy, .webhook)
+        XCTAssertEqual(deployment.terminalReason, "review")
+        XCTAssertEqual(deployment.webhookDepth, 1)
+        XCTAssertEqual(deployment.targetLabel, "PR #44")
+        XCTAssertEqual(deployment.targetTitle, "neonwatty/issuectl PR #44")
+        XCTAssertFalse(deployment.isIssueTarget)
+    }
+
+    func testActiveDeploymentReviewSessionPresentationIncludesProvenance() throws {
+        let json = """
+        {
+            "id": 6,
+            "repo_id": 42,
+            "issue_number": null,
+            "target_type": "pr",
+            "target_number": 44,
+            "agent": "codex",
+            "terminal_backend": "pty_bridge",
+            "triggered_by": "comment_command",
+            "terminal_reason": "review",
+            "parent_deployment_id": 5,
+            "webhook_depth": 2,
+            "idle_since": null,
+            "branch_name": "feature/webhook-review",
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/wt",
+            "linked_pr_number": null,
+            "state": "active",
+            "launched_at": "2026-04-27T06:00:00Z",
+            "ended_at": null,
+            "ttyd_port": 7684,
+            "ttyd_pid": 1000,
+            "owner": "neonwatty",
+            "repo_name": "issuectl"
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(ActiveDeployment.self, from: json)
+        XCTAssertEqual(deployment.sessionRoleTitle, "PR review session")
+        XCTAssertEqual(deployment.provenanceSummary, "Comment command - Codex - follow-up #5 - depth 2")
+        XCTAssertTrue(deployment.matchesPullRequest(owner: "neonwatty", repo: "issuectl", number: 44))
+        XCTAssertFalse(deployment.matchesPullRequest(owner: "neonwatty", repo: "issuectl", number: 45))
     }
 
     func testActiveDeploymentsResponseDecoding() throws {
@@ -638,6 +896,24 @@ final class ModelDecodingTests: XCTestCase {
                     "ttyd_pid": 100,
                     "owner": "org",
                     "repo_name": "app"
+                },
+                {
+                    "id": 2,
+                    "repo_id": 10,
+                    "issue_number": null,
+                    "target_type": "pr",
+                    "target_number": 12,
+                    "branch_name": "review-12",
+                    "workspace_mode": "clone",
+                    "workspace_path": "/tmp/pr",
+                    "linked_pr_number": null,
+                    "state": "active",
+                    "launched_at": "2026-04-27T01:00:00Z",
+                    "ended_at": null,
+                    "ttyd_port": null,
+                    "ttyd_pid": null,
+                    "owner": "org",
+                    "repo_name": "app"
                 }
             ],
             "from_cache": true,
@@ -646,10 +922,145 @@ final class ModelDecodingTests: XCTestCase {
         """.data(using: .utf8)!
 
         let response = try decoder.decode(ActiveDeploymentsResponse.self, from: json)
-        XCTAssertEqual(response.deployments.count, 1)
+        XCTAssertEqual(response.deployments.count, 2)
         XCTAssertEqual(response.deployments[0].repoFullName, "org/app")
+        XCTAssertEqual(response.deployments[1].targetLabel, "PR #12")
         XCTAssertTrue(response.fromCache)
         XCTAssertEqual(response.cachedAt, "2026-04-27T09:00:00Z")
+    }
+
+    func testWorkbenchPayloadDecoding() throws {
+        let json = """
+        {
+            "repos": [
+                {
+                    "id": 1,
+                    "owner": "org",
+                    "name": "alpha",
+                    "localPath": "/tmp/alpha",
+                    "branchPattern": null,
+                    "autoLaunchIssues": true,
+                    "autoReviewPrs": true,
+                    "issueAgent": "codex",
+                    "reviewAgent": "claude",
+                    "webhookId": 123,
+                    "webhookPayloadMode": "metadata",
+                    "badgeCount": 2,
+                    "deployedCount": 1,
+                    "launchAgent": "codex",
+                    "terminalBackendDefault": "ttyd",
+                    "issueError": null,
+                    "issuesFromCache": false,
+                    "issuesCachedAt": null,
+                    "priorities": [{"repoId": 1, "issueNumber": 101, "priority": "high", "updatedAt": 1777440000}],
+                    "deployments": [
+                        {
+                            "id": 9001,
+                            "repoId": 1,
+                            "issueNumber": 101,
+                            "targetType": "issue",
+                            "targetNumber": 101,
+                            "agent": "codex",
+                            "terminalBackend": "ttyd",
+                            "triggeredBy": "manual",
+                            "terminalReason": null,
+                            "branchName": "issue-101",
+                            "workspaceMode": "worktree",
+                            "workspacePath": "/tmp/alpha",
+                            "linkedPrNumber": null,
+                            "state": "active",
+                            "launchedAt": "2026-04-27T01:00:00Z",
+                            "endedAt": null,
+                            "ttydPort": 19001,
+                            "ttydPid": 12001,
+                            "owner": "org",
+                            "repoName": "alpha"
+                        }
+                    ],
+                    "recentCompletions": [],
+                    "webhookEvents": [
+                        {
+                            "id": 1,
+                            "deliveryId": "d1",
+                            "eventType": "issues",
+                            "action": "labeled",
+                            "senderLogin": "alice",
+                            "targetType": "issue",
+                            "targetNumber": 101,
+                            "receivedAt": 1777440000,
+                            "intentId": 5
+                        }
+                    ],
+                    "prReviews": [
+                        {
+                            "id": 10,
+                            "repoId": 1,
+                            "prNumber": 44,
+                            "deploymentId": 9002,
+                            "reviewedFromSha": null,
+                            "reviewedToSha": "abc",
+                            "headRepoFullName": "org/alpha",
+                            "headRef": "feature",
+                            "status": "in_progress",
+                            "triggeredBy": "webhook",
+                            "resultJson": null,
+                            "startedAt": 1777440000,
+                            "completedAt": null
+                        }
+                    ],
+                    "previews": {
+                        "19001": {"lines": ["running"], "lastUpdatedMs": 1777800000000, "lastChangedMs": null, "status": "active"}
+                    },
+                    "issues": [
+                        {
+                            "number": 101,
+                            "title": "Launch work",
+                            "state": "open",
+                            "labels": ["issuectl:auto-launch"],
+                            "updatedAt": "2026-04-27T01:00:00Z",
+                            "priority": "high",
+                            "hasActiveDeployment": true,
+                            "htmlUrl": "https://github.com/org/alpha/issues/101",
+                            "authorLogin": "alice"
+                        }
+                    ]
+                }
+            ],
+            "deployments": [],
+            "previews": {},
+            "settings": {"launch_agent": "codex"},
+            "health": {"ok": true, "version": "ui-test", "timestamp": "2026-04-27T00:00:00Z", "error": null},
+            "user": {"login": "alice", "error": null},
+            "generatedAt": "2026-04-27T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+
+        let payload = try decoder.decode(WorkbenchPayload.self, from: json)
+        XCTAssertTrue(payload.drafts.isEmpty)
+        XCTAssertEqual(payload.repos.count, 1)
+        XCTAssertEqual(payload.repos[0].fullName, "org/alpha")
+        XCTAssertTrue(payload.repos[0].autoLaunchIssues)
+        XCTAssertEqual(payload.repos[0].issues[0].priority, .high)
+        XCTAssertEqual(payload.repos[0].deployments[0].targetLabel, "#101")
+        XCTAssertEqual(payload.repos[0].webhookEvents[0].targetType, .issue)
+        XCTAssertEqual(payload.repos[0].prReviews[0].triggeredBy, .webhook)
+        XCTAssertEqual(payload.user.login, "alice")
+    }
+
+    func testAutomationParityWorkbenchFixtureDecoding() throws {
+        let fixture = try loadFixtureData("automation-parity-workbench")
+
+        let payload = try decoder.decode(WorkbenchPayload.self, from: fixture)
+
+        XCTAssertEqual(payload.repos.count, 2)
+        XCTAssertEqual(payload.deployments.compactMap(\.triggeredBy), [.manual, .webhook, .commentCommand])
+        XCTAssertEqual(payload.deployments.map(\.targetType), [.issue, .issue, .pr])
+        XCTAssertEqual(payload.deployments[1].parentDeploymentId, 9401)
+        XCTAssertEqual(payload.deployments[1].webhookDepth, 1)
+        XCTAssertEqual(payload.previews["19002"]?.status, .idle)
+        XCTAssertEqual(payload.repos[0].webhookEvents[0].targetType, .issue)
+        XCTAssertEqual(payload.repos[0].prReviews[0].triggeredBy, .webhook)
+        XCTAssertEqual(payload.repos[1].autoLaunchIssues, false)
     }
 
     func testSessionPreviewsResponseDecoding() throws {
@@ -681,6 +1092,15 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(response.previewsByPort[7701]?.status, .unavailable)
         XCTAssertEqual(response.previewsByPort[7701]?.status.displayName, "Unavailable")
         XCTAssertEqual(response.previewsByPort[7701]?.status.accessibilityName, "preview unavailable")
+    }
+
+    private func loadFixtureData(_ name: String) throws -> Data {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let fixtureURL = testFile
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures")
+            .appendingPathComponent("\(name).json")
+        return try Data(contentsOf: fixtureURL)
     }
 
     // MARK: - GitHubAccessibleRepo
@@ -839,8 +1259,10 @@ final class ModelDecodingTests: XCTestCase {
         let json = """
         {
             "success": true,
+            "correlation_id": "launch-correlation",
             "deployment_id": 99,
-            "ttyd_port": 7682,
+            "terminal_backend": "pty_bridge",
+            "ttyd_port": null,
             "error": null,
             "label_warning": "Label 'priority:high' not found on repo"
         }
@@ -848,10 +1270,31 @@ final class ModelDecodingTests: XCTestCase {
 
         let response = try decoder.decode(LaunchResponse.self, from: json)
         XCTAssertTrue(response.success)
+        XCTAssertEqual(response.correlationId, "launch-correlation")
         XCTAssertEqual(response.deploymentId, 99)
-        XCTAssertEqual(response.ttydPort, 7682)
+        XCTAssertEqual(response.terminalBackend, .ptyBridge)
+        XCTAssertNil(response.ttydPort)
         XCTAssertNil(response.error)
         XCTAssertEqual(response.labelWarning, "Label 'priority:high' not found on repo")
+
+        let deployment = try XCTUnwrap(response.activeDeployment(
+            repoId: 7,
+            issueNumber: 123,
+            agent: .codex,
+            branchName: "issue-123",
+            workspaceMode: .worktree,
+            workspacePath: "/tmp/issue-123",
+            linkedPrNumber: nil,
+            launchedAt: "2026-05-31T22:00:00Z",
+            owner: "mean-weasel",
+            repoName: "issuectl"
+        ))
+        XCTAssertEqual(deployment.id, 99)
+        XCTAssertEqual(deployment.correlationId, "launch-correlation")
+        XCTAssertEqual(deployment.terminalBackend, .ptyBridge)
+        XCTAssertNil(deployment.ttydPort)
+        XCTAssertFalse(deployment.canOpenTerminalInApp)
+        XCTAssertEqual(deployment.terminalMetricValue, "PTY bridge")
     }
 
     func testLaunchResponseFailure() throws {
@@ -1029,5 +1472,632 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertTrue(response.pulls.isEmpty)
         XCTAssertTrue(response.fromCache)
         XCTAssertEqual(response.cachedAt, "2026-04-27T00:00:00Z")
+    }
+
+    // MARK: - Automation contracts
+
+    func testEnrichedDeploymentDecodingPreservesAutomationFields() throws {
+        let json = """
+        {
+            "id": 42,
+            "repo_id": 7,
+            "issue_number": null,
+            "target_type": "pr",
+            "target_number": 88,
+            "agent": "codex",
+            "terminal_backend": "pty_bridge",
+            "triggered_by": "comment_command",
+            "terminal_reason": "completed",
+            "parent_deployment_id": 12,
+            "webhook_depth": 1,
+            "idle_since": null,
+            "branch_name": "review/pr-88",
+            "workspace_mode": "worktree",
+            "workspace_path": "/tmp/issuectl/pr-88",
+            "linked_pr_number": 88,
+            "state": "pending",
+            "launched_at": "2026-05-29T10:00:00.000Z",
+            "ended_at": null,
+            "completion_token": "token-redacted",
+            "completion_result_json": "{\\"status\\":\\"completed\\",\\"summary\\":\\"Reviewed changes.\\"}",
+            "notification_sent_at": "2026-05-29T10:05:00.000Z",
+            "ttyd_port": null,
+            "ttyd_pid": null,
+            "owner": "org",
+            "repo_name": "alpha"
+        }
+        """.data(using: .utf8)!
+
+        let deployment = try decoder.decode(ActiveDeployment.self, from: json)
+        XCTAssertEqual(deployment.targetType, .pr)
+        XCTAssertEqual(deployment.targetNumber, 88)
+        XCTAssertEqual(deployment.issueNumber, 88)
+        XCTAssertEqual(deployment.state, .pending)
+        XCTAssertEqual(deployment.triggeredBy, .commentCommand)
+        XCTAssertEqual(deployment.parentDeploymentId, 12)
+        XCTAssertEqual(deployment.completionToken, "token-redacted")
+        XCTAssertEqual(deployment.completionResultJson, #"{"status":"completed","summary":"Reviewed changes."}"#)
+        XCTAssertEqual(deployment.notificationSentAt, "2026-05-29T10:05:00.000Z")
+    }
+
+    func testWebhookEventDecodingFromAutomationFixture() throws {
+        let json = """
+        {
+            "events": [
+                {
+                    "id": 1001,
+                    "delivery_id": "delivery-1",
+                    "repo_id": 7,
+                    "event_type": "pull_request",
+                    "action": "synchronize",
+                    "sender_login": "octocat",
+                    "target_type": "pr",
+                    "target_number": 88,
+                    "payload_json": "{\\"pull_request\\":{\\"number\\":88}}",
+                    "received_at": 1777440000,
+                    "intent_id": 55
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(WebhookEventsResponse.self, from: json)
+        XCTAssertEqual(response.events.count, 1)
+        XCTAssertEqual(response.events[0].repoId, 7)
+        XCTAssertEqual(response.events[0].targetType, .pr)
+        XCTAssertEqual(response.events[0].payloadJson, #"{"pull_request":{"number":88}}"#)
+        XCTAssertFalse(response.fromCache)
+    }
+
+    func testReviewRunDecodingFromAutomationFixture() throws {
+        let json = """
+        {
+            "review_runs": [
+                {
+                    "id": 55,
+                    "repo_id": 7,
+                    "pr_number": 88,
+                    "deployment_id": 42,
+                    "started_head_sha": "abc123",
+                    "completed_head_sha": "def456",
+                    "review_base_sha": "base999",
+                    "reviewed_from_sha": "abc123",
+                    "reviewed_to_sha": "def456",
+                    "head_repo_full_name": "org/alpha",
+                    "head_ref": "feature/review",
+                    "status": "completed",
+                    "triggered_by": "webhook",
+                    "result_json": "{\\"summary\\":\\"No regressions\\",\\"fixedFindingCount\\":1}",
+                    "started_at": 1777440000,
+                    "completed_at": 1777440300,
+                    "deployment": {
+                        "id": 42,
+                        "repo_id": 7,
+                        "target_type": "pr",
+                        "target_number": 88,
+                        "target_label": "PR #88",
+                        "issue_number": null,
+                        "branch_name": "feature/review",
+                        "agent": "claude",
+                        "workspace_mode": "worktree",
+                        "workspace_path": "/tmp/review",
+                        "linked_pr_number": null,
+                        "state": "active",
+                        "terminal_backend": "ttyd",
+                        "triggered_by": "webhook",
+                        "parent_deployment_id": null,
+                        "webhook_depth": 0,
+                        "launched_at": "2026-05-29 02:53:42",
+                        "ended_at": null,
+                        "terminal_reason": null,
+                        "ttyd_port": 7717,
+                        "idle_since": null
+                    }
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunsResponse.self, from: json)
+        XCTAssertEqual(response.reviewRuns.count, 1)
+        XCTAssertEqual(response.reviewRuns[0].status, .completed)
+        XCTAssertEqual(response.reviewRuns[0].triggeredBy, .webhook)
+        XCTAssertEqual(response.reviewRuns[0].reviewBaseSha, "base999")
+        XCTAssertEqual(response.reviewRuns[0].completedHeadSha, "def456")
+        XCTAssertNil(response.reviewRuns[0].deployment?.issueNumber)
+    }
+
+    func testDiagnosticEventDecodingFromAutomationFixture() throws {
+        let json = """
+        {
+            "events": [
+                {
+                    "id": 9001,
+                    "timestamp": 1777440500,
+                    "level": "warn",
+                    "event": "agent.mutation_denied",
+                    "source": "agent.mutation",
+                    "correlation_id": "corr-1",
+                    "owner": "org",
+                    "repo": "alpha",
+                    "issue_number": null,
+                    "target_type": "pr",
+                    "target_number": 88,
+                    "deployment_id": 42,
+                    "session_name": "issuectl-42",
+                    "ttyd_port": null,
+                    "ttyd_pid": null,
+                    "status": "invalid_token",
+                    "message": "Agent mutation denied: invalid_token",
+                    "data": {
+                        "actionType": "push",
+                        "targetType": "pr",
+                        "targetNumber": 88
+                    }
+                }
+            ],
+            "from_cache": false,
+            "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DiagnosticsResponse.self, from: json)
+        XCTAssertEqual(response.events.count, 1)
+        XCTAssertEqual(response.events[0].level, .warn)
+        XCTAssertEqual(response.events[0].targetType, .pr)
+        XCTAssertEqual(response.events[0].data?["actionType"], .string("push"))
+    }
+
+    func testDeploymentDiagnosticsResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 101,
+              "timestamp": 1780000000000,
+              "timestamp_iso": "2026-05-29T20:26:40.000Z",
+              "level": "info",
+              "event": "deployment.activated",
+              "message": "Deployment activated",
+              "deployment_id": 42,
+              "issue_number": 560,
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "metadata": {"ttydPort": 49152}
+            }
+          ],
+          "filters": {
+            "deployment_id": 42,
+            "target_type": null,
+            "target_number": null,
+            "limit": 50
+          },
+          "summary": {
+            "count": 1,
+            "level_counts": {"info": 1},
+            "latest_timestamp": 1780000000000,
+            "latest_timestamp_iso": "2026-05-29T20:26:40.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(DeploymentDiagnosticsResponse.self, from: json)
+        XCTAssertEqual(response.events.count, 1)
+        XCTAssertEqual(response.events[0].deploymentId, 42)
+        XCTAssertEqual(response.events[0].event, "deployment.activated")
+        XCTAssertEqual(response.events[0].targetLabel, "Issue #560")
+        XCTAssertEqual(response.summary?.levelCounts["info"], 1)
+    }
+
+    func testWebhookEventsResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "events": [
+            {
+              "id": 7,
+              "delivery_id": "delivery-1",
+              "repo_id": 1,
+              "repo_full_name": "mean-weasel/issuectl",
+              "owner": "mean-weasel",
+              "repo_name": "issuectl",
+              "event_type": "issues",
+              "action": "labeled",
+              "sender_login": "neonwatty",
+              "target_type": "issue",
+              "target_number": 560,
+              "target_label": "Issue #560",
+              "received_at": 1780000001000,
+              "received_at_iso": "2026-05-29T20:26:41.000Z",
+              "intent_id": 9,
+              "result": "accepted",
+              "result_detail": "queued",
+              "action_id": "auto-session",
+              "intent": {
+                "id": 9,
+                "status": "scheduled",
+                "target_type": "issue",
+                "target_number": 560,
+                "target_label": "Issue #560",
+                "first_signal_at": 1780000001000,
+                "first_signal_at_iso": "2026-05-29T20:26:41.000Z",
+                "last_signal_at": 1780000001000,
+                "last_signal_at_iso": "2026-05-29T20:26:41.000Z",
+                "scheduled_at": 1780000002000,
+                "scheduled_at_iso": "2026-05-29T20:26:42.000Z",
+                "processing_started_at": null,
+                "processing_started_at_iso": null,
+                "lease_expires_at": null,
+                "lease_expires_at_iso": null,
+                "resolved_at": null,
+                "resolved_at_iso": null,
+                "generation": 1,
+                "requested_agent": "codex",
+                "review_mode": null,
+                "signal_count": 1,
+                "deployment_id": null,
+                "failure_reason": null
+              }
+            }
+          ],
+          "repos": [{"id": 1, "full_name": "mean-weasel/issuectl"}],
+          "filters": {"repo": "mean-weasel/issuectl", "target_type": "issue", "target_number": 560, "limit": 50},
+          "summary": {
+            "count": 1,
+            "latest_received_at": 1780000001000,
+            "latest_received_at_iso": "2026-05-29T20:26:41.000Z",
+            "result_counts": {"accepted": 1}
+          },
+          "from_cache": false,
+          "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(WebhookEventsResponse.self, from: json)
+        XCTAssertEqual(response.events.first?.targetNumber, 560)
+        XCTAssertEqual(response.events.first?.intent?.requestedAgent, "codex")
+        XCTAssertEqual(response.summary?.resultCounts["accepted"], 1)
+    }
+
+    func testReviewRunsResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "review_runs": [
+            {
+              "id": 33,
+              "repo_id": 1,
+              "repo_full_name": "mean-weasel/issuectl",
+              "owner": "mean-weasel",
+              "repo_name": "issuectl",
+              "pr_number": 563,
+              "deployment_id": 42,
+              "started_head_sha": "abcdef123456",
+              "completed_head_sha": "abcdef123456",
+              "review_base_sha": "1111111",
+              "reviewed_from_sha": "2222222",
+              "reviewed_to_sha": "abcdef123456",
+              "head_repo_full_name": "mean-weasel/issuectl",
+              "head_ref": "codex/ios-repo-automation-list-api",
+              "status": "completed",
+              "triggered_by": "webhook",
+              "result": {"summary": "No issues found", "findingCount": 0},
+              "summary": "No issues found",
+              "finding_count": 0,
+              "range_label": "2222222..abcdef1",
+              "detail_href": "/reviews/33",
+              "started_at": 1780000003000,
+              "started_at_iso": "2026-05-29T20:26:43.000Z",
+              "completed_at": 1780000004000,
+              "completed_at_iso": "2026-05-29T20:26:44.000Z",
+              "deployment": null
+            }
+          ],
+          "from_cache": false,
+          "cached_at": null
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunsResponse.self, from: json)
+        XCTAssertEqual(response.reviewRuns.count, 1)
+        XCTAssertEqual(response.reviewRuns[0].status, .completed)
+        XCTAssertEqual(response.reviewRuns[0].summary, "No issues found")
+        XCTAssertEqual(response.reviewRuns[0].findingCount, 0)
+    }
+
+    func testGlobalReviewRunsResponseDecodesReviewsKeyFromLiveContract() throws {
+        let json = """
+        {
+          "reviews": [
+            {
+              "id": 44,
+              "repo_id": 1,
+              "repo_full_name": "mean-weasel/issuectl",
+              "owner": "mean-weasel",
+              "repo_name": "issuectl",
+              "pr_number": 563,
+              "deployment_id": null,
+              "started_head_sha": "abcdef123456",
+              "completed_head_sha": "abcdef123456",
+              "review_base_sha": "1111111",
+              "reviewed_from_sha": null,
+              "reviewed_to_sha": "abcdef123456",
+              "head_repo_full_name": "mean-weasel/issuectl",
+              "head_ref": "codex/ios-global-automation-feed",
+              "status": "completed",
+              "triggered_by": "webhook",
+              "result": {"summary": "No issues found"},
+              "summary": "No issues found",
+              "finding_count": 0,
+              "range_label": "full abcdef1",
+              "detail_href": "/reviews/44",
+              "started_at": 1780000003000,
+              "started_at_iso": "2026-05-29T20:26:43.000Z",
+              "completed_at": 1780000004000,
+              "completed_at_iso": "2026-05-29T20:26:44.000Z",
+              "deployment": null
+            }
+          ],
+          "repos": [{"id": 1, "full_name": "mean-weasel/issuectl"}],
+          "filters": {"repo": null, "pr": null, "status": "all", "limit": 50},
+          "summary": {
+            "count": 1,
+            "active_count": 0,
+            "completed_count": 1,
+            "failed_count": 0,
+            "latest_started_at": 1780000003000,
+            "latest_started_at_iso": "2026-05-29T20:26:43.000Z"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunsResponse.self, from: json)
+        XCTAssertEqual(response.reviewRuns.count, 1)
+        XCTAssertEqual(response.reviewRuns[0].repoFullName, "mean-weasel/issuectl")
+        XCTAssertEqual(response.reviewRuns[0].status, .completed)
+    }
+
+    func testReviewRunDetailResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "review": {
+            "id": 33,
+            "repo_id": 1,
+            "repo_full_name": "mean-weasel/issuectl",
+            "owner": "mean-weasel",
+            "repo_name": "issuectl",
+            "pr_number": 563,
+            "deployment_id": 42,
+            "started_head_sha": "abcdef123456",
+            "completed_head_sha": "abcdef123456",
+            "review_base_sha": "1111111",
+            "reviewed_from_sha": "2222222",
+            "reviewed_to_sha": "abcdef123456",
+            "head_repo_full_name": "mean-weasel/issuectl",
+            "head_ref": "codex/ios-review-detail-parity",
+            "status": "completed",
+            "triggered_by": "webhook",
+            "result": {"summary": "No issues found", "findingCount": 0},
+            "summary": "No issues found",
+            "finding_count": 0,
+            "range_label": "2222222..abcdef1",
+            "detail_href": "/reviews/33",
+            "started_at": 1780000003000,
+            "started_at_iso": "2026-05-29T20:26:43.000Z",
+            "completed_at": 1780000004000,
+            "completed_at_iso": "2026-05-29T20:26:44.000Z",
+            "deployment": null
+          },
+          "repo": {"id": 1, "full_name": "mean-weasel/issuectl", "owner": "mean-weasel", "name": "issuectl"},
+          "deployment": null,
+          "lineage": [
+            {
+              "id": 33,
+              "active": true,
+              "label": "2222222..abcdef1",
+              "status": "completed",
+              "triggered_by": "webhook",
+              "deployment_id": 42,
+              "reviewed_from_sha": "2222222",
+              "reviewed_to_sha": "abcdef123456",
+              "result": {"summary": "No issues found"},
+              "summary": "No issues found",
+              "started_at": 1780000003000,
+              "started_at_iso": "2026-05-29T20:26:43.000Z",
+              "completed_at": 1780000004000,
+              "completed_at_iso": "2026-05-29T20:26:44.000Z"
+            }
+          ],
+          "diagnostics": {
+            "events": [
+              {
+                "id": 52,
+                "timestamp": 1780000003000,
+                "timestamp_iso": "2026-05-29T20:26:43.000Z",
+                "level": "info",
+                "event": "webhook.pr_launched",
+                "target_type": "pr",
+                "target_number": 563,
+                "target_label": "PR #563",
+                "deployment_id": 42,
+                "message": "Review launched"
+              }
+            ],
+            "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 1},
+            "summary": {"count": 1, "level_counts": {"info": 1}, "latest_timestamp": 1780000003000, "latest_timestamp_iso": "2026-05-29T20:26:43.000Z"}
+          },
+          "findings": [
+            {
+              "id": "Sources/App.swift-42",
+              "title": "Nil branch is not handled",
+              "body": "Guard the optional value before rendering.",
+              "path": "Sources/App.swift",
+              "line": 42,
+              "severity": "warning",
+              "html_url": "https://github.com/mean-weasel/issuectl/pull/563/files#diff-app"
+            }
+          ],
+          "banners": [{"tone": "info", "title": "Follow-up requested", "body": "A newer PR head was coalesced."}],
+          "metadata": {
+            "current_review_preamble": null,
+            "trigger_event": {
+              "id": 52,
+              "timestamp": 1780000003000,
+              "level": "info",
+              "event": "webhook.pr_launched",
+              "target_type": "pr",
+              "target_number": 563,
+              "target_label": "PR #563"
+            }
+          },
+          "actions": {"can_retry": true, "can_full_rerun": true, "disabled_reason": null, "mobile_write_actions_enabled": true},
+          "links": {
+            "github_pr": "https://github.com/mean-weasel/issuectl/pull/563",
+            "github_review": null,
+            "github_review_files": "https://github.com/mean-weasel/issuectl/pull/563/files",
+            "workbench": "/workbench?repo=mean-weasel%2Fissuectl",
+            "repo_settings": "/repos/mean-weasel/issuectl/settings",
+            "sessions": "/sessions?tab=reviews",
+            "webhook_logs": "/logs/webhooks",
+            "diagnostics_cli": "pnpm --dir packages/cli exec issuectl diag show --pr mean-weasel/issuectl#563"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(ReviewRunDetailResponse.self, from: json)
+        XCTAssertEqual(response.review.id, 33)
+        XCTAssertEqual(response.repo.fullName, "mean-weasel/issuectl")
+        XCTAssertEqual(response.lineage.first?.active, true)
+        XCTAssertEqual(response.diagnostics.summaryText, "1 diagnostic event, no failure recorded")
+        XCTAssertEqual(response.diagnostics.events.first?.targetLabel, "PR #563")
+        XCTAssertEqual(response.findings.first?.locationLabel, "Sources/App.swift:42")
+        XCTAssertEqual(response.findings.first?.title, "Nil branch is not handled")
+        XCTAssertEqual(response.banners.first?.tone, .info)
+        XCTAssertTrue(response.actions.mobileWriteActionsEnabled)
+        XCTAssertEqual(response.links.githubPr, "https://github.com/mean-weasel/issuectl/pull/563")
+    }
+
+    func testSessionsOverviewResponseDecodingFromLiveContract() throws {
+        let json = """
+        {
+          "overview": {
+            "initialized": true,
+            "filters": {
+              "tab": "reviews",
+              "q": "PR #563",
+              "repo": "mean-weasel/issuectl",
+              "trigger": "webhook",
+              "state": "all",
+              "status": "completed"
+            },
+            "repos": [{"id": 1, "full_name": "mean-weasel/issuectl"}],
+            "session_groups": [
+              {
+                "key": "1:pr:563",
+                "repo_full_name": "mean-weasel/issuectl",
+                "target_type": "pr",
+                "target_number": 563,
+                "target_label": "PR #563",
+                "matching_session_count": 1,
+                "sessions": [
+                  {
+                    "id": 42,
+                    "repo_id": 1,
+                    "repo_full_name": "mean-weasel/issuectl",
+                    "owner": "mean-weasel",
+                    "repo_name": "issuectl",
+                    "target_type": "pr",
+                    "target_number": 563,
+                    "target_label": "PR #563",
+                    "issue_number": null,
+                    "branch_name": "pr-563-review",
+                    "agent": "codex",
+                    "workspace_mode": "worktree",
+                    "workspace_path": "/tmp/review",
+                    "linked_pr_number": null,
+                    "triggered_by": "webhook",
+                    "parent_deployment_id": null,
+                    "child_deployment_count": 0,
+                    "webhook_depth": 0,
+                    "terminal_reason": "review",
+                    "terminal_backend": "pty_bridge",
+                    "launched_at": "2026-05-29 20:26:43",
+                    "ended_at": null,
+                    "ttyd_port": null,
+                    "idle_since": null,
+                    "preview": null,
+                    "provenance_label": "webhook · root session",
+                    "elapsed_label": "5m"
+                  }
+                ]
+              }
+            ],
+            "review_groups": [
+              {
+                "key": "1:563",
+                "repo_full_name": "mean-weasel/issuectl",
+                "owner": "mean-weasel",
+                "repo_name": "issuectl",
+                "pr_number": 563,
+                "matching_run_count": 1,
+                "runs": [
+                  {
+                    "id": 33,
+                    "repo_id": 1,
+                    "repo_full_name": "mean-weasel/issuectl",
+                    "owner": "mean-weasel",
+                    "repo_name": "issuectl",
+                    "pr_number": 563,
+                    "deployment_id": 42,
+                    "started_head_sha": "abcdef123456",
+                    "completed_head_sha": "abcdef123456",
+                    "review_base_sha": "1111111",
+                    "reviewed_from_sha": "2222222",
+                    "reviewed_to_sha": "abcdef123456",
+                    "head_repo_full_name": "mean-weasel/issuectl",
+                    "head_ref": "codex/ios-repo-automation-list-api",
+                    "status": "completed",
+                    "triggered_by": "webhook",
+                    "result": {"summary": "No issues found", "findingCount": 0},
+                    "result_json": "{\\"summary\\":\\"No issues found\\"}",
+                    "summary": "No issues found",
+                    "finding_count": 0,
+                    "range_label": "2222222..abcdef1",
+                    "detail_href": "/reviews/33",
+                    "provenance_label": "webhook · session #42",
+                    "elapsed_label": "1m",
+                    "started_at": 1780000003000,
+                    "completed_at": 1780000004000,
+                    "deployment": null
+                  }
+                ]
+              }
+            ],
+            "summary": {"active_sessions": 1, "ended_sessions": 1, "review_runs": 1, "active_review_runs": 0}
+          },
+          "diagnostics": {
+            "events": [],
+            "filters": {"deployment_id": null, "target_type": "pr", "target_number": 563, "limit": 20},
+            "summary": {"count": 0, "level_counts": {}, "latest_timestamp": null, "latest_timestamp_iso": null}
+          },
+          "generated_at": "2026-05-30T00:00:00.000Z"
+        }
+        """.data(using: .utf8)!
+
+        let response = try decoder.decode(SessionsOverviewResponse.self, from: json)
+        XCTAssertEqual(response.overview.filters.tab, .reviews)
+        XCTAssertEqual(response.overview.filters.trigger, .webhook)
+        XCTAssertEqual(response.overview.summary.endedSessions, 1)
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.sessionRoleTitle, "PR review session")
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.durationLabel, "5m")
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.terminalBackend, .ptyBridge)
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.terminalMetricValue, "PTY bridge")
+        XCTAssertFalse(response.overview.sessionGroups.first?.sessions.first?.canOpenTerminalInApp ?? true)
+        XCTAssertEqual(response.overview.sessionGroups.first?.sessions.first?.activeDeployment.terminalBackend, .ptyBridge)
+        XCTAssertEqual(response.overview.reviewGroups.first?.runs.first?.statusLabel, "Completed")
+        XCTAssertEqual(response.diagnostics?.filters?.targetNumber, 563)
     }
 }

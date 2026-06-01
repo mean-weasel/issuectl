@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(OfflineSyncService.self) private var offlineSync
     @State private var selectedTab: AppTab = .today
     @State private var showSettings = false
+    @State private var pendingRoute: AppRoute?
     private let launchNotificationSyncDelay: Duration = .seconds(1)
 
     init() {
@@ -34,13 +35,24 @@ struct ContentView: View {
                         .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("today-tab")
+                    Tab("Board", systemImage: "rectangle.grid.2x2", value: AppTab.board) {
+                        BoardView(onShowSettings: { showSettings = true })
+                            .ignoresSafeArea(.container, edges: .bottom)
+                    }
+                    .accessibilityIdentifier("board-tab")
                     Tab("Issues", systemImage: "list.bullet", value: AppTab.issues) {
-                        IssueListView(onShowSettings: { showSettings = true })
+                        IssueListView(
+                            onShowSettings: { showSettings = true },
+                            route: $pendingRoute
+                        )
                             .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("issues-tab")
                     Tab("PRs", systemImage: "arrow.triangle.merge", value: AppTab.pullRequests) {
-                        PRListView(onShowSettings: { showSettings = true })
+                        PRListView(
+                            onShowSettings: { showSettings = true },
+                            route: $pendingRoute
+                        )
                             .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("prs-tab")
@@ -58,24 +70,10 @@ struct ContentView: View {
                 .sheet(isPresented: $showSettings) {
                     SettingsView()
                 }
-                .overlay(alignment: .top) {
-                    VStack(spacing: 8) {
-                        OfflineBanner()
-                        OfflineQueueBanner(
-                            pendingCount: offlineSync.pendingCount,
-                            failedCount: offlineSync.failedCount,
-                            isSyncing: offlineSync.isSyncing,
-                            onSync: {
-                                offlineSync.retryFailedActions()
-                                await offlineSync.syncPendingActions()
-                            },
-                            onDismissFailed: {
-                                offlineSync.clearFailedActions()
-                            }
-                        )
+                .overlay(alignment: .bottom) {
+                    if shouldShowStatusBanners {
+                        statusBanners
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
                 }
                 .animation(.easeInOut(duration: 0.3), value: network.isConnected)
                 .animation(.easeInOut(duration: 0.25), value: offlineSync.pendingCount)
@@ -89,9 +87,13 @@ struct ContentView: View {
             Task { await offlineSync.syncPendingActions() }
         }
         .onOpenURL { url in
-            guard let setup = SetupLink(url: url) else { return }
-            try? api.configure(url: setup.serverURL, token: setup.token)
-            Task { await notificationSettings.syncRegistration(apiClient: api) }
+            if let setup = SetupLink(url: url) {
+                try? api.configure(url: setup.serverURL, token: setup.token)
+                Task { await notificationSettings.syncRegistration(apiClient: api) }
+                return
+            }
+            guard let route = AppRoute(url: url) else { return }
+            handle(route)
         }
         .task {
             try? await Task.sleep(for: launchNotificationSyncDelay)
@@ -107,11 +109,62 @@ struct ContentView: View {
             notificationSettings.updateDeviceToken(token)
             Task { await notificationSettings.syncRegistration(apiClient: api) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .notificationResponseReceived)) { notification in
+            guard let route = AppRoute(notificationUserInfo: notification.userInfo ?? [:]) else { return }
+            handle(route)
+        }
+    }
+
+    private var shouldShowStatusBanners: Bool {
+        !network.isConnected || offlineSync.pendingCount > 0 || offlineSync.failedCount > 0 || offlineSync.isSyncing
+    }
+
+    private var statusBanners: some View {
+        VStack(spacing: 8) {
+            OfflineBanner()
+            OfflineQueueBanner(
+                pendingCount: offlineSync.pendingCount,
+                failedCount: offlineSync.failedCount,
+                isSyncing: offlineSync.isSyncing,
+                onSync: {
+                    offlineSync.retryFailedActions()
+                    await offlineSync.syncPendingActions()
+                },
+                onDismissFailed: {
+                    offlineSync.clearFailedActions()
+                }
+            )
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 92)
+        .background(.clear)
+    }
+
+    private func handle(_ route: AppRoute) {
+        switch route {
+        case .issue:
+            selectedTab = .issues
+            pendingRoute = route
+        case .pullRequest:
+            selectedTab = .pullRequests
+            pendingRoute = route
+        case .board:
+            // Board/Sessions focus can consume the preserved route context in follow-up work.
+            selectedTab = .board
+            pendingRoute = nil
+        case .sessions:
+            selectedTab = .active
+            pendingRoute = nil
+        case .review:
+            selectedTab = .active
+            pendingRoute = nil
+        }
     }
 }
 
 private enum AppTab: Hashable {
     case today
+    case board
     case issues
     case pullRequests
     case active

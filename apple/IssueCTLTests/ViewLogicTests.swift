@@ -5,6 +5,63 @@ final class ViewLogicTests: XCTestCase {
 
     // MARK: - iOS Setup Links
 
+    func testAppRouteParsesIssuePath() throws {
+        let url = try XCTUnwrap(URL(string: "/issues/mean-weasel/issuectl/550"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .issue(owner: "mean-weasel", repo: "issuectl", number: 550))
+    }
+
+    func testAppRouteParsesPullRequestPath() throws {
+        let url = try XCTUnwrap(URL(string: "/pulls/mean-weasel/issuectl/44"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .pullRequest(owner: "mean-weasel", repo: "issuectl", number: 44))
+    }
+
+    func testAppRouteParsesCustomSchemeTargetURL() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl://issues/mean-weasel/issuectl/550"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .issue(owner: "mean-weasel", repo: "issuectl", number: 550))
+    }
+
+    func testAppRouteParsesNotificationURLPayload() throws {
+        let route = try XCTUnwrap(AppRoute(notificationUserInfo: [
+            "url": "/pulls/mean-weasel/issuectl/44",
+        ]))
+
+        XCTAssertEqual(route, .pullRequest(owner: "mean-weasel", repo: "issuectl", number: 44))
+    }
+
+    func testAppRouteParsesSessionsRepoQuery() throws {
+        let url = try XCTUnwrap(URL(string: "/sessions?repo=mean-weasel%2Fissuectl"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .sessions(repoFullName: "mean-weasel/issuectl"))
+    }
+
+    func testAppRouteParsesReviewIdentifier() throws {
+        let url = try XCTUnwrap(URL(string: "/reviews/16"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .review(id: "16"))
+    }
+
+    func testAppRouteParsesWorkbenchDeploymentQuery() throws {
+        let url = try XCTUnwrap(URL(string: "/workbench?repo=mean-weasel%2Fissuectl&deployment=113"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .board(repoFullName: "mean-weasel/issuectl", deploymentId: 113))
+    }
+
+    func testAppRouteFallsBackForFuturePaths() throws {
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/sessions"))), .sessions(repoFullName: nil))
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/reviews/review-123"))), .review(id: "review-123"))
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/workbench/kanban"))), .board(repoFullName: nil, deploymentId: nil))
+        XCTAssertNil(AppRoute(url: try XCTUnwrap(URL(string: "/settings"))))
+    }
+
     func testSetupLinkParsesServerURLAndToken() throws {
         let url = try XCTUnwrap(URL(string: "issuectl://setup?serverURL=http%3A%2F%2F192.0.2.10%3A3847&token=abc123"))
         let setup = try XCTUnwrap(SetupLink(url: url))
@@ -60,6 +117,81 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(cached.value.map(\.fullName), ["org/alpha"])
         XCTAssertEqual(cached.cachedAt, "2026-05-01T10:00:00.000Z")
         XCTAssertNil(cache.load([Repo].self, for: "repos", serverURL: "http://two.example"))
+    }
+
+    func testFreshnessStatusDoesNotCallFreshLoadedDataCachedWhenOffline() {
+        let message = freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: false,
+            isNetworkConnected: false,
+            cachedAt: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertEqual(message, "Offline - showing latest loaded today data")
+    }
+
+    func testFreshnessStatusKeepsCachedDataMessageWhenCacheUsed() {
+        let message = freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: true,
+            isNetworkConnected: true,
+            cachedAt: nil
+        )
+
+        XCTAssertEqual(message, "Showing cached today data")
+    }
+
+    func testFreshnessStatusDistinguishesOfflineCachedFallback() {
+        let message = freshnessStatusMessage(
+            kind: "today data",
+            isShowingCachedData: true,
+            isNetworkConnected: false,
+            cachedAt: nil
+        )
+
+        XCTAssertEqual(message, "Offline - showing cached today data")
+    }
+
+    // MARK: - Repo Automation Controls
+
+    func testAutomationDisableConfirmationCopyMatchesServerBehavior() {
+        XCTAssertTrue(editRepoDisableAutomationConfirmationMessage.contains("stops future label-triggered sessions"))
+        XCTAssertTrue(editRepoDisableAutomationConfirmationMessage.contains("ends matching active webhook sessions"))
+    }
+
+    func testWebhookReceiverURLUsesPublicWebhookBaseURL() {
+        XCTAssertEqual(
+            webhookReceiverURL(publicBaseURL: "https://hooks.example.test/", repoId: 42),
+            "https://hooks.example.test/api/webhook/github/42"
+        )
+        XCTAssertNil(webhookReceiverURL(publicBaseURL: "   ", repoId: 42))
+        XCTAssertNil(webhookReceiverURL(publicBaseURL: nil, repoId: 42))
+    }
+
+    func testAutomationLabelCheckMessageReportsMissingLabels() {
+        let labels = [
+            GitHubLabel(name: "issuectl:auto-launch", color: "2f81f7", description: nil),
+            GitHubLabel(name: "bug", color: "d73a4a", description: nil),
+        ]
+
+        XCTAssertEqual(
+            automationLabelCheckMessage(for: labels),
+            "Missing labels: issuectl:auto-review"
+        )
+        XCTAssertEqual(
+            automationLabelCheckMessage(for: [
+                GitHubLabel(name: "issuectl:auto-launch", color: "2f81f7", description: nil),
+                GitHubLabel(name: "issuectl:auto-review", color: "a371f7", description: nil),
+            ]),
+            "Required automation labels are present."
+        )
+    }
+
+    // MARK: - Review Run Actions
+
+    func testReviewRunActionModeRequestedDisplayNames() {
+        XCTAssertEqual(ReviewRunActionMode.retry.requestedDisplayName, "Retry requested")
+        XCTAssertEqual(ReviewRunActionMode.full.requestedDisplayName, "Full rerun requested")
     }
 
     // MARK: - Offline Action Queue
@@ -627,12 +759,15 @@ final class ViewLogicTests: XCTestCase {
         repo: String = "alpha",
         issueNumber: Int = 1,
         state: DeploymentState = .active,
-        endedAt: String? = nil
+        endedAt: String? = nil,
+        terminalBackend: TerminalBackend? = nil,
+        ttydPort: Int? = 7681
     ) -> ActiveDeployment {
         ActiveDeployment(
             id: id,
             repoId: 1,
             issueNumber: issueNumber,
+            terminalBackend: terminalBackend,
             branchName: "issue-\(issueNumber)",
             workspaceMode: .worktree,
             workspacePath: "/tmp/repo",
@@ -640,11 +775,22 @@ final class ViewLogicTests: XCTestCase {
             state: state,
             launchedAt: "2026-04-27T08:00:00Z",
             endedAt: endedAt,
-            ttydPort: 7681,
+            ttydPort: ttydPort,
             ttydPid: 123,
             owner: owner,
             repoName: repo
         )
+    }
+
+    func testPtyBridgeActiveDeploymentUsesWebTerminalState() {
+        let deployment = makeDeployment(terminalBackend: .ptyBridge, ttydPort: nil)
+
+        XCTAssertTrue(deployment.isActive)
+        XCTAssertTrue(deployment.usesPtyBridgeTerminal)
+        XCTAssertFalse(deployment.canOpenTerminalInApp)
+        XCTAssertEqual(deployment.terminalMetricValue, "PTY bridge")
+        XCTAssertEqual(deployment.terminalActionTitle, "Web Terminal")
+        XCTAssertEqual(deployment.terminalUnavailableDescription, "PTY bridge terminals open from the web workbench.")
     }
 
     func testFilterItemsByRepoNoSelection() {

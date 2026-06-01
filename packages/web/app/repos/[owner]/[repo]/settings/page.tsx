@@ -13,6 +13,7 @@ import {
 } from "@issuectl/core";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { RepoSettingsPanel } from "@/components/repos/RepoSettingsPanel";
+import { getWebhookAutomationHealth } from "@/lib/webhook-health";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,7 @@ export default async function RepoSettingsPage({
   const activeIssueSessions = getActiveWebhookDeploymentsForRepoTarget(db, repo.id, "issue").length;
   const activePrSessions = getActiveWebhookDeploymentsForRepoTarget(db, repo.id, "pr").length;
   const recentDeliveries = listWebhookEvents(db, { repoId: repo.id, limit: 10 });
+  const webhookHealth = await getWebhookAutomationHealth(db, repo);
   const activity = {
     activeSessions,
     activeIssueSessions,
@@ -63,6 +65,7 @@ export default async function RepoSettingsPage({
         <RepoSettingsPanel
           repo={repo}
           webhookUrl={webhookUrl}
+          webhookHealth={webhookHealth}
           activity={activity}
           recentDeliveries={recentDeliveries}
           settingsHref="/settings/repos"

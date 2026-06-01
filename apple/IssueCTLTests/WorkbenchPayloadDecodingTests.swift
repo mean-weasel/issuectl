@@ -39,7 +39,7 @@ final class WorkbenchPayloadDecodingTests: XCTestCase {
         XCTAssertTrue(activeIssueDeployment.isActive)
 
         let prCompletion = try XCTUnwrap(repo.recentCompletions.first)
-        XCTAssertNil(prCompletion.issueNumber)
+        XCTAssertEqual(prCompletion.issueNumber, 44)
         XCTAssertEqual(prCompletion.targetType, .pr)
         XCTAssertEqual(prCompletion.targetNumber, 44)
         XCTAssertEqual(prCompletion.terminalReason, "completed")

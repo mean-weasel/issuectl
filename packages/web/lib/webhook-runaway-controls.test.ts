@@ -91,6 +91,37 @@ describe("webhook runaway controls", () => {
     );
   });
 
+  it("reconciles stale webhook sessions before enforcing the concurrent agent cap", () => {
+    setSetting(db, "max_concurrent_webhook_agents", "1");
+    const staleDeploymentId = recordDeployment(db, {
+      repoId: repo.id,
+      issueNumber: 999,
+      branchName: "issue-999",
+      workspaceMode: "worktree",
+      workspacePath: "/tmp/issuectl-stale",
+      terminalBackend: "pty_bridge",
+      triggeredBy: "webhook",
+    }).id;
+    const intent = claimIntent(db, 506, 2_000);
+
+    const decision = enforceWebhookRunawayControls(db, repo, intent, 2_000);
+
+    expect(decision).toEqual({ allowed: true });
+    expect(db.prepare("SELECT ended_at, terminal_reason FROM deployments WHERE id = ?").get(staleDeploymentId)).toEqual(
+      expect.objectContaining({
+        ended_at: expect.any(String),
+        terminal_reason: "liveness_missing",
+      }),
+    );
+    expect(queryDiagnosticEvents(db, { events: ["reconcile.tmux_missing"] })).toEqual([
+      expect.objectContaining({
+        targetType: "issue",
+        targetNumber: 999,
+        deploymentId: staleDeploymentId,
+      }),
+    ]);
+  });
+
   it("defers launches when the repo launch-rate cap is reached", () => {
     setSetting(db, "max_webhook_launches_per_minute", "1");
     const launchedId = mergeWebhookIntent(db, {
