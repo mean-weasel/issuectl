@@ -42,6 +42,16 @@ final class WorkbenchBootstrapMapperTests: XCTestCase {
         XCTAssertEqual(bootstrap.priority(for: WorkbenchIssueKey(owner: "neonwatty", repo: "missing", number: 99)), .normal)
     }
 
+    func testProjectsIssueCacheFreshnessFromWorkbenchRepos() throws {
+        let bootstrap = try WorkbenchBootstrap(payload: decodePayload())
+
+        XCTAssertTrue(bootstrap.usesCachedIssues)
+        XCTAssertEqual(
+            bootstrap.issueCachedDates.map { sharedISO8601Formatter.string(from: $0) },
+            ["2026-05-16T15:30:00.000Z"]
+        )
+    }
+
     private func decodePayload() throws -> WorkbenchPayload {
         try decoder.decode(WorkbenchPayload.self, from: Self.fixtureData)
     }
@@ -66,8 +76,8 @@ final class WorkbenchBootstrapMapperTests: XCTestCase {
           "launch_agent": "codex",
           "terminal_backend_default": "pty_bridge",
           "issue_error": null,
-          "issues_from_cache": false,
-          "issues_cached_at": null,
+          "issues_from_cache": true,
+          "issues_cached_at": "2026-05-16T15:30:00.000Z",
           "priorities": [
             {"repo_id": 1, "issue_number": 12, "priority": "high", "updated_at": 1779000000},
             {"repo_id": 1, "issue_number": 13, "priority": "low", "updated_at": 1779000001}

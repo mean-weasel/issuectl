@@ -16,6 +16,8 @@ struct WorkbenchBootstrap: Sendable {
     let issueLookup: [WorkbenchIssueKey: WorkbenchIssueSummary]
     let activeIssueDeploymentsByKey: [WorkbenchIssueKey: ActiveDeployment]
     let prioritiesByKey: [WorkbenchIssueKey: Priority]
+    let usesCachedIssues: Bool
+    let issueCachedDates: [Date]
 
     init(payload: WorkbenchPayload) {
         repos = payload.repos
@@ -25,10 +27,16 @@ struct WorkbenchBootstrap: Sendable {
         var summaries: [WorkbenchIssueKey: WorkbenchIssueSummary] = [:]
         var activeDeployments: [WorkbenchIssueKey: ActiveDeployment] = [:]
         var priorities: [WorkbenchIssueKey: Priority] = [:]
+        var cachedDates: [Date] = []
+        var didUseCachedIssues = false
 
         for repo in payload.repos {
             let repoFullName = repo.fullName
             summariesByRepo[repoFullName] = repo.issues
+            didUseCachedIssues = didUseCachedIssues || repo.issuesFromCache
+            if let cachedAt = repo.issuesCachedAt, let date = parseIssueCTLDate(cachedAt) {
+                cachedDates.append(date)
+            }
 
             for issue in repo.issues {
                 let key = WorkbenchIssueKey(owner: repo.owner, repo: repo.name, number: issue.number)
@@ -52,6 +60,8 @@ struct WorkbenchBootstrap: Sendable {
         issueLookup = summaries
         activeIssueDeploymentsByKey = activeDeployments
         prioritiesByKey = priorities
+        usesCachedIssues = didUseCachedIssues
+        issueCachedDates = cachedDates
     }
 
     func repo(owner: String, name: String) -> WorkbenchRepo? {
