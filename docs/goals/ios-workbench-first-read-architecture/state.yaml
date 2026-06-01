@@ -1,0 +1,402 @@
+version: 2
+
+goal:
+  title: "iOS Workbench First-Read Architecture"
+  slug: "ios-workbench-first-read-architecture"
+  kind: existing_plan
+  tranche: "Close the deferred iOS Today/Issues workbench-first-read consistency architecture gap with Scout/Judge evidence before any shared store or mapping implementation."
+  status: done
+  oracle:
+    signal: "A Scout/Judge-backed architecture receipt plus focused implementation tests prove Today/Issues can consume a shared workbench-first-read slice without regressing drafts, priorities, offline state, repo filters, or issue/PR navigation."
+    cadence: "after Scout audit, after Judge architecture decision, after each Worker package, and at final audit"
+    final_proof: "Final audit maps current-state evidence for Today, Issues, PRs, workbench store/payload, drafts, priorities, offline queue, repo filters, issue navigation, PR navigation, implementation diff, focused tests, and any explicit deferrals."
+  intake:
+    original_request: "Prep a fresh architecture tranche for iOS Today/Issues workbench-first-read consistency."
+    interpreted_outcome: "A fresh GoalBuddy board is ready to audit and then safely close the deferred Today/Issues workbench-first-read architecture gap."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and iOS users"
+    authority: requested
+    proof_type: test
+    completion_proof: "The board drives a Scout/Judge audit first, then implements the smallest proven safe shared store/mapping slice and verifies no regressions in drafts, priorities, offline state, repo filters, and issue/PR navigation."
+    likely_misfire: "Replacing Today/Issues endpoint-specific flows with a workbench payload shortcut that appears consistent but regresses drafts, priorities, offline actions, repo filtering, or detail navigation."
+    blind_spots_considered:
+      - "The root checkout is dirty with unrelated work; this tranche must not revert or normalize it."
+      - "Today, Issues, PRs, and Board may rely on different payload shapes, local cache behavior, and navigation state."
+      - "Workbench-first-read consistency may be a mapping/store problem rather than a direct API replacement."
+      - "Drafts, priorities, offline queue, repo filters, issue navigation, and PR navigation are regression surfaces, not optional polish."
+      - "A large data-layer rewrite could be less safe than a narrow shared mapper or bootstrapping layer."
+    existing_plan_facts:
+      - "The completed iOS parity tranche deferred Today/Issues workbench-first-read consistency as a broader architecture decision."
+      - "The next tranche should begin with Scout/Judge audit instead of implementation."
+      - "The smallest safe shared store/mapping slice should be selected only after current code evidence is gathered."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/ios-workbench-first-read-architecture/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/ios-workbench-first-read-architecture"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map current iOS Today/Issues/PRs/workbench data and navigation flows before any architecture decision."
+    inputs:
+      - "Current git status and branch"
+      - "apple/IssueCTL/Views/Today/"
+      - "apple/IssueCTL/Views/Issues/"
+      - "apple/IssueCTL/Views/PullRequests/"
+      - "apple/IssueCTL/Views/Workbench/"
+      - "apple/IssueCTL/ViewModels/WorkbenchStore.swift"
+      - "apple/IssueCTL/Views/Shared/RepoFilterChips.swift"
+      - "apple/IssueCTLShared/Models/"
+      - "apple/IssueCTLShared/Services/APIClient*.swift"
+      - "apple/IssueCTLTests/"
+      - "apple/IssueCTLUITests/"
+      - "Prior parity notes mentioning Today/Issues workbench-first-read deferral"
+    constraints:
+      - "Read-only."
+      - "Use the current root worktree as authoritative; do not rely on prior-session memory."
+      - "Do not implement or propose the final architecture yet."
+      - "Classify each flow as endpoint_specific, shared_candidate, already_workbench_backed, or unsafe_to_replace_without_design."
+      - "Explicitly inspect drafts, priorities, offline state, repo filters, issue navigation, and PR navigation."
+      - "Record dirty-worktree risks and identify unrelated dirty files that must not be touched."
+    expected_output:
+      - "Baseline branch, HEAD, and dirty-state summary."
+      - "Flow map for Today, Issues, PRs, Board/workbench, drafts, priorities, offline queue, repo filters, issue navigation, and PR navigation."
+      - "Source-backed risk matrix."
+      - "Candidate smallest shared store/mapping seams, if any, with file paths."
+      - "Recommended Judge questions and minimum verification gates."
+    receipt:
+      result: done
+      summary: "Mapped current iOS Today, Issues, PRs, drafts, priorities, offline queue, repo filters, navigation, API client, tests, and web workbench payload/state. iOS has no WorkbenchStore or Views/Workbench in this root; Today/Issues/PRs are endpoint-specific with shared helper seams. Direct workbench payload replacement is unsafe without a bounded bridge."
+      evidence:
+        - "Receipt file: notes/T001-scout-current-flow-map.md"
+        - "Web workbench aggregate endpoint: packages/web/app/api/v1/workbench/route.ts and packages/web/lib/workbench-data.ts"
+        - "iOS endpoint-specific flows: apple/IssueCTL/Views/Today/TodayView.swift, apple/IssueCTL/Views/Issues/IssueListView.swift, apple/IssueCTL/Views/PullRequests/PRListView.swift"
+        - "Risk surfaces mapped: drafts, priorities, offline queue, repo filters, issue navigation, PR navigation, webhook automation health"
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the Scout audit and select the smallest safe architecture slice."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and non-goals"
+      - "Current diff after Scout"
+    constraints:
+      - "Do not implement."
+      - "Reject any slice that rewrites the entire data layer without proof a smaller slice is unsafe."
+      - "Reject any slice that does not explicitly preserve drafts, priorities, offline state, repo filters, issue navigation, and PR navigation."
+      - "Prefer a shared mapper/store bootstrap slice if it can be bounded and verified."
+      - "Return exact allowed_files, verification commands, and stop_if conditions for the Worker."
+    expected_output:
+      - "Decision: proceed | revise_board | blocked"
+      - "Chosen architecture slice and rationale."
+      - "Rejected architecture alternatives."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+    receipt:
+      result: done
+      decision: approved
+      summary: "Proceed with a bounded iOS WorkbenchPayload contract, APIClient fetch, and pure WorkbenchBootstrap mapper/store projection. Do not wire Today, Issues, PRs, drafts, offline queue, or navigation flows in this slice."
+      evidence:
+        - "Receipt file: notes/T002-judge-workbench-bootstrap.md"
+        - "T001 shows Today/Issues/PRs are endpoint-specific and drafts/offline queue are unsafe to replace without design."
+        - "The slice creates executable architecture proof while preserving endpoint-specific screens."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the Judge-selected smallest shared store/mapping slice."
+    allowed_files:
+      - "apple/IssueCTLShared/Models/WorkbenchPayload.swift"
+      - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Workbench.swift"
+      - "apple/IssueCTLTests/WorkbenchPayloadDecodingTests.swift"
+      - "apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+      - "apple/IssueCTL.xcodeproj/project.pbxproj"
+      - "docs/goals/ios-workbench-first-read-architecture/notes/T003-worker-workbench-bootstrap.md"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:IssueCTLTests/WorkbenchPayloadDecodingTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests"
+      - "pnpm --dir packages/web test -- app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts"
+      - "git diff --name-only"
+      - "git diff -- apple/IssueCTL/Views/Today/TodayView.swift apple/IssueCTL/Views/Issues/IssueListView.swift apple/IssueCTL/Views/PullRequests/PRListView.swift apple/IssueCTL/Views/Issues/DraftDetailView.swift apple/IssueCTL/Services/OfflineSyncService.swift apple/IssueCTL/Helpers/RepoFilterHelpers.swift"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Implementation would remove or bypass drafts, priorities, offline queue behavior, repo filters, issue navigation, or PR navigation."
+      - "The Scout/Judge evidence proves the selected slice is no longer safe."
+      - "Focused tests fail twice with the same failure."
+      - "Mapper would convert partial workbench issue summaries into full GitHubIssue or PR detail models."
+      - "Worker cannot distinguish T003 changes from pre-existing dirty worktree changes."
+    receipt:
+      result: done
+      summary: "Implemented a bounded iOS WorkbenchPayload contract, APIClient.workbench() fetch method, and pure WorkbenchBootstrap projection for issue summaries, active issue deployments, and priorities without converting partial summaries into full GitHubIssue/PR detail models."
+      changed_files:
+        - "apple/IssueCTLShared/Models/WorkbenchPayload.swift"
+        - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+        - "apple/IssueCTLShared/Services/APIClient+Workbench.swift"
+        - "apple/IssueCTLTests/WorkbenchPayloadDecodingTests.swift"
+        - "apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+        - "apple/IssueCTL.xcodeproj/project.pbxproj"
+        - "docs/goals/ios-workbench-first-read-architecture/notes/T003-worker-workbench-bootstrap.md"
+      commands:
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,id=43EC89AF-7DE4-43C4-83F7-4AB65AC7F0BC' -only-testing:IssueCTLTests/WorkbenchPayloadDecodingTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests"
+          status: pass
+          details: "4 tests passed, 0 failures."
+        - command: "pnpm --dir packages/web test -- app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts"
+          status: pass
+          details: "2 test files passed, 17 tests passed."
+        - command: "git diff --name-only"
+          status: pass
+          details: "Command exited 0; root worktree remains broadly dirty from pre-existing unrelated work."
+        - command: "git diff -- apple/IssueCTL/Views/Today/TodayView.swift apple/IssueCTL/Views/Issues/IssueListView.swift apple/IssueCTL/Views/PullRequests/PRListView.swift apple/IssueCTL/Views/Issues/DraftDetailView.swift apple/IssueCTL/Services/OfflineSyncService.swift apple/IssueCTL/Helpers/RepoFilterHelpers.swift"
+          status: pass
+          details: "Only pre-existing RepoFilterHelpers.swift dirtiness appeared among protected files."
+      evidence:
+        - "Receipt file: notes/T003-worker-workbench-bootstrap.md"
+        - "Focused iOS tests passed on explicit simulator id 43EC89AF-7DE4-43C4-83F7-4AB65AC7F0BC: 4 tests, 0 failures, TEST SUCCEEDED."
+        - "Requested simulator name 'iPhone 16' was not available; exact command was interrupted after repeated passcode-protected physical-device discovery logs."
+        - "Web workbench regression passed: 2 test files, 17 tests."
+        - "Protected UI/offline diff check showed only pre-existing RepoFilterHelpers.swift dirtiness; T003 did not touch Today, Issues, PR, DraftDetail, OfflineSyncService, or RepoFilterHelpers."
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the implementation slice and decide whether more architecture work is required."
+    inputs:
+      - "T003 receipt"
+      - "Current diff"
+      - "Verification output"
+      - "T001 risk matrix"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any original regression surface is unverified or only indirectly covered."
+      - "If safe follow-up work remains, pick the largest safe next Worker package."
+    expected_output:
+      - "accept | reject | needs_fix"
+      - "Gap-by-gap proof assessment."
+      - "Next Worker package or final-audit recommendation."
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      summary: "Accepted T003 as a correct contract slice, but rejected final completion because no Today/Issues consumer has used the bootstrap yet."
+      evidence:
+        - "Receipt file: notes/T004-judge-implementation-slice.md"
+        - "WorkbenchBootstrap preserves partial workbench summaries and does not manufacture GitHubIssue or PR detail models."
+        - "Drafts, offline queue, repo filters, TodayView, IssueListView, PRListView, DraftDetailView, and OfflineSyncService were preserved by non-interference in T003."
+        - "Direct post-integration proof is still missing for Issues consuming bootstrap metadata without regressions."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Wire IssueListView to consume WorkbenchBootstrap only as a metadata bootstrap for active issue deployments and priority maps, while retaining endpoint-specific GitHubIssue loading, drafts, repo filters, offline queue, launch/terminal actions, and issue detail navigation."
+    allowed_files:
+      - "apple/IssueCTL/Views/Issues/IssueListView.swift"
+      - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+      - "apple/IssueCTLTests/ViewLogicTests.swift"
+      - "apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+      - "docs/goals/ios-workbench-first-read-architecture/notes/T005-worker-issues-workbench-bootstrap.md"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,id=43EC89AF-7DE4-43C4-83F7-4AB65AC7F0BC' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests -only-testing:IssueCTLTests/WorkbenchPayloadDecodingTests"
+      - "git diff --name-only"
+      - "git diff -- apple/IssueCTL/Views/Today/TodayView.swift apple/IssueCTL/Views/PullRequests/PRListView.swift apple/IssueCTL/Views/Issues/DraftDetailView.swift apple/IssueCTL/Services/OfflineSyncService.swift apple/IssueCTL/Helpers/RepoFilterHelpers.swift"
+    stop_if:
+      - "Need to convert WorkbenchIssueSummary into GitHubIssue or any PR detail/list model."
+      - "Need to edit TodayView, PRListView, DraftDetailView, OfflineSyncService, RepoFilterHelpers, APIClient issue/PR endpoints, or web workbench files."
+      - "Workbench fetch failure would block existing endpoint-specific refresh instead of falling back."
+      - "The change would skip draft loading, priority refresh semantics, offline queue behavior, launch/terminal actions, or initialIssue navigation."
+      - "Worker cannot distinguish new edits from pre-existing dirty worktree changes."
+      - "Focused tests fail twice with the same failure."
+    receipt:
+      result: done
+      summary: "Wired IssueListView to use WorkbenchBootstrap as a non-blocking metadata bootstrap for active issue deployments and priority seeds while preserving endpoint-specific issue loading, drafts, repo filters, offline queue behavior, launch/terminal actions, priority refresh, and issue detail navigation."
+      changed_files:
+        - "apple/IssueCTL/Views/Issues/IssueListView.swift"
+        - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+        - "docs/goals/ios-workbench-first-read-architecture/notes/T005-worker-issues-workbench-bootstrap.md"
+      commands:
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,id=43EC89AF-7DE4-43C4-83F7-4AB65AC7F0BC' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests -only-testing:IssueCTLTests/WorkbenchPayloadDecodingTests"
+          status: pass
+          details: "74 tests passed, 0 failures; TEST SUCCEEDED."
+        - command: "git diff --check -- apple/IssueCTL/Views/Issues/IssueListView.swift apple/IssueCTLShared/Models/WorkbenchBootstrap.swift apple/IssueCTLTests/ViewLogicTests.swift apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+          status: pass
+          details: "Scoped whitespace check exited 0."
+        - command: "git diff --name-only"
+          status: pass
+          details: "Command exited 0; root worktree remains broadly dirty from pre-existing unrelated work."
+        - command: "git diff -- apple/IssueCTL/Views/Today/TodayView.swift apple/IssueCTL/Views/PullRequests/PRListView.swift apple/IssueCTL/Views/Issues/DraftDetailView.swift apple/IssueCTL/Services/OfflineSyncService.swift apple/IssueCTL/Helpers/RepoFilterHelpers.swift"
+          status: pass
+          details: "Only pre-existing RepoFilterHelpers.swift dirtiness appeared among protected files; T005 did not touch TodayView, PRListView, DraftDetailView, OfflineSyncService, or RepoFilterHelpers."
+      evidence:
+        - "Receipt file: notes/T005-worker-issues-workbench-bootstrap.md"
+        - "IssueListView keeps existing per-repo issue endpoint loading and separate draft loading."
+        - "Workbench fetch failure is non-blocking and clears the bootstrap instead of failing endpoint-specific refresh."
+        - "ViewLogicTests cover bootstrap deployment fallback, endpoint deployment precedence, deployment deduplication, and priority seeding."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit for iOS workbench first-read architecture."
+    inputs:
+      - "All task receipts"
+      - "Current diff"
+      - "Verification output"
+      - "Goal oracle"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker is queued, active, or missing a receipt."
+      - "Reject completion if drafts, priorities, offline state, repo filters, issue navigation, PR navigation, or existing workbench behavior lack direct proof or explicit deferral."
+      - "Treat planning-only receipts as insufficient for implementation completion."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapped to each success criterion."
+      - "Residual risks and follow-up tasks."
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      summary: "T003/T005 prove the bounded workbench contract and IssueListView metadata bootstrap, but the original oracle names Today/Issues. TodayView still lacks a WorkbenchBootstrap consumer, so final completion is blocked. PRListView remains endpoint-specific as an explicit deferral because the workbench payload lacks full PR-list parity."
+      evidence:
+        - "Receipt file: notes/T999-final-audit.md"
+        - "T001 mapped Today, Issues, PRs, web workbench, drafts, priorities, offline queue, repo filters, issue navigation, and PR navigation."
+        - "T002 selected a narrow WorkbenchPayload/APIClient.workbench/WorkbenchBootstrap slice and rejected direct endpoint replacement."
+        - "T003 implemented the contract and T005 wired IssueListView as metadata bootstrap only."
+        - "IssueListView proof covers endpoint issue loading, draft loading, priority seeding with endpoint refresh, repo filter helpers, issue navigation, and non-blocking workbench failure."
+        - "TodayView has no WorkbenchBootstrap consumer yet."
+      missing_evidence:
+        - "TodayView workbench-bootstrap consumer proof."
+        - "Direct Today tests for merging workbench active issue deployments while preserving issue and PR endpoint data."
+        - "Current Judge audit could not reconfirm iOS focused tests because the simulator was busy, although T005 previously passed 74 tests."
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Wire TodayView to consume WorkbenchBootstrap only as deployment/session metadata for issue-target active deployments, while retaining endpoint-specific GitHubIssue loading, GitHubPull loading, Today issue/PR navigation, current-user handling, and cache/offline messaging."
+    allowed_files:
+      - "apple/IssueCTL/Views/Today/TodayView.swift"
+      - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+      - "apple/IssueCTLTests/ViewLogicTests.swift"
+      - "apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+      - "docs/goals/ios-workbench-first-read-architecture/notes/T006-worker-today-workbench-bootstrap.md"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,id=43EC89AF-7DE4-43C4-83F7-4AB65AC7F0BC' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests -only-testing:IssueCTLTests/WorkbenchPayloadDecodingTests"
+      - "pnpm --dir packages/web test -- app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts"
+      - "git diff --check -- apple/IssueCTL/Views/Today/TodayView.swift apple/IssueCTLShared/Models/WorkbenchBootstrap.swift apple/IssueCTLTests/ViewLogicTests.swift apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+      - "git diff -- apple/IssueCTL/Views/Issues/IssueListView.swift apple/IssueCTL/Views/PullRequests/PRListView.swift apple/IssueCTL/Views/Issues/DraftDetailView.swift apple/IssueCTL/Services/OfflineSyncService.swift apple/IssueCTL/Helpers/RepoFilterHelpers.swift"
+    stop_if:
+      - "Need to convert WorkbenchIssueSummary into GitHubIssue or any PR detail/list model."
+      - "Need to edit PRListView, IssueListView, DraftDetailView, OfflineSyncService, RepoFilterHelpers, APIClient issue/PR endpoints, or web workbench implementation."
+      - "Workbench fetch failure or slowness would block existing Today issue/pull/deployment refresh without fallback."
+      - "The change alters Today issue or PR attention selection from endpoint-specific GitHubIssue/GitHubPull data."
+      - "The change alters Today issue navigation or PR navigation destination semantics."
+      - "Focused iOS tests fail twice with the same code failure, or simulator launch preflight failure repeats and prevents verification."
+    receipt:
+      result: done
+      summary: "Wired TodayView to use WorkbenchBootstrap only as active issue deployment metadata while preserving endpoint-specific GitHubIssue loading, GitHubPull loading, current-user handling, cache/offline messaging, and issue/PR navigation."
+      changed_files:
+        - "apple/IssueCTL/Views/Today/TodayView.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+        - "docs/goals/ios-workbench-first-read-architecture/notes/T006-worker-today-workbench-bootstrap.md"
+      commands:
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,id=43EC89AF-7DE4-43C4-83F7-4AB65AC7F0BC' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests -only-testing:IssueCTLTests/WorkbenchPayloadDecodingTests"
+          status: pass
+          details: "First run failed with simulator Busy/Application failed preflight checks; after booting the simulator, retry passed 77 tests with 0 failures."
+        - command: "pnpm --dir packages/web test -- app/api/v1/workbench/route.test.ts components/workbench/workbench.test.ts"
+          status: pass
+          details: "2 test files passed, 17 tests passed."
+        - command: "git diff --check -- apple/IssueCTL/Views/Today/TodayView.swift apple/IssueCTLShared/Models/WorkbenchBootstrap.swift apple/IssueCTLTests/ViewLogicTests.swift apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+          status: pass
+          details: "Scoped whitespace check exited 0."
+        - command: "git diff -- apple/IssueCTL/Views/Issues/IssueListView.swift apple/IssueCTL/Views/PullRequests/PRListView.swift apple/IssueCTL/Views/Issues/DraftDetailView.swift apple/IssueCTL/Services/OfflineSyncService.swift apple/IssueCTL/Helpers/RepoFilterHelpers.swift"
+          status: pass
+          details: "Only the prior T005 IssueListView diff and pre-existing RepoFilterHelpers.swift dirtiness appeared; no PRListView, DraftDetailView, or OfflineSyncService diff appeared."
+      evidence:
+        - "Receipt file: notes/T006-worker-today-workbench-bootstrap.md"
+        - "TodayView starts from existing repos/issues/pulls/deployments/current-user endpoints."
+        - "Workbench fetch is started after normal Today state is loaded and is generation-guarded."
+        - "Workbench failure clears the bootstrap and does not set Today errorMessage."
+        - "ViewLogicTests cover Today deployment fallback, append, and deduplication from WorkbenchBootstrap."
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after Today and Issues workbench bootstrap consumers."
+    inputs:
+      - "All task receipts T001-T006"
+      - "Current diff"
+      - "Verification output"
+      - "Goal oracle"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if drafts, priorities, offline queue, repo filters, issue navigation, PR navigation, or existing web workbench behavior lack direct proof or explicit source-backed deferral."
+      - "Reject completion if PRListView endpoint-specific deferral is not justified by workbench payload limits."
+      - "Treat pre-existing dirty worktree changes as separate from this goal."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapped to each success criterion."
+      - "Residual risks and follow-up tasks."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "The tranche satisfies the oracle: T001/T002 established a bounded architecture, T003 implemented the workbench contract, T005 wired Issues, and T006 wired Today without replacing endpoint-specific issue, draft, PR, offline, filter, or navigation behavior."
+      evidence:
+        - "Receipt file: notes/T007-final-audit.md"
+        - "T001 maps Today, Issues, PRs, web workbench payload/state, drafts, priorities, offline queue, repo filters, issue navigation, and PR navigation."
+        - "T002 selected WorkbenchPayload/APIClient.workbench/WorkbenchBootstrap and rejected broad rewrites."
+        - "T003 implemented the contract; T005 and T006 added bounded Today/Issues consumers."
+        - "IssueListView uses WorkbenchBootstrap for active issue deployments and priority seeds while keeping endpoint issue loading, drafts, repo filters, launch/terminal actions, and navigation."
+        - "TodayView starts workbench fetch only after normal endpoint state is loaded, generation-guards it, and merges only active issue deployments."
+        - "PRListView remains endpoint-specific as an explicit deferral because the workbench payload lacks full PR list/detail parity."
+        - "Focused iOS tests passed: 77 tests, 0 failures."
+        - "Web workbench tests passed: 2 files, 17 tests."
+        - "Scoped diff check passed; protected diff showed no PRListView, DraftDetailView, or OfflineSyncService changes."
+
+checks:
+  dirty_fingerprint: "root-worktree-dirty-before-board"
+  last_verification:
+    result: passed
+    note: "Focused iOS tests passed: 77 tests, 0 failures. Web workbench tests passed: 2 files, 17 tests. Scoped diff check passed. Final Judge marked the tranche complete."
