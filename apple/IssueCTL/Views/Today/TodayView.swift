@@ -16,6 +16,8 @@ struct TodayView: View {
     @State private var issueRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var pullRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var activeDeployments: [ActiveDeployment] = []
+    @State private var workbenchBootstrap: WorkbenchBootstrap?
+    @State private var loadGeneration = UUID()
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var oldestCachedAt: Date?
@@ -395,6 +397,9 @@ struct TodayView: View {
     }
 
     private func load(refresh: Bool = false) async {
+        let generation = UUID()
+        loadGeneration = generation
+        workbenchBootstrap = nil
         let trace = PerformanceTrace.begin("today.load", metadata: "refresh=\(refresh)")
         isLoading = true
         errorMessage = nil
@@ -446,10 +451,29 @@ struct TodayView: View {
             pullRepoLookup = makeRepoLookup(itemsByRepo: loadedPulls.items, htmlUrl: { $0.htmlUrl })
             oldestCachedAt = (deploymentCachedDates + loadedIssues.cachedDates + loadedPulls.cachedDates).min()
             isShowingCachedData = didUseCachedData || loadedIssues.usedCache || loadedPulls.usedCache
+            refreshWorkbenchBootstrap(for: generation)
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func refreshWorkbenchBootstrap(for generation: UUID) {
+        Task { @MainActor in
+            do {
+                let payload = try await api.workbench()
+                guard loadGeneration == generation else { return }
+                let bootstrap = WorkbenchBootstrap(payload: payload)
+                workbenchBootstrap = bootstrap
+                activeDeployments = todayMergedActiveDeployments(
+                    primary: activeDeployments,
+                    workbenchBootstrap: bootstrap
+                )
+            } catch {
+                guard loadGeneration == generation else { return }
+                workbenchBootstrap = nil
+            }
+        }
     }
 
     private func loadIssues(
@@ -539,6 +563,21 @@ struct TodayView: View {
         return lookup
     }
 
+}
+
+func todayMergedActiveDeployments(
+    primary: [ActiveDeployment],
+    workbenchBootstrap: WorkbenchBootstrap?
+) -> [ActiveDeployment] {
+    guard let workbenchBootstrap else { return primary }
+
+    var seenIDs = Set(primary.map(\.id))
+    var merged = primary
+    for deployment in workbenchBootstrap.activeDeployments where !seenIDs.contains(deployment.id) {
+        merged.append(deployment)
+        seenIDs.insert(deployment.id)
+    }
+    return merged
 }
 
 enum TodayDestination: Hashable {

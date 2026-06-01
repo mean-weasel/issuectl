@@ -11,6 +11,7 @@ struct IssueListView: View {
     @State private var issueRepoLookup: [String: (repo: Repo, index: Int)] = [:]
     @State private var drafts: [Draft] = []
     @State private var activeDeployments: [ActiveDeployment] = []
+    @State private var workbenchBootstrap: WorkbenchBootstrap?
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var section: IssueSection = .open
@@ -56,8 +57,14 @@ struct IssueListView: View {
     private let refreshCooldown: TimeInterval = 10
     private typealias RepoIssueLoadResult = (fullName: String, name: String, issues: [GitHubIssue]?, cachedAt: String?, fromCache: Bool, error: Error?)
 
-    private func isRunning(_ issue: GitHubIssue, in repoFullName: String) -> Bool {
-        runningDeployment(for: issue, in: repoFullName, deployments: activeDeployments) != nil
+    private func isRunning(_ issue: GitHubIssue, in repo: Repo) -> Bool {
+        issueListRunningDeployment(
+            owner: repo.owner,
+            repo: repo.name,
+            number: issue.number,
+            deployments: activeDeployments,
+            workbenchBootstrap: workbenchBootstrap
+        ) != nil
     }
 
     private var repoFilteredIssues: [GitHubIssue] {
@@ -79,11 +86,11 @@ struct IssueListView: View {
         case .drafts: return []
         case .open: items = items.filter { issue in
             guard let repo = repoLookup[issue.htmlUrl]?.repo else { return issue.isOpen }
-            return issue.isOpen && !isRunning(issue, in: repo.fullName)
+            return issue.isOpen && !isRunning(issue, in: repo)
         }
         case .running: items = items.filter { issue in
             guard let repo = repoLookup[issue.htmlUrl]?.repo else { return false }
-            return issue.isOpen && isRunning(issue, in: repo.fullName)
+            return issue.isOpen && isRunning(issue, in: repo)
         }
         case .unassigned: items = items.filter { issue in
             issue.isOpen && (issue.assignees ?? []).isEmpty
@@ -120,11 +127,11 @@ struct IssueListView: View {
         let repoLookup = issueRepoLookup
         let open = items.filter { issue in
             guard let repo = repoLookup[issue.htmlUrl]?.repo else { return issue.isOpen }
-            return issue.isOpen && !isRunning(issue, in: repo.fullName)
+            return issue.isOpen && !isRunning(issue, in: repo)
         }
         let running = items.filter { issue in
             guard let repo = repoLookup[issue.htmlUrl]?.repo else { return false }
-            return issue.isOpen && isRunning(issue, in: repo.fullName)
+            return issue.isOpen && isRunning(issue, in: repo)
         }
         let unassigned = items.filter { issue in
             issue.isOpen && (issue.assignees ?? []).isEmpty
@@ -509,7 +516,7 @@ struct IssueListView: View {
                 let repoInfo = repoLookup[issue.htmlUrl]
                 let color = repoInfo.map { RepoColors.color(for: $0.index) } ?? .secondary
                 let repo = repoInfo?.repo
-                let running = repo.map { isRunning(issue, in: $0.fullName) } ?? false
+                let running = repo.map { isRunning(issue, in: $0) } ?? false
 
                 if let repo {
                     NavigationLink(value: IssueDestination(
@@ -523,7 +530,13 @@ struct IssueListView: View {
                     .accessibilityIdentifier("issue-row-\(issue.number)")
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if issue.isOpen {
-                            if let deployment = runningDeployment(for: issue, in: repo.fullName, deployments: activeDeployments) {
+                            if let deployment = issueListRunningDeployment(
+                                owner: repo.owner,
+                                repo: repo.name,
+                                number: issue.number,
+                                deployments: activeDeployments,
+                                workbenchBootstrap: workbenchBootstrap
+                            ) {
                                 Button {
                                     if deployment.ttydPort != nil {
                                         terminalTarget = deployment
@@ -736,7 +749,13 @@ struct IssueListView: View {
             }
         }
 
-        if let deployment = runningDeployment(owner: owner, repo: repo, number: number, deployments: activeDeployments) {
+        if let deployment = issueListRunningDeployment(
+            owner: owner,
+            repo: repo,
+            number: number,
+            deployments: activeDeployments,
+            workbenchBootstrap: workbenchBootstrap
+        ) {
             if deployment.ttydPort != nil {
                 terminalTarget = deployment
             } else {
@@ -830,6 +849,10 @@ struct IssueListView: View {
                 do { return .success(try await api.activeDeployments()) }
                 catch { return .failure(error) }
             }()
+            async let workbenchFetch: Result<WorkbenchPayload, Error> = {
+                do { return .success(try await api.workbench()) }
+                catch { return .failure(error) }
+            }()
             // Snapshot repos to a local Sendable value so child tasks don't
             // capture main-actor state. Each child returns its result; the
             // sequential `for await` loop collects them without data races.
@@ -860,10 +883,23 @@ struct IssueListView: View {
             case .success(let result): drafts = result.drafts
             case .failure(let error): failures.append("drafts (\(error.localizedDescription))")
             }
+            let bootstrap: WorkbenchBootstrap?
+            switch await workbenchFetch {
+            case .success(let payload):
+                bootstrap = WorkbenchBootstrap(payload: payload)
+                workbenchBootstrap = bootstrap
+            case .failure:
+                bootstrap = nil
+                workbenchBootstrap = nil
+            }
+
             switch await deploymentsFetch {
             case .success(let result): activeDeployments = result.deployments
-            case .failure(let error): failures.append("sessions (\(error.localizedDescription))")
+            case .failure(let error):
+                activeDeployments = issueListMergedDeployments(primary: [], workbenchBootstrap: bootstrap)
+                failures.append("sessions (\(error.localizedDescription))")
             }
+            activeDeployments = issueListMergedDeployments(primary: activeDeployments, workbenchBootstrap: bootstrap)
             switch await userFetch {
             case .success(let user):
                 currentUserLogin = user.login
@@ -935,7 +971,7 @@ struct IssueListView: View {
                 priorityResults.append(result)
             }
         }
-        var newPriorities: [String: Priority] = [:]
+        var newPriorities = issueListPrioritySeed(workbenchBootstrap: workbenchBootstrap)
         var priorityErrors: [String] = []
         for (pairs, errorMsg) in priorityResults {
             for (key, priority) in pairs {
@@ -1023,6 +1059,36 @@ private struct IssueFilterSummaryItem: Identifiable {
     let systemImage: String
 
     var id: String { "\(title)-\(value)" }
+}
+
+func issueListRunningDeployment(
+    owner: String,
+    repo: String,
+    number: Int,
+    deployments: [ActiveDeployment],
+    workbenchBootstrap: WorkbenchBootstrap?
+) -> ActiveDeployment? {
+    runningDeployment(owner: owner, repo: repo, number: number, deployments: deployments)
+        ?? workbenchBootstrap?.activeDeployment(owner: owner, repo: repo, number: number)
+}
+
+func issueListMergedDeployments(
+    primary: [ActiveDeployment],
+    workbenchBootstrap: WorkbenchBootstrap?
+) -> [ActiveDeployment] {
+    guard let workbenchBootstrap else { return primary }
+
+    var seenIDs = Set(primary.map(\.id))
+    var merged = primary
+    for deployment in workbenchBootstrap.activeDeployments where !seenIDs.contains(deployment.id) {
+        merged.append(deployment)
+        seenIDs.insert(deployment.id)
+    }
+    return merged
+}
+
+func issueListPrioritySeed(workbenchBootstrap: WorkbenchBootstrap?) -> [String: Priority] {
+    workbenchBootstrap?.priorityMapByIssueIdentifier ?? [:]
 }
 
 private struct IssueSectionPicker: View {

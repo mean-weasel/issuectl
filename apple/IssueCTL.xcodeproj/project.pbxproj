@@ -139,6 +139,17 @@
 		9F4A5C1ED1DFDCBC5EA8D823 /* InteractivePopDisabler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCED89BF4650BDFC4262B48D /* InteractivePopDisabler.swift */; };
 		9F86AFDB25A8D630E9D2DE9F /* Deployment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7F190EE0A4BF58DFDEA250 /* Deployment.swift */; };
 		9FC4A8A601C39FEEDE496822 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FA58C21063864ADB4BAC822 /* TodayView.swift */; };
+		A10000000000000000000011 /* WorkbenchPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* WorkbenchPayload.swift */; };
+		A10000000000000000000012 /* WorkbenchPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* WorkbenchPayload.swift */; };
+		A10000000000000000000013 /* WorkbenchPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* WorkbenchPayload.swift */; };
+		A10000000000000000000014 /* WorkbenchBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* WorkbenchBootstrap.swift */; };
+		A10000000000000000000015 /* WorkbenchBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* WorkbenchBootstrap.swift */; };
+		A10000000000000000000016 /* WorkbenchBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* WorkbenchBootstrap.swift */; };
+		A10000000000000000000017 /* APIClient+Workbench.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* APIClient+Workbench.swift */; };
+		A10000000000000000000018 /* APIClient+Workbench.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* APIClient+Workbench.swift */; };
+		A10000000000000000000019 /* APIClient+Workbench.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* APIClient+Workbench.swift */; };
+		A10000000000000000000020 /* WorkbenchPayloadDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* WorkbenchPayloadDecodingTests.swift */; };
+		A10000000000000000000021 /* WorkbenchBootstrapMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* WorkbenchBootstrapMapperTests.swift */; };
 		A18D8982D49319C633EE661A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3C1581E55A12781F1E76A1 /* ContentView.swift */; };
 		A2F5F2C02EF56C3F98D596E8 /* EditRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8E526C6C760C30E3F2D535 /* EditRepoSheet.swift */; };
 		A642DAF085F1B5DD608BF523 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1162B5421C0F279C8492942 /* APIClient.swift */; };
@@ -360,6 +371,11 @@
 		9D794FF17C025F2A3709F852 /* RequestChangesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestChangesSheet.swift; sourceTree = "<group>"; };
 		A225C37217DC60896282FCA4 /* APIClient+ImageUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+ImageUpload.swift"; sourceTree = "<group>"; };
 		A857FE28B9D50395BE2B49FA /* APIClient+Assignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Assignment.swift"; sourceTree = "<group>"; };
+		A10000000000000000000001 /* WorkbenchPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkbenchPayload.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* WorkbenchBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkbenchBootstrap.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* APIClient+Workbench.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "APIClient+Workbench.swift"; sourceTree = "<group>"; };
+		A10000000000000000000004 /* WorkbenchPayloadDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkbenchPayloadDecodingTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* WorkbenchBootstrapMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkbenchBootstrapMapperTests.swift; sourceTree = "<group>"; };
 		AB6764D0DF2A55EB3796889D /* IssueCTL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IssueCTL.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD0E8C15D2965C1673B992B7 /* MacSidebarSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSidebarSmokeTests.swift; sourceTree = "<group>"; };
 		AD3C1581E55A12781F1E76A1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -530,6 +546,8 @@
 				533CCB5045E471F6D1675F9D /* ModelDecodingTests.swift */,
 				244DA774E9D8E1B7695BD3BA /* OfflineSyncServiceTests.swift */,
 				F63680089A3314AB67CE5883 /* ViewLogicTests.swift */,
+				A10000000000000000000005 /* WorkbenchBootstrapMapperTests.swift */,
+				A10000000000000000000004 /* WorkbenchPayloadDecodingTests.swift */,
 			);
 			path = IssueCTLTests;
 			sourceTree = "<group>";
@@ -605,6 +623,7 @@
 				48746522237ABF37AF77B1DA /* APIClient+ListEnhancements.swift */,
 				F13DA6D6632CDEBCF8A5BEB2 /* APIClient+Priority.swift */,
 				0881CAEF6DBC120F31F7D3D8 /* APIClient+Settings.swift */,
+				A10000000000000000000003 /* APIClient+Workbench.swift */,
 				CAB04FB5543994CCE2DE041E /* KeychainService.swift */,
 				E556B4EF9EA078249A82EF01 /* NetworkMonitor.swift */,
 				C4E7EDBC4DCA5DCEF3D3EA2D /* OfflineCacheStore.swift */,
@@ -646,6 +665,8 @@
 				013A1B391EF1CD6F786CEE87 /* PushDevice.swift */,
 				FC54A0EAA1EEB03CA4C70E1E /* Repo.swift */,
 				EA9635969EE9222BA0642CAC /* ServerHealth.swift */,
+				A10000000000000000000002 /* WorkbenchBootstrap.swift */,
+				A10000000000000000000001 /* WorkbenchPayload.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -1053,6 +1074,8 @@
 				DBAAAF7B3925847446CC5E39 /* ModelDecodingTests.swift in Sources */,
 				52543EF1C7077597CC6DC8F0 /* OfflineSyncServiceTests.swift in Sources */,
 				EE5CBD61D807436206C48637 /* ViewLogicTests.swift in Sources */,
+				A10000000000000000000021 /* WorkbenchBootstrapMapperTests.swift in Sources */,
+				A10000000000000000000020 /* WorkbenchPayloadDecodingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1068,6 +1091,7 @@
 				02781CCEEF582EE8519AB93C /* APIClient+ListEnhancements.swift in Sources */,
 				2460ABA7F82EAE25FC756C3C /* APIClient+Priority.swift in Sources */,
 				00BC2D38BE194211C3EB9141 /* APIClient+Settings.swift in Sources */,
+				A10000000000000000000018 /* APIClient+Workbench.swift in Sources */,
 				779767D8AA5F26F07A4B7F31 /* APIClient.swift in Sources */,
 				FC3CDC9F728B2C926EBAFF13 /* AddRepoSheet.swift in Sources */,
 				B4D3E5DC8306990F763058B6 /* AdvancedSettingsView.swift in Sources */,
@@ -1082,6 +1106,8 @@
 				4451AE4574EA7D0F86AEE021 /* Constants.swift in Sources */,
 				A18D8982D49319C633EE661A /* ContentView.swift in Sources */,
 				9F86AFDB25A8D630E9D2DE9F /* Deployment.swift in Sources */,
+				A10000000000000000000015 /* WorkbenchBootstrap.swift in Sources */,
+				A10000000000000000000012 /* WorkbenchPayload.swift in Sources */,
 				3A294328BBF7D4016CC7B91E /* DraftDetailView.swift in Sources */,
 				9318F86221EE651B485C689D /* EditCommentSheet.swift in Sources */,
 				E35D59719FABCC9A185D8366 /* EditIssueSheet.swift in Sources */,
@@ -1153,6 +1179,7 @@
 				CD346337E88C758F51FECA8B /* APIClient+ListEnhancements.swift in Sources */,
 				E30192F97F27BDAA38683254 /* APIClient+Priority.swift in Sources */,
 				53A7CFBBAFA7D6066E2803DA /* APIClient+Settings.swift in Sources */,
+				A10000000000000000000019 /* APIClient+Workbench.swift in Sources */,
 				3C8E5B7EEE8B870210CB8DDC /* APIClient.swift in Sources */,
 				DF9D730DC11003377B8A76D6 /* AddRepoSheet.swift in Sources */,
 				A9B874605B9902D25572BC69 /* AdvancedSettingsView.swift in Sources */,
@@ -1167,6 +1194,8 @@
 				81AFBA58B00DCECA768B0079 /* Constants.swift in Sources */,
 				AA3252F10785CFF948F2B058 /* ContentView.swift in Sources */,
 				459B907BD14D5EE0E4C0FCA0 /* Deployment.swift in Sources */,
+				A10000000000000000000016 /* WorkbenchBootstrap.swift in Sources */,
+				A10000000000000000000013 /* WorkbenchPayload.swift in Sources */,
 				860A3B2B7C8CF810C96C40F3 /* DraftDetailView.swift in Sources */,
 				23988D605A2821DBAE05F3FE /* EditCommentSheet.swift in Sources */,
 				71AF28916BD03EBCEC063015 /* EditIssueSheet.swift in Sources */,
@@ -1286,9 +1315,12 @@
 				7288E1A84AADA68C9DE2149D /* APIClient+ListEnhancements.swift in Sources */,
 				01F0A200518D2640F6450199 /* APIClient+Priority.swift in Sources */,
 				8BC633B30D59AF60177731FD /* APIClient+Settings.swift in Sources */,
+				A10000000000000000000017 /* APIClient+Workbench.swift in Sources */,
 				A642DAF085F1B5DD608BF523 /* APIClient.swift in Sources */,
 				6ACACC51156AD2AAC6086C6C /* BranchNameHelper.swift in Sources */,
 				2DB5F8C9697670EC9F57E8BB /* Deployment.swift in Sources */,
+				A10000000000000000000014 /* WorkbenchBootstrap.swift in Sources */,
+				A10000000000000000000011 /* WorkbenchPayload.swift in Sources */,
 				AFAB97B43E866DC13C3F8563 /* DisplaySidebarCoordinator.swift in Sources */,
 				D313EE47970005D888007FBE /* GitHubAccessibleRepo.swift in Sources */,
 				5C8B076C5D41EB2832394E74 /* Issue.swift in Sources */,

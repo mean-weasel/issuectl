@@ -824,6 +824,39 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertEqual(todayReviewPulls(pulls).map(\.number), [3, 2])
     }
 
+    func testTodayMergedActiveDeploymentsFallsBackToWorkbenchBootstrap() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+
+        let result = todayMergedActiveDeployments(primary: [], workbenchBootstrap: bootstrap)
+
+        XCTAssertEqual(result.map(\.id), [42_001])
+        XCTAssertEqual(result.first?.targetType, .issue)
+    }
+
+    func testTodayMergedActiveDeploymentsKeepsEndpointAndAppendsWorkbenchRows() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+        let endpointDeployment = makeDeployment(id: 7, repo: "beta", issueNumber: 7)
+
+        let result = todayMergedActiveDeployments(
+            primary: [endpointDeployment],
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertEqual(result.map(\.id), [7, 42_001])
+    }
+
+    func testTodayMergedActiveDeploymentsDeduplicatesEndpointRows() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+        let endpointDeployment = makeDeployment(id: 42_001, repo: "alpha", issueNumber: 42)
+
+        let result = todayMergedActiveDeployments(
+            primary: [endpointDeployment],
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertEqual(result.map(\.id), [42_001])
+    }
+
     func testTodaySearchMatchesTitleBodyRepoAndNumber() {
         XCTAssertTrue(todayMatchesSearchQuery(
             query: "login",
@@ -898,6 +931,58 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertNil(runningDeployment(owner: "org", repo: "alpha", number: 42, deployments: deployments))
     }
 
+    func testIssueListRunningDeploymentFallsBackToWorkbenchBootstrap() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+
+        let result = issueListRunningDeployment(
+            owner: "org",
+            repo: "alpha",
+            number: 42,
+            deployments: [],
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertEqual(result?.id, 42_001)
+        XCTAssertEqual(result?.targetType, .issue)
+        XCTAssertEqual(result?.ttydPort, 7681)
+    }
+
+    func testIssueListRunningDeploymentPrefersEndpointDeployment() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+        let endpointDeployment = makeDeployment(id: 7, repo: "alpha", issueNumber: 42)
+
+        let result = issueListRunningDeployment(
+            owner: "org",
+            repo: "alpha",
+            number: 42,
+            deployments: [endpointDeployment],
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertEqual(result?.id, 7)
+    }
+
+    func testIssueListDeploymentMergeDeduplicatesEndpointRows() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+        let endpointDeployment = makeDeployment(id: 42_001, repo: "alpha", issueNumber: 42)
+
+        let result = issueListMergedDeployments(
+            primary: [endpointDeployment],
+            workbenchBootstrap: bootstrap
+        )
+
+        XCTAssertEqual(result.map(\.id), [42_001])
+    }
+
+    func testIssueListPrioritySeedUsesWorkbenchBootstrap() throws {
+        let bootstrap = try makeWorkbenchBootstrap()
+
+        XCTAssertEqual(issueListPrioritySeed(workbenchBootstrap: bootstrap), [
+            "org/alpha#42": .high,
+            "org/alpha#43": .low,
+        ])
+    }
+
     // MARK: - Terminal Display Settings
 
     func testTerminalFontSizeClampsToSupportedRange() {
@@ -930,4 +1015,123 @@ final class ViewLogicTests: XCTestCase {
             TerminalDisplaySettings.defaultFontSize - TerminalDisplaySettings.step
         )
     }
+
+    private func makeWorkbenchBootstrap() throws -> WorkbenchBootstrap {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let payload = try decoder.decode(WorkbenchPayload.self, from: Self.workbenchFixture)
+        return WorkbenchBootstrap(payload: payload)
+    }
+
+    private static let workbenchFixture = """
+    {
+      "repos": [
+        {
+          "id": 1,
+          "owner": "org",
+          "name": "alpha",
+          "local_path": "/workspace/alpha",
+          "branch_pattern": null,
+          "auto_launch_issues": true,
+          "auto_review_prs": false,
+          "issue_agent": "codex",
+          "review_agent": "claude",
+          "webhook_id": null,
+          "webhook_payload_mode": "metadata",
+          "badge_count": 1,
+          "deployed_count": 1,
+          "launch_agent": "codex",
+          "terminal_backend_default": "ttyd",
+          "issue_error": null,
+          "issues_from_cache": false,
+          "issues_cached_at": null,
+          "priorities": [
+            {"repo_id": 1, "issue_number": 42, "priority": "high", "updated_at": 1779000000},
+            {"repo_id": 1, "issue_number": 43, "priority": "low", "updated_at": 1779000001}
+          ],
+          "deployments": [
+            {
+              "id": 42001,
+              "repo_id": 1,
+              "issue_number": 42,
+              "target_type": "issue",
+              "target_number": 42,
+              "agent": "codex",
+              "branch_name": "issue-42",
+              "workspace_mode": "worktree",
+              "workspace_path": "/workspace/alpha",
+              "linked_pr_number": null,
+              "state": "active",
+              "terminal_backend": "ttyd",
+              "triggered_by": "manual",
+              "parent_deployment_id": null,
+              "webhook_depth": 0,
+              "launched_at": "2026-05-16T15:10:00.000Z",
+              "ended_at": null,
+              "terminal_reason": null,
+              "completion_token": null,
+              "completion_result_json": null,
+              "notification_sent_at": null,
+              "ttyd_port": 7681,
+              "ttyd_pid": 123,
+              "idle_since": null,
+              "owner": "org",
+              "repo_name": "alpha"
+            },
+            {
+              "id": 44001,
+              "repo_id": 1,
+              "issue_number": null,
+              "target_type": "pr",
+              "target_number": 44,
+              "agent": "codex",
+              "branch_name": "review-pr-44",
+              "workspace_mode": "worktree",
+              "workspace_path": "/workspace/alpha-pr",
+              "linked_pr_number": null,
+              "state": "active",
+              "terminal_backend": "ttyd",
+              "triggered_by": "webhook",
+              "parent_deployment_id": null,
+              "webhook_depth": 0,
+              "launched_at": "2026-05-16T15:10:00.000Z",
+              "ended_at": null,
+              "terminal_reason": null,
+              "completion_token": null,
+              "completion_result_json": null,
+              "notification_sent_at": null,
+              "ttyd_port": 7682,
+              "ttyd_pid": 124,
+              "idle_since": null,
+              "owner": "org",
+              "repo_name": "alpha"
+            }
+          ],
+          "recent_completions": [],
+          "webhook_events": [],
+          "pr_reviews": [],
+          "previews": {},
+          "issues": [
+            {
+              "number": 42,
+              "title": "Running issue",
+              "state": "open",
+              "labels": [],
+              "updated_at": "2026-05-16T15:30:00.000Z",
+              "priority": "normal",
+              "has_active_deployment": true,
+              "html_url": "https://github.com/org/alpha/issues/42",
+              "author_login": null
+            }
+          ]
+        }
+      ],
+      "deployments": [],
+      "previews": {},
+      "settings": {},
+      "health": {"ok": true, "version": null, "timestamp": null, "error": null},
+      "user": {"login": null, "error": null},
+      "generated_at": "2026-05-16T15:45:00.000Z"
+    }
+    """.data(using: .utf8)!
 }
