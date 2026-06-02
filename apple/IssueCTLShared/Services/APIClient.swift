@@ -378,8 +378,6 @@ final class APIClient {
         return try decoder.decode(SessionsOverviewResponse.self, from: data)
     }
 
-    // Depends on issue #546: these automation list endpoints are fixture-driven
-    // until the web API exposes dedicated list routes for native clients.
     func webhookEvents(
         owner: String,
         repo: String,

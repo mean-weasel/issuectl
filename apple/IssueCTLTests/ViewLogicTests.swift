@@ -38,7 +38,7 @@ final class ViewLogicTests: XCTestCase {
         let url = try XCTUnwrap(URL(string: "/sessions?repo=mean-weasel%2Fissuectl"))
         let route = try XCTUnwrap(AppRoute(url: url))
 
-        XCTAssertEqual(route, .sessions(repoFullName: "mean-weasel/issuectl"))
+        XCTAssertEqual(route, .sessions(repoFullName: "mean-weasel/issuectl", deploymentId: nil))
     }
 
     func testAppRouteParsesReviewIdentifier() throws {
@@ -52,13 +52,34 @@ final class ViewLogicTests: XCTestCase {
         let url = try XCTUnwrap(URL(string: "/workbench?repo=mean-weasel%2Fissuectl&deployment=113"))
         let route = try XCTUnwrap(AppRoute(url: url))
 
-        XCTAssertEqual(route, .board(repoFullName: "mean-weasel/issuectl", deploymentId: 113))
+        XCTAssertEqual(route, .board(repoFullName: "mean-weasel/issuectl", issueNumber: nil, deploymentId: 113))
+    }
+
+    func testAppRouteParsesWorkbenchIssueQuery() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl://board?repo=mean-weasel%2Fissuectl&issue=512"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .board(repoFullName: "mean-weasel/issuectl", issueNumber: 512, deploymentId: nil))
+    }
+
+    func testAppRouteParsesSessionsDeploymentQuery() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl://sessions?repo=mean-weasel%2Fissuectl&deploymentId=701"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .sessions(repoFullName: "mean-weasel/issuectl", deploymentId: 701))
+    }
+
+    func testAppRouteParsesReviewQueryIdentifier() throws {
+        let url = try XCTUnwrap(URL(string: "issuectl://review?id=9001"))
+        let route = try XCTUnwrap(AppRoute(url: url))
+
+        XCTAssertEqual(route, .review(id: "9001"))
     }
 
     func testAppRouteFallsBackForFuturePaths() throws {
-        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/sessions"))), .sessions(repoFullName: nil))
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/sessions"))), .sessions(repoFullName: nil, deploymentId: nil))
         XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/reviews/review-123"))), .review(id: "review-123"))
-        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/workbench/kanban"))), .board(repoFullName: nil, deploymentId: nil))
+        XCTAssertEqual(AppRoute(url: try XCTUnwrap(URL(string: "/workbench/kanban"))), .board(repoFullName: nil, issueNumber: nil, deploymentId: nil))
         XCTAssertNil(AppRoute(url: try XCTUnwrap(URL(string: "/settings"))))
     }
 
@@ -192,6 +213,15 @@ final class ViewLogicTests: XCTestCase {
     func testReviewRunActionModeRequestedDisplayNames() {
         XCTAssertEqual(ReviewRunActionMode.retry.requestedDisplayName, "Retry requested")
         XCTAssertEqual(ReviewRunActionMode.full.requestedDisplayName, "Full rerun requested")
+    }
+
+    func testReviewRunStatusOperatorDescriptions() {
+        XCTAssertEqual(ReviewRunStatus.reserved.operatorDescription, "Waiting for the review worker to claim this run.")
+        XCTAssertEqual(ReviewRunStatus.launching.operatorDescription, "Preparing a PR review session.")
+        XCTAssertEqual(ReviewRunStatus.inProgress.operatorDescription, "Review session is running.")
+        XCTAssertEqual(ReviewRunStatus.completed.operatorDescription, "Latest automated review completed.")
+        XCTAssertEqual(ReviewRunStatus.failed.operatorDescription, "Review failed; open details for diagnostics or retry.")
+        XCTAssertEqual(ReviewRunStatus.superseded.operatorDescription, "A newer review request replaced this run.")
     }
 
     // MARK: - Offline Action Queue

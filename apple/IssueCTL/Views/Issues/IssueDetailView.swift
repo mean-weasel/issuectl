@@ -22,6 +22,7 @@ struct IssueDetailView: View {
     @State private var actionError: String?
     @State private var repoAutomation: Repo?
     @State private var automationWebhookHealth: WebhookAutomationHealth?
+    @State private var automationWebhookEvent: WebhookEvent?
 
     // Comment actions and error display
     @State private var isDeletingComment = false
@@ -369,6 +370,12 @@ struct IssueDetailView: View {
             isApplied: isApplied,
             isAutomationEnabled: repoAutomation?.autoLaunchIssues ?? false,
             webhookSummary: automationWebhookSummary,
+            evidence: automationLabelEvidence(
+                kind: kind,
+                isApplied: isApplied,
+                webhookEvent: automationWebhookEvent,
+                reviewRun: nil
+            ),
             isToggling: isTogglingAutomationLabel,
             buttonIdentifier: "issue-auto-launch-label-button",
             onToggle: {
@@ -638,6 +645,19 @@ struct IssueDetailView: View {
                 do { return .success(try await api.webhookHealth(owner: owner, repo: repo)) }
                 catch { return .failure(error) }
             }()
+            async let webhookEventsResult: Result<WebhookEventsResponse, Error> = {
+                do {
+                    return .success(try await api.webhookEvents(
+                        owner: owner,
+                        repo: repo,
+                        targetType: .issue,
+                        targetNumber: number,
+                        limit: 5
+                    ))
+                } catch {
+                    return .failure(error)
+                }
+            }()
             detail = try await detailResult
             hasLoadedFullDetail = true
 
@@ -670,6 +690,12 @@ struct IssueDetailView: View {
                 automationWebhookHealth = health
             case .failure:
                 automationWebhookHealth = nil
+            }
+            switch await webhookEventsResult {
+            case .success(let response):
+                automationWebhookEvent = response.events.first
+            case .failure:
+                automationWebhookEvent = nil
             }
             if !failures.isEmpty {
                 actionError = "Failed to load: \(failures.joined(separator: ", "))"

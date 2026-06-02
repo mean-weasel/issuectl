@@ -36,7 +36,10 @@ struct ContentView: View {
                     }
                     .accessibilityIdentifier("today-tab")
                     Tab("Board", systemImage: "rectangle.grid.2x2", value: AppTab.board) {
-                        BoardView(onShowSettings: { showSettings = true })
+                        BoardView(
+                            onShowSettings: { showSettings = true },
+                            route: $pendingRoute
+                        )
                             .ignoresSafeArea(.container, edges: .bottom)
                     }
                     .accessibilityIdentifier("board-tab")
@@ -59,7 +62,8 @@ struct ContentView: View {
                     Tab("Active", systemImage: "terminal", value: AppTab.active) {
                         SessionListView(
                             onShowSettings: { showSettings = true },
-                            onShowIssues: { selectedTab = .issues }
+                            onShowIssues: { selectedTab = .issues },
+                            route: $pendingRoute
                         )
                             .ignoresSafeArea(.container, edges: .bottom)
                     }
@@ -160,15 +164,14 @@ struct ContentView: View {
             selectedTab = .pullRequests
             pendingRoute = route
         case .board:
-            // Board/Sessions focus can consume the preserved route context in follow-up work.
             selectedTab = .board
-            pendingRoute = nil
+            pendingRoute = route
         case .sessions:
             selectedTab = .active
-            pendingRoute = nil
+            pendingRoute = route
         case .review:
             selectedTab = .active
-            pendingRoute = nil
+            pendingRoute = route
         }
     }
 }

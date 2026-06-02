@@ -55,7 +55,7 @@ struct RepoAutomationActivityView: View {
 
     let repo: Repo
 
-    @State private var query = RepoAutomationActivityQuery()
+    @State private var query: RepoAutomationActivityQuery
     @State private var webhookEvents: [WebhookEvent] = []
     @State private var reviewRuns: [ReviewRun] = []
     @State private var isLoadingWebhookEvents = false
@@ -65,6 +65,11 @@ struct RepoAutomationActivityView: View {
     @State private var webhookResponse: WebhookEventsResponse?
     @State private var reviewRunsResponse: ReviewRunsResponse?
     @State private var reviewDetailTarget: ReviewRunDetailTarget?
+
+    init(repo: Repo, initialQuery: RepoAutomationActivityQuery = RepoAutomationActivityQuery()) {
+        self.repo = repo
+        _query = State(initialValue: initialQuery)
+    }
 
     var body: some View {
         Form {

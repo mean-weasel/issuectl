@@ -185,6 +185,12 @@ final class IssueDetailActionTests: XCTestCase {
         tapElement("issue-auto-launch-label-button", in: app)
 
         XCTAssertTrue(app.staticTexts["Auto-launch label applied"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Automation queued"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "worker will launch after debounce")).firstMatch
+                .waitForExistence(timeout: 5),
+            app.debugDescription
+        )
         XCTAssertEqual(server.lastIssueLabelAction, "add")
     }
 

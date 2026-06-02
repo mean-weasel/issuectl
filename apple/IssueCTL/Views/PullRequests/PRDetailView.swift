@@ -18,6 +18,8 @@ struct PRDetailView: View {
     @State private var actionError: String?
     @State private var repoAutomation: Repo?
     @State private var automationWebhookHealth: WebhookAutomationHealth?
+    @State private var automationWebhookEvent: WebhookEvent?
+    @State private var automationReviewRun: ReviewRun?
     @State private var isTogglingAutomationLabel = false
     @State private var activeReviewDeployments: [ActiveDeployment] = []
     @State private var terminalPresentation: PRTerminalPresentation?
@@ -233,6 +235,12 @@ struct PRDetailView: View {
             isApplied: isApplied,
             isAutomationEnabled: repoAutomation?.autoReviewPrs ?? false,
             webhookSummary: automationWebhookSummary,
+            evidence: automationLabelEvidence(
+                kind: kind,
+                isApplied: isApplied,
+                webhookEvent: automationWebhookEvent,
+                reviewRun: automationReviewRun
+            ),
             isToggling: isTogglingAutomationLabel,
             buttonIdentifier: "pr-auto-review-label-button",
             onToggle: {
@@ -488,6 +496,23 @@ struct PRDetailView: View {
                 do { return .success(try await api.activeDeployments(refresh: refresh)) }
                 catch { return .failure(error) }
             }()
+            async let webhookEventsResult: Result<WebhookEventsResponse, Error> = {
+                do {
+                    return .success(try await api.webhookEvents(
+                        owner: owner,
+                        repo: repo,
+                        targetType: .pr,
+                        targetNumber: number,
+                        limit: 5
+                    ))
+                } catch {
+                    return .failure(error)
+                }
+            }()
+            async let reviewRunsResult: Result<ReviewRunsResponse, Error> = {
+                do { return .success(try await api.reviewRuns(owner: owner, repo: repo, pr: number, limit: 5)) }
+                catch { return .failure(error) }
+            }()
 
             detail = try await detailResult
             switch await reposResult {
@@ -508,6 +533,18 @@ struct PRDetailView: View {
                     .filter { $0.matchesPullRequest(owner: owner, repo: repo, number: number) }
             case .failure:
                 activeReviewDeployments = []
+            }
+            switch await webhookEventsResult {
+            case .success(let response):
+                automationWebhookEvent = response.events.first
+            case .failure:
+                automationWebhookEvent = nil
+            }
+            switch await reviewRunsResult {
+            case .success(let response):
+                automationReviewRun = response.reviewRuns.first
+            case .failure:
+                automationReviewRun = nil
             }
         } catch {
             errorMessage = error.localizedDescription

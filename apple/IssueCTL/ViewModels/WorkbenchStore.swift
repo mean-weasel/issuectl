@@ -67,6 +67,12 @@ struct WorkbenchBoardIssue: Identifiable, Sendable {
     }
 }
 
+struct WorkbenchBoardFocus: Equatable, Sendable {
+    let owner: String
+    let repo: String
+    let number: Int
+}
+
 @Observable @MainActor
 final class WorkbenchStore {
     var payload: WorkbenchPayload?
@@ -155,21 +161,51 @@ final class WorkbenchStore {
         }
     }
 
+    @discardableResult
+    func applyBoardRoute(
+        repoFullName: String?,
+        issueNumber: Int?,
+        deploymentId: Int?
+    ) -> WorkbenchBoardFocus? {
+        let routeRepos = reposForRoute(repoFullName)
+
+        if let deploymentId,
+           let match = routeRepos.lazy.compactMap({ repo in
+               repo.deployments.first(where: { $0.id == deploymentId }).map { (repo: repo, deployment: $0) }
+           }).first {
+            selectedRepoIds = [match.repo.id]
+            filter = .running
+            guard match.deployment.targetType == .issue else { return nil }
+            return WorkbenchBoardFocus(
+                owner: match.repo.owner,
+                repo: match.repo.name,
+                number: match.deployment.targetNumber
+            )
+        }
+
+        if let issueNumber,
+           let match = routeRepos.lazy.compactMap({ repo in
+               repo.issues.first(where: { $0.number == issueNumber }).map { (repo: repo, issue: $0) }
+           }).first {
+            selectedRepoIds = [match.repo.id]
+            let item = boardIssue(repo: match.repo, repoIndex: repoIndex(for: match.repo), issue: match.issue)
+            filter = filter(for: item)
+            return WorkbenchBoardFocus(owner: match.repo.owner, repo: match.repo.name, number: issueNumber)
+        }
+
+        if let repoFullName,
+           let repo = repos.first(where: { $0.fullName == repoFullName }) {
+            selectedRepoIds = [repo.id]
+        }
+
+        return nil
+    }
+
     private func boardIssues(filteringByRepoOnly: Bool) -> [WorkbenchBoardIssue] {
         var issues: [WorkbenchBoardIssue] = []
         for (index, repo) in repos.enumerated() where selectedRepoIds.isEmpty || selectedRepoIds.contains(repo.id) {
             for issue in repo.issues {
-                let deployment = repo.deployments.first {
-                    $0.targetType == .issue && $0.targetNumber == issue.number
-                }
-                let item = WorkbenchBoardIssue(
-                    repoId: repo.id,
-                    repoIndex: index,
-                    owner: repo.owner,
-                    repoName: repo.name,
-                    issue: issue,
-                    deployment: deployment
-                )
+                let item = boardIssue(repo: repo, repoIndex: index, issue: issue)
                 if filteringByRepoOnly || filter.includes(item) {
                     issues.append(item)
                 }
@@ -188,5 +224,35 @@ final class WorkbenchStore {
             }
             return left.id < right.id
         }
+    }
+
+    private func reposForRoute(_ repoFullName: String?) -> [WorkbenchRepo] {
+        guard let repoFullName else { return repos }
+        return repos.filter { $0.fullName == repoFullName }
+    }
+
+    private func repoIndex(for repo: WorkbenchRepo) -> Int {
+        repos.firstIndex(where: { $0.id == repo.id }) ?? 0
+    }
+
+    private func boardIssue(repo: WorkbenchRepo, repoIndex: Int, issue: WorkbenchIssueSummary) -> WorkbenchBoardIssue {
+        let deployment = repo.deployments.first {
+            $0.targetType == .issue && $0.targetNumber == issue.number
+        }
+        return WorkbenchBoardIssue(
+            repoId: repo.id,
+            repoIndex: repoIndex,
+            owner: repo.owner,
+            repoName: repo.name,
+            issue: issue,
+            deployment: deployment
+        )
+    }
+
+    private func filter(for issue: WorkbenchBoardIssue) -> WorkbenchIssueFilter {
+        if !issue.issue.isOpen {
+            return .closed
+        }
+        return issue.isRunning ? .running : .open
     }
 }

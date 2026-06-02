@@ -69,6 +69,12 @@ final class PRBrowseTests: XCTestCase {
         tapElement("pr-auto-review-label-button", in: app)
 
         XCTAssertTrue(app.staticTexts["Auto-review label applied"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Review automation queued"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "reserved this request")).firstMatch
+                .waitForExistence(timeout: 5),
+            app.debugDescription
+        )
         XCTAssertEqual(server.lastPullLabelAction, "add")
     }
 

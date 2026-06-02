@@ -21,6 +21,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
 
     // Settings controls.
     var defaultLaunchAgent = "claude"
+    var reviewDetailMobileWriteActionsEnabled = false
 
     private let stateLock = NSLock()
     private var lastLaunchPayload: [String: Any] = [:]
@@ -30,6 +31,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
     private var lastRepoLabelsPayload: [String: Any] = [:]
     private var lastIssueLabelPayload: [String: Any] = [:]
     private var lastPullLabelPayload: [String: Any] = [:]
+    private var lastReviewRunActionPayload: [String: Any] = [:]
 
     var lastLaunchAgent: String? {
         stateLock.lock()
@@ -77,6 +79,12 @@ final class MockIssueCTLServer: @unchecked Sendable {
         stateLock.lock()
         defer { stateLock.unlock() }
         return lastPullLabelPayload["action"] as? String
+    }
+
+    var lastReviewRunActionMode: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastReviewRunActionPayload["mode"] as? String
     }
 
     // Fixture state for extended test coverage.
@@ -153,6 +161,16 @@ final class MockIssueCTLServer: @unchecked Sendable {
     func seedPullRequestDeployment() {
         hiddenPreviewIssueNumbers = []
         activeDeployments = [pullRequestDeployment(number: 7)]
+    }
+
+    func seedPtyBridgeDeployment() {
+        hiddenPreviewIssueNumbers = []
+        var deployment = deployment(issueNumber: 101)
+        deployment["id"] = 9201
+        deployment["terminal_backend"] = "pty_bridge"
+        deployment["ttyd_port"] = NSNull()
+        deployment["ttyd_pid"] = NSNull()
+        activeDeployments = [deployment]
     }
 
     func seedMixedActivityDeployments() {
@@ -486,6 +504,84 @@ final class MockIssueCTLServer: @unchecked Sendable {
                 ],
             ]
 
+        case ("GET", "/api/v1/webhooks/events"):
+            body = [
+                "events": [
+                    webhookEvent(targetType: "issue", targetNumber: 101),
+                    webhookEvent(targetType: "pr", targetNumber: 7),
+                ],
+                "repos": [["id": 1, "full_name": "org/alpha"]],
+                "filters": [
+                    "limit": 50,
+                ],
+                "summary": [
+                    "count": 2,
+                    "latest_received_at": 1_777_440_000,
+                    "latest_received_at_iso": isoDate,
+                    "result_counts": ["scheduled": 2],
+                ],
+                "from_cache": false,
+                "cached_at": NSNull(),
+            ]
+
+        case ("GET", "/api/v1/repos/org/alpha/webhook/events"):
+            let isPRTarget = rawPath.contains("targetType=pr")
+            let targetNumber = isPRTarget ? 7 : 101
+            body = [
+                "events": [
+                    webhookEvent(targetType: isPRTarget ? "pr" : "issue", targetNumber: targetNumber),
+                ],
+                "repos": [["id": 1, "full_name": "org/alpha"]],
+                "filters": [
+                    "repo": "org/alpha",
+                    "target_type": isPRTarget ? "pr" : "issue",
+                    "target_number": targetNumber,
+                    "limit": 5,
+                ],
+                "summary": [
+                    "count": 1,
+                    "latest_received_at": 1_777_440_000,
+                    "latest_received_at_iso": isoDate,
+                    "result_counts": ["scheduled": 1],
+                ],
+                "from_cache": false,
+                "cached_at": NSNull(),
+            ]
+
+        case ("GET", "/api/v1/repos/org/alpha/review-runs"):
+            body = [
+                "review_runs": [
+                    reviewRun(prNumber: 7, status: "reserved"),
+                ],
+                "from_cache": false,
+                "cached_at": NSNull(),
+            ]
+
+        case ("GET", "/api/v1/pr-reviews"):
+            body = [
+                "review_runs": [
+                    reviewRun(prNumber: 7, status: "reserved"),
+                ],
+                "from_cache": false,
+                "cached_at": NSNull(),
+            ]
+
+        case ("GET", "/api/v1/pr-reviews/39507"):
+            body = reviewRunDetail(id: 39507, deploymentId: 9507)
+
+        case ("POST", "/api/v1/pr-reviews/39507/actions"):
+            let payload = jsonBody(from: request)
+            stateLock.lock()
+            lastReviewRunActionPayload = payload
+            stateLock.unlock()
+            body = [
+                "success": true,
+                "review_id": 39507,
+                "intent_id": 99,
+                "mode": payload["mode"] as? String ?? "retry",
+                "message": "Review action queued.",
+            ]
+
         case ("GET", "/api/v1/workbench"):
             body = workbenchPayload()
 
@@ -499,6 +595,9 @@ final class MockIssueCTLServer: @unchecked Sendable {
             body = ["previews": sessionPreviews()]
 
         case ("GET", "/api/v1/sessions/overview"):
+            if failDeployments {
+                return http(status: 500, json: ["error": "sessions unavailable"])
+            }
             body = sessionsOverviewPayload()
 
         case ("GET", "/api/v1/drafts"):
@@ -1020,6 +1119,148 @@ final class MockIssueCTLServer: @unchecked Sendable {
         ]
     }
 
+    private func webhookEvent(targetType: String, targetNumber: Int) -> [String: Any] {
+        [
+            "id": targetType == "pr" ? 77 : 76,
+            "delivery_id": "mock-\(targetType)-delivery",
+            "repo_id": 1,
+            "repo_full_name": "org/alpha",
+            "owner": "org",
+            "repo_name": "alpha",
+            "event_type": targetType == "pr" ? "pull_request" : "issues",
+            "action": "labeled",
+            "sender_login": "alice",
+            "target_type": targetType,
+            "target_number": targetNumber,
+            "target_label": targetType == "pr" ? "PR #\(targetNumber)" : "Issue #\(targetNumber)",
+            "payload_json": NSNull(),
+            "received_at": 1_777_440_000,
+            "received_at_iso": isoDate,
+            "intent_id": 88,
+            "result": "scheduled",
+            "result_detail": "Automation intent queued for worker debounce.",
+            "action_id": NSNull(),
+            "intent": [
+                "id": 88,
+                "status": "scheduled",
+                "target_type": targetType,
+                "target_number": targetNumber,
+                "target_label": targetType == "pr" ? "PR #\(targetNumber)" : "Issue #\(targetNumber)",
+                "first_signal_at": 1_777_440_000,
+                "first_signal_at_iso": isoDate,
+                "last_signal_at": 1_777_440_000,
+                "last_signal_at_iso": isoDate,
+                "scheduled_at": 1_777_440_060,
+                "scheduled_at_iso": isoDate,
+                "processing_started_at": NSNull(),
+                "processing_started_at_iso": NSNull(),
+                "lease_expires_at": NSNull(),
+                "lease_expires_at_iso": NSNull(),
+                "resolved_at": NSNull(),
+                "resolved_at_iso": NSNull(),
+                "generation": 1,
+                "requested_agent": "codex",
+                "review_mode": targetType == "pr" ? "retry" : NSNull(),
+                "signal_count": 1,
+                "deployment_id": NSNull(),
+                "failure_reason": NSNull(),
+            ],
+        ]
+    }
+
+    private func reviewRun(prNumber: Int, status: String) -> [String: Any] {
+        [
+            "id": 901,
+            "repo_id": 1,
+            "repo_full_name": "org/alpha",
+            "owner": "org",
+            "repo_name": "alpha",
+            "pr_number": prNumber,
+            "deployment_id": NSNull(),
+            "started_head_sha": "abc123",
+            "completed_head_sha": NSNull(),
+            "review_base_sha": "base123",
+            "reviewed_from_sha": NSNull(),
+            "reviewed_to_sha": "abc123",
+            "head_repo_full_name": "org/alpha",
+            "head_ref": "feature-\(prNumber)",
+            "status": status,
+            "triggered_by": "webhook",
+            "result": [:],
+            "result_json": NSNull(),
+            "summary": "Review request is waiting for the automation worker.",
+            "finding_count": NSNull(),
+            "range_label": "latest head",
+            "detail_href": "/pulls/org/alpha/\(prNumber)/reviews/901",
+            "started_at": 1_777_440_000,
+            "started_at_iso": isoDate,
+            "completed_at": NSNull(),
+            "completed_at_iso": NSNull(),
+            "deployment": NSNull(),
+        ]
+    }
+
+    private func reviewRunDetail(id: Int, deploymentId: Int) -> [String: Any] {
+        [
+            "review": [
+                "id": id,
+                "repo_id": 1,
+                "repo_full_name": "org/alpha",
+                "owner": "org",
+                "repo_name": "alpha",
+                "pr_number": 7,
+                "deployment_id": deploymentId,
+                "started_head_sha": "abc123",
+                "completed_head_sha": NSNull(),
+                "review_base_sha": "base123",
+                "reviewed_from_sha": "abc123",
+                "reviewed_to_sha": "def456",
+                "head_repo_full_name": "org/alpha",
+                "head_ref": "feature-7",
+                "status": "failed",
+                "triggered_by": "webhook",
+                "result": ["summary": "Review needs a retry"],
+                "result_json": NSNull(),
+                "summary": "Review needs a retry",
+                "finding_count": NSNull(),
+                "range_label": "abc123..def456",
+                "detail_href": "/reviews/\(id)",
+                "started_at": 1_777_800_000,
+                "started_at_iso": isoDate,
+                "completed_at": NSNull(),
+                "completed_at_iso": NSNull(),
+                "deployment": NSNull(),
+            ],
+            "repo": ["id": 1, "full_name": "org/alpha", "owner": "org", "name": "alpha"],
+            "deployment": NSNull(),
+            "lineage": [],
+            "diagnostics": [
+                "events": [],
+                "filters": ["deployment_id": deploymentId, "target_type": "pr", "target_number": 7, "limit": 20],
+                "summary": ["count": 0, "level_counts": [:], "latest_timestamp": NSNull(), "latest_timestamp_iso": NSNull()],
+            ],
+            "findings": [],
+            "banners": [],
+            "metadata": ["current_review_preamble": NSNull(), "trigger_event": NSNull()],
+            "actions": [
+                "can_retry": true,
+                "can_full_rerun": true,
+                "disabled_reason": reviewDetailMobileWriteActionsEnabled ? NSNull() : ("Server disabled mobile review write actions." as Any),
+                "mobile_write_actions_enabled": reviewDetailMobileWriteActionsEnabled,
+            ],
+            "links": [
+                "github_pr": "https://github.com/org/alpha/pull/7",
+                "github_review": NSNull(),
+                "github_review_files": "https://github.com/org/alpha/pull/7/files",
+                "workbench": "/workbench?repo=org%2Falpha",
+                "repo_settings": "/repos/org/alpha/settings",
+                "sessions": "/sessions?tab=reviews",
+                "webhook_logs": "/logs/webhooks",
+                "diagnostics_cli": "pnpm --dir packages/cli exec issuectl diag show --pr org/alpha#7",
+            ],
+        ]
+    }
+
     private func workbenchDeployment(_ deployment: [String: Any]) -> [String: Any] {
         [
             "id": deployment["id"] ?? 0,
@@ -1190,6 +1431,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
             "childDeploymentCount": 0,
             "webhookDepth": deployment["webhook_depth"] ?? 0,
             "terminalReason": deployment["terminal_reason"] ?? NSNull(),
+            "terminalBackend": deployment["terminal_backend"] ?? NSNull(),
             "launchedAt": deployment["launched_at"] ?? isoDate,
             "endedAt": deployment["ended_at"] ?? NSNull(),
             "ttydPort": deployment["ttyd_port"] ?? NSNull(),

@@ -25,16 +25,17 @@ struct SetupLink: Equatable, Sendable {
 enum AppRoute: Equatable, Sendable {
     case issue(owner: String, repo: String, number: Int)
     case pullRequest(owner: String, repo: String, number: Int)
-    case sessions(repoFullName: String?)
+    case sessions(repoFullName: String?, deploymentId: Int?)
     case review(id: String)
-    case board(repoFullName: String?, deploymentId: Int?)
+    case board(repoFullName: String?, issueNumber: Int?, deploymentId: Int?)
 
     init?(url: URL) {
         let components = Self.pathComponents(from: url)
         guard let first = components.first else { return nil }
         let query = Self.queryItems(from: url)
         let repoFullName = query.first(where: { $0.name == "repo" })?.value
-        let deploymentId = query.first(where: { $0.name == "deployment" })?.value.flatMap(Int.init)
+        let deploymentId = Self.intQuery(["deploymentId", "deployment"], from: query)
+        let issueNumber = Self.intQuery(["issueNumber", "issue"], from: query)
 
         switch first {
         case "issues":
@@ -44,12 +45,13 @@ enum AppRoute: Equatable, Sendable {
             guard let target = Self.repoTarget(from: components) else { return nil }
             self = .pullRequest(owner: target.owner, repo: target.repo, number: target.number)
         case "sessions":
-            self = .sessions(repoFullName: repoFullName)
-        case "reviews":
-            guard components.count == 2, !components[1].isEmpty else { return nil }
-            self = .review(id: components[1])
+            self = .sessions(repoFullName: repoFullName, deploymentId: deploymentId)
+        case "reviews", "review":
+            let id = components.dropFirst().first ?? query.first(where: { $0.name == "id" })?.value
+            guard let id, !id.isEmpty else { return nil }
+            self = .review(id: id)
         case "workbench", "board":
-            self = .board(repoFullName: repoFullName, deploymentId: deploymentId)
+            self = .board(repoFullName: repoFullName, issueNumber: issueNumber, deploymentId: deploymentId)
         default:
             return nil
         }
@@ -74,6 +76,16 @@ enum AppRoute: Equatable, Sendable {
 
     private static func queryItems(from url: URL) -> [URLQueryItem] {
         URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+    }
+
+    private static func intQuery(_ names: [String], from query: [URLQueryItem]) -> Int? {
+        for name in names {
+            if let value = query.first(where: { $0.name == name })?.value,
+               let number = Int(value) {
+                return number
+            }
+        }
+        return nil
     }
 
     private static func repoTarget(from components: [String]) -> (owner: String, repo: String, number: Int)? {

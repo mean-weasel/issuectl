@@ -37,6 +37,25 @@ final class SessionManagementTests: XCTestCase {
     }
 
     @MainActor
+    func testSessionControlsOpenTargetAutomationActivity() {
+        server.seedActiveDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
+        element("session-controls-9001", in: app).tap()
+
+        assertElement("session-automation-activity-9001", existsIn: app, timeout: 5)
+        element("session-automation-activity-9001", in: app).tap()
+
+        XCTAssertTrue(app.navigationBars["Automation Activity"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["org/alpha"].waitForExistence(timeout: 5), app.debugDescription)
+        assertElement("repo-automation-activity-number-field", existsIn: app, timeout: 5)
+        XCTAssertTrue(app.staticTexts["Webhook Events"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["Done"].tap()
+    }
+
+    @MainActor
     func testSessionCardOmitsTerminalPreviewOutput() {
         server.seedActiveDeployment()
         let app = launchApp(server: server)
@@ -116,5 +135,66 @@ final class SessionManagementTests: XCTestCase {
 
         waitForNonexistence("session-reenter-terminal-9001", in: app, timeout: 5)
         assertElement("session-reenter-terminal-9101", existsIn: app, timeout: 5)
+    }
+
+    @MainActor
+    func testPtyBridgeSessionOffersWebWorkbenchHandoff() {
+        server.seedPtyBridgeDeployment()
+        let app = launchApp(server: server)
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        XCTAssertTrue(app.staticTexts["PTY bridge"].waitForExistence(timeout: 8), app.debugDescription)
+        assertElement("session-web-workbench-9201", existsIn: app, timeout: 5)
+        element("session-web-workbench-9201", in: app).tap()
+
+        XCTAssertTrue(app.staticTexts["PTY bridge terminal"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "/workbench?deployment=9201")).firstMatch
+                .waitForExistence(timeout: 5),
+            app.debugDescription
+        )
+    }
+
+    @MainActor
+    func testReviewDetailExplainsDisabledMobileActionsWithWebFallback() {
+        server.seedPullRequestDeployment()
+        server.reviewDetailMobileWriteActionsEnabled = false
+        let app = launchApp(server: server)
+
+        openReviewDetail(runId: 39507, in: app)
+
+        XCTAssertTrue(app.staticTexts["Mobile write actions disabled"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(
+            app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Open the web review page")).firstMatch
+                .waitForExistence(timeout: 5),
+            app.debugDescription
+        )
+        XCTAssertFalse(app.buttons["review-run-retry-button"].isEnabled)
+        XCTAssertFalse(app.buttons["review-run-full-button"].isEnabled)
+    }
+
+    @MainActor
+    func testReviewDetailRetryActionSubmitsWhenMobileActionsEnabled() {
+        server.seedPullRequestDeployment()
+        server.reviewDetailMobileWriteActionsEnabled = true
+        let app = launchApp(server: server)
+
+        openReviewDetail(runId: 39507, in: app)
+        let retryButton = app.buttons["review-run-retry-button"]
+        XCTAssertTrue(retryButton.waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(retryButton.isEnabled, app.debugDescription)
+        retryButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Retry requested"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertEqual(server.lastReviewRunActionMode, "retry")
+    }
+
+    @MainActor
+    private func openReviewDetail(runId: Int, in app: XCUIApplication) {
+        tapMainTab("active-tab", label: "Active", in: app)
+        tapElement("section-tab-reviews", in: app, timeout: 8)
+        let detailsButton = app.buttons.matching(NSPredicate(format: "label == %@", "Details")).firstMatch
+        XCTAssertTrue(detailsButton.waitForExistence(timeout: 8), "Missing review detail button for \(runId)\n\(app.debugDescription)")
+        detailsButton.tap()
     }
 }

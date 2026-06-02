@@ -138,10 +138,7 @@ struct ReviewRunDetailSheet: View {
             }
 
             if !detail.actions.mobileWriteActionsEnabled {
-                Label("Retry and full-rerun actions are available on the web review page for now.", systemImage: "lock")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 2)
+                disabledMobileActionsCard(detail)
             }
 
             if let errorMessage {
@@ -182,6 +179,25 @@ struct ReviewRunDetailSheet: View {
                         .foregroundStyle(.green)
                         .accessibilityIdentifier("review-run-action-confirmation")
                 }
+            }
+        }
+    }
+
+    private func disabledMobileActionsCard(_ detail: ReviewRunDetailResponse) -> some View {
+        sectionCard(title: "Mobile write actions disabled", systemImage: "lock") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Open the web review page to retry or full rerun this review.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(detail.review.detailHref ?? detail.links.workbench)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .lineLimit(3)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }

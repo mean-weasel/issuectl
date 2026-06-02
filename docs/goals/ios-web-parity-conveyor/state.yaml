@@ -164,3 +164,4 @@ tasks:
         - "Repo automation settings parity verified on main."
         - "Diagnostics timeline parity verified on main."
         - "PR review-session controls verified on main."
+        - "Last-mile iOS parity evidence recorded in docs/goals/ios-web-parity-conveyor/notes/T100-last-mile-ios-evidence.md after focused Apple verification on branch codex/ios-web-parity-analysis-20260602."
