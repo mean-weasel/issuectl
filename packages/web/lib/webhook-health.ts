@@ -16,6 +16,7 @@ export type WebhookAutomationHealth = {
   latestDelivery: {
     event: string | null;
     action: string | null;
+    status: string | null;
     statusCode: number | null;
     deliveredAt: string | null;
   } | null;
@@ -24,6 +25,7 @@ export type WebhookAutomationHealth = {
 type GitHubDelivery = {
   event?: string | null;
   action?: string | null;
+  status?: string | null;
   status_code?: number | null;
   delivered_at?: string | null;
 };
@@ -111,9 +113,23 @@ export async function getWebhookAutomationHealth(
     if (latestStatusCode !== null && latestStatusCode >= 400) {
       return health({
         state: "error",
-        summary: `Recent GitHub webhook delivery failed with ${latestStatusCode}`,
-        detail: "GitHub reached the configured hook but the latest delivery was not successful.",
-        recovery: "Check the tunnel/server, then redeliver the event or remove and re-add the automation label.",
+        summary: `Webhook delivery infrastructure failed with ${latestStatusCode}`,
+        detail: "GitHub reached the configured hook but the latest delivery failed before issuectl could rely on it.",
+        recovery: "Check the tunnel/server, then redeliver the event or remove and re-add the automation label. For a quick tunnel, start a fresh tunnel and run the webhook rotate command.",
+        expectedUrl,
+        hookId: repo.webhookId,
+        githubUrl,
+        latestDelivery,
+      });
+    }
+
+    const latestStatus = latestDelivery?.status?.trim().toLowerCase() ?? "";
+    if (latestDelivery && latestStatus && latestStatus !== "ok" && latestStatus !== "success") {
+      return health({
+        state: "error",
+        summary: `Webhook delivery infrastructure failed: ${latestDelivery.status}`,
+        detail: "GitHub reported that the latest delivery did not reach the receiver successfully.",
+        recovery: "Check the tunnel/server, then redeliver the event or remove and re-add the automation label. For a quick tunnel, start a fresh tunnel and run the webhook rotate command.",
         expectedUrl,
         hookId: repo.webhookId,
         githubUrl,
@@ -169,6 +185,7 @@ function latestDeliverySummary(deliveries: GitHubDelivery[]): WebhookAutomationH
   return {
     event: latest.event ?? null,
     action: latest.action ?? null,
+    status: latest.status ?? null,
     statusCode: typeof latest.status_code === "number" ? latest.status_code : null,
     deliveredAt: latest.delivered_at ?? null,
   };
@@ -209,6 +226,7 @@ async function inspectGitHubHookWithOctokit(repo: Repo): Promise<GitHubHookSnaps
       deliveries: deliveriesResult.data.map((delivery) => ({
         event: delivery.event,
         action: delivery.action,
+        status: delivery.status,
         status_code: delivery.status_code,
         delivered_at: delivery.delivered_at,
       })),

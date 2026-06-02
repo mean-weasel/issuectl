@@ -66,13 +66,37 @@ describe("getWebhookAutomationHealth", () => {
 
     expect(result).toMatchObject({
       state: "error",
-      summary: "Recent GitHub webhook delivery failed with 502",
+      summary: "Webhook delivery infrastructure failed with 502",
       latestDelivery: {
         event: "issues",
         action: "labeled",
+        status: null,
         statusCode: 502,
       },
     });
+  });
+
+  it("reports GitHub delivery transport failures without a status code", async () => {
+    const result = await getWebhookAutomationHealth(db as never, repo, {
+      getBaseUrl: () => "https://hooks.example.test",
+      inspectGitHubHook: vi.fn().mockResolvedValue({
+        active: true,
+        url: "https://hooks.example.test/api/webhook/github/1",
+        deliveries: [{ status: "failure", status_code: null, event: "issues", action: "labeled", delivered_at: "2026-05-28T00:00:00Z" }],
+      }),
+    });
+
+    expect(result).toMatchObject({
+      state: "error",
+      summary: "Webhook delivery infrastructure failed: failure",
+      latestDelivery: {
+        event: "issues",
+        action: "labeled",
+        status: "failure",
+        statusCode: null,
+      },
+    });
+    expect(result?.detail).toContain("did not reach the receiver successfully");
   });
 
   it("reports healthy matching hook and successful latest delivery", async () => {
@@ -81,7 +105,7 @@ describe("getWebhookAutomationHealth", () => {
       inspectGitHubHook: vi.fn().mockResolvedValue({
         active: true,
         url: "https://hooks.example.test/api/webhook/github/1",
-        deliveries: [{ status_code: 200, event: "ping", action: null, delivered_at: "2026-05-28T00:00:00Z" }],
+        deliveries: [{ status: "OK", status_code: 200, event: "ping", action: null, delivered_at: "2026-05-28T00:00:00Z" }],
       }),
     });
 
