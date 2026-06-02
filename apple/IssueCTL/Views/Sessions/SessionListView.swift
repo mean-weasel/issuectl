@@ -589,7 +589,6 @@ private struct SessionTargetGroupView: View {
                 )
             }
         }
-        .accessibilityIdentifier("session-group-\(group.key)")
     }
 
     private var groupHeader: some View {
