@@ -14,6 +14,25 @@ Use these exact prompts to hand repeatable QA to a future Codex agent:
 
 Prefer running the lower rungs first when the environment is fresh, the tunnel changed, the web server restarted, labels were reset, or a failure could be infrastructure instead of product behavior.
 
+## Proof Gate
+
+Before handing off webhook automation work, try to disprove the result with the
+lowest rung that could expose the likely failure. Record the exact runbook,
+target repo, issue or PR number, command output, diagnostic event, screenshot,
+or direct inspection receipt that proves the automation did not merely look
+done.
+
+For issue and PR automation, the most useful negative proof is usually one of:
+
+- an untagged issue or PR delivery resolving as `skipped_optout`
+- a GitHub delivery inspection showing the relevant labeled event reached the
+  current tunnel with `status_code=200`
+- diagnostics showing exactly one launch lifecycle for the target
+- DB/UI/GitHub label state agreeing after trigger-label consumption
+
+If any of those receipts are missing, list the proof gap as a blocker or
+follow-up instead of claiming the webhook path passed.
+
 ## Complexity Order
 
 | Rung | Workflow | Target | What It Proves | Primary Runbook |
