@@ -80,6 +80,28 @@
   white-space: nowrap;
 }
 
+.checkButton {
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg);
+  color: var(--paper-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkButton:hover:not(:disabled) {
+  border-color: var(--paper-line-strong);
+}
+
+.checkButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .automationHealth[data-state="ok"] {
   border-color: #9dc79d;
   background: #eef8ee;

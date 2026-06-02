@@ -40,6 +40,9 @@ export function LabelManager({
   const [syncVisible, setSyncVisible] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [liveWebhookHealth, setLiveWebhookHealth] = useState<WebhookAutomationHealth | null | undefined>(webhookHealth);
+  const [webhookCheckError, setWebhookCheckError] = useState<string | null>(null);
+  const [isCheckingWebhook, setIsCheckingWebhook] = useState(false);
   const syncStartRef = useRef(0);
 
   // Keep the syncing dot visible for at least one full pulse cycle (1.2s
@@ -58,22 +61,67 @@ export function LabelManager({
     return () => clearTimeout(timer);
   }, [isPending]); // syncVisible intentionally omitted — it's a gate, not a reactive dep
 
+  useEffect(() => {
+    setLiveWebhookHealth(webhookHealth);
+  }, [webhookHealth]);
+
   const { lifecycle: lifecycleLabels, regular: regularLabels } =
     separateLabels(currentLabels);
   const selectedNames = currentLabels.map((l) => l.name);
   const automationLabel = targetType === "pr" ? "issuectl:auto-review" : "issuectl:auto-launch";
+  const currentWebhookHealth = liveWebhookHealth ?? webhookHealth ?? null;
   const hasAutomationLabel = selectedNames.includes(automationLabel)
     || availableLabels.some((label) => label.name === automationLabel);
   const showWebhookHealth = hasAutomationLabel
-    && webhookHealth !== null
-    && webhookHealth !== undefined
-    && (webhookHealth.state !== "ok" || showSelector);
+    && (showSelector || currentWebhookHealth?.state !== "ok" || webhookCheckError !== null);
+
+  async function refreshWebhookHealth(): Promise<{
+    health: WebhookAutomationHealth | null;
+    error: string | null;
+  }> {
+    setIsCheckingWebhook(true);
+    setWebhookCheckError(null);
+    try {
+      const response = await fetch(`/api/v1/repos/${owner}/${repo}/webhook/health`, {
+        method: "GET",
+        headers: requestHeaders(),
+      });
+      const body = await response.json().catch(() => undefined) as {
+        health?: WebhookAutomationHealth | null;
+        error?: string;
+      } | undefined;
+      if (!response.ok) throw new Error(body?.error ?? "Webhook delivery check failed");
+      const health = body?.health ?? null;
+      setLiveWebhookHealth(health);
+      return { health, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Webhook delivery check failed";
+      setWebhookCheckError(message);
+      return { health: null, error: message };
+    } finally {
+      setIsCheckingWebhook(false);
+    }
+  }
+
+  async function confirmAutomationLabelPreflight(): Promise<boolean> {
+    const result = await refreshWebhookHealth();
+    if (result.health?.state === "ok") return true;
+    const reason = result.health
+      ? `${result.health.summary}. ${result.health.detail}`
+      : `Webhook delivery health could not be checked. ${result.error ?? "The receiver state is unknown."}`;
+    return window.confirm(`${reason}\n\nThis is webhook delivery infrastructure, not an issuectl launch failure. Continue applying ${automationLabel} anyway?`);
+  }
 
   function handleToggle(label: string) {
     setError(null);
     const action = selectedNames.includes(label) ? "remove" : "add";
     startTransition(async () => {
       try {
+        if (label === automationLabel && action === "add") {
+          const ok = await confirmAutomationLabelPreflight();
+          if (!ok) return;
+        }
+
         if (targetType === "issue") {
           const result = await tryOrQueue(
             "toggleLabel",
@@ -142,7 +190,13 @@ export function LabelManager({
       )}
 
       {showWebhookHealth && (
-        <AutomationHealthNotice health={webhookHealth} targetType={targetType} />
+        <AutomationHealthNotice
+          health={currentWebhookHealth}
+          targetType={targetType}
+          checkError={webhookCheckError}
+          isChecking={isCheckingWebhook}
+          onCheck={() => void refreshWebhookHealth()}
+        />
       )}
 
       {showSelector && (
@@ -169,24 +223,43 @@ export function LabelManager({
 function AutomationHealthNotice({
   health,
   targetType,
+  checkError,
+  isChecking,
+  onCheck,
 }: {
-  health: WebhookAutomationHealth;
+  health: WebhookAutomationHealth | null;
   targetType: "issue" | "pr";
+  checkError: string | null;
+  isChecking: boolean;
+  onCheck: () => void;
 }) {
   const label = targetType === "pr" ? "auto-review" : "auto-launch";
+  const state = health?.state ?? "unknown";
   return (
-    <div className={styles.automationHealth} data-state={health.state} role={health.state === "ok" ? "status" : "alert"}>
-      <strong>{health.summary}</strong>
+    <div className={styles.automationHealth} data-state={state} role={state === "ok" ? "status" : "alert"}>
+      <strong>{health?.summary ?? "Webhook delivery health has not been checked"}</strong>
       <span>
-        {label} labels rely on the GitHub webhook reaching this machine. {health.detail}
+        {label} labels rely on the GitHub webhook reaching this machine. {health?.detail ?? "Run a delivery check before applying the automation label."}
       </span>
-      {health.latestDelivery && (
+      {health?.latestDelivery && (
         <code>
           latest: {health.latestDelivery.event ?? "delivery"}
           {health.latestDelivery.action ? `.${health.latestDelivery.action}` : ""} · {health.latestDelivery.statusCode ?? "unknown"}
         </code>
       )}
-      {health.recovery && <span>{health.recovery}</span>}
+      {health?.recovery && <span>{health.recovery}</span>}
+      {checkError && <span>{checkError}</span>}
+      <button type="button" className={styles.checkButton} onClick={onCheck} disabled={isChecking}>
+        {isChecking ? "Checking delivery" : "Check delivery"}
+      </button>
     </div>
   );
+}
+
+function requestHeaders(): Headers {
+  const headers = new Headers({ Accept: "application/json", "Content-Type": "application/json" });
+  const token = window.localStorage.getItem("issuectl.apiToken")
+    ?? window.localStorage.getItem("issuectlApiToken");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return headers;
 }
