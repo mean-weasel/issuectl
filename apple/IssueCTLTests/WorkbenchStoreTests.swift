@@ -40,9 +40,45 @@ final class WorkbenchStoreTests: XCTestCase {
         XCTAssertEqual(store.visibleDrafts.map(\.id), ["recent-edit", "older-high"])
     }
 
+    func testBoardRouteSelectsRepoAndIssueFilter() {
+        let store = WorkbenchStore()
+        store.payload = WorkbenchStoreTests.payload(
+            issues: [
+                WorkbenchStoreTests.issue(number: 1, title: "Open work", state: "open", hasActiveDeployment: false),
+                WorkbenchStoreTests.issue(number: 2, title: "Running work", state: "open", hasActiveDeployment: true),
+                WorkbenchStoreTests.issue(number: 3, title: "Closed work", state: "closed", hasActiveDeployment: false),
+            ]
+        )
+
+        let focus = store.applyBoardRoute(repoFullName: "org/app", issueNumber: 2, deploymentId: nil)
+
+        XCTAssertEqual(focus, WorkbenchBoardFocus(owner: "org", repo: "app", number: 2))
+        XCTAssertEqual(store.selectedRepoIds, [1])
+        XCTAssertEqual(store.filter, .running)
+    }
+
+    func testBoardRouteCanFocusIssueByDeployment() {
+        let store = WorkbenchStore()
+        store.payload = WorkbenchStoreTests.payload(
+            issues: [
+                WorkbenchStoreTests.issue(number: 2, title: "Running work", state: "open", hasActiveDeployment: true),
+            ],
+            deployments: [
+                WorkbenchStoreTests.deployment(id: 701, issueNumber: 2),
+            ]
+        )
+
+        let focus = store.applyBoardRoute(repoFullName: nil, issueNumber: nil, deploymentId: 701)
+
+        XCTAssertEqual(focus, WorkbenchBoardFocus(owner: "org", repo: "app", number: 2))
+        XCTAssertEqual(store.selectedRepoIds, [1])
+        XCTAssertEqual(store.filter, .running)
+    }
+
     private static func payload(
         drafts: [Draft] = [],
-        issues: [WorkbenchIssueSummary]
+        issues: [WorkbenchIssueSummary],
+        deployments: [ActiveDeployment] = []
     ) -> WorkbenchPayload {
         WorkbenchPayload(
             drafts: drafts,
@@ -67,7 +103,7 @@ final class WorkbenchStoreTests: XCTestCase {
                     issuesFromCache: false,
                     issuesCachedAt: nil,
                     priorities: [],
-                    deployments: [],
+                    deployments: deployments,
                     recentCompletions: [],
                     webhookEvents: [],
                     prReviews: [],
@@ -100,6 +136,33 @@ final class WorkbenchStoreTests: XCTestCase {
             hasActiveDeployment: hasActiveDeployment,
             htmlUrl: "https://github.com/org/app/issues/\(number)",
             authorLogin: "tester"
+        )
+    }
+
+    private static func deployment(id: Int, issueNumber: Int) -> ActiveDeployment {
+        ActiveDeployment(
+            id: id,
+            repoId: 1,
+            issueNumber: issueNumber,
+            targetType: .issue,
+            targetNumber: issueNumber,
+            agent: .codex,
+            terminalBackend: .ttyd,
+            triggeredBy: .manual,
+            parentDeploymentId: nil,
+            webhookDepth: 0,
+            idleSince: nil,
+            branchName: "issue-\(issueNumber)-running-work",
+            workspaceMode: .worktree,
+            workspacePath: "/tmp/app/.worktrees/issue-\(issueNumber)",
+            linkedPrNumber: nil,
+            state: .active,
+            launchedAt: "2026-05-29T00:00:00.000Z",
+            endedAt: nil,
+            ttydPort: 7701,
+            ttydPid: 1234,
+            owner: "org",
+            repoName: "app"
         )
     }
 }

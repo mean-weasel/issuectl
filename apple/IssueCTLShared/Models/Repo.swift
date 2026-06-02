@@ -721,6 +721,10 @@ struct SessionsOverviewSession: Codable, Identifiable, Sendable {
         return "Terminal is still preparing."
     }
 
+    var webWorkbenchPath: String {
+        "/workbench?deployment=\(id)"
+    }
+
     var sessionRoleTitle: String {
         if targetType == .pr && terminalReason == "review" {
             return "PR review session"

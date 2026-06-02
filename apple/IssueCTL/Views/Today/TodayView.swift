@@ -26,6 +26,7 @@ struct TodayView: View {
     @State private var userFetchFailed = false
     @State private var showCreateSheet = false
     @State private var showSearchSheet = false
+    @State private var showAutomationFeed = false
     @State private var pendingSearchDestination: TodayDestination?
     @State private var actionError: String?
     @State private var navigationPath = NavigationPath()
@@ -124,6 +125,14 @@ struct TodayView: View {
                         }
 
                         TopBarIconButton(
+                            title: "Automation Feed",
+                            systemImage: "dot.radiowaves.left.and.right",
+                            accessibilityIdentifier: "today-automation-feed-button"
+                        ) {
+                            showAutomationFeed = true
+                        }
+
+                        TopBarIconButton(
                             title: "Search",
                             systemImage: "magnifyingglass",
                             accessibilityIdentifier: "today-search-button"
@@ -185,6 +194,18 @@ struct TodayView: View {
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showAutomationFeed) {
+                NavigationStack {
+                    AutomationFeedView()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Done") {
+                                    showAutomationFeed = false
+                                }
+                            }
+                        }
+                }
             }
             .autoDismissError($actionError)
             .task {

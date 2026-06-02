@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 extension SessionsOverviewTab: SectionTabItem {
     var icon: String {
@@ -13,6 +14,7 @@ struct SessionListView: View {
     @Environment(APIClient.self) private var api
     let onShowSettings: () -> Void
     let onShowIssues: () -> Void
+    @Binding private var route: AppRoute?
 
     @State private var repos: [Repo] = []
     @State private var overviewResponse: SessionsOverviewResponse?
@@ -20,10 +22,13 @@ struct SessionListView: View {
     @State private var errorMessage: String?
     @State private var actionError: String?
     @State private var terminalPresentation: TerminalPresentation?
+    @State private var ptyBridgeHandoffTarget: SessionsOverviewSession?
     @State private var sessionControlsTarget: SessionsOverviewSession?
+    @State private var automationActivityTarget: RepoAutomationActivityTarget?
     @State private var diagnosticsTarget: ActiveDeployment?
     @State private var reviewDetailTarget: ReviewRunDetailTarget?
     @State private var showCreateSheet = false
+    @State private var showAutomationFeed = false
     @State private var endingDeploymentId: Int?
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
@@ -37,6 +42,16 @@ struct SessionListView: View {
     @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+
+    init(
+        onShowSettings: @escaping () -> Void,
+        onShowIssues: @escaping () -> Void,
+        route: Binding<AppRoute?> = .constant(nil)
+    ) {
+        self.onShowSettings = onShowSettings
+        self.onShowIssues = onShowIssues
+        self._route = route
+    }
 
     private var overview: SessionsOverviewData? {
         overviewResponse?.overview
@@ -83,8 +98,11 @@ struct SessionListView: View {
 
     private var filteredSessionGroups: [SessionsOverviewSessionGroup] {
         let groups = overview?.sessionGroups ?? []
-        guard !selectedRepoIds.isEmpty else { return groups }
-        return groups
+        let filteredGroups: [SessionsOverviewSessionGroup]
+        if selectedRepoIds.isEmpty {
+            filteredGroups = groups
+        } else {
+            filteredGroups = groups
             .map { group in
                 let sessions = group.sessions.filter { selectedRepoIds.contains($0.repoId) }
                 return SessionsOverviewSessionGroup(
@@ -98,6 +116,8 @@ struct SessionListView: View {
                 )
             }
             .filter { !$0.sessions.isEmpty }
+        }
+        return filteredGroups.sorted(by: sessionGroupSort)
     }
 
     private var filteredReviewGroups: [SessionsOverviewReviewGroup] {
@@ -200,6 +220,9 @@ struct SessionListView: View {
             .task(id: overviewQuerySignature) {
                 await load()
             }
+            .onChange(of: route) { _, _ in
+                applyPendingRoute()
+            }
             .task {
                 await streamSessionUpdates()
             }
@@ -254,6 +277,14 @@ struct SessionListView: View {
                         sessionControlsTarget = nil
                         diagnosticsTarget = session.activeDeployment
                     },
+                    onViewAutomationActivity: {
+                        sessionControlsTarget = nil
+                        automationActivityTarget = makeAutomationActivityTarget(
+                            repoId: session.repoId,
+                            targetType: session.targetType,
+                            targetNumber: session.targetNumber
+                        )
+                    },
                     onEnd: {
                         Task {
                             await endSession(session)
@@ -261,8 +292,37 @@ struct SessionListView: View {
                         }
                     }
                 )
-                .presentationDetents([.height(390), .medium])
+                .presentationDetents([.height(455), .medium])
                 .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showAutomationFeed) {
+                NavigationStack {
+                    AutomationFeedView()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Done") {
+                                    showAutomationFeed = false
+                                }
+                            }
+                        }
+                }
+            }
+            .sheet(item: $automationActivityTarget) { target in
+                NavigationStack {
+                    RepoAutomationActivityView(repo: target.repo, initialQuery: target.query)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Done") {
+                                    automationActivityTarget = nil
+                                }
+                            }
+                        }
+                }
+            }
+            .sheet(item: $ptyBridgeHandoffTarget) { session in
+                PTYBridgeHandoffSheet(session: session)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
             }
             .sheet(item: $diagnosticsTarget) { deployment in
                 DeploymentDiagnosticsSheet(deployment: deployment)
@@ -317,6 +377,7 @@ struct SessionListView: View {
                                 group: group,
                                 endingDeploymentId: endingDeploymentId,
                                 onOpen: openTerminal,
+                                onWebWorkbench: { ptyBridgeHandoffTarget = $0 },
                                 onControls: { sessionControlsTarget = $0 }
                             )
                         }
@@ -336,6 +397,13 @@ struct SessionListView: View {
                                     if let deployment = run.deployment {
                                         diagnosticsTarget = deployment.activeDeployment
                                     }
+                                },
+                                onOpenAutomationActivity: { run in
+                                    automationActivityTarget = makeAutomationActivityTarget(
+                                        repoId: run.repoId,
+                                        targetType: .pr,
+                                        targetNumber: run.prNumber
+                                    )
                                 },
                                 onOpenDetail: { run in
                                     reviewDetailTarget = ReviewRunDetailTarget(id: run.id)
@@ -364,6 +432,14 @@ struct SessionListView: View {
     private var sessionHeader: some View {
         AppTopBar(title: "Sessions", subtitle: sessionSubtitle) {
             HStack(spacing: 8) {
+                TopBarIconButton(
+                    title: "Automation Feed",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    accessibilityIdentifier: "sessions-automation-feed-button"
+                ) {
+                    showAutomationFeed = true
+                }
+
                 TopBarIconButton(
                     title: "Search sessions",
                     systemImage: "magnifyingglass",
@@ -411,6 +487,9 @@ struct SessionListView: View {
             if summary.activeSessions == 0 && summary.endedSessions == 0 {
                 return "No sessions"
             }
+            if summary.activeSessions > 0 && summary.endedSessions == 0 {
+                return "Running sessions"
+            }
             return "\(summary.activeSessions) active · \(summary.endedSessions) ended"
         case .reviews:
             if summary.reviewRuns == 0 {
@@ -453,6 +532,31 @@ struct SessionListView: View {
         isSearchVisible = true
         Task { @MainActor in
             isSearchFocused = true
+        }
+    }
+
+    private func sessionGroupSort(_ left: SessionsOverviewSessionGroup, _ right: SessionsOverviewSessionGroup) -> Bool {
+        let leftRank = left.sessions.map(sessionSortRank).min() ?? Int.max
+        let rightRank = right.sessions.map(sessionSortRank).min() ?? Int.max
+        if leftRank != rightRank {
+            return leftRank < rightRank
+        }
+        return left.key < right.key
+    }
+
+    private func sessionSortRank(_ session: SessionsOverviewSession) -> Int {
+        if !session.isActive {
+            return 4
+        }
+        switch session.preview?.status {
+        case .idle:
+            return 0
+        case .error:
+            return 1
+        case .active:
+            return 2
+        case .unavailable, nil:
+            return 3
         }
     }
 
@@ -525,6 +629,7 @@ struct SessionListView: View {
             }
         }
         isLoading = false
+        applyPendingRoute()
     }
 
     private func refreshSessions() async {
@@ -566,6 +671,52 @@ struct SessionListView: View {
         }
         endingDeploymentId = nil
     }
+
+    private func makeAutomationActivityTarget(
+        repoId: Int,
+        targetType: DeploymentTargetType,
+        targetNumber: Int
+    ) -> RepoAutomationActivityTarget? {
+        guard let repo = repos.first(where: { $0.id == repoId }) else { return nil }
+        var query = RepoAutomationActivityQuery()
+        query.scope = targetType == .pr ? .pullRequests : .issues
+        query.numberText = "\(targetNumber)"
+        return RepoAutomationActivityTarget(repo: repo, query: query)
+    }
+
+    private func applyPendingRoute() {
+        guard let route else { return }
+        switch route {
+        case .sessions(let repoFullName, let deploymentId):
+            selectedTab = .sessions
+            applyRepoFilter(repoFullName)
+            if let deploymentId,
+               let session = overview?.sessionGroups.flatMap(\.sessions).first(where: { $0.id == deploymentId }) {
+                sessionControlsTarget = session
+            }
+            self.route = nil
+        case .review(let id):
+            selectedTab = .reviews
+            if let reviewId = Int(id) {
+                if let run = overview?.reviewGroups.flatMap(\.runs).first(where: { $0.id == reviewId }),
+                   let repo = repos.first(where: { $0.id == run.repoId }) {
+                    selectedRepoIds = [repo.id]
+                }
+                reviewDetailTarget = ReviewRunDetailTarget(id: reviewId)
+            }
+            self.route = nil
+        case .issue, .pullRequest, .board:
+            break
+        }
+    }
+
+    private func applyRepoFilter(_ repoFullName: String?) {
+        guard let repoFullName,
+              let repo = repos.first(where: { $0.fullName == repoFullName }) else {
+            return
+        }
+        selectedRepoIds = [repo.id]
+    }
 }
 
 private struct TerminalPresentation: Identifiable {
@@ -573,10 +724,63 @@ private struct TerminalPresentation: Identifiable {
     let deployment: ActiveDeployment
 }
 
+private struct RepoAutomationActivityTarget: Identifiable {
+    let id = UUID()
+    let repo: Repo
+    let query: RepoAutomationActivityQuery
+}
+
+private struct PTYBridgeHandoffSheet: View {
+    let session: SessionsOverviewSession
+    @State private var didCopy = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Label("PTY bridge terminal", systemImage: "network")
+                    .font(.headline)
+
+                Text("This session uses the web workbench terminal bridge. Native ttyd terminal attachment is not available for this backend.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Web workbench path")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(session.webWorkbenchPath)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+
+                Button {
+                    UIPasteboard.general.string = session.webWorkbenchPath
+                    didCopy = true
+                } label: {
+                    Label(didCopy ? "Copied" : "Copy Web Workbench Path", systemImage: didCopy ? "checkmark.circle.fill" : "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("pty-bridge-copy-workbench-path")
+
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .navigationTitle("Web Workbench")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
 private struct SessionTargetGroupView: View {
     let group: SessionsOverviewSessionGroup
     let endingDeploymentId: Int?
     let onOpen: (SessionsOverviewSession) -> Void
+    let onWebWorkbench: (SessionsOverviewSession) -> Void
     let onControls: (SessionsOverviewSession) -> Void
 
     var body: some View {
@@ -587,6 +791,7 @@ private struct SessionTargetGroupView: View {
                     session: session,
                     isEnding: endingDeploymentId == session.id,
                     onOpen: { onOpen(session) },
+                    onWebWorkbench: { onWebWorkbench(session) },
                     onControls: { onControls(session) }
                 )
             }
@@ -611,6 +816,7 @@ private struct SessionOverviewRow: View {
     let session: SessionsOverviewSession
     let isEnding: Bool
     let onOpen: () -> Void
+    let onWebWorkbench: () -> Void
     let onControls: () -> Void
 
     var body: some View {
@@ -653,17 +859,17 @@ private struct SessionOverviewRow: View {
             }
 
             HStack(spacing: 8) {
-                Button(action: onOpen) {
-                    Label(openButtonTitle, systemImage: "terminal")
+                Button(action: primaryAction) {
+                    Label(openButtonTitle, systemImage: primaryButtonImage)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(IssueCTLColors.action.opacity(canOpenTerminal ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 12))
+                        .background(IssueCTLColors.action.opacity(canUsePrimaryAction ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 12))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(!canOpenTerminal || isEnding)
-                .accessibilityIdentifier("session-reenter-terminal-\(session.id)")
+                .disabled(!canUsePrimaryAction || isEnding)
+                .accessibilityIdentifier(primaryButtonIdentifier)
 
                 Button(action: onControls) {
                     Image(systemName: "ellipsis")
@@ -687,6 +893,8 @@ private struct SessionOverviewRow: View {
         .onTapGesture {
             if canOpenTerminal {
                 onOpen()
+            } else if canOpenWebWorkbench {
+                onWebWorkbench()
             }
         }
     }
@@ -698,7 +906,34 @@ private struct SessionOverviewRow: View {
     private var openButtonTitle: String {
         if !session.isActive { return "Session Ended" }
         if session.ttydPort != nil { return "Open Terminal" }
-        return session.usesPtyBridgeTerminal ? "Web Terminal" : "Starting..."
+        return session.usesPtyBridgeTerminal ? "Open Web Workbench" : "Starting..."
+    }
+
+    private var primaryButtonImage: String {
+        session.usesPtyBridgeTerminal ? "safari" : "terminal"
+    }
+
+    private var primaryButtonIdentifier: String {
+        if canOpenWebWorkbench {
+            return "session-web-workbench-\(session.id)"
+        }
+        return "session-reenter-terminal-\(session.id)"
+    }
+
+    private var canOpenWebWorkbench: Bool {
+        session.isActive && session.usesPtyBridgeTerminal
+    }
+
+    private var canUsePrimaryAction: Bool {
+        canOpenTerminal || canOpenWebWorkbench
+    }
+
+    private func primaryAction() {
+        if canOpenTerminal {
+            onOpen()
+        } else if canOpenWebWorkbench {
+            onWebWorkbench()
+        }
     }
 
     private var statusColor: Color {
@@ -750,6 +985,7 @@ private struct ReviewRunGroupView: View {
     let onOpenDeployment: (SessionsOverviewSession) -> Void
     let onOpenPullRequest: (SessionsOverviewReviewRun) -> Void
     let onOpenDiagnostics: (SessionsOverviewReviewRun) -> Void
+    let onOpenAutomationActivity: (SessionsOverviewReviewRun) -> Void
     let onOpenDetail: (SessionsOverviewReviewRun) -> Void
 
     var body: some View {
@@ -771,6 +1007,7 @@ private struct ReviewRunGroupView: View {
                     onOpenDeployment: { deployment in onOpenDeployment(deployment) },
                     onOpenPullRequest: { onOpenPullRequest(run) },
                     onOpenDiagnostics: { onOpenDiagnostics(run) },
+                    onOpenAutomationActivity: { onOpenAutomationActivity(run) },
                     onOpenDetail: { onOpenDetail(run) }
                 )
             }
@@ -784,6 +1021,7 @@ private struct ReviewRunRow: View {
     let onOpenDeployment: (SessionsOverviewSession) -> Void
     let onOpenPullRequest: () -> Void
     let onOpenDiagnostics: () -> Void
+    let onOpenAutomationActivity: () -> Void
     let onOpenDetail: () -> Void
 
     var body: some View {
@@ -808,6 +1046,10 @@ private struct ReviewRunRow: View {
                 Text(run.summary ?? "No review summary recorded.")
                     .font(.subheadline)
                     .lineLimit(3)
+                Text(run.status.operatorDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("\(run.rangeLabel) · \(run.headRepoFullName):\(run.headRef)")
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
@@ -839,6 +1081,14 @@ private struct ReviewRunRow: View {
                 .buttonStyle(.bordered)
                 .accessibilityLabel("Open PR")
                 .accessibilityIdentifier("review-open-pr-\(run.id)")
+
+                Button(action: onOpenAutomationActivity) {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .frame(width: 42, height: 38)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Open review automation activity")
+                .accessibilityIdentifier("review-automation-activity-\(run.id)")
 
                 if let deployment = run.deployment, deployment.canOpenTerminalInApp {
                     Button {
@@ -1059,6 +1309,7 @@ private struct SessionControlsSheet: View {
     let onOpenTerminal: () -> Void
     let onViewTarget: () -> Void
     let onViewDiagnostics: () -> Void
+    let onViewAutomationActivity: () -> Void
     let onEnd: () -> Void
 
     var body: some View {
@@ -1094,6 +1345,16 @@ private struct SessionControlsSheet: View {
                     systemImage: session.isIssueTarget ? "number" : "arrow.triangle.merge",
                     accessibilityIdentifier: "session-target-action-\(session.id)",
                     action: onViewTarget
+                )
+
+                Divider()
+
+                sheetAction(
+                    title: "Automation Activity",
+                    subtitle: "Open webhook events and review runs for this target.",
+                    systemImage: "dot.radiowaves.left.and.right",
+                    accessibilityIdentifier: "session-automation-activity-\(session.id)",
+                    action: onViewAutomationActivity
                 )
 
                 Divider()

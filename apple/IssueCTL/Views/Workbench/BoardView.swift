@@ -7,6 +7,12 @@ struct BoardView: View {
     @State private var showRepoFilters = false
 
     let onShowSettings: () -> Void
+    @Binding private var route: AppRoute?
+
+    init(onShowSettings: @escaping () -> Void, route: Binding<AppRoute?> = .constant(nil)) {
+        self.onShowSettings = onShowSettings
+        self._route = route
+    }
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -75,6 +81,10 @@ struct BoardView: View {
                 if store.payload == nil {
                     await store.load(api: api)
                 }
+                applyPendingRoute()
+            }
+            .onChange(of: route) { _, _ in
+                applyPendingRoute()
             }
             .accessibilityTabBarClearance()
         }
@@ -166,6 +176,21 @@ struct BoardView: View {
         case .closed:
             return "No closed issues matched the current repository filters."
         }
+    }
+
+    private func applyPendingRoute() {
+        guard case let .board(repoFullName, issueNumber, deploymentId) = route,
+              store.payload != nil else {
+            return
+        }
+        if let focus = store.applyBoardRoute(
+            repoFullName: repoFullName,
+            issueNumber: issueNumber,
+            deploymentId: deploymentId
+        ) {
+            navigationPath.append(BoardDestination.issue(owner: focus.owner, repo: focus.repo, number: focus.number))
+        }
+        route = nil
     }
 }
 

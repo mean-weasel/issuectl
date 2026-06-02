@@ -188,6 +188,23 @@ private extension ReviewRun {
 }
 
 extension ReviewRunStatus {
+    var operatorDescription: String {
+        switch self {
+        case .reserved:
+            return "Waiting for the review worker to claim this run."
+        case .launching:
+            return "Preparing a PR review session."
+        case .inProgress:
+            return "Review session is running."
+        case .completed:
+            return "Latest automated review completed."
+        case .failed:
+            return "Review failed; open details for diagnostics or retry."
+        case .superseded:
+            return "A newer review request replaced this run."
+        }
+    }
+
     var displayName: String {
         switch self {
         case .reserved:

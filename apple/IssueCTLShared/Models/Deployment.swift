@@ -133,6 +133,10 @@ struct Deployment: Codable, Identifiable, Sendable {
         return "Terminal is still preparing."
     }
 
+    var webWorkbenchPath: String {
+        "/workbench?deployment=\(id)"
+    }
+
     var targetLabel: String {
         switch targetType {
         case .issue:

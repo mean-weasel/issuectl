@@ -28,6 +28,7 @@ final class IssueCTLUITests: XCTestCase {
         let app = launchApp(server: server)
 
         assertElement("today-create-issue-button", existsIn: app, timeout: 8)
+        assertElement("today-automation-feed-button", existsIn: app, timeout: 5)
         assertElement("today-metric-sessions", existsIn: app, timeout: 5)
         assertElement("today-metric-prs", existsIn: app, timeout: 5)
         assertElement("today-metric-issues", existsIn: app, timeout: 5)
@@ -46,6 +47,25 @@ final class IssueCTLUITests: XCTestCase {
         assertElement("issue-title-field", existsIn: app, timeout: 3)
         app.buttons["cancel-button"].tap()
         waitForNonexistence("issue-title-field", in: app)
+    }
+
+    @MainActor
+    func testAutomationFeedIsReachableFromTodayAndActiveTabs() {
+        let app = launchApp(server: server)
+
+        assertElement("today-automation-feed-button", existsIn: app, timeout: 8)
+        element("today-automation-feed-button", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Automation Feed"].waitForExistence(timeout: 5), app.debugDescription)
+        assertElement("automation-feed-live-stream-status", existsIn: app, timeout: 5)
+        XCTAssertTrue(app.staticTexts["Webhook Events"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["Done"].tap()
+
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("sessions-automation-feed-button", existsIn: app, timeout: 5)
+        element("sessions-automation-feed-button", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Automation Feed"].waitForExistence(timeout: 5), app.debugDescription)
+        assertElement("automation-feed-live-stream-status", existsIn: app, timeout: 5)
+        app.buttons["Done"].tap()
     }
 
     @MainActor
@@ -95,6 +115,7 @@ final class IssueCTLUITests: XCTestCase {
 
         tapMainTab("active-tab", label: "Active", in: app)
         assertElement("sessions-create-issue-button", existsIn: app, timeout: 5)
+        assertElement("sessions-automation-feed-button", existsIn: app)
         assertElement("sessions-search-button", existsIn: app)
         assertElement("sessions-refresh-button", existsIn: app)
     }

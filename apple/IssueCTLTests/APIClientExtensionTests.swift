@@ -279,6 +279,46 @@ final class APIClientExtensionTests: XCTestCase {
     }
 
     @MainActor
+    func testWebhookSettingsEndpointInventoryUsesNativeManagementRoutes() async throws {
+        let recorder = APIRequestRecorder()
+
+        MockURLProtocol.requestHandler = { request in
+            var action: String?
+            if let bodyData = self.readBody(from: request) {
+                let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+                action = json["action"] as? String
+            }
+            recorder.append(request, bodyAction: action)
+
+            switch request.url!.path {
+            case "/api/v1/repos/mean-weasel/issuectl/webhook/health":
+                return (self.makeResponse(url: request.url!), """
+                {"health":{"state":"ok","summary":"Webhook ready","detail":null,"recovery":null,"expectedUrl":"https://hooks.example/api/webhook/github/7","hookId":123,"githubUrl":"https://github.com/mean-weasel/issuectl/settings/hooks/123","latestDelivery":null}}
+                """.data(using: .utf8)!)
+            case "/api/v1/repos/mean-weasel/issuectl/webhook":
+                return (self.makeResponse(url: request.url!), """
+                {"success":true,"repo":null,"webhook":{"id":123,"url":"https://hooks.example/api/webhook/github/7","created_by":"alice"},"error":null}
+                """.data(using: .utf8)!)
+            default:
+                XCTFail("Unexpected webhook settings endpoint \(request.url!.path)")
+                return (self.makeResponse(url: request.url!), #"{}"#.data(using: .utf8)!)
+            }
+        }
+
+        _ = try await client.webhookHealth(owner: "mean-weasel", repo: "issuectl")
+        _ = try await client.configureWebhook(owner: "mean-weasel", repo: "issuectl", action: .create)
+
+        let observed = recorder.snapshot
+        XCTAssertEqual(observed.map(\.method), ["GET", "POST"])
+        XCTAssertEqual(observed.map(\.path), [
+            "/api/v1/repos/mean-weasel/issuectl/webhook/health",
+            "/api/v1/repos/mean-weasel/issuectl/webhook",
+        ])
+        XCTAssertNil(observed[0].bodyAction)
+        XCTAssertEqual(observed[1].bodyAction, "create")
+    }
+
+    @MainActor
     func testConfigureWebhookSendsAction() async throws {
         MockURLProtocol.requestHandler = { request in
             XCTAssertEqual(request.url?.path, "/api/v1/repos/mean-weasel/issuectl/webhook")

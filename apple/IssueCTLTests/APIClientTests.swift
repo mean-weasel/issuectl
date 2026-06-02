@@ -57,6 +57,42 @@ private func requestBodyData(_ request: URLRequest) throws -> Data {
     return data
 }
 
+struct RecordedAPIRequest {
+    let method: String
+    let path: String
+    let queryItems: [String: String]
+    let bodyAction: String?
+}
+
+final class APIRequestRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var records: [RecordedAPIRequest] = []
+
+    func append(_ request: URLRequest, bodyAction: String? = nil) {
+        let components = request.url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }
+        let queryItems = (components?.queryItems ?? []).reduce(into: [String: String]()) { result, item in
+            if let value = item.value {
+                result[item.name] = value
+            }
+        }
+
+        lock.lock()
+        records.append(RecordedAPIRequest(
+            method: request.httpMethod ?? "GET",
+            path: request.url?.path ?? "",
+            queryItems: queryItems,
+            bodyAction: bodyAction
+        ))
+        lock.unlock()
+    }
+
+    var snapshot: [RecordedAPIRequest] {
+        lock.lock()
+        defer { lock.unlock() }
+        return records
+    }
+}
+
 // MARK: - Testable APIClient subclass
 
 /// A testable version of APIClient that uses a custom URLSession with MockURLProtocol.
@@ -676,6 +712,65 @@ final class APIClientTests: XCTestCase {
         }
 
         _ = try await client.diagnostics(deploymentId: 42)
+    }
+
+    @MainActor
+    func testAutomationEndpointInventoryUsesNativeListRoutes() async throws {
+        let recorder = APIRequestRecorder()
+
+        MockURLProtocol.requestHandler = { request in
+            recorder.append(request)
+
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            switch request.url!.path {
+            case "/api/v1/webhooks/events":
+                return (response, #"{"events":[],"repos":[],"filters":{"repo":null,"target_type":null,"target_number":null,"limit":12},"summary":{"count":0,"latest_received_at":null,"latest_received_at_iso":null,"result_counts":{}}}"#.data(using: .utf8)!)
+            case "/api/v1/repos/mean-weasel/issuectl/webhook/events":
+                return (response, #"{"events":[],"repos":[],"filters":{"repo":"mean-weasel/issuectl","target_type":"issue","target_number":101,"limit":8},"summary":{"count":0,"latest_received_at":null,"latest_received_at_iso":null,"result_counts":{}},"from_cache":false,"cached_at":null}"#.data(using: .utf8)!)
+            case "/api/v1/pr-reviews":
+                return (response, #"{"review_runs":[],"repos":[],"filters":{"repo":null,"pr":null,"status":"completed","limit":9},"summary":{"count":0,"active_count":0,"completed_count":0,"failed_count":0,"latest_started_at":null,"latest_started_at_iso":null}}"#.data(using: .utf8)!)
+            case "/api/v1/repos/mean-weasel/issuectl/review-runs":
+                return (response, #"{"review_runs":[],"from_cache":false,"cached_at":null}"#.data(using: .utf8)!)
+            default:
+                XCTFail("Unexpected automation endpoint \(request.url!.path)")
+                return (response, #"{}"#.data(using: .utf8)!)
+            }
+        }
+
+        _ = try await client.globalWebhookEvents(limit: 12)
+        _ = try await client.webhookEvents(
+            owner: "mean-weasel",
+            repo: "issuectl",
+            targetType: .issue,
+            targetNumber: 101,
+            limit: 8
+        )
+        _ = try await client.globalReviewRuns(status: .completed, limit: 9)
+        _ = try await client.reviewRuns(
+            owner: "mean-weasel",
+            repo: "issuectl",
+            pr: 7,
+            status: .reserved,
+            limit: 6
+        )
+
+        let observed = recorder.snapshot
+        XCTAssertEqual(observed.map(\.method), ["GET", "GET", "GET", "GET"])
+        XCTAssertEqual(observed.map(\.path), [
+            "/api/v1/webhooks/events",
+            "/api/v1/repos/mean-weasel/issuectl/webhook/events",
+            "/api/v1/pr-reviews",
+            "/api/v1/repos/mean-weasel/issuectl/review-runs",
+        ])
+        XCTAssertEqual(observed[0].queryItems["limit"], "12")
+        XCTAssertEqual(observed[1].queryItems["targetType"], "issue")
+        XCTAssertEqual(observed[1].queryItems["targetNumber"], "101")
+        XCTAssertEqual(observed[1].queryItems["limit"], "8")
+        XCTAssertEqual(observed[2].queryItems["status"], "completed")
+        XCTAssertEqual(observed[2].queryItems["limit"], "9")
+        XCTAssertEqual(observed[3].queryItems["pr"], "7")
+        XCTAssertEqual(observed[3].queryItems["status"], "reserved")
+        XCTAssertEqual(observed[3].queryItems["limit"], "6")
     }
 
     @MainActor

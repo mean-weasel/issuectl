@@ -68,11 +68,128 @@ enum AutomationLabelKind {
     }
 }
 
+struct AutomationLabelEvidence: Equatable {
+    let title: String
+    let detail: String
+}
+
+func automationLabelEvidence(
+    kind: AutomationLabelKind,
+    isApplied: Bool,
+    webhookEvent: WebhookEvent?,
+    reviewRun: ReviewRun?
+) -> AutomationLabelEvidence? {
+    if let reviewRun {
+        return reviewAutomationEvidence(reviewRun)
+    }
+
+    if let webhookEvent {
+        if let intent = webhookEvent.intent {
+            switch intent.status {
+            case "pending", "queued", "scheduled":
+                return AutomationLabelEvidence(
+                    title: "Automation queued",
+                    detail: "\(kind.labelName) was received and the worker will launch after debounce."
+                )
+            case "processing", "claimed":
+                return AutomationLabelEvidence(
+                    title: "Automation processing",
+                    detail: "The webhook worker is preparing the session."
+                )
+            case "resolved", "completed", "launched":
+                return AutomationLabelEvidence(
+                    title: "Automation launched",
+                    detail: "issuectl removes the label after starting work so future webhook signals are intentional."
+                )
+            case "failed":
+                return AutomationLabelEvidence(
+                    title: "Automation failed",
+                    detail: intent.failureReason ?? webhookEvent.resultDetail ?? "The webhook worker could not launch the session."
+                )
+            default:
+                break
+            }
+        }
+
+        switch webhookEvent.result {
+        case "scheduled":
+            return AutomationLabelEvidence(
+                title: "Automation queued",
+                detail: "\(kind.labelName) was received and the worker will launch after debounce."
+            )
+        case "accepted", "processed":
+            return AutomationLabelEvidence(
+                title: isApplied ? "Automation signal received" : "Automation label consumed",
+                detail: "issuectl removes the label after starting work so future webhook signals are intentional."
+            )
+        case "failed", "error":
+            return AutomationLabelEvidence(
+                title: "Automation failed",
+                detail: webhookEvent.resultDetail ?? "The webhook worker could not launch the session."
+            )
+        case "ignored", "skipped":
+            return AutomationLabelEvidence(
+                title: "Automation skipped",
+                detail: webhookEvent.resultDetail ?? "The webhook delivery did not start a session."
+            )
+        default:
+            if let resultDetail = webhookEvent.resultDetail, !resultDetail.isEmpty {
+                return AutomationLabelEvidence(title: "Latest webhook event", detail: resultDetail)
+            }
+        }
+    }
+
+    if isApplied {
+        return AutomationLabelEvidence(
+            title: "Waiting for webhook",
+            detail: "The label is present. GitHub will notify issuectl, then issuectl removes the label after launch."
+        )
+    }
+
+    return nil
+}
+
+private func reviewAutomationEvidence(_ run: ReviewRun) -> AutomationLabelEvidence {
+    switch run.status {
+    case .reserved:
+        return AutomationLabelEvidence(
+            title: "Review automation queued",
+            detail: "The PR review worker has reserved this request and will launch after debounce."
+        )
+    case .launching:
+        return AutomationLabelEvidence(
+            title: "Review automation launching",
+            detail: "issuectl is preparing the PR review session."
+        )
+    case .inProgress:
+        return AutomationLabelEvidence(
+            title: "Review automation in progress",
+            detail: run.summary ?? "A PR review session is running."
+        )
+    case .completed:
+        return AutomationLabelEvidence(
+            title: "Review completed",
+            detail: run.summary ?? "The latest automated review completed."
+        )
+    case .failed:
+        return AutomationLabelEvidence(
+            title: "Review automation failed",
+            detail: run.summary ?? "The latest automated review failed."
+        )
+    case .superseded:
+        return AutomationLabelEvidence(
+            title: "Review superseded",
+            detail: run.summary ?? "A newer review request replaced this run."
+        )
+    }
+}
+
 struct AutomationLabelStatusCard: View {
     let kind: AutomationLabelKind
     let isApplied: Bool
     let isAutomationEnabled: Bool
     let webhookSummary: String?
+    let evidence: AutomationLabelEvidence?
     let isToggling: Bool
     let buttonIdentifier: String
     let onToggle: () -> Void
@@ -109,6 +226,18 @@ struct AutomationLabelStatusCard: View {
                         Text(webhookSummary)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    if let evidence {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(evidence.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(tint)
+                            Text(evidence.detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.top, 2)
                     }
                 }
 
