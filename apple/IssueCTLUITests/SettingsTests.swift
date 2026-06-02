@@ -65,7 +65,7 @@ final class SettingsTests: XCTestCase {
         openAlphaRepoEditor(in: app)
 
         assertElement("edit-repo-auto-launch-toggle", existsIn: app, timeout: 5)
-        assertElement("edit-repo-auto-review-toggle", existsIn: app)
+        revealElement("edit-repo-auto-review-toggle", in: app)
         revealElement("edit-repo-webhook-health-button", in: app)
         tapElement("edit-repo-webhook-health-button", in: app)
         XCTAssertTrue(app.staticTexts["Webhook not verified"].waitForExistence(timeout: 5), app.debugDescription)
@@ -91,7 +91,7 @@ final class SettingsTests: XCTestCase {
 
         openSettingsFromToday(in: app)
         openAlphaRepoEditor(in: app)
-        assertElement("edit-repo-auto-review-toggle", existsIn: app, timeout: 5)
+        revealElement("edit-repo-auto-review-toggle", in: app)
         let autoReviewSwitch = app.switches["edit-repo-auto-review-toggle"]
         if autoReviewSwitch.exists {
             autoReviewSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
@@ -112,7 +112,8 @@ final class SettingsTests: XCTestCase {
         let app = launchApp(server: server)
 
         openSettingsFromToday(in: app)
-        app.buttons["settings-offline-queue-link"].tap()
+        revealElement("settings-offline-queue-link", in: app)
+        tapElement("settings-offline-queue-link", in: app)
 
         XCTAssertTrue(app.navigationBars["Offline Queue"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(app.staticTexts["Queue Empty"].waitForExistence(timeout: 5), app.debugDescription)

@@ -100,6 +100,39 @@ final class IssueCTLUITests: XCTestCase {
     }
 
     @MainActor
+    func testPrimarySurfacesRecoverAfterBackgroundReactivation() {
+        server.seedActiveDeployment()
+        let app = launchApp(server: server)
+
+        assertElement("today-create-issue-button", existsIn: app, timeout: 8)
+        tapMainTab("board-tab", label: "Board", in: app)
+        assertElement("board-refresh-button", existsIn: app, timeout: 5)
+        tapMainTab("active-tab", label: "Active", in: app)
+        assertElement("sessions-refresh-button", existsIn: app, timeout: 5)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
+
+        XCUIDevice.shared.press(.home)
+        _ = app.wait(for: .runningBackgroundSuspended, timeout: 2)
+        let backgroundState = app.state
+        XCTAssertTrue(
+            backgroundState == .runningBackground || backgroundState == .runningBackgroundSuspended || backgroundState == .notRunning,
+            "Expected app to leave the foreground after pressing Home, got \(backgroundState.rawValue)"
+        )
+
+        app.activate()
+        assertElement("sessions-refresh-button", existsIn: app, timeout: 8)
+        assertElement("session-reenter-terminal-9001", existsIn: app, timeout: 5)
+
+        tapMainTab("board-tab", label: "Board", in: app)
+        assertElement("board-refresh-button", existsIn: app, timeout: 5)
+        assertElement("board-summary-running", existsIn: app, timeout: 5)
+
+        tapMainTab("today-tab", label: "Today", in: app)
+        assertElement("today-create-issue-button", existsIn: app, timeout: 5)
+        assertElement("today-metric-sessions", existsIn: app, timeout: 5)
+    }
+
+    @MainActor
     func testPullRequestSessionControlsOpenPullRequestDetail() {
         server.seedPullRequestDeployment()
         let app = launchApp(server: server)
