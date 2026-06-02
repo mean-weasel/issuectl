@@ -38,6 +38,38 @@ tail -f ~/.issuectl/logs/web.log
 cat ~/.issuectl/logs/web.log | jq 'select(.level >= 50)'
 ```
 
+## Acceptance evidence
+
+Do not finish agent work with only a generic "tests pass" claim. Before handing
+off, identify the top realistic failure modes for the changed surface and collect
+evidence that would have exposed those failures.
+
+Prefer the smallest proof that exercises the real contract:
+
+- Core, CLI, or data changes: run focused package tests plus typecheck/lint for
+  the touched package.
+- Launch, terminal, ttyd, tmux, session, or workbench changes: include
+  diagnostics journal evidence from `issuectl diag ...`; use web logs only after
+  diagnostics identify the failure area.
+- Web UI changes: use Playwright CLI checks for the affected flow and viewport.
+  Follow `CLAUDE.md`: do not use browser MCP or the Claude Chrome extension for
+  UI verification.
+- Webhook automation changes: use the smallest applicable rung from
+  `docs/workflows/webhook-qa-ladder.md` and record the runbook, target, and
+  pass/fail evidence.
+- iOS or macOS client changes: use the relevant build, smoke, preview-device,
+  runner preflight, or performance commands documented in `CLAUDE.md`.
+- Performance, lifecycle, or reliability claims: include the observed timing,
+  diagnostic events, logs, screenshots, or SQL/API output that directly supports
+  the claim.
+
+In final handoffs and PRs, report:
+
+- What changed surfaces were touched.
+- The top failure modes considered.
+- Exact commands, runbooks, diagnostics, logs, or artifacts used as evidence.
+- Any checks intentionally skipped, with the reason and residual risk.
+
 ## Common verification
 
 Run focused checks for the packages you touched:
