@@ -437,6 +437,48 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertTrue(store.failedActions().isEmpty)
     }
 
+    func testRootOfflineQueueBannerHidesConnectedFailedOnlyQueue() {
+        XCTAssertNil(makeRootOfflineQueueBannerState(
+            pendingCount: 0,
+            failedCount: 2,
+            isSyncing: false,
+            isNetworkConnected: true
+        ))
+    }
+
+    func testRootOfflineQueueBannerKeepsFailedQueueVisibleWhileOffline() {
+        XCTAssertEqual(
+            makeRootOfflineQueueBannerState(
+                pendingCount: 0,
+                failedCount: 2,
+                isSyncing: false,
+                isNetworkConnected: false
+            ),
+            RootOfflineQueueBannerState(pendingCount: 0, failedCount: 2, isSyncing: false)
+        )
+    }
+
+    func testRootOfflineQueueBannerShowsPendingAndSyncingWorkWhenConnected() {
+        XCTAssertEqual(
+            makeRootOfflineQueueBannerState(
+                pendingCount: 1,
+                failedCount: 0,
+                isSyncing: false,
+                isNetworkConnected: true
+            ),
+            RootOfflineQueueBannerState(pendingCount: 1, failedCount: 0, isSyncing: false)
+        )
+        XCTAssertEqual(
+            makeRootOfflineQueueBannerState(
+                pendingCount: 0,
+                failedCount: 1,
+                isSyncing: true,
+                isNetworkConnected: true
+            ),
+            RootOfflineQueueBannerState(pendingCount: 0, failedCount: 1, isSyncing: true)
+        )
+    }
+
     func testOfflineActionQueueMarkPendingPreservesRetryMetadata() throws {
         let suiteName = "issuectl.tests.offline-action-retry-metadata.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

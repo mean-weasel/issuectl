@@ -116,24 +116,35 @@ struct ContentView: View {
     }
 
     private var shouldShowStatusBanners: Bool {
-        !network.isConnected || offlineSync.pendingCount > 0 || offlineSync.failedCount > 0 || offlineSync.isSyncing
+        !network.isConnected || rootOfflineQueueBannerState != nil
+    }
+
+    private var rootOfflineQueueBannerState: RootOfflineQueueBannerState? {
+        makeRootOfflineQueueBannerState(
+            pendingCount: offlineSync.pendingCount,
+            failedCount: offlineSync.failedCount,
+            isSyncing: offlineSync.isSyncing,
+            isNetworkConnected: network.isConnected
+        )
     }
 
     private var statusBanners: some View {
         VStack(spacing: 8) {
             OfflineBanner()
-            OfflineQueueBanner(
-                pendingCount: offlineSync.pendingCount,
-                failedCount: offlineSync.failedCount,
-                isSyncing: offlineSync.isSyncing,
-                onSync: {
-                    offlineSync.retryFailedActions()
-                    await offlineSync.syncPendingActions()
-                },
-                onDismissFailed: {
-                    offlineSync.clearFailedActions()
-                }
-            )
+            if let rootOfflineQueueBannerState {
+                OfflineQueueBanner(
+                    pendingCount: rootOfflineQueueBannerState.pendingCount,
+                    failedCount: rootOfflineQueueBannerState.failedCount,
+                    isSyncing: rootOfflineQueueBannerState.isSyncing,
+                    onSync: {
+                        offlineSync.retryFailedActions()
+                        await offlineSync.syncPendingActions()
+                    },
+                    onDismissFailed: {
+                        offlineSync.clearFailedActions()
+                    }
+                )
+            }
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 92)
@@ -168,4 +179,38 @@ private enum AppTab: Hashable {
     case issues
     case pullRequests
     case active
+}
+
+struct RootOfflineQueueBannerState: Equatable {
+    let pendingCount: Int
+    let failedCount: Int
+    let isSyncing: Bool
+}
+
+func makeRootOfflineQueueBannerState(
+    pendingCount: Int,
+    failedCount: Int,
+    isSyncing: Bool,
+    isNetworkConnected: Bool
+) -> RootOfflineQueueBannerState? {
+    let pendingCount = max(0, pendingCount)
+    let failedCount = max(0, failedCount)
+
+    if pendingCount > 0 || isSyncing {
+        return RootOfflineQueueBannerState(
+            pendingCount: pendingCount,
+            failedCount: failedCount,
+            isSyncing: isSyncing
+        )
+    }
+
+    if failedCount > 0 && !isNetworkConnected {
+        return RootOfflineQueueBannerState(
+            pendingCount: pendingCount,
+            failedCount: failedCount,
+            isSyncing: isSyncing
+        )
+    }
+
+    return nil
 }
