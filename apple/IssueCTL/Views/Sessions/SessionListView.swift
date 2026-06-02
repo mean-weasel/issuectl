@@ -83,17 +83,18 @@ struct SessionListView: View {
 
     private var filteredSessionGroups: [SessionsOverviewSessionGroup] {
         let groups = overview?.sessionGroups ?? []
-        guard !selectedRepoIds.isEmpty, selectedRepoQuery == nil else { return groups }
+        guard !selectedRepoIds.isEmpty else { return groups }
         return groups
             .map { group in
-                SessionsOverviewSessionGroup(
+                let sessions = group.sessions.filter { selectedRepoIds.contains($0.repoId) }
+                return SessionsOverviewSessionGroup(
                     key: group.key,
                     repoFullName: group.repoFullName,
                     targetType: group.targetType,
                     targetNumber: group.targetNumber,
                     targetLabel: group.targetLabel,
-                    sessions: group.sessions.filter { selectedRepoIds.contains($0.repoId) },
-                    matchingSessionCount: group.matchingSessionCount
+                    sessions: sessions,
+                    matchingSessionCount: sessions.count
                 )
             }
             .filter { !$0.sessions.isEmpty }
@@ -101,17 +102,18 @@ struct SessionListView: View {
 
     private var filteredReviewGroups: [SessionsOverviewReviewGroup] {
         let groups = overview?.reviewGroups ?? []
-        guard !selectedRepoIds.isEmpty, selectedRepoQuery == nil else { return groups }
+        guard !selectedRepoIds.isEmpty else { return groups }
         return groups
             .map { group in
-                SessionsOverviewReviewGroup(
+                let runs = group.runs.filter { selectedRepoIds.contains($0.repoId) }
+                return SessionsOverviewReviewGroup(
                     key: group.key,
                     repoFullName: group.repoFullName,
                     owner: group.owner,
                     repoName: group.repoName,
                     prNumber: group.prNumber,
-                    runs: group.runs.filter { selectedRepoIds.contains($0.repoId) },
-                    matchingRunCount: group.matchingRunCount
+                    runs: runs,
+                    matchingRunCount: runs.count
                 )
             }
             .filter { !$0.runs.isEmpty }
