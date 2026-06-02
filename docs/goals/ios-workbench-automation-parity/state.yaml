@@ -1,0 +1,692 @@
+version: 2
+
+goal:
+  title: "iOS Workbench Automation Parity"
+  slug: "ios-workbench-automation-parity"
+  kind: existing_plan
+  tranche: "Preserve the current WIP baseline, land the missing REST contracts and shared iOS projections, then complete successive verified iOS UI packages for workbench board, PR automation sessions, repo automation health, and diagnostics."
+  status: done
+  oracle:
+    signal: "The iOS app can independently show cross-repo issue and PR work, active/completed automation sessions, webhook and label health, safe trigger-label controls, and diagnostics-first launch/session failure timelines using stable web contracts."
+    cadence: "after each Worker package, after each phase boundary, and at final audit"
+    final_proof: "Final audit maps receipts, changed files, focused web/iOS commands, and direct source inspection back to the oracle; full_outcome_complete may be true only when required Worker work is done or explicitly blocked with safe follow-up."
+  intake:
+    original_request: "Make a GoalBuddy prep board to knock this out."
+    interpreted_outcome: "A fresh GoalBuddy board is ready to execute the remaining iOS parity work for web workbench, webhook automation, PR auto-review sessions, repo automation health, and diagnostics."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and iOS users"
+    authority: requested
+    proof_type: test
+    completion_proof: "From the iOS app alone, users can inspect all tracked repo work, operate issue and PR automation/session flows, configure or repair automation health, and diagnose launch/session failures, with focused checks passing."
+    likely_misfire: "The board repeats broad parity analysis or lands only narrow model helpers while the iOS app still cannot operate the web workbench and automation workflows end to end."
+    blind_spots_considered:
+      - "The current checkout is dirty and contains relevant WIP; a fresh worktree from origin/main may drop important current changes."
+      - "PR auto-review labels appear to lack a stable REST route, unlike issue labels."
+      - "Diagnostics are available through CLI/core records, but no /api/v1/diagnostics route was found."
+      - "The native Repo model omits automation and webhook fields present in web contracts."
+      - "Prior plans referenced /api/v1/sessions/overview, but no route was found."
+      - "Webhook label-consumption cleanup can create expected skipped events that iOS must not present as failures."
+      - "Webhook health depends on server-side GitHub hook inspection and recent deliveries, so iOS needs a surfaced contract rather than local guesswork."
+    existing_plan_facts:
+      - "The source-backed parity plan lives at docs/superpowers/plans/2026-06-02-ios-workbench-automation-parity.md."
+      - "Web /api/v1/workbench is the aggregate source of truth for repos, issues, deployments, previews, settings, webhook events, PR reviews, and user context."
+      - "iOS already decodes WorkbenchPayload but underuses WorkbenchBootstrap projections."
+      - "Uncommitted iOS changes already add PR-aware ActiveDeployment decoding and target-aware endSession support."
+      - "Missing contracts should be resolved before broad SwiftUI work."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/ios-workbench-automation-parity/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/docs/goals/ios-workbench-automation-parity"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Preserve and validate the current baseline before any fresh implementation worktree starts."
+    inputs:
+      - "Current git status, branch, diff summary, and worktrees."
+      - "docs/superpowers/plans/2026-06-02-ios-workbench-automation-parity.md"
+      - "docs/goals/workbench/goal.md and recent workbench receipts if needed."
+      - "docs/goals/ios-parity-hardening/goal.md and recent parity receipts if needed."
+      - "Current web workbench, webhook, repo settings, PR automation, diagnostics, and iOS model/view code."
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Do not create, delete, or switch worktrees."
+      - "Treat dirty files as user/WIP until classified; do not recommend reverting them."
+      - "Identify the earliest safe baseline preservation action for PM/Judge."
+      - "Prefer concrete file-path evidence over prior-session memory."
+    expected_output:
+      - "Baseline branch, HEAD, dirty-state summary, and relevant uncommitted WIP list."
+      - "Current contract gap matrix for workbench, PR labels, diagnostics, sessions overview, repo automation settings, and iOS projections."
+      - "UI gap matrix for cross-repo board, PR sessions, repo automation health, and diagnostics."
+      - "Fresh-worktree recommendation that preserves current WIP."
+      - "Recommended first Worker package with candidate allowed_files, verify commands, and stop_if conditions."
+    receipt:
+      result: done
+      note: "notes/T001-baseline-and-gap-map.md"
+      summary: "Mapped the current dirty baseline, missing current-root contracts, existing dormant worktrees with candidate route implementations, and iOS projection/UI gaps. The current branch tracks a gone upstream and has relevant uncommitted WIP, so fresh implementation worktrees from origin/main are unsafe until this WIP is checkpointed or intentionally ported."
+      evidence:
+        - "Root HEAD 184ed943a2715c6d5ea8ffbe90075238c0aa67e1 on codex/webhook-tunnel-qa-hardening; upstream is gone."
+        - "git diff --stat reported 43 modified tracked files with 1122 insertions and 684 deletions, plus relevant untracked webhook/goal files."
+        - "Current route listing has no packages/web/app/api/v1/diagnostics route and no packages/web/app/api/v1/pulls/[owner]/[repo]/[number]/labels route."
+        - "Existing worktrees ios-review-actions-api and ios-diagnostics-api-contract contain candidate PR label, diagnostics, sessions overview, and webhook health routes."
+        - "Current Swift WorkbenchPayload decodes webhook events, PR reviews, completions, and target-aware deployments, but WorkbenchBootstrap only projects issue summaries, priorities, and active issue deployments."
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the Scout baseline and approve the largest safe foundation implementation package."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle"
+      - "Current dirty diff"
+      - "Current worktree list"
+    constraints:
+      - "Do not implement."
+      - "Reject implementation from origin/main if Scout shows current WIP is required for parity."
+      - "Reject broad UI work until missing REST contracts and shared iOS projections are either implemented or explicitly deferred with proof."
+      - "Pick the largest safe useful slice with exact allowed_files, verify commands, and stop_if conditions."
+      - "If baseline preservation requires a commit, branch, or stash, specify the safest PM action and why."
+    expected_output:
+      - "Decision: proceed | revise_board | blocked"
+      - "Baseline handling decision"
+      - "Exact first Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Deferred tasks and rationale"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T002-foundation-slice-decision.md"
+      summary: "Approved one foundation Worker package in the current root checkout: PR label REST, diagnostics REST, repo webhook-health REST, WorkbenchBootstrap projections, and focused tests/path checks. Broad UI work and parallel worktrees remain deferred until this foundation passes."
+      evidence:
+        - "T001 proved current root is the authoritative dirty baseline and fresh origin/main worktrees would miss relevant WIP."
+        - "Current root has web repo automation routes and Swift WorkbenchPayload decoding, but lacks PR label REST, diagnostics REST, webhook-health REST, and full WorkbenchBootstrap projections."
+        - "Dormant worktrees contain source-backed candidate route implementations that can be ported selectively."
+
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the approved foundation package: missing stable REST contracts plus shared iOS workbench projections."
+    allowed_files:
+      - "packages/web/app/api/v1/pulls/[owner]/[repo]/[number]/labels/route.ts"
+      - "packages/web/app/api/v1/pulls/[owner]/[repo]/[number]/labels/route.test.ts"
+      - "packages/web/app/api/v1/diagnostics/route.ts"
+      - "packages/web/app/api/v1/diagnostics/route.test.ts"
+      - "packages/web/app/api/v1/diagnostics/deployments/[id]/route.ts"
+      - "packages/web/app/api/v1/diagnostics/deployments/[id]/route.test.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/health/route.ts"
+      - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/health/route.test.ts"
+      - "packages/web/lib/diagnostics-api.ts"
+      - "packages/web/lib/mobile-api-contracts.ts"
+      - "apple/IssueCTLShared/Models/WorkbenchPayload.swift"
+      - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+      - "apple/IssueCTLShared/Services/APIClient+DetailActions.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "docs/goals/ios-workbench-automation-parity/notes/**"
+      - "docs/goals/ios-workbench-automation-parity/state.yaml"
+    verify:
+      - "git diff --check"
+      - "pnpm --dir packages/web test -- app/api/v1/pulls/[owner]/[repo]/[number]/labels/route.test.ts app/api/v1/diagnostics/route.test.ts app/api/v1/diagnostics/deployments/[id]/route.test.ts app/api/v1/repos/[owner]/[repo]/webhook/health/route.test.ts"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests -only-testing:IssueCTLTests/APIClientExtensionTests"
+      - "Direct inspection proves route listing includes PR labels, diagnostics, deployment diagnostics, and repo webhook health."
+    stop_if:
+      - "Need to revert unrelated dirty work."
+      - "Need files outside allowed_files."
+      - "Need credentials or production GitHub access for verification."
+      - "Diagnostics API shape requires a product decision that cannot be inferred from CLI/core diagnostics."
+      - "Broad SwiftUI changes become necessary before contracts/projections are verified."
+      - "Verification fails twice for the same underlying cause."
+    receipt:
+      result: done
+      note: "notes/T003-foundation-worker.md"
+      summary: "Implemented and verified the foundation contracts and shared iOS projections: PR label REST, diagnostics REST, deployment diagnostics REST, repo webhook-health REST, iOS API/client decoding, and WorkbenchBootstrap indexes for automation repos, PR deployments, completions, webhook events, and PR reviews."
+      changed_files:
+        - "packages/web/app/api/v1/pulls/[owner]/[repo]/[number]/labels/route.ts"
+        - "packages/web/app/api/v1/pulls/[owner]/[repo]/[number]/labels/route.test.ts"
+        - "packages/web/app/api/v1/diagnostics/route.ts"
+        - "packages/web/app/api/v1/diagnostics/route.test.ts"
+        - "packages/web/app/api/v1/diagnostics/deployments/[id]/route.ts"
+        - "packages/web/app/api/v1/diagnostics/deployments/[id]/route.test.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/health/route.ts"
+        - "packages/web/app/api/v1/repos/[owner]/[repo]/webhook/health/route.test.ts"
+        - "packages/web/lib/diagnostics-api.ts"
+        - "packages/web/lib/mobile-api-contracts.ts"
+        - "apple/IssueCTLShared/Models/WorkbenchBootstrap.swift"
+        - "apple/IssueCTLShared/Services/APIClient+DetailActions.swift"
+        - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+        - "apple/IssueCTLTests/WorkbenchBootstrapMapperTests.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T003-foundation-worker.md"
+        - "docs/goals/ios-workbench-automation-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "pnpm --dir packages/web test -- 'app/api/v1/pulls/[owner]/[repo]/[number]/labels/route.test.ts' 'app/api/v1/diagnostics/route.test.ts' 'app/api/v1/diagnostics/deployments/[id]/route.test.ts' 'app/api/v1/repos/[owner]/[repo]/webhook/health/route.test.ts'"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests -only-testing:IssueCTLTests/APIClientExtensionTests"
+          status: pass
+        - cmd: "rg --files packages/web/app/api/v1 | rg 'diagnostics|pulls/.*/labels|webhook/health'"
+          status: pass
+      evidence:
+        - "Initial web route test run failed because the route modules did not exist."
+        - "Initial focused Swift run failed compiling missing WorkbenchBootstrap projections and WorkbenchTargetKey."
+        - "git diff --check passed."
+        - "Focused web route tests passed: 4 files, 13 tests."
+        - "Focused iOS tests passed on iPhone 17: 45 selected tests, 0 failures."
+        - "Route listing includes PR labels, diagnostics, deployment diagnostics, and repo webhook health."
+
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the foundation package and decide which UI work can safely run in parallel worktrees."
+    inputs:
+      - "T003 receipt"
+      - "Current diff"
+      - "Goal oracle"
+      - "Contract/projection test results"
+    constraints:
+      - "Do not implement."
+      - "Approve parallel workers only when write scopes are disjoint and shared contracts are verified."
+      - "Prefer large vertical UI slices over tiny helper work."
+      - "Return exact allowed_files and verify commands for each approved Worker package."
+    expected_output:
+      - "Foundation verdict"
+      - "Parallelization plan or single-worker fallback"
+      - "Worker package definitions for cross-repo board, PR automation sessions, repo automation health, and diagnostics"
+      - "Any blocked or deferred scopes"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T004-foundation-judge.md"
+      summary: "Accepted the T003 foundation package and chose a single-worker next step rather than immediate parallel fanout. The next active slice is T005 cross-repo board UI, because the independent Judge found it can be scoped without Sessions, Terminal, APIClient, or shared model churn while the dirty baseline remains uncheckpointed."
+      evidence:
+        - "T003 red/green proof covered missing routes, missing Swift projections, focused web route tests, focused iOS tests, diff whitespace, and route listing inspection."
+        - "T001/T002 showed the current dirty root remains the authoritative baseline, so parallel worktrees should wait for a checkpoint."
+        - "Independent explorer recommended continuing this durable board instead of rerunning broad iOS parity prep prompts."
+        - "Independent GoalBuddy Judge rejected immediate T006/T007/T008 fanout because queued scopes overlap shared Swift/API/test files and foundation web route files remain untracked."
+
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the iOS cross-repo work board using verified WorkbenchBootstrap projections without changing foundation contracts or shared API/model files."
+    allowed_files:
+      - "apple/IssueCTL/App/ContentView.swift"
+      - "apple/IssueCTL/Views/Workbench/**"
+      - "apple/IssueCTL/Views/Today/TodayView.swift"
+      - "apple/IssueCTL/Views/Issues/IssueListView.swift"
+      - "apple/IssueCTL/Views/Issues/IssueRowView.swift"
+      - "apple/IssueCTL/Views/Shared/CommandCenterComponents.swift"
+      - "apple/IssueCTL/Views/Shared/RepoFilterChips.swift"
+      - "apple/IssueCTL/Views/Shared/SectionTabs.swift"
+      - "apple/IssueCTLTests/ViewLogicTests.swift"
+      - "apple/IssueCTLUITests/IssueCTLUITests.swift"
+      - "docs/goals/ios-workbench-automation-parity/notes/T005-cross-repo-board.md"
+      - "docs/goals/ios-workbench-automation-parity/state.yaml"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests"
+      - "Direct inspection verifies cross-repo grouping, active issue/PR session badges, repo filtering, priority/status sorting, and existing issue navigation still work."
+    stop_if:
+      - "Need to edit WorkbenchBootstrap.swift, WorkbenchPayload.swift, Deployment.swift, Repo.swift, or APIClient*.swift."
+      - "Need to edit PullRequests, Sessions, Terminal, Settings, Repos, or Diagnostics views."
+      - "Need files outside allowed_files."
+      - "Foundation routes or projections are missing in the chosen checkout."
+      - "Verification fails twice for the same underlying cause."
+    receipt:
+      result: done
+      note: "notes/T005-cross-repo-board.md"
+      summary: "Implemented the iOS cross-repo work board as a new Issues section backed by WorkbenchBootstrap projections. The board groups open workbench issues by repo, shows running issue state and active PR-session counts, respects repo filtering/search/sort/running-only state, and navigates rows through the existing issue-detail route. Focused Board and view-logic proof passed; the broad UI-suite verifier is blocked by a reproduced out-of-scope Active-tab repo-context assertion mismatch in SessionListView."
+      changed_files:
+        - "apple/IssueCTL/Views/Shared/SectionTabs.swift"
+        - "apple/IssueCTL/Views/Issues/IssueListView.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+        - "apple/IssueCTLUITests/IssueCTLUITests.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T005-cross-repo-board.md"
+        - "docs/goals/ios-workbench-automation-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testIssuesBoardSectionIsReachable"
+          status: pass
+        - cmd: "rg -n 'case board|issueListWorkbenchBoardSections|issues-board-running-toggle|board-issue-row|WorkbenchBoardSectionHeader|activePrSessionCount|testWorkbenchBoardSections|testIssuesBoardSectionIsReachable|showsActiveSummary: false' apple/IssueCTL/Views/Shared/SectionTabs.swift apple/IssueCTL/Views/Issues/IssueListView.swift apple/IssueCTL/Views/Sessions/SessionListView.swift apple/IssueCTLTests/ViewLogicTests.swift apple/IssueCTLUITests/IssueCTLUITests.swift"
+          status: pass
+      evidence:
+        - "Initial focused ViewLogicTests run failed before implementation because issueListWorkbenchBoardSections did not exist."
+        - "Focused unit verification passed on iPhone 17: 80 tests, 0 failures."
+        - "Focused Board UI smoke passed on iPhone 17: section-tab-board was reachable and issues-board-running-toggle appeared."
+        - "Full IssueCTLUITests command executed 17 tests with 1 failure: testRepoContextIsVisibleAcrossPrimaryTabs expected repo-context-active on the Active tab."
+        - "Focused rerun of IssueCTLUITests/IssueCTLUITests/testRepoContextIsVisibleAcrossPrimaryTabs reproduced the same out-of-scope failure."
+        - "Direct inspection found SessionListView passes showsActiveSummary: false, which explains the missing repo-context-active chip without editing T005-disallowed Sessions files."
+
+  - id: T009
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review T005, decide how to handle the Active-tab repo-context verifier blocker, and approve the next safe Worker package."
+    inputs:
+      - "T005 receipt"
+      - "Current diff"
+      - "Goal oracle"
+      - "Full UI-suite failure and focused repro evidence"
+      - "Independent agent recommendations from T004"
+    constraints:
+      - "Do not implement."
+      - "Do not mark final outcome complete."
+      - "Decide whether to fix SessionListView repo-context active summary before T006 or revise the T005 broad verifier expectation."
+      - "Reject parallel fanout if dirty shared files are still uncheckpointed or if T006/T007/T008 scopes still overlap."
+      - "If approving T006, narrow allowed_files and verify commands to one PR/session vertical slice."
+    expected_output:
+      - "T005 verdict"
+      - "Disposition for the Active-tab repo-context failure"
+      - "Next active task decision"
+      - "Exact allowed_files, verify commands, and stop_if updates if the board should change"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      note: "notes/T009-cross-repo-board-judge.md"
+      summary: "Accepted T005 as a completed cross-repo Board slice, treated the Active-tab repo-context failure as a real out-of-scope verifier blocker, rejected parallel fanout, and approved one narrow T010 Worker to restore the Active-tab active repo summary before PR/session parity work."
+      evidence:
+        - "T005 focused Board UI smoke passed and unit proof covered Board grouping/filter/sort behavior."
+        - "Full IssueCTLUITests failed only testRepoContextIsVisibleAcrossPrimaryTabs."
+        - "Focused rerun reproduced the same Active-tab repo-context failure."
+        - "Direct inspection shows SessionListView passes showsActiveSummary: false while the test expects repo-context-active."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Restore the Active-tab active repo context summary so the broad iOS UI verifier is no longer blocked before PR/session parity work."
+    allowed_files:
+      - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      - "apple/IssueCTLUITests/IssueCTLUITests.swift"
+      - "docs/goals/ios-workbench-automation-parity/notes/T010-active-repo-context.md"
+      - "docs/goals/ios-workbench-automation-parity/state.yaml"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testRepoContextIsVisibleAcrossPrimaryTabs"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testIssuesBoardSectionIsReachable"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests"
+      - "Direct inspection verifies SessionListView supplies active repo names to RepoContextStrip without shared model/API changes."
+    stop_if:
+      - "Need to edit shared model/API files."
+      - "Need to edit PullRequests, Terminal, Settings, Repos, Diagnostics, or web files."
+      - "The failure is caused by test server data instead of the Sessions view."
+      - "A second unrelated UI failure appears in the full suite and cannot be isolated with a focused rerun."
+    receipt:
+      result: done
+      note: "notes/T010-active-repo-context.md"
+      summary: "Restored the Active tab repo-context active summary by deriving active repo names from active deployments and passing them to RepoContextStrip. This unblocked the previously failing broad iOS UI verifier before PR/session parity work."
+      changed_files:
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T010-active-repo-context.md"
+        - "docs/goals/ios-workbench-automation-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testRepoContextIsVisibleAcrossPrimaryTabs"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testIssuesBoardSectionIsReachable"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests"
+          status: pass
+        - cmd: "rg -n 'activeRepoFullNames|RepoContextStrip\\(' apple/IssueCTL/Views/Sessions/SessionListView.swift"
+          status: pass
+      evidence:
+        - "The previously failing focused repo-context UI test passed and observed repo-context-active on the Active tab."
+        - "The focused Board UI smoke still passed after the Sessions view change."
+        - "The full IssueCTLUITests run passed on iPhone 17: 17 tests, 0 failures."
+        - "Direct inspection found SessionListView computes activeRepoFullNames and passes it to RepoContextStrip."
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the iOS PR-target session parity vertical slice for existing active deployments: PR session rows and controls show PR targets, issue-only navigation is disabled for PR sessions, terminal opening still works, and end-session requests preserve target metadata."
+    allowed_files:
+      - "apple/IssueCTL/Views/PullRequests/**"
+      - "apple/IssueCTL/Views/Sessions/**"
+      - "apple/IssueCTL/Views/Terminal/**"
+      - "apple/IssueCTLShared/Models/Deployment.swift"
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTLTests/ModelDecodingTests.swift"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "apple/IssueCTLTests/EnumTests.swift"
+      - "apple/IssueCTLTests/ViewLogicTests.swift"
+      - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+      - "apple/IssueCTLUITests/SessionManagementTests.swift"
+      - "apple/IssueCTLUITests/IssueCTLUITests.swift"
+      - "docs/goals/ios-workbench-automation-parity/notes/T006-pr-target-sessions.md"
+      - "docs/goals/ios-workbench-automation-parity/state.yaml"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ModelDecodingTests -only-testing:IssueCTLTests/APIClientExtensionTests -only-testing:IssueCTLTests/ViewLogicTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/EnumTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests/testPullRequestSessionShowsPrTargetAndDisablesIssueNavigation"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ModelDecodingTests -only-testing:IssueCTLTests/APIClientExtensionTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests"
+      - "Direct inspection verifies PR target labels, issue-only navigation guards, PR terminal opening, end-session body target support, and existing issue session behavior."
+    stop_if:
+      - "PR label REST contract is missing or unverified."
+      - "Need files outside allowed_files."
+      - "Need live GitHub credentials to verify a local UI-only behavior."
+      - "Need to implement repo automation health or diagnostics UI in the same slice."
+      - "Verification fails twice for the same underlying cause."
+    receipt:
+      result: done
+      note: "notes/T006-pr-target-sessions.md"
+      summary: "Completed PR-target active-session parity for existing deployments: active sessions decode issue/PR targets, rows and controls show PR labels, issue-only navigation is guarded for PR sessions, Terminal titles and end-session calls preserve target metadata, and a PR-target UI fixture proves the Active tab behavior."
+      changed_files:
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionRowView.swift"
+        - "apple/IssueCTL/Views/Terminal/TerminalView.swift"
+        - "apple/IssueCTLShared/Models/Deployment.swift"
+        - "apple/IssueCTLShared/Services/APIClient.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "apple/IssueCTLTests/EnumTests.swift"
+        - "apple/IssueCTLTests/ModelDecodingTests.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+        - "apple/IssueCTLUITests/SessionManagementTests.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T006-pr-target-sessions.md"
+        - "docs/goals/ios-workbench-automation-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ModelDecodingTests -only-testing:IssueCTLTests/APIClientExtensionTests -only-testing:IssueCTLTests/ViewLogicTests"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/EnumTests"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests/testPullRequestSessionShowsPrTargetAndDisablesIssueNavigation"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ModelDecodingTests -only-testing:IssueCTLTests/APIClientExtensionTests -only-testing:IssueCTLTests/WorkbenchBootstrapMapperTests"
+          status: pass
+        - cmd: "rg -n 'targetLabel|targetTitle|isIssueTarget|targetType: deployment.targetType|targetNumber: deployment.targetNumber|PR #44|seedPullRequestDeployment|pullRequestDeployment|PR Review|View Issue' apple/IssueCTL/Views/Sessions apple/IssueCTL/Views/Terminal apple/IssueCTLShared/Models/Deployment.swift apple/IssueCTLShared/Services/APIClient.swift apple/IssueCTLUITests/Helpers/MockServer.swift apple/IssueCTLUITests/SessionManagementTests.swift"
+          status: pass
+      evidence:
+        - "Focused model/API/view logic tests passed: 162 tests, 0 failures."
+        - "EnumTests passed: 29 tests, 0 failures, including EndSessionRequestBody target-field encoding."
+        - "Focused PR-session UI test passed and observed PR #44 on the Active tab and PR #44 Session in controls."
+        - "Full SessionManagementTests passed with the new PR case included: 6 tests, 0 failures."
+        - "Model/API/WorkbenchBootstrap mapper verifier passed: 92 tests, 0 failures."
+        - "Direct inspection found target labels, PR navigation guards, Terminal target title, target-aware endSession call sites, and the PR fixture."
+
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement iOS repo automation status and webhook health visibility, explicitly deferring mutating setup and repair controls to a follow-up write-path worker."
+    allowed_files:
+      - "apple/IssueCTL/Views/Settings/**"
+      - "apple/IssueCTL/Views/Repos/**"
+      - "apple/IssueCTLShared/Models/Repo.swift"
+      - "apple/IssueCTLShared/Models/WorkbenchPayload.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Settings.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTLTests/**"
+      - "apple/IssueCTLUITests/**"
+      - "docs/goals/ios-workbench-automation-parity/notes/**"
+      - "docs/goals/ios-workbench-automation-parity/state.yaml"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:IssueCTLTests"
+      - "Direct inspection verifies auto-launch, auto-review, issue/review agents, review preamble, payload mode, webhook install/rotate, label repair, and active-session disable warnings are represented or explicitly deferred."
+    stop_if:
+      - "Repo settings REST contract is missing or divergent."
+      - "Need files outside allowed_files."
+      - "Need production GitHub access to verify server-side hook install."
+      - "Verification fails twice for the same underlying cause."
+    receipt:
+      result: done
+      note: "notes/T007-repo-automation-health.md"
+      summary: "Added native Repo automation/webhook fields with defaults, Settings repo-row automation and webhook summaries, Edit Repository read-only automation setup rows, and an API-backed webhook-health section. Mutating setup, webhook install/rotate, label repair, and active-session edit warnings were deferred to T011."
+      changed_files:
+        - "apple/IssueCTLShared/Models/Repo.swift"
+        - "apple/IssueCTL/Views/Settings/SettingsView.swift"
+        - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+        - "apple/IssueCTLTests/ModelDecodingTests.swift"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+        - "apple/IssueCTLUITests/SettingsTests.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T007-repo-automation-health.md"
+        - "docs/goals/ios-workbench-automation-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ModelDecodingTests/testRepoDecodesAutomationFields -only-testing:IssueCTLTests/APIClientExtensionTests/testRepoWebhookHealthUsesHealthEndpoint"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SettingsTests/testSettingsShowsRepoAutomationAndWebhookHealth"
+          status: pass
+        - cmd: "rg -n 'repoWebhookHealth|autoLaunchIssues|autoReviewPrs|Webhook Health|GitHub webhook delivery looks healthy|reviewPreamble|webhookPayloadMode' apple/IssueCTL apple/IssueCTLShared apple/IssueCTLTests apple/IssueCTLUITests"
+          status: pass
+      evidence:
+        - "Focused model/API tests passed and proved Repo decodes automation fields while APIClient uses /api/v1/repos/:owner/:repo/webhook/health."
+        - "Focused Settings UI test passed and observed Issues + PR reviews, Webhook #123, Automation, Webhook Health, and the mocked GitHub webhook delivery health summary."
+        - "Direct inspection found the read-only iOS surface for auto-launch, auto-review, issue/review agents, review preamble, payload mode, and webhook health."
+        - "Webhook install/rotate, label repair, and active-session disable warnings are explicitly deferred to T011 instead of claimed as complete."
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement safe iOS repo automation write-path controls: automation setting edits, webhook install/rotate affordances, trigger-label repair, and active-session warnings."
+    allowed_files:
+      - "apple/IssueCTL/Views/Settings/**"
+      - "apple/IssueCTL/Views/Repos/**"
+      - "apple/IssueCTLShared/Models/Repo.swift"
+      - "apple/IssueCTLShared/Services/APIClient+Settings.swift"
+      - "apple/IssueCTLShared/Services/APIClient+AdvancedSettings.swift"
+      - "apple/IssueCTLTests/**"
+      - "apple/IssueCTLUITests/**"
+      - "docs/goals/ios-workbench-automation-parity/notes/**"
+      - "docs/goals/ios-workbench-automation-parity/state.yaml"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SettingsTests"
+      - "Direct inspection verifies write controls call stable REST contracts or are disabled with clear warnings when active sessions make mutation unsafe."
+    stop_if:
+      - "Repo automation mutation REST contracts are missing or divergent."
+      - "Need production GitHub access to verify server-side hook install."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same underlying cause."
+    receipt:
+      result: done
+      note: "notes/T011-repo-automation-write-controls.md"
+      summary: "Added native repo automation write controls to Edit Repository: automation toggles, agent pickers, review preamble, payload mode, webhook install/rotate, required-label check/repair, and an active-session server-side consequence warning. Added typed API methods and focused API/UI verification."
+      changed_files:
+        - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+        - "apple/IssueCTLShared/Services/APIClient+Settings.swift"
+        - "apple/IssueCTLTests/APIClientTests.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+        - "apple/IssueCTLUITests/SettingsTests.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T011-repo-automation-write-controls.md"
+        - "docs/goals/ios-workbench-automation-parity/state.yaml"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientExtensionTests/testUpdateRepoSendsPatchBodyAndDecodesRepo -only-testing:IssueCTLTests/APIClientExtensionTests/testUpdateRepoAutomationSendsFullPatchBody -only-testing:IssueCTLTests/APIClientExtensionTests/testConfigureRepoWebhookUsesWebhookEndpoint -only-testing:IssueCTLTests/APIClientExtensionTests/testRecreateRepoLabelsUsesLabelsEndpoint"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SettingsTests/testEditRepoAutomationControlsSaveAndRepairLabels"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SettingsTests"
+          status: pass
+        - cmd: "rg -n 'updateRepo\\(|UpdateRepoAutomationRequest|configureRepoWebhook|recreateRepoLabels|Label Repair|Check Required Labels|Repair Required Labels|Turning automation off|repoWebhookHealth' apple/IssueCTL apple/IssueCTLShared apple/IssueCTLTests apple/IssueCTLUITests"
+          status: pass
+      evidence:
+        - "Focused API tests passed and proved the full repo automation PATCH body, webhook POST body, and label repair POST body."
+        - "Focused UI test passed: the sheet toggled PR reviews, checked missing required labels, repaired labels, and saved."
+        - "Full SettingsTests passed: 6 tests, 0 failures."
+        - "Direct inspection found REST-backed controls and the active-session consequence warning."
+
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement iOS diagnostics-first launch and session failure surface."
+    allowed_files:
+      - "apple/IssueCTL/Views/Diagnostics/**"
+      - "apple/IssueCTL/Views/Sessions/**"
+      - "apple/IssueCTL/Views/Terminal/**"
+      - "apple/IssueCTLShared/Models/**Diagnostics*.swift"
+      - "apple/IssueCTLShared/Services/APIClient*.swift"
+      - "apple/IssueCTLTests/**"
+      - "apple/IssueCTLUITests/**"
+      - "docs/goals/ios-workbench-automation-parity/notes/**"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:IssueCTLTests"
+      - "Direct inspection verifies launch.requested, workspace.prepared, deployment.recorded, ttyd.spawned, deployment.activated, launch.spawn_failed, launch.activation_failed, reconcile.tmux_missing, liveness.tmux_missing, ensure_ttyd.failed, and PR webhook events are surfaced or mapped."
+    stop_if:
+      - "Diagnostics REST contract is missing or blocked by T003."
+      - "Need files outside allowed_files."
+      - "Need live failure reproduction that cannot be synthesized locally."
+      - "Verification fails twice for the same underlying cause."
+    receipt:
+      result: done
+      note: "notes/T008-diagnostics-first-session-surface.md"
+      summary: "Added an API-backed iOS diagnostics timeline reachable from session controls and terminal connection failures, with human-readable launch/session failure mappings and PR webhook event mappings."
+      changed_files:
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTL/Views/Terminal/TerminalView.swift"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+        - "apple/IssueCTLUITests/SessionManagementTests.swift"
+        - "docs/goals/ios-workbench-automation-parity/notes/T008-diagnostics-first-session-surface.md"
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests/testSessionDiagnosticsShowsLaunchFailureTimeline"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientExtensionTests/testDeploymentDiagnosticsUsesDiagnosticsEndpoint"
+          status: pass
+        - cmd: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests"
+          status: pass
+        - cmd: "rg -n 'launch\\.requested|workspace\\.prepared|deployment\\.recorded|ttyd\\.spawned|deployment\\.activated|launch\\.spawn_failed|launch\\.activation_failed|reconcile\\.tmux_missing|liveness\\.tmux_missing|ensure_ttyd\\.failed|webhook\\.pr_launched|webhook\\.auto_review_label_consumed|webhook\\.pr_session_ended|webhook\\.pr_coalesced|webhook\\.pr_already_reviewed|webhook\\.pr_review_recovered|webhook\\.skipped_unsafe_pr|webhook\\.launch_failed' apple/IssueCTL/Views/Sessions/SessionListView.swift apple/IssueCTL/Views/Terminal/TerminalView.swift packages/core/src/launch packages/web/lib"
+          status: pass
+        - cmd: "xcrun simctl list devices available | rg 'iPhone 16|iPhone 17'"
+          status: pass
+      evidence:
+        - "Focused UI test proved the Diagnostics action opens from a running issue session and renders Issue #101, Launch requested, Ttyd spawned, Ensure ttyd failed, and the tmux attach failure message."
+        - "Full SessionManagementTests passed after fixing an ambiguous Today shortcut tap in the end-session test."
+        - "APIClientExtensionTests proved the client calls /api/v1/diagnostics/deployments/:id."
+        - "Full IssueCTLTests passed: 269 tests, 0 failures."
+        - "Direct inspection verified required launch/session failure event producers and iOS display mappings, plus PR webhook event producers and mappings."
+        - "No iPhone 16 simulator was available; verification used the booted iPhone 17 simulator."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit: prove whether iOS workbench automation parity is complete for this tranche."
+    inputs:
+      - "All done task receipts"
+      - "Current git status and diff"
+      - "Focused web and iOS verification outputs"
+      - "Direct inspection of implemented contracts and iOS surfaces"
+      - "Goal oracle"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker task is still queued, active, or blocked without a safe follow-up."
+      - "Reject completion if the iOS app cannot operate PR auto-review labels through stable REST."
+      - "Reject completion if diagnostics-first parity is claimed without an API-backed or explicitly deferred surface."
+      - "Reject completion if verification only covers happy paths."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapped to every oracle clause"
+      - "Strongest attempted disproof and result"
+      - "Remaining safe next task if not complete"
+    receipt:
+      result: done
+      completed_at: "2026-06-02T07:36:20-0700"
+      decision: "complete"
+      full_outcome_complete: true
+      note: "notes/T999-final-audit.md"
+      summary: "All required Worker/Judge receipts are done, no required task remains queued or active, and the evidence maps to the oracle clauses for cross-repo work visibility, issue/PR sessions, PR auto-review labels through REST, repo automation setup and health, trigger-label safety, and diagnostics-first failure inspection."
+      evidence_map:
+        - oracle_clause: "Cross-repo board visibility"
+          evidence: "T005 added the iOS Workbench Board section and T009 accepted it after focused UI proof and blocker disposition."
+        - oracle_clause: "Issue and PR session state"
+          evidence: "T006 made active sessions target-aware for issues and PRs; T010 restored Active-tab repo context and passed the full UI suite."
+        - oracle_clause: "PR auto-review labels through REST"
+          evidence: "T003 added stable PR label REST contracts and iOS client support; T011 verified REST-backed repo automation controls and label repair."
+        - oracle_clause: "Repo automation setup and health"
+          evidence: "T007 surfaced read-only automation/webhook health; T011 added write controls for automation, agents, preamble, payload mode, webhook install/rotate, and required labels."
+        - oracle_clause: "Diagnostics-first launch/session failure inspection"
+          evidence: "T008 added API-backed diagnostics from session controls and terminal failures, mapped required launch/session and PR webhook events, and passed focused UI, session UI, API, and full unit tests."
+      strongest_disproof:
+        attempt: "Check whether any oracle clause was only planned or model-level, especially PR labels, repo automation writes, and diagnostics."
+        result: "Disproved by T003/T011 REST-backed PR label and automation controls plus T008 API-backed diagnostics UI and direct event-name inspection."
+      residual_risk: "The repository remains broadly dirty with unrelated WIP; this audit completes the GoalBuddy tranche, not PR hygiene or merge readiness."
+
+checks:
+  dirty_fingerprint: "HEAD 184ed943a2715c6d5ea8ffbe90075238c0aa67e1; branch codex/webhook-tunnel-qa-hardening; upstream gone; git diff --stat 43 tracked files, 1122 insertions, 684 deletions"
+  last_verification:
+    result: passed
+    task: T008
+    commands:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests/testSessionDiagnosticsShowsLaunchFailureTimeline"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/SessionManagementTests"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientExtensionTests/testDeploymentDiagnosticsUsesDiagnosticsEndpoint"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests"
+      - "rg -n 'launch\\.requested|workspace\\.prepared|deployment\\.recorded|ttyd\\.spawned|deployment\\.activated|launch\\.spawn_failed|launch\\.activation_failed|reconcile\\.tmux_missing|liveness\\.tmux_missing|ensure_ttyd\\.failed|webhook\\.pr_launched|webhook\\.auto_review_label_consumed|webhook\\.pr_session_ended|webhook\\.pr_coalesced|webhook\\.pr_already_reviewed|webhook\\.pr_review_recovered|webhook\\.skipped_unsafe_pr|webhook\\.launch_failed' apple/IssueCTL/Views/Sessions/SessionListView.swift apple/IssueCTL/Views/Terminal/TerminalView.swift packages/core/src/launch packages/web/lib"
