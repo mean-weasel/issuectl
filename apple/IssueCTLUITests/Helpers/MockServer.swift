@@ -381,6 +381,7 @@ final class MockIssueCTLServer: @unchecked Sendable {
                 "launch_agent": defaultLaunchAgent,
                 "claude_extra_args": "--dangerously-skip-permissions",
                 "codex_extra_args": "",
+                "public_webhook_base_url": "https://hooks.example.test",
             ]]
 
         case ("GET", "/api/v1/repos"):

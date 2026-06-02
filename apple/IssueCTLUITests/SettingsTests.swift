@@ -58,6 +58,21 @@ final class SettingsTests: XCTestCase {
     }
 
     @MainActor
+    func testAdvancedSettingsShowsPublicWebhookBaseURL() {
+        let app = launchApp(server: server)
+
+        openSettingsFromToday(in: app)
+        app.buttons["Agent Harness & Defaults"].tap()
+        XCTAssertTrue(app.navigationBars["Agent Harness & Defaults"].waitForExistence(timeout: 5), app.debugDescription)
+
+        revealElement("advanced-settings-public-webhook-base-url-field", in: app)
+        XCTAssertEqual(
+            element("advanced-settings-public-webhook-base-url-field", in: app).value as? String,
+            "https://hooks.example.test"
+        )
+    }
+
+    @MainActor
     func testRepoEditorShowsAutomationWebhookAndLabelControls() {
         let app = launchApp(server: server)
 

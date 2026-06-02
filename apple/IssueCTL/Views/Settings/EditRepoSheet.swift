@@ -634,17 +634,67 @@ private struct WebhookStatusSummary: View {
     }
 
     private var icon: String {
-        if let health {
-            return health.isOK ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
-        }
-        return repo.webhookId == nil ? "dot.radiowaves.left.and.right" : "checkmark.circle.fill"
+        presentation.icon
     }
 
     private var tint: Color {
-        if let health {
-            return health.isOK ? .green : .orange
+        presentation.tint
+    }
+
+    private var presentation: WebhookHealthPresentation {
+        WebhookHealthPresentation(repoHasWebhook: repo.webhookId != nil, health: health)
+    }
+}
+
+enum WebhookHealthPresentation: Equatable {
+    case ok
+    case unknown
+    case warning
+    case error
+    case uninstalled
+
+    init(repoHasWebhook: Bool, health: WebhookAutomationHealth?) {
+        guard let health else {
+            self = repoHasWebhook ? .ok : .uninstalled
+            return
         }
-        return repo.webhookId == nil ? .secondary : .green
+
+        switch health.state {
+        case "ok":
+            self = .ok
+        case "unknown":
+            self = .unknown
+        case "error":
+            self = .error
+        default:
+            self = .warning
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .ok:
+            return "checkmark.circle.fill"
+        case .unknown:
+            return "questionmark.circle.fill"
+        case .warning, .error:
+            return "exclamationmark.triangle.fill"
+        case .uninstalled:
+            return "dot.radiowaves.left.and.right"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .ok:
+            return .green
+        case .unknown, .uninstalled:
+            return .secondary
+        case .warning:
+            return .orange
+        case .error:
+            return .red
+        }
     }
 }
 

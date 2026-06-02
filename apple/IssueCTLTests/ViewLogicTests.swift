@@ -189,6 +189,42 @@ final class ViewLogicTests: XCTestCase {
         XCTAssertNil(webhookReceiverURL(publicBaseURL: nil, repoId: 42))
     }
 
+    func testWebhookUnknownHealthPresentationIsDistinct() {
+        let health = WebhookAutomationHealth(
+            state: "unknown",
+            summary: "GitHub hook inspection unavailable",
+            detail: nil,
+            recovery: nil,
+            expectedUrl: nil,
+            hookId: nil,
+            githubUrl: nil,
+            latestDelivery: nil
+        )
+
+        let presentation = WebhookHealthPresentation(repoHasWebhook: true, health: health)
+
+        XCTAssertEqual(presentation, .unknown)
+        XCTAssertEqual(presentation.icon, "questionmark.circle.fill")
+    }
+
+    func testWebhookErrorHealthPresentationUsesErrorTint() {
+        let health = WebhookAutomationHealth(
+            state: "error",
+            summary: "Latest webhook delivery failed",
+            detail: nil,
+            recovery: nil,
+            expectedUrl: nil,
+            hookId: nil,
+            githubUrl: nil,
+            latestDelivery: nil
+        )
+
+        let presentation = WebhookHealthPresentation(repoHasWebhook: true, health: health)
+
+        XCTAssertEqual(presentation, .error)
+        XCTAssertEqual(presentation.icon, "exclamationmark.triangle.fill")
+    }
+
     func testAutomationLabelCheckMessageReportsMissingLabels() {
         let labels = [
             GitHubLabel(name: "issuectl:auto-launch", color: "2f81f7", description: nil),

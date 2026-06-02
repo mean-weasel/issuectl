@@ -1,0 +1,533 @@
+version: 2
+
+goal:
+  title: "iOS Parity Next Tranche"
+  slug: "ios-parity-next-tranche"
+  kind: existing_plan
+  tranche: "Close the remaining current-main iOS parity gaps from docs/superpowers/plans/2026-06-01-ios-web-parity-next-tranche.md through successive verified vertical slices."
+  status: done
+  oracle:
+    signal: "A current-main gap matrix plus verified iOS/web/core receipts prove the remaining route-focus, webhook settings/health, stream-refresh, optional workbench-first-read, and cleanup gaps are implemented or explicitly deferred."
+    cadence: "after each Scout/Judge/Worker package and at final audit"
+    final_proof: "Final audit cites current origin/main SHA, gap matrix, focused tests, full iOS simulator verification or justified deferral, web/core contract checks where touched, UI/simulator evidence for visible behavior, and post-merge verification if a PR is created."
+  intake:
+    original_request: "Set up the fresh GoalBuddy board for the iOS parity next tranche."
+    interpreted_outcome: "A fresh GoalBuddy board is ready to execute the current-main iOS parity plan without reopening completed boards or chasing stale checkout gaps."
+    input_shape: existing_plan
+    audience: "issuectl maintainers and iOS users"
+    authority: requested
+    proof_type: test
+    completion_proof: "All real gaps in docs/superpowers/plans/2026-06-01-ios-web-parity-next-tranche.md are implemented and verified or explicitly deferred by a Judge/PM receipt."
+    likely_misfire: "Planning or implementing against the stale root checkout instead of current origin/main, causing duplicate work for already-merged workbench and automation features."
+    blind_spots_considered:
+      - "The root checkout is dirty and was behind origin/main during the audit."
+      - "Older Scout conclusions against the stale checkout are superseded by current-main evidence."
+      - "Fresh worktrees may not have packages/web/node_modules, so web tests need setup before they can be proof."
+      - "GoalBuddy can over-slice work unless a Judge selects the largest safe vertical slice."
+      - "Webhook health unknown states and public webhook base URL editing are easy to miss because most major automation parity is already present."
+    existing_plan_facts:
+      - "Primary plan artifact: docs/superpowers/plans/2026-06-01-ios-web-parity-next-tranche.md"
+      - "Fresh setup branch: codex/ios-web-parity-plan-20260601"
+      - "Fresh setup worktree: /Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-plan-20260601"
+      - "Baseline at setup: origin/main merge commit 86248bc or newer."
+      - "Do not continue completed boards such as ios-web-parity-conveyor, ios-parity-hardening, ios-parity-followup-hardening, mac-ios-parity, completed-issue-session-ux, or workbench."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/ios-parity-next-tranche/"
+    command: "npx goalbuddy board /Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-plan-20260601/docs/goals/ios-parity-next-tranche"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Confirm the current-main baseline and create a source-backed gap matrix for this tranche."
+    inputs:
+      - "docs/superpowers/plans/2026-06-01-ios-web-parity-next-tranche.md"
+      - "docs/goals/ios-web-parity/notes/T009-final-parity-audit.md"
+      - "docs/goals/ios-web-parity/notes/T010-final-qa-closeout.md"
+      - "docs/goals/ios-web-parity-conveyor/state.yaml"
+      - "apple/IssueCTL/App/ContentView.swift"
+      - "apple/IssueCTL/Views/Workbench/BoardView.swift"
+      - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      - "apple/IssueCTL/Views/Settings/AdvancedSettingsView.swift"
+      - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+    constraints:
+      - "Read-only."
+      - "Audit the fresh origin/main worktree, not the stale root checkout."
+      - "Record the exact SHA and dirty status."
+      - "Classify each possible gap as real_gap, historical_note, or not_this_tranche."
+      - "Do not propose reimplementing already-merged workbench, automation settings, diagnostics, sessions overview, or PR review APIs."
+    expected_output:
+      - "Baseline SHA and dirty status."
+      - "Already-satisfied parity evidence with file paths."
+      - "Ranked real gaps with file paths."
+      - "Verification setup notes, including whether web node_modules is present."
+      - "Recommended first vertical slice candidates."
+    receipt:
+      result: done
+      summary: "Current-main Scout audit completed. Major iOS/web parity is already satisfied on 86248bc; real remaining gaps are route-focus consumption, public webhook base URL editing, unknown webhook health presentation, stream refresh coalescing, conditional Today/Issues workbench consistency, and precise diagnostics wording cleanup."
+      note: "docs/goals/ios-parity-next-tranche/notes/T001-current-main-gap-matrix.md"
+      baseline:
+        worktree: "/Users/neonwatty/Desktop/issuectl/.worktrees/ios-web-parity-plan-20260601"
+        branch: "codex/ios-web-parity-plan-20260601"
+        head: "86248bc06cdae7725673b41960a2e66c264b94a5"
+        head_summary: "86248bc Merge pull request #582 from mean-weasel/codex/ios-workbench-api-parity-20260531"
+        merge_base_origin_main: pass
+        dirty_status: "Only setup artifacts are untracked: docs/goals/ios-parity-next-tranche/ and docs/superpowers/plans/2026-06-01-ios-web-parity-next-tranche.md."
+      already_satisfied:
+        - "Workbench API/payload and iOS WorkbenchPayload/APIClient.workbench/BoardView exist on current main."
+        - "Repo automation settings, webhook controls, diagnostics, session overview, PR review runs/actions, and automation feeds exist on current main."
+      real_gaps:
+        - "Board route context is parsed but dropped before BoardView."
+        - "Sessions/review route context is parsed but dropped before SessionListView."
+        - "public_webhook_base_url is allowed by web settings and APIClient can PATCH it, but AdvancedSettingsView does not expose it."
+        - "Webhook health unknown state is not visually distinct from warning/error in EditRepoSheet."
+        - "Session/automation stream refreshes are uncoalesced."
+        - "Today/Issues workbench first-read consistency remains conditional."
+        - "Cleanup wording should target current diagnostics comments/fallbacks, not a nonexistent automation-list comment."
+      verification_setup:
+        pnpm_version: "9.15.4"
+        root_node_modules: missing
+        packages_web_node_modules: missing
+      recommended_first_slice: "Route-focus parity for Board/Sessions/Review."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review T001 and select the first largest safe useful Worker slice."
+    inputs:
+      - "T001 receipt"
+      - "docs/superpowers/plans/2026-06-01-ios-web-parity-next-tranche.md"
+    constraints:
+      - "Do not implement."
+      - "Reject duplicate work already satisfied on current main."
+      - "Prefer a vertical user-visible iOS slice over helper-only cleanup when safe."
+      - "Return exact allowed_files, verify commands, and stop_if conditions."
+      - "Identify any slices that should be deferred rather than implemented in this tranche."
+    expected_output:
+      - "Decision: proceed | revise_board | blocked"
+      - "Chosen Worker objective."
+      - "allowed_files."
+      - "verify commands."
+      - "stop_if conditions."
+      - "Deferred or rejected candidate slices with reasons."
+    receipt:
+      result: done
+      decision: proceed
+      summary: "Judge selected route-focus parity as the first largest safe useful Worker slice. It closes parsed-but-dropped Board/Sessions/Review route context without duplicating already-merged workbench/API/automation features."
+      note: "docs/goals/ios-parity-next-tranche/notes/T002-judge-route-focus-slice.md"
+      chosen_worker_objective: "Preserve Board/Sessions/Review route context in ContentView, pass the pending route to BoardView and SessionListView, and consume it to focus board repo/deployment, sessions repo filter, and review detail."
+      allowed_files:
+        - "apple/IssueCTL/App/ContentView.swift"
+        - "apple/IssueCTL/Views/Workbench/BoardView.swift"
+        - "apple/IssueCTL/ViewModels/WorkbenchStore.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+        - "apple/IssueCTLTests/WorkbenchStoreTests.swift"
+      verify:
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchStoreTests -quiet"
+      stop_if:
+        - "Need files outside allowed_files."
+        - "Route consumer requires a new app-wide state architecture."
+        - "Current-main code already consumes one of these routes and Scout evidence is stale."
+        - "Focused tests fail twice with the same failure."
+        - "UI route behavior cannot be represented without a product decision."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Preserve and consume Board/Sessions/Review route context on iOS."
+    allowed_files:
+      - "apple/IssueCTL/App/ContentView.swift"
+      - "apple/IssueCTL/Views/Workbench/BoardView.swift"
+      - "apple/IssueCTL/ViewModels/WorkbenchStore.swift"
+      - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      - "apple/IssueCTLTests/ViewLogicTests.swift"
+      - "apple/IssueCTLTests/WorkbenchStoreTests.swift"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchStoreTests -quiet"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Current-main evidence contradicts the selected slice."
+      - "Implementation would rework already-merged parity features."
+      - "Verification fails twice with the same failure."
+      - "A needed owner policy decision appears, such as exposing a test-only terminal backend override."
+    receipt:
+      result: done
+      summary: "Route-focus parity implemented. ContentView now preserves Board/Sessions/Review pending routes, BoardView consumes workbench route context, SessionListView consumes sessions/review route context, and WorkbenchStore helper tests cover repo and deployment matching."
+      note: "docs/goals/ios-parity-next-tranche/notes/T003-route-focus-worker.md"
+      changed_files:
+        - "apple/IssueCTL/App/ContentView.swift"
+        - "apple/IssueCTL/ViewModels/WorkbenchStore.swift"
+        - "apple/IssueCTL/Views/Workbench/BoardView.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTLTests/WorkbenchStoreTests.swift"
+      verification:
+        - "PASS xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchStoreTests -quiet"
+        - "PASS git diff --check"
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchStoreTests -quiet"
+          status: pass
+      scope_note: "xcodebuild regenerated apple/IssueCTL/Generated/AppVersion.swift; it was restored to HEAD content because it is outside allowed_files."
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the first Worker receipt and decide the next largest safe slice or final-audit readiness."
+    inputs:
+      - "T003 receipt"
+      - "Current diff"
+      - "Latest verification output"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if route-focus, webhook settings/health, stream refresh, cleanup, or explicitly deferred work has no receipt."
+      - "If safe work remains, produce the next Worker package with allowed_files, verify, and stop_if."
+    expected_output:
+      - "accept | reject | needs_fix"
+      - "Next Worker package or final-audit recommendation."
+      - "Missing evidence."
+    receipt:
+      result: done
+      decision: accept_and_continue
+      summary: "Accepted T003 route-focus worker and selected webhook settings/health clarity as the next largest safe slice."
+      note: "docs/goals/ios-parity-next-tranche/notes/T004-judge-next-webhook-settings-health.md"
+      next_worker_objective: "Expose public_webhook_base_url in Advanced Settings and make webhook health unknown visually distinct from warning/error in repo automation status."
+      allowed_files:
+        - "apple/IssueCTL/Views/Settings/AdvancedSettingsView.swift"
+        - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+      verify:
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientExtensionTests/testGetSettingsUsesSettingsEndpointAndDecodesDictionary -only-testing:IssueCTLTests/APIClientExtensionTests/testUpdateSettingsSendsPatchBodyAndDecodesSuccess -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+      stop_if:
+        - "Need files outside allowed_files."
+        - "Web settings no longer allow public_webhook_base_url."
+        - "Unknown health state requires server behavior changes."
+        - "Focused tests fail twice with the same failure."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Expose public_webhook_base_url in Advanced Settings and make webhook health unknown visually distinct from warning/error."
+    allowed_files:
+      - "apple/IssueCTL/Views/Settings/AdvancedSettingsView.swift"
+      - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+      - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+      - "apple/IssueCTLTests/ViewLogicTests.swift"
+    verify:
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientExtensionTests/testGetSettingsUsesSettingsEndpointAndDecodesDictionary -only-testing:IssueCTLTests/APIClientExtensionTests/testUpdateSettingsSendsPatchBodyAndDecodesSuccess -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Web settings no longer allow public_webhook_base_url."
+      - "Unknown health state requires server behavior changes."
+      - "Focused tests fail twice with the same failure."
+    receipt:
+      result: done
+      summary: "Exposed public_webhook_base_url in Advanced Settings and made webhook health unknown visually distinct from warning/error."
+      note: "docs/goals/ios-parity-next-tranche/notes/T005-webhook-settings-health-worker.md"
+      changed_files:
+        - "apple/IssueCTL/Views/Settings/AdvancedSettingsView.swift"
+        - "apple/IssueCTL/Views/Settings/EditRepoSheet.swift"
+        - "apple/IssueCTLTests/APIClientExtensionTests.swift"
+        - "apple/IssueCTLTests/ViewLogicTests.swift"
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientExtensionTests/testGetSettingsUsesSettingsEndpointAndDecodesDictionary -only-testing:IssueCTLTests/APIClientExtensionTests/testUpdateSettingsSendsPatchBodyAndDecodesSuccess -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+          status: pass
+      scope_note: "xcodebuild regenerated apple/IssueCTL/Generated/AppVersion.swift; it was restored to HEAD content because it is outside allowed_files."
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review T005 and select the next largest safe slice."
+    inputs:
+      - "T005 receipt"
+      - "Current diff"
+      - "T001 gap matrix"
+    constraints:
+      - "Do not implement."
+      - "Reject completion because stream coalescing, conditional Today/Issues decision, diagnostics wording cleanup, final simulator/UI proof, and final audit remain."
+      - "Prefer stream refresh coalescing if it can stay inside bounded view files."
+    expected_output:
+      - "accept | reject | needs_fix"
+      - "Next Worker package with allowed_files, verify, and stop_if."
+      - "Missing evidence."
+    receipt:
+      result: done
+      decision: accept_and_continue
+      summary: "Accepted T005 and selected stream refresh coalescing for websocket-driven SessionListView and AutomationFeedView reloads."
+      note: "docs/goals/ios-parity-next-tranche/notes/T006-judge-stream-coalescing.md"
+      next_worker_objective: "Coalesce websocket-triggered refreshes in SessionListView and AutomationFeedView so bursts schedule one delayed refresh instead of one full reload per message."
+      allowed_files:
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTL/Views/Settings/AutomationFeedView.swift"
+      verify:
+        - "git diff --check"
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+      stop_if:
+        - "Need files outside allowed_files."
+        - "Coalescing requires changing APIClient stream behavior."
+        - "Coalescer prevents manual refresh or timer refresh from loading immediately."
+        - "Focused compile/test fails twice with the same failure."
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Coalesce websocket-triggered refreshes in SessionListView and AutomationFeedView."
+    allowed_files:
+      - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      - "apple/IssueCTL/Views/Settings/AutomationFeedView.swift"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Coalescing requires changing APIClient stream behavior."
+      - "Coalescer prevents manual refresh or timer refresh from loading immediately."
+      - "Focused compile/test fails twice with the same failure."
+    receipt:
+      result: done
+      summary: "Coalesced websocket-triggered refreshes in SessionListView and AutomationFeedView while leaving manual refresh and polling immediate."
+      note: "docs/goals/ios-parity-next-tranche/notes/T007-stream-coalescing-worker.md"
+      changed_files:
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+        - "apple/IssueCTL/Views/Settings/AutomationFeedView.swift"
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+          status: pass
+      scope_note: "xcodebuild regenerated apple/IssueCTL/Generated/AppVersion.swift; it was restored to HEAD content because it is outside allowed_files."
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review T007 and decide whether to implement diagnostics wording cleanup, investigate Today/Issues workbench-first-read consistency, or move to final proof."
+    inputs:
+      - "T007 receipt"
+      - "T001 gap matrix"
+      - "Current diff"
+    constraints:
+      - "Do not implement."
+      - "Reject final completion until diagnostics wording and Today/Issues decision have explicit receipts, and simulator/UI proof is recorded."
+      - "Prefer the smallest safe cleanup if it removes stale current-main wording without changing behavior."
+    expected_output:
+      - "accept | reject | needs_fix"
+      - "Next Worker package or final-audit recommendation."
+      - "Explicit deferrals if any."
+    receipt:
+      result: done
+      decision: accept_and_continue
+      summary: "Accepted T007, explicitly deferred Today/Issues workbench-first-read because it needs a broader shared mapping/store decision, and selected current-main diagnostics wording cleanup."
+      note: "docs/goals/ios-parity-next-tranche/notes/T008-judge-cleanup-and-deferral.md"
+      deferrals:
+        - "Today/Issues workbench-first-read consistency deferred because TodayView and IssueListView rely on endpoint-specific issue/pull/deployment/draft/priority/offline/navigation flows; replacing first-read behavior safely needs a separate architecture decision."
+      next_worker_objective: "Update diagnostics wording so it no longer implies the mobile diagnostics endpoint is only a future issue #546 dependency, while keeping fallback copy for older connected servers."
+      allowed_files:
+        - "apple/IssueCTLShared/Services/APIClient.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      verify:
+        - "git diff --check"
+        - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientTests -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+      stop_if:
+        - "Cleanup changes diagnostics behavior or endpoint paths."
+        - "Need files outside allowed_files."
+        - "Focused tests fail twice with the same failure."
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Clean up current-main diagnostics wording without changing diagnostics behavior."
+    allowed_files:
+      - "apple/IssueCTLShared/Services/APIClient.swift"
+      - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientTests -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+    stop_if:
+      - "Cleanup changes diagnostics behavior or endpoint paths."
+      - "Need files outside allowed_files."
+      - "Focused tests fail twice with the same failure."
+    receipt:
+      result: done
+      summary: "Cleaned current-main diagnostics wording without changing endpoint paths or older-server fallback behavior."
+      note: "docs/goals/ios-parity-next-tranche/notes/T009-diagnostics-wording-worker.md"
+      changed_files:
+        - "apple/IssueCTLShared/Services/APIClient.swift"
+        - "apple/IssueCTL/Views/Sessions/SessionListView.swift"
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/APIClientTests -only-testing:IssueCTLTests/ViewLogicTests -quiet"
+          status: pass
+      scope_note: "xcodebuild regenerated apple/IssueCTL/Generated/AppVersion.swift; it was restored to HEAD content because it is outside allowed_files."
+  - id: T010
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Run final verification and collect simulator/UI proof for the tranche."
+    inputs:
+      - "All task receipts"
+      - "Current diff"
+      - "Goal oracle"
+    constraints:
+      - "Do not mark complete without focused/full verification and route/settings proof or explicit evidence-backed deferral."
+      - "If simulator app configuration blocks deep-link proof, record the blocker and keep the goal active or create the smallest safe follow-up."
+      - "Do not include generated AppVersion drift."
+    expected_output:
+      - "Final verification commands and status."
+      - "Simulator/UI proof or explicit blocker."
+      - "Current dirty diff summary."
+      - "Recommendation for final audit or next work."
+    receipt:
+      result: done
+      summary: "Final verification found implementation/unit proof is strong, but visible route/settings proof is still missing. PM converted the vague simulator proof gap into a bounded UI-test Worker task instead of keeping the goal in a stalled manual-QA bucket."
+      note: "docs/goals/ios-parity-next-tranche/notes/T010-verification-progress.md"
+      completed:
+        - "git diff --check passed."
+        - "Focused tranche unit verification passed."
+        - "Full IssueCTLTests unit target passed."
+      not_counted:
+        - "Full scheme test was interrupted after repeated DebuggerLLDB.DebuggerVersionStore.StoreError/no debugger version warnings."
+      next_task: T011
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add targeted UI proof for Board/Sessions/Review deep-link routing and Advanced Settings public webhook base URL visibility."
+    allowed_files:
+      - "apple/IssueCTLUITests/IssueCTLUITests.swift"
+      - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+      - "apple/IssueCTL/Views/Settings/AdvancedSettingsView.swift"
+    verify:
+      - "git diff --check"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/ParityRouteProofTests -quiet"
+      - "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests -quiet"
+    stop_if:
+      - "UI proof requires production-only secrets or a real issuectl server."
+      - "Deep-link routing cannot be driven through XCTest openURL."
+      - "Need product files outside allowed_files."
+      - "Focused UI test fails twice with the same failure."
+    receipt:
+      result: done
+      summary: "Added targeted simulator UI proof for Board/Sessions/Review deep links and Advanced Settings public webhook base URL visibility."
+      note: "docs/goals/ios-parity-next-tranche/notes/T011-ui-proof-worker.md"
+      changed_files:
+        - "apple/IssueCTL/Views/Settings/AdvancedSettingsView.swift"
+        - "apple/IssueCTLUITests/Helpers/MockServer.swift"
+        - "apple/IssueCTLUITests/IssueCTLUITests.swift"
+      commands:
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testDeepLinksFocusBoardSessionsAndReviewRoutes -only-testing:IssueCTLUITests/IssueCTLUITests/testAdvancedSettingsShowsPublicWebhookBaseURL -quiet"
+          status: pass
+        - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests -quiet"
+          status: pass
+        - command: "git diff --check"
+          status: pass
+      scope_note: "xcodebuild regenerated apple/IssueCTL/Generated/AppVersion.swift; it was restored to HEAD content after the final build."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Final audit for the iOS parity next tranche."
+    inputs:
+      - "All task receipts"
+      - "Final dirty diff"
+      - "Focused Apple/web/core verification"
+      - "Simulator/UI evidence"
+      - "Post-merge verification if applicable"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+      - "Reject completion if the broader tranche still has safe local follow-up slices."
+      - "Treat passing happy-path tests without route/settings UI proof as insufficient."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapped to each real gap."
+      - "Explicit deferrals and rationale."
+      - "Next task if not complete."
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      summary: "Final audit accepts the tranche. Current-main gap matrix was created; route-focus, webhook settings/health, stream coalescing, and diagnostics wording slices have receipts and passing focused verification; Today/Issues workbench-first-read was explicitly deferred with architecture rationale; targeted simulator UI proof now covers visible route/settings behavior."
+      evidence:
+        - "T001 current-main gap matrix at 86248bc identified real gaps and already-satisfied work."
+        - "T003 implemented Board/Sessions/Review route consumption with WorkbenchStore helper coverage."
+        - "T005 exposed public_webhook_base_url and made webhook unknown health visually distinct."
+        - "T007 coalesced websocket-triggered refreshes."
+        - "T008 deferred Today/Issues workbench-first-read as a broader architecture decision."
+        - "T009 cleaned current-main diagnostics wording."
+        - "T011 added and passed targeted simulator UI proof for deep links and Advanced Settings public webhook field."
+      verification:
+        - "PASS git diff --check"
+        - "PASS focused tranche unit verification recorded in T010"
+        - "PASS xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests -quiet"
+        - "PASS xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testDeepLinksFocusBoardSessionsAndReviewRoutes -only-testing:IssueCTLUITests/IssueCTLUITests/testAdvancedSettingsShowsPublicWebhookBaseURL -quiet"
+      residual_risk:
+        - "Full unfiltered scheme test was previously interrupted by local Xcode debugger/passcode-proxy warnings; targeted UI proof plus full unit target are counted as the simulator proof for this tranche."
+
+checks:
+  dirty_fingerprint: "setup-created-board-files"
+  last_verification:
+    result: pass
+    task: T011
+    note: "docs/goals/ios-parity-next-tranche/notes/T011-ui-proof-worker.md"
+    commands:
+      - command: "git diff --check"
+        status: pass
+      - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests/ViewLogicTests -only-testing:IssueCTLTests/WorkbenchStoreTests -only-testing:IssueCTLTests/APIClientExtensionTests/testGetSettingsUsesSettingsEndpointAndDecodesDictionary -only-testing:IssueCTLTests/APIClientExtensionTests/testUpdateSettingsSendsPatchBodyAndDecodesSuccess -only-testing:IssueCTLTests/APIClientTests -quiet"
+        status: pass
+      - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLTests -quiet"
+        status: pass
+      - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -quiet"
+        status: interrupted
+        note: "Repeated DebuggerLLDB.DebuggerVersionStore.StoreError/no debugger version warnings for about nine minutes without completing."
+      - command: "xcodebuild test -project apple/IssueCTL.xcodeproj -scheme IssueCTL -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IssueCTLUITests/IssueCTLUITests/testDeepLinksFocusBoardSessionsAndReviewRoutes -only-testing:IssueCTLUITests/IssueCTLUITests/testAdvancedSettingsShowsPublicWebhookBaseURL -quiet"
+        status: pass

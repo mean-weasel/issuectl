@@ -484,8 +484,6 @@ final class APIClient {
     }
 
     func deploymentDiagnostics(deploymentId: Int, limit: Int = 50) async throws -> DeploymentDiagnosticsResponse {
-        // Depends on the mobile diagnostics API from issue #546. This client
-        // intentionally targets structured JSON instead of scraping web HTML.
         let safeLimit = max(1, min(200, limit))
         let (data, _) = try await request(path: "/api/v1/diagnostics/deployments/\(deploymentId)?limit=\(safeLimit)")
         return try decoder.decode(DeploymentDiagnosticsResponse.self, from: data)

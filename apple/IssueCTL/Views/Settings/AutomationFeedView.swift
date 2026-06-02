@@ -14,6 +14,7 @@ struct AutomationFeedView: View {
     @State private var reviewRunsResponse: ReviewRunsResponse?
     @State private var reviewDetailTarget: ReviewRunDetailTarget?
     @State private var isLiveStreamConnected = false
+    @State private var streamRefreshCoalescer = RefreshCoalescer()
 
     var body: some View {
         Form {
@@ -43,6 +44,9 @@ struct AutomationFeedView: View {
         }
         .refreshable {
             await loadFeed()
+        }
+        .onDisappear {
+            streamRefreshCoalescer.cancel()
         }
         .sheet(item: $reviewDetailTarget) { target in
             ReviewRunDetailSheet(reviewId: target.id)
@@ -193,7 +197,9 @@ struct AutomationFeedView: View {
                 }
                 while !Task.isCancelled {
                     _ = try await task.receive()
-                    await loadFeed()
+                    streamRefreshCoalescer.schedule {
+                        await loadFeed()
+                    }
                 }
             } catch {
                 isLiveStreamConnected = false
