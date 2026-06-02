@@ -18,6 +18,7 @@ struct AdvancedSettingsView: View {
     @State private var idleThreshold = ""
     @State private var branchPattern = ""
     @State private var worktreeDir = ""
+    @State private var publicWebhookBaseURL = ""
     @State private var defaultRepoId = ""
     @State private var repos: [Repo] = []
 
@@ -31,6 +32,7 @@ struct AdvancedSettingsView: View {
             ("idle_threshold", idleThreshold),
             ("branch_pattern", branchPattern),
             ("worktree_dir", worktreeDir),
+            ("public_webhook_base_url", publicWebhookBaseURL),
             ("default_repo_id", defaultRepoId),
         ]
     }
@@ -129,6 +131,19 @@ struct AdvancedSettingsView: View {
                 }
 
                 Section {
+                    TextField("Public webhook base URL", text: $publicWebhookBaseURL)
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .accessibilityIdentifier("advanced-settings-public-webhook-base-url-field")
+                } header: {
+                    Text("Webhooks")
+                } footer: {
+                    Text("Base URL used when installing GitHub webhooks, such as https://hooks.example.com.")
+                }
+
+                Section {
                     Picker("Default Repository", selection: $defaultRepoId) {
                         Text("None").tag("")
                         ForEach(repos) { repo in
@@ -185,6 +200,7 @@ struct AdvancedSettingsView: View {
             idleThreshold = settings["idle_threshold"] ?? ""
             branchPattern = settings["branch_pattern"] ?? ""
             worktreeDir = settings["worktree_dir"] ?? ""
+            publicWebhookBaseURL = settings["public_webhook_base_url"] ?? ""
             defaultRepoId = settings["default_repo_id"] ?? ""
         } catch {
             errorMessage = error.localizedDescription

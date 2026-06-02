@@ -39,6 +39,7 @@ struct SessionListView: View {
     @State private var selectedTrigger: SessionsOverviewTriggerFilter = .all
     @State private var selectedReviewStatus: ReviewRunStatusFilter = .all
     @State private var showFiltersSheet = false
+    @State private var streamRefreshCoalescer = RefreshCoalescer()
     @FocusState private var isSearchFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
@@ -225,6 +226,9 @@ struct SessionListView: View {
             }
             .task {
                 await streamSessionUpdates()
+            }
+            .onDisappear {
+                streamRefreshCoalescer.cancel()
             }
             .onReceive(refreshTimer) { _ in
                 guard terminalPresentation == nil else { return }
@@ -646,7 +650,9 @@ struct SessionListView: View {
                 while !Task.isCancelled {
                     _ = try await task.receive()
                     guard terminalPresentation == nil else { continue }
-                    await load(includeRepos: false)
+                    streamRefreshCoalescer.schedule {
+                        await load(includeRepos: false)
+                    }
                 }
             } catch {
                 try? await Task.sleep(for: .seconds(5))
@@ -722,6 +728,29 @@ struct SessionListView: View {
 private struct TerminalPresentation: Identifiable {
     let id = UUID()
     let deployment: ActiveDeployment
+}
+
+@MainActor
+final class RefreshCoalescer {
+    private var pendingTask: Task<Void, Never>?
+
+    func schedule(after delay: Duration = .milliseconds(350), action: @escaping @MainActor () async -> Void) {
+        pendingTask?.cancel()
+        pendingTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            await action()
+        }
+    }
+
+    func cancel() {
+        pendingTask?.cancel()
+        pendingTask = nil
+    }
 }
 
 private struct RepoAutomationActivityTarget: Identifiable {
@@ -1750,7 +1779,7 @@ private struct DiagnosticEventCard: View {
     }
 }
 
-private let mobileDiagnosticsDependencyMessage = "Live mobile diagnostics require the structured /api/v1/diagnostics/deployments/:id endpoint from issue #546. This iOS browser is wired for that JSON API and does not scrape dashboard HTML."
+private let mobileDiagnosticsDependencyMessage = "Live mobile diagnostics use the structured /api/v1/diagnostics/deployments/:id endpoint. This iOS browser is wired for that JSON API and does not scrape dashboard HTML."
 
 private func diagnosticsErrorMessage(_ error: Error) -> String {
     if case APIError.serverError(let code, _) = error, code == 404 {

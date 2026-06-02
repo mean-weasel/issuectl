@@ -54,7 +54,7 @@ final class APIClientExtensionTests: XCTestCase {
             XCTAssertEqual(request.httpMethod, "GET")
 
             return (self.makeResponse(url: request.url!), """
-            {"settings":{"launch_agent":"codex","cache_ttl":"300","worktree_dir":"/tmp/issuectl"}}
+            {"settings":{"launch_agent":"codex","cache_ttl":"300","worktree_dir":"/tmp/issuectl","public_webhook_base_url":"https://hooks.example.test"}}
             """.data(using: .utf8)!)
         }
 
@@ -63,6 +63,7 @@ final class APIClientExtensionTests: XCTestCase {
         XCTAssertEqual(settings["launch_agent"], "codex")
         XCTAssertEqual(settings["cache_ttl"], "300")
         XCTAssertEqual(settings["worktree_dir"], "/tmp/issuectl")
+        XCTAssertEqual(settings["public_webhook_base_url"], "https://hooks.example.test")
     }
 
     @MainActor
@@ -75,6 +76,7 @@ final class APIClientExtensionTests: XCTestCase {
             let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
             XCTAssertEqual(json["launch_agent"] as? String, "claude")
             XCTAssertEqual(json["cache_ttl"] as? String, "600")
+            XCTAssertEqual(json["public_webhook_base_url"] as? String, "https://hooks.example.test")
 
             return (self.makeResponse(url: request.url!), """
             {"success":true,"error":null}
@@ -84,6 +86,7 @@ final class APIClientExtensionTests: XCTestCase {
         let response = try await client.updateSettings([
             "launch_agent": "claude",
             "cache_ttl": "600",
+            "public_webhook_base_url": "https://hooks.example.test",
         ])
 
         XCTAssertTrue(response.success)
