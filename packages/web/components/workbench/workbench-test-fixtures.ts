@@ -18,6 +18,39 @@ export function payloadFixture(): WorkbenchPayload {
   };
 }
 
+export function realisticPayloadFixture(): WorkbenchPayload {
+  const base = payloadFixture();
+  const duplicateWebRepo: WorkbenchRepo = {
+    ...repo(5, "web", 0),
+    owner: "paper-owl",
+    issuesFromCache: true,
+    issuesCachedAt: "2026-05-16T15:45:00.000Z",
+    issues: [
+      {
+        ...issue(701, "Duplicate repo name with extremely long dashboard metadata"),
+        labels: [
+          "regression",
+          "cross-repo-dashboard",
+          "label-that-is-intentionally-long-enough-to-stress-card-density",
+        ],
+        hasActiveDeployment: false,
+        htmlUrl: "https://github.com/paper-owl/web/issues/701",
+        authorLogin: "alex",
+      },
+    ],
+  };
+  const failedApiRepo: WorkbenchRepo = {
+    ...repo(6, "api", 0),
+    owner: "paper-owl",
+    issueError: "GitHub unavailable for paper-owl/api",
+  };
+
+  return {
+    ...base,
+    repos: [...base.repos, duplicateWebRepo, failedApiRepo],
+  };
+}
+
 export function repo(id: number, name: string, deploymentCount: number): WorkbenchRepo {
   if (id === 1) {
     return {

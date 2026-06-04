@@ -8,6 +8,10 @@ type Props = {
   repos: WorkbenchRepo[];
   deployments: WorkbenchDeployment[];
   onSelectIssue: (repoId: number, issueNumber: number) => void;
+  onJumpToSession: (deploymentId: number) => void;
+  onRefresh: () => void;
+  refreshPending: boolean;
+  refreshError: string | null;
 };
 
 const PRIORITY_RANK: Record<WorkbenchIssueSummary["priority"], number> = {
@@ -16,16 +20,27 @@ const PRIORITY_RANK: Record<WorkbenchIssueSummary["priority"], number> = {
   low: 2,
 };
 
-export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
+export function BoardFocus({
+  repos,
+  deployments,
+  onSelectIssue,
+  onJumpToSession,
+  onRefresh,
+  refreshPending,
+  refreshError,
+}: Props) {
   const [runningOnly, setRunningOnly] = useState(false);
   const [sortMode, setSortMode] = useState<BoardSortMode>("payload");
+  const [query, setQuery] = useState("");
+  const failedRepos = repos.filter((repo) => repo.issueError).length;
+  const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
   const visibleIssues = useMemo(
     () =>
       repos.reduce(
-        (count, repo) => count + boardIssues(repo, deployments, runningOnly, sortMode).length,
+        (count, repo) => count + boardIssues(repo, deployments, runningOnly, sortMode, query).length,
         0,
       ),
-    [deployments, repos, runningOnly, sortMode],
+    [deployments, query, repos, runningOnly, sortMode],
   );
 
   return (
@@ -37,6 +52,14 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
       </p>
 
       <div aria-label="Board controls" className={styles.boardControls}>
+        <input
+          aria-label="Search board issues"
+          className={styles.workbenchSearchInput}
+          type="search"
+          value={query}
+          placeholder="Search issue, repo, label, author, or number"
+          onChange={(event) => setQuery(event.target.value)}
+        />
         <button
           type="button"
           className={runningOnly ? styles.primaryButton : styles.secondaryButton}
@@ -61,11 +84,26 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
         >
           Sort by priority
         </button>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={onRefresh}
+          disabled={refreshPending}
+        >
+          {refreshPending ? "Refreshing" : "Refresh"}
+        </button>
       </div>
+      {(failedRepos > 0 || cachedRepos > 0 || refreshError) && (
+        <div className={styles.globalIssueStatus} role={refreshError ? "alert" : "status"}>
+          {failedRepos > 0 && <span>{failedRepos} repo issue fetch failed</span>}
+          {cachedRepos > 0 && <span>{cachedRepos} repo issue lists from cache</span>}
+          {refreshError && <span>Refresh failed: {refreshError}</span>}
+        </div>
+      )}
 
       <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
         {repos.map((repo) => {
-          const issues = boardIssues(repo, deployments, runningOnly, sortMode);
+          const issues = boardIssues(repo, deployments, runningOnly, sortMode, query);
           return (
             <section
               key={repo.id}
@@ -78,6 +116,7 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
                   {issues.length} {runningOnly ? "running" : "open"}
                 </p>
               </header>
+              <RepoIssueHealth repo={repo} />
               {issues.length === 0 ? (
                 <p className={styles.muted}>No matching issues.</p>
               ) : (
@@ -88,6 +127,7 @@ export function BoardFocus({ repos, deployments, onSelectIssue }: Props) {
                     repo={repo}
                     deployments={deployments}
                     onSelectIssue={onSelectIssue}
+                    onJumpToSession={onJumpToSession}
                   />
                 ))
               )}
@@ -104,13 +144,16 @@ function BoardCard({
   repo,
   deployments,
   onSelectIssue,
+  onJumpToSession,
 }: {
   issue: WorkbenchIssueSummary;
   repo: WorkbenchRepo;
   deployments: WorkbenchDeployment[];
   onSelectIssue: (repoId: number, issueNumber: number) => void;
+  onJumpToSession: (deploymentId: number) => void;
 }) {
-  const isRunning = isRunningIssue(repo, deployments, issue);
+  const deployment = deploymentForBoardIssue(repo, deployments, issue);
+  const isRunning = Boolean(deployment) || issue.hasActiveDeployment;
   const status = issue.state === "closed" ? "closed" : isRunning ? "running" : "open";
 
   return (
@@ -130,9 +173,15 @@ function BoardCard({
         updated {formatAge(issue.updatedAt)}{isRunning ? " · active session" : ""}
       </p>
       <div className={styles.issueActions}>
-        <button type="button" onClick={() => onSelectIssue(repo.id, issue.number)}>
-          Open issue
-        </button>
+        {deployment ? (
+          <button type="button" onClick={() => onJumpToSession(deployment.id)}>
+            Jump to session
+          </button>
+        ) : (
+          <button type="button" onClick={() => onSelectIssue(repo.id, issue.number)}>
+            Prepare launch
+          </button>
+        )}
       </div>
     </article>
   );
@@ -143,9 +192,12 @@ function boardIssues(
   deployments: WorkbenchDeployment[],
   runningOnly: boolean,
   sortMode: BoardSortMode,
+  query: string,
 ): WorkbenchIssueSummary[] {
   const visibleIssues = repo.issues.filter((issue) =>
-    issue.state === "open" && (!runningOnly || isRunningIssue(repo, deployments, issue)),
+    issue.state === "open"
+    && matchesBoardIssue(repo, issue, query)
+    && (!runningOnly || isRunningIssue(repo, deployments, issue)),
   );
   if (sortMode !== "priority") return visibleIssues;
   return [...visibleIssues].sort((left, right) => {
@@ -161,8 +213,55 @@ function isRunningIssue(
   issue: WorkbenchIssueSummary,
 ): boolean {
   return issue.hasActiveDeployment
-    || repo.deployments.some((deployment) => deployment.issueNumber === issue.number)
-    || deployments.some((deployment) => deployment.repoId === repo.id && deployment.issueNumber === issue.number);
+    || Boolean(deploymentForBoardIssue(repo, deployments, issue));
+}
+
+function deploymentForBoardIssue(
+  repo: WorkbenchRepo,
+  deployments: WorkbenchDeployment[],
+  issue: WorkbenchIssueSummary,
+): WorkbenchDeployment | null {
+  return repo.deployments.find((deployment) => deployment.issueNumber === issue.number)
+    ?? deployments.find((deployment) => deployment.repoId === repo.id && deployment.issueNumber === issue.number)
+    ?? null;
+}
+
+function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
+  if (!repo.issueError && !repo.issuesFromCache) return null;
+
+  return (
+    <div className={styles.repoIssueHealth} role={repo.issueError ? "alert" : "status"}>
+      {repo.issueError && <span>Issue fetch failed: {repo.issueError}</span>}
+      {repo.issuesFromCache && (
+        <span>Showing cached issues{repo.issuesCachedAt ? ` from ${formatAge(repo.issuesCachedAt)}` : ""}</span>
+      )}
+    </div>
+  );
+}
+
+function matchesBoardIssue(
+  repo: WorkbenchRepo,
+  issue: WorkbenchIssueSummary,
+  rawQuery: string,
+): boolean {
+  const query = rawQuery.trim().toLowerCase();
+  if (!query) return true;
+  const fullRepo = `${repo.owner}/${repo.name}`;
+  const haystack = [
+    repo.owner,
+    repo.name,
+    fullRepo,
+    `${repo.name}#${issue.number}`,
+    `${fullRepo}#${issue.number}`,
+    `#${issue.number}`,
+    String(issue.number),
+    issue.title,
+    issue.priority,
+    issue.authorLogin ?? "",
+    ...issue.labels,
+  ].join(" ").toLowerCase();
+
+  return query.split(/\s+/).every((term) => haystack.includes(term));
 }
 
 function formatAge(value: string): string {

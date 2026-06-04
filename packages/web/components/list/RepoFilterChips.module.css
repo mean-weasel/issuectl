@@ -62,6 +62,18 @@
   flex-shrink: 0;
 }
 
+.owner {
+  color: var(--paper-ink-faint);
+  font-weight: 400;
+}
+
+.name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (min-width: 768px) and (hover: hover) {
   .row {
     padding: 8px 16px 16px;

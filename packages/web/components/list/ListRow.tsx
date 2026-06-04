@@ -15,6 +15,8 @@ type Props = {
   onClose?: (owner: string, repo: string, issueNumber: number) => void;
 };
 
+const MAX_VISIBLE_LABELS = 2;
+
 // Drafts store updatedAt as unix seconds (SQLite INTEGER). GitHub issues
 // use ISO strings. Normalize both to "N days ago" for display. Clamps
 // negative diffs to "today" so a clock-skewed future timestamp doesn't
@@ -63,6 +65,9 @@ export function ListRow({ item, rowIndex, onLaunch, onClose }: Props) {
   const displayLabels = issue.labels.filter(
     (l) => !l.name.startsWith("issuectl:"),
   );
+  const visibleLabels = displayLabels.slice(0, MAX_VISIBLE_LABELS);
+  const hiddenLabelCount = displayLabels.length - visibleLabels.length;
+  const repoFullName = `${repo.owner}/${repo.name}`;
 
   // Label reflects what the click does: running rows open an active
   // session rather than launching, so "launch" would mislead.
@@ -102,14 +107,25 @@ export function ListRow({ item, rowIndex, onLaunch, onClose }: Props) {
       >
         <div className={titleClass}>{issue.title}</div>
         <div className={styles.meta}>
-          <Chip>{repo.name}</Chip>
+          <span className={styles.repoIdentity} title={repoFullName}>
+            <span className={styles.repoOwner}>{repo.owner}/</span>
+            <span className={styles.repoName}>{repo.name}</span>
+          </span>
           <span className={styles.num}>#{issue.number}</span>
           {displayLabels.length > 0 && (
             <>
               <span className={styles.sep}>·</span>
-              {displayLabels.map((l) => (
+              {visibleLabels.map((l) => (
                 <LabelChip key={l.name} name={l.name} color={l.color} />
               ))}
+              {hiddenLabelCount > 0 && (
+                <span
+                  className={styles.labelOverflow}
+                  title={displayLabels.slice(MAX_VISIBLE_LABELS).map((l) => l.name).join(", ")}
+                >
+                  +{hiddenLabelCount}
+                </span>
+              )}
             </>
           )}
           {(issue.commentCount ?? 0) > 0 && (

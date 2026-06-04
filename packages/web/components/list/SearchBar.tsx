@@ -81,8 +81,8 @@ export function SearchBar() {
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={handleBlur}
-          placeholder="search..."
-          aria-label="Search issues, PRs, and drafts"
+          placeholder="repo, #, label, author..."
+          aria-label="Search issues, PRs, drafts, repos, labels, authors, and numbers"
         />
         {localValue && (
           <button

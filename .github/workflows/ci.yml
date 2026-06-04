@@ -209,6 +209,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "keeps compact empty and service failure states stable in WebKit"
+      - name: Run cross-repo dashboard WebKit regression
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm --filter @issuectl/web exec playwright test workbench.spec.ts --project=mobile-webkit --grep "surfaces duplicate repo names plus issue cache and error state in global dashboards"
       - name: Run compact workbench WebKit degraded refresh states
         env:
           GH_TOKEN: ${{ github.token }}
