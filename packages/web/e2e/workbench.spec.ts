@@ -2900,6 +2900,9 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(issueViews.getByRole("button", { name: "Cached 1" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Search global issues")).toHaveValue("paper-owl web");
   await expect(page.getByLabel("paper-owl/web issue #701")).toBeVisible();
+  const globalCachedSummary = page.getByLabel("Dashboard summary for paper-owl/web");
+  await expect(globalCachedSummary).toContainText("1 visible");
+  await expect(globalCachedSummary).toContainText("cached");
   const globalPresets = page.getByRole("group", { name: "Global triage presets" });
   await expect(globalPresets.getByRole("button", { name: "Stale cache" })).toHaveAttribute("aria-pressed", "false");
   await globalPresets.getByRole("button", { name: "Active work" }).click();
@@ -2929,12 +2932,16 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/issues$/);
   await expect(page.getByLabel("Search global issues")).toHaveValue("");
   await expect(issueViews.getByRole("button", { name: "All 8" })).toHaveAttribute("aria-pressed", "true");
+  const globalIssuectlSummary = page.getByLabel("Dashboard summary for mean-weasel/issuectl");
+  await expect(globalIssuectlSummary).toContainText("4 visible");
+  await expect(globalIssuectlSummary).toContainText("3 running");
 
   await page.goto(`${baseUrl}/workbench/board?view=running&running=1&q=bugdrop`);
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Search board issues")).toHaveValue("bugdrop");
   await expect(page.getByLabel("Board issue mean-weasel/bugdrop #440")).toBeVisible();
+  await expect(page.getByLabel("Dashboard summary for mean-weasel/bugdrop")).toContainText("1 visible");
   const boardPresets = page.getByRole("group", { name: "Board triage presets" });
   await boardPresets.getByRole("button", { name: "Active work" }).click();
   await expect(page).toHaveURL(/\/workbench\/board\?view=running&running=1$/);
@@ -2963,6 +2970,9 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/board$/);
   await expect(page.getByLabel("Search board issues")).toHaveValue("");
   await expect(boardViews.getByRole("button", { name: "All 8" })).toHaveAttribute("aria-pressed", "true");
+  const boardIssuectlSummary = page.getByLabel("Dashboard summary for mean-weasel/issuectl");
+  await expect(boardIssuectlSummary).toContainText("4 visible");
+  await expect(boardIssuectlSummary).toContainText("3 running");
 });
 
 test("deep links workbench subpaths without a 404", async ({ page }) => {

@@ -5,6 +5,7 @@ import {
   filterDashboardIssues,
   repoMatchesDashboardView,
 } from "./dashboard-issue-views";
+import { dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
 import {
   compactRepoInitials,
   filterIssueQueue,
@@ -239,6 +240,19 @@ describe("workbench state", () => {
       .toEqual([]);
     expect(failedRepo ? repoMatchesDashboardView(failedRepo, "errors") : false)
       .toBe(true);
+  });
+
+  it("summarizes visible dashboard issue counts for repo scan chips", () => {
+    const issues = [
+      { ...issue(1, "High active issue"), priority: "high" as const, hasActiveDeployment: true },
+      { ...issue(2, "Normal idle issue"), hasActiveDeployment: false },
+    ];
+
+    expect(dashboardIssueSummaryCounts(issues, (item) => item.hasActiveDeployment)).toEqual({
+      highPriorityCount: 1,
+      runningCount: 1,
+      visibleCount: 2,
+    });
   });
 
   it("clamps column widths to objective UI limits", () => {

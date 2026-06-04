@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
-import { DashboardEmptyState, RepoIssueHealth } from "./DashboardStatusBlocks";
+import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
 import {
   globalIssuePresetIdForState,
   globalIssuePresetState,
@@ -12,11 +12,7 @@ import {
   filterDashboardIssues,
   repoMatchesDashboardView,
 } from "./dashboard-issue-views";
-import {
-  DEFAULT_GLOBAL_ISSUE_URL_STATE,
-  type GlobalIssueSortMode,
-  type GlobalIssueStatusFilter,
-} from "./dashboard-url-state";
+import { DEFAULT_GLOBAL_ISSUE_URL_STATE, type GlobalIssueSortMode, type GlobalIssueStatusFilter } from "./dashboard-url-state";
 import { useGlobalIssueDashboardUrlState } from "./dashboard-url-state-hooks";
 import { deploymentForIssue } from "./workbench-selectors";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
@@ -80,10 +76,7 @@ export function GlobalIssuesFocus({
   const visibleIssues = repoRows.reduce((count, row) => count + row.issues.length, 0);
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = globalIssuePresetIdForState(urlState);
-  const hasDashboardFilters = query.trim() !== ""
-    || statusFilter !== DEFAULT_GLOBAL_ISSUE_URL_STATE.status
-    || sortMode !== DEFAULT_GLOBAL_ISSUE_URL_STATE.sort
-    || issueView !== DEFAULT_GLOBAL_ISSUE_URL_STATE.view;
+  const hasDashboardFilters = query.trim() !== "" || statusFilter !== DEFAULT_GLOBAL_ISSUE_URL_STATE.status || sortMode !== DEFAULT_GLOBAL_ISSUE_URL_STATE.sort || issueView !== DEFAULT_GLOBAL_ISSUE_URL_STATE.view;
 
   return (
     <div className={styles.focusInner}>
@@ -176,6 +169,13 @@ export function GlobalIssuesFocus({
         {repoRows.map(({ repo, issues }) => (
           <section key={repo.id} aria-label={`Issues for ${repo.owner}/${repo.name}`}>
             <h2>{repo.owner}/{repo.name}</h2>
+            <RepoDashboardSummary
+              repo={repo}
+              {...dashboardIssueSummaryCounts(
+                issues,
+                (issue) => issueStatus(issue, deploymentForIssue(repo, issue.number)) === "running",
+              )}
+            />
             <RepoIssueHealth repo={repo} />
             {issues.length === 0 ? (
               <p className={styles.muted}>No matching issues.</p>
