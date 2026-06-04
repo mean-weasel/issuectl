@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
@@ -6,10 +6,12 @@ import {
   repoMatchesDashboardView,
   type DashboardIssueView,
 } from "./dashboard-issue-views";
+import {
+  type BoardSortMode,
+} from "./dashboard-url-state";
+import { useBoardDashboardUrlState } from "./dashboard-url-state-hooks";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
-
-type BoardSortMode = "payload" | "priority";
 
 type Props = {
   repos: WorkbenchRepo[];
@@ -36,10 +38,8 @@ export function BoardFocus({
   refreshPending,
   refreshError,
 }: Props) {
-  const [runningOnly, setRunningOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<BoardSortMode>("payload");
-  const [query, setQuery] = useState("");
-  const [issueView, setIssueView] = useState<DashboardIssueView>("all");
+  const [urlState, setUrlState] = useBoardDashboardUrlState();
+  const { query, runningOnly, sort: sortMode, view: issueView } = urlState;
   const failedRepos = repos.filter((repo) => repo.issueError).length;
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
   const viewSummaries = useMemo(() => dashboardIssueViewSummaries(repos, deployments), [deployments, repos]);
@@ -72,13 +72,13 @@ export function BoardFocus({
           type="search"
           value={query}
           placeholder="Search issue, repo, label, author, or number"
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => setUrlState({ query: event.target.value })}
         />
         <button
           type="button"
           className={runningOnly ? styles.primaryButton : styles.secondaryButton}
           aria-pressed={runningOnly}
-          onClick={() => setRunningOnly((current) => !current)}
+          onClick={() => setUrlState({ runningOnly: !runningOnly })}
         >
           Show running only
         </button>
@@ -86,7 +86,7 @@ export function BoardFocus({
           type="button"
           className={sortMode === "payload" ? styles.primaryButton : styles.secondaryButton}
           aria-pressed={sortMode === "payload"}
-          onClick={() => setSortMode("payload")}
+          onClick={() => setUrlState({ sort: "payload" })}
         >
           Payload order
         </button>
@@ -94,7 +94,7 @@ export function BoardFocus({
           type="button"
           className={sortMode === "priority" ? styles.primaryButton : styles.secondaryButton}
           aria-pressed={sortMode === "priority"}
-          onClick={() => setSortMode("priority")}
+          onClick={() => setUrlState({ sort: "priority" })}
         >
           Sort by priority
         </button>
@@ -105,7 +105,7 @@ export function BoardFocus({
               type="button"
               className={issueView === item.id ? styles.primaryButton : styles.secondaryButton}
               aria-pressed={issueView === item.id}
-              onClick={() => setIssueView(item.id)}
+              onClick={() => setUrlState({ view: item.id })}
             >
               {item.label} {item.count}
             </button>
