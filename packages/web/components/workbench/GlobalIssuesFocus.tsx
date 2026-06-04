@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
+import { DashboardEmptyState, RepoIssueHealth } from "./DashboardStatusBlocks";
 import {
   globalIssuePresetIdForState,
   globalIssuePresetState,
@@ -12,6 +13,7 @@ import {
   repoMatchesDashboardView,
 } from "./dashboard-issue-views";
 import {
+  DEFAULT_GLOBAL_ISSUE_URL_STATE,
   type GlobalIssueSortMode,
   type GlobalIssueStatusFilter,
 } from "./dashboard-url-state";
@@ -78,6 +80,10 @@ export function GlobalIssuesFocus({
   const visibleIssues = repoRows.reduce((count, row) => count + row.issues.length, 0);
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = globalIssuePresetIdForState(urlState);
+  const hasDashboardFilters = query.trim() !== ""
+    || statusFilter !== DEFAULT_GLOBAL_ISSUE_URL_STATE.status
+    || sortMode !== DEFAULT_GLOBAL_ISSUE_URL_STATE.sort
+    || issueView !== DEFAULT_GLOBAL_ISSUE_URL_STATE.view;
 
   return (
     <div className={styles.focusInner}>
@@ -157,6 +163,15 @@ export function GlobalIssuesFocus({
           {refreshError && <span>Refresh failed: {refreshError}</span>}
         </div>
       )}
+      {visibleIssues === 0 && (
+        <DashboardEmptyState
+          buttonLabel="Clear dashboard filters"
+          canReset={hasDashboardFilters}
+          description="Clear the dashboard filters to return to the full cross-repo issue list."
+          onReset={() => setUrlState(DEFAULT_GLOBAL_ISSUE_URL_STATE)}
+          title="No dashboard issues match these filters."
+        />
+      )}
       <div aria-label="Global issues">
         {repoRows.map(({ repo, issues }) => (
           <section key={repo.id} aria-label={`Issues for ${repo.owner}/${repo.name}`}>
@@ -227,19 +242,6 @@ function GlobalIssueRow({
         )}
       </div>
     </article>
-  );
-}
-
-function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
-  if (!repo.issueError && !repo.issuesFromCache) return null;
-
-  return (
-    <div className={styles.repoIssueHealth} role={repo.issueError ? "alert" : "status"}>
-      {repo.issueError && <span>Issue fetch failed: {repo.issueError}</span>}
-      {repo.issuesFromCache && (
-        <span>Showing cached issues{repo.issuesCachedAt ? ` from ${formatAge(repo.issuesCachedAt)}` : ""}</span>
-      )}
-    </div>
   );
 }
 

@@ -2923,6 +2923,12 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await page.getByLabel("Search global issues").fill("paper-owl web #701");
   await expect(page.getByLabel("paper-owl/web issue #701")).toBeVisible();
   await expect(page.getByLabel("mean-weasel/web issue #440")).toHaveCount(0);
+  await page.getByLabel("Search global issues").fill("no-such-dashboard-result");
+  await expect(page.getByText("No dashboard issues match these filters.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear dashboard filters" }).click();
+  await expect(page).toHaveURL(/\/workbench\/issues$/);
+  await expect(page.getByLabel("Search global issues")).toHaveValue("");
+  await expect(issueViews.getByRole("button", { name: "All 8" })).toHaveAttribute("aria-pressed", "true");
 
   await page.goto(`${baseUrl}/workbench/board?view=running&running=1&q=bugdrop`);
   await page.getByRole("button", { name: "Refresh" }).click();
@@ -2951,6 +2957,12 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await page.getByLabel("Search board issues").fill("paper-owl web #701");
   await expect(page.getByLabel("Board issue paper-owl/web #701")).toBeVisible();
   await expect(page.getByLabel("Board issue mean-weasel/web #440")).toHaveCount(0);
+  await page.getByLabel("Search board issues").fill("no-such-board-result");
+  await expect(page.getByText("No board issues match these filters.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear dashboard filters" }).click();
+  await expect(page).toHaveURL(/\/workbench\/board$/);
+  await expect(page.getByLabel("Search board issues")).toHaveValue("");
+  await expect(boardViews.getByRole("button", { name: "All 8" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("deep links workbench subpaths without a 404", async ({ page }) => {
