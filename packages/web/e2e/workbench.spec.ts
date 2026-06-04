@@ -2900,6 +2900,16 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(issueViews.getByRole("button", { name: "Cached 1" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Search global issues")).toHaveValue("paper-owl web");
   await expect(page.getByLabel("paper-owl/web issue #701")).toBeVisible();
+  const globalPresets = page.getByRole("group", { name: "Global triage presets" });
+  await expect(globalPresets.getByRole("button", { name: "Stale cache" })).toHaveAttribute("aria-pressed", "false");
+  await globalPresets.getByRole("button", { name: "Active work" }).click();
+  await expect(page).toHaveURL(/\/workbench\/issues\?view=running&status=running$/);
+  await expect(page.getByLabel("Search global issues")).toHaveValue("");
+  await expect(
+    page.getByRole("group", { name: "Global issue status" }).getByRole("button", { name: "Running" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await globalPresets.getByRole("button", { name: "Stale cache" }).click();
+  await page.getByLabel("Search global issues").fill("paper-owl web");
   await issueViews.getByRole("button", { name: "Cached 1" }).click();
   await expect(page.getByLabel("paper-owl/web issue #701")).toBeVisible();
   await expect(page.getByLabel("mean-weasel/issuectl issue #447")).toHaveCount(0);
@@ -2919,7 +2929,11 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Search board issues")).toHaveValue("bugdrop");
   await expect(page.getByLabel("Board issue mean-weasel/bugdrop #440")).toBeVisible();
-  await page.getByLabel("Search board issues").fill("");
+  const boardPresets = page.getByRole("group", { name: "Board triage presets" });
+  await boardPresets.getByRole("button", { name: "Active work" }).click();
+  await expect(page).toHaveURL(/\/workbench\/board\?view=running&running=1$/);
+  await expect(page.getByLabel("Search board issues")).toHaveValue("");
+  await expect(boardPresets.getByRole("button", { name: "Active work" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Show running only" }).click();
   const boardViews = page.getByRole("group", { name: "Board operational views" });
   await boardViews.getByRole("button", { name: "All 8" }).click();
