@@ -1,4 +1,4 @@
-import type { WorkbenchRepo } from "./workbench-types";
+import type { WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
 type DashboardEmptyStateProps = {
@@ -7,6 +7,12 @@ type DashboardEmptyStateProps = {
   description: string;
   onReset: () => void;
   title: string;
+};
+
+export type RepoDashboardSummaryCounts = {
+  highPriorityCount: number;
+  runningCount: number;
+  visibleCount: number;
 };
 
 export function DashboardEmptyState({
@@ -39,6 +45,41 @@ export function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
         <span>Showing cached issues{repo.issuesCachedAt ? ` from ${formatAge(repo.issuesCachedAt)}` : ""}</span>
       )}
     </div>
+  );
+}
+
+export function RepoDashboardSummary({
+  highPriorityCount,
+  repo,
+  runningCount,
+  visibleCount,
+}: RepoDashboardSummaryCounts & { repo: WorkbenchRepo }) {
+  return (
+    <div className={styles.repoIssueSummary} aria-label={`Dashboard summary for ${repo.owner}/${repo.name}`}>
+      <span className={styles.repoIssueSummaryChip}>{visibleCount} visible</span>
+      <span className={styles.repoIssueSummaryChip}>{runningCount} running</span>
+      <span className={styles.repoIssueSummaryChip}>{highPriorityCount} high priority</span>
+      {repo.issuesFromCache && (
+        <span className={styles.repoIssueSummaryChip} data-tone="cache">cached</span>
+      )}
+      {repo.issueError && (
+        <span className={styles.repoIssueSummaryChip} data-tone="error">fetch failed</span>
+      )}
+    </div>
+  );
+}
+
+export function dashboardIssueSummaryCounts(
+  issues: WorkbenchIssueSummary[],
+  isRunning: (issue: WorkbenchIssueSummary) => boolean,
+): RepoDashboardSummaryCounts {
+  return issues.reduce<RepoDashboardSummaryCounts>(
+    (summary, issue) => ({
+      highPriorityCount: summary.highPriorityCount + (issue.priority === "high" ? 1 : 0),
+      runningCount: summary.runningCount + (isRunning(issue) ? 1 : 0),
+      visibleCount: summary.visibleCount + 1,
+    }),
+    { highPriorityCount: 0, runningCount: 0, visibleCount: 0 },
   );
 }
 

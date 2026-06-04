@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
-import { DashboardEmptyState, RepoIssueHealth } from "./DashboardStatusBlocks";
+import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
 import {
   boardPresetIdForState,
   boardPresetState,
@@ -61,10 +61,7 @@ export function BoardFocus({
   );
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = boardPresetIdForState(urlState);
-  const hasDashboardFilters = query.trim() !== ""
-    || runningOnly !== DEFAULT_BOARD_URL_STATE.runningOnly
-    || sortMode !== DEFAULT_BOARD_URL_STATE.sort
-    || issueView !== DEFAULT_BOARD_URL_STATE.view;
+  const hasDashboardFilters = query.trim() !== "" || runningOnly !== DEFAULT_BOARD_URL_STATE.runningOnly || sortMode !== DEFAULT_BOARD_URL_STATE.sort || issueView !== DEFAULT_BOARD_URL_STATE.view;
 
   return (
     <div className={`${styles.focusInner} ${styles.boardFocus}`}>
@@ -166,6 +163,10 @@ export function BoardFocus({
                   {issues.length} {runningOnly ? "running" : "open"}
                 </p>
               </header>
+              <RepoDashboardSummary
+                repo={repo}
+                {...dashboardIssueSummaryCounts(issues, (issue) => isRunningIssue(repo, deployments, issue))}
+              />
               <RepoIssueHealth repo={repo} />
               {issues.length === 0 ? (
                 <p className={styles.muted}>No matching issues.</p>

@@ -1634,6 +1634,34 @@
   margin-top: 2px;
 }
 
+.repoIssueSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+
+.repoIssueSummaryChip {
+  background: color-mix(in srgb, var(--paper-bg-warm) 76%, white);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.repoIssueSummaryChip[data-tone="cache"] {
+  background: color-mix(in srgb, var(--paper-butter) 16%, var(--paper-bg));
+  color: color-mix(in srgb, var(--paper-butter) 55%, var(--paper-ink));
+}
+
+.repoIssueSummaryChip[data-tone="error"] {
+  background: color-mix(in srgb, var(--paper-brick) 12%, var(--paper-bg));
+  color: var(--paper-brick);
+}
+
 .boardControls .primaryButton,
 .boardControls .secondaryButton,
 .globalIssueControls .primaryButton,
