@@ -1591,6 +1591,26 @@
   flex-wrap: wrap;
 }
 
+.dashboardPresetStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0 4px;
+}
+
+.dashboardPresetStrip .primaryButton,
+.dashboardPresetStrip .secondaryButton {
+  margin-top: 0;
+}
+
+.dashboardPresetLabel {
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1;
+}
+
 .boardControls .primaryButton,
 .boardControls .secondaryButton,
 .globalIssueControls .primaryButton,

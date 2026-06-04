@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { DashboardPresetStrip } from "./DashboardPresetStrip";
+import {
+  globalIssuePresetIdForState,
+  globalIssuePresetState,
+} from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
@@ -72,6 +77,7 @@ export function GlobalIssuesFocus({
   );
   const visibleIssues = repoRows.reduce((count, row) => count + row.issues.length, 0);
   const currentView = viewSummaries.find((view) => view.id === issueView);
+  const activePresetId = globalIssuePresetIdForState(urlState);
 
   return (
     <div className={styles.focusInner}>
@@ -82,6 +88,11 @@ export function GlobalIssuesFocus({
           ? "No matching issues."
           : `${visibleIssues} shown in ${currentView?.label.toLowerCase() ?? "all"} view across ${repos.length} tracked repositories.`}
       </p>
+      <DashboardPresetStrip
+        activePresetId={activePresetId}
+        ariaLabel="Global triage presets"
+        onApply={(id) => setUrlState(globalIssuePresetState(id))}
+      />
       <div aria-label="Global issue controls" className={styles.globalIssueControls}>
         <input
           aria-label="Search global issues"

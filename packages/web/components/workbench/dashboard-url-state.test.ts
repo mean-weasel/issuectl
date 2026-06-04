@@ -4,6 +4,12 @@ import {
   parseBoardUrlState,
   parseGlobalIssueUrlState,
 } from "./dashboard-url-state";
+import {
+  boardPresetState,
+  boardPresetIdForState,
+  globalIssuePresetState,
+  globalIssuePresetIdForState,
+} from "./dashboard-presets";
 
 describe("dashboard URL state", () => {
   it("parses shareable global issue dashboard controls from URLs", () => {
@@ -54,5 +60,58 @@ describe("dashboard URL state", () => {
       runningOnly: true,
       query: "",
     })).toBe("?repo=mean-weasel%2Fissuectl&running=1");
+  });
+
+  it("maps global issue triage presets to complete dashboard states", () => {
+    expect(globalIssuePresetState("attention")).toEqual({
+      view: "attention",
+      status: "all",
+      sort: "priority",
+      query: "",
+    });
+    expect(globalIssuePresetState("active")).toEqual({
+      view: "running",
+      status: "running",
+      sort: "updated",
+      query: "",
+    });
+    expect(globalIssuePresetState("errors")).toEqual({
+      view: "errors",
+      status: "all",
+      sort: "updated",
+      query: "",
+    });
+  });
+
+  it("maps board triage presets to complete dashboard states", () => {
+    expect(boardPresetState("attention")).toEqual({
+      view: "attention",
+      sort: "priority",
+      runningOnly: false,
+      query: "",
+    });
+    expect(boardPresetState("active")).toEqual({
+      view: "running",
+      sort: "payload",
+      runningOnly: true,
+      query: "",
+    });
+    expect(boardPresetState("cached")).toEqual({
+      view: "cached",
+      sort: "payload",
+      runningOnly: false,
+      query: "",
+    });
+  });
+
+  it("recognizes the active triage preset from dashboard state", () => {
+    expect(globalIssuePresetIdForState(globalIssuePresetState("active"))).toBe("active");
+    expect(boardPresetIdForState(boardPresetState("attention"))).toBe("attention");
+    expect(globalIssuePresetIdForState({
+      view: "running",
+      status: "all",
+      sort: "updated",
+      query: "",
+    })).toBeNull();
   });
 });

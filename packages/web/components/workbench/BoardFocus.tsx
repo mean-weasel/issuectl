@@ -1,4 +1,9 @@
 import { useMemo } from "react";
+import { DashboardPresetStrip } from "./DashboardPresetStrip";
+import {
+  boardPresetIdForState,
+  boardPresetState,
+} from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
@@ -56,6 +61,7 @@ export function BoardFocus({
     [deployments, issueView, query, runningOnly, sortMode, visibleRepos],
   );
   const currentView = viewSummaries.find((view) => view.id === issueView);
+  const activePresetId = boardPresetIdForState(urlState);
 
   return (
     <div className={`${styles.focusInner} ${styles.boardFocus}`}>
@@ -64,6 +70,11 @@ export function BoardFocus({
       <p className={styles.muted}>
         {visibleIssues} {runningOnly ? "running" : "open"} issues in {currentView?.label.toLowerCase() ?? "all"} view across {repos.length} tracked repositories.
       </p>
+      <DashboardPresetStrip
+        activePresetId={activePresetId}
+        ariaLabel="Board triage presets"
+        onApply={(id) => setUrlState(boardPresetState(id))}
+      />
 
       <div aria-label="Board controls" className={styles.boardControls}>
         <input
