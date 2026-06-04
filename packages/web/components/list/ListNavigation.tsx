@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Section, SortMode } from "@issuectl/core";
@@ -10,37 +9,29 @@ import { CacheAge } from "@/components/ui/CacheAge";
 import { VersionBadge } from "@/components/ui/VersionBadge";
 import { RepoFilterChips } from "./RepoFilterChips";
 import styles from "./List.module.css";
-
 type Repo = { owner: string; name: string };
-
 const SORT_MODES: SortMode[] = ["updated", "created", "priority"];
-
 const SORT_LABEL: Record<SortMode, string> = {
   updated: "updated",
   created: "created",
   priority: "priority",
 };
-
 export const SECTION_LABEL: Record<Section, string> = {
   unassigned: "drafts",
   open: "open",
   running: "running",
   closed: "closed",
 };
-
 export function formatDate(d: Date): { weekday: string; short: string } {
-  const weekday = d
-    .toLocaleDateString("en-US", { weekday: "long" })
-    .toLowerCase();
-  const short = d
-    .toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    .toLowerCase();
+  const weekday = d.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  const short = d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toLowerCase();
   return { weekday, short };
 }
-
 export function DashboardTopBar({
   activeTab,
   activeSection,
+  activeRepo,
+  activeSort,
   mineOnly,
   prCount,
   sectionCounts,
@@ -52,6 +43,8 @@ export function DashboardTopBar({
 }: {
   activeTab: "issues" | "prs";
   activeSection: Section;
+  activeRepo: string | null;
+  activeSort: SortMode;
   mineOnly: boolean;
   prCount: number | null;
   sectionCounts: Partial<Record<Section, number>> | null;
@@ -63,7 +56,10 @@ export function DashboardTopBar({
 }) {
   const contextSectionLabel =
     activeTab === "issues" ? SECTION_LABEL[activeSection] : mineOnly ? "mine" : "everyone";
-
+  const contextMeta = [
+    activeRepo ?? "all repos",
+    activeTab === "issues" ? SORT_LABEL[activeSort] : null,
+  ].filter((value): value is string => value !== null);
   return (
     <div className={styles.topBar}>
       <h1 className={styles.brand}>
@@ -73,13 +69,16 @@ export function DashboardTopBar({
         <VersionBadge className={styles.versionBadge} />
       </h1>
       <button className={styles.contextLabel} onClick={onOpenFilters} aria-label="Open command sheet">
-        {activeTab === "issues" ? "issues" : "PRs"}
-        <span className={styles.contextSep}>›</span>
-        <span className={styles.contextSection}>{contextSectionLabel}</span>
-        {sectionCounts && activeTab === "issues" && (
-          <span className={styles.contextCount}>{sectionCounts[activeSection] ?? ""}</span>
-        )}
-        {activeTab === "prs" && prCount !== null && <span className={styles.contextCount}>{prCount}</span>}
+        <span className={styles.contextPrimary}>
+          {activeTab === "issues" ? "issues" : "PRs"}
+          <span className={styles.contextSep}>›</span>
+          <span className={styles.contextSection}>{contextSectionLabel}</span>
+          {sectionCounts && activeTab === "issues" && (
+            <span className={styles.contextCount}>{sectionCounts[activeSection] ?? ""}</span>
+          )}
+          {activeTab === "prs" && prCount !== null && <span className={styles.contextCount}>{prCount}</span>}
+        </span>
+        <span className={styles.contextMeta}>{contextMeta.join(" / ")}</span>
       </button>
       {searchBar}
       <CacheAge cachedAt={cachedAt ?? null} />
@@ -93,18 +92,12 @@ export function DashboardTopBar({
       </button>
       <button className={styles.menuBtn} onClick={onOpenDrawer} aria-label="Open navigation">
         <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
-          <path
-            d="M2 2h16M2 8h16M2 14h16"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
+          <path d="M2 2h16M2 8h16M2 14h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </button>
     </div>
   );
 }
-
 export function DashboardTabs({
   activeTab,
   activeSection,
@@ -142,7 +135,6 @@ export function DashboardTabs({
     section: activeTab === "issues" ? activeSection : null,
     sort: activeTab === "issues" ? activeSort : null,
   });
-
   return (
     <div className={styles.tabs}>
       <DashboardTab
@@ -177,7 +169,6 @@ export function DashboardTabs({
     </div>
   );
 }
-
 export function RepoChips({ repos, activeRepo, buildHref }: {
   repos: Repo[];
   activeRepo: string | null;
@@ -189,7 +180,6 @@ export function RepoChips({ repos, activeRepo, buildHref }: {
     </div>
   );
 }
-
 export function IssueSectionTabs({
   activeRepo,
   activeSection,
@@ -206,7 +196,6 @@ export function IssueSectionTabs({
     : ["unassigned", "open", "running", "closed"];
   const sectionHref = (section: Section) => buildHref({ repo: activeRepo, section, sort: activeSort });
   const sortHref = (sort: SortMode) => buildHref({ repo: activeRepo, section: activeSection, sort });
-
   return (
     <>
       <nav className={styles.sectionTabs} aria-label="Filter by section">
@@ -242,7 +231,6 @@ export function IssueSectionTabs({
     </>
   );
 }
-
 export function PrAuthorToggle({
   repos,
   activeRepo,
@@ -265,12 +253,10 @@ export function PrAuthorToggle({
     </div>
   );
 }
-
 export function repoAccentColor(repos: Repo[], activeRepo: string | null): string | undefined {
   const activeRepoIndex = activeRepo ? repos.findIndex((r) => repoKey(r) === activeRepo) : -1;
   return activeRepoIndex >= 0 ? REPO_COLORS[activeRepoIndex % REPO_COLORS.length] : undefined;
 }
-
 function DashboardTab({
   href,
   active,
@@ -296,23 +282,15 @@ function DashboardTab({
     </Link>
   );
 }
-
 function FilterIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <path d="M2 4h14M4 9h10M7 14h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
+  return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M2 4h14M4 9h10M7 14h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>;
 }
-
 function ScopePill({ label, color, clearHref }: { label: string; color: string | undefined; clearHref: string }) {
   return (
     <span className={styles.scopePill}>
       {color && <span className={styles.scopePillDot} style={{ background: color }} aria-hidden />}
       <span className={styles.scopePillLabel}>{label}</span>
-      <Link href={clearHref} className={styles.scopePillClear} aria-label={`Clear ${label} filter`} onClick={(e) => e.stopPropagation()}>
-        &times;
-      </Link>
+      <Link href={clearHref} className={styles.scopePillClear} aria-label={`Clear ${label} filter`} onClick={(e) => e.stopPropagation()}>&times;</Link>
     </span>
   );
 }

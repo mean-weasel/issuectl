@@ -127,6 +127,8 @@ export function List({
       <DashboardTopBar
         activeTab={activeTab}
         activeSection={activeSection}
+        activeRepo={activeRepo}
+        activeSort={activeSort}
         mineOnly={mineOnly}
         prCount={prCount}
         sectionCounts={sectionCounts}

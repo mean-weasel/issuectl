@@ -296,6 +296,13 @@ export async function launchWorkbenchIssue(
 }
 
 async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new WorkbenchApiError(
+      "Workbench actions require a network connection. Offline queue only covers supported issue edits outside Workbench.",
+      0,
+    );
+  }
+
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");

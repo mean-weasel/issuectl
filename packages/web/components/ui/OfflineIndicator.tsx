@@ -124,11 +124,11 @@ export function OfflineIndicator() {
               <line x1="8" y1="11" x2="8.01" y2="11" />
             </svg>
             <span className={styles.textFull}>
-              Offline — viewing cached data
-              {hasQueue && ` · ${pendingCount} operation${pendingCount > 1 ? "s" : ""} queued`}
+              Offline - cached data only; Workbench actions need connection
+              {hasQueue && ` · ${pendingCount} supported issue edit${pendingCount > 1 ? "s" : ""} queued`}
             </span>
             <span className={styles.textCompact}>
-              Offline{hasQueue && ` - ${pendingCount} queued`}
+              Offline - Workbench actions need connection{hasQueue && ` · ${pendingCount} queued`}
             </span>
           </div>
           {dropdownOpen && (

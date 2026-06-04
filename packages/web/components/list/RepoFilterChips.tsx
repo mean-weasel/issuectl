@@ -27,16 +27,20 @@ export function RepoFilterChips({ repos, activeRepo, buildHref }: Props) {
         const key = repoKey(repo);
         const isActive = key === activeRepo;
         const color = REPO_COLORS[i % REPO_COLORS.length];
+        const fullName = `${repo.owner}/${repo.name}`;
         return (
           <Link
             key={key}
             href={buildHref(key)}
             className={isActive ? styles.chipActive : styles.chip}
             aria-current={isActive ? "page" : undefined}
+            aria-label={`Filter by ${fullName}`}
+            title={fullName}
             style={isActive ? { borderColor: color } : undefined}
           >
             <span className={styles.dot} style={{ background: color }} />
-            {repo.name}
+            <span className={styles.owner}>{repo.owner}/</span>
+            <span className={styles.name}>{repo.name}</span>
           </Link>
         );
       })}

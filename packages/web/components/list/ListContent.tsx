@@ -77,12 +77,7 @@ export function ListContent({
   const filteredPrs = useMemo((): PrEntry[] => {
     if (!query) return prs;
     const q = query.toLowerCase();
-    return prs.filter(({ pull }) => {
-      if (pull.title.toLowerCase().includes(q)) return true;
-      if (pull.body?.toLowerCase().includes(q)) return true;
-      if (pull.headRef.toLowerCase().includes(q)) return true;
-      return false;
-    });
+    return prs.filter((entry) => matchesPr(entry, q));
   }, [prs, query]);
 
   // Reset visible count whenever filter criteria or the filtered dataset changes.
@@ -282,12 +277,52 @@ function matchesDraft(item: UnifiedListItem, q: string): boolean {
   return false;
 }
 
-/** Case-insensitive substring match for issue items (title, body, labels). */
+/** Case-insensitive substring match for issue items and cross-repo identifiers. */
 function matchesIssue(item: UnifiedListItem, q: string): boolean {
   if (item.kind !== "issue") return false;
-  const { title, body, labels } = item.issue;
-  if (title.toLowerCase().includes(q)) return true;
-  if (body?.toLowerCase().includes(q)) return true;
-  if (labels.some((l) => l.name.toLowerCase().includes(q))) return true;
-  return false;
+  const { issue, repo, section, priority } = item;
+  const repoFullName = `${repo.owner}/${repo.name}`;
+  const issueRef = `#${issue.number}`;
+  return searchableTextMatches([
+    issue.title,
+    issue.body ?? "",
+    repo.owner,
+    repo.name,
+    repoFullName,
+    `${repo.name}${issueRef}`,
+    `${repoFullName}${issueRef}`,
+    issueRef,
+    String(issue.number),
+    issue.user?.login ?? "",
+    section,
+    priority,
+    ...issue.labels.map((l) => l.name),
+  ], q);
+}
+
+function matchesPr({ repo, pull }: PrEntry, q: string): boolean {
+  const repoFullName = `${repo.owner}/${repo.name}`;
+  const prRef = `#${pull.number}`;
+  return searchableTextMatches([
+    pull.title,
+    pull.body ?? "",
+    pull.headRef,
+    repo.owner,
+    repo.name,
+    repoFullName,
+    `${repo.name}${prRef}`,
+    `${repoFullName}${prRef}`,
+    prRef,
+    String(pull.number),
+    pull.state,
+    pull.merged ? "merged" : "",
+    pull.checksStatus ?? "",
+  ], q);
+}
+
+function searchableTextMatches(parts: string[], q: string): boolean {
+  const haystack = parts.join(" ").toLowerCase();
+  if (haystack.includes(q)) return true;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.length > 1 && tokens.every((token) => haystack.includes(token));
 }

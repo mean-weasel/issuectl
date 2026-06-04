@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { issue, payloadFixture, repo } from "./workbench-test-fixtures";
+import { issue, payloadFixture, realisticPayloadFixture, repo } from "./workbench-test-fixtures";
 import {
   compactRepoInitials,
   filterIssueQueue,
@@ -123,6 +123,35 @@ describe("workbench state", () => {
     ]);
   });
 
+  it("keeps duplicate repo names unambiguous by repo id and owner", () => {
+    const payload = realisticPayloadFixture();
+    const selectedDuplicate = workbenchReducer(createWorkbenchState(payload), {
+      type: "selectRepo",
+      repoId: 5,
+    });
+    const selected = selectedRepo(payload, selectedDuplicate);
+
+    expect(payload.repos.filter((item) => item.name === "web").map((item) => item.owner))
+      .toEqual(["mean-weasel", "paper-owl"]);
+    expect(selected?.owner).toBe("paper-owl");
+    expect(selected?.name).toBe("web");
+    expect(compactRepoInitials(selected?.name ?? "")).toBe("WEB");
+  });
+
+  it("carries cache, error, and long-label issue fixtures for realistic dashboard regressions", () => {
+    const payload = realisticPayloadFixture();
+    const cachedRepo = payload.repos.find((item) => item.owner === "paper-owl" && item.name === "web");
+    const failedRepo = payload.repos.find((item) => item.owner === "paper-owl" && item.name === "api");
+
+    expect(cachedRepo?.issuesFromCache).toBe(true);
+    expect(cachedRepo?.issuesCachedAt).toBe("2026-05-16T15:45:00.000Z");
+    expect(cachedRepo?.issues[0]?.labels).toContain(
+      "label-that-is-intentionally-long-enough-to-stress-card-density",
+    );
+    expect(cachedRepo ? issueQueueCounts(cachedRepo) : null).toEqual({ open: 1, running: 0, closed: 0 });
+    expect(failedRepo?.issueError).toBe("GitHub unavailable for paper-owl/api");
+  });
+
   it("keeps the selected repo when moving through workbench submodes", () => {
     const payload = payloadFixture();
     const selectedBugdrop = workbenchReducer(createWorkbenchState(payload), {
@@ -167,7 +196,7 @@ describe("workbench state", () => {
       .toEqual([101, 103, 102]);
   });
 
-  it("groups repo issues into open work, running, and closed filters", () => {
+  it("groups repo issues into all open, running, and closed filters", () => {
     const repo = payloadFixture().repos[0];
 
     expect(issueQueueCounts(repo)).toEqual({ open: 4, running: 3, closed: 0 });

@@ -38,7 +38,7 @@
   border-radius: var(--paper-radius-sm);
   background: var(--paper-bg);
   padding: 0 8px;
-  height: 32px;
+  height: 38px;
 }
 
 .inputWrap .icon {
@@ -50,7 +50,7 @@
   outline: none;
   background: transparent;
   font-family: var(--paper-mono);
-  font-size: 12px;
+  font-size: 16px;
   color: var(--paper-ink);
   width: 100%;
   min-width: 0;
@@ -102,6 +102,10 @@
 
   .inputWrap {
     display: flex;
-    width: 240px;
+    width: 300px;
+  }
+
+  .input {
+    font-size: 13px;
   }
 }

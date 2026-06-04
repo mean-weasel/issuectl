@@ -70,7 +70,7 @@ async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.once("error", reject);
-    server.listen(0, () => {
+    server.listen(0, "127.0.0.1", () => {
       const address = server.address();
       server.close(() => {
         if (typeof address === "object" && address?.port) resolve(address.port);
@@ -169,7 +169,7 @@ test.beforeAll(async () => {
   tmpDir = mkdtempSync(join(tmpdir(), "issuectl-e2e-workbench-"));
   isolatedWebRoot = createIsolatedWebRoot(tmpDir);
   testPort = await findFreePort();
-  baseUrl = `http://localhost:${testPort}`;
+  baseUrl = `http://127.0.0.1:${testPort}`;
   dbPath = join(tmpDir, "test.db");
   apiToken = createTestDb(dbPath);
   const fakeGh = join(tmpDir, "gh");
@@ -218,7 +218,7 @@ test.beforeAll(async () => {
   );
   chmodSync(fakeTmux, 0o755);
 
-  server = spawn(process.execPath, [NEXT_BIN, "dev", "--port", String(testPort)], {
+  server = spawn(process.execPath, [NEXT_BIN, "dev", "--hostname", "127.0.0.1", "--port", String(testPort)], {
     cwd: isolatedWebRoot,
     env: {
       ...process.env,
@@ -728,7 +728,7 @@ test("keeps compact mode matrix primary actions reachable", async ({ page }) => 
       path: "/workbench/issues",
       current: "Issues",
       primary: async () =>
-        page.getByLabel("mean-weasel/issuectl issue #512").getByRole("button", { name: "Open issue" }),
+        page.getByLabel("mean-weasel/issuectl issue #512").getByRole("button", { name: "Prepare launch" }),
       verify: async () => {
         await expect(page.getByRole("heading", { name: "Issues" })).toBeVisible();
         await expect(page.getByLabel("Global issues")).toBeVisible();
@@ -2738,6 +2738,18 @@ test("pull requests mode loads repo PRs and calls detail review merge comment en
 });
 
 test("shows global issues by repo and opens the selected repo issue", async ({ page }) => {
+  await page.route("**/api/v1/issues/mean-weasel/issuectl/512", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(issueDetailFixture()),
+    });
+  });
+
   await page.goto(`${baseUrl}/workbench`);
 
   await clickNavAndExpect(page, "Issues", "/workbench/issues", true);
@@ -2748,14 +2760,30 @@ test("shows global issues by repo and opens the selected repo issue", async ({ p
   await expect(page.getByLabel("mean-weasel/issuectl issue #447")).toHaveAttribute("data-status", "running");
   await expect(page.getByLabel("mean-weasel/issuectl issue #447")).toContainText("running");
   await expect(page.getByLabel("mean-weasel/issuectl issue #447").locator("[data-card-chip]")).toHaveCount(2);
+  await expect(
+    page.getByLabel("mean-weasel/issuectl issue #447").getByRole("button", { name: "Jump to session" }),
+  ).toBeVisible();
 
-  await page.getByLabel("mean-weasel/bugdrop issue #440").getByRole("button", { name: "Open issue" }).click();
+  await page.getByLabel("Search global issues").fill("bugdrop #440");
+  await expect(page.getByLabel("mean-weasel/bugdrop issue #440")).toBeVisible();
+  await expect(page.getByLabel("mean-weasel/issuectl issue #447")).toHaveCount(0);
+  await expect(page.getByLabel("mean-weasel/bugdrop issue #440")).toBeVisible();
+  await expect(
+    page.getByLabel("mean-weasel/bugdrop issue #440").getByRole("button", { name: "Jump to session" }),
+  ).toBeVisible();
+  await page.getByRole("group", { name: "Global issue status" }).getByRole("button", { name: "Running" }).click();
+  await expect(page.getByLabel("mean-weasel/bugdrop issue #440")).toBeVisible();
 
-  await expect(page).toHaveURL(new RegExp("/workbench\\?repo=mean-weasel%2Fbugdrop&issue=440$"));
-  await expect(page.getByLabel("Active sessions")).toBeVisible();
-  await expect(page.getByLabel("Repo issues")).toBeVisible();
-  await expect(page.getByRole("button", { name: "mean-weasel/bugdrop" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("heading", { name: "#440 bugdrop issue 1" })).toBeVisible();
+  await page.getByRole("group", { name: "Global issue status" }).getByRole("button", { name: "All" }).click();
+  await page.getByLabel("Search global issues").fill("issuectl #512");
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toBeVisible();
+  await expect(page.getByLabel("mean-weasel/bugdrop issue #440")).toHaveCount(0);
+
+  await page.getByLabel("mean-weasel/issuectl issue #512").getByRole("button", { name: "Prepare launch" }).click();
+
+  await expect(page).toHaveURL(new RegExp("/workbench\\?repo=mean-weasel%2Fissuectl&issue=512$"));
+  await expect(page.getByRole("button", { name: "mean-weasel/issuectl" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
 });
 
 test("shows cross-repo board columns and reversible running filter", async ({ page }) => {
@@ -2795,9 +2823,16 @@ test("shows cross-repo board columns and reversible running filter", async ({ pa
   await expect(page.locator('article[aria-label^="Board issue"]')).toHaveCount(4);
   await expect(page.getByText("No matching issues.")).toHaveCount(2);
   await expect(board.getByRole("region")).toHaveCount(4);
+  await expect(
+    page.getByLabel("Board issue mean-weasel/issuectl #447").getByRole("button", { name: "Jump to session" }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Show running only" }).click();
   await expect(page.locator('article[aria-label^="Board issue"]')).toHaveCount(7);
+  await page.getByLabel("Search board issues").fill("bugdrop #440");
+  await expect(page.locator('article[aria-label^="Board issue"]')).toHaveCount(1);
+  await expect(page.getByLabel("Board issue mean-weasel/bugdrop #440")).toBeVisible();
+  await page.getByLabel("Search board issues").fill("");
 
   await page.getByRole("button", { name: "Sort by priority" }).click();
   const issuectlCards = page.getByLabel("Board column mean-weasel/issuectl")
@@ -2806,13 +2841,72 @@ test("shows cross-repo board columns and reversible running filter", async ({ pa
   await expect(issuectlCards.first().locator("[data-card-chip]")).toHaveCount(2);
 
   await page.getByLabel("Board issue mean-weasel/issuectl #512")
-    .getByRole("button", { name: "Open issue" })
+    .getByRole("button", { name: "Prepare launch" })
     .click();
   await expect(page).toHaveURL(new RegExp("/workbench\\?repo=mean-weasel%2Fissuectl&issue=512$"));
-  await expect(page.getByLabel("Active sessions")).toBeVisible();
-  await expect(page.getByLabel("Repo issues")).toBeVisible();
   await expect(page.getByRole("button", { name: "mean-weasel/issuectl" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+});
+
+test("surfaces duplicate repo names plus issue cache and error state in global dashboards", async ({ page }) => {
+  const duplicateWeb = repo(5, "web", 0);
+  const cachedDuplicateWeb = {
+    ...duplicateWeb,
+    owner: "paper-owl",
+    issuesFromCache: true,
+    issuesCachedAt: "2026-05-16T15:45:00.000Z",
+    issues: [
+      {
+        ...duplicateWeb.issues[0],
+        number: 701,
+        title: "Duplicate repo name cache regression",
+        labels: [
+          { name: "cross-repo-dashboard", color: "ffffff", description: null },
+          { name: "long-label-that-stresses-card-density", color: "ffffff", description: null },
+        ],
+        htmlUrl: "https://github.com/paper-owl/web/issues/701",
+      },
+    ],
+  };
+  const failedDuplicateApi = {
+    ...repo(6, "api", 0),
+    owner: "paper-owl",
+    issueError: "GitHub unavailable for paper-owl/api",
+    issues: [],
+  };
+  seedWorkbenchRepos(dbPath, [...workbenchPayload().repos, cachedDuplicateWeb, failedDuplicateApi]);
+  await page.route("**/api/v1/workbench", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    const payload = workbenchPayload();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...payload,
+        repos: [...payload.repos, cachedDuplicateWeb, failedDuplicateApi],
+      }),
+    });
+  });
+
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await expect(page.getByRole("heading", { name: "mean-weasel/web" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "paper-owl/web" })).toBeVisible();
+  await page.getByRole("button", { name: "Refresh" }).click();
+  await expect(page.getByText("Issue fetch failed: GitHub unavailable for paper-owl/api")).toBeVisible();
+  await expect(page.getByText(/Showing cached issues/)).toBeVisible();
+  await page.getByLabel("Search global issues").fill("paper-owl web #701");
+  await expect(page.getByLabel("paper-owl/web issue #701")).toBeVisible();
+  await expect(page.getByLabel("mean-weasel/web issue #440")).toHaveCount(0);
+
+  await clickNavAndExpect(page, "Board", "/workbench/board", true);
+  await expect(page.getByLabel("Board column paper-owl/web")).toBeVisible();
+  await expect(page.getByText("Issue fetch failed: GitHub unavailable for paper-owl/api")).toBeVisible();
+  await page.getByLabel("Search board issues").fill("paper-owl web #701");
+  await expect(page.getByLabel("Board issue paper-owl/web #701")).toBeVisible();
+  await expect(page.getByLabel("Board issue mean-weasel/web #440")).toHaveCount(0);
 });
 
 test("deep links workbench subpaths without a 404", async ({ page }) => {
@@ -2996,7 +3090,9 @@ test("opens repo setup and calls add patch delete repo endpoints", async ({ page
     });
   });
   page.on("dialog", async (dialog) => {
-    expect(dialog.message()).toBe("Remove mean-weasel/web?");
+  expect(dialog.message()).toBe(
+    "Remove mean-weasel/web from issuectl tracking? GitHub data is not deleted.",
+  );
     await dialog.accept();
   });
 
@@ -3224,11 +3320,11 @@ test("exposes issue queue actions with semantic controls", async ({ page }) => {
   await gotoWorkbenchWithRetry(page);
 
   const filters = page.getByRole("group", { name: "Issue filters" });
-  await expect(filters.getByRole("button", { name: "Open work 4" })).toHaveAttribute("aria-pressed", "true");
+  await expect(filters.getByRole("button", { name: "All open 4" })).toHaveAttribute("aria-pressed", "true");
   await filters.getByRole("button", { name: "Running 3" }).click();
   await expect(filters.getByRole("button", { name: "Running 3" })).toHaveAttribute("aria-pressed", "true");
 
-  await filters.getByRole("button", { name: "Open work 4" }).click();
+  await filters.getByRole("button", { name: "All open 4" }).click();
   const issueAction = page
     .getByLabel("Issue #512")
     .getByRole("button", { name: "Open #512: Desktop instance manager workbench" });
@@ -3254,7 +3350,7 @@ test("filters repo issues and links details and running sessions", async ({ page
 
   await page.goto(`${baseUrl}/workbench`);
 
-  await expect(page.getByText("open work 4", { exact: true })).toBeVisible();
+  await expect(page.getByText("all open 4", { exact: true })).toBeVisible();
   const issueRows = page.getByLabel("Repo issue queue").getByRole("article");
   await expect(issueRows).toHaveCount(4);
   for (let index = 0; index < 4; index += 1) {
@@ -3270,7 +3366,7 @@ test("filters repo issues and links details and running sessions", async ({ page
   await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 0" }).click();
   await expect(page.getByLabel("Repo issue queue").getByRole("article")).toHaveCount(0);
 
-  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Open work 4" }).click();
+  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "All open 4" }).click();
   await expect(page.getByLabel("Issue #512").getByRole("button", { name: "Prepare launch" })).toBeVisible();
   await expect(page.getByLabel("Issue #512").getByRole("button", { name: "Launch", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Issue #512").locator("[data-card-chip]")).toHaveCount(2);
@@ -3373,7 +3469,7 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   });
 
   await gotoWorkbenchWithRetry(page);
-  await page.getByLabel("Issue #512").getByRole("button", { name: "Prepare launch" }).click();
+  await prepareIssueFromWorkbenchOverview(page, 512);
   await expect(page.getByText("Loading issue #512")).toBeVisible();
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.locator("strong", { hasText: "bold" })).toBeVisible();
@@ -3409,7 +3505,11 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench renamed" })).toBeVisible();
   await issueActions.getByLabel("Priority").selectOption("normal");
   await expect(page.getByRole("status")).toContainText("Priority updated");
-  await expect(page.getByLabel("Issue #512")).toContainText("normal");
+  if (await workbenchUsesCompactIssueCards(page)) {
+    await expect(page.getByLabel("Workbench focus")).toContainText("normal");
+  } else {
+    await expect(page.getByLabel("Issue #512")).toContainText("normal");
+  }
   await expect(preamble).toHaveValue("Keep this launch context");
   await expect(issueActions.getByLabel("Comment", { exact: true })).toHaveValue("");
   await expect(issueActions.getByRole("button", { name: "Add comment" })).toBeDisabled();
@@ -3419,10 +3519,15 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await expect(issueActions.getByLabel("Comment", { exact: true })).toHaveValue("");
   await issueActions.getByText("State and labels").click();
   await issueActions.getByRole("button", { name: "Close issue" }).click();
+  await expect(issueActions.getByText("Close issue?")).toBeVisible();
+  await expect(issueActions.getByText("Updates mean-weasel/issuectl #512 on GitHub.")).toBeVisible();
+  await issueActions.getByRole("button", { name: "Confirm close issue" }).click();
   await expect(page.getByRole("status")).toContainText("Issue state updated");
-  await expect(page.getByLabel("Issue #512")).toHaveCount(0);
-  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
-  await expect(page.getByLabel("Issue #512")).toBeVisible();
+  if (!await workbenchUsesCompactIssueCards(page)) {
+    await expect(page.getByLabel("Issue #512")).toHaveCount(0);
+    await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
+    await expect(page.getByLabel("Issue #512")).toBeVisible();
+  }
   await issueActions.getByRole("button", { name: "Add label" }).click();
   await expect(page.getByRole("status")).toContainText("Label updated");
   await expect(page.getByLabel("Issue labels")).toContainText("workbench");
@@ -3439,10 +3544,17 @@ test("loads issue detail and calls issue mutation endpoints", async ({ page }) =
   await issueActions.getByLabel("Reassign target").selectOption("mean-weasel/bugdrop");
   await expect(issueActions.getByRole("button", { name: "Reassign" })).toBeEnabled();
   await issueActions.getByRole("button", { name: "Reassign" }).click();
+  await expect(issueActions.getByText("Reassign issue?")).toBeVisible();
+  await expect(
+    issueActions.getByText("Moves mean-weasel/issuectl #512 to mean-weasel/bugdrop."),
+  ).toBeVisible();
+  await issueActions.getByRole("button", { name: "Confirm reassign" }).click();
   await expect(page.getByRole("heading", { name: "#612 Reassigned issue #612" })).toBeVisible();
-  await page.getByRole("button", { name: "mean-weasel/issuectl" }).click();
-  await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
-  await expect(page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512")).toBeVisible();
+  if (!await workbenchUsesCompactIssueCards(page)) {
+    await page.getByRole("button", { name: "mean-weasel/issuectl" }).click();
+    await page.getByRole("group", { name: "Issue filters" }).getByRole("button", { name: "Closed 1" }).click();
+    await expectIssueInWorkbenchOverview(page, 512);
+  }
 });
 
 test("empty repositories add action opens repo setup", async ({ page }) => {
@@ -3450,8 +3562,8 @@ test("empty repositories add action opens repo setup", async ({ page }) => {
 
   await gotoWorkbenchWithRetry(page);
   await expect(page.getByRole("heading", { name: "No tracked repositories" })).toBeVisible();
-  await expect(page.getByLabel("Workbench focus").getByRole("button", { name: "Open settings" })).toBeVisible();
-  await page.getByLabel("Workbench focus").getByRole("button", { name: "Add repository" }).click();
+  await expect(page.getByLabel("Workbench focus").getByRole("link", { name: "Open settings" })).toBeVisible();
+  await page.getByLabel("Workbench focus").getByRole("link", { name: "Add repository" }).click();
   await expect(page).toHaveURL(new RegExp("/workbench/settings\\?repoSetup=1$"));
   await page.goto("about:blank");
 });
@@ -3538,7 +3650,7 @@ test("checks worktree status and launches an issue with selected context", async
   });
 
   await gotoWorkbenchWithRetry(page);
-  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
+  await openIssueFromWorkbenchOverview(page, 512);
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Codex", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Launch options").getByText("Claude Code", { exact: true })).toBeVisible();
@@ -3550,8 +3662,13 @@ test("checks worktree status and launches an issue with selected context", async
   await expect(page.getByLabel("Branch")).toHaveValue("issue-512-desktop-instance-manager-workbench");
   await expect(page.getByText("Dirty worktree warning")).toBeVisible();
   await page.getByRole("button", { name: "Reset worktree" }).click();
+  await expect(page.getByText("Reset worktree?")).toBeVisible();
+  await expect(page.getByText(/Unsaved local changes can be lost/)).toBeVisible();
+  await page.getByRole("button", { name: "Confirm reset worktree" }).click();
   await expect(page.getByText("Dirty worktree warning")).toHaveCount(0);
   await page.getByRole("button", { name: "Cleanup stale" }).click();
+  await expect(page.getByText("Cleanup stale worktrees?")).toBeVisible();
+  await page.getByRole("button", { name: "Confirm cleanup stale" }).click();
 
   await page.getByRole("button", { name: "Launch issue" }).click();
   await expect(
@@ -3559,10 +3676,15 @@ test("checks worktree status and launches an issue with selected context", async
   ).toBeVisible();
   await expect(page.getByLabel("Session #512")).toHaveCount(0);
   await page.getByRole("button", { name: "Launch issue" }).click();
-  await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-instances-pane", "visible");
+  await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute(
+    "data-instances-pane",
+    await workbenchUsesCompactIssueCards(page) ? "collapsed" : "visible",
+  );
   await expect(page.getByRole("main", { name: "Workbench" })).toHaveAttribute("data-issues-pane", "collapsed");
-  await expect(page.getByLabel("Session #512")).toBeVisible();
-  await expect(page.getByLabel("Session #512")).toContainText("codex");
+  if (!await workbenchUsesCompactIssueCards(page)) {
+    await expect(page.getByLabel("Session #512")).toBeVisible();
+    await expect(page.getByLabel("Session #512")).toContainText("codex");
+  }
   await expect(page.getByRole("heading", { name: /#512/ })).toBeVisible();
   await expect.poll(async () =>
     page.getByLabel("Workbench focus").evaluate((element) => element.scrollTop),
@@ -3653,7 +3775,7 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
   });
 
   await gotoWorkbenchWithRetry(page);
-  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
+  await openIssueFromWorkbenchOverview(page, 512);
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.getByLabel("Terminal backend for new launch")).toContainText("TTYD");
   await page.getByLabel("Terminal backend for this launch").selectOption("pty_bridge");
@@ -3699,7 +3821,7 @@ test("launches an issue with the PTY bridge backend and keeps the terminal sessi
 
   await page.getByRole("button", { name: "Back to overview" }).click();
   await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
-  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
+  await openIssueFromWorkbenchOverview(page, 512);
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\/workbench\?repo=mean-weasel%2Fissuectl$/);
@@ -3889,7 +4011,7 @@ test("moves focus into workbench focus after repo issue session and mode changes
 
   await page.getByRole("button", { name: "mean-weasel/issuectl" }).click();
   await expect(page.getByLabel("Workbench focus")).toBeFocused();
-  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel("Issue #512").click();
+  await openIssueFromWorkbenchOverview(page, 512);
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
   await expect(page.getByLabel("Workbench focus")).toBeFocused();
 
@@ -4181,6 +4303,46 @@ async function expectBoardScrollsHorizontally(page: import("@playwright/test").P
     await expect.poll(async () => board.evaluate((element) => element.scrollLeft))
       .toBeGreaterThan(0);
   }
+}
+
+async function openIssueFromWorkbenchOverview(page: import("@playwright/test").Page, issueNumber: number) {
+  await expectIssueInWorkbenchOverview(page, issueNumber);
+  if (await workbenchUsesCompactIssueCards(page)) {
+    await page
+      .getByLabel("Compact repo issues")
+      .getByLabel(`Issue #${issueNumber}`)
+      .getByRole("button", { name: "Open issue" })
+      .click();
+    return;
+  }
+  await page.getByRole("complementary", { name: "Repo issues" }).getByLabel(`Issue #${issueNumber}`).click();
+}
+
+async function prepareIssueFromWorkbenchOverview(page: import("@playwright/test").Page, issueNumber: number) {
+  await expectIssueInWorkbenchOverview(page, issueNumber);
+  if (await workbenchUsesCompactIssueCards(page)) {
+    await page
+      .getByLabel("Compact repo issues")
+      .getByLabel(`Issue #${issueNumber}`)
+      .getByRole("button", { name: "Open issue" })
+      .click();
+    return;
+  }
+  await page.getByLabel(`Issue #${issueNumber}`).getByRole("button", { name: "Prepare launch" }).click();
+}
+
+async function expectIssueInWorkbenchOverview(page: import("@playwright/test").Page, issueNumber: number) {
+  if (await workbenchUsesCompactIssueCards(page)) {
+    await expect(page.getByLabel("Compact repo issues").getByLabel(`Issue #${issueNumber}`)).toBeVisible();
+    return;
+  }
+  await expect(page.getByRole("complementary", { name: "Repo issues" }).getByLabel(`Issue #${issueNumber}`))
+    .toBeVisible();
+}
+
+async function workbenchUsesCompactIssueCards(page: import("@playwright/test").Page): Promise<boolean> {
+  const sidePaneState = await page.getByRole("main", { name: "Workbench" }).getAttribute("data-side-panes");
+  return sidePaneState === "collapsed";
 }
 
 async function expectNoHorizontalPageScroll(page: import("@playwright/test").Page) {

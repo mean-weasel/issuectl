@@ -174,6 +174,9 @@ function SessionCard({
           <summary>End</summary>
           <div className={styles.confirmBox}>
             <strong>End session?</strong>
+            <p>
+              Stops deployment {deployment.id} for {repo.owner}/{repo.name} {targetLabel}; the GitHub issue stays open.
+            </p>
             <button type="button" onClick={(event) => closeDetails(event.currentTarget)}>
               Cancel
             </button>

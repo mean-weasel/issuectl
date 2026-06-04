@@ -118,6 +118,36 @@ describe("groupIntoSections sorting and multi-repo behavior", () => {
     expect(repoNames).toContain("web");
   });
 
+  it("preserves owner identity when different owners share the same repo name", () => {
+    const meanWebRepo: Repo = { ...repo, id: 10, owner: "mean-weasel", name: "web" };
+    const paperWebRepo: Repo = { ...repo, id: 11, owner: "paper-owl", name: "web" };
+
+    const result = groupIntoSections({
+      drafts: [],
+      perRepo: [
+        {
+          repo: meanWebRepo,
+          issues: [makeIssue({ number: 440, title: "mean web issue" })],
+          deployments: [],
+          priorities: [],
+        },
+        {
+          repo: paperWebRepo,
+          issues: [makeIssue({ number: 440, title: "paper web issue" })],
+          deployments: [],
+          priorities: [],
+        },
+      ],
+    });
+
+    const identities = result.open.map((item) => {
+      if (item.kind !== "issue") throw new Error("expected issue");
+      return `${item.repo.owner}/${item.repo.name}#${item.issue.number}`;
+    });
+    expect(identities).toContain("mean-weasel/web#440");
+    expect(identities).toContain("paper-owl/web#440");
+  });
+
   it("does not confuse priority rows across repos with the same issue number", () => {
     // Regression guard: the priority map must be scoped to the repo.
     // If the impl ever keys by issueNumber alone, the api-repo issue #1

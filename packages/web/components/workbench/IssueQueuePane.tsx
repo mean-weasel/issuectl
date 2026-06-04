@@ -16,7 +16,7 @@ type Props = {
 };
 
 const FILTERS: Array<{ id: IssueQueueFilter; label: string }> = [
-  { id: "open", label: "Open work" },
+  { id: "open", label: "All open" },
   { id: "running", label: "Running" },
   { id: "closed", label: "Closed" },
 ];
@@ -51,7 +51,7 @@ export function IssueQueuePane({
             <span aria-hidden="true">&gt;</span>
           </button>
         </div>
-        <p className={styles.queueSummary}>open work {counts.open}</p>
+        <p className={styles.queueSummary}>all open {counts.open}</p>
         <div className={styles.issueFilters} role="group" aria-label="Issue filters">
           {FILTERS.map((item) => (
             <button

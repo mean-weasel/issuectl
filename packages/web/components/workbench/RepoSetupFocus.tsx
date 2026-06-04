@@ -153,7 +153,9 @@ export function RepoSetupFocus({
 
   async function removeRepo() {
     if (!editableRepo) return;
-    const confirmed = window.confirm(`Remove ${editableRepo.owner}/${editableRepo.name}?`);
+    const confirmed = window.confirm(
+      `Remove ${editableRepo.owner}/${editableRepo.name} from issuectl tracking? GitHub data is not deleted.`,
+    );
     if (!confirmed) return;
     setError(null);
     setStatus(null);

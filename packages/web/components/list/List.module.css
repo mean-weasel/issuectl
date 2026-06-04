@@ -59,13 +59,31 @@
   font-size: 14px;
   color: var(--paper-ink-soft);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 1px;
   background: none;
   border: none;
   cursor: pointer;
   padding: 4px 0;
   min-height: 44px;
+}
+
+.contextPrimary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.contextMeta {
+  max-width: 48vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--paper-mono);
+  font-size: 10px;
+  font-style: normal;
+  color: var(--paper-ink-faint);
 }
 
 .contextSep {

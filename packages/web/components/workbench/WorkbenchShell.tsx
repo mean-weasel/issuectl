@@ -889,7 +889,6 @@ export function WorkbenchShell({
             onRepoRemoved={removeRepo}
             onSettingsUpdated={updateSettings}
             onOpenRepoSetup={openRepoSetup}
-            onOpenSettings={() => selectMode("settings", "/workbench/settings")}
           />
         </section>
 
@@ -977,7 +976,6 @@ function FocusContent({
   onRepoRemoved,
   onSettingsUpdated,
   onOpenRepoSetup,
-  onOpenSettings,
 }: {
   loadState: LoadState;
   mode: WorkbenchMode;
@@ -1014,7 +1012,6 @@ function FocusContent({
   onRepoRemoved: (owner: string, name: string) => void;
   onSettingsUpdated: (settings: WorkbenchSettings) => void;
   onOpenRepoSetup: () => void;
-  onOpenSettings: () => void;
 }) {
   if (loadState.status === "loading") {
     return (
@@ -1069,22 +1066,20 @@ function FocusContent({
         <p className={styles.kicker}>Setup</p>
         <h1>No tracked repositories</h1>
         <div className={styles.emptyActions}>
-          <button
-            type="button"
+          <Link
+            href="/workbench/settings?repoSetup=1"
             className={styles.primaryButton}
             aria-label="Add repository"
-            onClick={onOpenRepoSetup}
           >
             Add repository
-          </button>
-          <button
-            type="button"
+          </Link>
+          <Link
+            href="/workbench/settings"
             className={styles.secondaryButton}
             aria-label="Open settings"
-            onClick={onOpenSettings}
           >
             Open settings
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -1095,6 +1090,10 @@ function FocusContent({
       <GlobalIssuesFocus
         repos={loadState.data.repos}
         onSelectIssue={onGlobalIssueSelected}
+        onJumpToSession={onJumpToSession}
+        onRefresh={onRefresh}
+        refreshPending={refreshPending}
+        refreshError={refreshError}
       />
     );
   }
@@ -1105,6 +1104,10 @@ function FocusContent({
         repos={loadState.data.repos}
         deployments={loadState.data.deployments}
         onSelectIssue={onGlobalIssueSelected}
+        onJumpToSession={onJumpToSession}
+        onRefresh={onRefresh}
+        refreshPending={refreshPending}
+        refreshError={refreshError}
       />
     );
   }

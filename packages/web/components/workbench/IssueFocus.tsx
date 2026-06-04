@@ -318,6 +318,10 @@ export function IssueFocus({
             {error}
           </p>
         )}
+        <p className={styles.actionProvenance}>
+          Workbench actions apply to {repo.owner}/{repo.name} #{issue.number} through the issuectl API and require an
+          active network connection.
+        </p>
         <div className={styles.issueActionGroup} aria-label="Metadata actions">
           <h2>Metadata</h2>
           <label>
@@ -384,18 +388,19 @@ export function IssueFocus({
 
         <details className={styles.issueActionGroup}>
           <summary>State and labels</summary>
-          <button
-            type="button"
+          <ConfirmAction
+            summaryLabel={state === "closed" ? "Reopen issue" : "Close issue"}
+            title={state === "closed" ? "Reopen issue?" : "Close issue?"}
+            description={`Updates ${repo.owner}/${repo.name} #${issue.number} on GitHub.`}
+            confirmLabel={state === "closed" ? "Confirm reopen issue" : "Confirm close issue"}
             disabled={pendingAction !== null}
-            onClick={() => void runAction("state", async () => {
+            onConfirm={() => void runAction("state", async () => {
               const nextState = state === "closed" ? "open" : "closed";
               await setIssueState(ref, nextState, nextState === "closed" ? "Closing from workbench" : undefined);
               updateLoadedIssue({ state: nextState });
               onIssueUpdated(issue.number, { state: nextState });
             })}
-          >
-            {state === "closed" ? "Reopen issue" : "Close issue"}
-          </button>
+          />
           <button
             type="button"
             disabled={pendingAction !== null}
@@ -439,10 +444,15 @@ export function IssueFocus({
               ))}
             </select>
           </label>
-          <button
-            type="button"
+          <ConfirmAction
+            summaryLabel="Reassign"
+            title="Reassign issue?"
+            description={selectedReassignTarget
+              ? `Moves ${repo.owner}/${repo.name} #${issue.number} to ${selectedReassignTarget.owner}/${selectedReassignTarget.name}.`
+              : "Choose a target repository before reassigning."}
+            confirmLabel="Confirm reassign"
             disabled={pendingAction !== null || !selectedReassignTarget}
-            onClick={() => void runAction("reassign", async () => {
+            onConfirm={() => void runAction("reassign", async () => {
               if (!selectedReassignTarget) return;
               const result = await reassignIssue(ref, selectedReassignTarget.owner, selectedReassignTarget.name);
               const reassigned = {
@@ -453,9 +463,7 @@ export function IssueFocus({
               setReassignedIssue(reassigned);
               onIssueReassigned(reassigned);
             })}
-          >
-            Reassign
-          </button>
+          />
           <label>
             Image
             <input
@@ -546,30 +554,36 @@ export function IssueFocus({
               {worktreeStatus?.dirty && !forceResume && (
                 <div role="alert">
                   <p>Dirty worktree warning</p>
-                  <button
-                    type="button"
+                  <ConfirmAction
+                    summaryLabel="Reset worktree"
+                    title="Reset worktree?"
+                    description={`Resets local worktree state for ${repo.owner}/${repo.name} #${issue.number}. Unsaved local changes can be lost.`}
+                    confirmLabel="Confirm reset worktree"
                     disabled={pendingAction !== null}
-                    onClick={() => void runAction("reset worktree", async () => {
+                    onConfirm={() => void runAction("reset worktree", async () => {
                       await resetIssueWorktree(ref);
                       setWorktreeStatus({ ...worktreeStatus, dirty: false });
                     })}
-                  >
-                    Reset worktree
-                  </button>
+                  />
                   <button type="button" onClick={() => setForceResume(true)}>
                     Resume with changes
                   </button>
                 </div>
               )}
-              <button
-                type="button"
+              <ConfirmAction
+                summaryLabel="Cleanup stale"
+                title="Cleanup stale worktrees?"
+                description="Removes stale issuectl worktrees that are no longer tied to active sessions."
+                confirmLabel="Confirm cleanup stale"
                 disabled={pendingAction !== null}
-                onClick={() => void runAction("cleanup worktrees", async () => {
+                onConfirm={() => void runAction("cleanup worktrees", async () => {
                   await cleanupWorktrees();
                 })}
-              >
-                Cleanup stale
-              </button>
+              />
+              <p className={styles.launchProvenance}>
+                Launch creates an active {terminalBackendLabel(selectedBackend)} session for {repo.owner}/{repo.name}
+                #{issue.number} on branch {branchName}.
+              </p>
               <button
                 type="button"
                 disabled={pendingAction !== null}
@@ -618,6 +632,63 @@ export function IssueFocus({
 
 function terminalBackendLabel(backend: TerminalBackend): string {
   return backend === "pty_bridge" ? "PTY bridge" : "TTYD";
+}
+
+function ConfirmAction({
+  summaryLabel,
+  title,
+  description,
+  confirmLabel,
+  disabled,
+  onConfirm,
+}: {
+  summaryLabel: string;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  disabled: boolean;
+  onConfirm: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (disabled) {
+    return (
+      <button type="button" disabled>
+        {summaryLabel}
+      </button>
+    );
+  }
+
+  return (
+    <div className={`${styles.confirmAction} ${styles.issueConfirmDetails}`}>
+      <button
+        type="button"
+        className={styles.confirmSummaryButton}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {summaryLabel}
+      </button>
+      {open && (
+        <div className={styles.confirmBox}>
+          <strong>{title}</strong>
+          <p>{description}</p>
+          <button type="button" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onConfirm();
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DeploymentRow({

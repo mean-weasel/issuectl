@@ -892,6 +892,10 @@
   position: relative;
 }
 
+.confirmAction {
+  position: relative;
+}
+
 .endDetails summary {
   min-height: 28px;
   display: grid;
@@ -909,6 +913,22 @@
 
 .endDetails summary::-webkit-details-marker {
   display: none;
+}
+
+.confirmSummaryButton {
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0 9px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--paper-ink-muted);
+  cursor: pointer;
+  font-family: var(--paper-serif);
+  font-size: 12px;
+  font-style: italic;
+  list-style: none;
 }
 
 .endDetails:not([open]) .confirmBox {
@@ -933,6 +953,12 @@
 .confirmBox strong {
   font-family: var(--paper-serif);
   font-weight: 500;
+}
+
+.confirmBox p {
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .confirmBox button {
@@ -1313,10 +1339,32 @@
   grid-column: 1 / -1;
 }
 
+.actionProvenance {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .issueActionGroup {
   padding: 12px;
   border: 1px solid var(--paper-line);
   background: rgba(255, 255, 255, 0.34);
+}
+
+.issueConfirmDetails {
+  justify-self: start;
+}
+
+.issueConfirmDetails .confirmBox {
+  position: static;
+  width: min(100%, 280px);
+  margin-top: 8px;
+}
+
+.launchProvenance {
+  margin: 0;
 }
 
 .issueActionGroup h2,
@@ -1522,9 +1570,74 @@
 
 .boardControls {
   display: flex;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   margin: 18px 0;
+}
+
+.globalIssueControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 18px 0 10px;
+}
+
+.compactButtonGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.boardControls .primaryButton,
+.boardControls .secondaryButton,
+.globalIssueControls .primaryButton,
+.globalIssueControls .secondaryButton {
+  margin-top: 0;
+}
+
+.workbenchSearchInput {
+  min-height: 40px;
+  min-width: min(100%, 300px);
+  flex: 1 1 280px;
+  padding: 0 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.32);
+  color: var(--paper-ink);
+  font: 16px var(--paper-serif);
+}
+
+.workbenchSearchInput::placeholder {
+  color: color-mix(in srgb, var(--paper-ink-muted) 74%, transparent);
+}
+
+.globalIssueStatus,
+.repoIssueHealth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.globalIssueStatus {
+  margin: 0 0 16px;
+}
+
+.repoIssueHealth {
+  margin: -2px 0 8px;
+}
+
+.globalIssueStatus span,
+.repoIssueHealth span {
+  padding: 4px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.26);
 }
 
 .boardScroll {
@@ -1572,11 +1685,14 @@
 .primaryButton,
 .secondaryButton {
   min-height: 40px;
+  display: inline-flex;
+  align-items: center;
   margin-top: 18px;
   padding: 0 14px;
   border-radius: var(--paper-radius-sm);
   font-family: var(--paper-serif);
   font-style: italic;
+  text-decoration: none;
 }
 
 .primaryButton {
@@ -1586,12 +1702,9 @@
 }
 
 .secondaryButton {
-  display: inline-flex;
-  align-items: center;
   border: 1px solid var(--paper-line);
   background: rgba(255, 255, 255, 0.22);
   color: var(--paper-ink);
-  text-decoration: none;
 }
 
 .primaryButton:disabled {

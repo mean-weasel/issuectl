@@ -157,6 +157,34 @@
   color: var(--paper-ink-muted);
 }
 
+.repoIdentity {
+  min-width: 0;
+  max-width: min(260px, 100%);
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg-warm);
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.repoOwner {
+  color: var(--paper-ink-faint);
+  font-weight: 500;
+}
+
+.repoName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--paper-ink-soft);
+}
+
 .num {
   font-family: var(--paper-mono);
   color: var(--paper-ink-faint);
@@ -179,6 +207,20 @@
   align-items: center;
   gap: 3px;
   color: var(--paper-ink-faint);
+}
+
+.labelOverflow {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border: 1px dashed var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  color: var(--paper-ink-muted);
+  background: var(--paper-bg);
+  font-family: var(--paper-sans);
+  font-size: var(--paper-fs-xs);
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .commentIcon {
