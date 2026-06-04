@@ -1,18 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
   repoMatchesDashboardView,
-  type DashboardIssueView,
 } from "./dashboard-issue-views";
+import {
+  type GlobalIssueSortMode,
+  type GlobalIssueStatusFilter,
+} from "./dashboard-url-state";
+import { useGlobalIssueDashboardUrlState } from "./dashboard-url-state-hooks";
 import { deploymentForIssue } from "./workbench-selectors";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
-
-type IssueStatusFilter = "all" | "open" | "running" | "closed";
-type IssueSortMode = "updated" | "priority";
 
 type Props = {
   repos: WorkbenchRepo[];
@@ -23,14 +24,14 @@ type Props = {
   refreshError: string | null;
 };
 
-const STATUS_FILTERS: Array<{ id: IssueStatusFilter; label: string }> = [
+const STATUS_FILTERS: Array<{ id: GlobalIssueStatusFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "open", label: "Open" },
   { id: "running", label: "Running" },
   { id: "closed", label: "Closed" },
 ];
 
-const SORT_MODES: Array<{ id: IssueSortMode; label: string }> = [
+const SORT_MODES: Array<{ id: GlobalIssueSortMode; label: string }> = [
   { id: "updated", label: "Updated" },
   { id: "priority", label: "Priority" },
 ];
@@ -49,10 +50,8 @@ export function GlobalIssuesFocus({
   refreshPending,
   refreshError,
 }: Props) {
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<IssueStatusFilter>("all");
-  const [sortMode, setSortMode] = useState<IssueSortMode>("updated");
-  const [issueView, setIssueView] = useState<DashboardIssueView>("all");
+  const [urlState, setUrlState] = useGlobalIssueDashboardUrlState();
+  const { query, status: statusFilter, sort: sortMode, view: issueView } = urlState;
   const totalIssues = repos.reduce((count, repo) => count + repo.issues.length, 0);
   const failedRepos = repos.filter((repo) => repo.issueError).length;
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
@@ -90,7 +89,7 @@ export function GlobalIssuesFocus({
           type="search"
           value={query}
           placeholder="Search issue, repo, label, author, or number"
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => setUrlState({ query: event.target.value })}
         />
         <div className={styles.compactButtonGroup} role="group" aria-label="Global issue status">
           {STATUS_FILTERS.map((item) => (
@@ -99,7 +98,7 @@ export function GlobalIssuesFocus({
               type="button"
               className={statusFilter === item.id ? styles.primaryButton : styles.secondaryButton}
               aria-pressed={statusFilter === item.id}
-              onClick={() => setStatusFilter(item.id)}
+              onClick={() => setUrlState({ status: item.id })}
             >
               {item.label}
             </button>
@@ -112,7 +111,7 @@ export function GlobalIssuesFocus({
               type="button"
               className={sortMode === item.id ? styles.primaryButton : styles.secondaryButton}
               aria-pressed={sortMode === item.id}
-              onClick={() => setSortMode(item.id)}
+              onClick={() => setUrlState({ sort: item.id })}
             >
               {item.label}
             </button>
@@ -125,7 +124,7 @@ export function GlobalIssuesFocus({
               type="button"
               className={issueView === item.id ? styles.primaryButton : styles.secondaryButton}
               aria-pressed={issueView === item.id}
-              onClick={() => setIssueView(item.id)}
+              onClick={() => setUrlState({ view: item.id })}
             >
               {item.label} {item.count}
             </button>
@@ -235,7 +234,7 @@ function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
 
 function sortIssues(
   issues: WorkbenchIssueSummary[],
-  sortMode: IssueSortMode,
+  sortMode: GlobalIssueSortMode,
 ): WorkbenchIssueSummary[] {
   return [...issues].sort((left, right) => {
     if (sortMode === "priority") {
@@ -249,7 +248,7 @@ function sortIssues(
 function matchesStatus(
   repo: WorkbenchRepo,
   issue: WorkbenchIssueSummary,
-  statusFilter: IssueStatusFilter,
+  statusFilter: GlobalIssueStatusFilter,
 ): boolean {
   if (statusFilter === "all") return true;
   return issueStatus(issue, deploymentForIssue(repo, issue.number)) === statusFilter;
@@ -258,7 +257,7 @@ function matchesStatus(
 function issueStatus(
   issue: WorkbenchIssueSummary,
   deployment: WorkbenchDeployment | null,
-): Exclude<IssueStatusFilter, "all"> {
+): Exclude<GlobalIssueStatusFilter, "all"> {
   if (issue.state === "closed") return "closed";
   return deployment || issue.hasActiveDeployment ? "running" : "open";
 }
