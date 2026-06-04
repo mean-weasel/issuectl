@@ -1431,7 +1431,7 @@ test("keeps compact empty and service failure states stable in WebKit", async ({
   await withFreshMobilePage(async (page) => {
     await page.goto(`${baseUrl}/workbench`);
     await expect(page.getByRole("heading", { name: "No tracked repositories" })).toBeVisible();
-    await expect(page.getByLabel("Workbench focus").getByRole("button", { name: "Add repository" })).toBeVisible();
+    await expect(page.getByLabel("Workbench focus").getByRole("link", { name: "Add repository" })).toBeVisible();
     await expectCompactWorkbenchViewport(page);
   });
 
