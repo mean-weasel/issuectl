@@ -1,6 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  dashboardIssueViewSummaries,
+  filterDashboardIssues,
+  repoMatchesDashboardView,
+  type DashboardIssueView,
+} from "./dashboard-issue-views";
 import { deploymentForIssue } from "./workbench-selectors";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
@@ -46,22 +52,27 @@ export function GlobalIssuesFocus({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<IssueStatusFilter>("all");
   const [sortMode, setSortMode] = useState<IssueSortMode>("updated");
+  const [issueView, setIssueView] = useState<DashboardIssueView>("all");
   const totalIssues = repos.reduce((count, repo) => count + repo.issues.length, 0);
   const failedRepos = repos.filter((repo) => repo.issueError).length;
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
+  const viewSummaries = useMemo(() => dashboardIssueViewSummaries(repos), [repos]);
   const repoRows = useMemo(
-    () => repos.map((repo) => ({
-      repo,
-      issues: sortIssues(
-        repo.issues.filter((issue) =>
-          matchesIssue(repo, issue, query) && matchesStatus(repo, issue, statusFilter),
+    () => repos
+      .filter((repo) => repoMatchesDashboardView(repo, issueView))
+      .map((repo) => ({
+        repo,
+        issues: sortIssues(
+          filterDashboardIssues(repo, issueView).filter((issue) =>
+            matchesIssue(repo, issue, query) && matchesStatus(repo, issue, statusFilter),
+          ),
+          sortMode,
         ),
-        sortMode,
-      ),
-    })),
-    [query, repos, sortMode, statusFilter],
+      })),
+    [issueView, query, repos, sortMode, statusFilter],
   );
   const visibleIssues = repoRows.reduce((count, row) => count + row.issues.length, 0);
+  const currentView = viewSummaries.find((view) => view.id === issueView);
 
   return (
     <div className={styles.focusInner}>
@@ -70,7 +81,7 @@ export function GlobalIssuesFocus({
       <p className={styles.muted}>
         {totalIssues === 0
           ? "No matching issues."
-          : `${visibleIssues} of ${totalIssues} issues across ${repos.length} tracked repositories.`}
+          : `${visibleIssues} shown in ${currentView?.label.toLowerCase() ?? "all"} view across ${repos.length} tracked repositories.`}
       </p>
       <div aria-label="Global issue controls" className={styles.globalIssueControls}>
         <input
@@ -104,6 +115,19 @@ export function GlobalIssuesFocus({
               onClick={() => setSortMode(item.id)}
             >
               {item.label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.compactButtonGroup} role="group" aria-label="Operational issue views">
+          {viewSummaries.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={issueView === item.id ? styles.primaryButton : styles.secondaryButton}
+              aria-pressed={issueView === item.id}
+              onClick={() => setIssueView(item.id)}
+            >
+              {item.label} {item.count}
             </button>
           ))}
         </div>
