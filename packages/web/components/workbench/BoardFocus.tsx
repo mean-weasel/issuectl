@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
+import { DashboardEmptyState, RepoIssueHealth } from "./DashboardStatusBlocks";
 import {
   boardPresetIdForState,
   boardPresetState,
@@ -11,9 +12,7 @@ import {
   repoMatchesDashboardView,
   type DashboardIssueView,
 } from "./dashboard-issue-views";
-import {
-  type BoardSortMode,
-} from "./dashboard-url-state";
+import { DEFAULT_BOARD_URL_STATE, type BoardSortMode } from "./dashboard-url-state";
 import { useBoardDashboardUrlState } from "./dashboard-url-state-hooks";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
@@ -62,6 +61,10 @@ export function BoardFocus({
   );
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = boardPresetIdForState(urlState);
+  const hasDashboardFilters = query.trim() !== ""
+    || runningOnly !== DEFAULT_BOARD_URL_STATE.runningOnly
+    || sortMode !== DEFAULT_BOARD_URL_STATE.sort
+    || issueView !== DEFAULT_BOARD_URL_STATE.view;
 
   return (
     <div className={`${styles.focusInner} ${styles.boardFocus}`}>
@@ -137,6 +140,15 @@ export function BoardFocus({
           {cachedRepos > 0 && <span>{cachedRepos} repo issue lists from cache</span>}
           {refreshError && <span>Refresh failed: {refreshError}</span>}
         </div>
+      )}
+      {visibleIssues === 0 && (
+        <DashboardEmptyState
+          buttonLabel="Clear dashboard filters"
+          canReset={hasDashboardFilters}
+          description="Clear the dashboard filters to return to the full cross-repo board."
+          onReset={() => setUrlState(DEFAULT_BOARD_URL_STATE)}
+          title="No board issues match these filters."
+        />
       )}
 
       <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
@@ -262,19 +274,6 @@ function deploymentForBoardIssue(
   return repo.deployments.find((deployment) => deployment.issueNumber === issue.number)
     ?? deployments.find((deployment) => deployment.repoId === repo.id && deployment.issueNumber === issue.number)
     ?? null;
-}
-
-function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
-  if (!repo.issueError && !repo.issuesFromCache) return null;
-
-  return (
-    <div className={styles.repoIssueHealth} role={repo.issueError ? "alert" : "status"}>
-      {repo.issueError && <span>Issue fetch failed: {repo.issueError}</span>}
-      {repo.issuesFromCache && (
-        <span>Showing cached issues{repo.issuesCachedAt ? ` from ${formatAge(repo.issuesCachedAt)}` : ""}</span>
-      )}
-    </div>
-  );
 }
 
 function matchesBoardIssue(

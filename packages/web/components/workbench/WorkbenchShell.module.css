@@ -1611,6 +1611,29 @@
   line-height: 1;
 }
 
+.dashboardEmptyState {
+  align-items: flex-start;
+  background: var(--paper-bg-warm);
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  color: var(--paper-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0;
+  max-width: 620px;
+  padding: 12px;
+}
+
+.dashboardEmptyState span {
+  color: var(--paper-ink-muted);
+  font-size: 13px;
+}
+
+.dashboardEmptyState .secondaryButton {
+  margin-top: 2px;
+}
+
 .boardControls .primaryButton,
 .boardControls .secondaryButton,
 .globalIssueControls .primaryButton,
