@@ -1,4 +1,11 @@
 import { useMemo, useState } from "react";
+import {
+  dashboardIssueViewSummaries,
+  filterDashboardIssues,
+  isDashboardIssueRunning,
+  repoMatchesDashboardView,
+  type DashboardIssueView,
+} from "./dashboard-issue-views";
 import type { WorkbenchDeployment, WorkbenchIssueSummary, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
@@ -32,23 +39,30 @@ export function BoardFocus({
   const [runningOnly, setRunningOnly] = useState(false);
   const [sortMode, setSortMode] = useState<BoardSortMode>("payload");
   const [query, setQuery] = useState("");
+  const [issueView, setIssueView] = useState<DashboardIssueView>("all");
   const failedRepos = repos.filter((repo) => repo.issueError).length;
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
+  const viewSummaries = useMemo(() => dashboardIssueViewSummaries(repos, deployments), [deployments, repos]);
+  const visibleRepos = useMemo(
+    () => repos.filter((repo) => repoMatchesDashboardView(repo, issueView, deployments)),
+    [deployments, issueView, repos],
+  );
   const visibleIssues = useMemo(
     () =>
-      repos.reduce(
-        (count, repo) => count + boardIssues(repo, deployments, runningOnly, sortMode, query).length,
+      visibleRepos.reduce(
+        (count, repo) => count + boardIssues(repo, deployments, runningOnly, sortMode, query, issueView).length,
         0,
       ),
-    [deployments, query, repos, runningOnly, sortMode],
+    [deployments, issueView, query, runningOnly, sortMode, visibleRepos],
   );
+  const currentView = viewSummaries.find((view) => view.id === issueView);
 
   return (
     <div className={`${styles.focusInner} ${styles.boardFocus}`}>
       <p className={styles.kicker}>Board</p>
       <h1>Cross-repo board</h1>
       <p className={styles.muted}>
-        {visibleIssues} {runningOnly ? "running" : "open"} issues across {repos.length} tracked repositories.
+        {visibleIssues} {runningOnly ? "running" : "open"} issues in {currentView?.label.toLowerCase() ?? "all"} view across {repos.length} tracked repositories.
       </p>
 
       <div aria-label="Board controls" className={styles.boardControls}>
@@ -84,6 +98,19 @@ export function BoardFocus({
         >
           Sort by priority
         </button>
+        <div className={styles.compactButtonGroup} role="group" aria-label="Board operational views">
+          {viewSummaries.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={issueView === item.id ? styles.primaryButton : styles.secondaryButton}
+              aria-pressed={issueView === item.id}
+              onClick={() => setIssueView(item.id)}
+            >
+              {item.label} {item.count}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           className={styles.secondaryButton}
@@ -102,8 +129,8 @@ export function BoardFocus({
       )}
 
       <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
-        {repos.map((repo) => {
-          const issues = boardIssues(repo, deployments, runningOnly, sortMode, query);
+        {visibleRepos.map((repo) => {
+          const issues = boardIssues(repo, deployments, runningOnly, sortMode, query, issueView);
           return (
             <section
               key={repo.id}
@@ -193,8 +220,9 @@ function boardIssues(
   runningOnly: boolean,
   sortMode: BoardSortMode,
   query: string,
+  issueView: DashboardIssueView,
 ): WorkbenchIssueSummary[] {
-  const visibleIssues = repo.issues.filter((issue) =>
+  const visibleIssues = filterDashboardIssues(repo, issueView, deployments).filter((issue) =>
     issue.state === "open"
     && matchesBoardIssue(repo, issue, query)
     && (!runningOnly || isRunningIssue(repo, deployments, issue)),
@@ -212,8 +240,7 @@ function isRunningIssue(
   deployments: WorkbenchDeployment[],
   issue: WorkbenchIssueSummary,
 ): boolean {
-  return issue.hasActiveDeployment
-    || Boolean(deploymentForBoardIssue(repo, deployments, issue));
+  return isDashboardIssueRunning(repo, issue, deployments);
 }
 
 function deploymentForBoardIssue(

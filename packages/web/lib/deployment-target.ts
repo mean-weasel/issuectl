@@ -13,7 +13,7 @@ export function getDeploymentTarget(deployment: DeploymentTargetCompat): {
   targetNumber: number;
 } {
   const targetType = deployment.targetType ?? "issue";
-  const targetNumber = deployment.targetNumber ?? deployment.issueNumber;
+  const targetNumber = deployment.targetNumber ?? (targetType === "issue" ? deployment.issueNumber : undefined);
   if (typeof targetNumber !== "number" || !Number.isInteger(targetNumber) || targetNumber <= 0) {
     throw new Error("Deployment target is missing");
   }

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { issue, payloadFixture, realisticPayloadFixture, repo } from "./workbench-test-fixtures";
 import {
+  dashboardIssueViewSummaries,
+  filterDashboardIssues,
+  repoMatchesDashboardView,
+} from "./dashboard-issue-views";
+import {
   compactRepoInitials,
   filterIssueQueue,
   issueQueueCounts,
@@ -205,6 +210,35 @@ describe("workbench state", () => {
     expect(filterIssueQueue(repo.issues, "running").map((item) => item.number))
       .toEqual([447, 498, 486]);
     expect(filterIssueQueue(repo.issues, "closed")).toEqual([]);
+  });
+
+  it("summarizes operational dashboard views across repos", () => {
+    const payload = realisticPayloadFixture();
+
+    expect(dashboardIssueViewSummaries(payload.repos).map((view) => [view.id, view.count]))
+      .toEqual([
+        ["all", 5],
+        ["attention", 2],
+        ["running", 3],
+        ["cached", 1],
+        ["errors", 1],
+      ]);
+  });
+
+  it("filters dashboard issues and keeps cached/error repo health visible", () => {
+    const payload = realisticPayloadFixture();
+    const issuectlRepo = payload.repos.find((item) => item.name === "issuectl");
+    const cachedRepo = payload.repos.find((item) => item.owner === "paper-owl" && item.name === "web");
+    const failedRepo = payload.repos.find((item) => item.owner === "paper-owl" && item.name === "api");
+
+    expect(issuectlRepo ? filterDashboardIssues(issuectlRepo, "attention") : [])
+      .toEqual([]);
+    expect(cachedRepo ? filterDashboardIssues(cachedRepo, "cached").map((item) => item.number) : [])
+      .toEqual([701]);
+    expect(failedRepo ? filterDashboardIssues(failedRepo, "errors") : [])
+      .toEqual([]);
+    expect(failedRepo ? repoMatchesDashboardView(failedRepo, "errors") : false)
+      .toBe(true);
   });
 
   it("clamps column widths to objective UI limits", () => {
