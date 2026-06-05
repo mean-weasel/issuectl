@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
 import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
-import {
-  boardPresetIdForState,
-  boardPresetState,
-} from "./dashboard-presets";
+import { sortDashboardRepoRows } from "./dashboard-repo-ordering";
+import { boardPresetIdForState, boardPresetState } from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
@@ -47,17 +45,20 @@ export function BoardFocus({
   const failedRepos = repos.filter((repo) => repo.issueError).length;
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
   const viewSummaries = useMemo(() => dashboardIssueViewSummaries(repos, deployments), [deployments, repos]);
-  const visibleRepos = useMemo(
-    () => repos.filter((repo) => repoMatchesDashboardView(repo, issueView, deployments)),
-    [deployments, issueView, repos],
+  const visibleRows = useMemo(
+    () => sortDashboardRepoRows(
+      repos.filter((repo) => repoMatchesDashboardView(repo, issueView, deployments)).map((repo) => ({
+        repo,
+        issues: boardIssues(repo, deployments, runningOnly, sortMode, query, issueView),
+      })),
+      issueView,
+      ({ repo, issues }) => dashboardIssueSummaryCounts(issues, (issue) => isRunningIssue(repo, deployments, issue)),
+    ),
+    [deployments, issueView, query, repos, runningOnly, sortMode],
   );
   const visibleIssues = useMemo(
-    () =>
-      visibleRepos.reduce(
-        (count, repo) => count + boardIssues(repo, deployments, runningOnly, sortMode, query, issueView).length,
-        0,
-      ),
-    [deployments, issueView, query, runningOnly, sortMode, visibleRepos],
+    () => visibleRows.reduce((count, row) => count + row.issues.length, 0),
+    [visibleRows],
   );
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = boardPresetIdForState(urlState);
@@ -149,8 +150,7 @@ export function BoardFocus({
       )}
 
       <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
-        {visibleRepos.map((repo) => {
-          const issues = boardIssues(repo, deployments, runningOnly, sortMode, query, issueView);
+        {visibleRows.map(({ repo, issues }) => {
           return (
             <section
               key={repo.id}

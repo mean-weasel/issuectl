@@ -2911,6 +2911,8 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(
     page.getByRole("group", { name: "Global issue status" }).getByRole("button", { name: "Running" }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Global issues").locator("section").first())
+    .toHaveAttribute("aria-label", "Issues for mean-weasel/issuectl");
   await globalPresets.getByRole("button", { name: "Stale cache" }).click();
   await page.getByLabel("Search global issues").fill("paper-owl web");
   await issueViews.getByRole("button", { name: "Cached 1" }).click();
@@ -2919,6 +2921,8 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await issueViews.getByRole("button", { name: "Errors 2" }).click();
   await expect(page).toHaveURL(/\/workbench\/issues\?view=errors&q=paper-owl\+web$/);
   await expect(page.getByRole("heading", { name: "paper-owl/api" })).toBeVisible();
+  await expect(page.getByLabel("Global issues").locator("section").first())
+    .toHaveAttribute("aria-label", "Issues for mean-weasel/api");
   await expect(page.getByText("Issue fetch failed: GitHub unavailable for paper-owl/api")).toBeVisible();
   await expect(page.getByLabel("paper-owl/web issue #701")).toHaveCount(0);
   await issueViews.getByRole("button", { name: "All 8" }).click();
@@ -2947,6 +2951,8 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/board\?view=running&running=1$/);
   await expect(page.getByLabel("Search board issues")).toHaveValue("");
   await expect(boardPresets.getByRole("button", { name: "Active work" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Cross-repo board").locator("section").first())
+    .toHaveAttribute("aria-label", "Board column mean-weasel/issuectl");
   await page.getByRole("button", { name: "Show running only" }).click();
   const boardViews = page.getByRole("group", { name: "Board operational views" });
   await boardViews.getByRole("button", { name: "All 8" }).click();

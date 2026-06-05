@@ -3,10 +3,8 @@
 import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
 import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
-import {
-  globalIssuePresetIdForState,
-  globalIssuePresetState,
-} from "./dashboard-presets";
+import { sortDashboardRepoRows } from "./dashboard-repo-ordering";
+import { globalIssuePresetIdForState, globalIssuePresetState } from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
@@ -60,9 +58,8 @@ export function GlobalIssuesFocus({
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
   const viewSummaries = useMemo(() => dashboardIssueViewSummaries(repos), [repos]);
   const repoRows = useMemo(
-    () => repos
-      .filter((repo) => repoMatchesDashboardView(repo, issueView))
-      .map((repo) => ({
+    () => sortDashboardRepoRows(
+      repos.filter((repo) => repoMatchesDashboardView(repo, issueView)).map((repo) => ({
         repo,
         issues: sortIssues(
           filterDashboardIssues(repo, issueView).filter((issue) =>
@@ -71,6 +68,10 @@ export function GlobalIssuesFocus({
           sortMode,
         ),
       })),
+      issueView,
+      ({ repo, issues }) => dashboardIssueSummaryCounts(issues, (issue) =>
+        issueStatus(issue, deploymentForIssue(repo, issue.number)) === "running"),
+    ),
     [issueView, query, repos, sortMode, statusFilter],
   );
   const visibleIssues = repoRows.reduce((count, row) => count + row.issues.length, 0);

@@ -6,6 +6,7 @@ import {
   repoMatchesDashboardView,
 } from "./dashboard-issue-views";
 import { dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
+import { sortDashboardRepoRows } from "./dashboard-repo-ordering";
 import {
   compactRepoInitials,
   filterIssueQueue,
@@ -253,6 +254,28 @@ describe("workbench state", () => {
       runningCount: 1,
       visibleCount: 2,
     });
+  });
+
+  it("orders dashboard repos by the active operational context", () => {
+    const [issuectl, bugdrop, api] = payloadFixture().repos;
+    const rows = [
+      { repo: api, summary: { highPriorityCount: 0, runningCount: 0, visibleCount: 1 } },
+      { repo: bugdrop, summary: { highPriorityCount: 1, runningCount: 0, visibleCount: 1 } },
+      { repo: issuectl, summary: { highPriorityCount: 0, runningCount: 3, visibleCount: 4 } },
+    ];
+
+    expect(sortDashboardRepoRows(rows, "all", (row) => row.summary).map((row) => row.repo.name))
+      .toEqual(["bugdrop", "issuectl", "api"]);
+    expect(sortDashboardRepoRows(rows, "running", (row) => row.summary).map((row) => row.repo.name))
+      .toEqual(["issuectl", "api", "bugdrop"]);
+    expect(sortDashboardRepoRows(rows.map((row) =>
+      row.repo.name === "api" ? { ...row, repo: { ...row.repo, issuesFromCache: true } } : row
+    ), "cached", (row) => row.summary).map((row) => row.repo.name))
+      .toEqual(["api", "bugdrop", "issuectl"]);
+    expect(sortDashboardRepoRows(rows.map((row) =>
+      row.repo.name === "bugdrop" ? { ...row, repo: { ...row.repo, issueError: "failed" } } : row
+    ), "errors", (row) => row.summary).map((row) => row.repo.name))
+      .toEqual(["bugdrop", "api", "issuectl"]);
   });
 
   it("clamps column widths to objective UI limits", () => {
