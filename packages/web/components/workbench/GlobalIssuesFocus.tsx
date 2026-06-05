@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
 import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
 import { sortDashboardRepoRows } from "./dashboard-repo-ordering";
+import { DashboardRepoGroupingControls, DashboardRepoHeader, useDashboardRepoCollapse } from "./dashboard-repo-collapse";
 import { globalIssuePresetIdForState, globalIssuePresetState } from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
@@ -78,6 +79,7 @@ export function GlobalIssuesFocus({
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = globalIssuePresetIdForState(urlState);
   const hasDashboardFilters = query.trim() !== "" || statusFilter !== DEFAULT_GLOBAL_ISSUE_URL_STATE.status || sortMode !== DEFAULT_GLOBAL_ISSUE_URL_STATE.sort || issueView !== DEFAULT_GLOBAL_ISSUE_URL_STATE.view;
+  const repoCollapse = useDashboardRepoCollapse("globalIssues", repos);
 
   return (
     <div className={styles.focusInner}>
@@ -142,6 +144,7 @@ export function GlobalIssuesFocus({
             </button>
           ))}
         </div>
+        <DashboardRepoGroupingControls ariaLabel="Global repo grouping" collapse={repoCollapse} repos={repoRows.map(({ repo }) => repo)} />
         <button
           type="button"
           className={styles.secondaryButton}
@@ -168,20 +171,16 @@ export function GlobalIssuesFocus({
         />
       )}
       <div aria-label="Global issues">
-        {repoRows.map(({ repo, issues }) => (
+        {repoRows.map(({ repo, issues }) => {
+          const collapsed = repoCollapse.isCollapsed(repo); return (
           <section key={repo.id} aria-label={`Issues for ${repo.owner}/${repo.name}`}>
-            <h2>{repo.owner}/{repo.name}</h2>
+            <DashboardRepoHeader collapsed={collapsed} onToggle={() => repoCollapse.toggleRepo(repo)} repo={repo} />
             <RepoDashboardSummary
               repo={repo}
-              {...dashboardIssueSummaryCounts(
-                issues,
-                (issue) => issueStatus(issue, deploymentForIssue(repo, issue.number)) === "running",
-              )}
+              {...dashboardIssueSummaryCounts(issues, (issue) => issueStatus(issue, deploymentForIssue(repo, issue.number)) === "running")}
             />
             <RepoIssueHealth repo={repo} />
-            {issues.length === 0 ? (
-              <p className={styles.muted}>No matching issues.</p>
-            ) : (
+            {!collapsed && (issues.length === 0 ? <p className={styles.muted}>No matching issues.</p> : (
               <div className={styles.issueList}>
                 {issues.map((issue) => (
                   <GlobalIssueRow
@@ -193,9 +192,10 @@ export function GlobalIssuesFocus({
                   />
                 ))}
               </div>
-            )}
+            ))}
           </section>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

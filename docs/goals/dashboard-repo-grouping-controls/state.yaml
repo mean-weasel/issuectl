@@ -1,0 +1,259 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Dashboard Repo Grouping Controls"
+  slug: "dashboard-repo-grouping-controls"
+  kind: specific
+  tranche: "Implement persisted repo collapse/expand controls for Global Issues and Board, verify them, and publish through the normal PR/merge queue path when green."
+  status: active
+  oracle:
+    signal: "Playwright evidence proves Global Issues and Board support repo-level collapse/expand, collapse all, expand all, reload persistence, visible summaries while collapsed, hidden issue-card content while collapsed, and existing dashboard regressions still pass."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Focused E2E, existing cross-repo dashboard E2E, web package checks, and PR/merge-queue checks if publishing occurs."
+  intake:
+    original_request: "plan out with goalbuddyprep and implement"
+    interpreted_outcome: "Add useful, verified repo grouping controls to the issuectl dashboard."
+    input_shape: specific
+    audience: "issuectl dashboard users scanning issues across multiple repos"
+    authority: requested
+    proof_type: test
+    completion_proof: "Controls are implemented, verified, and merged or ready to merge with green evidence."
+    likely_misfire: "Cosmetic collapse controls hide issue cards but lose repo summaries, fail persistence, break filters, or only work on one dashboard surface."
+    blind_spots_considered:
+      - "Persistent vs temporary collapsed state."
+      - "Per-surface localStorage isolation."
+      - "Board column behavior vs Global Issues section behavior."
+      - "Accessibility labels for repo toggles and bulk controls."
+      - "Existing max-lines lint constraints in focus components."
+      - "Search/filter changes should not silently discard collapsed state."
+    existing_plan_facts:
+      - "Track collapsed repo IDs or repo keys in client state."
+      - "Persist per surface in localStorage."
+      - "Add repo-level toggle buttons and bulk Collapse all / Expand all controls."
+      - "Keep headers, health, and summary counts visible while collapsed."
+      - "Use Playwright CLI for formal web verification."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/dashboard-repo-grouping-controls/"
+    command: "npx goalbuddy board docs/goals/dashboard-repo-grouping-controls"
+
+active_task: T004
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Map the current dashboard component/test/style structure for repo grouping controls."
+    inputs:
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/DashboardStatusBlocks.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/e2e/workbench.spec.ts"
+      - "packages/web/components/workbench/*dashboard*"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Find the smallest safe helper/hook shape that avoids max-lines regressions."
+      - "Record concrete file-path evidence."
+    expected_output:
+      - "Relevant components, hooks, styles, and tests."
+      - "Recommended state/storage helper shape."
+      - "Accessibility and persistence considerations."
+      - "Focused E2E test target and existing regression target."
+      - "Candidate Worker allowed_files and verification commands."
+    receipt:
+      result: done
+      summary: "Three Scout agents mapped dashboard components, E2E coverage, and CSS/accessibility constraints. Both Global Issues and Board already render per-repo headers, summaries, and health before issue cards, so collapse can hide only the issue-card/no-match body while preserving repo context."
+      evidence:
+        - "packages/web/components/workbench/GlobalIssuesFocus.tsx:60 derives filtered/sorted repoRows before rendering; :170 maps sections labelled Issues for owner/name; :173-181 renders h2, RepoDashboardSummary, and RepoIssueHealth before issue cards."
+        - "packages/web/components/workbench/BoardFocus.tsx:48 derives filtered/sorted visibleRows before rendering; :151 renders Cross-repo board; :154-169 renders board column header, summary, and health before issue cards."
+        - "packages/web/components/workbench/DashboardStatusBlocks.tsx:51 renders RepoDashboardSummary with visible/running/high/cache/error chips; :72 counts visible issues."
+        - "packages/web/components/workbench/dashboard-url-state-hooks.ts:29 and :42 expose separate dashboard URL state hooks; collapse state should stay separate from URL filters/default presets."
+        - "packages/web/components/workbench/WorkbenchShell.module.css:1571 controls flex-wrap; :1642 summary chips wrap; :1719 boardScroll owns horizontal scrolling; :1730 boardColumn min-width is 190px."
+        - "packages/web/e2e/workbench.spec.ts:2851 existing cross-repo dashboard regression covers duplicate repo names, cache/error states, summaries, presets, filters, and both Global Issues and Board."
+      findings:
+        - "Use stable per-surface localStorage keys for collapsed repo owner/name keys, independent for globalIssues and board."
+        - "Collapse all should target currently visible repo rows and retain stale hidden keys only when they reappear for the same surface."
+        - "Clear dashboard filters should not expand repos because existing reset semantics are URL/default-preset scoped."
+        - "Add small reusable hook/control helpers to avoid max-lines regressions in focus components."
+        - "Use accessible button names such as Collapse owner/name and Expand owner/name, with aria-expanded on the repo body."
+      spawned_tasks:
+        - T002
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: default
+    objective: "Review Scout findings and approve the largest safe implementation slice."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle"
+    constraints:
+      - "Do not implement."
+      - "Reject plans that hide repo summaries while collapsed."
+      - "Reject plans without focused E2E and existing regression verification."
+    expected_output:
+      - "Decision: approved | revise | blocked"
+      - "Exact Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Deferred follow-ups, if any"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve one vertical Worker slice across both dashboard surfaces. Collapse can hide only issue-card/no-match bodies because headers, summaries, and health already render before issue bodies. Keep collapse state localStorage-only, per surface, and independent from URL filter/default-preset semantics."
+      worker_objective: "Implement persisted repo collapse/expand controls for Global Issues and Board: per-repo toggle, Collapse all, Expand all, reload-persistent collapsed state isolated per surface, repo headers/summaries/health visible while collapsed, issue-card/no-match body hidden while collapsed, and no change to dashboard URL filter or default-preset semantics."
+      evidence:
+        - "T001: Global Issues and Board render repo headers, RepoDashboardSummary, and RepoIssueHealth before issue cards."
+        - "T001: dashboard URL hooks are separate; collapse state should remain localStorage-only and per surface."
+        - "Goal oracle requires focused Playwright proof plus existing cross-repo regression evidence."
+      spawned_tasks:
+        - T003
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement persisted repo collapse/expand controls for Global Issues and Board: per-repo toggle, Collapse all, Expand all, reload-persistent collapsed state isolated per surface, repo headers/summaries/health visible while collapsed, issue-card/no-match body hidden while collapsed, and no change to dashboard URL filter or default-preset semantics."
+    allowed_files:
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/DashboardStatusBlocks.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/dashboard-repo-collapse*.ts"
+      - "packages/web/components/workbench/dashboard-repo-collapse*.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm --dir packages/web test:e2e e2e/workbench.spec.ts --project=desktop-chromium --grep \"repo grouping|collapse\""
+      - "pnpm --dir packages/web test:e2e e2e/workbench.spec.ts --project=desktop-chromium --grep \"surfaces duplicate repo names\""
+      - "pnpm --dir packages/web typecheck"
+      - "pnpm --dir packages/web lint"
+      - "pnpm --dir packages/web test"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Implementation would hide repo summaries, health, or headers while collapsed."
+      - "Implementation requires changing dashboard URL filter hooks or default-preset semantics."
+      - "Collapsed state semantics become ambiguous for filtered-empty repos."
+      - "Formal Playwright verification cannot run."
+      - "Verification fails twice for the same unexplained reason."
+    receipt:
+      result: done
+      changed_files:
+        - "packages/web/components/workbench/dashboard-repo-collapse.tsx"
+        - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+        - "packages/web/components/workbench/BoardFocus.tsx"
+        - "packages/web/components/workbench/WorkbenchShell.module.css"
+        - "packages/web/e2e/workbench.spec.ts"
+      summary: "Added per-surface persisted repo collapse state, Global Issues and Board repo toggle/bulk controls, responsive header/button styling, focused repo grouping E2E coverage, and tightened stale drawer-collapse selectors to role-based locators."
+      failure_modes_considered:
+        - "Collapsed repos might hide summaries or health alerts; focused E2E asserts summaries remain visible while issue cards are absent."
+        - "Global and Board collapsed state might leak across surfaces; focused E2E asserts Board remains collapsed while Global Issues stays expanded."
+        - "Bulk controls might only affect one repo; focused E2E asserts issuectl and bugdrop issue cards are both hidden after Collapse all."
+        - "URL filters/default presets might regress; existing duplicate-repo dashboard E2E passed after implementation."
+        - "Focus components might violate max-lines lint; package lint passed."
+      commands:
+        - cmd: "pnpm --dir packages/web test:e2e e2e/workbench.spec.ts --project=desktop-chromium --grep \"repo grouping\""
+          status: pass
+        - cmd: "pnpm --dir packages/web test:e2e e2e/workbench.spec.ts --project=desktop-chromium --grep \"repo grouping|collapse\""
+          status: pass
+        - cmd: "pnpm --dir packages/web test:e2e e2e/workbench.spec.ts --project=desktop-chromium --grep \"surfaces duplicate repo names\""
+          status: pass
+        - cmd: "pnpm --dir packages/web typecheck"
+          status: pass
+        - cmd: "pnpm --dir packages/web lint"
+          status: pass
+        - cmd: "pnpm --dir packages/web test"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      spawned_tasks:
+        - T004
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: default
+    objective: "Publish the verified dashboard grouping change through the normal branch, PR, and merge-queue workflow if T003 completes cleanly."
+    allowed_files:
+      - "packages/web/components/workbench/GlobalIssuesFocus.tsx"
+      - "packages/web/components/workbench/BoardFocus.tsx"
+      - "packages/web/components/workbench/DashboardStatusBlocks.tsx"
+      - "packages/web/components/workbench/WorkbenchShell.module.css"
+      - "packages/web/components/workbench/dashboard-repo-collapse*.ts"
+      - "packages/web/components/workbench/dashboard-repo-collapse*.tsx"
+      - "packages/web/e2e/workbench.spec.ts"
+    verify:
+      - "pnpm typecheck"
+      - "pnpm lint"
+      - "pnpm test"
+      - "push hook build"
+      - "GitHub PR checks and merge queue checks, if publishing is requested in the run"
+    stop_if:
+      - "Working tree contains unrelated changes."
+      - "GitHub auth or merge queue access is unavailable."
+      - "Any required check fails."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: default
+    objective: "Audit whether repo grouping controls satisfy the original user outcome."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current git status"
+      - "PR/merge state if published"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker task is still queued or active."
+      - "Reject completion if summaries disappear while collapsed or persistence is unverified."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

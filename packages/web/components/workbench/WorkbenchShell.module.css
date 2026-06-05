@@ -1667,6 +1667,34 @@
   color: var(--paper-brick);
 }
 
+.repoDashboardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.repoDashboardHeading {
+  min-width: 0;
+  flex: 1 1 150px;
+}
+
+.repoDashboardHeading h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.repoCollapseButton {
+  min-height: 32px;
+  margin-top: 0;
+  padding: 0 10px;
+  font-size: 13px;
+  line-height: 1.15;
+  text-align: left;
+  white-space: normal;
+}
+
 .boardControls .primaryButton,
 .boardControls .secondaryButton,
 .globalIssueControls .primaryButton,
@@ -1741,6 +1769,12 @@
 .boardColumn h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.boardColumn .repoCollapseButton {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
 }
 
 .boardColumnMeta {
