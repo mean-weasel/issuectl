@@ -3008,6 +3008,45 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "false");
 });
 
+test("clears saved dashboard defaults from preset strips", async ({ page }) => {
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await page.evaluate(() => window.localStorage.clear());
+  await page.goto(`${baseUrl}/workbench/issues`);
+
+  const globalPresets = page.getByRole("group", { name: "Global triage presets" });
+  await globalPresets.getByRole("button", { name: "Active work" }).click();
+  await globalPresets.getByRole("button", { name: "Set default" }).click();
+  await expect(globalPresets).toContainText("Default: Active work");
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await expect(globalPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "true");
+  await globalPresets.getByRole("button", { name: "Clear default" }).click();
+  await expect(globalPresets).not.toContainText("Default: Active work");
+  await expect(globalPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "false");
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await expect(globalPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "false");
+
+  await page.goto(`${baseUrl}/workbench/board`);
+  const boardPresets = page.getByRole("group", { name: "Board triage presets" });
+  await boardPresets.getByRole("button", { name: "Active work" }).click();
+  await boardPresets.getByRole("button", { name: "Set default" }).click();
+  await expect(boardPresets).toContainText("Default: Active work");
+  await page.goto(`${baseUrl}/workbench/board`);
+  await expect(boardPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "true");
+  await boardPresets.getByRole("button", { name: "Clear default" }).click();
+  await expect(boardPresets).not.toContainText("Default: Active work");
+  await expect(boardPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "false");
+  await page.goto(`${baseUrl}/workbench/board`);
+  await expect(boardPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "false");
+});
+
 test("deep links workbench subpaths without a 404", async ({ page }) => {
   await page.goto(`${baseUrl}/workbench/settings`);
   await expect(page.getByRole("link", { name: "issuectl workbench" })).toBeVisible();
