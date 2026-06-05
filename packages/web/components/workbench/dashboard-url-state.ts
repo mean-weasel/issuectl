@@ -39,6 +39,11 @@ const GLOBAL_SORTS = new Set<GlobalIssueSortMode>(["updated", "priority"]);
 const BOARD_SORTS = new Set<BoardSortMode>(["payload", "priority"]);
 const DASHBOARD_PARAM_NAMES = ["view", "status", "sort", "running", "q"];
 
+export function hasDashboardUrlState(search: string | URLSearchParams): boolean {
+  const params = searchParams(search);
+  return DASHBOARD_PARAM_NAMES.some((name) => params.has(name));
+}
+
 export function parseGlobalIssueUrlState(search: string | URLSearchParams): GlobalIssueUrlState {
   const params = searchParams(search);
   return {

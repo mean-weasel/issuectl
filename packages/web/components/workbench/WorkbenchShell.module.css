@@ -1611,6 +1611,11 @@
   line-height: 1;
 }
 
+.dashboardPresetDefault {
+  color: var(--paper-ink-muted);
+  font-size: 12px;
+}
+
 .dashboardEmptyState {
   align-items: flex-start;
   background: var(--paper-bg-warm);

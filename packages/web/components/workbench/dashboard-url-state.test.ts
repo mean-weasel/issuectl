@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   dashboardUrlSearch,
+  hasDashboardUrlState,
   parseBoardUrlState,
   parseGlobalIssueUrlState,
 } from "./dashboard-url-state";
+import {
+  readDashboardDefaultPreset,
+  writeDashboardDefaultPreset,
+} from "./dashboard-default-prefs";
 import {
   boardPresetState,
   boardPresetIdForState,
@@ -62,6 +67,24 @@ describe("dashboard URL state", () => {
     })).toBe("?repo=mean-weasel%2Fissuectl&running=1");
   });
 
+  it("detects when dashboard URL controls should override saved defaults", () => {
+    expect(hasDashboardUrlState("?repo=mean-weasel%2Fissuectl")).toBe(false);
+    expect(hasDashboardUrlState("?repo=mean-weasel%2Fissuectl&view=running")).toBe(true);
+    expect(hasDashboardUrlState("?q=")).toBe(true);
+  });
+
+  it("stores valid local dashboard default presets", () => {
+    const storage = memoryStorage();
+
+    writeDashboardDefaultPreset("globalIssues", "attention", storage);
+    writeDashboardDefaultPreset("board", "active", storage);
+
+    expect(readDashboardDefaultPreset("globalIssues", storage)).toBe("attention");
+    expect(readDashboardDefaultPreset("board", storage)).toBe("active");
+    storage.setItem("issuectl.dashboard.defaultPreset.board", "unknown");
+    expect(readDashboardDefaultPreset("board", storage)).toBeNull();
+  });
+
   it("maps global issue triage presets to complete dashboard states", () => {
     expect(globalIssuePresetState("attention")).toEqual({
       view: "attention",
@@ -115,3 +138,15 @@ describe("dashboard URL state", () => {
     })).toBeNull();
   });
 });
+
+function memoryStorage(): Storage {
+  const values = new Map<string, string>();
+  return {
+    get length() { return values.size; },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, value),
+  };
+}
