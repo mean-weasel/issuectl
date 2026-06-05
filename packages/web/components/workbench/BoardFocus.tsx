@@ -143,7 +143,7 @@ export function BoardFocus({
           buttonLabel="Clear dashboard filters"
           canReset={hasDashboardFilters}
           description="Clear the dashboard filters to return to the full cross-repo board."
-          onReset={() => setUrlState(DEFAULT_BOARD_URL_STATE)}
+          onReset={defaultControls.resetDashboardFilters}
           title="No board issues match these filters."
         />
       )}

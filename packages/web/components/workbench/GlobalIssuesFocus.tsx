@@ -163,7 +163,7 @@ export function GlobalIssuesFocus({
           buttonLabel="Clear dashboard filters"
           canReset={hasDashboardFilters}
           description="Clear the dashboard filters to return to the full cross-repo issue list."
-          onReset={() => setUrlState(DEFAULT_GLOBAL_ISSUE_URL_STATE)}
+          onReset={defaultControls.resetDashboardFilters}
           title="No dashboard issues match these filters."
         />
       )}

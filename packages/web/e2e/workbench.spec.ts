@@ -2939,6 +2939,7 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/issues$/);
   await expect(page.getByLabel("Search global issues")).toHaveValue("");
   await expect(issueViews.getByRole("button", { name: "All 8" })).toHaveAttribute("aria-pressed", "true");
+  await expect(globalPresets).not.toContainText("Default: Active work");
   const globalIssuectlSummary = page.getByLabel("Dashboard summary for mean-weasel/issuectl");
   await expect(globalIssuectlSummary).toContainText("4 visible");
   await expect(globalIssuectlSummary).toContainText("3 running");
@@ -2981,6 +2982,7 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/board$/);
   await expect(page.getByLabel("Search board issues")).toHaveValue("");
   await expect(boardViews.getByRole("button", { name: "All 8" })).toHaveAttribute("aria-pressed", "true");
+  await expect(boardPresets).not.toContainText("Default: Active work");
   const boardIssuectlSummary = page.getByLabel("Dashboard summary for mean-weasel/issuectl");
   await expect(boardIssuectlSummary).toContainText("4 visible");
   await expect(boardIssuectlSummary).toContainText("3 running");
@@ -2989,7 +2991,8 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/issues$/);
   const savedGlobalPresets = page.getByRole("group", { name: "Global triage presets" });
   await expect(savedGlobalPresets.getByRole("button", { name: "Active work" }))
-    .toHaveAttribute("aria-pressed", "true");
+    .toHaveAttribute("aria-pressed", "false");
+  await expect(savedGlobalPresets).not.toContainText("Default: Active work");
   await expect(page.getByLabel("Search global issues")).toHaveValue("");
   await page.goto(`${baseUrl}/workbench/issues?view=cached&q=paper-owl%20web`);
   issueViews = page.getByRole("group", { name: "Operational issue views" });
@@ -3000,8 +3003,9 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(page).toHaveURL(/\/workbench\/board$/);
   const savedBoardPresets = page.getByRole("group", { name: "Board triage presets" });
   await expect(savedBoardPresets.getByRole("button", { name: "Active work" }))
-    .toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "true");
+    .toHaveAttribute("aria-pressed", "false");
+  await expect(savedBoardPresets).not.toContainText("Default: Active work");
+  await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "false");
 });
 
 test("deep links workbench subpaths without a 404", async ({ page }) => {

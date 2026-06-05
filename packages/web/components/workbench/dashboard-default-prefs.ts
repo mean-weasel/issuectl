@@ -32,6 +32,17 @@ export function writeDashboardDefaultPreset(
   }
 }
 
+export function clearDashboardDefaultPreset(
+  surface: DashboardSurface,
+  storage: Storage | null | undefined = globalStorage(),
+): void {
+  try {
+    storage?.removeItem(DEFAULT_PRESET_STORAGE_KEYS[surface]);
+  } catch {
+    // Ignore localStorage failures; defaults are a convenience, not required state.
+  }
+}
+
 function globalStorage(): Storage | null {
   return typeof window === "undefined" ? null : window.localStorage;
 }

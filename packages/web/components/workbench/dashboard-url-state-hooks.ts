@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { readDashboardDefaultPreset, writeDashboardDefaultPreset } from "./dashboard-default-prefs";
+import { clearDashboardDefaultPreset, readDashboardDefaultPreset, writeDashboardDefaultPreset } from "./dashboard-default-prefs";
 import {
   boardPresetState,
   globalIssuePresetState,
@@ -21,6 +21,7 @@ import {
 
 export type DashboardDefaultPresetControls = {
   defaultPresetId: DashboardPresetId | null;
+  resetDashboardFilters: () => void;
   setDefaultPresetId: (presetId: DashboardPresetId) => void;
 };
 
@@ -90,7 +91,13 @@ function useDashboardUrlState<TState extends GlobalIssueUrlState | BoardUrlState
     }
   };
 
-  return [state, updateState, { defaultPresetId, setDefaultPresetId }];
+  const resetDashboardFilters = () => {
+    clearDashboardDefaultPreset(surface);
+    setDefaultPresetIdState(null);
+    updateState(fallback);
+  };
+
+  return [state, updateState, { defaultPresetId, resetDashboardFilters, setDefaultPresetId }];
 }
 
 function stateFromLocation<TState>(
