@@ -2246,21 +2246,21 @@ test("collapses workbench drawers and flattens active sessions", async ({ page }
 
   await page.getByRole("complementary", { name: "Active sessions" }).getByRole("button", { name: "Collapse running sessions" }).click();
   await expect(workbench).toHaveAttribute("data-instances-pane", "collapsed");
-  await expect(page.getByLabel("Active sessions")).toHaveCount(0);
-  await expect(page.getByLabel("Repo issues")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Active sessions" })).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Repo issues" })).toBeVisible();
 
   await page.getByRole("button", { name: "Expand running sessions" }).click();
   await expect(workbench).toHaveAttribute("data-instances-pane", "visible");
-  await expect(page.getByLabel("Active sessions")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Active sessions" })).toBeVisible();
 
   await page.getByRole("complementary", { name: "Repo issues" }).getByRole("button", { name: "Collapse issues drawer" }).click();
   await expect(workbench).toHaveAttribute("data-issues-pane", "collapsed");
-  await expect(page.getByLabel("Repo issues")).toHaveCount(0);
-  await expect(page.getByLabel("Active sessions")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Repo issues" })).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Active sessions" })).toBeVisible();
 
   await page.getByRole("button", { name: "Expand issues drawer" }).click();
   await expect(workbench).toHaveAttribute("data-issues-pane", "visible");
-  await expect(page.getByLabel("Repo issues")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Repo issues" })).toBeVisible();
 });
 
 test("keeps drawer restore controls out of issue and terminal headers", async ({ page }) => {
@@ -2846,6 +2846,51 @@ test("shows cross-repo board columns and reversible running filter", async ({ pa
   await expect(page).toHaveURL(new RegExp("/workbench\\?repo=mean-weasel%2Fissuectl&issue=512$"));
   await expect(page.getByRole("button", { name: "mean-weasel/issuectl" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("heading", { name: "#512 Desktop instance manager workbench" })).toBeVisible();
+});
+
+test("supports repo grouping collapse controls across dashboard surfaces", async ({ page }) => {
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await page.evaluate(() => window.localStorage.clear());
+  await page.goto(`${baseUrl}/workbench/issues`);
+
+  await expect(page.getByLabel("Dashboard summary for mean-weasel/issuectl")).toContainText("4 visible");
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toBeVisible();
+  await page.getByRole("button", { name: "Collapse mean-weasel/issuectl" }).click();
+  await expect(page.getByRole("button", { name: "Expand mean-weasel/issuectl" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Dashboard summary for mean-weasel/issuectl")).toContainText("4 visible");
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toHaveCount(0);
+
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await expect(page.getByRole("button", { name: "Expand mean-weasel/issuectl" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Dashboard summary for mean-weasel/issuectl")).toContainText("4 visible");
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand mean-weasel/issuectl" }).click();
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toBeVisible();
+
+  await page.getByRole("button", { name: "Collapse all repos" }).click();
+  await expect(page.getByLabel("Dashboard summary for mean-weasel/bugdrop")).toContainText("1 visible");
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toHaveCount(0);
+  await expect(page.getByLabel("mean-weasel/bugdrop issue #440")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand all repos" }).click();
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toBeVisible();
+  await expect(page.getByLabel("mean-weasel/bugdrop issue #440")).toBeVisible();
+
+  await page.goto(`${baseUrl}/workbench/board`);
+  await expect(page.getByLabel("Board issue mean-weasel/issuectl #512")).toBeVisible();
+  await page.getByRole("button", { name: "Collapse mean-weasel/issuectl" }).click();
+  await expect(page.getByRole("button", { name: "Expand mean-weasel/issuectl" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Dashboard summary for mean-weasel/issuectl")).toContainText("4 visible");
+  await expect(page.getByLabel("Board issue mean-weasel/issuectl #512")).toHaveCount(0);
+
+  await page.goto(`${baseUrl}/workbench/board`);
+  await expect(page.getByRole("button", { name: "Expand mean-weasel/issuectl" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Board issue mean-weasel/issuectl #512")).toHaveCount(0);
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await expect(page.getByLabel("mean-weasel/issuectl issue #512")).toBeVisible();
+  await page.goto(`${baseUrl}/workbench/board`);
+  await expect(page.getByLabel("Board issue mean-weasel/issuectl #512")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand all repos" }).click();
+  await expect(page.getByLabel("Board issue mean-weasel/issuectl #512")).toBeVisible();
 });
 
 test("surfaces duplicate repo names plus issue cache and error state in global dashboards", async ({ page }) => {

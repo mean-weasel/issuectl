@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { DashboardPresetStrip } from "./DashboardPresetStrip";
 import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
 import { sortDashboardRepoRows } from "./dashboard-repo-ordering";
+import { DashboardRepoGroupingControls, DashboardRepoHeader, useDashboardRepoCollapse } from "./dashboard-repo-collapse";
 import { boardPresetIdForState, boardPresetState } from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
@@ -63,6 +64,7 @@ export function BoardFocus({
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = boardPresetIdForState(urlState);
   const hasDashboardFilters = query.trim() !== "" || runningOnly !== DEFAULT_BOARD_URL_STATE.runningOnly || sortMode !== DEFAULT_BOARD_URL_STATE.sort || issueView !== DEFAULT_BOARD_URL_STATE.view;
+  const repoCollapse = useDashboardRepoCollapse("board", repos);
 
   return (
     <div className={`${styles.focusInner} ${styles.boardFocus}`}>
@@ -122,6 +124,7 @@ export function BoardFocus({
             </button>
           ))}
         </div>
+        <DashboardRepoGroupingControls ariaLabel="Board repo grouping" collapse={repoCollapse} repos={visibleRows.map(({ repo }) => repo)} />
         <button
           type="button"
           className={styles.secondaryButton}
@@ -150,26 +153,21 @@ export function BoardFocus({
 
       <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
         {visibleRows.map(({ repo, issues }) => {
-          return (
+          const collapsed = repoCollapse.isCollapsed(repo); return (
             <section
               key={repo.id}
               aria-label={`Board column ${repo.owner}/${repo.name}`}
               className={styles.boardColumn}
             >
-              <header>
-                <h2>{repo.owner}/{repo.name}</h2>
-                <p className={`${styles.muted} ${styles.boardColumnMeta}`}>
-                  {issues.length} {runningOnly ? "running" : "open"}
-                </p>
-              </header>
+              <DashboardRepoHeader collapsed={collapsed} onToggle={() => repoCollapse.toggleRepo(repo)} repo={repo}>
+                <p className={`${styles.muted} ${styles.boardColumnMeta}`}>{issues.length} {runningOnly ? "running" : "open"}</p>
+              </DashboardRepoHeader>
               <RepoDashboardSummary
                 repo={repo}
                 {...dashboardIssueSummaryCounts(issues, (issue) => isRunningIssue(repo, deployments, issue))}
               />
               <RepoIssueHealth repo={repo} />
-              {issues.length === 0 ? (
-                <p className={styles.muted}>No matching issues.</p>
-              ) : (
+              {!collapsed && (issues.length === 0 ? <p className={styles.muted}>No matching issues.</p> : (
                 issues.map((issue) => (
                   <BoardCard
                     key={issue.number}
@@ -180,7 +178,7 @@ export function BoardFocus({
                     onJumpToSession={onJumpToSession}
                   />
                 ))
-              )}
+              ))}
             </section>
           );
         })}
