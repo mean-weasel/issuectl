@@ -7,10 +7,20 @@ import styles from "./WorkbenchShell.module.css";
 type Props = {
   activePresetId: DashboardPresetId | null;
   ariaLabel: string;
+  defaultPresetId?: DashboardPresetId | null;
   onApply: (id: DashboardPresetId) => void;
+  onSetDefault?: (id: DashboardPresetId) => void;
 };
 
-export function DashboardPresetStrip({ activePresetId, ariaLabel, onApply }: Props) {
+export function DashboardPresetStrip({
+  activePresetId,
+  ariaLabel,
+  defaultPresetId,
+  onApply,
+  onSetDefault,
+}: Props) {
+  const defaultPreset = DASHBOARD_PRESETS.find((preset) => preset.id === defaultPresetId);
+
   return (
     <div className={styles.dashboardPresetStrip} role="group" aria-label={ariaLabel}>
       <span className={styles.dashboardPresetLabel}>Triage presets</span>
@@ -26,6 +36,18 @@ export function DashboardPresetStrip({ activePresetId, ariaLabel, onApply }: Pro
           {preset.label}
         </button>
       ))}
+      {activePresetId && onSetDefault && (
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={() => onSetDefault(activePresetId)}
+        >
+          Set default
+        </button>
+      )}
+      {defaultPreset && (
+        <span className={styles.dashboardPresetDefault}>Default: {defaultPreset.label}</span>
+      )}
     </div>
   );
 }

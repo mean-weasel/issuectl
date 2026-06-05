@@ -2890,12 +2890,13 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
       }),
     });
   });
-
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await page.evaluate(() => window.localStorage.clear());
   await page.goto(`${baseUrl}/workbench/issues?view=cached&q=paper-owl%20web`);
   await expect(page.getByRole("heading", { name: "paper-owl/web" })).toBeVisible();
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect(page.getByText(/Showing cached issues/)).toBeVisible();
-  const issueViews = page.getByRole("group", { name: "Operational issue views" });
+  let issueViews = page.getByRole("group", { name: "Operational issue views" });
   await expect(issueViews.getByRole("button", { name: "Attention 4" })).toBeVisible();
   await expect(issueViews.getByRole("button", { name: "Cached 1" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Search global issues")).toHaveValue("paper-owl web");
@@ -2913,6 +2914,8 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Global issues").locator("section").first())
     .toHaveAttribute("aria-label", "Issues for mean-weasel/issuectl");
+  await globalPresets.getByRole("button", { name: "Set default" }).click();
+  await expect(globalPresets).toContainText("Default: Active work");
   await globalPresets.getByRole("button", { name: "Stale cache" }).click();
   await page.getByLabel("Search global issues").fill("paper-owl web");
   await issueViews.getByRole("button", { name: "Cached 1" }).click();
@@ -2953,6 +2956,8 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   await expect(boardPresets.getByRole("button", { name: "Active work" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Cross-repo board").locator("section").first())
     .toHaveAttribute("aria-label", "Board column mean-weasel/issuectl");
+  await boardPresets.getByRole("button", { name: "Set default" }).click();
+  await expect(boardPresets).toContainText("Default: Active work");
   await page.getByRole("button", { name: "Show running only" }).click();
   const boardViews = page.getByRole("group", { name: "Board operational views" });
   await boardViews.getByRole("button", { name: "All 8" }).click();
@@ -2979,6 +2984,24 @@ test("surfaces duplicate repo names plus issue cache and error state in global d
   const boardIssuectlSummary = page.getByLabel("Dashboard summary for mean-weasel/issuectl");
   await expect(boardIssuectlSummary).toContainText("4 visible");
   await expect(boardIssuectlSummary).toContainText("3 running");
+
+  await page.goto(`${baseUrl}/workbench/issues`);
+  await expect(page).toHaveURL(/\/workbench\/issues$/);
+  const savedGlobalPresets = page.getByRole("group", { name: "Global triage presets" });
+  await expect(savedGlobalPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Search global issues")).toHaveValue("");
+  await page.goto(`${baseUrl}/workbench/issues?view=cached&q=paper-owl%20web`);
+  issueViews = page.getByRole("group", { name: "Operational issue views" });
+  await expect(issueViews.getByRole("button", { name: /^Cached \d+$/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Search global issues")).toHaveValue("paper-owl web");
+
+  await page.goto(`${baseUrl}/workbench/board`);
+  await expect(page).toHaveURL(/\/workbench\/board$/);
+  const savedBoardPresets = page.getByRole("group", { name: "Board triage presets" });
+  await expect(savedBoardPresets.getByRole("button", { name: "Active work" }))
+    .toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Show running only" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("deep links workbench subpaths without a 404", async ({ page }) => {

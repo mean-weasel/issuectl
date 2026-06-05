@@ -51,7 +51,7 @@ export function GlobalIssuesFocus({
   refreshPending,
   refreshError,
 }: Props) {
-  const [urlState, setUrlState] = useGlobalIssueDashboardUrlState();
+  const [urlState, setUrlState, defaultControls] = useGlobalIssueDashboardUrlState();
   const { query, status: statusFilter, sort: sortMode, view: issueView } = urlState;
   const totalIssues = repos.reduce((count, repo) => count + repo.issues.length, 0);
   const failedRepos = repos.filter((repo) => repo.issueError).length;
@@ -92,6 +92,7 @@ export function GlobalIssuesFocus({
         activePresetId={activePresetId}
         ariaLabel="Global triage presets"
         onApply={(id) => setUrlState(globalIssuePresetState(id))}
+        defaultPresetId={defaultControls.defaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
       />
       <div aria-label="Global issue controls" className={styles.globalIssueControls}>
         <input

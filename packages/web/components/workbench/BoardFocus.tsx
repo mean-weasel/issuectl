@@ -40,7 +40,7 @@ export function BoardFocus({
   refreshPending,
   refreshError,
 }: Props) {
-  const [urlState, setUrlState] = useBoardDashboardUrlState();
+  const [urlState, setUrlState, defaultControls] = useBoardDashboardUrlState();
   const { query, runningOnly, sort: sortMode, view: issueView } = urlState;
   const failedRepos = repos.filter((repo) => repo.issueError).length;
   const cachedRepos = repos.filter((repo) => repo.issuesFromCache).length;
@@ -73,10 +73,9 @@ export function BoardFocus({
       </p>
       <DashboardPresetStrip
         activePresetId={activePresetId}
-        ariaLabel="Board triage presets"
-        onApply={(id) => setUrlState(boardPresetState(id))}
+        ariaLabel="Board triage presets" onApply={(id) => setUrlState(boardPresetState(id))}
+        defaultPresetId={defaultControls.defaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
       />
-
       <div aria-label="Board controls" className={styles.boardControls}>
         <input
           aria-label="Search board issues"
