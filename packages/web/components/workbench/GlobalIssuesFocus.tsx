@@ -92,7 +92,7 @@ export function GlobalIssuesFocus({
         activePresetId={activePresetId}
         ariaLabel="Global triage presets"
         onApply={(id) => setUrlState(globalIssuePresetState(id))}
-        defaultPresetId={defaultControls.defaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
+        defaultPresetId={defaultControls.defaultPresetId} onClearDefault={defaultControls.clearDefaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
       />
       <div aria-label="Global issue controls" className={styles.globalIssueControls}>
         <input

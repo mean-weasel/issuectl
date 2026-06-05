@@ -20,6 +20,7 @@ import {
 } from "./dashboard-url-state";
 
 export type DashboardDefaultPresetControls = {
+  clearDefaultPresetId: () => void;
   defaultPresetId: DashboardPresetId | null;
   resetDashboardFilters: () => void;
   setDefaultPresetId: (presetId: DashboardPresetId) => void;
@@ -91,13 +92,26 @@ function useDashboardUrlState<TState extends GlobalIssueUrlState | BoardUrlState
     }
   };
 
+  const clearDefaultPresetId = () => {
+    clearDashboardDefaultPreset(surface);
+    setDefaultPresetIdState(null);
+    if (typeof window !== "undefined" && !hasDashboardUrlState(window.location.search)) {
+      setState(fallback);
+    }
+  };
+
   const resetDashboardFilters = () => {
     clearDashboardDefaultPreset(surface);
     setDefaultPresetIdState(null);
     updateState(fallback);
   };
 
-  return [state, updateState, { defaultPresetId, resetDashboardFilters, setDefaultPresetId }];
+  return [state, updateState, {
+    clearDefaultPresetId,
+    defaultPresetId,
+    resetDashboardFilters,
+    setDefaultPresetId,
+  }];
 }
 
 function stateFromLocation<TState>(

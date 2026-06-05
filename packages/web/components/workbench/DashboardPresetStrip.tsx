@@ -9,6 +9,7 @@ type Props = {
   ariaLabel: string;
   defaultPresetId?: DashboardPresetId | null;
   onApply: (id: DashboardPresetId) => void;
+  onClearDefault?: () => void;
   onSetDefault?: (id: DashboardPresetId) => void;
 };
 
@@ -17,6 +18,7 @@ export function DashboardPresetStrip({
   ariaLabel,
   defaultPresetId,
   onApply,
+  onClearDefault,
   onSetDefault,
 }: Props) {
   const defaultPreset = DASHBOARD_PRESETS.find((preset) => preset.id === defaultPresetId);
@@ -45,8 +47,17 @@ export function DashboardPresetStrip({
           Set default
         </button>
       )}
-      {defaultPreset && (
-        <span className={styles.dashboardPresetDefault}>Default: {defaultPreset.label}</span>
+      {defaultPreset && onClearDefault && (
+        <>
+          <span className={styles.dashboardPresetDefault}>Default: {defaultPreset.label}</span>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={onClearDefault}
+          >
+            Clear default
+          </button>
+        </>
       )}
     </div>
   );

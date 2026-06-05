@@ -74,7 +74,7 @@ export function BoardFocus({
       <DashboardPresetStrip
         activePresetId={activePresetId}
         ariaLabel="Board triage presets" onApply={(id) => setUrlState(boardPresetState(id))}
-        defaultPresetId={defaultControls.defaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
+        defaultPresetId={defaultControls.defaultPresetId} onClearDefault={defaultControls.clearDefaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
       />
       <div aria-label="Board controls" className={styles.boardControls}>
         <input
