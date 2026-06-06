@@ -53,6 +53,30 @@
   white-space: nowrap;
 }
 
+.repoPicker {
+  flex: 0 1 320px;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--paper-ink-muted);
+  font: 700 10px var(--paper-mono);
+  text-transform: uppercase;
+}
+
+.repoPicker select {
+  min-width: 0;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 30px 0 9px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--paper-ink);
+  font: 12px var(--paper-mono);
+  text-transform: none;
+}
+
 .topnav {
   flex: 1 1 auto;
   min-width: 0;
@@ -159,6 +183,10 @@
     display: none;
   }
 
+  .repoPicker {
+    flex-basis: 240px;
+  }
+
   .topnav {
     justify-content: flex-start;
   }
@@ -205,6 +233,39 @@
 
 .workbench[data-side-panes="collapsed"] {
   grid-template-columns: var(--repo-rail-width, 76px) minmax(0, 1fr);
+}
+
+.workbench[data-repo-rail="hidden"] {
+  grid-template-columns:
+    var(--workbench-instances-width, 284px)
+    8px
+    minmax(440px, 1fr)
+    8px
+    var(--workbench-issues-width, 348px);
+}
+
+.workbench[data-repo-rail="hidden"][data-side-panes="collapsed"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"] {
+  grid-template-columns:
+    40px
+    minmax(440px, 1fr)
+    8px
+    var(--workbench-issues-width, 348px);
+}
+
+.workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="visible"][data-issues-pane="collapsed"] {
+  grid-template-columns:
+    var(--workbench-instances-width, 284px)
+    8px
+    minmax(440px, 1fr)
+    40px;
+}
+
+.workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
 }
 
 .workbench[data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"] {
@@ -276,6 +337,8 @@
 }
 
 .repoRail {
+  position: relative;
+  z-index: 7;
   width: 100%;
   box-sizing: border-box;
   background: var(--paper-bg-warm);
@@ -283,6 +346,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  overflow: visible;
   padding: 12px 8px;
 }
 
@@ -305,6 +369,35 @@
   background: rgba(255, 255, 255, 0.25);
   color: var(--paper-ink-muted);
   font: 700 11px var(--paper-mono);
+}
+
+.repoButtonTooltip {
+  position: absolute;
+  z-index: 8;
+  left: calc(100% + 8px);
+  top: 50%;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 96px));
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-ink);
+  color: var(--paper-bg);
+  font: 11px var(--paper-mono);
+  line-height: 1.25;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translateY(-50%) translateX(-3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: normal;
+}
+
+.repoButton:hover .repoButtonTooltip,
+.repoButton:focus-visible .repoButtonTooltip {
+  opacity: 1;
+  transform: translateY(-50%);
 }
 
 .repoButton[data-selected="true"] {
@@ -1571,9 +1664,9 @@
 .boardControls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin: 18px 0;
+  margin: 12px 0;
 }
 
 .globalIssueControls {
@@ -1587,21 +1680,28 @@
 .compactButtonGroup {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .dashboardPresetStrip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin: 14px 0 4px;
+  margin: 10px 0 2px;
 }
 
 .dashboardPresetStrip .primaryButton,
 .dashboardPresetStrip .secondaryButton {
+  min-height: 32px;
   margin-top: 0;
+  padding: 0 12px;
+}
+
+.dashboardPresetStrip .secondaryButton,
+.boardControls .secondaryButton {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .dashboardPresetLabel {
@@ -1672,7 +1772,6 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .repoDashboardHeading {
@@ -1686,24 +1785,73 @@
 }
 
 .repoCollapseButton {
-  min-height: 32px;
+  min-width: 28px;
+  min-height: 28px;
   margin-top: 0;
-  padding: 0 10px;
+  padding: 0 8px;
+  font-family: var(--paper-mono);
   font-size: 13px;
   line-height: 1.15;
-  text-align: left;
-  white-space: normal;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .boardControls .primaryButton,
 .boardControls .secondaryButton,
 .globalIssueControls .primaryButton,
 .globalIssueControls .secondaryButton {
+  min-height: 34px;
   margin-top: 0;
+  padding: 0 12px;
+}
+
+.boardSelect {
+  min-height: 34px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--paper-ink);
+  font: italic 15px var(--paper-serif);
+}
+
+.boardOptions {
+  display: grid;
+  gap: 6px;
+}
+
+.boardOptions > summary {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--paper-ink);
+  cursor: pointer;
+  font: italic 15px var(--paper-serif);
+  list-style: none;
+}
+
+.boardOptions > summary::-webkit-details-marker {
+  display: none;
+}
+
+.boardOptionsPanel {
+  width: min(100%, 280px);
+  min-width: 220px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--paper-radius-sm);
+  background: var(--paper-bg);
+  box-shadow: 0 6px 16px rgba(47, 43, 36, 0.08);
 }
 
 .workbenchSearchInput {
-  min-height: 40px;
+  min-height: 36px;
   min-width: min(100%, 300px);
   flex: 1 1 280px;
   padding: 0 12px;
@@ -1748,7 +1896,7 @@
   max-width: 100%;
   display: grid;
   grid-template-columns: repeat(4, minmax(190px, 1fr));
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -1759,8 +1907,8 @@
   min-width: 190px;
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--paper-line);
   border-radius: var(--paper-radius-md);
   background: rgba(255, 255, 255, 0.18);
@@ -1768,17 +1916,75 @@
 
 .boardColumn h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .boardColumn .repoCollapseButton {
-  width: 100%;
   justify-content: center;
-  text-align: center;
 }
 
 .boardColumnMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
   margin: 4px 0 0;
+}
+
+.boardColumnMeta span,
+.boardPullBadge {
+  padding: 2px 6px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--paper-ink-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.boardPullBadge {
+  color: var(--paper-ink);
+  text-decoration: none;
+}
+
+.boardIssueCard {
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "meta actions"
+    "title actions";
+  row-gap: 3px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.boardIssueCard h3 {
+  font-size: 14px;
+  line-height: 1.15;
+  -webkit-line-clamp: 1;
+}
+
+.boardIssueCard .issueCardMeta {
+  font-size: 11px;
+}
+
+.boardIssueCard .issueActions button {
+  min-height: 26px;
+  opacity: 0;
+  padding: 0 8px;
+  font-size: 12px;
+  transition: opacity 120ms ease;
+}
+
+.boardIssueCard:hover .issueActions button,
+.boardIssueCard:focus-within .issueActions button {
+  opacity: 1;
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 700px) {
+  .boardIssueCard .issueActions button {
+    opacity: 1;
+  }
 }
 
 .focusInner h1 {
@@ -2052,6 +2258,35 @@
       minmax(440px, 1fr)
       40px;
   }
+
+  .workbench[data-repo-rail="hidden"] {
+    grid-template-columns:
+      min(var(--workbench-instances-width, 284px), 252px)
+      8px
+      minmax(440px, 1fr)
+      8px
+      min(var(--workbench-issues-width, 348px), 320px);
+  }
+
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"] {
+    grid-template-columns:
+      40px
+      minmax(440px, 1fr)
+      8px
+      min(var(--workbench-issues-width, 348px), 320px);
+  }
+
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="visible"][data-issues-pane="collapsed"] {
+    grid-template-columns:
+      min(var(--workbench-instances-width, 284px), 252px)
+      8px
+      minmax(440px, 1fr)
+      40px;
+  }
+
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+  }
 }
 
 @media (max-width: 1099px) {
@@ -2088,6 +2323,12 @@
   .routeLabel {
     grid-area: context;
     display: block;
+    max-width: 100%;
+  }
+
+  .repoPicker {
+    grid-area: context;
+    min-width: 0;
     max-width: 100%;
   }
 
@@ -2129,6 +2370,14 @@
     --repo-rail-width: 68px;
     grid-template-columns: var(--repo-rail-width, 68px) minmax(0, 1fr);
     overflow: hidden;
+  }
+
+  .workbench[data-repo-rail="hidden"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="visible"][data-issues-pane="collapsed"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .instancePane,
@@ -2254,6 +2503,14 @@
   .workbench[data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
     --repo-rail-width: 60px;
     grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .workbench[data-repo-rail="hidden"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="visible"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="visible"][data-issues-pane="collapsed"],
+  .workbench[data-repo-rail="hidden"][data-side-panes="visible"][data-instances-pane="collapsed"][data-issues-pane="collapsed"] {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .repoRail {

@@ -120,23 +120,27 @@ function createTestDb(dbPath: string): void {
   }
 }
 
+function issueFixture(issueNumber: number, title: string) {
+  return {
+    number: issueNumber,
+    title,
+    body: "Created by e2e test",
+    state: "open",
+    labels: [],
+    user: { login: "test-bot", avatarUrl: "" },
+    commentCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    closedAt: null,
+    htmlUrl: `https://github.com/${TEST_OWNER}/${TEST_REPO}/issues/${issueNumber}`,
+  };
+}
+
 /** Seed the issue-header cache so the detail page renders without a GitHub fetch. */
 function seedIssueCache(dbPath: string, issueNumber: number, title: string): void {
   const db = new Database(dbPath);
   try {
-    const issue = {
-      number: issueNumber,
-      title,
-      body: "Created by e2e test",
-      state: "open",
-      labels: [],
-      user: { login: "test-bot", avatarUrl: "" },
-      commentCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      closedAt: null,
-      htmlUrl: `https://github.com/${TEST_OWNER}/${TEST_REPO}/issues/${issueNumber}`,
-    };
+    const issue = issueFixture(issueNumber, title);
     db.prepare(
       "INSERT OR REPLACE INTO cache (key, data, fetched_at) VALUES (?, ?, datetime('now'))",
     ).run(
@@ -152,6 +156,27 @@ function seedIssueCache(dbPath: string, issueNumber: number, title: string): voi
       `issue-content:${TEST_OWNER}/${TEST_REPO}#${issueNumber}`,
       JSON.stringify({ comments: [], linkedPRs: [] }),
     );
+  } finally {
+    db.close();
+  }
+}
+
+function seedIssuesListCache(dbPath: string, issues: Array<ReturnType<typeof issueFixture>>): void {
+  const db = new Database(dbPath);
+  try {
+    db.prepare(
+      "INSERT OR REPLACE INTO cache (key, data, fetched_at) VALUES (?, ?, datetime('now'))",
+    ).run(`issues:${TEST_OWNER}/${TEST_REPO}`, JSON.stringify(issues));
+  } finally {
+    db.close();
+  }
+}
+
+function hasIssuesListCache(dbPath: string): boolean {
+  const db = new Database(dbPath);
+  try {
+    const row = db.prepare("SELECT 1 FROM cache WHERE key = ?").get(`issues:${TEST_OWNER}/${TEST_REPO}`);
+    return Boolean(row);
   } finally {
     db.close();
   }
@@ -483,10 +508,15 @@ test.describe("draft assign — cache invalidation", () => {
     // Extract the issue number from the URL for cleanup
     const issueMatch = page.url().match(/\/issues\/[^/]+\/[^/]+\/(\d+)/);
     const newIssueNumber = issueMatch ? Number(issueMatch[1]) : null;
+    expect(newIssueNumber).not.toBeNull();
+
+    // The assignment action must clear the stale empty issues cache for this repo.
+    expect(hasIssuesListCache(dbPath)).toBe(false);
+    seedIssuesListCache(dbPath, [
+      issueFixture(newIssueNumber!, ASSIGN_DRAFT_TITLE),
+    ]);
 
     // Navigate home and verify the issue appears in the "open" section.
-    // Wait for networkidle so the Suspense streaming completes — the
-    // dashboard fetches from GitHub via an async Server Component.
     await page.goto(BASE_URL);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(ASSIGN_DRAFT_TITLE)).toBeVisible({

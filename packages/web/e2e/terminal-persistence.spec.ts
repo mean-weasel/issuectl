@@ -133,12 +133,27 @@ async function resetTestState(): Promise<void> {
 
   const db = new Database(dbPath);
   try {
-    const result = db.prepare(
-      "UPDATE deployments SET ended_at = NULL, ttyd_port = ?, ttyd_pid = ? WHERE id = 1",
-    ).run(TTYD_PORT, ttydProc.pid);
-    if (result.changes === 0) {
-      throw new Error("resetTestState: deployment id=1 missing from DB — cannot reset");
-    }
+    const repo = db
+      .prepare("SELECT id FROM repos WHERE owner = ? AND name = ?")
+      .get(TEST_OWNER, TEST_REPO) as { id: number };
+    db.prepare(
+      `INSERT INTO deployments
+       (id, repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, state, terminal_backend, ttyd_port, ttyd_pid, ended_at)
+       VALUES (?, ?, ?, 'issue', ?, ?, ?, ?, 'active', 'ttyd', ?, ?, NULL)
+       ON CONFLICT(id) DO UPDATE SET
+         repo_id = excluded.repo_id,
+         issue_number = excluded.issue_number,
+         target_type = excluded.target_type,
+         target_number = excluded.target_number,
+         branch_name = excluded.branch_name,
+         workspace_mode = excluded.workspace_mode,
+         workspace_path = excluded.workspace_path,
+         state = excluded.state,
+         terminal_backend = excluded.terminal_backend,
+         ttyd_port = excluded.ttyd_port,
+         ttyd_pid = excluded.ttyd_pid,
+         ended_at = NULL`,
+    ).run(1, repo.id, TEST_ISSUE, TEST_ISSUE, `issue-${TEST_ISSUE}-test`, "worktree", "/tmp/test-workspace", TTYD_PORT, ttydProc.pid);
   } finally {
     db.close();
   }
@@ -194,12 +209,15 @@ function createTestDb(dbPath: string, ttydPid: number): void {
       .prepare("SELECT id FROM repos WHERE owner = ? AND name = ?")
       .get(TEST_OWNER, TEST_REPO) as { id: number };
 
-    // Active deployment with real ttyd PID and port
-    db.prepare(
-      `INSERT OR IGNORE INTO deployments
-       (id, repo_id, issue_number, branch_name, workspace_mode, workspace_path, state, ttyd_port, ttyd_pid)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(1, repo.id, TEST_ISSUE, `issue-${TEST_ISSUE}-test`, "worktree", "/tmp/test-workspace", "active", TTYD_PORT, ttydPid);
+    // Active deployment with real ttyd PID and port.
+    const deploymentResult = db.prepare(
+      `INSERT INTO deployments
+       (id, repo_id, issue_number, target_type, target_number, branch_name, workspace_mode, workspace_path, state, terminal_backend, ttyd_port, ttyd_pid)
+       VALUES (?, ?, ?, 'issue', ?, ?, ?, ?, ?, 'ttyd', ?, ?)`,
+    ).run(1, repo.id, TEST_ISSUE, TEST_ISSUE, `issue-${TEST_ISSUE}-test`, "worktree", "/tmp/test-workspace", "active", TTYD_PORT, ttydPid);
+    if (deploymentResult.changes !== 1) {
+      throw new Error("createTestDb: failed to seed active deployment");
+    }
 
     // Pre-seed all cache entries so page renders without GitHub API calls.
     const insertCache = db.prepare(

@@ -11,17 +11,25 @@ import {
   type PullSummary,
 } from "./pull-requests-data";
 import { cardStyle, fieldStyle, panelStyle, rowStyle, textareaStyle } from "./pull-requests-styles";
-import type { WorkbenchPayload } from "./workbench-types";
+import type { WorkbenchPayload, WorkbenchRepo } from "./workbench-types";
 import styles from "./WorkbenchShell.module.css";
 
 type Props = {
+  repos: WorkbenchPayload["repos"];
   selectedRepo: WorkbenchPayload["repos"][number] | null;
 };
 
-export function PullRequestsFocus({ selectedRepo }: Props) {
-  const [pulls, setPulls] = useState<PullSummary[]>([]);
+type RepoPull = PullSummary & {
+  key: string;
+  repo: WorkbenchRepo;
+  repoLabel: string;
+};
+
+export function PullRequestsFocus({ repos, selectedRepo }: Props) {
+  const [repoFilter, setRepoFilter] = useState<string>(() => selectedRepo ? repoLabel(selectedRepo) : "all");
+  const [pulls, setPulls] = useState<RepoPull[]>([]);
   const [listStatus, setListStatus] = useState<"idle" | "loading" | "loaded">("idle");
-  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detail, setDetail] = useState<PullDetail | null>(null);
   const [detailStatus, setDetailStatus] = useState<"idle" | "loading" | "loaded">("idle");
   const [reviewBody, setReviewBody] = useState("Looks good");
@@ -29,36 +37,51 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const repoLabel = selectedRepo ? `${selectedRepo.owner}/${selectedRepo.name}` : null;
+  useEffect(() => {
+    setRepoFilter(selectedRepo ? repoLabel(selectedRepo) : "all");
+  }, [selectedRepo]);
+
+  const reposToLoad = useMemo(
+    () => repoFilter === "all" ? repos : repos.filter((repo) => repoLabel(repo) === repoFilter),
+    [repoFilter, repos],
+  );
   const selectedPull = useMemo(
-    () => pulls.find((pull) => pull.number === selectedNumber) ?? null,
-    [pulls, selectedNumber],
+    () => pulls.find((pull) => pull.key === selectedKey) ?? null,
+    [pulls, selectedKey],
   );
 
   const loadPulls = useCallback(async (
-    repo = selectedRepo,
+    targetRepos = reposToLoad,
     signal?: AbortSignal,
     forceRefresh = false,
   ) => {
-    if (!repo) return;
     setListStatus("loading");
     setError(null);
     setPulls([]);
-    setSelectedNumber(null);
+    setSelectedKey(null);
     setDetail(null);
     try {
-      const query = new URLSearchParams({ checks: "true" });
-      if (forceRefresh) query.set("refresh", "true");
-      const body = await requestJson<ListResponse>(
-        `/api/v1/pulls/${repo.owner}/${repo.name}?${query.toString()}`,
-        { method: "GET", signal },
-      );
+      const nextPulls = await Promise.all(targetRepos.map(async (repo) => {
+        const query = new URLSearchParams({ checks: "true" });
+        if (forceRefresh) query.set("refresh", "true");
+        const body = await requestJson<ListResponse>(
+          `/api/v1/pulls/${repo.owner}/${repo.name}?${query.toString()}`,
+          { method: "GET", signal },
+        );
+        const label = repoLabel(repo);
+        return body.pulls.map((pull): RepoPull => ({
+          ...pull,
+          key: `${label}#${pull.number}`,
+          repo,
+          repoLabel: label,
+        }));
+      }));
       if (signal?.aborted) return;
-      setPulls(body.pulls);
-      if (body.pulls.length === 0) {
-        setSelectedNumber(null);
-        setDetail(null);
-      }
+      setPulls(nextPulls.flat().sort((left, right) =>
+        new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+        || left.repoLabel.localeCompare(right.repoLabel)
+        || left.number - right.number,
+      ));
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setError(errorMessage(err, "Unable to load pull requests."));
@@ -68,25 +91,24 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
         setListStatus("loaded");
       }
     }
-  }, [selectedRepo]);
+  }, [reposToLoad]);
 
   useEffect(() => {
     const controller = new AbortController();
-    setSelectedNumber(null);
+    setSelectedKey(null);
     setDetail(null);
-    void loadPulls(selectedRepo, controller.signal);
+    void loadPulls(reposToLoad, controller.signal);
     return () => controller.abort();
-  }, [loadPulls, selectedRepo]);
+  }, [loadPulls, reposToLoad]);
 
-  async function openPull(number: number) {
-    if (!selectedRepo) return;
-    setSelectedNumber(number);
+  async function openPull(pull: RepoPull) {
+    setSelectedKey(pull.key);
     setDetailStatus("loading");
     setMessage(null);
     setError(null);
     try {
       const body = await requestJson<PullDetail>(
-        `/api/v1/pulls/${selectedRepo.owner}/${selectedRepo.name}/${number}`,
+        `/api/v1/pulls/${pull.repo.owner}/${pull.repo.name}/${pull.number}`,
         { method: "GET" },
       );
       setDetail(body);
@@ -98,79 +120,69 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
   }
 
   async function submitReview() {
-    if (!selectedRepo || !selectedNumber) return;
+    if (!selectedPull) return;
     setMessage(null);
     setError(null);
     try {
       await requestJson<{ success: boolean; reviewId?: number }>(
-        `/api/v1/pulls/${selectedRepo.owner}/${selectedRepo.name}/${selectedNumber}/review`,
+        `/api/v1/pulls/${selectedPull.repo.owner}/${selectedPull.repo.name}/${selectedPull.number}/review`,
         {
           method: "POST",
           body: JSON.stringify({ event: "APPROVE", body: reviewBody }),
         },
       );
-      setMessage(`Review approved for #${selectedNumber}.`);
+      setMessage(`Review approved for ${selectedPull.repoLabel} #${selectedPull.number}.`);
     } catch (err) {
       setError(errorMessage(err, "Unable to submit review."));
     }
   }
 
   async function mergeSquash() {
-    if (!selectedRepo || !selectedNumber) return;
+    if (!selectedPull) return;
     setMessage(null);
     setError(null);
     try {
       await requestJson<{ success: boolean; sha?: string }>(
-        `/api/v1/pulls/${selectedRepo.owner}/${selectedRepo.name}/${selectedNumber}/merge`,
+        `/api/v1/pulls/${selectedPull.repo.owner}/${selectedPull.repo.name}/${selectedPull.number}/merge`,
         {
           method: "POST",
           body: JSON.stringify({ mergeMethod: "squash" }),
         },
       );
-      markMerged(selectedNumber);
-      setMessage(`Pull request #${selectedNumber} merged with squash.`);
+      markMerged(selectedPull.key);
+      setMessage(`Pull request ${selectedPull.repoLabel} #${selectedPull.number} merged with squash.`);
     } catch (err) {
       setError(errorMessage(err, "Unable to merge pull request."));
     }
   }
 
   async function addComment() {
-    if (!selectedRepo || !selectedNumber) return;
+    if (!selectedPull) return;
     setMessage(null);
     setError(null);
     try {
       await requestJson<{ success: boolean; commentId?: number }>(
-        `/api/v1/pulls/${selectedRepo.owner}/${selectedRepo.name}/${selectedNumber}/comments`,
+        `/api/v1/pulls/${selectedPull.repo.owner}/${selectedPull.repo.name}/${selectedPull.number}/comments`,
         {
           method: "POST",
           body: JSON.stringify({ body: commentBody }),
         },
       );
-      setMessage(`Comment added to #${selectedNumber}.`);
+      setMessage(`Comment added to ${selectedPull.repoLabel} #${selectedPull.number}.`);
     } catch (err) {
       setError(errorMessage(err, "Unable to add comment."));
     }
   }
 
-  function markMerged(number: number) {
+  function markMerged(key: string) {
     setPulls((current) => current.map((pull) =>
-      pull.number === number
+      pull.key === key
         ? { ...pull, state: "closed", merged: true, mergedAt: new Date().toISOString() }
         : pull,
     ));
-    setDetail((current) => current && current.pull.number === number
+    setDetail((current) => current && selectedPull && current.pull.number === selectedPull.number
       ? { ...current, pull: { ...current.pull, state: "closed", merged: true } }
       : current);
-  }
-
-  if (!selectedRepo || !repoLabel) {
-    return (
-      <div className={styles.focusInner}>
-        <p className={styles.kicker}>PRs</p>
-        <h1>Select a repository</h1>
-        <p className={styles.muted}>Pull requests are scoped to the active repo.</p>
-      </div>
-    );
   }
 
   return (
@@ -178,13 +190,30 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
       <header style={rowStyle}>
         <div>
           <p className={styles.kicker}>Pull requests</p>
-          <h1>{repoLabel}</h1>
-          <p className={styles.muted}>Review, comment on, and merge pull requests for this repository.</p>
+          <h1>Pull requests</h1>
+          <p className={styles.muted}>
+            {pulls.length} open PRs across {repoFilter === "all" ? repos.length : 1} tracked {repoFilter === "all" ? "repositories" : "repository"}.
+          </p>
         </div>
+        <label className={styles.workbenchField}>
+          Repo
+          <select
+            aria-label="Pull request repository filter"
+            className={styles.workbenchInput}
+            value={repoFilter}
+            onChange={(event) => setRepoFilter(event.target.value)}
+          >
+            <option value="all">All repositories</option>
+            {repos.map((repo) => {
+              const label = repoLabel(repo);
+              return <option key={repo.id} value={label}>{label}</option>;
+            })}
+          </select>
+        </label>
         <button
           type="button"
           className={styles.secondaryButton}
-          onClick={() => void loadPulls(selectedRepo, undefined, true)}
+          onClick={() => void loadPulls(reposToLoad, undefined, true)}
         >
           Refresh checks
         </button>
@@ -193,23 +222,23 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
       {error && <p role="alert" className={styles.issueFocusError}>{error}</p>}
       {message && <p role="status" className={styles.issueFocusNotice}>{message}</p>}
 
-      <section aria-label={`Pull requests for ${repoLabel}`} style={{ display: "grid", gap: "10px" }}>
-        {listStatus === "loading" && <p className={styles.muted}>Loading pull requests for {repoLabel}.</p>}
+      <section aria-label="Cross-repo pull requests" style={{ display: "grid", gap: "10px" }}>
+        {listStatus === "loading" && <p className={styles.muted}>Loading pull requests.</p>}
         {listStatus === "loaded" && pulls.length === 0 && (
-          <p className={styles.muted}>No open pull requests in {repoLabel}.</p>
+          <p className={styles.muted}>No open pull requests match this repo filter.</p>
         )}
         {pulls.map((pull) => {
           const linkedIssue = linkedIssueNumber(pull.body);
           return (
             <article
-              key={pull.number}
-              aria-label={`Pull request #${pull.number}`}
-              data-selected={selectedNumber === pull.number ? "true" : undefined}
+              key={pull.key}
+              aria-label={`Pull request ${pull.repoLabel} #${pull.number}`}
+              data-selected={selectedKey === pull.key ? "true" : undefined}
               data-checks={pull.checksStatus ?? "unknown"}
               style={cardStyle}
             >
               <div style={rowStyle}>
-                <strong>#{pull.number} {pull.title}</strong>
+                <strong>{pull.repoLabel} #{pull.number} {pull.title}</strong>
                 <span>{pull.merged ? "merged" : pull.state}</span>
                 <span>Checks {pull.checksStatus ?? "unknown"}</span>
                 {pull.checksStatus === "success" && !pull.merged && <span>Needs review</span>}
@@ -220,7 +249,7 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
                 <span>+{pull.additions} / -{pull.deletions}</span>
                 <span>{pull.changedFiles} files</span>
               </div>
-              <button type="button" className={styles.secondaryButton} onClick={() => void openPull(pull.number)}>
+              <button type="button" className={styles.secondaryButton} onClick={() => void openPull(pull)}>
                 Open PR
               </button>
             </article>
@@ -231,12 +260,12 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
       <section aria-label="Pull request detail" style={cardStyle}>
         {!selectedPull && <p className={styles.muted}>Select a pull request to open details in this focus pane.</p>}
         {selectedPull && detailStatus === "loading" && (
-          <p className={styles.issueFocusNotice}>Loading PR #{selectedPull.number}</p>
+          <p className={styles.issueFocusNotice}>Loading PR {selectedPull.repoLabel} #{selectedPull.number}</p>
         )}
         {selectedPull && detail && (
           <>
             <div style={rowStyle}>
-              <h2 style={{ margin: 0 }}>#{detail.pull.number} {detail.pull.title}</h2>
+              <h2 style={{ margin: 0 }}>{selectedPull.repoLabel} #{detail.pull.number} {detail.pull.title}</h2>
               <span>{detail.pull.merged ? "merged" : detail.pull.state}</span>
               {detail.linkedIssue && <span>Linked issue #{detail.linkedIssue.number}</span>}
             </div>
@@ -270,4 +299,8 @@ export function PullRequestsFocus({ selectedRepo }: Props) {
       </section>
     </div>
   );
+}
+
+function repoLabel(repo: Pick<WorkbenchRepo, "owner" | "name">): string {
+  return `${repo.owner}/${repo.name}`;
 }

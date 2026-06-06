@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { DashboardPresetStrip } from "./DashboardPresetStrip";
-import { DashboardEmptyState, RepoDashboardSummary, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
+import { RepoPullsSummary, repoKey, useBoardPulls } from "./BoardPulls";
+import { DashboardEmptyState, RepoIssueHealth, dashboardIssueSummaryCounts } from "./DashboardStatusBlocks";
 import { sortDashboardRepoRows } from "./dashboard-repo-ordering";
 import { DashboardRepoGroupingControls, DashboardRepoHeader, useDashboardRepoCollapse } from "./dashboard-repo-collapse";
-import { boardPresetIdForState, boardPresetState } from "./dashboard-presets";
+import { DASHBOARD_PRESETS, boardPresetIdForState, boardPresetState, type DashboardPresetId } from "./dashboard-presets";
 import {
   dashboardIssueViewSummaries,
   filterDashboardIssues,
@@ -31,6 +31,7 @@ const PRIORITY_RANK: Record<WorkbenchIssueSummary["priority"], number> = {
   normal: 1,
   low: 2,
 };
+type BoardViewOption = "all" | "custom" | DashboardPresetId;
 
 export function BoardFocus({
   repos,
@@ -57,14 +58,16 @@ export function BoardFocus({
     ),
     [deployments, issueView, query, repos, runningOnly, sortMode],
   );
-  const visibleIssues = useMemo(
-    () => visibleRows.reduce((count, row) => count + row.issues.length, 0),
-    [visibleRows],
-  );
+  const visibleIssues = visibleRows.reduce((count, row) => count + row.issues.length, 0);
+  const allOpenIssues = repos.reduce((count, repo) => count + repo.issues.filter((issue) => issue.state === "open").length, 0);
   const currentView = viewSummaries.find((view) => view.id === issueView);
   const activePresetId = boardPresetIdForState(urlState);
+  const boardViewValue: BoardViewOption = activePresetId ?? (issueView === "all" && !runningOnly ? "all" : "custom");
+  const defaultPreset = DASHBOARD_PRESETS.find((preset) => preset.id === defaultControls.defaultPresetId);
   const hasDashboardFilters = query.trim() !== "" || runningOnly !== DEFAULT_BOARD_URL_STATE.runningOnly || sortMode !== DEFAULT_BOARD_URL_STATE.sort || issueView !== DEFAULT_BOARD_URL_STATE.view;
   const repoCollapse = useDashboardRepoCollapse("board", repos);
+  const visibleRepos = useMemo(() => visibleRows.map(({ repo }) => repo), [visibleRows]);
+  const repoPulls = useBoardPulls(visibleRepos);
 
   return (
     <div className={`${styles.focusInner} ${styles.boardFocus}`}>
@@ -73,11 +76,6 @@ export function BoardFocus({
       <p className={styles.muted}>
         {visibleIssues} {runningOnly ? "running" : "open"} issues in {currentView?.label.toLowerCase() ?? "all"} view across {repos.length} tracked repositories.
       </p>
-      <DashboardPresetStrip
-        activePresetId={activePresetId}
-        ariaLabel="Board triage presets" onApply={(id) => setUrlState(boardPresetState(id))}
-        defaultPresetId={defaultControls.defaultPresetId} onClearDefault={defaultControls.clearDefaultPresetId} onSetDefault={defaultControls.setDefaultPresetId}
-      />
       <div aria-label="Board controls" className={styles.boardControls}>
         <input
           aria-label="Search board issues"
@@ -87,52 +85,50 @@ export function BoardFocus({
           placeholder="Search issue, repo, label, author, or number"
           onChange={(event) => setUrlState({ query: event.target.value })}
         />
-        <button
-          type="button"
-          className={runningOnly ? styles.primaryButton : styles.secondaryButton}
-          aria-pressed={runningOnly}
-          onClick={() => setUrlState({ runningOnly: !runningOnly })}
+        <select
+          aria-label="Board view"
+          className={styles.boardSelect}
+          value={boardViewValue}
+          onChange={(event) => {
+            const value = event.target.value as BoardViewOption;
+            if (value === "custom") return;
+            setUrlState(value === "all" ? DEFAULT_BOARD_URL_STATE : boardPresetState(value));
+          }}
         >
-          Show running only
-        </button>
-        <button
-          type="button"
-          className={sortMode === "payload" ? styles.primaryButton : styles.secondaryButton}
-          aria-pressed={sortMode === "payload"}
-          onClick={() => setUrlState({ sort: "payload" })}
-        >
-          Payload order
-        </button>
-        <button
-          type="button"
-          className={sortMode === "priority" ? styles.primaryButton : styles.secondaryButton}
-          aria-pressed={sortMode === "priority"}
-          onClick={() => setUrlState({ sort: "priority" })}
-        >
-          Sort by priority
-        </button>
-        <div className={styles.compactButtonGroup} role="group" aria-label="Board operational views">
-          {viewSummaries.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={issueView === item.id ? styles.primaryButton : styles.secondaryButton}
-              aria-pressed={issueView === item.id}
-              onClick={() => setUrlState({ view: item.id })}
-            >
-              {item.label} {item.count}
-            </button>
+          <option value="all">All open {allOpenIssues}</option>
+          {DASHBOARD_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>{preset.label}</option>
           ))}
-        </div>
-        <DashboardRepoGroupingControls ariaLabel="Board repo grouping" collapse={repoCollapse} repos={visibleRows.map(({ repo }) => repo)} />
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          onClick={onRefresh}
-          disabled={refreshPending}
-        >
-          {refreshPending ? "Refreshing" : "Refresh"}
-        </button>
+          {boardViewValue === "custom" && <option value="custom">Custom view</option>}
+        </select>
+        <details className={styles.boardOptions}>
+          <summary>Board options</summary>
+          <div className={styles.boardOptionsPanel}>
+            <select
+              aria-label="Sort board issues"
+              className={styles.boardSelect}
+              value={sortMode}
+              onChange={(event) => setUrlState({ sort: event.target.value as BoardSortMode })}
+            >
+              <option value="payload">Payload order</option>
+              <option value="priority">Priority order</option>
+            </select>
+            <DashboardRepoGroupingControls ariaLabel="Board repo grouping" collapse={repoCollapse} repos={visibleRows.map(({ repo }) => repo)} />
+            <button type="button" className={styles.secondaryButton} onClick={onRefresh} disabled={refreshPending}>
+              {refreshPending ? "Refreshing" : "Refresh"}
+            </button>
+            {activePresetId && (
+              <button type="button" className={styles.secondaryButton} onClick={() => defaultControls.setDefaultPresetId(activePresetId)}>
+                Set default view
+              </button>
+            )}
+            {defaultPreset && (
+              <button type="button" className={styles.secondaryButton} onClick={defaultControls.clearDefaultPresetId}>
+                Clear default: {defaultPreset.label}
+              </button>
+            )}
+          </div>
+        </details>
       </div>
       {(failedRepos > 0 || cachedRepos > 0 || refreshError) && (
         <div className={styles.globalIssueStatus} role={refreshError ? "alert" : "status"}>
@@ -150,35 +146,40 @@ export function BoardFocus({
           title="No board issues match these filters."
         />
       )}
-
       <div aria-label="Cross-repo board" className={styles.boardScroll} role="region" tabIndex={0}>
         {visibleRows.map(({ repo, issues }) => {
-          const collapsed = repoCollapse.isCollapsed(repo); return (
+          const collapsed = repoCollapse.isCollapsed(repo);
+          const counts = dashboardIssueSummaryCounts(issues, (issue) => isRunningIssue(repo, deployments, issue));
+          return (
             <section
               key={repo.id}
               aria-label={`Board column ${repo.owner}/${repo.name}`}
               className={styles.boardColumn}
             >
               <DashboardRepoHeader collapsed={collapsed} onToggle={() => repoCollapse.toggleRepo(repo)} repo={repo}>
-                <p className={`${styles.muted} ${styles.boardColumnMeta}`}>{issues.length} {runningOnly ? "running" : "open"}</p>
+                <div className={styles.boardColumnMeta} aria-label={`Board summary for ${repo.owner}/${repo.name}`}>
+                  <span>{issues.length} {runningOnly ? "running" : "issues"}</span>
+                  {counts.runningCount > 0 && <span>{counts.runningCount} running</span>}
+                  {counts.highPriorityCount > 0 && <span>{counts.highPriorityCount} high</span>}
+                  {repo.issuesFromCache && <span>cached</span>}
+                  {repo.issueError && <span title={repo.issueError}>error</span>}
+                  <RepoPullsSummary repo={repo} state={repoPulls[repoKey(repo)]} />
+                </div>
               </DashboardRepoHeader>
-              <RepoDashboardSummary
-                repo={repo}
-                {...dashboardIssueSummaryCounts(issues, (issue) => isRunningIssue(repo, deployments, issue))}
-              />
-              <RepoIssueHealth repo={repo} />
-              {!collapsed && (issues.length === 0 ? <p className={styles.muted}>No matching issues.</p> : (
-                issues.map((issue) => (
-                  <BoardCard
-                    key={issue.number}
-                    issue={issue}
-                    repo={repo}
-                    deployments={deployments}
-                    onSelectIssue={onSelectIssue}
-                    onJumpToSession={onJumpToSession}
-                  />
-                ))
-              ))}
+              <RepoIssueHealth repo={repo} showCache={false} />
+              {!collapsed && (
+                <>
+                  {issues.length === 0 ? <p className={styles.muted}>No matching issues.</p> : (
+                    issues.map((issue) => (
+                      <BoardCard
+                        key={issue.number}
+                        issue={issue} repo={repo} deployments={deployments}
+                        onSelectIssue={onSelectIssue} onJumpToSession={onJumpToSession}
+                      />
+                    ))
+                  )}
+                </>
+              )}
             </section>
           );
         })}
@@ -206,15 +207,15 @@ function BoardCard({
 
   return (
     <article
-      className={styles.issueCard}
+      className={`${styles.issueCard} ${styles.boardIssueCard}`}
       data-status={status}
       data-priority={issue.priority}
       aria-label={`Board issue ${repo.owner}/${repo.name} #${issue.number}`}
     >
       <div className={styles.issueCardHead}>
         <strong>#{issue.number}</strong>
-        <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>
-        <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>
+        {status !== "open" && <span className={styles.issueChip} data-card-chip="status" data-status={status}>{status}</span>}
+        {issue.priority === "high" && <span className={styles.issueChip} data-card-chip="priority">{issue.priority}</span>}
       </div>
       <h3>{issue.title}</h3>
       <p className={styles.issueCardMeta}>
@@ -222,12 +223,12 @@ function BoardCard({
       </p>
       <div className={styles.issueActions}>
         {deployment ? (
-          <button type="button" onClick={() => onJumpToSession(deployment.id)}>
-            Jump to session
+          <button type="button" aria-label="Jump to session" onClick={() => onJumpToSession(deployment.id)}>
+            Jump
           </button>
         ) : (
-          <button type="button" onClick={() => onSelectIssue(repo.id, issue.number)}>
-            Prepare launch
+          <button type="button" aria-label="Prepare launch" onClick={() => onSelectIssue(repo.id, issue.number)}>
+            Prepare
           </button>
         )}
       </div>
@@ -295,15 +296,13 @@ function matchesBoardIssue(
     issue.authorLogin ?? "",
     ...issue.labels,
   ].join(" ").toLowerCase();
-
   return query.split(/\s+/).every((term) => haystack.includes(term));
 }
 
 function formatAge(value: string): string {
   const timestamp = new Date(value).getTime();
   if (Number.isNaN(timestamp)) return "recently";
-  const elapsedMs = Date.now() - timestamp;
-  const elapsedHours = Math.max(0, Math.floor(elapsedMs / 3_600_000));
+  const elapsedHours = Math.max(0, Math.floor((Date.now() - timestamp) / 3_600_000));
   if (elapsedHours < 1) return "just now";
   if (elapsedHours < 24) return `${elapsedHours}h ago`;
   const elapsedDays = Math.floor(elapsedHours / 24);
