@@ -263,8 +263,6 @@ test.describe("Pull-to-refresh (#133)", () => {
 
     // Basic check: the dashboard still has its core elements after load
     await expect(page.locator("h1")).toContainText("issuectl");
-    await expect(
-      page.locator('button[aria-label="Open navigation"]'),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open navigation" }).first()).toBeVisible();
   });
 });

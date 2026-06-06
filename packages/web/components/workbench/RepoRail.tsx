@@ -48,18 +48,20 @@ export function RepoRail({
       {repos.map((repo) => {
         const count = repoRailBadgeCount(repo);
         const selected = repo.id === selectedRepoId;
+        const label = repoLabel(repo);
         return (
           <button
             key={repo.id}
             type="button"
             className={styles.repoButton}
-            aria-label={repoLabel(repo)}
+            aria-label={label}
             aria-pressed={selected}
             data-selected={selected ? "true" : undefined}
-            title={repoLabel(repo)}
+            title={label}
             onClick={() => onSelectRepo(repo.id)}
           >
             {compactRepoInitials(repo.name)}
+            <span className={styles.repoButtonTooltip} aria-hidden="true">{label}</span>
             {count > 0 && <span className={styles.badge}>{count}</span>}
           </button>
         );

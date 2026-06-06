@@ -73,13 +73,15 @@ export function DashboardRepoGroupingControls({
   repos: RepoIdentity[];
 }) {
   const disabled = repos.length === 0;
+  const collapsedCount = repos.filter((repo) => collapse.isCollapsed(repo)).length;
+  const expandedCount = repos.length - collapsedCount;
 
   return (
     <div className={styles.compactButtonGroup} role="group" aria-label={ariaLabel}>
-      <button type="button" className={styles.secondaryButton} onClick={() => collapse.collapseAll(repos)} disabled={disabled}>
+      <button type="button" className={styles.secondaryButton} onClick={() => collapse.collapseAll(repos)} disabled={disabled || expandedCount === 0}>
         Collapse all repos
       </button>
-      <button type="button" className={styles.secondaryButton} onClick={() => collapse.expandAll(repos)} disabled={disabled}>
+      <button type="button" className={styles.secondaryButton} onClick={() => collapse.expandAll(repos)} disabled={disabled || collapsedCount === 0}>
         Expand all repos
       </button>
     </div>
@@ -109,9 +111,10 @@ export function DashboardRepoHeader({
         type="button"
         className={`${styles.secondaryButton} ${styles.repoCollapseButton}`}
         aria-expanded={!collapsed}
+        aria-label={`${collapsed ? "Expand" : "Collapse"} ${label}`}
         onClick={onToggle}
       >
-        {collapsed ? "Expand" : "Collapse"} {label}
+        {collapsed ? ">" : "v"}
       </button>
     </header>
   );

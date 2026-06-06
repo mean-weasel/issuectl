@@ -74,14 +74,12 @@ function useDashboardUrlState<TState extends GlobalIssueUrlState | BoardUrlState
   }, [defaultPresetId, parse, presetState]);
 
   const updateState = (patch: Partial<TState>) => {
-    setState((current) => {
-      const next = { ...current, ...patch };
-      if (typeof window !== "undefined") {
-        const nextSearch = dashboardUrlSearch(surface, window.location.search, next);
-        window.history.replaceState(null, "", `${window.location.pathname}${nextSearch}${window.location.hash}`);
-      }
-      return next;
-    });
+    const next = { ...state, ...patch };
+    if (typeof window !== "undefined") {
+      const nextSearch = dashboardUrlSearch(surface, window.location.search, next);
+      window.history.replaceState(null, "", `${window.location.pathname}${nextSearch}${window.location.hash}`);
+    }
+    setState(next);
   };
 
   const setDefaultPresetId = (presetId: DashboardPresetId) => {

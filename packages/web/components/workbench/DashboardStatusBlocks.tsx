@@ -35,13 +35,13 @@ export function DashboardEmptyState({
   );
 }
 
-export function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
-  if (!repo.issueError && !repo.issuesFromCache) return null;
+export function RepoIssueHealth({ repo, showCache = true }: { repo: WorkbenchRepo; showCache?: boolean }) {
+  if (!repo.issueError && !(showCache && repo.issuesFromCache)) return null;
 
   return (
     <div className={styles.repoIssueHealth} role={repo.issueError ? "alert" : "status"}>
       {repo.issueError && <span>Issue fetch failed: {repo.issueError}</span>}
-      {repo.issuesFromCache && (
+      {showCache && repo.issuesFromCache && (
         <span>Showing cached issues{repo.issuesCachedAt ? ` from ${formatAge(repo.issuesCachedAt)}` : ""}</span>
       )}
     </div>
@@ -50,15 +50,20 @@ export function RepoIssueHealth({ repo }: { repo: WorkbenchRepo }) {
 
 export function RepoDashboardSummary({
   highPriorityCount,
+  hideZeroCounts = false,
   repo,
   runningCount,
   visibleCount,
-}: RepoDashboardSummaryCounts & { repo: WorkbenchRepo }) {
+}: RepoDashboardSummaryCounts & { hideZeroCounts?: boolean; repo: WorkbenchRepo }) {
   return (
     <div className={styles.repoIssueSummary} aria-label={`Dashboard summary for ${repo.owner}/${repo.name}`}>
       <span className={styles.repoIssueSummaryChip}>{visibleCount} visible</span>
-      <span className={styles.repoIssueSummaryChip}>{runningCount} running</span>
-      <span className={styles.repoIssueSummaryChip}>{highPriorityCount} high priority</span>
+      {(!hideZeroCounts || runningCount > 0) && (
+        <span className={styles.repoIssueSummaryChip}>{runningCount} running</span>
+      )}
+      {(!hideZeroCounts || highPriorityCount > 0) && (
+        <span className={styles.repoIssueSummaryChip}>{highPriorityCount} high priority</span>
+      )}
       {repo.issuesFromCache && (
         <span className={styles.repoIssueSummaryChip} data-tone="cache">cached</span>
       )}

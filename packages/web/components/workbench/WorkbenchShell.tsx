@@ -18,7 +18,6 @@ import { IssueQueuePane } from "./IssueQueuePane";
 import { PullRequestsFocus } from "./PullRequestsFocus";
 import { QuickCreateFocus } from "./QuickCreateFocus";
 import { RepoOverviewFocus } from "./RepoOverviewFocus";
-import { RepoRail } from "./RepoRail";
 import { RepoSetupFocus } from "./RepoSetupFocus";
 import { SettingsFocus } from "./SettingsFocus";
 import { TerminalFocus } from "./TerminalFocus";
@@ -249,6 +248,7 @@ export function WorkbenchShell({
   });
   const reassignTargets = payload?.repos.filter((repo) => repo.id !== selectedRepo?.id) ?? [];
   const hideSidePanes = !sidePaneWidthsApply(selection.mode);
+  const repoPickerVisible = repoPickerApplies(selection.mode) && loadState.status === "loaded" && loadState.data.repos.length > 0;
   const compactSidePanesHidden = compactLayout || hideSidePanes;
   const instancesPaneCollapsed = compactSidePanesHidden || drawerCollapse.instances;
   const issuesPaneCollapsed = compactSidePanesHidden || drawerCollapse.issues;
@@ -280,17 +280,17 @@ export function WorkbenchShell({
     setRepoSetupRequested(pathParams.get("repoSetup") === "1");
   }
 
-  function modePathWithRepo(path: string): string {
-    if (!selectedRepo) return path;
+  function modePathForMode(mode: WorkbenchMode, path: string): string {
+    if (!selectedRepo || !repoPickerApplies(mode)) return path;
     const separator = path.includes("?") ? "&" : "?";
-    return `${path}${separator}repo=${encodeURIComponent(`${selectedRepo.owner}/${selectedRepo.name}`)}`;
+    return `${path}${separator}repo=${encodeURIComponent(repoLabel(selectedRepo))}`;
   }
 
   function selectRepo(repoId: number) {
     rememberCompactOverviewScroll();
     setUrlRecoveryNotice(null);
     const repo = payload?.repos.find((item) => item.id === repoId) ?? null;
-    const nextMode = repoScopedMode(selection.mode) ? selection.mode : "workbench";
+    const nextMode = repoPickerApplies(selection.mode) ? selection.mode : "workbench";
     dispatch({
       type: "applyUrlSelection",
       mode: nextMode,
@@ -721,9 +721,28 @@ export function WorkbenchShell({
         <Link href="/workbench" className={styles.brand} aria-label="issuectl workbench">
           issuectl<span className={styles.brandDot} />
         </Link>
-        <span className={styles.routeLabel} aria-label="Workbench context" title={contextLabel}>
-          {contextLabel}
-        </span>
+        {!repoPickerVisible && (
+          <span className={styles.routeLabel} aria-label="Workbench context" title={contextLabel}>
+            {contextLabel}
+          </span>
+        )}
+        {repoPickerVisible && payload && (
+          <label className={styles.repoPicker}>
+            <span>Repo</span>
+            <select
+              aria-label="Workbench repository"
+              value={selection.selectedRepoId ?? ""}
+              onChange={(event) => {
+                const repoId = Number(event.target.value);
+                if (Number.isInteger(repoId)) selectRepo(repoId);
+              }}
+            >
+              {payload.repos.map((repo) => (
+                <option key={repo.id} value={repo.id}>{repo.owner}/{repo.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         {!compactSidePanesHidden && (
           <div className={styles.toolbarTools} aria-label="Workbench layout controls">
             <button
@@ -770,7 +789,7 @@ export function WorkbenchShell({
               className={styles.navButton}
               data-active={selection.mode === item.mode ? "true" : undefined}
               aria-current={selection.mode === item.mode ? "page" : undefined}
-              onClick={() => selectMode(item.mode, modePathWithRepo(item.path))}
+              onClick={() => selectMode(item.mode, modePathForMode(item.mode, item.path))}
             >
               {item.label}
             </button>
@@ -781,6 +800,7 @@ export function WorkbenchShell({
       <main
         className={styles.workbench}
         data-mode={selection.mode}
+        data-repo-rail="hidden"
         data-side-panes={compactSidePanesHidden ? "collapsed" : "visible"}
         data-instances-pane={instancesPaneCollapsed ? "collapsed" : "visible"}
         data-issues-pane={issuesPaneCollapsed ? "collapsed" : "visible"}
@@ -788,17 +808,6 @@ export function WorkbenchShell({
         style={workbenchStyle}
         aria-label="Workbench"
       >
-        <aside className={`${styles.pane} ${styles.repoRail}`} aria-label="Repositories">
-          <RepoRail
-            repos={payload?.repos ?? null}
-            selectedRepoId={selection.selectedRepoId}
-            status={loadState.status}
-            onSelectRepo={selectRepo}
-            onAddRepository={openRepoSetup}
-            onOpenSettings={() => selectMode("settings", modePathWithRepo("/workbench/settings"))}
-          />
-        </aside>
-
         {!compactSidePanesHidden && instancesPaneCollapsed && (
           <button
             type="button"
@@ -1117,7 +1126,7 @@ function FocusContent({
   }
 
   if (mode === "pullRequests") {
-    return <PullRequestsFocus selectedRepo={selectedRepo} />;
+    return <PullRequestsFocus repos={loadState.data.repos} selectedRepo={selectedRepo} />;
   }
 
   if (mode === "workbench" && selectedIssue) {
@@ -1285,19 +1294,32 @@ function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: s
   const params = new URLSearchParams(search);
   const requestedRepoParam = params.get("repo");
   const requestedRepo = repoFromUrlParam(payload, requestedRepoParam) ?? payload.repos[0] ?? null;
+  const deploymentId = numberParam(params.get("deployment"));
+  const issueNumber = numberParam(params.get("issue"));
 
-  if (mode !== "workbench") {
+  if (mode === "workbench" && !requestedRepoParam && deploymentId === null && issueNumber === null) {
     return {
-      mode,
+      mode: "board",
       repoId: requestedRepo?.id ?? null,
       issueNumber: null,
       deploymentId: null,
       recoveryNotice: null,
-      normalizedUrl: null,
+      normalizedUrl: "/workbench/board",
     };
   }
 
-  const deploymentId = numberParam(params.get("deployment"));
+  if (mode !== "workbench") {
+    const repoParamApplies = mode === "pullRequests" || repoPickerApplies(mode);
+    return {
+      mode,
+      repoId: repoParamApplies && requestedRepoParam ? requestedRepo?.id ?? null : null,
+      issueNumber: null,
+      deploymentId: null,
+      recoveryNotice: null,
+      normalizedUrl: repoParamApplies ? null : urlWithoutRepoParam(pathname, search),
+    };
+  }
+
   if (deploymentId !== null) {
     const deployment = payload.deployments.find((item) => item.id === deploymentId);
     if (deployment) {
@@ -1321,7 +1343,6 @@ function selectionFromUrl(payload: WorkbenchPayload, pathname: string, search: s
     };
   }
 
-  const issueNumber = numberParam(params.get("issue"));
   if (requestedRepo && issueNumber !== null && requestedRepo.issues.some((issue) => issue.number === issueNumber)) {
     return {
       mode,
@@ -1383,6 +1404,14 @@ function repoFromUrlParam(payload: WorkbenchPayload, value: string | null): Work
   return payload.repos.find((repo) => repo.owner === owner && repo.name === name) ?? null;
 }
 
+function urlWithoutRepoParam(pathname: string, search: string): string | null {
+  const params = new URLSearchParams(search);
+  if (!params.has("repo")) return null;
+  params.delete("repo");
+  const nextSearch = params.toString();
+  return nextSearch ? `${pathname}?${nextSearch}` : pathname;
+}
+
 function numberParam(value: string | null): number | null {
   if (!value) return null;
   const parsed = Number(value);
@@ -1390,7 +1419,7 @@ function numberParam(value: string | null): number | null {
 }
 
 function workbenchRepoUrl(repo: Pick<WorkbenchRepo, "owner" | "name">): string {
-  return `/workbench?repo=${encodeURIComponent(`${repo.owner}/${repo.name}`)}`;
+  return `/workbench?repo=${encodeURIComponent(repoLabel(repo))}`;
 }
 
 function workbenchRepoSetupUrl(repo: Pick<WorkbenchRepo, "owner" | "name">): string {
@@ -1410,7 +1439,7 @@ function workbenchRepoModeUrl(
   mode: WorkbenchMode,
   repoSetupRequested: boolean,
 ): string {
-  const repoParam = `repo=${encodeURIComponent(`${repo.owner}/${repo.name}`)}`;
+  const repoParam = `repo=${encodeURIComponent(repoLabel(repo))}`;
   if (mode === "pullRequests") {
     return `/workbench/prs?${repoParam}`;
   }
@@ -1425,8 +1454,12 @@ function workbenchRepoModeUrl(
   return workbenchRepoUrl(repo);
 }
 
-function repoScopedMode(mode: WorkbenchMode): boolean {
-  return mode === "pullRequests" || mode === "quickCreate" || mode === "settings";
+function repoPickerApplies(mode: WorkbenchMode): boolean {
+  return mode === "workbench" || mode === "quickCreate" || mode === "settings";
+}
+
+function repoLabel(repo: Pick<WorkbenchRepo, "owner" | "name">): string {
+  return `${repo.owner}/${repo.name}`;
 }
 
 function modeFromPath(pathname: string): WorkbenchMode {
